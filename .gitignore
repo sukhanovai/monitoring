@@ -1,0 +1,36 @@
+# Конфиденциальные данные
+config.py
+.env
+*.key
+*.pem
+id_rsa*
+*.ppk
+
+# Логи и данные
+data/
+*.log
+logs/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Виртуальное окружение
+venv/
+.env/
+.venv/
+
+# Системные файлы
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Резервные копии
+*.bak
+*.backup
+*_backup*
