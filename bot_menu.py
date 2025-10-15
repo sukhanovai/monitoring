@@ -213,6 +213,8 @@ def lazy_handler(pattern):
             from monitor_core import check_ram_resources_handler as handler
         elif pattern == 'check_disk':
             from monitor_core import check_disk_resources_handler as handler
+        elif pattern == 'resource_history':
+            from monitor_core import resource_history_command as handler
         else:
             def default_handler(update, context):
                 query = update.callback_query
@@ -242,6 +244,7 @@ def get_callback_handlers():
         CallbackQueryHandler(lambda u, c: lazy_handler('force_loud')(u, c), pattern='^force_loud$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('auto_mode')(u, c), pattern='^auto_mode$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('toggle_silent')(u, c), pattern='^toggle_silent$'),
+        CallbackQueryHandler(lambda u, c: lazy_handler('resource_history')(u, c), pattern='^resource_history$'),
         
         # Обработчики для постраничного просмотра ресурсов
         CallbackQueryHandler(lambda u, c: lazy_handler('resource_page')(u, c), pattern='^resource_page_'),

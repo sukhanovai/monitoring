@@ -1,3 +1,4 @@
+import os
 import threading
 import time
 import socket
@@ -27,6 +28,9 @@ monitoring_active = True
 last_check_time = datetime.now()
 servers = []
 silent_override = None  # None - авто, True - принудительно тихий, False - принудительно громкий
+resource_history = {}  # История ресурсов для каждого сервера
+last_resource_check = datetime.now()
+resource_alerts_sent = {}  # Отслеживание отправленных алертов
 
 def is_proxmox_server(server):
     """Проверяет, является ли сервер Proxmox"""
@@ -1055,7 +1059,7 @@ def perform_disk_check(context, chat_id, progress_message_id):
             message_id=progress_message_id,
             text=error_msg
         )
-        
+
     if query:
         query.edit_message_text(
             text="🔍 *Выберите тип серверов для проверки:*",
@@ -1069,8 +1073,32 @@ def perform_disk_check(context, chat_id, progress_message_id):
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
-# Добавляем импорт os в начало файла
-import os
+def resource_history_command(update, context):
+    """Команда для просмотра статуса истории ресурсов"""
+    query = update.callback_query if hasattr(update, 'callback_query') else None
+    chat_id = query.message.chat_id if query else update.message.chat_id
+
+    if str(chat_id) not in CHAT_IDS:
+        if query:
+            query.edit_message_text("⛔ У вас нет прав для выполнения этой команды")
+        else:
+            update.message.reply_text("⛔ У вас нет прав для выполнения этой команды")
+        return
+
+    status_message = get_resource_history_status()
+    
+    if query:
+        query.edit_message_text(
+            text=status_message,
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔄 Обновить", callback_data='resource_history')],
+                [InlineKeyboardButton("📊 Статус мониторинга", callback_data='monitor_status')],
+                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ])
+        )
+    else:
+        update.message.reply_text(status_message, parse_mode='Markdown')
 
 def start_monitoring():
     """Запускает основной цикл мониторинга"""
@@ -1113,13 +1141,14 @@ def start_monitoring():
         current_time = datetime.now()
         current_time_time = current_time.time()
 
-        # Автоматическая проверка ресурсов раз в час
-        if (current_time - last_resource_check).total_seconds() >= resource_check_interval:
+        # Автоматическая проверка ресурсов каждые 30 минут
+        if (current_time - last_resource_check).total_seconds() >= RESOURCE_CHECK_INTERVAL:
             if monitoring_active and not is_silent_time():
                 print("🔄 Автоматическая проверка ресурсов серверов...")
                 check_resources_automatically()
                 last_resource_check = current_time
-
+            else:
+                print("⏸️ Проверка ресурсов пропущена (тихий режим или мониторинг неактивен)")
         # Сбор данных в 8:30
         if (current_time_time.hour == DATA_COLLECTION_TIME.hour and
             current_time_time.minute == DATA_COLLECTION_TIME.minute and
@@ -1277,10 +1306,165 @@ def send_morning_report_handler(update, context):
     else:
         update.message.reply_text(response)
 
-# Заглушки для отсутствующих функций
 def check_resources_automatically():
-    """Заглушка для автоматической проверки ресурсов"""
-    print("🔍 Автоматическая проверка ресурсов...")
+    """Автоматическая проверка ресурсов с умными предупреждениями"""
+    global resource_history, last_resource_check, resource_alerts_sent
+    
+    print("🔍 Автоматическая проверка ресурсов серверов...")
+    
+    if not monitoring_active or is_silent_time():
+        print("⏸️ Проверка ресурсов пропущена (мониторинг неактивен или тихий режим)")
+        return
+    
+    current_time = datetime.now()
+    alerts_found = []
+    
+    # Проверяем все серверы
+    for server in servers:
+        try:
+            ip = server["ip"]
+            server_name = server["name"]
+            
+            print(f"🔍 Проверяем ресурсы {server_name} ({ip})")
+            
+            # Получаем текущие ресурсы
+            current_resources = None
+            if server["type"] == "ssh":
+                current_resources = get_linux_resources_improved(ip)
+            elif server["type"] == "rdp":
+                current_resources = get_windows_resources_improved(ip)
+            
+            if not current_resources:
+                continue
+                
+            # Инициализируем историю для сервера если нужно
+            if ip not in resource_history:
+                resource_history[ip] = []
+            
+            # Добавляем текущие ресурсы в историю
+            resource_entry = {
+                "timestamp": current_time,
+                "cpu": current_resources.get("cpu", 0),
+                "ram": current_resources.get("ram", 0),
+                "disk": current_resources.get("disk", 0),
+                "server_name": server_name
+            }
+            
+            resource_history[ip].append(resource_entry)
+            
+            # Ограничиваем историю последними 10 записями
+            if len(resource_history[ip]) > 10:
+                resource_history[ip] = resource_history[ip][-10:]
+            
+            # Проверяем условия для алертов
+            server_alerts = check_resource_alerts(ip, resource_entry)
+            
+            if server_alerts:
+                alerts_found.extend(server_alerts)
+                print(f"⚠️ Найдены проблемы для {server_name}: {server_alerts}")
+                
+        except Exception as e:
+            print(f"❌ Ошибка при проверке ресурсов {server['name']}: {e}")
+            continue
+    
+    # Отправляем алерты если есть
+    if alerts_found:
+        send_resource_alerts(alerts_found)
+    
+    last_resource_check = current_time
+    print(f"✅ Автоматическая проверка ресурсов завершена. Найдено проблем: {len(alerts_found)}")
+
+def check_resource_alerts(ip, current_resource):
+    """Проверяет условия для отправки алертов по ресурсам"""
+    alerts = []
+    server_name = current_resource["server_name"]
+    
+    # Получаем историю проверок (исключая текущую)
+    history = resource_history.get(ip, [])[:-1]  # Все кроме последней записи
+    
+    # Проверка Disk (одна проверка)
+    disk_usage = current_resource.get("disk", 0)
+    if disk_usage >= RESOURCE_ALERT_THRESHOLDS["disk_alert"]:
+        # Проверяем, не отправляли ли уже алерт по диску
+        alert_key = f"{ip}_disk"
+        if alert_key not in resource_alerts_sent or (datetime.now() - resource_alerts_sent[alert_key]).total_seconds() > 3600:  # Не чаще чем раз в час
+            alerts.append(f"💾 *Диск* на {server_name}: {disk_usage}% (превышен порог {RESOURCE_ALERT_THRESHOLDS['disk_alert']}%)")
+            resource_alerts_sent[alert_key] = datetime.now()
+    
+    # Проверка CPU (две проверки подряд)
+    cpu_usage = current_resource.get("cpu", 0)
+    if cpu_usage >= RESOURCE_ALERT_THRESHOLDS["cpu_alert"]:
+        # Проверяем предыдущую запись
+        if len(history) >= 1:
+            prev_cpu = history[-1].get("cpu", 0)
+            if prev_cpu >= RESOURCE_ALERT_THRESHOLDS["cpu_alert"]:
+                alert_key = f"{ip}_cpu"
+                if alert_key not in resource_alerts_sent or (datetime.now() - resource_alerts_sent[alert_key]).total_seconds() > 3600:
+                    alerts.append(f"💻 *CPU* на {server_name}: {prev_cpu}% → {cpu_usage}% (2 проверки подряд >= {RESOURCE_ALERT_THRESHOLDS['cpu_alert']}%)")
+                    resource_alerts_sent[alert_key] = datetime.now()
+    
+    # Проверка RAM (две проверки подряд)
+    ram_usage = current_resource.get("ram", 0)
+    if ram_usage >= RESOURCE_ALERT_THRESHOLDS["ram_alert"]:
+        # Проверяем предыдущую запись
+        if len(history) >= 1:
+            prev_ram = history[-1].get("ram", 0)
+            if prev_ram >= RESOURCE_ALERT_THRESHOLDS["ram_alert"]:
+                alert_key = f"{ip}_ram"
+                if alert_key not in resource_alerts_sent or (datetime.now() - resource_alerts_sent[alert_key]).total_seconds() > 3600:
+                    alerts.append(f"🧠 *RAM* на {server_name}: {prev_ram}% → {ram_usage}% (2 проверки подряд >= {RESOURCE_ALERT_THRESHOLDS['ram_alert']}%)")
+                    resource_alerts_sent[alert_key] = datetime.now()
+    
+    return alerts
+
+def send_resource_alerts(alerts):
+    """Отправляет алерты по ресурсам"""
+    if not alerts:
+        return
+    
+    message = "🚨 *Проблемы с ресурсами серверов*\n\n"
+    
+    # Группируем алерты по серверам
+    alerts_by_server = {}
+    for alert in alerts:
+        # Извлекаем имя сервера из алерта
+        server_name = alert.split("на ")[1].split(":")[0] if "на " in alert else "Неизвестный сервер"
+        if server_name not in alerts_by_server:
+            alerts_by_server[server_name] = []
+        alerts_by_server[server_name].append(alert)
+    
+    for server_name, server_alerts in alerts_by_server.items():
+        message += f"**{server_name}:**\n"
+        for alert in server_alerts:
+            # Убираем имя сервера из каждого алерта чтобы избежать дублирования
+            alert_text = alert.split(":", 1)[1] if ":" in alert else alert
+            message += f"• {alert_text}\n"
+        message += "\n"
+    
+    message += f"⏰ Время проверки: {datetime.now().strftime('%H:%M:%S')}"
+    
+    send_alert(message)
+    print(f"✅ Отправлены алерты по ресурсам: {len(alerts)} проблем")
+
+def get_resource_history_status():
+    """Возвращает статус истории ресурсов для диагностики"""
+    status = f"📊 *Статус истории ресурсов*\n\n"
+    status += f"• Всего серверов в истории: {len(resource_history)}\n"
+    
+    total_entries = sum(len(history) for history in resource_history.values())
+    status += f"• Всего записей: {total_entries}\n"
+    
+    # Показываем несколько последних записей
+    recent_servers = list(resource_history.keys())[-5:]
+    status += f"\n**Последние обновления:**\n"
+    
+    for ip in recent_servers:
+        history = resource_history[ip]
+        if history:
+            last_entry = history[-1]
+            status += f"• {last_entry['server_name']}: CPU {last_entry['cpu']}%, RAM {last_entry['ram']}%, Disk {last_entry['disk']}%\n"
+    
+    return status
 
 def close_menu(update, context):
     """Закрывает меню"""
