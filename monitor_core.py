@@ -49,11 +49,6 @@ def is_silent_time():
         return current_hour >= SILENT_START or current_hour < SILENT_END
     return SILENT_START <= current_hour < SILENT_END
 
-def is_report_window():
-    """Проверяет, находимся ли в окне отправки отчетов"""
-    now = datetime.now().time()
-    return REPORT_WINDOW_START <= now <= REPORT_WINDOW_END
-
 def send_alert(message, force=False):
     """Отправляет сообщение без блокировок"""
     global bot
@@ -696,7 +691,7 @@ def start_monitoring():
                 check_resources_automatically()
                 last_resource_check = current_time
 
-        # Сбор данных в 8:15
+        # Сбор данных в 8:30
         if (current_time_time.hour == DATA_COLLECTION_TIME.hour and
             current_time_time.minute == DATA_COLLECTION_TIME.minute and
             (last_data_collection is None or current_time.date() != last_data_collection.date())):
@@ -709,18 +704,13 @@ def start_monitoring():
             last_data_collection = current_time
             report_sent_today = False
             print(f"✅ Данные для утреннего отчета собраны: {len(morning_status['ok'])} доступно, {len(morning_status['failed'])} недоступно")
-
-        # Отправка отчета в 8:30-8:35
-        if is_report_window() and last_data_collection and not report_sent_today:
-            # Проверяем, что данные собраны сегодня
-            if last_data_collection.date() == current_time.date():
-                print(f"[{current_time}] 📊 Отправка утреннего отчета...")
-                send_morning_report()
-                report_sent_today = True
-                last_report_date = current_time.date()
-                print("✅ Утренний отчет отправлен")
-            else:
-                print(f"⚠️ Данные для отчета устарели: собраны {last_data_collection}, сейчас {current_time}")
+            
+            # СРАЗУ отправляем отчет после сбора данных
+            print(f"[{current_time}] 📊 Отправка утреннего отчета...")
+            send_morning_report()
+            report_sent_today = True
+            last_report_date = current_time.date()
+            print("✅ Утренний отчет отправлен")
 
         # Основной цикл мониторинга доступности
         if monitoring_active:
