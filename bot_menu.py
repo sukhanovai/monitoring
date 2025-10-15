@@ -206,6 +206,13 @@ def lazy_handler(pattern):
             from monitor_core import check_other_resources_handler as handler
         elif pattern == 'check_all_resources':
             from monitor_core import check_all_resources_handler as handler
+        # НОВЫЕ ОБРАБОТЧИКИ ДЛЯ РАЗДЕЛЬНОЙ ПРОВЕРКИ РЕСУРСОВ
+        elif pattern == 'check_cpu':
+            from monitor_core import check_cpu_resources_handler as handler
+        elif pattern == 'check_ram':
+            from monitor_core import check_ram_resources_handler as handler
+        elif pattern == 'check_disk':
+            from monitor_core import check_disk_resources_handler as handler
         else:
             def default_handler(update, context):
                 query = update.callback_query
@@ -241,9 +248,14 @@ def get_callback_handlers():
         CallbackQueryHandler(lambda u, c: lazy_handler('refresh_resources')(u, c), pattern='^refresh_resources$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('close_resources')(u, c), pattern='^close_resources$'),
         
-        # Новые обработчики для раздельной проверки
+        # Обработчики для раздельной проверки по типам серверов
         CallbackQueryHandler(lambda u, c: lazy_handler('check_linux')(u, c), pattern='^check_linux$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('check_windows')(u, c), pattern='^check_windows$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('check_other')(u, c), pattern='^check_other$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('check_all_resources')(u, c), pattern='^check_all_resources$'),
+        
+        # НОВЫЕ ОБРАБОТЧИКИ ДЛЯ РАЗДЕЛЬНОЙ ПРОВЕРКИ РЕСУРСОВ
+        CallbackQueryHandler(lambda u, c: lazy_handler('check_cpu')(u, c), pattern='^check_cpu$'),
+        CallbackQueryHandler(lambda u, c: lazy_handler('check_ram')(u, c), pattern='^check_ram$'),
+        CallbackQueryHandler(lambda u, c: lazy_handler('check_disk')(u, c), pattern='^check_disk$'),
     ]

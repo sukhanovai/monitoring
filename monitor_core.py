@@ -603,7 +603,7 @@ def resume_monitoring_handler(update, context):
     )
 
 def check_resources_handler(update, context):
-    """Обработчик проверки ресурсов серверов - теперь показывает меню выбора"""
+    """Обработчик проверки ресурсов серверов - новое меню с разделением по ресурсам"""
     query = update.callback_query
     if query:
         query.answer()
@@ -618,15 +618,444 @@ def check_resources_handler(update, context):
             update.message.reply_text("⛔ У вас нет прав для выполнения этой команды")
         return
 
-    # Показываем меню выбора типа проверки
+    # НОВОЕ МЕНЮ с разделением по ресурсам
     keyboard = [
+        [InlineKeyboardButton("💻 Проверить CPU", callback_data='check_cpu')],
+        [InlineKeyboardButton("🧠 Проверить RAM", callback_data='check_ram')],
+        [InlineKeyboardButton("💾 Проверить Disk", callback_data='check_disk')],
+        [InlineKeyboardButton("🔍 Все ресурсы", callback_data='check_all_resources')],
         [InlineKeyboardButton("🐧 Linux серверы", callback_data='check_linux')],
         [InlineKeyboardButton("🪟 Windows серверы", callback_data='check_windows')],
         [InlineKeyboardButton("📡 Другие серверы", callback_data='check_other')],
-        [InlineKeyboardButton("🔍 Все серверы", callback_data='check_all_resources')],
         [InlineKeyboardButton("↩️ Назад", callback_data='control_panel')]
     ]
 
+    if query:
+        query.edit_message_text(
+            text="🔍 *Выберите что проверить:*",
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+    else:
+        update.message.reply_text(
+            text="🔍 *Выберите что проверить:*",
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+
+# НОВЫЕ ФУНКЦИИ ДЛЯ РАЗДЕЛЬНОЙ ПРОВЕРКИ РЕСУРСОВ
+
+def check_cpu_resources_handler(update, context):
+    """Обработчик проверки только CPU"""
+    query = update.callback_query
+    if query:
+        query.answer("💻 Проверяем CPU...")
+        chat_id = query.message.chat_id
+    else:
+        chat_id = update.effective_chat.id
+
+    if str(chat_id) not in CHAT_IDS:
+        if query:
+            query.edit_message_text("⛔ У вас нет прав для выполнения этой команды")
+        else:
+            update.message.reply_text("⛔ У вас нет прав для выполнения этой команды")
+        return
+
+    progress_message = context.bot.send_message(
+        chat_id=chat_id,
+        text="💻 *Проверка загрузки CPU...*\n\n⏳ Подготовка...",
+        parse_mode='Markdown'
+    )
+
+    thread = threading.Thread(
+        target=perform_cpu_check,
+        args=(context, chat_id, progress_message.message_id)
+    )
+    thread.start()
+
+def check_ram_resources_handler(update, context):
+    """Обработчик проверки только RAM"""
+    query = update.callback_query
+    if query:
+        query.answer("🧠 Проверяем RAM...")
+        chat_id = query.message.chat_id
+    else:
+        chat_id = update.effective_chat.id
+
+    if str(chat_id) not in CHAT_IDS:
+        if query:
+            query.edit_message_text("⛔ У вас нет прав для выполнения этой команды")
+        else:
+            update.message.reply_text("⛔ У вас нет прав для выполнения этой команды")
+        return
+
+    progress_message = context.bot.send_message(
+        chat_id=chat_id,
+        text="🧠 *Проверка использования RAM...*\n\n⏳ Подготовка...",
+        parse_mode='Markdown'
+    )
+
+    thread = threading.Thread(
+        target=perform_ram_check,
+        args=(context, chat_id, progress_message.message_id)
+    )
+    thread.start()
+
+def check_disk_resources_handler(update, context):
+    """Обработчик проверки только Disk"""
+    query = update.callback_query
+    if query:
+        query.answer("💾 Проверяем Disk...")
+        chat_id = query.message.chat_id
+    else:
+        chat_id = update.effective_chat.id
+
+    if str(chat_id) not in CHAT_IDS:
+        if query:
+            query.edit_message_text("⛔ У вас нет прав для выполнения этой команды")
+        else:
+            update.message.reply_text("⛔ У вас нет прав для выполнения этой команды")
+        return
+
+    progress_message = context.bot.send_message(
+        chat_id=chat_id,
+        text="💾 *Проверка дискового пространства...*\n\n⏳ Подготовка...",
+        parse_mode='Markdown'
+    )
+
+    thread = threading.Thread(
+        target=perform_disk_check,
+        args=(context, chat_id, progress_message.message_id)
+    )
+    thread.start()
+
+def perform_cpu_check(context, chat_id, progress_message_id):
+    """Выполняет проверку только CPU"""
+    def update_progress(progress, status):
+        progress_text = f"💻 Проверка CPU...\n{progress_bar(progress)}\n\n{status}"
+        context.bot.edit_message_text(
+            chat_id=chat_id,
+            message_id=progress_message_id,
+            text=progress_text
+        )
+
+    try:
+        from extensions.separate_checks import check_all_servers_by_type
+        results, stats = check_all_servers_by_type()
+
+        # Фильтруем только CPU и сортируем по убыванию нагрузки
+        cpu_results = []
+        for result in results:
+            server = result["server"]
+            resources = result["resources"]
+            cpu_value = resources.get('cpu', 0) if resources else 0
+            
+            cpu_results.append({
+                "server": server,
+                "cpu": cpu_value,
+                "success": result["success"]
+            })
+
+        # Сортируем по убыванию CPU
+        cpu_results.sort(key=lambda x: x["cpu"], reverse=True)
+
+        message = f"💻 **Загрузка CPU серверов**\n\n"
+        
+        # Группируем по типам серверов
+        windows_cpu = [r for r in cpu_results if r["server"]["type"] == "rdp"]
+        linux_cpu = [r for r in cpu_results if r["server"]["type"] == "ssh"]
+        
+        # Windows серверы
+        message += f"**🪟 Windows серверы:**\n"
+        for result in windows_cpu[:10]:  # Показываем топ-10
+            server = result["server"]
+            cpu_value = result["cpu"]
+            status_icon = "🟢" if result["success"] else "🔴"
+            
+            if cpu_value > 80:
+                cpu_display = f"🚨 {cpu_value}%"
+            elif cpu_value > 60:
+                cpu_display = f"⚠️ {cpu_value}%"
+            else:
+                cpu_display = f"{cpu_value}%"
+                
+            message += f"{status_icon} {server['name']}: {cpu_display}\n"
+        
+        if len(windows_cpu) > 10:
+            message += f"• ... и еще {len(windows_cpu) - 10} серверов\n"
+        
+        # Linux серверы
+        message += f"\n**🐧 Linux серверы:**\n"
+        for result in linux_cpu[:10]:  # Показываем топ-10
+            server = result["server"]
+            cpu_value = result["cpu"]
+            status_icon = "🟢" if result["success"] else "🔴"
+            
+            if cpu_value > 80:
+                cpu_display = f"🚨 {cpu_value}%"
+            elif cpu_value > 60:
+                cpu_display = f"⚠️ {cpu_value}%"
+            else:
+                cpu_display = f"{cpu_value}%"
+                
+            message += f"{status_icon} {server['name']}: {cpu_display}\n"
+        
+        if len(linux_cpu) > 10:
+            message += f"• ... и еще {len(linux_cpu) - 10} серверов\n"
+        
+        # Статистика
+        total_servers = len(cpu_results)
+        high_load = len([r for r in cpu_results if r["cpu"] > 80])
+        medium_load = len([r for r in cpu_results if 60 < r["cpu"] <= 80])
+        
+        message += f"\n**📊 Статистика:**\n"
+        message += f"• Всего серверов: {total_servers}\n"
+        message += f"• Высокая нагрузка (>80%): {high_load}\n"
+        message += f"• Средняя нагрузка (60-80%): {medium_load}\n"
+        
+        message += f"\n⏰ Обновлено: {datetime.now().strftime('%H:%M:%S')}"
+
+        context.bot.edit_message_text(
+            chat_id=chat_id,
+            message_id=progress_message_id,
+            text=message,
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔄 Обновить", callback_data='check_cpu')],
+                [InlineKeyboardButton("🧠 Проверить RAM", callback_data='check_ram')],
+                [InlineKeyboardButton("💾 Проверить Disk", callback_data='check_disk')],
+                [InlineKeyboardButton("🔍 Все ресурсы", callback_data='check_resources')],
+                [InlineKeyboardButton("↩️ Назад", callback_data='control_panel')]
+            ])
+        )
+
+    except Exception as e:
+        error_msg = f"❌ Ошибка при проверке CPU: {e}"
+        print(error_msg)
+        context.bot.edit_message_text(
+            chat_id=chat_id,
+            message_id=progress_message_id,
+            text=error_msg
+        )
+
+def perform_ram_check(context, chat_id, progress_message_id):
+    """Выполняет проверку только RAM"""
+    def update_progress(progress, status):
+        progress_text = f"🧠 Проверка RAM...\n{progress_bar(progress)}\n\n{status}"
+        context.bot.edit_message_text(
+            chat_id=chat_id,
+            message_id=progress_message_id,
+            text=progress_text
+        )
+
+    try:
+        from extensions.separate_checks import check_all_servers_by_type
+        results, stats = check_all_servers_by_type()
+
+        # Фильтруем только RAM и сортируем по убыванию использования
+        ram_results = []
+        for result in results:
+            server = result["server"]
+            resources = result["resources"]
+            ram_value = resources.get('ram', 0) if resources else 0
+            
+            ram_results.append({
+                "server": server,
+                "ram": ram_value,
+                "success": result["success"]
+            })
+
+        # Сортируем по убыванию RAM
+        ram_results.sort(key=lambda x: x["ram"], reverse=True)
+
+        message = f"🧠 **Использование RAM серверов**\n\n"
+        
+        # Группируем по типам серверов
+        windows_ram = [r for r in ram_results if r["server"]["type"] == "rdp"]
+        linux_ram = [r for r in ram_results if r["server"]["type"] == "ssh"]
+        
+        # Windows серверы
+        message += f"**🪟 Windows серверы:**\n"
+        for result in windows_ram[:10]:  # Показываем топ-10
+            server = result["server"]
+            ram_value = result["ram"]
+            status_icon = "🟢" if result["success"] else "🔴"
+            
+            if ram_value > 85:
+                ram_display = f"🚨 {ram_value}%"
+            elif ram_value > 70:
+                ram_display = f"⚠️ {ram_value}%"
+            else:
+                ram_display = f"{ram_value}%"
+                
+            message += f"{status_icon} {server['name']}: {ram_display}\n"
+        
+        if len(windows_ram) > 10:
+            message += f"• ... и еще {len(windows_ram) - 10} серверов\n"
+        
+        # Linux серверы
+        message += f"\n**🐧 Linux серверы:**\n"
+        for result in linux_ram[:10]:  # Показываем топ-10
+            server = result["server"]
+            ram_value = result["ram"]
+            status_icon = "🟢" if result["success"] else "🔴"
+            
+            if ram_value > 85:
+                ram_display = f"🚨 {ram_value}%"
+            elif ram_value > 70:
+                ram_display = f"⚠️ {ram_value}%"
+            else:
+                ram_display = f"{ram_value}%"
+                
+            message += f"{status_icon} {server['name']}: {ram_display}\n"
+        
+        if len(linux_ram) > 10:
+            message += f"• ... и еще {len(linux_ram) - 10} серверов\n"
+        
+        # Статистика
+        total_servers = len(ram_results)
+        high_usage = len([r for r in ram_results if r["ram"] > 85])
+        medium_usage = len([r for r in ram_results if 70 < r["ram"] <= 85])
+        
+        message += f"\n**📊 Статистика:**\n"
+        message += f"• Всего серверов: {total_servers}\n"
+        message += f"• Высокое использование (>85%): {high_usage}\n"
+        message += f"• Среднее использование (70-85%): {medium_usage}\n"
+        
+        message += f"\n⏰ Обновлено: {datetime.now().strftime('%H:%M:%S')}"
+
+        context.bot.edit_message_text(
+            chat_id=chat_id,
+            message_id=progress_message_id,
+            text=message,
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔄 Обновить", callback_data='check_ram')],
+                [InlineKeyboardButton("💻 Проверить CPU", callback_data='check_cpu')],
+                [InlineKeyboardButton("💾 Проверить Disk", callback_data='check_disk')],
+                [InlineKeyboardButton("🔍 Все ресурсы", callback_data='check_resources')],
+                [InlineKeyboardButton("↩️ Назад", callback_data='control_panel')]
+            ])
+        )
+
+    except Exception as e:
+        error_msg = f"❌ Ошибка при проверке RAM: {e}"
+        print(error_msg)
+        context.bot.edit_message_text(
+            chat_id=chat_id,
+            message_id=progress_message_id,
+            text=error_msg
+        )
+
+def perform_disk_check(context, chat_id, progress_message_id):
+    """Выполняет проверку только Disk"""
+    def update_progress(progress, status):
+        progress_text = f"💾 Проверка Disk...\n{progress_bar(progress)}\n\n{status}"
+        context.bot.edit_message_text(
+            chat_id=chat_id,
+            message_id=progress_message_id,
+            text=progress_text
+        )
+
+    try:
+        from extensions.separate_checks import check_all_servers_by_type
+        results, stats = check_all_servers_by_type()
+
+        # Фильтруем только Disk и сортируем по убыванию использования
+        disk_results = []
+        for result in results:
+            server = result["server"]
+            resources = result["resources"]
+            disk_value = resources.get('disk', 0) if resources else 0
+            
+            disk_results.append({
+                "server": server,
+                "disk": disk_value,
+                "success": result["success"]
+            })
+
+        # Сортируем по убыванию Disk
+        disk_results.sort(key=lambda x: x["disk"], reverse=True)
+
+        message = f"💾 **Использование дискового пространства**\n\n"
+        
+        # Группируем по типам серверов
+        windows_disk = [r for r in disk_results if r["server"]["type"] == "rdp"]
+        linux_disk = [r for r in disk_results if r["server"]["type"] == "ssh"]
+        
+        # Windows серверы
+        message += f"**🪟 Windows серверы:**\n"
+        for result in windows_disk[:10]:  # Показываем топ-10
+            server = result["server"]
+            disk_value = result["disk"]
+            status_icon = "🟢" if result["success"] else "🔴"
+            
+            if disk_value > 90:
+                disk_display = f"🚨 {disk_value}%"
+            elif disk_value > 80:
+                disk_display = f"⚠️ {disk_value}%"
+            else:
+                disk_display = f"{disk_value}%"
+                
+            message += f"{status_icon} {server['name']}: {disk_display}\n"
+        
+        if len(windows_disk) > 10:
+            message += f"• ... и еще {len(windows_disk) - 10} серверов\n"
+        
+        # Linux серверы
+        message += f"\n**🐧 Linux серверы:**\n"
+        for result in linux_disk[:10]:  # Показываем топ-10
+            server = result["server"]
+            disk_value = result["disk"]
+            status_icon = "🟢" if result["success"] else "🔴"
+            
+            if disk_value > 90:
+                disk_display = f"🚨 {disk_value}%"
+            elif disk_value > 80:
+                disk_display = f"⚠️ {disk_value}%"
+            else:
+                disk_display = f"{disk_value}%"
+                
+            message += f"{status_icon} {server['name']}: {disk_display}\n"
+        
+        if len(linux_disk) > 10:
+            message += f"• ... и еще {len(linux_disk) - 10} серверов\n"
+        
+        # Статистика
+        total_servers = len(disk_results)
+        critical_usage = len([r for r in disk_results if r["disk"] > 90])
+        warning_usage = len([r for r in disk_results if 80 < r["disk"] <= 90])
+        
+        message += f"\n**📊 Статистика:**\n"
+        message += f"• Всего серверов: {total_servers}\n"
+        message += f"• Критическое использование (>90%): {critical_usage}\n"
+        message += f"• Предупреждение (80-90%): {warning_usage}\n"
+        
+        message += f"\n⏰ Обновлено: {datetime.now().strftime('%H:%M:%S')}"
+
+        context.bot.edit_message_text(
+            chat_id=chat_id,
+            message_id=progress_message_id,
+            text=message,
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔄 Обновить", callback_data='check_disk')],
+                [InlineKeyboardButton("💻 Проверить CPU", callback_data='check_cpu')],
+                [InlineKeyboardButton("🧠 Проверить RAM", callback_data='check_ram')],
+                [InlineKeyboardButton("🔍 Все ресурсы", callback_data='check_resources')],
+                [InlineKeyboardButton("↩️ Назад", callback_data='control_panel')]
+            ])
+        )
+
+    except Exception as e:
+        error_msg = f"❌ Ошибка при проверке Disk: {e}"
+        print(error_msg)
+        context.bot.edit_message_text(
+            chat_id=chat_id,
+            message_id=progress_message_id,
+            text=error_msg
+        )
+        
     if query:
         query.edit_message_text(
             text="🔍 *Выберите тип серверов для проверки:*",
