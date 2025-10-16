@@ -31,6 +31,7 @@ silent_override = None  # None - авто, True - принудительно т�
 resource_history = {}  # История ресурсов для каждого сервера
 last_resource_check = datetime.now()
 resource_alerts_sent = {}  # Отслеживание отправленных алертов
+last_report_date = None
 
 def is_proxmox_server(server):
     """Проверяет, является ли сервер Proxmox"""
@@ -1103,7 +1104,7 @@ def resource_history_command(update, context):
 
 def start_monitoring():
     """Запускает основной цикл мониторинга"""
-    global servers, bot, monitoring_active, morning_data
+    global servers, bot, monitoring_active, last_report_date
     
     servers = initialize_servers()
     
@@ -1273,11 +1274,19 @@ def debug_morning_report(update, context):
     except Exception as e:
         debug_message += f"• Ошибка отправки: {e}\n"
     
+    # ДОБАВИТЬ КНОПКИ КЛАВИАТУРЫ
+    from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+    keyboard = [
+        [InlineKeyboardButton("🔄 Обновить", callback_data='debug_report')],
+        [InlineKeyboardButton("📊 Статус мониторинга", callback_data='monitor_status')],
+        [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ]
+    
     if query:
-        query.edit_message_text(debug_message, parse_mode='Markdown')
+        query.edit_message_text(debug_message, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
     else:
         update.message.reply_text(debug_message, parse_mode='Markdown')
-
+        
 def send_morning_report():
     """Отправляет утренний отчет о доступности серверов"""
     global morning_data
