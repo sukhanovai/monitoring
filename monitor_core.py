@@ -566,6 +566,7 @@ def control_panel_handler(update, context):
         [InlineKeyboardButton("▶️ Возобновить мониторинг", callback_data='resume_monitoring')],
         [InlineKeyboardButton("🔍 Проверить ресурсы", callback_data='check_resources')],
         [InlineKeyboardButton("📊 Полный отчет", callback_data='full_report')],
+        [InlineKeyboardButton("🔧 Диагностика отчета", callback_data='debug_report')],
         [InlineKeyboardButton("↩️ Назад", callback_data='monitor_status')]
     ]
 
@@ -1102,14 +1103,14 @@ def resource_history_command(update, context):
 
 def start_monitoring():
     """Запускает основной цикл мониторинга"""
-    global servers, bot, monitoring_active
-
+    global servers, bot, monitoring_active, morning_data
+    
     servers = initialize_servers()
-
+    
     # Инициализируем бота
     from telegram import Bot
     bot = Bot(token=TELEGRAM_TOKEN)
-
+    
     # Инициализация server_status
     for server in servers:
         server_status[server["ip"]] = {
@@ -1120,7 +1121,7 @@ def start_monitoring():
             "resources": None,
             "last_alert": {}
         }
-
+    
     # КРИТИЧЕСКИ ВАЖНО: полностью исключаем сервер мониторинга
     monitor_server_ip = "192.168.20.2"
     if monitor_server_ip in server_status:
@@ -1128,19 +1129,18 @@ def start_monitoring():
         server_status[monitor_server_ip]["alert_sent"] = True
         server_status[monitor_server_ip]["excluded"] = True
         print(f"✅ Сервер мониторинга {monitor_server_ip} полностью исключен")
-
+    
     send_alert("🟢 Мониторинг серверов запущен с проверкой ресурсов")
-
+    
     last_resource_check = datetime.now()
-    resource_check_interval = 3600  # Проверять ресурсы каждый час
     last_data_collection = None
     report_sent_today = False
-    last_report_date = None  # Добавляем отслеживание даты последнего отчета
-
+    last_report_date = None
+    
     while True:
         current_time = datetime.now()
         current_time_time = current_time.time()
-
+        
         # Автоматическая проверка ресурсов каждые 30 минут
         if (current_time - last_resource_check).total_seconds() >= RESOURCE_CHECK_INTERVAL:
             if monitoring_active and not is_silent_time():
@@ -1149,40 +1149,46 @@ def start_monitoring():
                 last_resource_check = current_time
             else:
                 print("⏸️ Проверка ресурсов пропущена (тихий режим или мониторинг неактивен)")
-        # Сбор данных в 8:30
+        
+        # ИСПРАВЛЕННЫЙ БЛОК: Сбор и отправка утреннего отчета в 8:30
         if (current_time_time.hour == DATA_COLLECTION_TIME.hour and
-            current_time_time.minute == DATA_COLLECTION_TIME.minute and
-            (last_data_collection is None or current_time.date() != last_data_collection.date())):
-
-            print(f"[{current_time}] 🔍 Собираем данные для утреннего отчета...")
-            # Собираем текущий статус серверов
-            morning_status = get_current_server_status()
-            morning_data["status"] = morning_status
-            morning_data["collection_time"] = current_time
-            last_data_collection = current_time
-            report_sent_today = False
-            print(f"✅ Данные для утреннего отчета собраны: {len(morning_status['ok'])} доступно, {len(morning_status['failed'])} недоступно")
+            current_time_time.minute == DATA_COLLECTION_TIME.minute):
             
-            # СРАЗУ отправляем отчет после сбора данных
-            print(f"[{current_time}] 📊 Отправка утреннего отчета...")
-            send_morning_report()
-            report_sent_today = True
-            last_report_date = current_time.date()
-            print("✅ Утренний отчет отправлен")
-
+            # Проверяем, что сегодня еще не отправляли отчет
+            today = current_time.date()
+            if last_report_date != today:
+                print(f"[{current_time}] 🔍 Собираем данные для утреннего отчета...")
+                
+                # Собираем текущий статус серверов
+                morning_status = get_current_server_status()
+                morning_data["status"] = morning_status
+                morning_data["collection_time"] = current_time
+                last_data_collection = current_time
+                
+                print(f"✅ Данные собраны: {len(morning_status['ok'])} доступно, {len(morning_status['failed'])} недоступно")
+                
+                # СРАЗУ отправляем отчет после сбора данных
+                print(f"[{current_time}] 📊 Отправка утреннего отчета...")
+                send_morning_report()
+                report_sent_today = True
+                last_report_date = today
+                print("✅ Утренний отчет отправлен")
+            else:
+                print(f"⏭️ Отчет уже отправлен сегодня {last_report_date}")
+        
         # Основной цикл мониторинга доступности
         if monitoring_active:
             last_check_time = current_time
-
+            
             for server in servers:
                 ip = server["ip"]
                 status = server_status[ip]
-
+                
                 # ПОЛНОСТЬЮ ИСКЛЮЧАЕМ сервер мониторинга из любых проверок
                 if ip == monitor_server_ip:
                     server_status[ip]["last_up"] = current_time
                     continue
-
+                
                 # Проверка доступности
                 if is_proxmox_server(server):
                     is_up = check_ssh_improved(ip)
@@ -1192,12 +1198,12 @@ def start_monitoring():
                     is_up = check_ping(ip)
                 else:
                     is_up = check_ssh_improved(ip)
-
+                
                 if is_up:
                     if status["alert_sent"]:
                         downtime = (current_time - status["last_up"]).total_seconds()
                         send_alert(f"✅ {status['name']} ({ip}) доступен (простой: {int(downtime//60)} мин)")
-
+                    
                     server_status[ip] = {
                         "last_up": current_time,
                         "alert_sent": False,
@@ -1211,8 +1217,66 @@ def start_monitoring():
                     if downtime >= MAX_FAIL_TIME and not status["alert_sent"]:
                         send_alert(f"🚨 {status['name']} ({ip}) не отвечает (проверка: {status['type'].upper()})")
                         server_status[ip]["alert_sent"] = True
-
+        
         time.sleep(CHECK_INTERVAL)
+
+def debug_morning_report(update, context):
+    """Диагностическая команда для проверки утреннего отчета"""
+    query = update.callback_query if hasattr(update, 'callback_query') else None
+    chat_id = query.message.chat_id if query else update.message.chat_id
+    
+    if str(chat_id) not in CHAT_IDS:
+        if query:
+            query.edit_message_text("⛔ У вас нет прав для выполнения этой команды")
+        else:
+            update.message.reply_text("⛔ У вас нет прав для выполнения этой команды")
+        return
+    
+    current_time = datetime.now()
+    debug_message = f"🔧 *Диагностика утреннего отчета*\n\n"
+    
+    debug_message += f"**Текущее время:** {current_time.strftime('%H:%M:%S')}\n"
+    debug_message += f"**Время сбора данных:** {DATA_COLLECTION_TIME.strftime('%H:%M')}\n"
+    debug_message += f"**Совпадает время:** {current_time.time().hour == DATA_COLLECTION_TIME.hour and current_time.time().minute == DATA_COLLECTION_TIME.minute}\n"
+    
+    # Проверяем состояние переменных
+    debug_message += f"\n**Состояние переменных:**\n"
+    debug_message += f"• last_report_date: {last_report_date}\n"
+    debug_message += f"• today: {current_time.date()}\n"
+    debug_message += f"• Нужно отправлять: {last_report_date != current_time.date()}\n"
+    
+    # Проверяем morning_data
+    debug_message += f"\n**Данные отчета:**\n"
+    if morning_data and "status" in morning_data:
+        status = morning_data["status"]
+        debug_message += f"• Данные есть: ✅\n"
+        debug_message += f"• Время сбора: {morning_data.get('collection_time', 'N/A')}\n"
+        debug_message += f"• Доступно серверов: {len(status.get('ok', []))}\n"
+        debug_message += f"• Недоступно серверов: {len(status.get('failed', []))}\n"
+    else:
+        debug_message += f"• Данные есть: ❌\n"
+    
+    # Тестовая отправка отчета
+    debug_message += f"\n**Тестовая отправка:**\n"
+    try:
+        test_status = get_current_server_status()
+        debug_message += f"• Текущий статус: {len(test_status['ok'])} доступно, {len(test_status['failed'])} недоступно\n"
+        
+        # Пробуем отправить тестовый отчет
+        global morning_data
+        morning_data = {
+            "status": test_status,
+            "collection_time": current_time
+        }
+        send_morning_report()
+        debug_message += f"• Тестовый отчет отправлен: ✅\n"
+    except Exception as e:
+        debug_message += f"• Ошибка отправки: {e}\n"
+    
+    if query:
+        query.edit_message_text(debug_message, parse_mode='Markdown')
+    else:
+        update.message.reply_text(debug_message, parse_mode='Markdown')
 
 def send_morning_report():
     """Отправляет утренний отчет о доступности серверов"""
