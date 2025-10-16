@@ -1136,7 +1136,6 @@ def start_monitoring():
     last_resource_check = datetime.now()
     last_data_collection = None
     report_sent_today = False
-    last_report_date = None
     
     while True:
         current_time = datetime.now()
@@ -1151,7 +1150,7 @@ def start_monitoring():
             else:
                 print("⏸️ Проверка ресурсов пропущена (тихий режим или мониторинг неактивен)")
         
-        # ИСПРАВЛЕННЫЙ БЛОК: Сбор и отправка утреннего отчета в 8:30
+        # Сбор и отправка утреннего отчета в 8:30
         if (current_time_time.hour == DATA_COLLECTION_TIME.hour and
             current_time_time.minute == DATA_COLLECTION_TIME.minute):
             
@@ -1220,7 +1219,7 @@ def start_monitoring():
                         server_status[ip]["alert_sent"] = True
         
         time.sleep(CHECK_INTERVAL)
-
+        
 def debug_morning_report(update, context):
     """Диагностическая команда для проверки утреннего отчета"""
     query = update.callback_query if hasattr(update, 'callback_query') else None
@@ -1286,7 +1285,7 @@ def debug_morning_report(update, context):
         query.edit_message_text(debug_message, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
     else:
         update.message.reply_text(debug_message, parse_mode='Markdown')
-        
+
 def send_morning_report():
     """Отправляет утренний отчет о доступности серверов"""
     global morning_data
