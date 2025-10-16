@@ -14,7 +14,8 @@ from config import (
     SILENT_START, SILENT_END, DATA_COLLECTION_TIME,
     REPORT_WINDOW_START, REPORT_WINDOW_END, SSH_KEY_PATH, SSH_USERNAME,
     RDP_SERVERS, PING_SERVERS, SSH_SERVERS, RESOURCE_THRESHOLDS,
-    WINDOWS_SERVER_CREDENTIALS, WINRM_CONFIGS
+    WINDOWS_SERVER_CREDENTIALS, WINRM_CONFIGS,
+    RESOURCE_CHECK_INTERVAL, RESOURCE_ALERT_THRESHOLDS
 )
 
 from extensions.server_list import initialize_servers
@@ -1222,9 +1223,11 @@ def start_monitoring():
 
 def debug_morning_report(update, context):
     """Диагностическая команда для проверки утреннего отчета"""
+    from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+    
     query = update.callback_query if hasattr(update, 'callback_query') else None
     chat_id = query.message.chat_id if query else update.message.chat_id
-    
+
     if str(chat_id) not in CHAT_IDS:
         if query:
             query.edit_message_text("⛔ У вас нет прав для выполнения этой команды")
@@ -1273,7 +1276,6 @@ def debug_morning_report(update, context):
         debug_message += f"• Ошибка отправки: {e}\n"
     
     # ДОБАВИТЬ КНОПКИ КЛАВИАТУРЫ
-    from telegram import InlineKeyboardMarkup, InlineKeyboardButton
     keyboard = [
         [InlineKeyboardButton("🔄 Обновить", callback_data='debug_report')],
         [InlineKeyboardButton("📊 Статус мониторинга", callback_data='monitor_status')],
