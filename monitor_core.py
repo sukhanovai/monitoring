@@ -1219,7 +1219,7 @@ def start_monitoring():
                         server_status[ip]["alert_sent"] = True
         
         time.sleep(CHECK_INTERVAL)
-        
+
 def debug_morning_report(update, context):
     """Диагностическая команда для проверки утреннего отчета"""
     query = update.callback_query if hasattr(update, 'callback_query') else None
@@ -1263,7 +1263,6 @@ def debug_morning_report(update, context):
         debug_message += f"• Текущий статус: {len(test_status['ok'])} доступно, {len(test_status['failed'])} недоступно\n"
         
         # Пробуем отправить тестовый отчет
-        global morning_data
         morning_data = {
             "status": test_status,
             "collection_time": current_time
@@ -1288,7 +1287,6 @@ def debug_morning_report(update, context):
 
 def send_morning_report():
     """Отправляет утренний отчет о доступности серверов"""
-    global morning_data
 
     if not morning_data or "status" not in morning_data:
         print("❌ Нет данных для утреннего отчета")
@@ -1363,7 +1361,6 @@ def send_morning_report_handler(update, context):
 
     # Собираем актуальные данные
     current_status = get_current_server_status()
-    global morning_data
     morning_data = {
         "status": current_status,
         "collection_time": datetime.now()
