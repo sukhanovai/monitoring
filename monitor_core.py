@@ -12,10 +12,10 @@ paramiko.transport.Transport._preferred_keys = ('ssh-rsa', 'ecdsa-sha2-nistp256'
 from config import (
     TELEGRAM_TOKEN, CHAT_IDS, CHECK_INTERVAL, MAX_FAIL_TIME,
     SILENT_START, SILENT_END, DATA_COLLECTION_TIME,
-    SSH_KEY_PATH, SSH_USERNAME,  # БЕЗ REPORT_WINDOW
+    SSH_KEY_PATH, SSH_USERNAME,
     RDP_SERVERS, PING_SERVERS, SSH_SERVERS, RESOURCE_THRESHOLDS,
     WINDOWS_SERVER_CREDENTIALS, WINRM_CONFIGS,
-    RESOURCE_CHECK_INTERVAL, RESOURCE_ALERT_THRESHOLDS
+    RESOURCE_CHECK_INTERVAL, RESOURCE_ALERT_THRESHOLDS, RESOURCE_ALERT_INTERVAL
 )
 
 from extensions.server_list import initialize_servers
@@ -1458,10 +1458,10 @@ def check_resource_alerts(ip, current_resource):
     if disk_usage >= RESOURCE_ALERT_THRESHOLDS["disk_alert"]:
         # Проверяем, не отправляли ли уже алерт по диску
         alert_key = f"{ip}_disk"
-        if alert_key not in resource_alerts_sent or (datetime.now() - resource_alerts_sent[alert_key]).total_seconds() > 3600:  # Не чаще чем раз в час
+        if alert_key not in resource_alerts_sent or (datetime.now() - resource_alerts_sent[alert_key]).total_seconds() > RESOURCE_ALERT_INTERVAL:
             alerts.append(f"💾 **Дисковое пространство** на {server_name}: {disk_usage}% (превышен порог {RESOURCE_ALERT_THRESHOLDS['disk_alert']}%)")
             resource_alerts_sent[alert_key] = datetime.now()
-                
+
     # Проверка CPU (две проверки подряд)
     cpu_usage = current_resource.get("cpu", 0)
     if cpu_usage >= RESOURCE_ALERT_THRESHOLDS["cpu_alert"]:
@@ -1470,10 +1470,10 @@ def check_resource_alerts(ip, current_resource):
             prev_cpu = history[-1].get("cpu", 0)
             if prev_cpu >= RESOURCE_ALERT_THRESHOLDS["cpu_alert"]:
                 alert_key = f"{ip}_cpu"
-                if alert_key not in resource_alerts_sent or (datetime.now() - resource_alerts_sent[alert_key]).total_seconds() > 3600:
+                if alert_key not in resource_alerts_sent or (datetime.now() - resource_alerts_sent[alert_key]).total_seconds() > RESOURCE_ALERT_INTERVAL:
                     alerts.append(f"💻 **Процессор** на {server_name}: {prev_cpu}% → {cpu_usage}% (2 проверки подряд >= {RESOURCE_ALERT_THRESHOLDS['cpu_alert']}%)")
                     resource_alerts_sent[alert_key] = datetime.now()
-
+                
     # Проверка RAM (две проверки подряд)
     ram_usage = current_resource.get("ram", 0)
     if ram_usage >= RESOURCE_ALERT_THRESHOLDS["ram_alert"]:
@@ -1482,7 +1482,7 @@ def check_resource_alerts(ip, current_resource):
             prev_ram = history[-1].get("ram", 0)
             if prev_ram >= RESOURCE_ALERT_THRESHOLDS["ram_alert"]:
                 alert_key = f"{ip}_ram"
-                if alert_key not in resource_alerts_sent or (datetime.now() - resource_alerts_sent[alert_key]).total_seconds() > 3600:
+                if alert_key not in resource_alerts_sent or (datetime.now() - resource_alerts_sent[alert_key]).total_seconds() > RESOURCE_ALERT_INTERVAL:
                     alerts.append(f"🧠 **Память** на {server_name}: {prev_ram}% → {ram_usage}% (2 проверки подряд >= {RESOURCE_ALERT_THRESHOLDS['ram_alert']}%)")
                     resource_alerts_sent[alert_key] = datetime.now()
 
@@ -1535,7 +1535,7 @@ def send_resource_alerts(alerts):
     
     send_alert(message)
     print(f"✅ Отправлены алерты по ресурсам: {len(alerts)} проблем")
-    
+
 def get_resource_history_status():
     """Возвращает статус истории ресурсов для диагностики"""
     status = f"📊 *Статус истории ресурсов*\n\n"
