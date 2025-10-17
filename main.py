@@ -18,6 +18,7 @@ def main():
         from config import TELEGRAM_TOKEN
         from bot_menu import setup_menu, get_handlers, get_callback_handlers
         from extensions.web_interface import start_web_server
+        from extensions.stats_collector import save_monitoring_stats
         from monitor_core import start_monitoring
         
         from telegram.ext import Updater
@@ -25,7 +26,7 @@ def main():
         
         logger.info("🚀 Запуск полной версии мониторинга...")
         
-        # Инициализируем бота (старая версия - синхронная)
+        # Инициализируем бота
         updater = Updater(token=TELEGRAM_TOKEN, use_context=True)
         dispatcher = updater.dispatcher
         
@@ -44,10 +45,14 @@ def main():
         web_thread.start()
         logger.info("✅ Веб-сервер запущен")
         
+        # Запускаем сбор статистики
+        save_monitoring_stats()
+        logger.info("✅ Сбор статистики запущен")
+        
         # Запускаем основной мониторинг в отдельном потоке
         monitor_thread = threading.Thread(target=start_monitoring, daemon=True)
         monitor_thread.start()
-        logger.info("✅ Основной мониторинг запущен")
+        logger.info("✅ Основный мониторинг запущен")
         
         # Запускаем бота
         updater.start_polling()
