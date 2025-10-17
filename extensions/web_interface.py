@@ -743,6 +743,8 @@ HTML_TEMPLATE = """
 def get_monitoring_stats():
     """Получает статистику мониторинга"""
     try:
+        print("🔍 Обновление данных для веб-интерфейса...")
+        
         # Пробуем получить данные из файла статистики
         stats_data = {}
         if os.path.exists(STATS_FILE):
@@ -756,6 +758,9 @@ def get_monitoring_stats():
         
         current_status = get_current_server_status()
         servers_list = initialize_servers()
+        
+        print(f"📊 Статус серверов: {len(current_status['ok'])} доступно, {len(current_status['failed'])} недоступно")
+        print(f"📈 Данные ресурсов: {len(resource_history)} серверов в истории")
         
         # Формируем список серверов для отображения
         servers_display = []
@@ -875,28 +880,31 @@ def api_run_check():
     
     try:
         if check_type == 'quick':
-            # Запуск быстрой проверки
+            # Запуск быстрой проверки доступности
             from monitor_core import get_current_server_status
-            get_current_server_status()
-            message = "✅ Быстрая проверка серверов выполнена"
+            status = get_current_server_status()
+            message = f"✅ Быстрая проверка выполнена: {len(status['ok'])} доступно, {len(status['failed'])} недоступно"
+            
         elif check_type == 'resources':
             # Запуск проверки ресурсов
             from monitor_core import check_resources_automatically
             check_resources_automatically()
-            message = "✅ Проверка ресурсов выполнена"
+            message = "✅ Проверка ресурсов выполнена. Данные обновятся через 1-2 минуты."
+            
         elif check_type == 'report':
             # Формирование отчета
             from monitor_core import send_morning_report
             send_morning_report()
-            message = "✅ Отчет сформирован и отправлен"
+            message = "✅ Отчет сформирован и отправлен в Telegram"
+            
         else:
             message = "❌ Неизвестный тип проверки"
             
-        return jsonify({"success": True, "message": message})
+        return jsonify({"success": True, "message": message, "reload": check_type != 'resources'})
         
     except Exception as e:
         return jsonify({"success": False, "message": f"❌ Ошибка: {str(e)}"})
-
+        
 @app.route('/api/run_action')
 def api_run_action():
     """API для выполнения действий"""
@@ -905,42 +913,47 @@ def api_run_action():
     try:
         if action == 'check_all':
             from monitor_core import get_current_server_status
-            get_current_server_status()
-            message = "✅ Проверка всех серверов выполнена"
+            status = get_current_server_status()
+            message = f"✅ Проверка всех серверов выполнена: {len(status['ok'])} доступно, {len(status['failed'])} недоступно"
             
         elif action == 'check_resources':
-            from monitor_core import check_resources_automatically
-            check_resources_automatically()
-            message = "✅ Проверка ресурсов выполнена"
+            from monitor_core import force_resource_check
+            force_resource_check()
+            message = "✅ Принудительная проверка ресурсов запущена. Данные обновятся через 1-2 минуты."
             
         elif action == 'morning_report':
             from monitor_core import send_morning_report
             send_morning_report()
-            message = "✅ Утренний отчет отправлен"
+            message = "✅ Утренний отчет отправлен в Telegram"
             
         elif action == 'restart_service':
             # Перезапуск сервиса (осторожно!)
+            import subprocess
             subprocess.run(['systemctl', 'restart', 'server-monitor.service'], check=True)
             message = "✅ Сервис перезапускается..."
             
         elif action == 'toggle_monitoring':
             from monitor_core import monitoring_active
-            from monitor_core import monitoring_active as ma
-            # Здесь нужен доступ к глобальной переменной monitoring_active
-            message = "⚠️ Функция в разработке"
+            # В реальной реализации здесь нужно менять глобальную переменную
+            message = "⚠️ Функция переключения мониторинга в разработке"
             
         elif action == 'toggle_silent':
-            from monitor_core import silent_override, is_silent_time
-            message = "⚠️ Функция в разработке"
+            from monitor_core import silent_override
+            # В реальной реализации здесь нужно менять глобальную переменную
+            message = "⚠️ Функция переключения тихого режима в разработке"
             
         else:
             message = "❌ Неизвестное действие"
             
-        return jsonify({"success": True, "message": message, "reload": True})
+        return jsonify({
+            "success": True, 
+            "message": message, 
+            "reload": action not in ['check_resources', 'toggle_monitoring', 'toggle_silent']
+        })
         
     except Exception as e:
         return jsonify({"success": False, "message": f"❌ Ошибка: {str(e)}"})
-
+    
 # Существующие API endpoints
 @app.route('/api/status')
 def api_status():
@@ -988,4 +1001,3 @@ def start_web_server():
         app.run(host=WEB_HOST, port=WEB_PORT, debug=False, use_reloader=False)
     except Exception as e:
         print(f"❌ Ошибка запуска веб-сервера: {e}")
-        

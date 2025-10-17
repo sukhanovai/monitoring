@@ -1103,6 +1103,58 @@ def resource_history_command(update, context):
     else:
         update.message.reply_text(status_message, parse_mode='Markdown')
 
+def force_resource_check():
+    """Принудительная проверка ресурсов всех серверов"""
+    global resource_history
+    
+    print("🔍 Запуск принудительной проверки ресурсов...")
+    
+    for server in servers:
+        try:
+            ip = server["ip"]
+            server_name = server["name"]
+            
+            print(f"🔍 Проверяем ресурсы {server_name} ({ip})")
+            
+            # Получаем текущие ресурсы
+            current_resources = None
+            if server["type"] == "ssh":
+                current_resources = get_linux_resources_improved(ip)
+            elif server["type"] == "rdp":
+                current_resources = get_windows_resources_improved(ip)
+            
+            if not current_resources:
+                print(f"❌ Не удалось получить ресурсы для {server_name}")
+                continue
+                
+            # Инициализируем историю для сервера если нужно
+            if ip not in resource_history:
+                resource_history[ip] = []
+            
+            # Добавляем текущие ресурсы в историю
+            resource_entry = {
+                "timestamp": datetime.now(),
+                "cpu": current_resources.get("cpu", 0),
+                "ram": current_resources.get("ram", 0),
+                "disk": current_resources.get("disk", 0),
+                "server_name": server_name,
+                "os": current_resources.get("os", "Unknown")
+            }
+            
+            resource_history[ip].append(resource_entry)
+            
+            # Ограничиваем историю последними 10 записями
+            if len(resource_history[ip]) > 10:
+                resource_history[ip] = resource_history[ip][-10:]
+            
+            print(f"✅ Ресурсы {server_name}: CPU {current_resources.get('cpu', 0)}%, RAM {current_resources.get('ram', 0)}%, Disk {current_resources.get('disk', 0)}%")
+                
+        except Exception as e:
+            print(f"❌ Ошибка при проверке ресурсов {server['name']}: {e}")
+            continue
+    
+    print("✅ Принудительная проверка ресурсов завершена")
+    
 def start_monitoring():
     """Запускает основной цикл мониторинга"""
     global servers, bot, monitoring_active, last_report_date
@@ -1127,10 +1179,11 @@ def start_monitoring():
     # КРИТИЧЕСКИ ВАЖНО: полностью исключаем сервер мониторинга
     monitor_server_ip = "192.168.20.2"
     if monitor_server_ip in server_status:
+        # Полностью исключаем сервер мониторинга из любых проверок и алертов
         server_status[monitor_server_ip]["last_up"] = datetime.now()
         server_status[monitor_server_ip]["alert_sent"] = True
         server_status[monitor_server_ip]["excluded"] = True
-        print(f"✅ Сервер мониторинга {monitor_server_ip} полностью исключен")
+        print(f"✅ Сервер мониторинга {monitor_server_ip} полностью исключен из проверок")
     
     send_alert("🟢 Мониторинг серверов запущен с проверкой ресурсов")
     
