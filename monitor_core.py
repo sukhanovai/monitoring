@@ -1459,9 +1459,9 @@ def check_resource_alerts(ip, current_resource):
         # Проверяем, не отправляли ли уже алерт по диску
         alert_key = f"{ip}_disk"
         if alert_key not in resource_alerts_sent or (datetime.now() - resource_alerts_sent[alert_key]).total_seconds() > 3600:  # Не чаще чем раз в час
-            alerts.append(f"💾 *Диск* на {server_name}: {disk_usage}% (превышен порог {RESOURCE_ALERT_THRESHOLDS['disk_alert']}%)")
+            alerts.append(f"💾 **Дисковое пространство** на {server_name}: {disk_usage}% (превышен порог {RESOURCE_ALERT_THRESHOLDS['disk_alert']}%)")
             resource_alerts_sent[alert_key] = datetime.now()
-    
+                
     # Проверка CPU (две проверки подряд)
     cpu_usage = current_resource.get("cpu", 0)
     if cpu_usage >= RESOURCE_ALERT_THRESHOLDS["cpu_alert"]:
@@ -1471,9 +1471,9 @@ def check_resource_alerts(ip, current_resource):
             if prev_cpu >= RESOURCE_ALERT_THRESHOLDS["cpu_alert"]:
                 alert_key = f"{ip}_cpu"
                 if alert_key not in resource_alerts_sent or (datetime.now() - resource_alerts_sent[alert_key]).total_seconds() > 3600:
-                    alerts.append(f"💻 *CPU* на {server_name}: {prev_cpu}% → {cpu_usage}% (2 проверки подряд >= {RESOURCE_ALERT_THRESHOLDS['cpu_alert']}%)")
+                    alerts.append(f"💻 **Процессор** на {server_name}: {prev_cpu}% → {cpu_usage}% (2 проверки подряд >= {RESOURCE_ALERT_THRESHOLDS['cpu_alert']}%)")
                     resource_alerts_sent[alert_key] = datetime.now()
-    
+
     # Проверка RAM (две проверки подряд)
     ram_usage = current_resource.get("ram", 0)
     if ram_usage >= RESOURCE_ALERT_THRESHOLDS["ram_alert"]:
@@ -1483,9 +1483,9 @@ def check_resource_alerts(ip, current_resource):
             if prev_ram >= RESOURCE_ALERT_THRESHOLDS["ram_alert"]:
                 alert_key = f"{ip}_ram"
                 if alert_key not in resource_alerts_sent or (datetime.now() - resource_alerts_sent[alert_key]).total_seconds() > 3600:
-                    alerts.append(f"🧠 *RAM* на {server_name}: {prev_ram}% → {ram_usage}% (2 проверки подряд >= {RESOURCE_ALERT_THRESHOLDS['ram_alert']}%)")
+                    alerts.append(f"🧠 **Память** на {server_name}: {prev_ram}% → {ram_usage}% (2 проверки подряд >= {RESOURCE_ALERT_THRESHOLDS['ram_alert']}%)")
                     resource_alerts_sent[alert_key] = datetime.now()
-    
+
     return alerts
 
 def send_resource_alerts(alerts):
@@ -1495,28 +1495,47 @@ def send_resource_alerts(alerts):
     
     message = "🚨 *Проблемы с ресурсами серверов*\n\n"
     
-    # Группируем алерты по серверам
-    alerts_by_server = {}
-    for alert in alerts:
-        # Извлекаем имя сервера из алерта
-        server_name = alert.split("на ")[1].split(":")[0] if "на " in alert else "Неизвестный сервер"
-        if server_name not in alerts_by_server:
-            alerts_by_server[server_name] = []
-        alerts_by_server[server_name].append(alert)
+    # Группируем алерты по типам ресурсов для лучшей читаемости
+    disk_alerts = [a for a in alerts if "💾" in a]
+    cpu_alerts = [a for a in alerts if "💻" in a]
+    ram_alerts = [a for a in alerts if "🧠" in a]
     
-    for server_name, server_alerts in alerts_by_server.items():
-        message += f"**{server_name}:**\n"
-        for alert in server_alerts:
-            # Убираем имя сервера из каждого алерта чтобы избежать дублирования
-            alert_text = alert.split(":", 1)[1] if ":" in alert else alert
-            message += f"• {alert_text}\n"
+    # Дисковое пространство
+    if disk_alerts:
+        message += "💾 **Дисковое пространство:**\n"
+        for alert in disk_alerts:
+            # Извлекаем информацию из алерта
+            parts = alert.split("на ")
+            if len(parts) > 1:
+                server_info = parts[1]
+                message += f"• {server_info}\n"
+        message += "\n"
+    
+    # Процессор
+    if cpu_alerts:
+        message += "💻 **Процессор (CPU):**\n"
+        for alert in cpu_alerts:
+            parts = alert.split("на ")
+            if len(parts) > 1:
+                server_info = parts[1]
+                message += f"• {server_info}\n"
+        message += "\n"
+    
+    # Память
+    if ram_alerts:
+        message += "🧠 **Память (RAM):**\n"
+        for alert in ram_alerts:
+            parts = alert.split("на ")
+            if len(parts) > 1:
+                server_info = parts[1]
+                message += f"• {server_info}\n"
         message += "\n"
     
     message += f"⏰ Время проверки: {datetime.now().strftime('%H:%M:%S')}"
     
     send_alert(message)
     print(f"✅ Отправлены алерты по ресурсам: {len(alerts)} проблем")
-
+    
 def get_resource_history_status():
     """Возвращает статус истории ресурсов для диагностики"""
     status = f"📊 *Статус истории ресурсов*\n\n"
