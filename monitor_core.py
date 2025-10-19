@@ -373,7 +373,9 @@ def monitor_status(update, context):
             f"🔢 Всего серверов: {len(servers)}\n"
             f"🟢 Доступно: {up_count}\n"
             f"🔴 Недоступно: {down_count}\n"
-            f"🔄 Интервал проверки: {CHECK_INTERVAL} сек\n"
+            f"🔄 Интервал проверки: {CHECK_INTERVAL} сек\n\n"
+            f"🌐 *Веб-интерфейс:* http://192.168.20.2:5000\n"
+            f"_*доступен только в локальной сети_"
         )
 
         if down_count > 0:
@@ -1154,18 +1156,23 @@ def force_resource_check():
             continue
     
     print("✅ Принудительная проверка ресурсов завершена")
-    
+
 def start_monitoring():
     """Запускает основной цикл мониторинга"""
     global servers, bot, monitoring_active, last_report_date
     
     servers = initialize_servers()
     
+    # ПРИНУДИТЕЛЬНО исключаем сервер мониторинга из списка
+    monitor_server_ip = "192.168.20.2"
+    servers = [s for s in servers if s["ip"] != monitor_server_ip]
+    print(f"✅ Сервер мониторинга {monitor_server_ip} принудительно исключен из списка. Осталось {len(servers)} серверов")
+    
     # Инициализируем бота
     from telegram import Bot
     bot = Bot(token=TELEGRAM_TOKEN)
     
-    # Инициализация server_status
+    # Инициализация server_status (только для оставшихся серверов)
     for server in servers:
         server_status[server["ip"]] = {
             "last_up": datetime.now(),
@@ -1176,17 +1183,20 @@ def start_monitoring():
             "last_alert": {}
         }
     
-    # КРИТИЧЕСКИ ВАЖНО: полностью исключаем сервер мониторинга
-    monitor_server_ip = "192.168.20.2"
-    if monitor_server_ip in server_status:
-        # Полностью исключаем сервер мониторинга из любых проверок и алертов
-        server_status[monitor_server_ip]["last_up"] = datetime.now()
-        server_status[monitor_server_ip]["alert_sent"] = True
-        server_status[monitor_server_ip]["excluded"] = True
-        print(f"✅ Сервер мониторинга {monitor_server_ip} полностью исключен из проверок")
+    print(f"✅ Мониторинг запущен для {len(servers)} серверов")
     
-    send_alert("🟢 Мониторинг серверов запущен с проверкой ресурсов")
+    # Обновляем стартовое сообщение
+    start_message = (
+        "🟢 *Мониторинг серверов запущен*\n\n"
+        f"• Серверов в мониторинге: {len(servers)}\n"
+        f"• Проверка ресурсов: каждые {RESOURCE_CHECK_INTERVAL // 60} минут\n"
+        f"• Утренний отчет: {DATA_COLLECTION_TIME.strftime('%H:%M')}\n\n"
+        f"🌐 *Веб-интерфейс:* http://192.168.20.2:5000\n"
+        f"_*доступен только в локальной сети_"
+    )
     
+    send_alert(start_message)
+  
     last_resource_check = datetime.now()
     last_data_collection = None
     report_sent_today = False
