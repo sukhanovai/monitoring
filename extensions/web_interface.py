@@ -10,7 +10,7 @@ import sys
 
 app = Flask(__name__)
 
-# HTML шаблон с вкладками и темной темой
+# HTML шаблон с вкладками и темной темой (без вкладки Ресурсы)
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="ru">
@@ -130,16 +130,17 @@ HTML_TEMPLATE = """
         .status-down { color: #f44336; }
         .status-warning { color: #FFC107; }
         .status-info { color: #2196F3; }
+        .status-critical { color: #ff4444; }
         
         /* Стили для списка серверов */
         .server-list {
-            max-height: 500px;
+            max-height: 600px;
             overflow-y: auto;
         }
         .server-item {
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: flex-start;
             padding: 15px;
             margin-bottom: 10px;
             background: rgba(50, 50, 60, 0.8);
@@ -159,15 +160,47 @@ HTML_TEMPLATE = """
             border-left-color: #FFC107;
             background: rgba(80, 70, 40, 0.8);
         }
+        .server-info {
+            flex: 1;
+        }
         .server-name {
             font-weight: bold;
             color: #fff;
+            font-size: 1.1em;
+            margin-bottom: 5px;
         }
         .server-details {
             font-size: 0.85em;
             color: #aaa;
-            margin-top: 5px;
+            margin-bottom: 8px;
         }
+        .server-resources {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+        .resource-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.85em;
+            padding: 4px 8px;
+            border-radius: 6px;
+            background: rgba(60, 60, 70, 0.8);
+        }
+        .resource-cpu.critical { color: #ff4444; font-weight: bold; }
+        .resource-cpu.warning { color: #FFC107; }
+        .resource-cpu.normal { color: #4CAF50; }
+        
+        .resource-ram.critical { color: #ff4444; font-weight: bold; }
+        .resource-ram.warning { color: #FFC107; }
+        .resource-ram.normal { color: #4CAF50; }
+        
+        .resource-disk.critical { color: #ff4444; font-weight: bold; }
+        .resource-disk.warning { color: #FFC107; }
+        .resource-disk.normal { color: #4CAF50; }
+        
         .server-status {
             font-size: 0.9em;
             padding: 6px 12px;
@@ -175,6 +208,7 @@ HTML_TEMPLATE = """
             background: #4CAF50;
             color: white;
             font-weight: 500;
+            white-space: nowrap;
         }
         .server-status.down {
             background: #f44336;
@@ -183,50 +217,6 @@ HTML_TEMPLATE = """
             background: #FFC107;
             color: #333;
         }
-        
-        /* Стили для ресурсов */
-        .resources-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 15px;
-        }
-        .resource-item {
-            background: rgba(50, 50, 60, 0.8);
-            padding: 20px;
-            border-radius: 10px;
-            border: 1px solid #555;
-        }
-        .resource-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-        .resource-title {
-            font-weight: bold;
-            color: #fff;
-        }
-        .resource-value {
-            font-size: 1.3em;
-            font-weight: bold;
-            text-align: center;
-            margin: 10px 0;
-        }
-        .progress-bar {
-            height: 8px;
-            background: #555;
-            border-radius: 4px;
-            overflow: hidden;
-            margin: 10px 0;
-        }
-        .progress-fill {
-            height: 100%;
-            border-radius: 4px;
-            transition: width 0.3s ease;
-        }
-        .progress-cpu { background: linear-gradient(90deg, #4CAF50, #8BC34A); }
-        .progress-ram { background: linear-gradient(90deg, #2196F3, #03A9F4); }
-        .progress-disk { background: linear-gradient(90deg, #FF9800, #FFC107); }
         
         /* Кнопки */
         .controls {
@@ -282,29 +272,6 @@ HTML_TEMPLATE = """
             font-size: 0.9em;
         }
         
-        /* Подвкладки ресурсов */
-        .sub-tabs {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-        .sub-tab {
-            padding: 10px 20px;
-            background: rgba(50, 50, 60, 0.8);
-            border-radius: 8px;
-            cursor: pointer;
-            border: 1px solid #555;
-            transition: all 0.3s ease;
-        }
-        .sub-tab.active {
-            background: #667eea;
-            color: white;
-        }
-        .sub-tab:hover {
-            background: rgba(80, 80, 100, 0.8);
-        }
-        
         /* Анимации */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
@@ -334,6 +301,10 @@ HTML_TEMPLATE = """
             .btn {
                 width: 100%;
             }
+            .server-resources {
+                flex-direction: column;
+                gap: 5px;
+            }
         }
     </style>
 </head>
@@ -347,8 +318,7 @@ HTML_TEMPLATE = """
         <!-- Вкладки -->
         <div class="tabs">
             <div class="tab active" onclick="switchTab('overview')">📊 Обзор</div>
-            <div class="tab" onclick="switchTab('servers')">🖥️ Серверы</div>
-            <div class="tab" onclick="switchTab('resources')">📈 Ресурсы</div>
+            <div class="tab" onclick="switchTab('servers')">🖥️ Сервера</div>
             <div class="tab" onclick="switchTab('controls')">🎛️ Управление</div>
         </div>
         
@@ -423,18 +393,41 @@ HTML_TEMPLATE = """
             </div>
         </div>
         
-        <!-- Содержимое вкладки Серверы -->
+        <!-- Содержимое вкладки Сервера -->
         <div id="servers" class="tab-content">
             <h2 style="margin-bottom: 20px;">🖥️ Статус серверов</h2>
             <div class="server-list">
                 {% for server in servers %}
                 <div class="server-item {% if server.status == 'down' %}down{% elif server.status == 'warning' %}warning{% endif %} fade-in">
-                    <div>
+                    <div class="server-info">
                         <div class="server-name">{{ server.name }}</div>
                         <div class="server-details">{{ server.ip }} • {{ server.type.upper() }} • {{ server.os }}</div>
                         {% if server.resources %}
-                        <div class="server-details">
-                            CPU: {{ server.resources.cpu }}% | RAM: {{ server.resources.ram }}% | Disk: {{ server.resources.disk }}%
+                        <div class="server-resources">
+                            <div class="resource-item">
+                                <span>💻 CPU:</span>
+                                <span class="resource-cpu {{ server.resources.cpu_class }}">{{ server.resources.cpu }}%</span>
+                            </div>
+                            <div class="resource-item">
+                                <span>🧠 RAM:</span>
+                                <span class="resource-ram {{ server.resources.ram_class }}">{{ server.resources.ram }}%</span>
+                            </div>
+                            <div class="resource-item">
+                                <span>💾 Disk:</span>
+                                <span class="resource-disk {{ server.resources.disk_class }}">{{ server.resources.disk }}%</span>
+                            </div>
+                            {% if server.resources.load_avg and server.resources.load_avg != 'N/A' %}
+                            <div class="resource-item">
+                                <span>📊 Load:</span>
+                                <span>{{ server.resources.load_avg }}</span>
+                            </div>
+                            {% endif %}
+                            {% if server.resources.uptime and server.resources.uptime != 'N/A' %}
+                            <div class="resource-item">
+                                <span>⏱️ Uptime:</span>
+                                <span>{{ server.resources.uptime }}</span>
+                            </div>
+                            {% endif %}
                         </div>
                         {% endif %}
                     </div>
@@ -443,122 +436,6 @@ HTML_TEMPLATE = """
                     </div>
                 </div>
                 {% endfor %}
-            </div>
-        </div>
-        
-        <!-- Содержимое вкладки Ресурсы -->
-        <div id="resources" class="tab-content">
-            <h2 style="margin-bottom: 20px;">📈 Мониторинг ресурсов</h2>
-            
-            <!-- Подвкладки ресурсов -->
-            <div class="sub-tabs">
-                <div class="sub-tab active" onclick="switchSubTab('cpu')">💻 Процессор</div>
-                <div class="sub-tab" onclick="switchSubTab('ram')">🧠 Память</div>
-                <div class="sub-tab" onclick="switchSubTab('disk')">💾 Диски</div>
-                <div class="sub-tab" onclick="switchSubTab('all')">📊 Все ресурсы</div>
-            </div>
-            
-            <!-- CPU -->
-            <div id="cpu-resources" class="sub-tab-content active">
-                <div class="resources-grid">
-                    {% for server in resource_servers %}
-                    {% if server.resources %}
-                    <div class="resource-item">
-                        <div class="resource-header">
-                            <div class="resource-title">{{ server.name }}</div>
-                            <div class="server-status {% if server.resources.cpu > 90 %}warning{% endif %}">
-                                {{ server.resources.cpu }}%
-                            </div>
-                        </div>
-                        <div class="progress-bar">
-                            <div class="progress-fill progress-cpu" style="width: {{ server.resources.cpu }}%"></div>
-                        </div>
-                        <div class="server-details">{{ server.ip }} • {{ server.os }}</div>
-                    </div>
-                    {% endif %}
-                    {% endfor %}
-                </div>
-            </div>
-            
-            <!-- RAM -->
-            <div id="ram-resources" class="sub-tab-content">
-                <div class="resources-grid">
-                    {% for server in resource_servers %}
-                    {% if server.resources %}
-                    <div class="resource-item">
-                        <div class="resource-header">
-                            <div class="resource-title">{{ server.name }}</div>
-                            <div class="server-status {% if server.resources.ram > 90 %}warning{% endif %}">
-                                {{ server.resources.ram }}%
-                            </div>
-                        </div>
-                        <div class="progress-bar">
-                            <div class="progress-fill progress-ram" style="width: {{ server.resources.ram }}%"></div>
-                        </div>
-                        <div class="server-details">{{ server.ip }} • {{ server.os }}</div>
-                    </div>
-                    {% endif %}
-                    {% endfor %}
-                </div>
-            </div>
-            
-            <!-- Disk -->
-            <div id="disk-resources" class="sub-tab-content">
-                <div class="resources-grid">
-                    {% for server in resource_servers %}
-                    {% if server.resources %}
-                    <div class="resource-item">
-                        <div class="resource-header">
-                            <div class="resource-title">{{ server.name }}</div>
-                            <div class="server-status {% if server.resources.disk > 80 %}warning{% endif %}">
-                                {{ server.resources.disk }}%
-                            </div>
-                        </div>
-                        <div class="progress-bar">
-                            <div class="progress-fill progress-disk" style="width: {{ server.resources.disk }}%"></div>
-                        </div>
-                        <div class="server-details">{{ server.ip }} • {{ server.os }}</div>
-                    </div>
-                    {% endif %}
-                    {% endfor %}
-                </div>
-            </div>
-            
-            <!-- All Resources -->
-            <div id="all-resources" class="sub-tab-content">
-                <div class="resources-grid">
-                    {% for server in resource_servers %}
-                    {% if server.resources %}
-                    <div class="resource-item">
-                        <div class="resource-header">
-                            <div class="resource-title">{{ server.name }}</div>
-                            <div class="server-status {% if server.resources.cpu > 90 or server.resources.ram > 90 or server.resources.disk > 80 %}warning{% endif %}">
-                                📊
-                            </div>
-                        </div>
-                        <div class="stat-item">
-                            <span>💻 CPU:</span>
-                            <span class="{% if server.resources.cpu > 90 %}status-warning{% else %}status-up{% endif %}">
-                                {{ server.resources.cpu }}%
-                            </span>
-                        </div>
-                        <div class="stat-item">
-                            <span>🧠 RAM:</span>
-                            <span class="{% if server.resources.ram > 90 %}status-warning{% else %}status-up{% endif %}">
-                                {{ server.resources.ram }}%
-                            </span>
-                        </div>
-                        <div class="stat-item">
-                            <span>💾 Disk:</span>
-                            <span class="{% if server.resources.disk > 80 %}status-warning{% else %}status-up{% endif %}">
-                                {{ server.resources.disk }}%
-                            </span>
-                        </div>
-                        <div class="server-details">{{ server.ip }} • {{ server.os }}</div>
-                    </div>
-                    {% endif %}
-                    {% endfor %}
-                </div>
             </div>
         </div>
         
@@ -631,21 +508,6 @@ HTML_TEMPLATE = """
             event.target.classList.add('active');
         }
         
-        // Переключение подвкладок ресурсов
-        function switchSubTab(resourceType) {
-            // Скрыть все подвкладки
-            document.querySelectorAll('.sub-tab-content').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            document.querySelectorAll('.sub-tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            
-            // Показать выбранную подвкладку
-            document.getElementById(resourceType + '-resources').classList.add('active');
-            event.target.classList.add('active');
-        }
-        
         // Запуск проверок
         function runCheck(type) {
             addLog(`Запуск ${getCheckName(type)}...`);
@@ -653,7 +515,7 @@ HTML_TEMPLATE = """
                 .then(response => response.json())
                 .then(data => {
                     addLog(data.message);
-                    if (data.success) {
+                    if (data.success && data.reload !== false) {
                         setTimeout(() => location.reload(), 2000);
                     }
                 })
@@ -680,7 +542,6 @@ HTML_TEMPLATE = """
         
         // Переключение мониторинга
         function toggleMonitoring() {
-            const action = '{{ "pause" if stats.monitoring_mode == "🟢 Активен" else "resume" }}';
             runAction('toggle_monitoring');
         }
         
@@ -729,22 +590,42 @@ HTML_TEMPLATE = """
         }
         
         updateLastUpdate();
-        
-        // Показываем уведомления
-        function showNotification(message, type = 'info') {
-            // Простая реализация уведомлений
-            addLog(message);
-        }
     </script>
 </body>
 </html>
 """
 
+def get_resource_class(value, resource_type):
+    """Определяет класс для окрашивания ресурсов"""
+    if not value or value == 0:
+        return "normal"
+    
+    if resource_type == "cpu":
+        if value >= 90:
+            return "critical"
+        elif value >= 80:
+            return "warning"
+        else:
+            return "normal"
+    elif resource_type == "ram":
+        if value >= 95:
+            return "critical"
+        elif value >= 85:
+            return "warning"
+        else:
+            return "normal"
+    elif resource_type == "disk":
+        if value >= 90:
+            return "critical"
+        elif value >= 80:
+            return "warning"
+        else:
+            return "normal"
+    return "normal"
+
 def get_monitoring_stats():
     """Получает статистику мониторинга"""
     try:
-        print("🔍 Обновление данных для веб-интерфейса...")
-        
         # Пробуем получить данные из файла статистики
         stats_data = {}
         if os.path.exists(STATS_FILE):
@@ -759,12 +640,8 @@ def get_monitoring_stats():
         current_status = get_current_server_status()
         servers_list = initialize_servers()
         
-        print(f"📊 Статус серверов: {len(current_status['ok'])} доступно, {len(current_status['failed'])} недоступно")
-        print(f"📈 Данные ресурсов: {len(resource_history)} серверов в истории")
-        
         # Формируем список серверов для отображения
         servers_display = []
-        resource_servers = []
         
         for server in servers_list:
             is_up = any(s["ip"] == server["ip"] for s in current_status["ok"])
@@ -774,14 +651,30 @@ def get_monitoring_stats():
             status_display = "✅ Доступен" if is_up else "❌ Недоступен"
             
             # Получаем информацию о ресурсах
-            resources = None
+            resources_data = None
             os_info = "Unknown"
             if server["ip"] in resource_history and resource_history[server["ip"]]:
-                resources = resource_history[server["ip"]][-1]
-                os_info = resources.get("os", "Unknown")
+                latest_resources = resource_history[server["ip"]][-1]
+                os_info = latest_resources.get("os", "Unknown")
                 
-                # Проверяем на проблемы с ресурсами
-                if resources and (resources.get("cpu", 0) > 80 or resources.get("ram", 0) > 85 or resources.get("disk", 0) > 80):
+                # Форматируем ресурсы с классами для окрашивания
+                cpu_value = latest_resources.get("cpu", 0)
+                ram_value = latest_resources.get("ram", 0)
+                disk_value = latest_resources.get("disk", 0)
+                
+                resources_data = {
+                    "cpu": cpu_value,
+                    "ram": ram_value,
+                    "disk": disk_value,
+                    "load_avg": latest_resources.get("load_avg", "N/A"),
+                    "uptime": latest_resources.get("uptime", "N/A"),
+                    "cpu_class": get_resource_class(cpu_value, "cpu"),
+                    "ram_class": get_resource_class(ram_value, "ram"),
+                    "disk_class": get_resource_class(disk_value, "disk")
+                }
+                
+                # Проверяем на проблемы с ресурсами для статуса
+                if resources_data and (cpu_value > 80 or ram_value > 85 or disk_value > 80):
                     status = "warning"
                     status_display = "⚠️ Высокая нагрузка"
             
@@ -792,18 +685,13 @@ def get_monitoring_stats():
                 "os": os_info,
                 "status": status,
                 "status_display": status_display,
-                "resources": resources
+                "resources": resources_data
             }
             
             servers_display.append(server_data)
-            
-            # Для вкладки ресурсов включаем только серверы с данными
-            if resources and (resources.get("cpu", 0) > 0 or resources.get("ram", 0) > 0 or resources.get("disk", 0) > 0):
-                resource_servers.append(server_data)
         
         # Сортируем серверы: сначала проблемные, потом доступные
         servers_display.sort(key=lambda x: (0 if x["status"] == "down" else 1 if x["status"] == "warning" else 2))
-        resource_servers.sort(key=lambda x: x["resources"]["cpu"] if x["resources"] else 0, reverse=True)
         
         # Рассчитываем статистику
         total_servers = len(servers_list)
@@ -820,9 +708,9 @@ def get_monitoring_stats():
         for history in resource_history.values():
             if history:
                 last_resource = history[-1]
-                if (last_resource.get("cpu", 0) >= 99 or 
-                    last_resource.get("ram", 0) >= 99 or 
-                    last_resource.get("disk", 0) >= 75):
+                if (last_resource.get("cpu", 0) >= 90 or 
+                    last_resource.get("ram", 0) >= 95 or 
+                    last_resource.get("disk", 0) >= 90):
                     resource_alerts_count += 1
         
         stats = {
@@ -840,7 +728,7 @@ def get_monitoring_stats():
             "uptime": stats_data.get("uptime", "N/A")
         }
         
-        return stats, servers_display, resource_servers
+        return stats, servers_display
         
     except Exception as e:
         print(f"❌ Ошибка получения статистики: {e}")
@@ -858,20 +746,7 @@ def get_monitoring_stats():
             "resource_check_interval": 0,
             "resource_alerts": 0,
             "uptime": "N/A"
-        }, [], []
-
-@app.route('/')
-def index():
-    """Главная страница веб-интерфейса"""
-    stats, servers, resource_servers = get_monitoring_stats()
-    
-    return render_template_string(
-        HTML_TEMPLATE,
-        stats=stats,
-        servers=servers,
-        resource_servers=resource_servers,
-        last_update=datetime.now().strftime("%H:%M:%S")
-    )
+        }, []
 
 @app.route('/api/run_check')
 def api_run_check():
