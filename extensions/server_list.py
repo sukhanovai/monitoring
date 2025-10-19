@@ -1,3 +1,8 @@
+"""
+Server Monitoring System v1.3.0
+Copyright (c) 2024 Aleksandr Sukhanov
+License: MIT
+"""
 from config import RDP_SERVERS, SSH_SERVERS, PING_SERVERS
 import socket
 

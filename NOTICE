@@ -1,0 +1,10 @@
+Server Monitoring System
+Copyright (c) 2024 Aleksandr Sukhanov
+
+This software includes components from:
+- python-telegram-bot - LGPLv3
+- paramiko - LGPLv2.1  
+- Flask - BSD-3-Clause
+- и другие (см. requirements.txt)
+
+Полный список зависимостей и их лицензий в requirements.txt

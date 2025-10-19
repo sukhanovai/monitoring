@@ -1,4 +1,9 @@
 """
+Server Monitoring System v1.3.0
+Copyright (c) 2024 Aleksandr Sukhanov
+License: MIT
+"""
+"""
 Модуль для раздельной проверки ресурсов по типам серверов
 """
 

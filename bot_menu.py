@@ -1,3 +1,9 @@
+"""
+Server Monitoring System v1.3.0
+Copyright (c) 2024 Aleksandr Sukhanov
+License: MIT
+"""
+
 from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CommandHandler, CallbackQueryHandler
 from config import CHAT_IDS, TELEGRAM_TOKEN
@@ -81,7 +87,7 @@ def help_command(update, context):
         "*Используйте кнопки меню для удобного управления*"
     )
     update.message.reply_text(help_text, parse_mode='Markdown')
-    
+
 # Заглушки для команд (импорты внутри функций чтобы избежать циклических импортов)
 def check_command(update, context):
     from monitor_core import manual_check_handler

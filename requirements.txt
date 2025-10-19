@@ -1,7 +1,7 @@
-python-telegram-bot==13.15
-paramiko>=3.4.0
-flask==2.3.3
-werkzeug==2.3.7
-pywinrm==0.4.3
-requests==2.31.0
-cryptography>=41.0.8
+python-telegram-bot==13.15      # LGPLv3 - совместима с MIT
+paramiko>=3.4.0                 # LGPLv2.1 - совместима с MIT  
+flask==2.3.3                    # BSD-3-Clause - совместима с MIT
+werkzeug==2.3.7                 # BSD-3-Clause - совместима с MIT
+pywinrm==0.4.3                  # MIT - полностью совместима
+requests==2.31.0                # Apache 2.0 - совместима с MIT
+cryptography>=41.0.8            # Apache 2.0/BSD-3 - совместима

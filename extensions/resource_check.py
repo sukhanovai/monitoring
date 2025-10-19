@@ -1,3 +1,8 @@
+"""
+Server Monitoring System v1.3.0
+Copyright (c) 2024 Aleksandr Sukhanov
+License: MIT
+"""
 import re
 import subprocess
 import socket

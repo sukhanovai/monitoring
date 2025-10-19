@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+"""
+Server Monitoring System v1.3.0
+Copyright (c) 2024 Aleksandr Sukhanov
+License: MIT
+"""
 import os
 import sys
 import time

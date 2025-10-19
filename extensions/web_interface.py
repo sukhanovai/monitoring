@@ -1,3 +1,9 @@
+"""
+Server Monitoring System v1.3.0
+Copyright (c) 2024 Aleksandr Sukhanov
+License: MIT
+"""
+
 from flask import Flask, jsonify, render_template_string, request
 from config import WEB_PORT, WEB_HOST
 import threading
@@ -889,4 +895,3 @@ def start_web_server():
 
 if __name__ == "__main__":
     start_web_server()
-    
