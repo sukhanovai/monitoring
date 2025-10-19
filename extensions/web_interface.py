@@ -748,6 +748,21 @@ def get_monitoring_stats():
             "uptime": "N/A"
         }, []
 
+@app.route('/')
+def index():
+    """Главная страница веб-интерфейса"""
+    try:
+        stats, servers = get_monitoring_stats()
+        
+        return render_template_string(
+            HTML_TEMPLATE,
+            stats=stats,
+            servers=servers,
+            last_update=datetime.now().strftime("%H:%M:%S")
+        )
+    except Exception as e:
+        return f"❌ Ошибка загрузки веб-интерфейса: {e}"
+
 @app.route('/api/run_check')
 def api_run_check():
     """API для запуска проверок"""
@@ -779,7 +794,7 @@ def api_run_check():
         
     except Exception as e:
         return jsonify({"success": False, "message": f"❌ Ошибка: {str(e)}"})
-        
+
 @app.route('/api/run_action')
 def api_run_action():
     """API для выполнения действий"""
@@ -792,9 +807,9 @@ def api_run_action():
             message = f"✅ Проверка всех серверов выполнена: {len(status['ok'])} доступно, {len(status['failed'])} недоступно"
             
         elif action == 'check_resources':
-            from monitor_core import force_resource_check
-            force_resource_check()
-            message = "✅ Принудительная проверка ресурсов запущена. Данные обновятся через 1-2 минуты."
+            from monitor_core import check_resources_automatically
+            check_resources_automatically()
+            message = "✅ Проверка ресурсов запущена. Данные обновятся через 1-2 минуты."
             
         elif action == 'morning_report':
             from monitor_core import send_morning_report
@@ -803,17 +818,14 @@ def api_run_action():
             
         elif action == 'restart_service':
             # Перезапуск сервиса (осторожно!)
-            import subprocess
             subprocess.run(['systemctl', 'restart', 'server-monitor.service'], check=True)
             message = "✅ Сервис перезапускается..."
             
         elif action == 'toggle_monitoring':
-            from monitor_core import monitoring_active
             # В реальной реализации здесь нужно менять глобальную переменную
             message = "⚠️ Функция переключения мониторинга в разработке"
             
         elif action == 'toggle_silent':
-            from monitor_core import silent_override
             # В реальной реализации здесь нужно менять глобальную переменную
             message = "⚠️ Функция переключения тихого режима в разработке"
             
@@ -828,19 +840,17 @@ def api_run_action():
         
     except Exception as e:
         return jsonify({"success": False, "message": f"❌ Ошибка: {str(e)}"})
-    
-# Существующие API endpoints
+
 @app.route('/api/status')
 def api_status():
     """API endpoint для получения статуса"""
-    stats, servers, resource_servers = get_monitoring_stats()
+    stats, servers = get_monitoring_stats()
     return jsonify({
         "status": "ok", 
         "message": "Система мониторинга работает",
         "data": {
             "stats": stats,
             "servers": servers,
-            "resource_servers": resource_servers,
             "timestamp": datetime.now().isoformat()
         }
     })
@@ -848,7 +858,7 @@ def api_status():
 @app.route('/api/servers')
 def api_servers():
     """API endpoint для получения списка серверов"""
-    stats, servers, resource_servers = get_monitoring_stats()
+    stats, servers = get_monitoring_stats()
     return jsonify({
         "servers": servers,
         "count": len(servers),
@@ -858,7 +868,7 @@ def api_servers():
 @app.route('/api/stats')
 def api_stats():
     """API endpoint для получения статистики"""
-    stats, servers, resource_servers = get_monitoring_stats()
+    stats, servers = get_monitoring_stats()
     return jsonify({
         "statistics": stats,
         "timestamp": datetime.now().isoformat()
@@ -876,3 +886,7 @@ def start_web_server():
         app.run(host=WEB_HOST, port=WEB_PORT, debug=False, use_reloader=False)
     except Exception as e:
         print(f"❌ Ошибка запуска веб-сервера: {e}")
+
+if __name__ == "__main__":
+    start_web_server()
+    
