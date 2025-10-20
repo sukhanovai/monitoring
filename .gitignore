@@ -1,5 +1,8 @@
 # Конфиденциальные данные
 config.py
+config/backup_config.py
+config/*_config.py
+!config/*.example.py
 .env
 *.key
 *.pem

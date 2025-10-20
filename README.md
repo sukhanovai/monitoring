@@ -237,6 +237,11 @@ SERVER_TIMEOUTS = {
 if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR)
 
+#### Шаг 1.1: Создание config.py для мониторинга бэкапов
+```bash
+cd /opt/monitoring/config
+cp backup_config.example.py backup_config.py
+
 Шаг 2: Настройка параметров
 
 Получение Telegram токена и Chat ID
