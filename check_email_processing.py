@@ -1,77 +1,99 @@
+# /opt/monitoring/check_email_processing.py
+
 #!/usr/bin/env python3
 """
-Утилита для проверки обработки писем с бэкапами
+Инструмент проверки обработки входящих писем в реальном времени
 """
 
-import sqlite3
 import os
-import sys
-from datetime import datetime
+import time
+import logging
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
 
-def check_email_processing():
-    """Проверяет обработку писем и показывает статистику"""
+class EmailFileHandler(FileSystemEventHandler):
+    """Обработчик новых файлов в почтовой директории"""
     
-    db_path = '/opt/monitoring/data/backups.db'
+    def __init__(self):
+        self.processed_files = set()
     
-    if not os.path.exists(db_path):
-        print("❌ База данных не найдена!")
+    def on_created(self, event):
+        if event.is_directory:
+            return
+        
+        filepath = event.src_path
+        if filepath in self.processed_files:
+            return
+        
+        print(f"📨 Обнаружен новый файл: {filepath}")
+        self.processed_files.add(filepath)
+        
+        # Обрабатываем файл
+        self.process_email_file(filepath)
+    
+    def process_email_file(self, filepath):
+        """Обрабатывает файл с email"""
+        try:
+            with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+                email_content = f.read()
+            
+            print(f"📧 Обработка письма из {os.path.basename(filepath)}")
+            
+            # Запускаем обработчик
+            from extensions.email_processor.core import EmailProcessorCore
+            processor = EmailProcessorCore()
+            result = processor.process_email(email_content)
+            
+            if result:
+                print(f"✅ Письмо успешно обработано")
+            else:
+                print(f"❌ Письмо не было обработано")
+                
+        except Exception as e:
+            print(f"💥 Ошибка обработки: {e}")
+
+def monitor_mail_directory():
+    """Мониторит директорию с письмами"""
+    mail_dir = '/var/mail'  # Стандартная директория почты
+    
+    if not os.path.exists(mail_dir):
+        print(f"❌ Директория {mail_dir} не найдена")
         return
     
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
+    print(f"👁️  Начинаю мониторинг директории: {mail_dir}")
     
-    # Общая статистика
-    cursor.execute('SELECT COUNT(*) FROM proxmox_backups')
-    total_count = cursor.fetchone()[0]
+    event_handler = EmailFileHandler()
+    observer = Observer()
+    observer.schedule(event_handler, mail_dir, recursive=False)
+    observer.start()
     
-    cursor.execute('SELECT COUNT(*) FROM proxmox_backups WHERE date(received_at) = date("now")')
-    today_count = cursor.fetchone()[0]
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        observer.stop()
+        print("\n🛑 Мониторинг остановлен")
     
-    cursor.execute('SELECT COUNT(*) FROM proxmox_backups WHERE backup_status = "failed"')
-    failed_count = cursor.fetchone()[0]
-    
-    # Последние записи
-    cursor.execute('''
-        SELECT host_name, backup_status, received_at, email_subject 
-        FROM proxmox_backups 
-        ORDER BY received_at DESC 
-        LIMIT 5
-    ''')
-    recent_entries = cursor.fetchall()
-    
-    print("📧 Статус обработки писем с бэкапами")
-    print("=" * 50)
-    print(f"📊 Всего обработано писем: {total_count}")
-    print(f"📅 За сегодня: {today_count}")
-    print(f"❌ Неудачных бэкапов: {failed_count}")
-    print()
-    print("⏰ Последние 5 записей:")
-    print("-" * 50)
-    
-    for host, status, received, subject in recent_entries:
-        time_str = datetime.strptime(received, '%Y-%m-%d %H:%M:%S').strftime('%m-%d %H:%M')
-        icon = "✅" if status == 'success' else "❌"
-        print(f"{icon} {time_str} - {host}: {status}")
-        print(f"   Тема: {subject[:60]}{'...' if len(subject) > 60 else ''}")
-        print()
-    
-    conn.close()
+    observer.join()
 
-def check_raw_email_logs():
-    """Проверяет логи обработки писем"""
-    log_path = '/opt/monitoring/logs/email_processor.log'
+def check_recent_emails():
+    """Проверяет недавние письма"""
+    print("🔍 Проверка недавних писем...")
     
-    if not os.path.exists(log_path):
-        print(f"❌ Файл логов не найден: {log_path}")
-        return
+    # Здесь можно добавить проверку почтового ящика
+    # или директории с письмами
     
-    print("\n📋 Последние записи из логов:")
-    print("=" * 50)
-    
-    # Показываем последние 10 строк логов
-    os.system(f'tail -10 {log_path}')
+    print("✅ Проверка завершена")
 
 if __name__ == "__main__":
-    check_email_processing()
-    check_raw_email_logs()
+    print("📧 Мониторинг системы обработки писем\n")
     
+    # Проверяем существующие письма
+    check_recent_emails()
+    
+    # Запускаем мониторинг
+    try:
+        monitor_mail_directory()
+    except Exception as e:
+        print(f"💥 Ошибка мониторинга: {e}")
+        

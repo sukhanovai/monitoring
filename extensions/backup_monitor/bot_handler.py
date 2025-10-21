@@ -3,8 +3,12 @@
 """
 
 import sqlite3
+import logging
 from datetime import datetime, timedelta
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
+# Настройка логирования
+logger = logging.getLogger(__name__)
 
 class BackupMonitorBot:
     def __init__(self):
@@ -291,29 +295,66 @@ def create_back_keyboard():
         [InlineKeyboardButton("↩️ Назад к обзору", callback_data='backup_today')]
     ])
 
-def setup_backup_commands(dispatcher):
-    """Настройка команд бота для мониторинга бэкапов"""
-    from telegram.ext import CommandHandler, CallbackQueryHandler, MessageHandler, Filters
-    
+def backup_command(update, context):
+    """Обработчик команды /backup"""
     backup_bot = BackupMonitorBot()
+    message = format_backup_summary(backup_bot)
     
-    def backup_command(update, context):
-        """Обработчик команды /backup"""
-        message = format_backup_summary(backup_bot)
-        
-        update.message.reply_text(
-            message,
-            parse_mode='Markdown',
-            reply_markup=create_main_keyboard()
-        )
+    update.message.reply_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=create_main_keyboard()
+    )
+
+def backup_search_command(update, context):
+    """Обработчик команды поиска по серверу"""
+    if not context.args:
+        update.message.reply_text("❌ Укажите имя сервера: `/backup_search pve13`", parse_mode='Markdown')
+        return
     
-    def backup_callback(update, context):
-        """Обработчик callback'ов для бэкапов"""
-        query = update.callback_query
-        query.answer()
-        
-     # ДОБАВИМ ЛОГИРОВАНИЕ ДЛЯ ДИАГНОСТИКИ
-    logger = logging.getLogger(__name__)
+    host_name = context.args[0]
+    backup_bot = BackupMonitorBot()
+    message = format_host_status(backup_bot, host_name)
+    
+    update.message.reply_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=create_back_keyboard()
+    )
+
+def backup_help_command(update, context):
+    """Помощь по командам бэкапов"""
+    help_text = """
+🤖 *Команды мониторинга бэкапов*
+
+*/backup* - Основная сводка за сегодня
+*/backup_search [host]* - Поиск по конкретному серверу
+*/backup_help* - Эта справка
+
+*Кнопки управления:*
+📊 *Сегодня* - Сводка за текущий день
+📅 *24 часа* - История за последние сутки  
+❌ *Ошибки* - Список неудачных бэкапов
+📋 *Все серверы* - Выбор конкретного сервера
+🔄 *Обновить* - Обновить данные
+
+*Примеры:*
+`/backup` - общая сводка
+`/backup_search pve13` - статус pve13
+"""
+    
+    update.message.reply_text(
+        help_text,
+        parse_mode='Markdown',
+        reply_markup=create_main_keyboard()
+    )
+
+def backup_callback(update, context):
+    """Обработчик callback'ов для бэкапов"""
+    query = update.callback_query
+    query.answer()
+    
+    # Логирование для диагностики
     logger.info(f"Обработка callback: {query.data} от пользователя {query.from_user.id}")
     
     backup_bot = BackupMonitorBot()
@@ -356,7 +397,7 @@ def setup_backup_commands(dispatcher):
             keyboard = create_main_keyboard()
         
         query.edit_message_text(
-            message,
+            text=message,
             parse_mode='Markdown',
             reply_markup=keyboard
         )
@@ -368,37 +409,16 @@ def setup_backup_commands(dispatcher):
             "❌ Произошла ошибка при обработке запроса",
             reply_markup=create_main_keyboard()
         )
-           
-    def backup_help_command(update, context):
-        """Помощь по командам бэкапов"""
-        help_text = """
-🤖 *Команды мониторинга бэкапов*
 
-*/backup* - Основная сводка за сегодня
-*/backup_search [host]* - Поиск по конкретному серверу
-*/backup_help* - Эта справка
-
-*Кнопки управления:*
-📊 *Сегодня* - Сводка за текущий день
-📅 *24 часа* - История за последние сутки  
-❌ *Ошибки* - Список неудачных бэкапов
-📋 *Все серверы* - Выбор конкретного сервера
-🔄 *Обновить* - Обновить данные
-
-*Примеры:*
-`/backup` - общая сводка
-`/backup_search pve13` - статус pve13
-"""
-        
-        update.message.reply_text(
-            help_text,
-            parse_mode='Markdown',
-            reply_markup=create_main_keyboard()
-        )
+def setup_backup_commands(dispatcher):
+    """Настройка команд бота для мониторинга бэкапов"""
+    from telegram.ext import CommandHandler, CallbackQueryHandler
     
     # Регистрация обработчиков
     dispatcher.add_handler(CommandHandler("backup", backup_command))
     dispatcher.add_handler(CommandHandler("backup_search", backup_search_command))
     dispatcher.add_handler(CommandHandler("backup_help", backup_help_command))
     dispatcher.add_handler(CallbackQueryHandler(backup_callback, pattern='^backup_'))
+    
+    logger.info("Команды мониторинга бэкапов зарегистрированы")
     
