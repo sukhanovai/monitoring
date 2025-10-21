@@ -312,34 +312,46 @@ def setup_backup_commands(dispatcher):
         query = update.callback_query
         query.answer()
         
-        backup_bot = BackupMonitorBot()
-        
+     # ДОБАВИМ ЛОГИРОВАНИЕ ДЛЯ ДИАГНОСТИКИ
+    logger = logging.getLogger(__name__)
+    logger.info(f"Обработка callback: {query.data} от пользователя {query.from_user.id}")
+    
+    backup_bot = BackupMonitorBot()
+    
+    try:
         if query.data == 'backup_today':
+            logger.info("Показываем сводку за сегодня")
             message = format_backup_summary(backup_bot)
             keyboard = create_main_keyboard()
             
         elif query.data == 'backup_24h':
+            logger.info("Показываем историю за 24 часа")
             message = format_recent_backups(backup_bot, 24)
             keyboard = create_back_keyboard()
             
         elif query.data == 'backup_failed':
+            logger.info("Показываем ошибки")
             message = format_failed_backups(backup_bot, 1)
             keyboard = create_back_keyboard()
             
         elif query.data == 'backup_hosts':
+            logger.info("Показываем список хостов")
             message = format_hosts_list(backup_bot)
             keyboard = create_hosts_keyboard(backup_bot)
             
         elif query.data == 'backup_refresh':
+            logger.info("Обновляем данные")
             message = format_backup_summary(backup_bot)
             keyboard = create_main_keyboard()
             
         elif query.data.startswith('backup_host_'):
             host_name = query.data.replace('backup_host_', '')
+            logger.info(f"Показываем статус хоста: {host_name}")
             message = format_host_status(backup_bot, host_name)
             keyboard = create_back_keyboard()
             
         else:
+            logger.warning(f"Неизвестный callback: {query.data}")
             message = "❌ Неизвестная команда"
             keyboard = create_main_keyboard()
         
@@ -348,29 +360,15 @@ def setup_backup_commands(dispatcher):
             parse_mode='Markdown',
             reply_markup=keyboard
         )
-    
-    def backup_search_command(update, context):
-        """Обработчик поиска по хостам через сообщение"""
-        if not context.args:
-            # Показываем список хостов если не указан конкретный
-            message = format_hosts_list(backup_bot)
-            update.message.reply_text(
-                message,
-                parse_mode='Markdown',
-                reply_markup=create_hosts_keyboard(backup_bot)
-            )
-            return
+        logger.info("Сообщение успешно обновлено")
         
-        host_name = context.args[0].lower()
-        backup_bot = BackupMonitorBot()
-        message = format_host_status(backup_bot, host_name)
-        
-        update.message.reply_text(
-            message, 
-            parse_mode='Markdown',
-            reply_markup=create_back_keyboard()
+    except Exception as e:
+        logger.error(f"Ошибка в callback обработчике: {e}")
+        query.edit_message_text(
+            "❌ Произошла ошибка при обработке запроса",
+            reply_markup=create_main_keyboard()
         )
-    
+           
     def backup_help_command(update, context):
         """Помощь по командам бэкапов"""
         help_text = """
