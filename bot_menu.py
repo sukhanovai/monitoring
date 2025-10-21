@@ -8,6 +8,8 @@ from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CommandHandler, CallbackQueryHandler
 from config import CHAT_IDS, TELEGRAM_TOKEN
 from telegram import Bot
+from extensions.backup_monitor.bot_handler import setup_backup_commands
+
 import requests
 import json
 
@@ -24,6 +26,9 @@ def setup_menu(bot):
             BotCommand("control", "Управление"),
             BotCommand("diagnose_ssh", "Диагностика SSH"),
             BotCommand("silent", "Тихий режим"),
+            BotCommand("backup", "📊 Статус бэкапов Proxmox"),
+            BotCommand("backup_search", "🔍 Поиск бэкапов по серверу"),
+            BotCommand("backup_help", "❓ Помощь по бэкапам"),
             BotCommand("help", "Помощь")
         ]
         bot.set_my_commands(commands)
@@ -48,6 +53,7 @@ def start_command(update, context):
         [InlineKeyboardButton("ℹ️ Статус мониторинга", callback_data='monitor_status')],
         [InlineKeyboardButton("📋 Список серверов", callback_data='servers_list')],
         [InlineKeyboardButton("📊 Проверить ресурсы", callback_data='check_resources')],
+        [InlineKeyboardButton("📊 Бэкапы Proxmox", callback_data='backup_today')],  # НОВАЯ КНОПКА
         [InlineKeyboardButton("🎛️ Управление", callback_data='control_panel')],
         [InlineKeyboardButton("🔧 Диагностика", callback_data='diagnose_menu')],
         [InlineKeyboardButton("🔇 Тихий режим", callback_data='silent_status')]
