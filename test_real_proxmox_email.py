@@ -5,7 +5,6 @@
 
 import sys
 import os
-import subprocess
 
 sys.path.insert(0, '/opt/monitoring')
 
@@ -77,36 +76,42 @@ Content-Transfer-Encoding: 7bit
 """
     
     try:
-        # Отправляем письмо через обработчик
-        result = subprocess.run(
-            ['/opt/monitoring/email_processor.py'],
-            input=real_email,
-            text=True,
-            capture_output=True,
-            encoding='utf-8'
-        )
+        # Импортируем и запускаем обработчик напрямую
+        from email_processor import main as process_email
         
-        print(f"📧 Результат обработки: код {result.returncode}")
-        
-        if result.returncode == 0:
-            print("✅ Письмо успешно обработано")
+        # Сохраняем оригинальный stdin и подменяем его на наше письмо
+        original_stdin = sys.stdin
+        try:
+            from io import StringIO
+            sys.stdin = StringIO(real_email)
             
-            # Проверяем логи
-            if os.path.exists('/opt/monitoring/logs/email_processor.log'):
-                with open('/opt/monitoring/logs/email_processor.log', 'r', encoding='utf-8') as f:
-                    logs = f.read()
-                    if 'sr-pve4' in logs:
-                        print("✅ Письмо от sr-pve4 обнаружено в логах")
-                    else:
-                        print("❌ Письмо от sr-pve4 не найдено в логах")
-                        
-            # Проверяем базу данных
-            check_database()
+            # Запускаем обработчик
+            result = process_email()
             
-        else:
-            print(f"❌ Ошибка обработки: {result.stderr}")
+            print(f"📧 Результат обработки: код {result}")
             
-        return result.returncode == 0
+            if result == 0:
+                print("✅ Письмо успешно обработано")
+                
+                # Проверяем логи
+                if os.path.exists('/opt/monitoring/logs/email_processor.log'):
+                    with open('/opt/monitoring/logs/email_processor.log', 'r', encoding='utf-8') as f:
+                        logs = f.read()
+                        if 'sr-pve4' in logs:
+                            print("✅ Письмо от sr-pve4 обнаружено в логах")
+                        else:
+                            print("❌ Письмо от sr-pve4 не найдено в логах")
+                            
+                # Проверяем базу данных
+                check_database()
+                
+            else:
+                print("❌ Ошибка обработки")
+                
+            return result == 0
+            
+        finally:
+            sys.stdin = original_stdin
         
     except Exception as e:
         print(f"💥 Ошибка тестирования: {e}")
@@ -138,7 +143,7 @@ def check_database():
                 print(f"  • {host}: {status} (отчетов: {count})")
                 
         # Проверяем конкретно sr-pve4
-        sr_pve4_data = [item for item in today if item[0] == 'sr-pve4']
+        sr_pve4_data = [item for item in today if 'sr-pve4' in item[0]]
         if sr_pve4_data:
             print(f"\n🎯 sr-pve4 найден в базе: {sr_pve4_data}")
         else:
