@@ -1,5 +1,3 @@
-# /opt/monitoring/test_email_processing.py
-
 #!/usr/bin/env python3
 """
 Инструмент тестирования обработки писем с бэкапами
@@ -13,9 +11,9 @@ from datetime import datetime
 # Добавляем путь для импорта
 sys.path.insert(0, '/opt/monitoring')
 
-def test_backup_database():
-    """Проверяет базу данных бэкапов"""
-    print("🔍 Проверка базы данных бэкапов...")
+def check_database_schema():
+    """Проверяет схему базы данных"""
+    print("🔍 Проверка схемы базы данных...")
     
     db_path = '/opt/monitoring/data/backups.db'
     
@@ -27,13 +25,43 @@ def test_backup_database():
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
-        # Проверяем таблицу
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='proxmox_backups'")
-        table_exists = cursor.fetchone()
+        # Проверяем структуру таблицы
+        cursor.execute("PRAGMA table_info(proxmox_backups)")
+        columns = cursor.fetchall()
         
-        if not table_exists:
-            print("❌ Таблица proxmox_backups не найдена!")
+        required_columns = ['host_name', 'backup_status', 'duration', 'total_size', 'error_message']
+        existing_columns = [col[1] for col in columns]
+        
+        print(f"📊 Колонки в таблице: {existing_columns}")
+        
+        # Проверяем наличие обязательных колонок
+        missing_columns = [col for col in required_columns if col not in existing_columns]
+        
+        if missing_columns:
+            print(f"❌ Отсутствуют колонки: {missing_columns}")
+            conn.close()
             return False
+        
+        print("✅ Схема базы данных корректна")
+        conn.close()
+        return True
+        
+    except Exception as e:
+        print(f"❌ Ошибка проверки схемы: {e}")
+        return False
+
+def test_backup_database():
+    """Проверяет базу данных бэкапов"""
+    print("🔍 Проверка базы данных бэкапов...")
+    
+    if not check_database_schema():
+        return False
+    
+    db_path = '/opt/monitoring/data/backups.db'
+    
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
         
         # Проверяем данные
         cursor.execute("SELECT COUNT(*) FROM proxmox_backups")
@@ -51,6 +79,38 @@ def test_backup_database():
         
     except Exception as e:
         print(f"❌ Ошибка базы данных: {e}")
+        return False
+
+def add_sample_data():
+    """Добавляет тестовые данные в базу"""
+    print("\n📝 Добавление тестовых данных...")
+    
+    try:
+        conn = sqlite3.connect('/opt/monitoring/data/backups.db')
+        cursor = conn.cursor()
+        
+        # Добавляем тестовые записи с правильными именами колонок
+        test_data = [
+            ('pve13', 'success', '02:15:30', '145.8GB', None, datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
+            ('pve12', 'failed', '01:45:12', '89.2GB', 'Storage full', datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
+            ('bup3', 'success', '03:22:45', '234.1GB', None, datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
+        ]
+        
+        for host, status, duration, size, error, received_at in test_data:
+            cursor.execute('''
+                INSERT OR REPLACE INTO proxmox_backups 
+                (host_name, backup_status, duration, total_size, error_message, received_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (host, status, duration, size, error, received_at))
+        
+        conn.commit()
+        conn.close()
+        
+        print("✅ Тестовые данные добавлены")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Ошибка добавления данных: {e}")
         return False
 
 def test_sample_email_processing():
@@ -106,49 +166,18 @@ def test_bot_commands():
         print(f"❌ Ошибка команд бота: {e}")
         return False
 
-def add_sample_data():
-    """Добавляет тестовые данные в базу"""
-    print("\n📝 Добавление тестовых данных...")
-    
-    try:
-        conn = sqlite3.connect('/opt/monitoring/data/backups.db')
-        cursor = conn.cursor()
-        
-        # Добавляем тестовые записи
-        test_data = [
-            ('pve13', 'success', '02:15:30', '145.8GB', None, datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
-            ('pve12', 'failed', '01:45:12', '89.2GB', 'Storage full', datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
-            ('bup3', 'success', '03:22:45', '234.1GB', None, datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
-        ]
-        
-        for host, status, duration, size, error, received_at in test_data:
-            cursor.execute('''
-                INSERT OR REPLACE INTO proxmox_backups 
-                (host_name, backup_status, duration, total_size, error_message, received_at)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (host, status, duration, size, error, received_at))
-        
-        conn.commit()
-        conn.close()
-        
-        print("✅ Тестовые данные добавлены")
-        return True
-        
-    except Exception as e:
-        print(f"❌ Ошибка добавления данных: {e}")
-        return False
-
 if __name__ == "__main__":
     print("🧪 Тестирование системы мониторинга бэкапов\n")
     
+    # Сначала проверяем и исправляем схему
+    schema_ok = check_database_schema()
+    if not schema_ok:
+        print("\n🔄 Обновление схемы базы данных...")
+        from update_database_schema import update_database_schema
+        update_database_schema()
+    
     # Запускаем тесты
     db_ok = test_backup_database()
-    
-    if not db_ok:
-        print("\n🔄 Инициализация базы данных...")
-        from init_email_system import init_databases
-        init_databases()
-        db_ok = test_backup_database()
     
     # Добавляем тестовые данные если база пустая
     if db_ok:

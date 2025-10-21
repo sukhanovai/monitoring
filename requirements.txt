@@ -5,3 +5,4 @@ werkzeug==2.3.7                 # BSD-3-Clause - совместима с MIT
 pywinrm==0.4.3                  # MIT - полностью совместима
 requests==2.31.0                # Apache 2.0 - совместима с MIT
 cryptography>=41.0.8            # Apache 2.0/BSD-3 - совместима
+watchdog==3.0.0
