@@ -13,16 +13,40 @@ from email.policy import default
 # Добавляем путь для импорта наших модулей
 sys.path.insert(0, '/opt/monitoring')
 
-# Настройка логирования
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('/opt/monitoring/logs/email_processor.log'),
-        logging.StreamHandler(sys.stdout)
-    ]
-)
-logger = logging.getLogger(__name__)
+def setup_logging():
+    """Настраивает логирование с обработкой ошибок прав доступа"""
+    try:
+        # Создаем директорию логов если не существует
+        os.makedirs('/opt/monitoring/logs', exist_ok=True)
+        
+        # Настраиваем базовое логирование в файл
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            handlers=[
+                logging.FileHandler('/opt/monitoring/logs/email_processor.log'),
+                logging.StreamHandler(sys.stdout)
+            ]
+        )
+        return logging.getLogger(__name__)
+    except PermissionError as e:
+        # Если нет прав на файл, логируем в системный лог
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            handlers=[logging.StreamHandler(sys.stdout)]
+        )
+        logger = logging.getLogger(__name__)
+        logger.error(f"Нет прав доступа к файлам логов: {e}")
+        return logger
+    except Exception as e:
+        # Фолбэк на консольное логирование
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+        logger = logging.getLogger(__name__)
+        logger.error(f"Ошибка настройки логирования: {e}")
+        return logger
+
+logger = setup_logging()
 
 def main():
     """Основная функция обработки писем"""
@@ -37,10 +61,14 @@ def main():
         logger.info(f"📨 Получено письмо размером {len(raw_email)} байт")
         
         # Сохраняем письмо во временный файл для диагностики
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.eml', encoding='utf-8') as f:
-            f.write(raw_email)
-            temp_filename = f.name
-            logger.info(f"💾 Письмо сохранено во временный файл: {temp_filename}")
+        temp_filename = None
+        try:
+            with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.eml', encoding='utf-8') as f:
+                f.write(raw_email)
+                temp_filename = f.name
+                logger.info(f"💾 Письмо сохранено во временный файл: {temp_filename}")
+        except Exception as e:
+            logger.warning(f"⚠️ Не удалось сохранить временный файл: {e}")
         
         # Парсим письмо для получения информации
         try:
@@ -66,12 +94,13 @@ def main():
         else:
             logger.info("⏭️ Письмо не от Proxmox, пропускаем")
             
-        # Удаляем временный файл
-        try:
-            os.unlink(temp_filename)
-            logger.info(f"🗑️ Временный файл удален: {temp_filename}")
-        except:
-            logger.warning(f"⚠️ Не удалось удалить временный файл: {temp_filename}")
+        # Удаляем временный файл если создавали
+        if temp_filename and os.path.exists(temp_filename):
+            try:
+                os.unlink(temp_filename)
+                logger.info(f"🗑️ Временный файл удален: {temp_filename}")
+            except Exception as e:
+                logger.warning(f"⚠️ Не удалось удалить временный файл: {temp_filename}, ошибка: {e}")
         
         return 0  # Успешное завершение
         
@@ -108,7 +137,6 @@ def is_proxmox_email(subject, from_email, raw_email):
     logger.info(f"   Тема: {subject_lower}")
     logger.info(f"   От: {from_lower}")
     logger.info(f"   Результат: {result}")
-    logger.info(f"   Индикаторы: {[i for i in proxmox_indicators if i]}")
     
     return result
 
@@ -148,7 +176,9 @@ def log_successful_processing(subject, from_email):
             f.write(f"{timestamp} - Обработано: {subject} (от: {from_email})\n")
         logger.info(f"📝 Запись добавлена в лог: {log_file}")
     except Exception as e:
-        logger.error(f"Ошибка логирования: {e}")
+        logger.warning(f"⚠️ Не удалось записать в лог processed_emails: {e}")
+        # Пишем в основной лог как запасной вариант
+        logger.info(f"📝 Обработано: {subject} (от: {from_email})")
 
 def check_database_after_processing():
     """Проверяет базу данных после обработки"""
