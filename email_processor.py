@@ -1,3 +1,5 @@
+# /opt/monitoring/email_processor.py
+
 #!/usr/bin/env python3
 """
 Обработчик входящих писем для пользователя root
@@ -51,10 +53,6 @@ def main():
             
         logger.info(f"📨 Получено письмо размером {len(raw_email)} байт")
         
-        # Сохраняем письмо для отладки
-        with open('/tmp/last_email_debug.txt', 'w') as f:
-            f.write(raw_email)
-        
         # Парсим письмо для получения информации
         try:
             msg = message_from_string(raw_email, policy=default)
@@ -66,27 +64,29 @@ def main():
             logger.info(f"📨 Письмо к: {to_email}") 
             logger.info(f"📝 Тема: {subject}")
             
-            # Дополнительная отладка - выводим все заголовки
-            logger.info("🔍 Все заголовки письма:")
-            for key, value in msg.items():
-                logger.info(f"   {key}: {value}")
-            
         except Exception as e:
             logger.error(f"❌ Ошибка парсинга письма: {e}")
             subject = "Ошибка парсинга"
             from_email = "Неизвестно"
             to_email = "Неизвестно"
         
-        # Проверяем, является ли письмо от Proxmox
-        is_proxmox = is_proxmox_email(subject, from_email, raw_email)
+        # Проверяем, является ли письмо пересланным письмом от Proxmox
+        original_proxmox_email = extract_original_proxmox_email(raw_email)
         
-        if is_proxmox:
-            logger.info("🎯 Обнаружено письмо от Proxmox, запускаем обработку")
-            process_proxmox_backup_email(raw_email, subject, from_email)
+        if original_proxmox_email:
+            logger.info("🎯 Обнаружено пересланное письмо от Proxmox, извлекаем оригинал")
+            process_proxmox_backup_email(original_proxmox_email, "Пересланное: " + subject, from_email)
         else:
-            logger.info("⏭️ Письмо не от Proxmox, пропускаем")
-            # Логируем непрочитанные письма для отладки
-            log_unknown_email(subject, from_email, raw_email)
+            # Проверяем, является ли письмо прямым письмом от Proxmox
+            is_proxmox = is_proxmox_email(subject, from_email, raw_email)
+            
+            if is_proxmox:
+                logger.info("🎯 Обнаружено прямое письмо от Proxmox, запускаем обработку")
+                process_proxmox_backup_email(raw_email, subject, from_email)
+            else:
+                logger.info("⏭️ Письмо не от Proxmox, пропускаем")
+                # Логируем непрочитанные письма для отладки
+                log_unknown_email(subject, from_email, raw_email)
         
         return 0  # Успешное завершение
         
@@ -95,6 +95,61 @@ def main():
         import traceback
         logger.error(traceback.format_exc())
         return 1  # Ошибка
+
+def extract_original_proxmox_email(raw_email):
+    """Извлекает оригинальное письмо Proxmox из пересланного письма"""
+    try:
+        # Ищем признаки пересланного письма от Proxmox
+        if 'vzdump backup status' in raw_email and 'sr-pve' in raw_email:
+            logger.info("🔍 Обнаружены признаки пересланного Proxmox письма")
+            
+            # Пытаемся извлечь оригинальное письмо
+            # Ищем начало оригинального письма (обычно после заголовков пересылки)
+            patterns = [
+                # Паттерн для писем с полными заголовками
+                r'Content-Type: multipart/alternative;\s*boundary="----_=_NextPart_\d+_\d+"',
+                # Паттерн для начала MIME части
+                r'------_=_NextPart_\d+_\d+',
+                # Паттерн для начала письма с Subject
+                r'Subject: vzdump backup status',
+            ]
+            
+            for pattern in patterns:
+                match = re.search(pattern, raw_email)
+                if match:
+                    start_pos = match.start()
+                    original_email = raw_email[start_pos:]
+                    logger.info(f"✅ Оригинальное письмо извлечено с позиции {start_pos}")
+                    return original_email
+            
+            # Если не нашли по паттернам, пробуем извлечь по ключевым словам
+            if 'vzdump backup status' in raw_email and 'From: vzdump backup tool' in raw_email:
+                # Находим начало оригинального письма
+                start_marker = 'From: vzdump backup tool'
+                start_pos = raw_email.find(start_marker)
+                if start_pos != -1:
+                    # Находим конец письма (перед следующими заголовками пересылки или концом)
+                    end_markers = [
+                        '\nResent-',
+                        '\nReceived:',
+                        '\n------',
+                        '\n--'
+                    ]
+                    end_pos = len(raw_email)
+                    for marker in end_markers:
+                        pos = raw_email.find(marker, start_pos + 100)  # Ищем после начала
+                        if pos != -1 and pos < end_pos:
+                            end_pos = pos
+                    
+                    original_email = raw_email[start_pos:end_pos].strip()
+                    logger.info(f"✅ Оригинальное письмо извлечено по маркерам")
+                    return original_email
+        
+        return None
+        
+    except Exception as e:
+        logger.error(f"❌ Ошибка извлечения оригинального письма: {e}")
+        return None
 
 def is_proxmox_email(subject, from_email, raw_email):
     """Определяет, является ли письмо от Proxmox"""
@@ -217,3 +272,4 @@ def check_database_after_processing():
 
 if __name__ == "__main__":
     sys.exit(main())
+    
