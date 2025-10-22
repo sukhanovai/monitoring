@@ -7,6 +7,7 @@ import sys
 import os
 import logging
 import tempfile
+import re
 from email import message_from_string
 from email.policy import default
 
@@ -29,16 +30,6 @@ def setup_logging():
             ]
         )
         return logging.getLogger(__name__)
-    except PermissionError as e:
-        # Если нет прав на файл, логируем в системный лог
-        logging.basicConfig(
-            level=logging.INFO,
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-            handlers=[logging.StreamHandler(sys.stdout)]
-        )
-        logger = logging.getLogger(__name__)
-        logger.error(f"Нет прав доступа к файлам логов: {e}")
-        return logger
     except Exception as e:
         # Фолбэк на консольное логирование
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -60,15 +51,9 @@ def main():
             
         logger.info(f"📨 Получено письмо размером {len(raw_email)} байт")
         
-        # Сохраняем письмо во временный файл для диагностики
-        temp_filename = None
-        try:
-            with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.eml', encoding='utf-8') as f:
-                f.write(raw_email)
-                temp_filename = f.name
-                logger.info(f"💾 Письмо сохранено во временный файл: {temp_filename}")
-        except Exception as e:
-            logger.warning(f"⚠️ Не удалось сохранить временный файл: {e}")
+        # Сохраняем письмо для отладки
+        with open('/tmp/last_email_debug.txt', 'w') as f:
+            f.write(raw_email)
         
         # Парсим письмо для получения информации
         try:
@@ -81,6 +66,11 @@ def main():
             logger.info(f"📨 Письмо к: {to_email}") 
             logger.info(f"📝 Тема: {subject}")
             
+            # Дополнительная отладка - выводим все заголовки
+            logger.info("🔍 Все заголовки письма:")
+            for key, value in msg.items():
+                logger.info(f"   {key}: {value}")
+            
         except Exception as e:
             logger.error(f"❌ Ошибка парсинга письма: {e}")
             subject = "Ошибка парсинга"
@@ -88,19 +78,15 @@ def main():
             to_email = "Неизвестно"
         
         # Проверяем, является ли письмо от Proxmox
-        if is_proxmox_email(subject, from_email, raw_email):
+        is_proxmox = is_proxmox_email(subject, from_email, raw_email)
+        
+        if is_proxmox:
             logger.info("🎯 Обнаружено письмо от Proxmox, запускаем обработку")
             process_proxmox_backup_email(raw_email, subject, from_email)
         else:
             logger.info("⏭️ Письмо не от Proxmox, пропускаем")
-            
-        # Удаляем временный файл если создавали
-        if temp_filename and os.path.exists(temp_filename):
-            try:
-                os.unlink(temp_filename)
-                logger.info(f"🗑️ Временный файл удален: {temp_filename}")
-            except Exception as e:
-                logger.warning(f"⚠️ Не удалось удалить временный файл: {temp_filename}, ошибка: {e}")
+            # Логируем непрочитанные письма для отладки
+            log_unknown_email(subject, from_email, raw_email)
         
         return 0  # Успешное завершение
         
@@ -114,31 +100,66 @@ def is_proxmox_email(subject, from_email, raw_email):
     """Определяет, является ли письмо от Proxmox"""
     subject_lower = str(subject).lower()
     from_lower = str(from_email).lower()
+    raw_lower = raw_email.lower()
     
-    # Ключевые признаки Proxmox писем
-    proxmox_indicators = [
+    # Ключевые признаки Proxmox писем в теме
+    subject_indicators = [
         'vzdump backup status' in subject_lower,
         'proxmox' in subject_lower,
+        'vzdump' in subject_lower,
+        'backup' in subject_lower and 'status' in subject_lower,
+    ]
+    
+    # Ключевые признаки в отправителе
+    from_indicators = [
         'pve' in from_lower,
         'bup' in from_lower,
         'root@pve' in from_lower,
         'root@bup' in from_lower,
         'sr-pve' in from_lower,
         'sr-bup' in from_lower,
-        'vzdump' in subject_lower,
-        'backup' in subject_lower and 'status' in subject_lower,
-        'localdomain' in from_lower
+        'localdomain' in from_lower,
     ]
     
-    result = any(proxmox_indicators)
+    # Ключевые признаки в теле письма
+    body_indicators = [
+        'vzdump' in raw_lower,
+        'proxmox' in raw_lower,
+        'backup' in raw_lower,
+        'vm' in raw_lower and 'successful' in raw_lower,
+    ]
+    
+    # Проверяем различные комбинации
+    result = (any(subject_indicators) or 
+              any(from_indicators) or 
+              any(body_indicators))
     
     # Детальное логирование
     logger.info(f"🔍 Проверка Proxmox письма:")
     logger.info(f"   Тема: {subject_lower}")
     logger.info(f"   От: {from_lower}")
+    logger.info(f"   Признаки темы: {[i for i in subject_indicators if i]}")
+    logger.info(f"   Признаки отправителя: {[i for i in from_indicators if i]}")
+    logger.info(f"   Признаки тела: {[i for i in body_indicators if i]}")
     logger.info(f"   Результат: {result}")
     
     return result
+
+def log_unknown_email(subject, from_email, raw_email):
+    """Логирует непрочитанные письма для отладки"""
+    try:
+        log_file = '/opt/monitoring/logs/unknown_emails.log'
+        with open(log_file, 'a', encoding='utf-8') as f:
+            timestamp = __import__('datetime').datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            f.write(f"\n{'='*50}\n")
+            f.write(f"Время: {timestamp}\n")
+            f.write(f"Тема: {subject}\n")
+            f.write(f"От: {from_email}\n")
+            f.write(f"Содержимое (первые 500 символов):\n{raw_email[:500]}\n")
+            f.write(f"{'='*50}\n")
+        logger.info(f"📝 Неизвестное письмо записано в лог: {log_file}")
+    except Exception as e:
+        logger.warning(f"⚠️ Не удалось записать неизвестное письмо в лог: {e}")
 
 def process_proxmox_backup_email(raw_email, subject, from_email):
     """Обрабатывает письмо с бэкапом от Proxmox"""
@@ -177,8 +198,6 @@ def log_successful_processing(subject, from_email):
         logger.info(f"📝 Запись добавлена в лог: {log_file}")
     except Exception as e:
         logger.warning(f"⚠️ Не удалось записать в лог processed_emails: {e}")
-        # Пишем в основной лог как запасной вариант
-        logger.info(f"📝 Обработано: {subject} (от: {from_email})")
 
 def check_database_after_processing():
     """Проверяет базу данных после обработки"""
