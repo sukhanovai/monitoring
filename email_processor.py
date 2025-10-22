@@ -1,8 +1,8 @@
 # /opt/monitoring/email_processor.py
 
-#!/usr/bin/env python3
 """
 Обработчик входящих писем для пользователя root
+Не требует прав на выполнение, запускается через python3
 """
 
 import sys
@@ -85,8 +85,6 @@ def main():
                 process_proxmox_backup_email(raw_email, subject, from_email)
             else:
                 logger.info("⏭️ Письмо не от Proxmox, пропускаем")
-                # Логируем непрочитанные письма для отладки
-                log_unknown_email(subject, from_email, raw_email)
         
         return 0  # Успешное завершение
         
@@ -193,28 +191,9 @@ def is_proxmox_email(subject, from_email, raw_email):
     logger.info(f"🔍 Проверка Proxmox письма:")
     logger.info(f"   Тема: {subject_lower}")
     logger.info(f"   От: {from_lower}")
-    logger.info(f"   Признаки темы: {[i for i in subject_indicators if i]}")
-    logger.info(f"   Признаки отправителя: {[i for i in from_indicators if i]}")
-    logger.info(f"   Признаки тела: {[i for i in body_indicators if i]}")
     logger.info(f"   Результат: {result}")
     
     return result
-
-def log_unknown_email(subject, from_email, raw_email):
-    """Логирует непрочитанные письма для отладки"""
-    try:
-        log_file = '/opt/monitoring/logs/unknown_emails.log'
-        with open(log_file, 'a', encoding='utf-8') as f:
-            timestamp = __import__('datetime').datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            f.write(f"\n{'='*50}\n")
-            f.write(f"Время: {timestamp}\n")
-            f.write(f"Тема: {subject}\n")
-            f.write(f"От: {from_email}\n")
-            f.write(f"Содержимое (первые 500 символов):\n{raw_email[:500]}\n")
-            f.write(f"{'='*50}\n")
-        logger.info(f"📝 Неизвестное письмо записано в лог: {log_file}")
-    except Exception as e:
-        logger.warning(f"⚠️ Не удалось записать неизвестное письмо в лог: {e}")
 
 def process_proxmox_backup_email(raw_email, subject, from_email):
     """Обрабатывает письмо с бэкапом от Proxmox"""
