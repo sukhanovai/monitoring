@@ -422,3 +422,54 @@ def setup_backup_commands(dispatcher):
     
     logger.info("Команды мониторинга бэкапов зарегистрированы")
     
+def get_backup_history(self, days=30, host_name=None):
+    """Получает историю бэкапов за период"""
+    conn = sqlite3.connect(self.db_path)
+    cursor = conn.cursor()
+    
+    query = '''
+        SELECT 
+            host_name,
+            backup_status,
+            duration,
+            total_size,
+            error_message,
+            received_at
+        FROM proxmox_backups 
+        WHERE received_at >= datetime('now', ?)
+    '''
+    params = [f'-{days} days']
+    
+    if host_name:
+        query += ' AND host_name = ?'
+        params.append(host_name)
+    
+    query += ' ORDER BY received_at DESC'
+    
+    cursor.execute(query, params)
+    results = cursor.fetchall()
+    conn.close()
+    
+    return results
+
+def get_backup_statistics(self, days=30):
+    """Статистика бэкапов за период"""
+    conn = sqlite3.connect(self.db_path)
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT 
+            host_name,
+            backup_status,
+            COUNT(*) as count,
+            MAX(received_at) as last_backup
+        FROM proxmox_backups 
+        WHERE received_at >= datetime('now', ?)
+        GROUP BY host_name, backup_status
+        ORDER BY host_name, last_backup DESC
+    ''', (f'-{days} days',))
+    
+    results = cursor.fetchall()
+    conn.close()
+    
+    return results
