@@ -128,6 +128,21 @@ def diagnose_ssh_command(update, context):
     from extensions.single_check import diagnose_ssh_command as diagnose_cmd
     return diagnose_cmd(update, context)
 
+def backup_command(update, context):
+    """Обработчик команды /backup"""
+    from extensions.backup_monitor.bot_handler import backup_command as backup_cmd
+    return backup_cmd(update, context)
+
+def backup_search_command(update, context):
+    """Обработчик команды /backup_search"""
+    from extensions.backup_monitor.bot_handler import backup_search_command as backup_search_cmd
+    return backup_search_cmd(update, context)
+
+def backup_help_command(update, context):
+    """Обработчик команды /backup_help"""
+    from extensions.backup_monitor.bot_handler import backup_help_command as backup_help_cmd
+    return backup_help_cmd(update, context)
+
 def fix_monitor_command(update, context):
     """Команда для исправления статуса сервера мониторинга"""
     if not check_access(update.effective_chat.id):
@@ -237,6 +252,24 @@ def lazy_handler(pattern):
             from monitor_core import resource_history_command as handler
         elif pattern == 'debug_report':
             from monitor_core import debug_morning_report as handler
+        elif pattern == 'backup_today':
+            from extensions.backup_monitor.bot_handler import backup_callback as handler
+            return handler(update, context)
+        elif pattern == 'backup_24h':
+            from extensions.backup_monitor.bot_handler import backup_callback as handler
+            return handler(update, context)
+        elif pattern == 'backup_failed':
+            from extensions.backup_monitor.bot_handler import backup_callback as handler
+            return handler(update, context)
+        elif pattern == 'backup_hosts':
+            from extensions.backup_monitor.bot_handler import backup_callback as handler
+            return handler(update, context)
+        elif pattern == 'backup_refresh':
+            from extensions.backup_monitor.bot_handler import backup_callback as handler
+            return handler(update, context)
+        elif pattern.startswith('backup_host_'):
+            from extensions.backup_monitor.bot_handler import backup_callback as handler
+            return handler(update, context)
         else:
             def default_handler(update, context):
                 query = update.callback_query
@@ -284,4 +317,12 @@ def get_callback_handlers():
         CallbackQueryHandler(lambda u, c: lazy_handler('check_cpu')(u, c), pattern='^check_cpu$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('check_ram')(u, c), pattern='^check_ram$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('check_disk')(u, c), pattern='^check_disk$'),
+
+        # ОБРАБОТЧИКИ ДЛЯ БЭКАПОВ
+        CallbackQueryHandler(lambda u, c: lazy_handler('backup_today')(u, c), pattern='^backup_today$'),
+        CallbackQueryHandler(lambda u, c: lazy_handler('backup_24h')(u, c), pattern='^backup_24h$'),
+        CallbackQueryHandler(lambda u, c: lazy_handler('backup_failed')(u, c), pattern='^backup_failed$'),
+        CallbackQueryHandler(lambda u, c: lazy_handler('backup_hosts')(u, c), pattern='^backup_hosts$'),
+        CallbackQueryHandler(lambda u, c: lazy_handler('backup_refresh')(u, c), pattern='^backup_refresh$'),
+        CallbackQueryHandler(lambda u, c: lazy_handler('backup_host_')(u, c), pattern='^backup_host_'),
     ]

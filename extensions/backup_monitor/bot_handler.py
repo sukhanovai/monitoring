@@ -354,45 +354,35 @@ def backup_callback(update, context):
     query = update.callback_query
     query.answer()
     
-    # Логирование для диагностики
-    logger.info(f"Обработка callback: {query.data} от пользователя {query.from_user.id}")
-    
     backup_bot = BackupMonitorBot()
     
     try:
         if query.data == 'backup_today':
-            logger.info("Показываем сводку за сегодня")
             message = format_backup_summary(backup_bot)
             keyboard = create_main_keyboard()
             
         elif query.data == 'backup_24h':
-            logger.info("Показываем историю за 24 часа")
             message = format_recent_backups(backup_bot, 24)
             keyboard = create_back_keyboard()
             
         elif query.data == 'backup_failed':
-            logger.info("Показываем ошибки")
             message = format_failed_backups(backup_bot, 1)
             keyboard = create_back_keyboard()
             
         elif query.data == 'backup_hosts':
-            logger.info("Показываем список хостов")
             message = format_hosts_list(backup_bot)
             keyboard = create_hosts_keyboard(backup_bot)
             
         elif query.data == 'backup_refresh':
-            logger.info("Обновляем данные")
             message = format_backup_summary(backup_bot)
             keyboard = create_main_keyboard()
             
         elif query.data.startswith('backup_host_'):
             host_name = query.data.replace('backup_host_', '')
-            logger.info(f"Показываем статус хоста: {host_name}")
             message = format_host_status(backup_bot, host_name)
             keyboard = create_back_keyboard()
             
         else:
-            logger.warning(f"Неизвестный callback: {query.data}")
             message = "❌ Неизвестная команда"
             keyboard = create_main_keyboard()
         
@@ -401,7 +391,6 @@ def backup_callback(update, context):
             parse_mode='Markdown',
             reply_markup=keyboard
         )
-        logger.info("Сообщение успешно обновлено")
         
     except Exception as e:
         logger.error(f"Ошибка в callback обработчике: {e}")
@@ -409,7 +398,7 @@ def backup_callback(update, context):
             "❌ Произошла ошибка при обработке запроса",
             reply_markup=create_main_keyboard()
         )
-
+        
 def setup_backup_commands(dispatcher):
     """Настройка команд бота для мониторинга бэкапов"""
     from telegram.ext import CommandHandler, CallbackQueryHandler
