@@ -10,6 +10,7 @@ import time
 import socket
 import paramiko
 import subprocess
+import sqlite3
 from datetime import datetime, timedelta
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 # Отключаем проблемные алгоритмы
@@ -1357,8 +1358,8 @@ def debug_morning_report(update, context):
         update.message.reply_text(debug_message, parse_mode='Markdown')
 
 def send_morning_report():
-    """Отправляет утренний отчет о доступности серверов"""
-
+    """Отправляет утренний отчет о доступности серверов и бэкапах"""
+    
     if not morning_data or "status" not in morning_data:
         print("❌ Нет данных для утреннего отчета")
         return
@@ -1370,12 +1371,19 @@ def send_morning_report():
     up_count = len(status["ok"])
     down_count = len(status["failed"])
 
+    # Получаем данные о бэкапах за последние 16 часов (с 18:00 предыдущего дня)
+    backup_data = get_backup_summary_for_report()
+    
     # Формируем сообщение
     message = f"📊 *Утренний отчет о доступности серверов*\n\n"
     message += f"⏰ *Время сбора данных:* {collection_time.strftime('%H:%M')}\n"
     message += f"🔢 *Всего серверов:* {total_servers}\n"
     message += f"🟢 *Доступно:* {up_count}\n"
     message += f"🔴 *Недоступно:* {down_count}\n"
+
+    # Добавляем секцию с бэкапами
+    message += f"\n💾 *Статус бэкапов (за последние 16ч)*\n"
+    message += backup_data
 
     if down_count > 0:
         message += f"\n⚠️ *Проблемные серверы ({down_count}):*\n"
@@ -1416,8 +1424,113 @@ def send_morning_report():
 
     # Отправляем отчет принудительно, даже в тихом режиме
     send_alert(message, force=True)
-    print(f"✅ Утренний отчет отправлен: {up_count}/{total_servers} доступно")
+    print(f"✅ Утренний отчет отправлен: {up_count}/{total_servers} доступно, данные о бэкапах включены")
 
+def get_backup_summary_for_report():
+    """Получает сводку по бэкапам за последние 16 часов для утреннего отчета"""
+    try:
+        from extensions.backup_monitor.bot_handler import BackupMonitorBot
+        backup_bot = BackupMonitorBot()
+        
+        # Получаем бэкапы за последние 16 часов (с 18:00 предыдущего дня)
+        since_time = (datetime.now() - timedelta(hours=16)).strftime('%Y-%m-%d %H:%M:%S')
+        
+        conn = sqlite3.connect(backup_bot.db_path)
+        cursor = conn.cursor()
+        
+        # Получаем общее количество бэкапов за период
+        cursor.execute('''
+            SELECT 
+                COUNT(*) as total_backups,
+                SUM(CASE WHEN backup_status = 'success' THEN 1 ELSE 0 END) as successful_backups,
+                SUM(CASE WHEN backup_status = 'failed' THEN 1 ELSE 0 END) as failed_backups,
+                COUNT(DISTINCT host_name) as unique_hosts
+            FROM proxmox_backups 
+            WHERE received_at >= ?
+        ''', (since_time,))
+        
+        stats = cursor.fetchone()
+        total_backups, successful_backups, failed_backups, unique_hosts = stats
+        
+        # Получаем список хостов без успешных бэкапов
+        cursor.execute('''
+            SELECT DISTINCT host_name
+            FROM proxmox_backups 
+            WHERE received_at >= ?
+            GROUP BY host_name
+            HAVING SUM(CASE WHEN backup_status = 'success' THEN 1 ELSE 0 END) = 0
+        ''', (since_time,))
+        
+        hosts_without_success = [row[0] for row in cursor.fetchall()]
+        
+        # Получаем последние статусы для каждого хоста
+        cursor.execute('''
+            SELECT host_name, backup_status, MAX(received_at) as last_report
+            FROM proxmox_backups 
+            WHERE received_at >= ?
+            GROUP BY host_name
+            ORDER BY host_name
+        ''', (since_time,))
+        
+        host_statuses = cursor.fetchall()
+        conn.close()
+        
+        # Формируем сообщение о бэкапах
+        if total_backups == 0:
+            return "📭 Нет данных о бэкапах за указанный период\n"
+        
+        message = ""
+        success_rate = (successful_backups / total_backups) * 100 if total_backups > 0 else 0
+        
+        message += f"• Всего отчетов: {total_backups}\n"
+        message += f"• Успешных: {successful_backups} ({success_rate:.1f}%)\n"
+        message += f"• Неудачных: {failed_backups}\n"
+        message += f"• Серверов с бэкапами: {unique_hosts}\n"
+        
+        # Показываем статус по хостам
+        if host_statuses:
+            message += f"\n📋 *Статус по серверам:*\n"
+            
+            success_hosts = []
+            failed_hosts = []
+            no_data_hosts = []
+            
+            # Группируем хосты по статусу
+            for host, status, last_report in host_statuses:
+                if status == 'success':
+                    success_hosts.append(host)
+                elif status == 'failed':
+                    failed_hosts.append(host)
+                else:
+                    no_data_hosts.append(host)
+            
+            if success_hosts:
+                message += f"✅ Успешно: {len(success_hosts)} серверов\n"
+                # Показываем только первые 5 успешных, чтобы не перегружать
+                if len(success_hosts) <= 5:
+                    for host in sorted(success_hosts)[:5]:
+                        message += f"  • {host}\n"
+                else:
+                    message += f"  • {', '.join(sorted(success_hosts)[:5])}...\n"
+            
+            if failed_hosts:
+                message += f"❌ Проблемы: {len(failed_hosts)} серверов\n"
+                for host in sorted(failed_hosts)[:3]:  # Показываем только первые 3 проблемных
+                    message += f"  • {host}\n"
+                if len(failed_hosts) > 3:
+                    message += f"  • ... и еще {len(failed_hosts) - 3}\n"
+            
+            if hosts_without_success:
+                message += f"⚠️ Без успешных бэкапов: {len(hosts_without_success)}\n"
+                for host in sorted(hosts_without_success)[:3]:
+                    message += f"  • {host}\n"
+        
+        return message
+        
+    except Exception as e:
+        logger.error(f"Ошибка при получении данных о бэкапах: {e}")
+        return f"❌ Ошибка получения данных о бэкапах: {str(e)}\n"
+    
 def send_morning_report_handler(update, context):
     """Обработчик для принудительной отправки утреннего отчета"""
     query = update.callback_query if hasattr(update, 'callback_query') else None
@@ -1440,7 +1553,7 @@ def send_morning_report_handler(update, context):
     # Отправляем отчет
     send_morning_report()
 
-    response = "📊 Утренний отчет отправлен принудительно"
+    response = "📊 Утренний отчет отправлен принудительно (включая данные о бэкапах)"
     if query:
         query.edit_message_text(response)
     else:
