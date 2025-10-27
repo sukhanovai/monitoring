@@ -12,6 +12,7 @@ import shutil
 from email import message_from_bytes
 import email.policy
 from datetime import datetime
+from email.utils import parsedate_to_datetime
 
 # Настройка логирования
 logging.basicConfig(
@@ -78,8 +79,8 @@ class BackupProcessor:
         for filename in os.listdir(maildir_new):
             file_path = os.path.join(maildir_new, filename)
             
-            if os.path.isfile(file_path) and file_path not in self.processed_files:
-                logger.info(f"Обнаружено новое письмо: {filename}")
+            if os.path.isfile(file_path):
+                logger.info(f"🔍 Обнаружено новое письмо: {filename}")
                 
                 # Обрабатываем письмо
                 result = self.parse_email_file(file_path)
@@ -89,17 +90,23 @@ class BackupProcessor:
                     try:
                         new_path = os.path.join(maildir_cur, filename)
                         shutil.move(file_path, new_path)
-                        logger.info(f"Письмо перемещено в cur: {filename}")
+                        logger.info(f"✅ Письмо перемещено в cur: {filename}")
                         self.processed_files.add(new_path)
                     except Exception as e:
-                        logger.error(f"Ошибка перемещения письма: {e}")
+                        logger.error(f"❌ Ошибка перемещения письма: {e}")
                         self.processed_files.add(file_path)
                     
                     processed_count += 1
                 else:
-                    logger.warning(f"Не удалось обработать письмо: {filename}")
-                    self.processed_files.add(file_path)
-        
+                    logger.warning(f"⚠️ Не удалось обработать письмо: {filename}")
+                    # Все равно перемещаем, чтобы не зацикливаться
+                    try:
+                        new_path = os.path.join(maildir_cur, filename)
+                        shutil.move(file_path, new_path)
+                        self.processed_files.add(new_path)
+                    except Exception as e:
+                        logger.error(f"❌ Ошибка перемещения непрочитанного письма: {e}")
+    
         return processed_count
     
     def parse_email_file(self, file_path):
@@ -119,14 +126,10 @@ class BackupProcessor:
             email_date = None
             if email_date_str:
                 try:
-                    # Пробуем разные форматы дат
-                    from email.utils import parsedate_to_datetime
                     email_date = parsedate_to_datetime(email_date_str)
-                except:
-                    try:
-                        email_date = datetime.strptime(email_date_str, '%a, %d %b %Y %H:%M:%S %z')
-                    except:
-                        pass
+                except Exception as e:
+                    logger.warning(f"Не удалось распарсить дату письма: {e}")
+                    email_date = datetime.now()
             
             # Проверяем, это ли письмо о бэкапе Proxmox
             if not self.is_proxmox_backup_email(subject):
@@ -151,7 +154,7 @@ class BackupProcessor:
         except Exception as e:
             logger.error(f"Ошибка парсинга файла {file_path}: {e}")
             return None
-            
+    
     def is_proxmox_backup_email(self, subject):
         """Проверяет, является ли письмо отчетом о бэкапе Proxmox"""
         subject_lower = subject.lower()
@@ -164,7 +167,7 @@ class BackupProcessor:
     
     def parse_subject(self, subject):
         """Парсит тему письма"""
-        # Пример: "vzdump backup status (sr-pve5.geltd.local): backup successful"
+        # Пример: "vzdump backup status (sr-pve4.geltd.local): backup successful"
         
         # Извлекаем имя хоста
         host_match = re.search(r'\(([^)]+)\)', subject)
@@ -216,81 +219,81 @@ class BackupProcessor:
         
         return ""
     
-def parse_body(self, body):
-    """Парсит тело письма для извлечения корректной информации"""
-    info = {
-        'duration': None,
-        'total_size': None,
-        'error_message': None,
-        'vm_count': 0,
-        'successful_vms': 0,
-        'failed_vms': 0
-    }
-    
-    try:
-        lines = body.split('\n')
-        in_details_section = False
+    def parse_body(self, body):
+        """Парсит тело письма для извлечения корректной информации"""
+        info = {
+            'duration': None,
+            'total_size': None,
+            'error_message': None,
+            'vm_count': 0,
+            'successful_vms': 0,
+            'failed_vms': 0
+        }
         
-        for line in lines:
-            line = line.strip()
-            line_lower = line.lower()
+        try:
+            lines = body.split('\n')
+            in_details_section = False
             
-            # Ищем общее время выполнения
-            if 'total running time' in line_lower:
-                time_match = re.search(r'(\d+[hm]\s*\d*[sm]*)', line, re.IGNORECASE)
-                if time_match:
-                    raw_time = time_match.group(1)
-                    # Конвертируем в стандартный формат
-                    info['duration'] = self.parse_duration(raw_time)
-            
-            # Ищем общий размер
-            elif 'total size' in line_lower:
-                size_match = re.search(r'(\d+\.?\d*\s*[GMK]?i?B)', line, re.IGNORECASE)
-                if size_match:
-                    info['total_size'] = size_match.group(1)
-            
-            # Ищем секцию с деталями VM
-            elif 'vmid' in line_lower and 'name' in line_lower and 'status' in line_lower:
-                in_details_section = True
-                continue
-            
-            # Парсим строки с VM в секции деталей
-            elif in_details_section and re.match(r'^\d+\s+', line):
-                parts = line.split()
-                if len(parts) >= 4:
-                    info['vm_count'] += 1
-                    status = parts[2].lower()
-                    if status == 'ok':
-                        info['successful_vms'] += 1
-                    else:
-                        info['failed_vms'] += 1
-            
-            # Выходим из секции деталей
-            elif in_details_section and not line:
-                in_details_section = False
-            
-            # Поиск сообщений об ошибках
-            elif 'error' in line_lower or 'failed' in line_lower:
-                if not info['error_message'] and len(line) > 10:
-                    info['error_message'] = line[:200]
-        
-        # Если не нашли общее время, но есть VM, суммируем их время
-        if not info['duration'] and info['vm_count'] > 0:
-            total_seconds = 0
             for line in lines:
-                # Ищем время выполнения для каждой VM (формат: 3m 33s, 1m 14s и т.д.)
-                time_match = re.search(r'(\d+m\s*\d*s)', line)
-                if time_match:
-                    vm_time = time_match.group(1)
-                    total_seconds += self.duration_to_seconds(vm_time)
-            
-            if total_seconds > 0:
-                info['duration'] = self.seconds_to_duration(total_seconds)
+                line = line.strip()
+                line_lower = line.lower()
                 
-    except Exception as e:
-        logger.error(f"Ошибка парсинга тела письма: {e}")
-    
-    return info
+                # Ищем общее время выполнения
+                if 'total running time' in line_lower:
+                    time_match = re.search(r'(\d+[hm]\s*\d*[sm]*)', line, re.IGNORECASE)
+                    if time_match:
+                        raw_time = time_match.group(1)
+                        # Конвертируем в стандартный формат
+                        info['duration'] = self.parse_duration(raw_time)
+                
+                # Ищем общий размер
+                elif 'total size' in line_lower:
+                    size_match = re.search(r'(\d+\.?\d*\s*[GMK]?i?B)', line, re.IGNORECASE)
+                    if size_match:
+                        info['total_size'] = size_match.group(1)
+                
+                # Ищем секцию с деталями VM
+                elif 'vmid' in line_lower and 'name' in line_lower and 'status' in line_lower:
+                    in_details_section = True
+                    continue
+                
+                # Парсим строки с VM в секции деталей
+                elif in_details_section and re.match(r'^\d+\s+', line):
+                    parts = line.split()
+                    if len(parts) >= 4:
+                        info['vm_count'] += 1
+                        status = parts[2].lower()
+                        if status == 'ok':
+                            info['successful_vms'] += 1
+                        else:
+                            info['failed_vms'] += 1
+                
+                # Выходим из секции деталей
+                elif in_details_section and not line:
+                    in_details_section = False
+                
+                # Поиск сообщений об ошибках
+                elif 'error' in line_lower or 'failed' in line_lower:
+                    if not info['error_message'] and len(line) > 10:
+                        info['error_message'] = line[:200]
+            
+            # Если не нашли общее время, но есть VM, суммируем их время
+            if not info['duration'] and info['vm_count'] > 0:
+                total_seconds = 0
+                for line in lines:
+                    # Ищем время выполнения для каждой VM (формат: 3m 33s, 1m 14s и т.д.)
+                    time_match = re.search(r'(\d+m\s*\d*s)', line)
+                    if time_match:
+                        vm_time = time_match.group(1)
+                        total_seconds += self.duration_to_seconds(vm_time)
+                
+                if total_seconds > 0:
+                    info['duration'] = self.seconds_to_duration(total_seconds)
+                    
+        except Exception as e:
+            logger.error(f"Ошибка парсинга тела письма: {e}")
+        
+        return info
 
     def parse_duration(self, duration_str):
         """Парсит строку длительности в читаемый формат"""
@@ -361,7 +364,7 @@ def parse_body(self, body):
             return f"{minutes}m {seconds:02d}s"
         else:
             return f"{seconds}s"
-            
+
     def save_backup_report(self, backup_info, subject, email_date=None):
         """Сохраняет отчет в базу с корректным временем"""
         try:
@@ -427,3 +430,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
