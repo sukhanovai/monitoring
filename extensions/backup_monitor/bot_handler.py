@@ -217,7 +217,7 @@ def format_failed_backups(backup_bot, days=1):
     return message
 
 def format_host_status(backup_bot, host_name):
-    """Форматирует статус конкретного хоста"""
+    """Форматирует статус конкретного хоста с правильным временем"""
     host_status = backup_bot.get_host_status(host_name)
     
     if not host_status:
@@ -227,15 +227,22 @@ def format_host_status(backup_bot, host_name):
     
     for status, duration, size, error, received_at in host_status:
         icon = "✅" if status == 'success' else "❌"
-        time_str = datetime.strptime(received_at, '%Y-%m-%d %H:%M:%S').strftime('%m-%d %H:%M')
+        
+        # Парсим время и форматируем в локальное
+        try:
+            received_dt = datetime.strptime(received_at, '%Y-%m-%d %H:%M:%S')
+            time_str = received_dt.strftime('%m-%d %H:%M')  # Месяц-день Час:Минута
+        except:
+            time_str = received_at[:16]  # Fallback
         
         message += f"{icon} *{time_str}* - {status}\n"
+        
         if duration:
-            message += f"   Длительность: {duration}\n"
+            message += f"   ⏱️ Длительность: {duration}\n"
         if size:
-            message += f"   Размер: {size}\n"
+            message += f"   💾 Размер: {size}\n"
         if error:
-            message += f"   Ошибка: {error[:60]}...\n"
+            message += f"   ❗ Ошибка: {error[:60]}...\n"
         message += "\n"
     
     return message
@@ -398,7 +405,7 @@ def backup_callback(update, context):
             "❌ Произошла ошибка при обработке запроса",
             reply_markup=create_main_keyboard()
         )
-        
+
 def setup_backup_commands(dispatcher):
     """Настройка команд бота для мониторинга бэкапов"""
     from telegram.ext import CommandHandler, CallbackQueryHandler
