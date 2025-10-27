@@ -167,6 +167,8 @@ def format_backup_summary(backup_bot):
 
         message += "\n"
 
+    # Добавляем время обновления, чтобы сообщение всегда было уникальным
+    message += f"🕒 *Обновлено:* {datetime.now().strftime('%H:%M:%S')}\n"
     message += "💡 Используйте кнопки ниже для детальной информации"
 
     return message
@@ -194,6 +196,9 @@ def format_recent_backups(backup_bot, hours=24):
             message += f"   Ошибка: {error[:50]}...\n"
         message += "\n"
 
+    # Добавляем время обновления
+    message += f"🕒 *Обновлено:* {datetime.now().strftime('%H:%M:%S')}"
+    
     return message
 
 def format_failed_backups(backup_bot, days=1):
@@ -215,6 +220,9 @@ def format_failed_backups(backup_bot, days=1):
             message += f"   Ошибка: не указана\n"
         message += "\n"
 
+    # Добавляем время обновления
+    message += f"🕒 *Обновлено:* {datetime.now().strftime('%H:%M:%S')}"
+    
     return message
 
 def format_host_status(backup_bot, host_name):
@@ -364,6 +372,8 @@ def backup_callback(update, context):
 
     try:
         backup_bot = BackupMonitorBot()
+        current_message = query.message.text
+        current_keyboard = query.message.reply_markup
 
         if query.data == 'backup_today':
             message = format_backup_summary(backup_bot)
@@ -394,21 +404,39 @@ def backup_callback(update, context):
             message = "❌ Неизвестная команда"
             keyboard = create_main_keyboard()
 
-        query.edit_message_text(
-            text=message,
-            parse_mode='Markdown',
-            reply_markup=keyboard
-        )
+        # Проверяем, изменилось ли сообщение или клавиатура
+        message_changed = (message != current_message)
+        keyboard_changed = (keyboard.to_json() != current_keyboard.to_json() if current_keyboard else True)
+
+        if message_changed or keyboard_changed:
+            query.edit_message_text(
+                text=message,
+                parse_mode='Markdown',
+                reply_markup=keyboard
+            )
+        else:
+            # Если ничего не изменилось, просто отвечаем на callback без изменений
+            query.answer("✅ Данные актуальны")
 
     except Exception as e:
         logger.error(f"Ошибка в callback обработчике: {e}")
-        # Более детальное сообщение об ошибке
-        error_message = f"❌ Ошибка при обработке запроса: {str(e)}"
-        query.edit_message_text(
-            error_message,
-            reply_markup=create_main_keyboard()
-        )
         
+        # Проверяем, не является ли ошибка "message not modified"
+        if "Message is not modified" in str(e):
+            query.answer("✅ Данные актуальны")
+        else:
+            error_message = f"❌ Ошибка при обработке запроса: {str(e)}"
+            try:
+                query.edit_message_text(
+                    error_message,
+                    reply_markup=create_main_keyboard()
+                )
+            except Exception as edit_error:
+                # Если не удалось отредактировать сообщение, просто логируем
+                logger.error(f"Не удалось отредактировать сообщение: {edit_error}")
+                query.answer("❌ Произошла ошибка")
+
+
 def setup_backup_commands(dispatcher):
     """Настройка команд бота для мониторинга бэкапов"""
     from telegram.ext import CommandHandler, CallbackQueryHandler
