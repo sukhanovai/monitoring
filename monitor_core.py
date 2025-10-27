@@ -764,7 +764,7 @@ def perform_cpu_check(context, chat_id, progress_message_id):
             server = result["server"]
             resources = result["resources"]
             cpu_value = resources.get('cpu', 0) if resources else 0
-            
+
             cpu_results.append({
                 "server": server,
                 "cpu": cpu_value,
@@ -775,59 +775,59 @@ def perform_cpu_check(context, chat_id, progress_message_id):
         cpu_results.sort(key=lambda x: x["cpu"], reverse=True)
 
         message = f"💻 **Загрузка CPU серверов**\n\n"
-        
+
         # Группируем по типам серверов
         windows_cpu = [r for r in cpu_results if r["server"]["type"] == "rdp"]
         linux_cpu = [r for r in cpu_results if r["server"]["type"] == "ssh"]
-        
+
         # Windows серверы
         message += f"**🪟 Windows серверы:**\n"
         for result in windows_cpu[:10]:  # Показываем топ-10
             server = result["server"]
             cpu_value = result["cpu"]
             status_icon = "🟢" if result["success"] else "🔴"
-            
+
             if cpu_value > 80:
                 cpu_display = f"🚨 {cpu_value}%"
             elif cpu_value > 60:
                 cpu_display = f"⚠️ {cpu_value}%"
             else:
                 cpu_display = f"{cpu_value}%"
-                
+
             message += f"{status_icon} {server['name']}: {cpu_display}\n"
-        
+
         if len(windows_cpu) > 10:
             message += f"• ... и еще {len(windows_cpu) - 10} серверов\n"
-        
+
         # Linux серверы
         message += f"\n**🐧 Linux серверы:**\n"
         for result in linux_cpu[:10]:  # Показываем топ-10
             server = result["server"]
             cpu_value = result["cpu"]
             status_icon = "🟢" if result["success"] else "🔴"
-            
+
             if cpu_value > 80:
                 cpu_display = f"🚨 {cpu_value}%"
             elif cpu_value > 60:
                 cpu_display = f"⚠️ {cpu_value}%"
             else:
                 cpu_display = f"{cpu_value}%"
-                
+
             message += f"{status_icon} {server['name']}: {cpu_display}\n"
-        
+
         if len(linux_cpu) > 10:
             message += f"• ... и еще {len(linux_cpu) - 10} серверов\n"
-        
+
         # Статистика
         total_servers = len(cpu_results)
         high_load = len([r for r in cpu_results if r["cpu"] > 80])
         medium_load = len([r for r in cpu_results if 60 < r["cpu"] <= 80])
-        
+
         message += f"\n**📊 Статистика:**\n"
         message += f"• Всего серверов: {total_servers}\n"
         message += f"• Высокая нагрузка (>80%): {high_load}\n"
         message += f"• Средняя нагрузка (60-80%): {medium_load}\n"
-        
+
         message += f"\n⏰ Обновлено: {datetime.now().strftime('%H:%M:%S')}"
 
         context.bot.edit_message_text(
@@ -873,7 +873,7 @@ def perform_ram_check(context, chat_id, progress_message_id):
             server = result["server"]
             resources = result["resources"]
             ram_value = resources.get('ram', 0) if resources else 0
-            
+
             ram_results.append({
                 "server": server,
                 "ram": ram_value,
@@ -884,59 +884,59 @@ def perform_ram_check(context, chat_id, progress_message_id):
         ram_results.sort(key=lambda x: x["ram"], reverse=True)
 
         message = f"🧠 **Использование RAM серверов**\n\n"
-        
+
         # Группируем по типам серверов
         windows_ram = [r for r in ram_results if r["server"]["type"] == "rdp"]
         linux_ram = [r for r in ram_results if r["server"]["type"] == "ssh"]
-        
+
         # Windows серверы
         message += f"**🪟 Windows серверы:**\n"
         for result in windows_ram[:10]:  # Показываем топ-10
             server = result["server"]
             ram_value = result["ram"]
             status_icon = "🟢" if result["success"] else "🔴"
-            
+
             if ram_value > 85:
                 ram_display = f"🚨 {ram_value}%"
             elif ram_value > 70:
                 ram_display = f"⚠️ {ram_value}%"
             else:
                 ram_display = f"{ram_value}%"
-                
+
             message += f"{status_icon} {server['name']}: {ram_display}\n"
-        
+
         if len(windows_ram) > 10:
             message += f"• ... и еще {len(windows_ram) - 10} серверов\n"
-        
+
         # Linux серверы
         message += f"\n**🐧 Linux серверы:**\n"
         for result in linux_ram[:10]:  # Показываем топ-10
             server = result["server"]
             ram_value = result["ram"]
             status_icon = "🟢" if result["success"] else "🔴"
-            
+
             if ram_value > 85:
                 ram_display = f"🚨 {ram_value}%"
             elif ram_value > 70:
                 ram_display = f"⚠️ {ram_value}%"
             else:
                 ram_display = f"{ram_value}%"
-                
+
             message += f"{status_icon} {server['name']}: {ram_display}\n"
-        
+
         if len(linux_ram) > 10:
             message += f"• ... и еще {len(linux_ram) - 10} серверов\n"
-        
+
         # Статистика
         total_servers = len(ram_results)
         high_usage = len([r for r in ram_results if r["ram"] > 85])
         medium_usage = len([r for r in ram_results if 70 < r["ram"] <= 85])
-        
+
         message += f"\n**📊 Статистика:**\n"
         message += f"• Всего серверов: {total_servers}\n"
         message += f"• Высокое использование (>85%): {high_usage}\n"
         message += f"• Среднее использование (70-85%): {medium_usage}\n"
-        
+
         message += f"\n⏰ Обновлено: {datetime.now().strftime('%H:%M:%S')}"
 
         context.bot.edit_message_text(
@@ -982,7 +982,7 @@ def perform_disk_check(context, chat_id, progress_message_id):
             server = result["server"]
             resources = result["resources"]
             disk_value = resources.get('disk', 0) if resources else 0
-            
+
             disk_results.append({
                 "server": server,
                 "disk": disk_value,
@@ -993,59 +993,59 @@ def perform_disk_check(context, chat_id, progress_message_id):
         disk_results.sort(key=lambda x: x["disk"], reverse=True)
 
         message = f"💾 **Использование дискового пространства**\n\n"
-        
+
         # Группируем по типам серверов
         windows_disk = [r for r in disk_results if r["server"]["type"] == "rdp"]
         linux_disk = [r for r in disk_results if r["server"]["type"] == "ssh"]
-        
+
         # Windows серверы
         message += f"**🪟 Windows серверы:**\n"
         for result in windows_disk[:10]:  # Показываем топ-10
             server = result["server"]
             disk_value = result["disk"]
             status_icon = "🟢" if result["success"] else "🔴"
-            
+
             if disk_value > 90:
                 disk_display = f"🚨 {disk_value}%"
             elif disk_value > 80:
                 disk_display = f"⚠️ {disk_value}%"
             else:
                 disk_display = f"{disk_value}%"
-                
+
             message += f"{status_icon} {server['name']}: {disk_display}\n"
-        
+
         if len(windows_disk) > 10:
             message += f"• ... и еще {len(windows_disk) - 10} серверов\n"
-        
+
         # Linux серверы
         message += f"\n**🐧 Linux серверы:**\n"
         for result in linux_disk[:10]:  # Показываем топ-10
             server = result["server"]
             disk_value = result["disk"]
             status_icon = "🟢" if result["success"] else "🔴"
-            
+
             if disk_value > 90:
                 disk_display = f"🚨 {disk_value}%"
             elif disk_value > 80:
                 disk_display = f"⚠️ {disk_value}%"
             else:
                 disk_display = f"{disk_value}%"
-                
+
             message += f"{status_icon} {server['name']}: {disk_display}\n"
-        
+
         if len(linux_disk) > 10:
             message += f"• ... и еще {len(linux_disk) - 10} серверов\n"
-        
+
         # Статистика
         total_servers = len(disk_results)
         critical_usage = len([r for r in disk_results if r["disk"] > 90])
         warning_usage = len([r for r in disk_results if 80 < r["disk"] <= 90])
-        
+
         message += f"\n**📊 Статистика:**\n"
         message += f"• Всего серверов: {total_servers}\n"
         message += f"• Критическое использование (>90%): {critical_usage}\n"
         message += f"• Предупреждение (80-90%): {warning_usage}\n"
-        
+
         message += f"\n⏰ Обновлено: {datetime.now().strftime('%H:%M:%S')}"
 
         context.bot.edit_message_text(
@@ -1097,7 +1097,7 @@ def resource_history_command(update, context):
         return
 
     status_message = get_resource_history_status()
-    
+
     if query:
         query.edit_message_text(
             text=status_message,
@@ -1114,31 +1114,31 @@ def resource_history_command(update, context):
 def force_resource_check():
     """Принудительная проверка ресурсов всех серверов"""
     global resource_history
-    
+
     print("🔍 Запуск принудительной проверки ресурсов...")
-    
+
     for server in servers:
         try:
             ip = server["ip"]
             server_name = server["name"]
-            
+
             print(f"🔍 Проверяем ресурсы {server_name} ({ip})")
-            
+
             # Получаем текущие ресурсы
             current_resources = None
             if server["type"] == "ssh":
                 current_resources = get_linux_resources_improved(ip)
             elif server["type"] == "rdp":
                 current_resources = get_windows_resources_improved(ip)
-            
+
             if not current_resources:
                 print(f"❌ Не удалось получить ресурсы для {server_name}")
                 continue
-                
+
             # Инициализируем историю для сервера если нужно
             if ip not in resource_history:
                 resource_history[ip] = []
-            
+
             # Добавляем текущие ресурсы в историю
             resource_entry = {
                 "timestamp": datetime.now(),
@@ -1148,36 +1148,36 @@ def force_resource_check():
                 "server_name": server_name,
                 "os": current_resources.get("os", "Unknown")
             }
-            
+
             resource_history[ip].append(resource_entry)
-            
+
             # Ограничиваем историю последними 10 записями
             if len(resource_history[ip]) > 10:
                 resource_history[ip] = resource_history[ip][-10:]
-            
+
             print(f"✅ Ресурсы {server_name}: CPU {current_resources.get('cpu', 0)}%, RAM {current_resources.get('ram', 0)}%, Disk {current_resources.get('disk', 0)}%")
-                
+
         except Exception as e:
             print(f"❌ Ошибка при проверке ресурсов {server['name']}: {e}")
             continue
-    
+
     print("✅ Принудительная проверка ресурсов завершена")
 
 def start_monitoring():
     """Запускает основной цикл мониторинга"""
     global servers, bot, monitoring_active, last_report_date
-    
+
     servers = initialize_servers()
-    
+
     # ПРИНУДИТЕЛЬНО исключаем сервер мониторинга из списка
     monitor_server_ip = "192.168.20.2"
     servers = [s for s in servers if s["ip"] != monitor_server_ip]
     print(f"✅ Сервер мониторинга {monitor_server_ip} принудительно исключен из списка. Осталось {len(servers)} серверов")
-    
+
     # Инициализируем бота
     from telegram import Bot
     bot = Bot(token=TELEGRAM_TOKEN)
-    
+
     # Инициализация server_status (только для оставшихся серверов)
     for server in servers:
         server_status[server["ip"]] = {
@@ -1188,9 +1188,9 @@ def start_monitoring():
             "resources": None,
             "last_alert": {}
         }
-    
+
     print(f"✅ Мониторинг запущен для {len(servers)} серверов")
-    
+
     # Обновляем стартовое сообщение
     start_message = (
         "🟢 *Мониторинг серверов запущен*\n\n"
@@ -1200,17 +1200,17 @@ def start_monitoring():
         f"🌐 *Веб-интерфейс:* http://192.168.20.2:5000\n"
         f"_*доступен только в локальной сети_"
     )
-    
+
     send_alert(start_message)
-  
+
     last_resource_check = datetime.now()
     last_data_collection = None
     report_sent_today = False
-    
+
     while True:
         current_time = datetime.now()
         current_time_time = current_time.time()
-        
+
         # Автоматическая проверка ресурсов каждые 30 минут
         if (current_time - last_resource_check).total_seconds() >= RESOURCE_CHECK_INTERVAL:
             if monitoring_active and not is_silent_time():
@@ -1219,24 +1219,24 @@ def start_monitoring():
                 last_resource_check = current_time
             else:
                 print("⏸️ Проверка ресурсов пропущена (тихий режим или мониторинг неактивен)")
-        
+
         # Сбор и отправка утреннего отчета в 8:30
         if (current_time_time.hour == DATA_COLLECTION_TIME.hour and
             current_time_time.minute == DATA_COLLECTION_TIME.minute):
-            
+
             # Проверяем, что сегодня еще не отправляли отчет
             today = current_time.date()
             if last_report_date != today:
                 print(f"[{current_time}] 🔍 Собираем данные для утреннего отчета...")
-                
+
                 # Собираем текущий статус серверов
                 morning_status = get_current_server_status()
                 morning_data["status"] = morning_status
                 morning_data["collection_time"] = current_time
                 last_data_collection = current_time
-                
+
                 print(f"✅ Данные собраны: {len(morning_status['ok'])} доступно, {len(morning_status['failed'])} недоступно")
-                
+
                 # СРАЗУ отправляем отчет после сбора данных
                 print(f"[{current_time}] 📊 Отправка утреннего отчета...")
                 send_morning_report()
@@ -1245,20 +1245,20 @@ def start_monitoring():
                 print("✅ Утренний отчет отправлен")
             else:
                 print(f"⏭️ Отчет уже отправлен сегодня {last_report_date}")
-        
+
         # Основной цикл мониторинга доступности
         if monitoring_active:
             last_check_time = current_time
-            
+
             for server in servers:
                 ip = server["ip"]
                 status = server_status[ip]
-                
+
                 # ПОЛНОСТЬЮ ИСКЛЮЧАЕМ сервер мониторинга из любых проверок
                 if ip == monitor_server_ip:
                     server_status[ip]["last_up"] = current_time
                     continue
-                
+
                 # Проверка доступности
                 if is_proxmox_server(server):
                     is_up = check_ssh_improved(ip)
@@ -1268,12 +1268,12 @@ def start_monitoring():
                     is_up = check_ping(ip)
                 else:
                     is_up = check_ssh_improved(ip)
-                
+
                 if is_up:
                     if status["alert_sent"]:
                         downtime = (current_time - status["last_up"]).total_seconds()
                         send_alert(f"✅ {status['name']} ({ip}) доступен (простой: {int(downtime//60)} мин)")
-                    
+
                     server_status[ip] = {
                         "last_up": current_time,
                         "alert_sent": False,
@@ -1287,13 +1287,13 @@ def start_monitoring():
                     if downtime >= MAX_FAIL_TIME and not status["alert_sent"]:
                         send_alert(f"🚨 {status['name']} ({ip}) не отвечает (проверка: {status['type'].upper()})")
                         server_status[ip]["alert_sent"] = True
-        
+
         time.sleep(CHECK_INTERVAL)
 
 def debug_morning_report(update, context):
     """Диагностическая команда для проверки утреннего отчета"""
     from telegram import InlineKeyboardMarkup, InlineKeyboardButton
-    
+
     query = update.callback_query if hasattr(update, 'callback_query') else None
     chat_id = query.message.chat_id if query else update.message.chat_id
 
@@ -1303,20 +1303,20 @@ def debug_morning_report(update, context):
         else:
             update.message.reply_text("⛔ У вас нет прав для выполнения этой команды")
         return
-    
+
     current_time = datetime.now()
     debug_message = f"🔧 *Диагностика утреннего отчета*\n\n"
-    
+
     debug_message += f"**Текущее время:** {current_time.strftime('%H:%M:%S')}\n"
     debug_message += f"**Время сбора данных:** {DATA_COLLECTION_TIME.strftime('%H:%M')}\n"
     debug_message += f"**Совпадает время:** {current_time.time().hour == DATA_COLLECTION_TIME.hour and current_time.time().minute == DATA_COLLECTION_TIME.minute}\n"
-    
+
     # Проверяем состояние переменных
     debug_message += f"\n**Состояние переменных:**\n"
     debug_message += f"• last_report_date: {last_report_date}\n"
     debug_message += f"• today: {current_time.date()}\n"
     debug_message += f"• Нужно отправлять: {last_report_date != current_time.date()}\n"
-    
+
     # Проверяем morning_data
     debug_message += f"\n**Данные отчета:**\n"
     if morning_data and "status" in morning_data:
@@ -1327,13 +1327,13 @@ def debug_morning_report(update, context):
         debug_message += f"• Недоступно серверов: {len(status.get('failed', []))}\n"
     else:
         debug_message += f"• Данные есть: ❌\n"
-    
+
     # Тестовая отправка отчета
     debug_message += f"\n**Тестовая отправка:**\n"
     try:
         test_status = get_current_server_status()
         debug_message += f"• Текущий статус: {len(test_status['ok'])} доступно, {len(test_status['failed'])} недоступно\n"
-        
+
         # Пробуем отправить тестовый отчет
         morning_data = {
             "status": test_status,
@@ -1343,14 +1343,14 @@ def debug_morning_report(update, context):
         debug_message += f"• Тестовый отчет отправлен: ✅\n"
     except Exception as e:
         debug_message += f"• Ошибка отправки: {e}\n"
-    
+
     # ДОБАВИТЬ КНОПКИ КЛАВИАТУРЫ
     keyboard = [
         [InlineKeyboardButton("🔄 Обновить", callback_data='debug_report')],
         [InlineKeyboardButton("📊 Статус мониторинга", callback_data='monitor_status')],
         [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
-    
+
     if query:
         query.edit_message_text(debug_message, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
     else:
@@ -1449,38 +1449,38 @@ def send_morning_report_handler(update, context):
 def check_resources_automatically():
     """Автоматическая проверка ресурсов с умными предупреждениями"""
     global resource_history, last_resource_check, resource_alerts_sent
-    
+
     print("🔍 Автоматическая проверка ресурсов серверов...")
-    
+
     if not monitoring_active or is_silent_time():
         print("⏸️ Проверка ресурсов пропущена (мониторинг неактивен или тихий режим)")
         return
-    
+
     current_time = datetime.now()
     alerts_found = []
-    
+
     # Проверяем все серверы
     for server in servers:
         try:
             ip = server["ip"]
             server_name = server["name"]
-            
+
             print(f"🔍 Проверяем ресурсы {server_name} ({ip})")
-            
+
             # Получаем текущие ресурсы
             current_resources = None
             if server["type"] == "ssh":
                 current_resources = get_linux_resources_improved(ip)
             elif server["type"] == "rdp":
                 current_resources = get_windows_resources_improved(ip)
-            
+
             if not current_resources:
                 continue
-                
+
             # Инициализируем историю для сервера если нужно
             if ip not in resource_history:
                 resource_history[ip] = []
-            
+
             # Добавляем текущие ресурсы в историю
             resource_entry = {
                 "timestamp": current_time,
@@ -1489,28 +1489,28 @@ def check_resources_automatically():
                 "disk": current_resources.get("disk", 0),
                 "server_name": server_name
             }
-            
+
             resource_history[ip].append(resource_entry)
-            
+
             # Ограничиваем историю последними 10 записями
             if len(resource_history[ip]) > 10:
                 resource_history[ip] = resource_history[ip][-10:]
-            
+
             # Проверяем условия для алертов
             server_alerts = check_resource_alerts(ip, resource_entry)
-            
+
             if server_alerts:
                 alerts_found.extend(server_alerts)
                 print(f"⚠️ Найдены проблемы для {server_name}: {server_alerts}")
-                
+
         except Exception as e:
             print(f"❌ Ошибка при проверке ресурсов {server['name']}: {e}")
             continue
-    
+
     # Отправляем алерты если есть
     if alerts_found:
         send_resource_alerts(alerts_found)
-    
+
     last_resource_check = current_time
     print(f"✅ Автоматическая проверка ресурсов завершена. Найдено проблем: {len(alerts_found)}")
 
@@ -1518,10 +1518,10 @@ def check_resource_alerts(ip, current_resource):
     """Проверяет условия для отправки алертов по ресурсам"""
     alerts = []
     server_name = current_resource["server_name"]
-    
+
     # Получаем историю проверок (исключая текущую)
     history = resource_history.get(ip, [])[:-1]  # Все кроме последней записи
-    
+
     # Проверка Disk (одна проверка)
     disk_usage = current_resource.get("disk", 0)
     if disk_usage >= RESOURCE_ALERT_THRESHOLDS["disk_alert"]:
@@ -1542,7 +1542,7 @@ def check_resource_alerts(ip, current_resource):
                 if alert_key not in resource_alerts_sent or (datetime.now() - resource_alerts_sent[alert_key]).total_seconds() > RESOURCE_ALERT_INTERVAL:
                     alerts.append(f"💻 **Процессор** на {server_name}: {prev_cpu}% → {cpu_usage}% (2 проверки подряд >= {RESOURCE_ALERT_THRESHOLDS['cpu_alert']}%)")
                     resource_alerts_sent[alert_key] = datetime.now()
-                
+
     # Проверка RAM (две проверки подряд)
     ram_usage = current_resource.get("ram", 0)
     if ram_usage >= RESOURCE_ALERT_THRESHOLDS["ram_alert"]:
@@ -1561,14 +1561,14 @@ def send_resource_alerts(alerts):
     """Отправляет алерты по ресурсам"""
     if not alerts:
         return
-    
+
     message = "🚨 *Проблемы с ресурсами серверов*\n\n"
-    
+
     # Группируем алерты по типам ресурсов для лучшей читаемости
     disk_alerts = [a for a in alerts if "💾" in a]
     cpu_alerts = [a for a in alerts if "💻" in a]
     ram_alerts = [a for a in alerts if "🧠" in a]
-    
+
     # Дисковое пространство
     if disk_alerts:
         message += "💾 **Дисковое пространство:**\n"
@@ -1579,7 +1579,7 @@ def send_resource_alerts(alerts):
                 server_info = parts[1]
                 message += f"• {server_info}\n"
         message += "\n"
-    
+
     # Процессор
     if cpu_alerts:
         message += "💻 **Процессор (CPU):**\n"
@@ -1589,7 +1589,7 @@ def send_resource_alerts(alerts):
                 server_info = parts[1]
                 message += f"• {server_info}\n"
         message += "\n"
-    
+
     # Память
     if ram_alerts:
         message += "🧠 **Память (RAM):**\n"
@@ -1599,9 +1599,9 @@ def send_resource_alerts(alerts):
                 server_info = parts[1]
                 message += f"• {server_info}\n"
         message += "\n"
-    
+
     message += f"⏰ Время проверки: {datetime.now().strftime('%H:%M:%S')}"
-    
+
     send_alert(message)
     print(f"✅ Отправлены алерты по ресурсам: {len(alerts)} проблем")
 
@@ -1609,20 +1609,20 @@ def get_resource_history_status():
     """Возвращает статус истории ресурсов для диагностики"""
     status = f"📊 *Статус истории ресурсов*\n\n"
     status += f"• Всего серверов в истории: {len(resource_history)}\n"
-    
+
     total_entries = sum(len(history) for history in resource_history.values())
     status += f"• Всего записей: {total_entries}\n"
-    
+
     # Показываем несколько последних записей
     recent_servers = list(resource_history.keys())[-5:]
     status += f"\n**Последние обновления:**\n"
-    
+
     for ip in recent_servers:
         history = resource_history[ip]
         if history:
             last_entry = history[-1]
             status += f"• {last_entry['server_name']}: CPU {last_entry['cpu']}%, RAM {last_entry['ram']}%, Disk {last_entry['disk']}%\n"
-    
+
     return status
 
 def close_menu(update, context):
@@ -1793,12 +1793,12 @@ def perform_windows_check(context, chat_id, progress_message_id):
             server = result["server"]
             resources = result["resources"]
             status = "🟢" if result["success"] else "🔴"
-            
+
             # ЗАЩИЩЕННЫЙ ДОСТУП К РЕСУРСАМ
             cpu_value = safe_get(resources, 'cpu')
             ram_value = safe_get(resources, 'ram')
             disk_value = safe_get(resources, 'disk')
-            
+
             disk_info = f", Disk {disk_value}%" if disk_value > 0 else ""
             message += f"{status} {server['name']}: CPU {cpu_value}%, RAM {ram_value}%{disk_info}\n"
 
@@ -1809,12 +1809,12 @@ def perform_windows_check(context, chat_id, progress_message_id):
             server = result["server"]
             resources = result["resources"]
             status = "🟢" if result["success"] else "🔴"
-            
+
             # ЗАЩИЩЕННЫЙ ДОСТУП К РЕСУРСАМ
             cpu_value = safe_get(resources, 'cpu')
             ram_value = safe_get(resources, 'ram')
             disk_value = safe_get(resources, 'disk')
-            
+
             disk_info = f", Disk {disk_value}%" if disk_value > 0 else ""
             message += f"{status} {server['name']}: CPU {cpu_value}%, RAM {ram_value}%{disk_info}\n"
 
@@ -1825,12 +1825,12 @@ def perform_windows_check(context, chat_id, progress_message_id):
             server = result["server"]
             resources = result["resources"]
             status = "🟢" if result["success"] else "🔴"
-            
+
             # ЗАЩИЩЕННЫЙ ДОСТУП К РЕСУРСАМ
             cpu_value = safe_get(resources, 'cpu')
             ram_value = safe_get(resources, 'ram')
             disk_value = safe_get(resources, 'disk')
-            
+
             disk_info = f", Disk {disk_value}%" if disk_value > 0 else ""
             message += f"{status} {server['name']}: CPU {cpu_value}%, RAM {ram_value}%{disk_info}\n"
 
@@ -1841,12 +1841,12 @@ def perform_windows_check(context, chat_id, progress_message_id):
             server = result["server"]
             resources = result["resources"]
             status = "🟢" if result["success"] else "🔴"
-            
+
             # ЗАЩИЩЕННЫЙ ДОСТУП К РЕСУРСАМ
             cpu_value = safe_get(resources, 'cpu')
             ram_value = safe_get(resources, 'ram')
             disk_value = safe_get(resources, 'disk')
-            
+
             disk_info = f", Disk {disk_value}%" if disk_value > 0 else ""
             message += f"{status} {server['name']}: CPU {cpu_value}%, RAM {ram_value}%{disk_info}\n"
 
@@ -1996,3 +1996,4 @@ def perform_full_check(context, chat_id, progress_message_id):
             message_id=progress_message_id,
             text=error_msg
         )
+        
