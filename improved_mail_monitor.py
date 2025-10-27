@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Улучшенный мониторинг почтового ящика
+Улучшенный мониторинг почтового ящика - исправленная версия
 """
 
 import os
@@ -8,6 +8,7 @@ import time
 import logging
 import sqlite3
 import re
+import shutil
 from email import message_from_bytes
 import email.policy
 from datetime import datetime
@@ -64,12 +65,46 @@ class BackupProcessor:
             logger.error(f"Ошибка инициализации БД: {e}")
             raise
     
+    def process_new_emails(self):
+        """Обрабатывает новые письма из директории new"""
+        maildir_new = '/root/Maildir/new'
+        maildir_cur = '/root/Maildir/cur'
+        
+        if not os.path.exists(maildir_new):
+            logger.error(f"Директория не существует: {maildir_new}")
+            return 0
+        
+        processed_count = 0
+        for filename in os.listdir(maildir_new):
+            file_path = os.path.join(maildir_new, filename)
+            
+            if os.path.isfile(file_path) and file_path not in self.processed_files:
+                logger.info(f"Обнаружено новое письмо: {filename}")
+                
+                # Обрабатываем письмо
+                result = self.parse_email_file(file_path)
+                
+                if result:
+                    # Перемещаем обработанное письмо в cur
+                    try:
+                        new_path = os.path.join(maildir_cur, filename)
+                        shutil.move(file_path, new_path)
+                        logger.info(f"Письмо перемещено в cur: {filename}")
+                        self.processed_files.add(new_path)
+                    except Exception as e:
+                        logger.error(f"Ошибка перемещения письма: {e}")
+                        self.processed_files.add(file_path)
+                    
+                    processed_count += 1
+                else:
+                    logger.warning(f"Не удалось обработать письмо: {filename}")
+                    self.processed_files.add(file_path)
+        
+        return processed_count
+    
     def parse_email_file(self, file_path):
         """Парсит email файл"""
         try:
-            if file_path in self.processed_files:
-                return None
-                
             logger.info(f"Обработка файла: {file_path}")
             
             with open(file_path, 'rb') as f:
@@ -77,6 +112,11 @@ class BackupProcessor:
             
             subject = msg.get('subject', '')
             logger.info(f"Тема письма: {subject}")
+            
+            # Проверяем, это ли письмо о бэкапе Proxmox
+            if not self.is_proxmox_backup_email(subject):
+                logger.info(f"Пропускаем не-Proxmox письмо: {subject[:50]}...")
+                return None
             
             # Извлекаем информацию из темы
             backup_info = self.parse_subject(subject)
@@ -91,12 +131,21 @@ class BackupProcessor:
             # Сохраняем в базу
             self.save_backup_report(backup_info, subject)
             
-            self.processed_files.add(file_path)
             return backup_info
             
         except Exception as e:
             logger.error(f"Ошибка парсинга файла {file_path}: {e}")
             return None
+    
+    def is_proxmox_backup_email(self, subject):
+        """Проверяет, является ли письмо отчетом о бэкапе Proxmox"""
+        subject_lower = subject.lower()
+        return any(keyword in subject_lower for keyword in [
+            'vzdump backup status',
+            'proxmox backup',
+            'backup successful',
+            'backup failed'
+        ])
     
     def parse_subject(self, subject):
         """Парсит тему письма"""
@@ -210,45 +259,39 @@ class BackupProcessor:
             ))
             
             conn.commit()
-            logger.info(f"Сохранен бэкап: {backup_info['host_name']} - {backup_info['backup_status']}")
+            logger.info(f"✅ Сохранен бэкап: {backup_info['host_name']} - {backup_info['backup_status']}")
             
         except Exception as e:
-            logger.error(f"Ошибка сохранения в БД: {e}")
+            logger.error(f"❌ Ошибка сохранения в БД: {e}")
         finally:
             if 'conn' in locals():
                 conn.close()
 
 def main():
     """Основная функция"""
-    logger.info("Запуск мониторинга почты Proxmox бэкапов...")
+    logger.info("🔄 Запуск исправленного мониторинга почты Proxmox бэкапов...")
     
     try:
         processor = BackupProcessor()
-        maildir_path = '/root/Maildir/cur'
         
-        if not os.path.exists(maildir_path):
-            logger.error(f"Директория не существует: {maildir_path}")
-            return
-        
-        logger.info(f"Мониторинг директории: {maildir_path}")
+        logger.info("📧 Мониторинг директорий: /root/Maildir/new и /root/Maildir/cur")
         
         # Основной цикл
         while True:
             try:
-                # Проверяем новые файлы
-                for filename in os.listdir(maildir_path):
-                    file_path = os.path.join(maildir_path, filename)
-                    if os.path.isfile(file_path) and file_path not in processor.processed_files:
-                        processor.parse_email_file(file_path)
+                # Обрабатываем новые письма
+                processed = processor.process_new_emails()
+                if processed > 0:
+                    logger.info(f"✅ Обработано новых писем: {processed}")
                 
                 time.sleep(30)  # Проверяем каждые 30 секунд
                 
             except Exception as e:
-                logger.error(f"Ошибка в основном цикле: {e}")
+                logger.error(f"❌ Ошибка в основном цикле: {e}")
                 time.sleep(60)
                 
     except Exception as e:
-        logger.error(f"Критическая ошибка: {e}")
+        logger.error(f"💥 Критическая ошибка: {e}")
         raise
 
 if __name__ == "__main__":
