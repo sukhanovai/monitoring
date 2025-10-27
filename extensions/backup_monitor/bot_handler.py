@@ -12,7 +12,8 @@ logger = logging.getLogger(__name__)
 
 class BackupMonitorBot:
     def __init__(self):
-        self.db_path = '/opt/monitoring/data/backups.db'
+        from config import BACKUP_DATABASE_CONFIG
+        self.db_path = BACKUP_DATABASE_CONFIG['backups_db']
 
     def get_today_status(self):
         """Статус бэкапов за сегодня"""
@@ -361,9 +362,9 @@ def backup_callback(update, context):
     query = update.callback_query
     query.answer()
 
-    backup_bot = BackupMonitorBot()
-
     try:
+        backup_bot = BackupMonitorBot()
+
         if query.data == 'backup_today':
             message = format_backup_summary(backup_bot)
             keyboard = create_main_keyboard()
@@ -401,11 +402,13 @@ def backup_callback(update, context):
 
     except Exception as e:
         logger.error(f"Ошибка в callback обработчике: {e}")
+        # Более детальное сообщение об ошибке
+        error_message = f"❌ Ошибка при обработке запроса: {str(e)}"
         query.edit_message_text(
-            "❌ Произошла ошибка при обработке запроса",
+            error_message,
             reply_markup=create_main_keyboard()
         )
-
+        
 def setup_backup_commands(dispatcher):
     """Настройка команд бота для мониторинга бэкапов"""
     from telegram.ext import CommandHandler, CallbackQueryHandler

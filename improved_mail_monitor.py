@@ -13,6 +13,10 @@ from email import message_from_bytes
 import email.policy
 from datetime import datetime
 from email.utils import parsedate_to_datetime
+from config import (
+    PROXMOX_HOSTS, PROXMOX_SUBJECT_PATTERNS, HOSTNAME_PATTERNS, 
+    BACKUP_STATUS_MAP, BACKUP_DATABASE_CONFIG
+)
 
 # Настройка логирования
 logging.basicConfig(
@@ -29,10 +33,10 @@ class BackupProcessor:
     """Обработчик бэкапов"""
     
     def __init__(self):
-        self.db_path = '/opt/monitoring/data/backups.db'
+        self.db_path = BACKUP_DATABASE_CONFIG['backups_db']
         self.processed_files = set()
         self.init_database()
-    
+
     def init_database(self):
         """Инициализация базы данных"""
         try:
