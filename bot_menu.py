@@ -9,7 +9,7 @@ from telegram.ext import CommandHandler, CallbackQueryHandler
 from config import CHAT_IDS, TELEGRAM_TOKEN
 from telegram import Bot
 from extensions.backup_monitor.bot_handler import setup_backup_commands
-from extensions.extension_manager import extension_manager, AVAILABLE_EXTENSIONS
+from extensions.extension_manager import extension_manager #, AVAILABLE_EXTENSIONS
 
 import requests
 import json
@@ -27,12 +27,19 @@ def setup_menu(bot):
             BotCommand("control", "Управление"),
             BotCommand("diagnose_ssh", "Диагностика SSH"),
             BotCommand("silent", "Тихий режим"),
-            BotCommand("extensions", "🛠️ Управление расширениями"), 
-            BotCommand("backup", "📊 Статус бэкапов Proxmox"),
-            BotCommand("backup_search", "🔍 Поиск бэкапов по серверу"),
-            BotCommand("backup_help", "❓ Помощь по бэкапам"),
-            BotCommand("help", "Помощь")
+            BotCommand("extensions", "🛠️ Управление расширениями"),
         ]
+        
+        # Добавляем команды бэкапов только если расширение включено
+        if extension_manager.is_extension_enabled('backup_monitor'):
+            commands.extend([
+                BotCommand("backup", "📊 Статус бэкапов Proxmox"),
+                BotCommand("backup_search", "🔍 Поиск бэкапов по серверу"),
+                BotCommand("backup_help", "❓ Помощь по бэкапам"),
+            ])
+            
+        commands.append(BotCommand("help", "Помощь"))
+        
         bot.set_my_commands(commands)
         print("✅ Меню настроено успешно")
         return True
@@ -55,20 +62,33 @@ def start_command(update, context):
         [InlineKeyboardButton("ℹ️ Статус мониторинга", callback_data='monitor_status')],
         [InlineKeyboardButton("📋 Список серверов", callback_data='servers_list')],
         [InlineKeyboardButton("📊 Проверить ресурсы", callback_data='check_resources')],
-        [InlineKeyboardButton("📊 Бэкапы Proxmox", callback_data='backup_today')],
+    ]
+    
+    # Добавляем кнопку бэкапов только если расширение включено
+    if extension_manager.is_extension_enabled('backup_monitor'):
+        keyboard.append([InlineKeyboardButton("📊 Бэкапы Proxmox", callback_data='backup_today')])
+    
+    keyboard.extend([
         [InlineKeyboardButton("🛠️ Управление расширениями", callback_data='extensions_menu')],
         [InlineKeyboardButton("🎛️ Управление", callback_data='control_panel')],
         [InlineKeyboardButton("🔧 Диагностика", callback_data='diagnose_menu')],
         [InlineKeyboardButton("🔇 Тихий режим", callback_data='silent_status')]
-    ]
+    ])
+    
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     welcome_text = (
         "🤖 *Серверный мониторинг - help*\n\n"
         "✅ Система работает\n\n"
-        "🌐 *Веб-интерфейс:* http://192.168.20.2:5000\n"
-        "_*доступен только в локальной сети_"
     )
+    
+    # Добавляем информацию о веб-интерфейсе только если он включен
+    if extension_manager.is_extension_enabled('web_interface'):
+        welcome_text += "🌐 *Веб-интерфейс:* http://192.168.20.2:5000\n"
+        welcome_text += "_*доступен только в локальной сети_\n"
+    else:
+        welcome_text += "🌐 *Веб-интерфейс:* 🔴 отключен\n"
+    
     update.message.reply_text(welcome_text, parse_mode='Markdown', reply_markup=reply_markup)
 
 def help_command(update, context):
@@ -83,7 +103,7 @@ def help_command(update, context):
         "• `/status` - Статус мониторинга\n"
         "• `/check` - Быстрая проверка серверов\n"
         "• `/servers` - Список всех серверов\n"
-        "• `/control` - Управление мониторингом\n\n"
+        "• `/control` - Управление мониторингом\n"
         "• `/extensions` - Управление расширениями\n\n"
         "*Диагностика:*\n"
         "• `/diagnose_ssh <ip>` - Проверка SSH подключения\n"
@@ -91,12 +111,24 @@ def help_command(update, context):
         "*Отчеты:*\n"
         "• `/report` - Принудительная отправка утреннего отчета\n"
         "• `/stats` - Статистика работы\n\n"
-        "*Расширения:*\n"
-        "*Веб-интерфейс:*\n"
-        "🌐 http://192.168.20.2:5000\n"
-        "_*доступен только в локальной сети_\n\n"
-        "*Используйте кнопки меню для удобного управления*"
     )
+    
+    # Добавляем команды бэкапов только если расширение включено
+    if extension_manager.is_extension_enabled('backup_monitor'):
+        help_text += "*Бэкапы Proxmox:*\n"
+        help_text += "• `/backup` - Статус бэкапов\n"
+        help_text += "• `/backup_search` - Поиск по бэкапам\n"
+        help_text += "• `/backup_help` - Помощь по бэкапам\n\n"
+    
+    help_text += "*Веб-интерфейс:*\n"
+    if extension_manager.is_extension_enabled('web_interface'):
+        help_text += "🌐 http://192.168.20.2:5000\n"
+        help_text += "_*доступен только в локальной сети_\n\n"
+    else:
+        help_text += "🔴 В настоящее время отключен\n\n"
+    
+    help_text += "*Используйте кнопки меню для удобного управления*"
+    
     update.message.reply_text(help_text, parse_mode='Markdown')
 
 # Заглушки для команд (импорты внутри функций чтобы избежать циклических импортов)
@@ -135,16 +167,40 @@ def diagnose_ssh_command(update, context):
 
 def backup_command(update, context):
     """Обработчик команды /backup"""
+    if not extension_manager.is_extension_enabled('backup_monitor'):
+        update.message.reply_text(
+            "❌ Функционал мониторинга бэкапов отключен. "
+            "Включите расширение '📊 Мониторинг бэкапов Proxmox' в разделе управления расширениями.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🛠️ Управление расширениями", callback_data='extensions_menu')]
+            ])
+        )
+        return
+    
     from extensions.backup_monitor.bot_handler import backup_command as backup_cmd
     return backup_cmd(update, context)
 
 def backup_search_command(update, context):
     """Обработчик команды /backup_search"""
+    if not extension_manager.is_extension_enabled('backup_monitor'):
+        update.message.reply_text(
+            "❌ Функционал мониторинга бэкапов отключен. "
+            "Включите расширение '📊 Мониторинг бэкапов Proxmox' в разделе управления расширениями."
+        )
+        return
+    
     from extensions.backup_monitor.bot_handler import backup_search_command as backup_search_cmd
     return backup_search_cmd(update, context)
 
 def backup_help_command(update, context):
     """Обработчик команды /backup_help"""
+    if not extension_manager.is_extension_enabled('backup_monitor'):
+        update.message.reply_text(
+            "❌ Функционал мониторинга бэкапов отключен. "
+            "Включите расширение '📊 Мониторинг бэкапов Proxmox' в разделе управления расширениями."
+        )
+        return
+    
     from extensions.backup_monitor.bot_handler import backup_help_command as backup_help_cmd
     return backup_help_cmd(update, context)
 

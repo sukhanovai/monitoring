@@ -159,5 +159,49 @@ class ExtensionManager:
         """Возвращает список отключенных расширений"""
         return [ext_id for ext_id in AVAILABLE_EXTENSIONS if not self.is_extension_enabled(ext_id)]
 
+    def is_command_available(self, command):
+        """Проверяет, доступна ли команда с учетом включенных расширений"""
+        for ext_id, ext_info in AVAILABLE_EXTENSIONS.items():
+            if command in ext_info.get('commands', []) and not self.is_extension_enabled(ext_id):
+                return False
+        return True
+
+    def is_handler_available(self, handler_pattern):
+        """Проверяет, доступен ли обработчик с учетом включенных расширений"""
+        for ext_id, ext_info in AVAILABLE_EXTENSIONS.items():
+            for pattern in ext_info.get('handlers', []):
+                if handler_pattern.startswith(pattern) and not self.is_extension_enabled(ext_id):
+                    return False
+        return True
+
+    def filter_available_commands(self, commands_list):
+        """Фильтрует список команд, оставляя только доступные"""
+        return [cmd for cmd in commands_list if self.is_command_available(cmd)]
+
+    def should_include_backup_data(self):
+        """Проверяет, нужно ли включать данные о бэкапах в отчеты"""
+        return self.is_extension_enabled('backup_monitor')
+
+    def is_web_interface_enabled(self):
+        """Проверяет, включен ли веб-интерфейс"""
+        return self.is_extension_enabled('web_interface')
+    def restart_required(self):
+        """Проверяет, требуется ли перезагрузка для применения изменений"""
+        # Можно добавить логику для определения необходимости перезагрузки
+        return True
+
+    def get_restart_message(self):
+        """Возвращает сообщение о необходимости перезагрузки"""
+        return (
+            "🔄 *Для применения изменений требуется перезагрузка*\n\n"
+            "Выполните вручную на сервере:\n"
+            "```bash\n"
+            "cd /opt/monitoring\n"
+            "pkill -f main.py\n"
+            "python main.py\n"
+            "```\n\n"
+            "Или используйте команду перезапуска (если настроена)."
+        )
+
 # Глобальный экземпляр менеджера расширений
 extension_manager = ExtensionManager()

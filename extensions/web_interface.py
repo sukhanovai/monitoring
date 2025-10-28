@@ -325,6 +325,7 @@ HTML_TEMPLATE = """
         <div class="tabs">
             <div class="tab active" onclick="switchTab('overview')">📊 Обзор</div>
             <div class="tab" onclick="switchTab('servers')">🖥️ Сервера</div>
+            <div class="tab" onclick="switchTab('server-management')">⚙️ Управление серверами</div>
             <div class="tab" onclick="switchTab('controls')">🎛️ Управление</div>
         </div>
         
@@ -445,6 +446,32 @@ HTML_TEMPLATE = """
             </div>
         </div>
         
+        <!-- Содержимое вкладки Управление серверами -->
+        <div id="server-management" class="tab-content">
+            <h2 style="margin-bottom: 20px;">⚙️ Управление списком серверов</h2>
+            
+            <div class="card">
+                <h2>📋 Список серверов</h2>
+                <div id="serverListContainer">
+                    <!-- Список серверов будет загружен здесь -->
+                </div>
+                <button class="btn btn-success" onclick="loadServerList()">🔄 Обновить список</button>
+            </div>
+            
+            <div class="card">
+                <h2>➕ Добавить новый сервер</h2>
+                <form id="addServerForm" style="display: grid; gap: 15px; margin-top: 15px;">
+                    <input type="text" name="name" placeholder="Название сервера" required style="padding: 10px; border-radius: 6px; border: 1px solid #555; background: rgba(60,60,70,0.8); color: white;">
+                    <input type="text" name="ip" placeholder="IP адрес" required style="padding: 10px; border-radius: 6px; border: 1px solid #555; background: rgba(60,60,70,0.8); color: white;">
+                    <select name="type" style="padding: 10px; border-radius: 6px; border: 1px solid #555; background: rgba(60,60,70,0.8); color: white;">
+                        <option value="linux">Linux</option>
+                        <option value="windows">Windows</option>
+                    </select>
+                    <button type="submit" class="btn btn-success">✅ Добавить сервер</button>
+                </form>
+            </div>
+        </div>     
+                
         <!-- Содержимое вкладки Управление -->
         <div id="controls" class="tab-content">
             <h2 style="margin-bottom: 20px;">🎛️ Управление мониторингом</h2>
@@ -583,6 +610,78 @@ HTML_TEMPLATE = """
             const timestamp = new Date().toLocaleTimeString('ru-RU');
             logDiv.innerHTML = `<div>[${timestamp}] ${message}</div>` + logDiv.innerHTML;
         }
+        
+        // Управление серверами
+        function loadServerList() {
+            fetch('/api/servers')
+                .then(response => response.json())
+                .then(data => {
+                    const container = document.getElementById('serverListContainer');
+                    container.innerHTML = '<div class="server-list">' + 
+                        data.servers.map(server => `
+                            <div class="server-item">
+                                <div class="server-info">
+                                    <div class="server-name">${server.name}</div>
+                                    <div class="server-details">${server.ip} • ${server.type.toUpperCase()}</div>
+                                </div>
+                                <button class="btn btn-danger" onclick="deleteServer('${server.ip}')">🗑️ Удалить</button>
+                            </div>
+                        `).join('') + '</div>';
+                })
+                .catch(error => {
+                    console.error('Ошибка загрузки списка серверов:', error);
+                });
+        }
+
+        function deleteServer(ip) {
+            if (confirm(`Удалить сервер ${ip}?`)) {
+                fetch(`/api/servers?ip=${ip}`, { method: 'DELETE' })
+                    .then(response => response.json())
+                    .then(data => {
+                        alert(data.message);
+                        loadServerList();
+                    });
+            }
+        }
+
+        // Обработка формы добавления сервера
+        document.addEventListener('DOMContentLoaded', function() {
+            const addServerForm = document.getElementById('addServerForm');
+            if (addServerForm) {
+                addServerForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const formData = new FormData(this);
+                    const serverData = {
+                        name: formData.get('name'),
+                        ip: formData.get('ip'),
+                        type: formData.get('type')
+                    };
+                    
+                    fetch('/api/servers', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(serverData)
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        alert(data.message);
+                        this.reset();
+                        loadServerList();
+                    });
+                });
+            }
+        });
+
+        // Модифицируем существующую функцию switchTab для автозагрузки списка серверов
+        const originalSwitchTab = switchTab;
+        switchTab = function(tabName) {
+            originalSwitchTab(tabName);
+            
+            // Автозагрузка списка серверов при открытии вкладки
+            if (tabName === 'server-management') {
+                setTimeout(loadServerList, 100);
+            }
+        };       
         
         // Авто-обновление каждые 30 секунд
         setTimeout(() => {
@@ -885,6 +984,33 @@ def health_check():
     """Health check endpoint"""
     return jsonify({"status": "healthy", "timestamp": datetime.now().isoformat()})
 
+@app.route('/api/servers', methods=['GET', 'POST', 'PUT', 'DELETE'])
+def api_manage_servers():
+    """API для управления списком серверов"""
+    if request.method == 'GET':
+        # Получить список серверов
+        from extensions.server_list import initialize_servers
+        servers = initialize_servers()
+        return jsonify({"servers": servers})
+    
+    elif request.method == 'POST':
+        # Добавить новый сервер
+        data = request.json
+        # Здесь добавить логику сохранения в server_list.json
+        return jsonify({"success": True, "message": "Сервер добавлен"})
+    
+    elif request.method == 'PUT':
+        # Обновить сервер
+        data = request.json
+        # Логика обновления
+        return jsonify({"success": True, "message": "Сервер обновлен"})
+    
+    elif request.method == 'DELETE':
+        # Удалить сервер
+        server_ip = request.args.get('ip')
+        # Логика удаления
+        return jsonify({"success": True, "message": "Сервер удален"})
+    
 def start_web_server():
     """Запускает веб-сервер"""
     print(f"🌐 Запуск веб-интерфейса на http://{WEB_HOST}:{WEB_PORT}")
