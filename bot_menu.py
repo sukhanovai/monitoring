@@ -8,6 +8,9 @@ from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CommandHandler, CallbackQueryHandler
 from config import CHAT_IDS, TELEGRAM_TOKEN
 from telegram import Bot
+from extensions.backup_monitor.bot_handler import setup_backup_commands
+from extensions.extension_manager import extension_manager #, AVAILABLE_EXTENSIONS
+
 import requests
 import json
 
@@ -24,8 +27,19 @@ def setup_menu(bot):
             BotCommand("control", "Управление"),
             BotCommand("diagnose_ssh", "Диагностика SSH"),
             BotCommand("silent", "Тихий режим"),
-            BotCommand("help", "Помощь")
+            BotCommand("extensions", "🛠️ Управление расширениями"),
         ]
+        
+        # Добавляем команды бэкапов только если расширение включено
+        if extension_manager.is_extension_enabled('backup_monitor'):
+            commands.extend([
+                BotCommand("backup", "📊 Статус бэкапов Proxmox"),
+                BotCommand("backup_search", "🔍 Поиск бэкапов по серверу"),
+                BotCommand("backup_help", "❓ Помощь по бэкапам"),
+            ])
+            
+        commands.append(BotCommand("help", "Помощь"))
+        
         bot.set_my_commands(commands)
         print("✅ Меню настроено успешно")
         return True
@@ -48,18 +62,33 @@ def start_command(update, context):
         [InlineKeyboardButton("ℹ️ Статус мониторинга", callback_data='monitor_status')],
         [InlineKeyboardButton("📋 Список серверов", callback_data='servers_list')],
         [InlineKeyboardButton("📊 Проверить ресурсы", callback_data='check_resources')],
+    ]
+    
+    # Добавляем кнопку бэкапов только если расширение включено
+    if extension_manager.is_extension_enabled('backup_monitor'):
+        keyboard.append([InlineKeyboardButton("📊 Бэкапы Proxmox", callback_data='backup_today')])
+    
+    keyboard.extend([
+        [InlineKeyboardButton("🛠️ Управление расширениями", callback_data='extensions_menu')],
         [InlineKeyboardButton("🎛️ Управление", callback_data='control_panel')],
         [InlineKeyboardButton("🔧 Диагностика", callback_data='diagnose_menu')],
         [InlineKeyboardButton("🔇 Тихий режим", callback_data='silent_status')]
-    ]
+    ])
+    
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     welcome_text = (
         "🤖 *Серверный мониторинг - help*\n\n"
         "✅ Система работает\n\n"
-        "🌐 *Веб-интерфейс:* http://192.168.20.2:5000\n"
-        "_*доступен только в локальной сети_"
     )
+    
+    # Добавляем информацию о веб-интерфейсе только если он включен
+    if extension_manager.is_extension_enabled('web_interface'):
+        welcome_text += "🌐 *Веб-интерфейс:* http://192.168.20.2:5000\n"
+        welcome_text += "_*доступен только в локальной сети_\n"
+    else:
+        welcome_text += "🌐 *Веб-интерфейс:* 🔴 отключен\n"
+    
     update.message.reply_text(welcome_text, parse_mode='Markdown', reply_markup=reply_markup)
 
 def help_command(update, context):
@@ -74,18 +103,32 @@ def help_command(update, context):
         "• `/status` - Статус мониторинга\n"
         "• `/check` - Быстрая проверка серверов\n"
         "• `/servers` - Список всех серверов\n"
-        "• `/control` - Управление мониторингом\n\n"
+        "• `/control` - Управление мониторингом\n"
+        "• `/extensions` - Управление расширениями\n\n"
         "*Диагностика:*\n"
         "• `/diagnose_ssh <ip>` - Проверка SSH подключения\n"
         "• `/silent` - Статус тихого режима\n\n"
         "*Отчеты:*\n"
         "• `/report` - Принудительная отправка утреннего отчета\n"
         "• `/stats` - Статистика работы\n\n"
-        "*Веб-интерфейс:*\n"
-        "🌐 http://192.168.20.2:5000\n"
-        "_*доступен только в локальной сети_\n\n"
-        "*Используйте кнопки меню для удобного управления*"
     )
+    
+    # Добавляем команды бэкапов только если расширение включено
+    if extension_manager.is_extension_enabled('backup_monitor'):
+        help_text += "*Бэкапы Proxmox:*\n"
+        help_text += "• `/backup` - Статус бэкапов\n"
+        help_text += "• `/backup_search` - Поиск по бэкапам\n"
+        help_text += "• `/backup_help` - Помощь по бэкапам\n\n"
+    
+    help_text += "*Веб-интерфейс:*\n"
+    if extension_manager.is_extension_enabled('web_interface'):
+        help_text += "🌐 http://192.168.20.2:5000\n"
+        help_text += "_*доступен только в локальной сети_\n\n"
+    else:
+        help_text += "🔴 В настоящее время отключен\n\n"
+    
+    help_text += "*Используйте кнопки меню для удобного управления*"
+    
     update.message.reply_text(help_text, parse_mode='Markdown')
 
 # Заглушки для команд (импорты внутри функций чтобы избежать циклических импортов)
@@ -122,6 +165,45 @@ def diagnose_ssh_command(update, context):
     from extensions.single_check import diagnose_ssh_command as diagnose_cmd
     return diagnose_cmd(update, context)
 
+def backup_command(update, context):
+    """Обработчик команды /backup"""
+    if not extension_manager.is_extension_enabled('backup_monitor'):
+        update.message.reply_text(
+            "❌ Функционал мониторинга бэкапов отключен. "
+            "Включите расширение '📊 Мониторинг бэкапов Proxmox' в разделе управления расширениями.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🛠️ Управление расширениями", callback_data='extensions_menu')]
+            ])
+        )
+        return
+    
+    from extensions.backup_monitor.bot_handler import backup_command as backup_cmd
+    return backup_cmd(update, context)
+
+def backup_search_command(update, context):
+    """Обработчик команды /backup_search"""
+    if not extension_manager.is_extension_enabled('backup_monitor'):
+        update.message.reply_text(
+            "❌ Функционал мониторинга бэкапов отключен. "
+            "Включите расширение '📊 Мониторинг бэкапов Proxmox' в разделе управления расширениями."
+        )
+        return
+    
+    from extensions.backup_monitor.bot_handler import backup_search_command as backup_search_cmd
+    return backup_search_cmd(update, context)
+
+def backup_help_command(update, context):
+    """Обработчик команды /backup_help"""
+    if not extension_manager.is_extension_enabled('backup_monitor'):
+        update.message.reply_text(
+            "❌ Функционал мониторинга бэкапов отключен. "
+            "Включите расширение '📊 Мониторинг бэкапов Proxmox' в разделе управления расширениями."
+        )
+        return
+    
+    from extensions.backup_monitor.bot_handler import backup_help_command as backup_help_cmd
+    return backup_help_cmd(update, context)
+
 def fix_monitor_command(update, context):
     """Команда для исправления статуса сервера мониторинга"""
     if not check_access(update.effective_chat.id):
@@ -153,6 +235,129 @@ def fix_monitor_command(update, context):
         import traceback
         print(f"Ошибка в fix_monitor_command: {traceback.format_exc()}")
 
+def extensions_command(update, context):
+    """Обработчик команды /extensions"""
+    if not check_access(update.effective_chat.id):
+        update.message.reply_text("⛔ У вас нет прав для использования этого бота")
+        return
+    
+    show_extensions_menu(update, context)
+
+def show_extensions_menu(update, context):
+    """Показывает меню управления расширениями"""
+    from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+    
+    query = update.callback_query
+    chat_id = query.message.chat_id if query else update.message.chat_id
+    
+    extensions_status = extension_manager.get_extensions_status()
+    
+    message = "🛠️ *Управление расширениями*\n\n"
+    message += "📊 *Статус расширений:*\n\n"
+    
+    # Создаем клавиатуру
+    keyboard = []
+    
+    for ext_id, status_info in extensions_status.items():
+        enabled = status_info['enabled']
+        ext_info = status_info['info']
+        
+        status_icon = "🟢" if enabled else "🔴"
+        toggle_text = "🔴 Выключить" if enabled else "🟢 Включить"
+        
+        message += f"{status_icon} *{ext_info['name']}*\n"
+        message += f"   {ext_info['description']}\n"
+        message += f"   Статус: {'Включено' if enabled else 'Отключено'}\n\n"
+        
+        # Добавляем кнопку переключения для каждого расширения
+        keyboard.append([
+            InlineKeyboardButton(
+                f"{toggle_text} {ext_info['name']}", 
+                callback_data=f'ext_toggle_{ext_id}'
+            )
+        ])
+    
+    # Добавляем кнопки управления
+    keyboard.extend([
+        [InlineKeyboardButton("🔄 Обновить статус", callback_data='extensions_refresh')],
+        [InlineKeyboardButton("📊 Включить все", callback_data='ext_enable_all')],
+        [InlineKeyboardButton("📋 Отключить все", callback_data='ext_disable_all')],
+        [InlineKeyboardButton("↩️ Назад в главное меню", callback_data='monitor_status')]
+    ])
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    if query:
+        query.edit_message_text(
+            text=message,
+            parse_mode='Markdown',
+            reply_markup=reply_markup
+        )
+    else:
+        update.message.reply_text(
+            text=message,
+            parse_mode='Markdown',
+            reply_markup=reply_markup
+        )
+
+def extensions_callback_handler(update, context):
+    """Обработчик callback'ов для управления расширениями"""
+    query = update.callback_query
+    query.answer()
+    
+    data = query.data
+    
+    if data == 'extensions_refresh':
+        show_extensions_menu(update, context)
+    
+    elif data == 'ext_enable_all':
+        enable_all_extensions(update, context)
+    
+    elif data == 'ext_disable_all':
+        disable_all_extensions(update, context)
+    
+    elif data.startswith('ext_toggle_'):
+        extension_id = data.replace('ext_toggle_', '')
+        toggle_extension(update, context, extension_id)
+
+def toggle_extension(update, context, extension_id):
+    """Переключает расширение"""
+    query = update.callback_query
+    
+    success, message = extension_manager.toggle_extension(extension_id)
+    
+    if success:
+        query.answer(message)
+        show_extensions_menu(update, context)
+    else:
+        query.answer(message, show_alert=True)
+
+def enable_all_extensions(update, context):
+    """Включает все расширения"""
+    query = update.callback_query
+    
+    enabled_count = 0
+    for ext_id in AVAILABLE_EXTENSIONS:
+        success, _ = extension_manager.enable_extension(ext_id)
+        if success:
+            enabled_count += 1
+    
+    query.answer(f"✅ Включено {enabled_count}/{len(AVAILABLE_EXTENSIONS)} расширений")
+    show_extensions_menu(update, context)
+
+def disable_all_extensions(update, context):
+    """Отключает все расширения"""
+    query = update.callback_query
+    
+    disabled_count = 0
+    for ext_id in AVAILABLE_EXTENSIONS:
+        success, _ = extension_manager.disable_extension(ext_id)
+        if success:
+            disabled_count += 1
+    
+    query.answer(f"✅ Отключено {disabled_count}/{len(AVAILABLE_EXTENSIONS)} расширений")
+    show_extensions_menu(update, context)
+
 def get_handlers():
     """Возвращает обработчики команд для бота"""
     return [
@@ -166,7 +371,11 @@ def get_handlers():
         CommandHandler("stats", stats_command),
         CommandHandler("control", control_command),
         CommandHandler("diagnose_ssh", diagnose_ssh_command),
+        CommandHandler("extensions", extensions_command),
         CommandHandler("fix_monitor", fix_monitor_command),
+        CommandHandler("backup", backup_command),
+        CommandHandler("backup_search", backup_search_command),
+        CommandHandler("backup_help", backup_help_command),
     ]
 
 def lazy_handler(pattern):
@@ -231,6 +440,32 @@ def lazy_handler(pattern):
             from monitor_core import resource_history_command as handler
         elif pattern == 'debug_report':
             from monitor_core import debug_morning_report as handler
+        elif pattern == 'backup_today':
+            from extensions.backup_monitor.bot_handler import backup_callback as handler
+            return handler(update, context)
+        elif pattern == 'backup_24h':
+            from extensions.backup_monitor.bot_handler import backup_callback as handler
+            return handler(update, context)
+        elif pattern == 'backup_failed':
+            from extensions.backup_monitor.bot_handler import backup_callback as handler
+            return handler(update, context)
+        elif pattern == 'backup_hosts':
+            from extensions.backup_monitor.bot_handler import backup_callback as handler
+            return handler(update, context)
+        elif pattern == 'backup_refresh':
+            from extensions.backup_monitor.bot_handler import backup_callback as handler
+            return handler(update, context)
+        elif pattern.startswith('backup_host_'):
+            from extensions.backup_monitor.bot_handler import backup_callback as handler
+            return handler(update, context)
+        elif pattern == 'extensions_menu':
+            from bot_menu import show_extensions_menu as handler
+        elif pattern == 'extensions_refresh':
+            from bot_menu import show_extensions_menu as handler
+        elif pattern == 'ext_enable_all':
+            from bot_menu import enable_all_extensions as handler
+        elif pattern == 'ext_disable_all':
+            from bot_menu import disable_all_extensions as handler
         else:
             def default_handler(update, context):
                 query = update.callback_query
@@ -278,4 +513,19 @@ def get_callback_handlers():
         CallbackQueryHandler(lambda u, c: lazy_handler('check_cpu')(u, c), pattern='^check_cpu$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('check_ram')(u, c), pattern='^check_ram$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('check_disk')(u, c), pattern='^check_disk$'),
+
+        # ОБРАБОТЧИКИ ДЛЯ БЭКАПОВ
+        CallbackQueryHandler(lambda u, c: lazy_handler('backup_today')(u, c), pattern='^backup_today$'),
+        CallbackQueryHandler(lambda u, c: lazy_handler('backup_24h')(u, c), pattern='^backup_24h$'),
+        CallbackQueryHandler(lambda u, c: lazy_handler('backup_failed')(u, c), pattern='^backup_failed$'),
+        CallbackQueryHandler(lambda u, c: lazy_handler('backup_hosts')(u, c), pattern='^backup_hosts$'),
+        CallbackQueryHandler(lambda u, c: lazy_handler('backup_refresh')(u, c), pattern='^backup_refresh$'),
+        CallbackQueryHandler(lambda u, c: lazy_handler('backup_host_')(u, c), pattern='^backup_host_'),
+        
+        # Обработчики расширений
+        CallbackQueryHandler(lambda u, c: lazy_handler('extensions_menu')(u, c), pattern='^extensions_menu$'),
+        CallbackQueryHandler(lambda u, c: lazy_handler('extensions_refresh')(u, c), pattern='^extensions_refresh$'),
+        CallbackQueryHandler(lambda u, c: lazy_handler('ext_enable_all')(u, c), pattern='^ext_enable_all$'),
+        CallbackQueryHandler(lambda u, c: lazy_handler('ext_disable_all')(u, c), pattern='^ext_disable_all$'),
+        CallbackQueryHandler(lambda u, c: extensions_callback_handler(u, c), pattern='^ext_toggle_'),
     ]

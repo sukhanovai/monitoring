@@ -66,6 +66,9 @@ def main():
         # Блокируем основной поток
         updater.idle()
         
+        # Инициализация мониторинга бэкапов
+        setup_backup_commands(dispatcher)
+
     except Exception as e:
         logger.error(f"💥 Ошибка: {e}")
         import traceback
