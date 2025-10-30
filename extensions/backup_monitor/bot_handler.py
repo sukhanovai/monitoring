@@ -365,15 +365,44 @@ def format_database_backups_report(backup_bot, hours=24):
     
     return message
 
-def create_main_keyboard():
-    """Создает основную клавиатуру для бэкапов"""
+def create_main_backup_keyboard():
+    """Создает главное меню бэкапов"""
+    from extensions.extension_manager import extension_manager
+    
+    keyboard = []
+    
+    # Кнопка Proxmox бэкапов (всегда доступна)
+    keyboard.append([InlineKeyboardButton("🖥️ Бэкапы Proxmox", callback_data='backup_proxmox')])
+    
+    # Кнопка бэкапов БД (только если расширение включено)
+    if extension_manager.is_extension_enabled('database_backup_monitor'):
+        keyboard.append([InlineKeyboardButton("🗃️ Бэкапы БД", callback_data='backup_databases')])
+    
+    # Общие кнопки
+    keyboard.extend([
+        [InlineKeyboardButton("🔄 Обновить", callback_data='backup_refresh'),
+         InlineKeyboardButton("📋 Помощь", callback_data='backup_help')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='monitor_status')]
+    ])
+    
+    return InlineKeyboardMarkup(keyboard)
+
+def create_proxmox_backup_keyboard():
+    """Создает меню бэкапов Proxmox"""
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("📊 Сегодня", callback_data='backup_today'),
          InlineKeyboardButton("📅 24 часа", callback_data='backup_24h')],
         [InlineKeyboardButton("❌ Ошибки", callback_data='backup_failed'),
          InlineKeyboardButton("📋 Все серверы", callback_data='backup_hosts')],
-        [InlineKeyboardButton("🗃️ Базы данных", callback_data='db_backups_24h'),
-         InlineKeyboardButton("🔄 Обновить", callback_data='backup_refresh')]
+        [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')]
+    ])
+
+def create_database_backup_keyboard():
+    """Создает меню бэкапов баз данных"""
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("🗃️ За 24ч", callback_data='db_backups_24h'),
+         InlineKeyboardButton("🗃️ За 48ч", callback_data='db_backups_48h')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')]
     ])
 
 def create_hosts_keyboard(backup_bot):
@@ -414,14 +443,16 @@ def create_database_backups_keyboard():
     ])
 
 def backup_command(update, context):
-    """Обработчик команды /backup"""
-    backup_bot = BackupMonitorBot()
-    message = format_backup_summary(backup_bot)
+    """Обработчик команды /backup - главное меню бэкапов"""
+    message = (
+        "📊 *Главное меню бэкапов*\n\n"
+        "Выберите тип бэкапов для просмотра:"
+    )
 
     update.message.reply_text(
         message,
         parse_mode='Markdown',
-        reply_markup=create_main_keyboard()
+        reply_markup=create_main_backup_keyboard()
     )
 
 def backup_search_command(update, context):
@@ -475,89 +506,86 @@ def backup_callback(update, context):
     query = update.callback_query
     query.answer()
 
-    import logging
-    logger = logging.getLogger(__name__)
-    logger.info(f"🔔 CALLBACK RECEIVED: {query.data}")
-
     try:
         backup_bot = BackupMonitorBot()
-        current_message = query.message.text
-        current_keyboard = query.message.reply_markup
 
-        if query.data == 'backup_today':
+        if query.data == 'backup_main':
+            message = "📊 *Главное меню бэкапов*\n\nВыберите тип бэкапов для просмотра:"
+            keyboard = create_main_backup_keyboard()
+
+        elif query.data == 'backup_proxmox':
+            message = "🖥️ *Бэкапы Proxmox*\n\nВыберите период для просмотра:"
+            keyboard = create_proxmox_backup_keyboard()
+
+        elif query.data == 'backup_databases':
+            from extensions.extension_manager import extension_manager
+            if extension_manager.is_extension_enabled('database_backup_monitor'):
+                message = "🗃️ *Бэкапы баз данных*\n\nВыберите период для просмотра:"
+                keyboard = create_database_backup_keyboard()
+            else:
+                message = "❌ *Мониторинг бэкапов БД отключен*\n\nВключите расширение '🗃️ Мониторинг бэкапов БД' в управлении расширениями."
+                keyboard = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("🛠️ Управление расширениями", callback_data='extensions_menu')],
+                    [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')]
+                ])
+
+        elif query.data == 'backup_today':
             message = format_backup_summary(backup_bot)
-            keyboard = create_main_keyboard()
+            keyboard = create_proxmox_backup_keyboard()
 
         elif query.data == 'backup_24h':
             message = format_recent_backups(backup_bot, 24)
-            keyboard = create_back_keyboard()
+            keyboard = create_proxmox_backup_keyboard()
 
         elif query.data == 'backup_failed':
             message = format_failed_backups(backup_bot, 1)
-            keyboard = create_back_keyboard()
+            keyboard = create_proxmox_backup_keyboard()
 
         elif query.data == 'backup_hosts':
             message = format_hosts_list(backup_bot)
             keyboard = create_hosts_keyboard(backup_bot)
 
-        elif query.data == 'backup_refresh':
-            message = format_backup_summary(backup_bot)
-            keyboard = create_main_keyboard()
-
-        elif query.data.startswith('backup_host_'):
-            host_name = query.data.replace('backup_host_', '')
-            message = format_host_status(backup_bot, host_name)
-            keyboard = create_back_keyboard()
-
-        elif query.data == 'db_backups_today':
-            message = format_database_backups_report(backup_bot, 24)
-            keyboard = create_database_backups_keyboard()
-
         elif query.data == 'db_backups_24h':
-            message = format_database_backups_report(backup_bot, 24)
-            keyboard = create_database_backups_keyboard()
+            from extensions.extension_manager import extension_manager
+            if extension_manager.is_extension_enabled('database_backup_monitor'):
+                message = format_database_backups_report(backup_bot, 24)
+                keyboard = create_database_backup_keyboard()
+            else:
+                message = "❌ *Мониторинг бэкапов БД отключен*"
+                keyboard = create_main_backup_keyboard()
 
         elif query.data == 'db_backups_48h':
-            message = format_database_backups_report(backup_bot, 48)
-            keyboard = create_database_backups_keyboard()
+            from extensions.extension_manager import extension_manager
+            if extension_manager.is_extension_enabled('database_backup_monitor'):
+                message = format_database_backups_report(backup_bot, 48)
+                keyboard = create_database_backup_keyboard()
+            else:
+                message = "❌ *Мониторинг бэкапов БД отключен*"
+                keyboard = create_main_backup_keyboard()
+
+        elif query.data == 'backup_help':
+            message = backup_help_text()
+            keyboard = create_main_backup_keyboard()
+
+        elif query.data == 'backup_refresh':
+            message = "📊 *Главное меню бэкапов*\n\nВыберите тип бэкапов для просмотра:"
+            keyboard = create_main_backup_keyboard()
 
         else:
             message = "❌ Неизвестная команда"
-            keyboard = create_main_keyboard()
+            keyboard = create_main_backup_keyboard()
 
-        # Проверяем, изменилось ли сообщение или клавиатура
-        message_changed = (message != current_message)
-        keyboard_changed = (keyboard.to_json() != current_keyboard.to_json() if current_keyboard else True)
-
-        if message_changed or keyboard_changed:
-            query.edit_message_text(
-                text=message,
-                parse_mode='Markdown',
-                reply_markup=keyboard
-            )
-        else:
-            # Если ничего не изменилось, просто отвечаем на callback без изменений
-            query.answer("✅ Данные актуальны")
+        query.edit_message_text(
+            text=message,
+            parse_mode='Markdown',
+            reply_markup=keyboard
+        )
 
     except Exception as e:
-        logger.error(f"Ошибка в callback обработчике: {e}")
+        error_msg = f"❌ Ошибка при обработке запроса: {e}"
+        logger.error(error_msg)
+        query.edit_message_text(error_msg)
         
-        # Проверяем, не является ли ошибка "message not modified"
-        if "Message is not modified" in str(e):
-            query.answer("✅ Данные актуальны")
-        else:
-            error_message = f"❌ Ошибка при обработке запроса: {str(e)}"
-            try:
-                query.edit_message_text(
-                    error_message,
-                    reply_markup=create_main_keyboard()
-                )
-            except Exception as edit_error:
-                # Если не удалось отредактировать сообщение, просто логируем
-                logger.error(f"Не удалось отредактировать сообщение: {edit_error}")
-                query.answer("❌ Произошла ошибка")
-
-
 def setup_backup_commands(dispatcher):
     """Настройка команд бота для мониторинга бэкапов"""
     from telegram.ext import CommandHandler, CallbackQueryHandler

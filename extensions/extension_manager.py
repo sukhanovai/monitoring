@@ -18,6 +18,13 @@ AVAILABLE_EXTENSIONS = {
         'handlers': ['backup_'],
         'enabled_by_default': True
     },
+    'database_backup_monitor': {
+        'name': '🗃️ Мониторинг бэкапов БД',
+        'description': 'Отслеживание статуса бэкапов баз данных',
+        'commands': ['/db_backups'],
+        'handlers': ['db_backups_'],
+        'enabled_by_default': True
+    },
     'resource_monitor': {
         'name': '💻 Мониторинг ресурсов',
         'description': 'Проверка загрузки CPU, RAM и дискового пространства',

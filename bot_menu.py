@@ -29,14 +29,17 @@ def setup_menu(bot):
             BotCommand("extensions", "🛠️ Управление расширениями"),
         ]
         
-        # Добавляем команды бэкапов только если расширение включено
+        # Добавляем команды бэкапов
         if extension_manager.is_extension_enabled('backup_monitor'):
             commands.extend([
-                BotCommand("backup", "📊 Статус бэкапов Proxmox"),
-                BotCommand("backup_search", "🔍 Поиск бэкапов по серверу"),
-                BotCommand("db_backups", "🗃️ Бэкапы баз данных"),
+                BotCommand("backup", "📊 Бэкапы"),
+                BotCommand("backup_search", "🔍 Поиск бэкапов"),
                 BotCommand("backup_help", "❓ Помощь по бэкапам"),
             ])
+        
+        # Добавляем команды бэкапов БД
+        if extension_manager.is_extension_enabled('database_backup_monitor'):
+            commands.append(BotCommand("db_backups", "🗃️ Бэкапы БД"))
             
         commands.append(BotCommand("help", "Помощь"))
         
@@ -46,7 +49,7 @@ def setup_menu(bot):
     except Exception as e:
         print(f"❌ Ошибка настройки меню: {e}")
         return False
-    
+        
 def check_access(chat_id):
     """Проверка доступа к боту"""
     return str(chat_id) in CHAT_IDS
@@ -464,6 +467,15 @@ def lazy_handler(pattern):
         elif pattern.startswith('backup_host_'):
             from extensions.backup_monitor.bot_handler import backup_callback as handler
             return handler(update, context)
+        elif pattern == 'backup_main':
+            from extensions.backup_monitor.bot_handler import backup_callback as handler
+            return handler(update, context)
+        elif pattern == 'backup_proxmox':
+            from extensions.backup_monitor.bot_handler import backup_callback as handler
+            return handler(update, context)
+        elif pattern == 'backup_databases':
+            from extensions.backup_monitor.bot_handler import backup_callback as handler
+            return handler(update, context)
         elif pattern == 'extensions_menu':
             from bot_menu import show_extensions_menu as handler
         elif pattern == 'extensions_refresh':
@@ -530,7 +542,10 @@ def get_callback_handlers():
         CallbackQueryHandler(lambda u, c: lazy_handler('db_backups_24h')(u, c), pattern='^db_backups_24h$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('db_backups_48h')(u, c), pattern='^db_backups_48h$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('db_backups_today')(u, c), pattern='^db_backups_today$'),
-                
+        CallbackQueryHandler(lambda u, c: lazy_handler('backup_main')(u, c), pattern='^backup_main$'),
+        CallbackQueryHandler(lambda u, c: lazy_handler('backup_proxmox')(u, c), pattern='^backup_proxmox$'),
+        CallbackQueryHandler(lambda u, c: lazy_handler('backup_databases')(u, c), pattern='^backup_databases$'),                
+
         # Обработчики расширений
         CallbackQueryHandler(lambda u, c: lazy_handler('extensions_menu')(u, c), pattern='^extensions_menu$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('extensions_refresh')(u, c), pattern='^extensions_refresh$'),
