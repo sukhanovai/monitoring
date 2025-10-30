@@ -372,7 +372,8 @@ def create_main_keyboard():
          InlineKeyboardButton("📅 24 часа", callback_data='backup_24h')],
         [InlineKeyboardButton("❌ Ошибки", callback_data='backup_failed'),
          InlineKeyboardButton("📋 Все серверы", callback_data='backup_hosts')],
-        [InlineKeyboardButton("🔄 Обновить", callback_data='backup_refresh')]
+        [InlineKeyboardButton("🗃️ Базы данных", callback_data='db_backups_today'),
+         InlineKeyboardButton("🔄 Обновить", callback_data='backup_refresh')]
     ])
 
 def create_hosts_keyboard(backup_bot):
@@ -401,6 +402,15 @@ def create_back_keyboard():
     """Создает клавиатуру с кнопкой возврата"""
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("↩️ Назад к обзору", callback_data='backup_today')]
+    ])
+
+def create_database_backups_keyboard():
+    """Создает клавиатуру для бэкапов баз данных"""
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("🗃️ За 24ч", callback_data='db_backups_24h'),
+         InlineKeyboardButton("🗃️ За 48ч", callback_data='db_backups_48h')],
+        [InlineKeyboardButton("📊 Proxmox", callback_data='backup_today'),
+         InlineKeyboardButton("↩️ Назад", callback_data='backup_today')]
     ])
 
 def backup_command(update, context):
@@ -437,6 +447,7 @@ def backup_help_command(update, context):
 
 */backup* - Основная сводка за сегодня
 */backup_search [host]* - Поиск по конкретному серверу
+*/db_backups [hours]* - Бэкапы баз данных (по умолчанию 24ч)
 */backup_help* - Эта справка
 
 *Кнопки управления:*
@@ -444,11 +455,13 @@ def backup_help_command(update, context):
 📅 *24 часа* - История за последние сутки
 ❌ *Ошибки* - Список неудачных бэкапов
 📋 *Все серверы* - Выбор конкретного сервера
+🗃️ *Базы данных* - Бэкапы СУБД и приложений
 🔄 *Обновить* - Обновить данные
 
 *Примеры:*
 `/backup` - общая сводка
 `/backup_search pve13` - статус pve13
+`/db_backups 48` - бэкапы БД за 48 часов
 """
 
     update.message.reply_text(
@@ -491,6 +504,18 @@ def backup_callback(update, context):
             host_name = query.data.replace('backup_host_', '')
             message = format_host_status(backup_bot, host_name)
             keyboard = create_back_keyboard()
+
+        elif query.data == 'db_backups_today':
+            message = format_database_backups_report(backup_bot, 24)
+            keyboard = create_database_backups_keyboard()
+
+        elif query.data == 'db_backups_24h':
+            message = format_database_backups_report(backup_bot, 24)
+            keyboard = create_database_backups_keyboard()
+
+        elif query.data == 'db_backups_48h':
+            message = format_database_backups_report(backup_bot, 48)
+            keyboard = create_database_backups_keyboard()
 
         else:
             message = "❌ Неизвестная команда"
@@ -536,12 +561,12 @@ def setup_backup_commands(dispatcher):
     # Регистрация обработчиков
     dispatcher.add_handler(CommandHandler("backup", backup_command))
     dispatcher.add_handler(CommandHandler("backup_search", backup_search_command))
+    dispatcher.add_handler(CommandHandler("db_backups", database_backups_command))
     dispatcher.add_handler(CommandHandler("backup_help", backup_help_command))
     dispatcher.add_handler(CallbackQueryHandler(backup_callback, pattern='^backup_'))
-    dispatcher.add_handler(CommandHandler("db_backups", database_backups_command))
+    dispatcher.add_handler(CallbackQueryHandler(backup_callback, pattern='^db_backups_'))
 
     logger.info("Команды мониторинга бэкапов зарегистрированы")
-
 def get_backup_history(self, days=30, host_name=None):
     """Получает историю бэкапов за период"""
     conn = sqlite3.connect(self.db_path)
@@ -620,3 +645,4 @@ def database_backups_command(update, context):
         parse_mode='Markdown',
         reply_markup=keyboard
     )
+

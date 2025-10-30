@@ -35,6 +35,7 @@ def setup_menu(bot):
             commands.extend([
                 BotCommand("backup", "📊 Статус бэкапов Proxmox"),
                 BotCommand("backup_search", "🔍 Поиск бэкапов по серверу"),
+                BotCommand("db_backups", "🗃️ Бэкапы баз данных"),  # НОВАЯ КОМАНДА
                 BotCommand("backup_help", "❓ Помощь по бэкапам"),
             ])
             
@@ -46,7 +47,7 @@ def setup_menu(bot):
     except Exception as e:
         print(f"❌ Ошибка настройки меню: {e}")
         return False
-
+    
 def check_access(chat_id):
     """Проверка доступа к боту"""
     return str(chat_id) in CHAT_IDS
@@ -446,6 +447,12 @@ def lazy_handler(pattern):
         elif pattern == 'backup_24h':
             from extensions.backup_monitor.bot_handler import backup_callback as handler
             return handler(update, context)
+        elif pattern == 'db_backups_24h':
+            from extensions.backup_monitor.bot_handler import backup_callback as handler
+            return handler(update, context)
+        elif pattern == 'db_backups_48h':
+            from extensions.backup_monitor.bot_handler import backup_callback as handler
+            return handler(update, context)
         elif pattern == 'backup_failed':
             from extensions.backup_monitor.bot_handler import backup_callback as handler
             return handler(update, context)
@@ -521,6 +528,9 @@ def get_callback_handlers():
         CallbackQueryHandler(lambda u, c: lazy_handler('backup_hosts')(u, c), pattern='^backup_hosts$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('backup_refresh')(u, c), pattern='^backup_refresh$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('backup_host_')(u, c), pattern='^backup_host_'),
+        CallbackQueryHandler(lambda u, c: lazy_handler('db_backups_today')(u, c), pattern='^db_backups_today$'),
+        CallbackQueryHandler(lambda u, c: lazy_handler('db_backups_24h')(u, c), pattern='^db_backups_24h$'),
+        CallbackQueryHandler(lambda u, c: lazy_handler('db_backups_48h')(u, c), pattern='^db_backups_48h$'),
         
         # Обработчики расширений
         CallbackQueryHandler(lambda u, c: lazy_handler('extensions_menu')(u, c), pattern='^extensions_menu$'),
