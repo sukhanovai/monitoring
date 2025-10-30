@@ -34,7 +34,7 @@ def setup_menu(bot):
             commands.extend([
                 BotCommand("backup", "📊 Статус бэкапов Proxmox"),
                 BotCommand("backup_search", "🔍 Поиск бэкапов по серверу"),
-                BotCommand("db_backups", "🗃️ Бэкапы баз данных"),  # НОВАЯ КОМАНДА
+                BotCommand("db_backups", "🗃️ Бэкапы баз данных"),
                 BotCommand("backup_help", "❓ Помощь по бэкапам"),
             ])
             
