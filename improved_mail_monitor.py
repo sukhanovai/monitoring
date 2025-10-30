@@ -15,7 +15,8 @@ from datetime import datetime
 from email.utils import parsedate_to_datetime
 from config import (
     PROXMOX_HOSTS, PROXMOX_SUBJECT_PATTERNS, HOSTNAME_PATTERNS, 
-    BACKUP_STATUS_MAP, BACKUP_DATABASE_CONFIG
+    BACKUP_STATUS_MAP, BACKUP_DATABASE_CONFIG, DATABASE_BACKUP_PATTERNS,
+    DATABASE_BACKUP_CONFIG
 )
 
 # Настройка логирования
