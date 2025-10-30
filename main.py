@@ -16,6 +16,15 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 def main():
+    import logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler('/opt/monitoring/logs/bot.log'),
+            logging.StreamHandler()
+        ]
+    )
     """Основная функция запуска"""
     try:
         sys.path.insert(0, '/opt/monitoring')
