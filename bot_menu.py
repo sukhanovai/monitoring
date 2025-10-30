@@ -527,10 +527,10 @@ def get_callback_handlers():
         CallbackQueryHandler(lambda u, c: lazy_handler('backup_hosts')(u, c), pattern='^backup_hosts$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('backup_refresh')(u, c), pattern='^backup_refresh$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('backup_host_')(u, c), pattern='^backup_host_'),
-        CallbackQueryHandler(lambda u, c: lazy_handler('db_backups_today')(u, c), pattern='^db_backups_today$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('db_backups_24h')(u, c), pattern='^db_backups_24h$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('db_backups_48h')(u, c), pattern='^db_backups_48h$'),
-        
+        CallbackQueryHandler(lambda u, c: lazy_handler('db_backups_today')(u, c), pattern='^db_backups_today$'),
+                
         # Обработчики расширений
         CallbackQueryHandler(lambda u, c: lazy_handler('extensions_menu')(u, c), pattern='^extensions_menu$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('extensions_refresh')(u, c), pattern='^extensions_refresh$'),

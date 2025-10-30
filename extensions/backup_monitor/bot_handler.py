@@ -372,7 +372,7 @@ def create_main_keyboard():
          InlineKeyboardButton("📅 24 часа", callback_data='backup_24h')],
         [InlineKeyboardButton("❌ Ошибки", callback_data='backup_failed'),
          InlineKeyboardButton("📋 Все серверы", callback_data='backup_hosts')],
-        [InlineKeyboardButton("🗃️ Базы данных", callback_data='db_backups_today'),
+        [InlineKeyboardButton("🗃️ Базы данных", callback_data='db_backups_24h'),
          InlineKeyboardButton("🔄 Обновить", callback_data='backup_refresh')]
     ])
 
@@ -474,6 +474,10 @@ def backup_callback(update, context):
     """Обработчик callback'ов для бэкапов"""
     query = update.callback_query
     query.answer()
+
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"🔔 CALLBACK RECEIVED: {query.data}")
 
     try:
         backup_bot = BackupMonitorBot()
