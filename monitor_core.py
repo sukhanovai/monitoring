@@ -1467,7 +1467,7 @@ def send_morning_report():
     # Отправляем отчет принудительно, даже в тихом режиме
     send_alert(message, force=True)
     print(f"✅ Утренний отчет отправлен: {up_count}/{total_servers} доступно")
-            
+
 def get_backup_summary_for_report():
     """Получает сводку по бэкапам за последние 16 часов для утреннего отчета"""
     try:
@@ -1494,85 +1494,50 @@ def get_backup_summary_for_report():
         stats = cursor.fetchone()
         total_backups, successful_backups, failed_backups, unique_hosts = stats
         
-        # Получаем список хостов без успешных бэкапов
+        # Получаем статистику по базам данных
         cursor.execute('''
-            SELECT DISTINCT host_name
-            FROM proxmox_backups 
+            SELECT 
+                backup_type,
+                COUNT(*) as total_db_backups,
+                SUM(CASE WHEN backup_status = 'success' THEN 1 ELSE 0 END) as successful_db_backups
+            FROM database_backups 
             WHERE received_at >= ?
-            GROUP BY host_name
-            HAVING SUM(CASE WHEN backup_status = 'success' THEN 1 ELSE 0 END) = 0
+            GROUP BY backup_type
         ''', (since_time,))
         
-        hosts_without_success = [row[0] for row in cursor.fetchall()]
-        
-        # Получаем последние статусы для каждого хоста
-        cursor.execute('''
-            SELECT host_name, backup_status, MAX(received_at) as last_report
-            FROM proxmox_backups 
-            WHERE received_at >= ?
-            GROUP BY host_name
-            ORDER BY host_name
-        ''', (since_time,))
-        
-        host_statuses = cursor.fetchall()
+        db_stats = cursor.fetchall()
         conn.close()
         
         # Формируем сообщение о бэкапах
-        if total_backups == 0:
+        if total_backups == 0 and not db_stats:
             return "📭 Нет данных о бэкапах за указанный период\n"
         
         message = ""
-        success_rate = (successful_backups / total_backups) * 100 if total_backups > 0 else 0
         
-        message += f"• Всего отчетов: {total_backups}\n"
-        message += f"• Успешных: {successful_backups} ({success_rate:.1f}%)\n"
-        message += f"• Неудачных: {failed_backups}\n"
-        message += f"• Серверов с бэкапами: {unique_hosts}\n"
+        # Proxmox бэкапы
+        if total_backups > 0:
+            success_rate = (successful_backups / total_backups) * 100 if total_backups > 0 else 0
+            message += f"• Proxmox: {successful_backups}/{total_backups} успешно ({success_rate:.1f}%)\n"
         
-        # Показываем статус по хостам
-        if host_statuses:
-            message += f"\n📋 *Статус по серверам:*\n"
-            
-            success_hosts = []
-            failed_hosts = []
-            no_data_hosts = []
-            
-            # Группируем хосты по статусу
-            for host, status, last_report in host_statuses:
-                if status == 'success':
-                    success_hosts.append(host)
-                elif status == 'failed':
-                    failed_hosts.append(host)
-                else:
-                    no_data_hosts.append(host)
-            
-            if success_hosts:
-                message += f"✅ Успешно: {len(success_hosts)} серверов\n"
-                # Показываем только первые 5 успешных, чтобы не перегружать
-                if len(success_hosts) <= 5:
-                    for host in sorted(success_hosts)[:5]:
-                        message += f"  • {host}\n"
-                else:
-                    message += f"  • {', '.join(sorted(success_hosts)[:5])}...\n"
-            
-            if failed_hosts:
-                message += f"❌ Проблемы: {len(failed_hosts)} серверов\n"
-                for host in sorted(failed_hosts)[:3]:  # Показываем только первые 3 проблемных
-                    message += f"  • {host}\n"
-                if len(failed_hosts) > 3:
-                    message += f"  • ... и еще {len(failed_hosts) - 3}\n"
-            
-            if hosts_without_success:
-                message += f"⚠️ Без успешных бэкапов: {len(hosts_without_success)}\n"
-                for host in sorted(hosts_without_success)[:3]:
-                    message += f"  • {host}\n"
+        # Базы данных
+        if db_stats:
+            message += f"• Базы данных:\n"
+            for backup_type, total_db, success_db in db_stats:
+                db_success_rate = (success_db / total_db) * 100 if total_db > 0 else 0
+                type_name = {
+                    'company_database': 'Основные',
+                    'barnaul': 'Барнаул', 
+                    'client': 'Клиенты',
+                    'yandex': 'Yandex'
+                }.get(backup_type, backup_type)
+                message += f"  - {type_name}: {success_db}/{total_db} успешно ({db_success_rate:.1f}%)\n"
         
         return message
         
     except Exception as e:
         logger.error(f"Ошибка при получении данных о бэкапах: {e}")
         return f"❌ Ошибка получения данных о бэкапах: {str(e)}\n"
-    
+        
 def send_morning_report_handler(update, context):
     """Обработчик для принудительной отправки утреннего отчета"""
     query = update.callback_query if hasattr(update, 'callback_query') else None
