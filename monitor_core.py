@@ -1166,7 +1166,7 @@ def force_resource_check():
 
 def start_monitoring():
     """Запускает основной цикл мониторинга"""
-    global servers, bot, monitoring_active, last_report_date
+    global servers, bot, monitoring_active, last_report_date, morning_data
 
     servers = initialize_servers()
 
@@ -1206,7 +1206,10 @@ def start_monitoring():
 
     last_resource_check = datetime.now()
     last_data_collection = None
-    report_sent_today = False
+    
+    # Инициализируем morning_data если она пустая
+    if not morning_data:
+        morning_data = {}
 
     while True:
         current_time = datetime.now()
@@ -1241,9 +1244,11 @@ def start_monitoring():
                 # СРАЗУ отправляем отчет после сбора данных
                 print(f"[{current_time}] 📊 Отправка утреннего отчета...")
                 send_morning_report()
-                report_sent_today = True
                 last_report_date = today
                 print("✅ Утренний отчет отправлен")
+                
+                # Добавляем задержку чтобы не запускать повторно в ту же минуту
+                time.sleep(65)  # Спим 65 секунд чтобы выйти за пределы минуты сбора
             else:
                 print(f"⏭️ Отчет уже отправлен сегодня {last_report_date}")
 
@@ -1357,6 +1362,23 @@ def debug_morning_report(update, context):
     else:
         update.message.reply_text(debug_message, parse_mode='Markdown')
 
+def test_morning_report():
+    """Тестовая функция для проверки утреннего отчета"""
+    global morning_data
+    
+    print("🧪 Тестируем утренний отчет...")
+    
+    # Собираем актуальные данные
+    current_status = get_current_server_status()
+    morning_data = {
+        "status": current_status,
+        "collection_time": datetime.now()
+    }
+    
+    # Отправляем отчет
+    send_morning_report()
+    print("✅ Тестовый отчет отправлен")
+    
 def send_morning_report():
     """Отправляет утренний отчет о доступности серверов и бэкапах"""
     
