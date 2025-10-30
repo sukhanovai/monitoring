@@ -315,6 +315,14 @@ def manual_check_handler(update, context):
 
 def get_current_server_status():
     """Выполняет быструю проверку статуса серверов"""
+    global servers
+    
+    # Переинициализируем серверы если список пустой
+    if not servers:
+        from extensions.server_list import initialize_servers
+        servers = initialize_servers()
+        print(f"🔄 Переинициализирован список серверов: {len(servers)} серверов")
+    
     results = {"failed": [], "ok": []}
 
     for server in servers:
@@ -332,9 +340,14 @@ def get_current_server_status():
                 results["ok"].append(server)
             else:
                 results["failed"].append(server)
-        except:
+                
+            print(f"🔍 {server['name']} ({server['ip']}) - {'🟢' if is_up else '🔴'}")
+                
+        except Exception as e:
+            print(f"❌ Ошибка проверки {server['name']}: {e}")
             results["failed"].append(server)
 
+    print(f"📊 Итог проверки: {len(results['ok'])} доступно, {len(results['failed'])} недоступно")
     return results
 
 def monitor_status(update, context):
@@ -1378,13 +1391,18 @@ def test_morning_report():
     # Отправляем отчет
     send_morning_report()
     print("✅ Тестовый отчет отправлен")
-    
+
 def send_morning_report():
     """Отправляет утренний отчет о доступности серверов и бэкапах"""
+    global morning_data
     
     if not morning_data or "status" not in morning_data:
-        print("❌ Нет данных для утреннего отчета")
-        return
+        print("❌ Нет данных для утреннего отчета, собираем текущий статус...")
+        current_status = get_current_server_status()
+        morning_data = {
+            "status": current_status,
+            "collection_time": datetime.now()
+        }
 
     status = morning_data["status"]
     collection_time = morning_data.get("collection_time", datetime.now())
@@ -1449,7 +1467,7 @@ def send_morning_report():
     # Отправляем отчет принудительно, даже в тихом режиме
     send_alert(message, force=True)
     print(f"✅ Утренний отчет отправлен: {up_count}/{total_servers} доступно")
-    
+            
 def get_backup_summary_for_report():
     """Получает сводку по бэкапам за последние 16 часов для утреннего отчета"""
     try:
