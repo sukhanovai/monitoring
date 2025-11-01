@@ -548,7 +548,8 @@ def get_callback_handlers():
         CallbackQueryHandler(lambda u, c: lazy_handler('backup_proxmox')(u, c), pattern='^backup_proxmox$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('backup_databases')(u, c), pattern='^backup_databases$'),                
         CallbackQueryHandler(lambda u, c: lazy_handler('backup_host_')(u, c), pattern='^backup_host_'),
-
+        CallbackQueryHandler(lambda u, c: lazy_handler('db_detail_')(u, c), pattern='^db_detail_'),
+        
         # Обработчики расширений
         CallbackQueryHandler(lambda u, c: lazy_handler('extensions_menu')(u, c), pattern='^extensions_menu$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('extensions_refresh')(u, c), pattern='^extensions_refresh$'),
