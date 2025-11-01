@@ -77,7 +77,7 @@ def start_command(update, context):
         [InlineKeyboardButton("🎛️ Управление", callback_data='control_panel')],
         [InlineKeyboardButton("🔧 Диагностика", callback_data='diagnose_menu')],
         [InlineKeyboardButton("🔇 Тихий режим", callback_data='silent_status')],
-        [InlineKeyboardButton("❌ Закрыть", callback_data='close')]  # ДОБАВЛЕНА КНОПКА ЗАКРЫТЬ
+        [InlineKeyboardButton("⚫ Закрыть", callback_data='close')] 
     ])
     
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -547,6 +547,7 @@ def get_callback_handlers():
         CallbackQueryHandler(lambda u, c: lazy_handler('backup_main')(u, c), pattern='^backup_main$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('backup_proxmox')(u, c), pattern='^backup_proxmox$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('backup_databases')(u, c), pattern='^backup_databases$'),                
+        CallbackQueryHandler(lambda u, c: lazy_handler('backup_host_')(u, c), pattern='^backup_host_'),
 
         # Обработчики расширений
         CallbackQueryHandler(lambda u, c: lazy_handler('extensions_menu')(u, c), pattern='^extensions_menu$'),
