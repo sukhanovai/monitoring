@@ -67,15 +67,17 @@ def start_command(update, context):
         [InlineKeyboardButton("📊 Проверить ресурсы", callback_data='check_resources')],
     ]
     
-    # Добавляем кнопку бэкапов только если расширение включено
-    if extension_manager.is_extension_enabled('backup_monitor'):
-        keyboard.append([InlineKeyboardButton("📊 Бэкапы Proxmox", callback_data='backup_today')])
+    # ЗАМЕНА: вместо отдельной кнопки бэкапов Proxmox делаем общую кнопку бэкапов
+    if (extension_manager.is_extension_enabled('backup_monitor') or 
+        extension_manager.is_extension_enabled('database_backup_monitor')):
+        keyboard.append([InlineKeyboardButton("💾 Бэкапы", callback_data='backup_main')])
     
     keyboard.extend([
         [InlineKeyboardButton("🛠️ Управление расширениями", callback_data='extensions_menu')],
         [InlineKeyboardButton("🎛️ Управление", callback_data='control_panel')],
         [InlineKeyboardButton("🔧 Диагностика", callback_data='diagnose_menu')],
-        [InlineKeyboardButton("🔇 Тихий режим", callback_data='silent_status')]
+        [InlineKeyboardButton("🔇 Тихий режим", callback_data='silent_status')],
+        [InlineKeyboardButton("❌ Закрыть", callback_data='close')]  # ДОБАВЛЕНА КНОПКА ЗАКРЫТЬ
     ])
     
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -93,7 +95,7 @@ def start_command(update, context):
         welcome_text += "🌐 *Веб-интерфейс:* 🔴 отключен\n"
     
     update.message.reply_text(welcome_text, parse_mode='Markdown', reply_markup=reply_markup)
-
+    
 def help_command(update, context):
     """Обработчик команды /help"""
     if not check_access(update.effective_chat.id):

@@ -591,9 +591,10 @@ def control_panel_handler(update, context):
         [InlineKeyboardButton("🔍 Проверить ресурсы", callback_data='check_resources')],
         [InlineKeyboardButton("📊 Полный отчет", callback_data='full_report')],
         [InlineKeyboardButton("🔧 Диагностика отчета", callback_data='debug_report')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='monitor_status')]
+        [InlineKeyboardButton("↩️ Назад", callback_data='monitor_status'),
+         InlineKeyboardButton("❌ Закрыть", callback_data='close')]
     ]
-
+    
     status_text = "🟢 Мониторинг активен" if monitoring_active else "🔴 Мониторинг приостановлен"
 
     query.edit_message_text(
@@ -1396,14 +1397,18 @@ def send_morning_report():
     """Отправляет утренний отчет о доступности серверов и бэкапах"""
     global morning_data
     
+    current_time = datetime.now()
+    print(f"[{current_time}] 🔍 Проверка данных для утреннего отчета...")
+    
     if not morning_data or "status" not in morning_data:
         print("❌ Нет данных для утреннего отчета, собираем текущий статус...")
         current_status = get_current_server_status()
         morning_data = {
             "status": current_status,
-            "collection_time": datetime.now()
+            "collection_time": current_time
         }
-
+        print(f"✅ Собраны актуальные данные: {len(current_status['ok'])} доступно, {len(current_status['failed'])} недоступно")
+        
     status = morning_data["status"]
     collection_time = morning_data.get("collection_time", datetime.now())
 

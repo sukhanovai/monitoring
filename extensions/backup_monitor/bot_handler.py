@@ -371,8 +371,9 @@ def create_main_backup_keyboard():
     
     keyboard = []
     
-    # Кнопка Proxmox бэкапов (всегда доступна)
-    keyboard.append([InlineKeyboardButton("🖥️ Бэкапы Proxmox", callback_data='backup_proxmox')])
+    # Кнопка Proxmox бэкапов (только если расширение включено)
+    if extension_manager.is_extension_enabled('backup_monitor'):
+        keyboard.append([InlineKeyboardButton("🖥️ Бэкапы Proxmox", callback_data='backup_proxmox')])
     
     # Кнопка бэкапов БД (только если расширение включено)
     if extension_manager.is_extension_enabled('database_backup_monitor'):
@@ -382,7 +383,8 @@ def create_main_backup_keyboard():
     keyboard.extend([
         [InlineKeyboardButton("🔄 Обновить", callback_data='backup_refresh'),
          InlineKeyboardButton("📋 Помощь", callback_data='backup_help')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='monitor_status')]
+        [InlineKeyboardButton("↩️ Назад в главное меню", callback_data='monitor_status'),
+         InlineKeyboardButton("❌ Закрыть", callback_data='close')]
     ])
     
     return InlineKeyboardMarkup(keyboard)
@@ -394,7 +396,8 @@ def create_proxmox_backup_keyboard():
          InlineKeyboardButton("📅 24 часа", callback_data='backup_24h')],
         [InlineKeyboardButton("❌ Ошибки", callback_data='backup_failed'),
          InlineKeyboardButton("📋 Все серверы", callback_data='backup_hosts')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')]
+        [InlineKeyboardButton("↩️ Назад", callback_data='backup_main'),
+         InlineKeyboardButton("❌ Закрыть", callback_data='close')]
     ])
 
 def create_database_backup_keyboard():
@@ -402,9 +405,9 @@ def create_database_backup_keyboard():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("🗃️ За 24ч", callback_data='db_backups_24h'),
          InlineKeyboardButton("🗃️ За 48ч", callback_data='db_backups_48h')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')]
+        [InlineKeyboardButton("↩️ Назад", callback_data='backup_main'),
+         InlineKeyboardButton("❌ Закрыть", callback_data='close')]
     ])
-
 def create_hosts_keyboard(backup_bot):
     """Создает клавиатуру со списком хостов"""
     hosts = backup_bot.get_all_hosts()
