@@ -318,146 +318,167 @@ def format_hosts_list(backup_bot):
 
 def format_database_backups_report(backup_bot, hours=24):
     """Форматирует отчет по бэкапам баз данных БЕЗ Markdown"""
-    stats = backup_bot.get_database_backups_stats(hours)
-    
-    if not stats:
-        return f"📊 Бэкапы баз данных ({hours}ч)\n\nНет данных о бэкапах БД за указанный период"
-    
-    # Группируем статистику
-    summary = {}
-    type_names = {
-        'company_database': '🏢 Основные БД',
-        'barnaul': '🏔️ Барнаул', 
-        'client': '👥 Клиенты',
-        'yandex': '☁️ Yandex'
-    }
-    
-    for backup_type, db_name, status, count, last_backup in stats:
-        if backup_type not in summary:
-            summary[backup_type] = {}
-        if db_name not in summary[backup_type]:
-            summary[backup_type][db_name] = {'success': 0, 'failed': 0, 'last_backup': last_backup}
-        summary[backup_type][db_name][status] += count
-    
-    # Формируем сообщение БЕЗ Markdown разметки
-    message = f"📊 Бэкапы баз данных ({hours}ч)\n\n"
-    
-    for backup_type, databases in summary.items():
-        type_display = type_names.get(backup_type, f"📁 {backup_type}")
-        message += f"{type_display}:\n"
+    try:
+        stats = backup_bot.get_database_backups_stats(hours)
         
-        for db_name, stats in databases.items():
-            total = stats['success'] + stats['failed']
-            if stats['success'] > 0 and stats['failed'] == 0:
-                status_icon = "✅"
-            elif stats['failed'] > 0:
-                status_icon = "❌"
-            else:
-                status_icon = "⚠️"
-                
-            message += f"{status_icon} {db_name}: {stats['success']}/{total}\n"
+        if not stats:
+            return f"📊 Бэкапы баз данных ({hours}ч)\n\nНет данных о бэкапах БД за указанный период"
         
-        message += "\n"
-    
-    message += f"🕒 Обновлено: {datetime.now().strftime('%H:%M:%S')}"
-    
-    return message
+        # Группируем статистику
+        summary = {}
+        type_names = {
+            'company_database': '🏢 Основные БД',
+            'barnaul': '🏔️ Барнаул', 
+            'client': '👥 Клиенты',
+            'yandex': '☁️ Yandex'
+        }
+        
+        for backup_type, db_name, status, count, last_backup in stats:
+            if backup_type not in summary:
+                summary[backup_type] = {}
+            if db_name not in summary[backup_type]:
+                summary[backup_type][db_name] = {'success': 0, 'failed': 0, 'last_backup': last_backup}
+            summary[backup_type][db_name][status] += count
+        
+        # Формируем сообщение БЕЗ Markdown разметки
+        message = f"📊 Бэкапы баз данных ({hours}ч)\n\n"
+        
+        for backup_type, databases in summary.items():
+            type_display = type_names.get(backup_type, f"📁 {backup_type}")
+            message += f"{type_display}:\n"
+            
+            for db_name, stats in databases.items():
+                total = stats['success'] + stats['failed']
+                if stats['success'] > 0 and stats['failed'] == 0:
+                    status_icon = "✅"
+                elif stats['failed'] > 0:
+                    status_icon = "❌"
+                else:
+                    status_icon = "⚠️"
+                    
+                message += f"{status_icon} {db_name}: {stats['success']}/{total}\n"
+            
+            message += "\n"
+        
+        message += f"🕒 Обновлено: {datetime.now().strftime('%H:%M:%S')}"
+        
+        return message
+        
+    except Exception as e:
+        logger.error(f"Ошибка в format_database_backups_report: {e}")
+        import traceback
+        logger.error(f"Подробности: {traceback.format_exc()}")
+        return f"❌ Ошибка при формировании отчета: {e}"
 
 def format_detailed_database_backups(backup_bot, hours=24):
     """Детальный отчет по бэкапам БД с историей"""
-    stats = backup_bot.get_database_backups_stats(hours)
-    
-    if not stats:
-        return f"📋 Детальный отчет по БД ({hours}ч)\n\nНет данных"
-    
-    message = f"📋 Детальный отчет по БД ({hours}ч)\n\n"
-    
-    # Группируем по базам данных
-    db_details = {}
-    for backup_type, db_name, status, count, last_backup in stats:
-        key = (backup_type, db_name)
-        if key not in db_details:
-            db_details[key] = []
-        db_details[key].append({
-            'status': status,
-            'count': count,
-            'last_backup': last_backup
-        })
-    
-    type_names = {
-        'company_database': '🏢',
-        'barnaul': '🏔️', 
-        'client': '👥',
-        'yandex': '☁️'
-    }
-    
-    # Сортируем по типу и имени БД
-    sorted_dbs = sorted(db_details.items(), key=lambda x: (x[0][0], x[0][1]))
-    
-    for (backup_type, db_name), backups in sorted_dbs:
-        type_icon = type_names.get(backup_type, '📁')
+    try:
+        stats = backup_bot.get_database_backups_stats(hours)
         
-        # Считаем общую статистику
-        success_count = sum(b['count'] for b in backups if b['status'] == 'success')
-        failed_count = sum(b['count'] for b in backups if b['status'] == 'failed')
-        total_count = success_count + failed_count
+        if not stats:
+            return f"📋 Детальный отчет по БД ({hours}ч)\n\nНет данных"
         
-        # Определяем общий статус
-        if success_count > 0 and failed_count == 0:
-            status_icon = "✅"
-        elif failed_count > 0:
-            status_icon = "❌"
-        else:
-            status_icon = "⚠️"
+        message = f"📋 Детальный отчет по БД ({hours}ч)\n\n"
         
-        message += f"{type_icon} {db_name} {status_icon}\n"
-        message += f"   Всего бэкапов: {total_count}\n"
-        message += f"   Успешных: {success_count}\n"
-        message += f"   Ошибок: {failed_count}\n"
+        # Группируем по базам данных
+        db_details = {}
+        for backup_type, db_name, status, count, last_backup in stats:
+            key = (backup_type, db_name)
+            if key not in db_details:
+                db_details[key] = []
+            db_details[key].append({
+                'status': status,
+                'count': count,
+                'last_backup': last_backup
+            })
         
-        # Находим последний бэкап
-        last_backup_time = max(b['last_backup'] for b in backups)
-        if last_backup_time:
-            try:
-                last_time = datetime.strptime(last_backup_time, '%Y-%m-%d %H:%M:%S')
-                message += f"   Последний: {last_time.strftime('%d.%m %H:%M')}\n"
-            except:
-                message += f"   Последний: {last_backup_time[:16]}\n"
+        type_names = {
+            'company_database': '🏢',
+            'barnaul': '🏔️', 
+            'client': '👥',
+            'yandex': '☁️'
+        }
         
-        message += "\n"
-    
-    message += f"🕒 Обновлено: {datetime.now().strftime('%H:%M:%S')}"
-    return message
+        # Сортируем по типу и имени БД
+        sorted_dbs = sorted(db_details.items(), key=lambda x: (x[0][0], x[0][1]))
+        
+        for (backup_type, db_name), backups in sorted_dbs:
+            type_icon = type_names.get(backup_type, '📁')
+            
+            # Считаем общую статистику
+            success_count = sum(b['count'] for b in backups if b['status'] == 'success')
+            failed_count = sum(b['count'] for b in backups if b['status'] == 'failed')
+            total_count = success_count + failed_count
+            
+            # Определяем общий статус
+            if success_count > 0 and failed_count == 0:
+                status_icon = "✅"
+            elif failed_count > 0:
+                status_icon = "❌"
+            else:
+                status_icon = "⚠️"
+            
+            message += f"{type_icon} {db_name} {status_icon}\n"
+            message += f"   Всего бэкапов: {total_count}\n"
+            message += f"   Успешных: {success_count}\n"
+            message += f"   Ошибок: {failed_count}\n"
+            
+            # Находим последний бэкап
+            last_backup_time = max(b['last_backup'] for b in backups)
+            if last_backup_time:
+                try:
+                    last_time = datetime.strptime(last_backup_time, '%Y-%m-%d %H:%M:%S')
+                    message += f"   Последний: {last_time.strftime('%d.%m %H:%M')}\n"
+                except:
+                    message += f"   Последний: {last_backup_time[:16]}\n"
+            
+            message += "\n"
+        
+        message += f"🕒 Обновлено: {datetime.now().strftime('%H:%M:%S')}"
+        return message
+        
+    except Exception as e:
+        logger.error(f"Ошибка в format_detailed_database_backups: {e}")
+        import traceback
+        logger.error(f"Подробности: {traceback.format_exc()}")
+        return f"❌ Ошибка при формировании детального отчета: {e}"
 
 def get_database_list(backup_bot, hours=24):
     """Получает список всех баз данных для меню выбора"""
-    stats = backup_bot.get_database_backups_stats(hours)
+    try:
+        stats = backup_bot.get_database_backups_stats(hours)
+        
+        if not stats:
+            return "📋 Список баз данных\n\nНет данных о бэкапах БД"
+        
+        # Получаем уникальные базы данных
+        databases = set()
+        for backup_type, db_name, status, count, last_backup in stats:
+            databases.add((backup_type, db_name))
+        
+        message = "📋 Выберите базу данных для просмотра\n\n"
+        message += "Доступные базы:\n\n"
+        
+        type_names = {
+            'company_database': '🏢',
+            'barnaul': '🏔️', 
+            'client': '👥',
+            'yandex': '☁️'
+        }
+        
+        for backup_type, db_name in sorted(databases):
+            type_icon = type_names.get(backup_type, '📁')
+            message += f"• {type_icon} {db_name}\n"
+        
+        message += "\nНажмите на базу данных для просмотра деталей"
+        return message
+        
+    except Exception as e:
+        logger.error(f"Ошибка в get_database_list: {e}")
+        import traceback
+        logger.error(f"Подробности: {traceback.format_exc()}")
+        return f"❌ Ошибка при получении списка БД: {e}"
     
-    if not stats:
-        return "📋 Список баз данных\n\nНет данных о бэкапах БД"
-    
-    # Получаем уникальные базы данных
-    databases = set()
-    for backup_type, db_name, status, count, last_backup in stats:
-        databases.add((backup_type, db_name))
-    
-    message = "📋 Выберите базу данных для просмотра\n\n"
-    message += "Доступные базы:\n\n"
-    
-    type_names = {
-        'company_database': '🏢',
-        'barnaul': '🏔️', 
-        'client': '👥',
-        'yandex': '☁️'
-    }
-    
-    for backup_type, db_name in sorted(databases):
-        type_icon = type_names.get(backup_type, '📁')
-        message += f"• {type_icon} {db_name}\n"
-    
-    message += "\nНажмите на базу данных для просмотра деталей"
-    return message
-
 def format_database_details(backup_bot, backup_type, db_name, hours=24):
     """Детальная информация по конкретной базе данных"""
     stats = backup_bot.get_database_backups_stats(hours)
@@ -804,7 +825,29 @@ def backup_callback(update, context):
             keyboard = create_hosts_keyboard(backup_bot)
 
         elif query.data == 'backup_help':
-            message = backup_help_command
+            # ИСПРАВЛЕНО: вместо присваивания функции вызываем ее
+            help_text = """
+🤖 Команды мониторинга бэкапов
+
+/backup - Основная сводка за сегодня
+/backup_search [host] - Поиск по конкретному серверу
+/db_backups [hours] - Бэкапы баз данных (по умолчанию 24ч)
+/backup_help - Эта справка
+
+Кнопки управления:
+📊 Сегодня - Сводка за текущий день
+📅 24 часа - История за последние сутки
+❌ Ошибки - Список неудачных бэкапов
+📋 Все серверы - Выбор конкретного сервера
+🗃️ Базы данных - Бэкапы СУБД и приложений
+🔄 Обновить - Обновить данные
+
+Примеры:
+/backup - общая сводка
+/backup_search pve13 - статус pve13
+/db_backups 48 - бэкапы БД за 48 часов
+"""
+            message = help_text
             keyboard = create_main_backup_keyboard()
 
         elif query.data == 'backup_refresh':
@@ -825,6 +868,8 @@ def backup_callback(update, context):
     except Exception as e:
         error_msg = f"❌ Ошибка при обработке запроса: {e}"
         logger.error(error_msg)
+        import traceback
+        logger.error(f"Подробности ошибки: {traceback.format_exc()}")
         query.edit_message_text(error_msg)
 
 def setup_backup_commands(dispatcher):
@@ -868,4 +913,3 @@ def database_backups_command(update, context):
         parse_mode=None,
         reply_markup=keyboard
     )
-    
