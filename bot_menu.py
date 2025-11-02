@@ -478,6 +478,15 @@ def lazy_handler(pattern):
         elif pattern == 'backup_databases':
             from extensions.backup_monitor.bot_handler import backup_callback as handler
             return handler(update, context)
+        elif pattern == 'db_backups_summary':
+            from extensions.backup_monitor.bot_handler import backup_callback as handler
+            return handler(update, context)
+        elif pattern == 'db_backups_detailed':
+            from extensions.backup_monitor.bot_handler import backup_callback as handler
+            return handler(update, context)
+        elif pattern == 'db_backups_list':
+            from extensions.backup_monitor.bot_handler import backup_callback as handler
+            return handler(update, context)
         elif pattern == 'extensions_menu':
             from bot_menu import show_extensions_menu as handler
         elif pattern == 'extensions_refresh':
@@ -544,6 +553,9 @@ def get_callback_handlers():
         CallbackQueryHandler(lambda u, c: lazy_handler('db_backups_24h')(u, c), pattern='^db_backups_24h$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('db_backups_48h')(u, c), pattern='^db_backups_48h$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('db_backups_today')(u, c), pattern='^db_backups_today$'),
+        CallbackQueryHandler(lambda u, c: lazy_handler('db_backups_summary')(u, c), pattern='^db_backups_summary$'),
+        CallbackQueryHandler(lambda u, c: lazy_handler('db_backups_detailed')(u, c), pattern='^db_backups_detailed$'),
+        CallbackQueryHandler(lambda u, c: lazy_handler('db_backups_list')(u, c), pattern='^db_backups_list$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('backup_main')(u, c), pattern='^backup_main$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('backup_proxmox')(u, c), pattern='^backup_proxmox$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('backup_databases')(u, c), pattern='^backup_databases$'),                
