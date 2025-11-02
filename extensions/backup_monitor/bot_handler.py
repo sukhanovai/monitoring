@@ -721,11 +721,16 @@ def backup_callback(update, context):
     query = update.callback_query
     query.answer()
 
+    # ДОБАВИМ ОТЛАДОЧНЫЙ ВЫВОД
+    print(f"🔍 DEBUG: Получен callback: {query.data}")
+    logger.info(f"🔍 DEBUG: Получен callback: {query.data}")
+
     try:
         backup_bot = BackupMonitorBot()
 
         # Обработка выбора конкретного хоста
         if query.data.startswith('backup_host_'):
+            print(f"🔍 DEBUG: Обрабатываем backup_host_")
             host_name = query.data.replace('backup_host_', '')
             message = format_host_status(backup_bot, host_name)
             keyboard = InlineKeyboardMarkup([
@@ -735,6 +740,7 @@ def backup_callback(update, context):
 
         # Обработка бэкапов БД
         elif query.data == 'db_backups_summary':
+            print(f"🔍 DEBUG: Обрабатываем db_backups_summary")
             from extensions.extension_manager import extension_manager
             if extension_manager.is_extension_enabled('database_backup_monitor'):
                 message = format_database_backups_report(backup_bot, 24)
@@ -744,6 +750,7 @@ def backup_callback(update, context):
                 keyboard = create_main_backup_keyboard()
 
         elif query.data == 'db_backups_detailed':
+            print(f"🔍 DEBUG: Обрабатываем db_backups_detailed")
             from extensions.extension_manager import extension_manager
             if extension_manager.is_extension_enabled('database_backup_monitor'):
                 message = format_detailed_database_backups(backup_bot, 24)
@@ -753,6 +760,7 @@ def backup_callback(update, context):
                 keyboard = create_main_backup_keyboard()
 
         elif query.data == 'db_backups_list':
+            print(f"🔍 DEBUG: Обрабатываем db_backups_list")
             from extensions.extension_manager import extension_manager
             if extension_manager.is_extension_enabled('database_backup_monitor'):
                 message = get_database_list(backup_bot, 24)
@@ -762,6 +770,7 @@ def backup_callback(update, context):
                 keyboard = create_main_backup_keyboard()
 
         elif query.data == 'db_backups_48h':
+            print(f"🔍 DEBUG: Обрабатываем db_backups_48h")
             from extensions.extension_manager import extension_manager
             if extension_manager.is_extension_enabled('database_backup_monitor'):
                 message = format_database_backups_report(backup_bot, 48)
@@ -858,20 +867,24 @@ def backup_callback(update, context):
             message = "❌ Неизвестная команда"
             keyboard = create_main_backup_keyboard()
 
-        # ОТПРАВЛЯЕМ СООБЩЕНИЕ БЕЗ Markdown parse_mode
+        # ДОБАВИМ ОТЛАДКУ ПЕРЕД ОТПРАВКОЙ
+        print(f"🔍 DEBUG: Отправляем сообщение длиной {len(message)} символов")
+        logger.info(f"🔍 DEBUG: Отправляем сообщение: {message[:100]}...")
+
         query.edit_message_text(
             text=message,
-            parse_mode=None,  # ОТКЛЮЧАЕМ Markdown парсинг
+            parse_mode=None,
             reply_markup=keyboard
         )
 
     except Exception as e:
         error_msg = f"❌ Ошибка при обработке запроса: {e}"
+        print(f"🔍 DEBUG: ОШИБКА: {error_msg}")
         logger.error(error_msg)
         import traceback
-        logger.error(f"Подробности ошибки: {traceback.format_exc()}")
+        logger.error(f"🔍 DEBUG: Подробности ошибки: {traceback.format_exc()}")
         query.edit_message_text(error_msg)
-
+        
 def setup_backup_commands(dispatcher):
     """Настройка команд бота для мониторинга бэкапов"""
     from telegram.ext import CommandHandler, CallbackQueryHandler
