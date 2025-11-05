@@ -495,6 +495,9 @@ def lazy_handler(pattern):
             from bot_menu import enable_all_extensions as handler
         elif pattern == 'ext_disable_all':
             from bot_menu import disable_all_extensions as handler
+        elif pattern.startswith('db_detail_'):
+            from extensions.backup_monitor.bot_handler import backup_callback as handler
+            return handler(update, context)
         else:
             def default_handler(update, context):
                 query = update.callback_query
