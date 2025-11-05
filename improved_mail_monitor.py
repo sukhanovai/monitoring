@@ -114,6 +114,94 @@ class BackupProcessor:
     
         return processed_count
     
+    def parse_database_backup(self, subject, body):
+        """Парсит бэкапы баз данных из темы письма"""
+        try:
+            print(f"🎯 DEBUG parse_database_backup: Начало обработки темы: '{subject}'")
+            backup_info = {}
+
+            # Проверяем бэкапы основных баз данных
+            for pattern in DATABASE_BACKUP_PATTERNS["company"]:
+                print(f"🎯 DEBUG: Проверяем паттерн company: '{pattern}'")
+                match = re.search(pattern, subject, re.IGNORECASE)
+                if match:
+                    db_name = match.group(1).lower()
+                    print(f"✅ DEBUG: Найден бэкап company_database: '{db_name}' по паттерну: '{pattern}'")
+                    # Используем реальное имя как display_name
+                    backup_info = {
+                        'host_name': 'sr-bup',
+                        'backup_status': 'success',
+                        'task_type': 'database_dump',
+                        'database_name': db_name,
+                        'database_display_name': db_name,
+                        'backup_type': 'company_database'
+                    }
+                    return backup_info
+                else:
+                    print(f"❌ DEBUG: Паттерн '{pattern}' не подошел для '{subject}'")
+
+            # Проверяем бэкапы Барнаул
+            for pattern in DATABASE_BACKUP_PATTERNS["barnaul"]:
+                print(f"🎯 DEBUG: Проверяем паттерн barnaul: '{pattern}'")
+                match = re.search(pattern, subject, re.IGNORECASE)
+                if match:
+                    backup_name = match.group(1)
+                    error_count = int(match.group(2))
+                    print(f"✅ DEBUG: Найден бэкап barnaul: '{backup_name}' с ошибками: {error_count}")
+                    backup_info = {
+                        'host_name': 'brn-backup',
+                        'backup_status': 'success' if error_count == 0 else 'failed',
+                        'task_type': 'cobian_backup',
+                        'database_name': backup_name,
+                        'database_display_name': backup_name,
+                        'error_count': error_count,
+                        'backup_type': 'barnaul'
+                    }
+                    return backup_info
+
+            # Проверяем бэкапы клиентов
+            for pattern in DATABASE_BACKUP_PATTERNS["clients"]:
+                print(f"🎯 DEBUG: Проверяем паттерн clients: '{pattern}'")
+                match = re.search(pattern, subject, re.IGNORECASE)
+                if match:
+                    db_name = match.group(1).lower()
+                    print(f"✅ DEBUG: Найден бэкап clients: '{db_name}'")
+                    backup_info = {
+                        'host_name': 'kc-1c',
+                        'backup_status': 'success',
+                        'task_type': 'client_database_dump',
+                        'database_name': db_name,
+                        'database_display_name': db_name,
+                        'backup_type': 'client'
+                    }
+                    return backup_info
+
+            # Проверяем бэкапы Yandex
+            for pattern in DATABASE_BACKUP_PATTERNS["yandex"]:
+                print(f"🎯 DEBUG: Проверяем паттерн yandex: '{pattern}'")
+                match = re.search(pattern, subject, re.IGNORECASE)
+                if match:
+                    client_name = match.group(1)
+                    print(f"✅ DEBUG: Найден бэкап yandex: '{client_name}'")
+                    backup_info = {
+                        'host_name': 'yandex-backup',
+                        'backup_status': 'success',
+                        'task_type': 'yandex_backup',
+                        'database_name': client_name,
+                        'database_display_name': client_name,
+                        'backup_type': 'yandex'
+                    }
+                    return backup_info
+
+            print(f"❌ DEBUG: Ни один паттерн не подошел для темы: '{subject}'")
+            return None
+
+        except Exception as e:
+            print(f"💥 DEBUG: Ошибка в parse_database_backup: {e}")
+            logger.error(f"Ошибка парсинга бэкапа БД: {e}")
+            return None
+
+
     def parse_email_file(self, file_path):
         """Парсит email файл"""
         try:
