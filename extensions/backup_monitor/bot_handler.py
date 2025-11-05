@@ -476,21 +476,21 @@ def get_database_list(backup_bot, hours=168):
     except Exception as e:
         logger.error(f"Ошибка в get_database_list: {e}")
         return f"❌ Ошибка при получении списка БД: {e}"
-
+    
 def format_database_details(backup_bot, backup_type, db_name, hours=168):
     """Детальная информация по конкретной базе данных"""
     try:
         stats = backup_bot.get_database_backups_stats(hours)
         
         if not stats:
-            return f"📋 Детали по {db_name}\n\nНет данных"
+            return f"📋 Детали по {db_name}\n\nНет данных за указанный период"
         
-        # Фильтруем по конкретной базе - ИСПРАВЛЕНИЕ: правильное сравнение
+        # Фильтруем по конкретной базе - используем database_name из базы
         db_stats = [s for s in stats if s[0] == backup_type and s[1] == db_name]
         
         if not db_stats:
             return f"📋 Детали по {db_name}\n\nНет данных за указанный период"
-                
+        
         type_names = {
             'company_database': '🏢 Основная БД',
             'barnaul': '🏔️ Барнаул', 
@@ -533,8 +533,10 @@ def format_database_details(backup_bot, backup_type, db_name, hours=168):
         
     except Exception as e:
         logger.error(f"Ошибка в format_database_details: {e}")
+        import traceback
+        logger.error(f"Подробности: {traceback.format_exc()}")
         return f"❌ Ошибка при получении деталей БД: {e}"
-    
+        
 def create_main_backup_keyboard():
     """Создает главное меню бэкапов"""
     from extensions.extension_manager import extension_manager
@@ -607,7 +609,7 @@ def create_hosts_keyboard(backup_bot):
     return InlineKeyboardMarkup(keyboard)
 
 def create_database_list_keyboard(backup_bot, hours=24):
-    """Создает клавиатуру со списком баз данных"""
+    """Создает клавиатуру со списком баз данных с правильными callback data"""
     stats = backup_bot.get_database_backups_stats(hours)
     
     if not stats:
@@ -615,9 +617,10 @@ def create_database_list_keyboard(backup_bot, hours=24):
             [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')]
         ])
     
-    # Получаем уникальные базы данных
+    # Получаем уникальные базы данных с правильными именами
     databases = set()
     for backup_type, db_name, status, count, last_backup in stats:
+        # Используем database_name из базы данных, а не display_name
         databases.add((backup_type, db_name))
     
     keyboard = []
@@ -625,8 +628,11 @@ def create_database_list_keyboard(backup_bot, hours=24):
     
     for backup_type, db_name in sorted(databases):
         # Создаем callback_data в формате db_detail_type_name
-        callback_data = f"db_detail_{backup_type}_{db_name.replace(' ', '_')}"
-        row.append(InlineKeyboardButton(db_name, callback_data=callback_data))
+        # Используем db_name вместо display_name
+        callback_data = f"db_detail_{backup_type}_{db_name}"
+        button_text = db_name  # Используем реальное имя из базы данных
+        
+        row.append(InlineKeyboardButton(button_text, callback_data=callback_data))
         
         if len(row) == 2:  # По 2 кнопки в ряду
             keyboard.append(row)
@@ -790,7 +796,7 @@ def backup_callback(update, context):
                 parts = query.data.replace('db_detail_', '').split('_', 1)
                 if len(parts) == 2:
                     backup_type = parts[0]
-                    db_name = parts[1].replace('_', ' ')  # Восстанавливаем пробелы
+                    db_name = parts[1]
                     message = format_database_details(backup_bot, backup_type, db_name, 24)
                     keyboard = create_database_detail_keyboard(backup_type, db_name)
                 else:
