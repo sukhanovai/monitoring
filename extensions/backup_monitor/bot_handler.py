@@ -903,18 +903,19 @@ def backup_callback(update, context):
         except:
             pass
 
-def setup_backup_handlers(application):
+def setup_backup_handlers(dispatcher):
     """Настройка обработчиков команд бэкапов"""
+    from telegram.ext import CommandHandler, CallbackQueryHandler
     from extensions.extension_manager import extension_manager
 
     # Основные команды бэкапов
-    application.add_handler(CommandHandler("backup", backup_command))
-    application.add_handler(CommandHandler("backup_search", backup_search_command))
-    application.add_handler(CommandHandler("backup_help", backup_help_command))
+    dispatcher.add_handler(CommandHandler("backup", backup_command))
+    dispatcher.add_handler(CommandHandler("backup_search", backup_search_command))
+    dispatcher.add_handler(CommandHandler("backup_help", backup_help_command))
 
     # Callback обработчики для кнопок
-    application.add_handler(CallbackQueryHandler(backup_callback, pattern='^backup_'))
-    application.add_handler(CallbackQueryHandler(backup_callback, pattern='^db_'))
+    dispatcher.add_handler(CallbackQueryHandler(backup_callback, pattern='^backup_'))
+    dispatcher.add_handler(CallbackQueryHandler(backup_callback, pattern='^db_'))
 
     # Команды бэкапов БД (только если расширение включено)
     if extension_manager.is_extension_enabled('database_backup_monitor'):
@@ -936,7 +937,7 @@ def setup_backup_handlers(application):
                 reply_markup=create_database_backup_keyboard()
             )
 
-        application.add_handler(CommandHandler("db_backups", db_backups_command))
-
+        dispatcher.add_handler(CommandHandler("db_backups", db_backups_command))
+        
 # Инициализация бота
 backup_bot_instance = BackupMonitorBot()
