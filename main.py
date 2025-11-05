@@ -35,24 +35,27 @@ def main():
         from extensions.stats_collector import save_monitoring_stats
         from monitor_core import start_monitoring
         
-        from telegram.ext import Updater
+        from telegram.ext import Application
         import threading
         
         logger.info("🚀 Запуск полной версии мониторинга...")
         
-        # Инициализируем бота
-        updater = Updater(token=TELEGRAM_TOKEN, use_context=True)
-        dispatcher = updater.dispatcher
+        # Инициализируем бота с новой версией API
+        application = Application.builder().token(TELEGRAM_TOKEN).build()
         
         # Настраиваем меню
-        setup_menu(updater.bot)
+        setup_menu(application.bot)
         
         # Добавляем обработчики
         for handler in get_handlers():
-            dispatcher.add_handler(handler)
+            application.add_handler(handler)
             
         for handler in get_callback_handlers():
-            dispatcher.add_handler(handler)
+            application.add_handler(handler)
+        
+        # Настраиваем обработчики бэкапов
+        from extensions.backup_monitor.bot_handler import setup_backup_handlers
+        setup_backup_handlers(application)
         
         # Запускаем веб-сервер в отдельном потоке
         web_thread = threading.Thread(target=start_web_server, daemon=True)
@@ -69,15 +72,9 @@ def main():
         logger.info("✅ Основный мониторинг запущен")
         
         # Запускаем бота
-        updater.start_polling()
+        application.run_polling()
         logger.info("✅ Бот запущен и работает")
         
-        # Блокируем основной поток
-        updater.idle()
-        
-        # Инициализация мониторинга бэкапов
-        setup_backup_commands(dispatcher)
-
     except Exception as e:
         logger.error(f"💥 Ошибка: {e}")
         import traceback
@@ -85,3 +82,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    

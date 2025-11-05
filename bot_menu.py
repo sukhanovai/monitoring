@@ -8,7 +8,6 @@ from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CommandHandler, CallbackQueryHandler
 from config import CHAT_IDS, TELEGRAM_TOKEN
 from telegram import Bot
-from extensions.backup_monitor.bot_handler import setup_backup_commands
 from extensions.extension_manager import extension_manager, AVAILABLE_EXTENSIONS
 import requests
 import json
