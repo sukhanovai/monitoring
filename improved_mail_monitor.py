@@ -202,7 +202,7 @@ class BackupProcessor:
             return None
 
     def save_database_backup(self, backup_info, subject, email_date=None):
-        """Сохраняет информацию о бэкапе базы данных"""
+        """Сохраняет информацию о бэкапе базы данных, игнорируя дубликаты"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
@@ -219,7 +219,8 @@ class BackupProcessor:
                     task_type TEXT,
                     error_count INTEGER DEFAULT 0,
                     email_subject TEXT,
-                    received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(host_name, database_name, received_at)
                 )
             ''')
             
@@ -229,8 +230,9 @@ class BackupProcessor:
             else:
                 received_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             
+            # Используем INSERT OR IGNORE чтобы избежать дубликатов
             cursor.execute('''
-                INSERT INTO database_backups 
+                INSERT OR IGNORE INTO database_backups 
                 (host_name, database_name, database_display_name, backup_status, backup_type, task_type, error_count, email_subject, received_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
@@ -246,7 +248,7 @@ class BackupProcessor:
             ))
             
             conn.commit()
-            logger.info(f"✅ Сохранен бэкап БД: {backup_info['database_name']} - {backup_info['backup_status']}")
+            logger.info(f"✅ Сохранен бэкап БД: {backup_info['database_display_name']} - {backup_info['backup_status']}")
             
         except Exception as e:
             logger.error(f"❌ Ошибка сохранения бэкапа БД в БД: {e}")
@@ -521,7 +523,7 @@ class BackupProcessor:
             return f"{seconds}s"
 
     def save_backup_report(self, backup_info, subject, email_date=None):
-        """Сохраняет отчет в базу с корректным временем"""
+        """Сохраняет отчет в базу с корректным временем, игнорируя дубликаты"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
@@ -532,8 +534,9 @@ class BackupProcessor:
             else:
                 received_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             
+            # Используем INSERT OR IGNORE чтобы избежать дубликатов
             cursor.execute('''
-                INSERT INTO proxmox_backups 
+                INSERT OR IGNORE INTO proxmox_backups 
                 (host_name, backup_status, task_type, duration, total_size, error_message, email_subject, received_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ''', (

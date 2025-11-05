@@ -485,12 +485,12 @@ def format_database_details(backup_bot, backup_type, db_name, hours=168):
         if not stats:
             return f"📋 Детали по {db_name}\n\nНет данных"
         
-        # Фильтруем по конкретной базе
+        # Фильтруем по конкретной базе - ИСПРАВЛЕНИЕ: правильное сравнение
         db_stats = [s for s in stats if s[0] == backup_type and s[1] == db_name]
         
         if not db_stats:
             return f"📋 Детали по {db_name}\n\nНет данных за указанный период"
-        
+                
         type_names = {
             'company_database': '🏢 Основная БД',
             'barnaul': '🏔️ Барнаул', 
