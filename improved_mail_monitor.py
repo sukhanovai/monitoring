@@ -413,83 +413,83 @@ class BackupProcessor:
             if 'conn' in locals():
                 conn.close()
 
-    def parse_database_backup(self, subject, body):
-        """Парсит бэкапы баз данных из темы письма"""
-        try:
-            backup_info = {}
-            
-            # Проверяем бэкапы основных баз данных
-            for pattern in DATABASE_BACKUP_PATTERNS["company"]:
-                match = re.search(pattern, subject, re.IGNORECASE)
-                if match:
-                    db_name = match.group(1).lower()
-                    display_name = DATABASE_BACKUP_CONFIG["company_databases"].get(db_name, db_name)
-                    backup_info = {
-                        'host_name': 'sr-bup',
-                        'backup_status': 'success',
-                        'task_type': 'database_dump',
-                        'database_name': db_name,
-                        'database_display_name': display_name,
-                        'backup_type': 'company_database'
-                    }
-                    return backup_info
-            
-            # Проверяем бэкапы Барнаул
-            for pattern in DATABASE_BACKUP_PATTERNS["barnaul"]:
-                match = re.search(pattern, subject, re.IGNORECASE)
-                if match:
-                    backup_name = match.group(1)
-                    error_count = int(match.group(2))
-                    display_name = DATABASE_BACKUP_CONFIG["barnaul_backups"].get(backup_name, backup_name)
-                    backup_info = {
-                        'host_name': 'brn-backup',
-                        'backup_status': 'success' if error_count == 0 else 'failed',
-                        'task_type': 'cobian_backup',
-                        'database_name': backup_name,
-                        'database_display_name': display_name,
-                        'error_count': error_count,
-                        'backup_type': 'barnaul'
-                    }
-                    return backup_info
-            
-            # Проверяем бэкапы клиентов
-            for pattern in DATABASE_BACKUP_PATTERNS["clients"]:
-                match = re.search(pattern, subject, re.IGNORECASE)
-                if match:
-                    db_name = match.group(1).lower()
-                    display_name = DATABASE_BACKUP_CONFIG["client_databases"].get(db_name, db_name)
-                    backup_info = {
-                        'host_name': 'kc-1c',
-                        'backup_status': 'success',
-                        'task_type': 'client_database_dump',
-                        'database_name': db_name,
-                        'database_display_name': display_name,
-                        'backup_type': 'client'
-                    }
-                    return backup_info
-            
-            # Проверяем бэкапы Yandex
-            for pattern in DATABASE_BACKUP_PATTERNS["yandex"]:
-                match = re.search(pattern, subject, re.IGNORECASE)
-                if match:
-                    client_name = match.group(1)
-                    display_name = DATABASE_BACKUP_CONFIG["yandex_backups"].get(client_name, client_name)
-                    backup_info = {
-                        'host_name': 'yandex-backup',
-                        'backup_status': 'success',
-                        'task_type': 'yandex_backup',
-                        'database_name': client_name,
-                        'database_display_name': display_name,
-                        'backup_type': 'yandex'
-                    }
-                    return backup_info
-            
-            return None
-            
-        except Exception as e:
-            logger.error(f"Ошибка парсинга бэкапа БД: {e}")
-            return None
+def parse_database_backup(self, subject, body):
+    """Парсит бэкапы баз данных из темы письма"""
+    try:
+        backup_info = {}
 
+        # Проверяем бэкапы основных баз данных
+        for pattern in DATABASE_BACKUP_PATTERNS["company"]:
+            match = re.search(pattern, subject, re.IGNORECASE)
+            if match:
+                db_name = match.group(1).lower()
+                # ИСПРАВЛЕНИЕ: используем реальное имя как display_name
+                backup_info = {
+                    'host_name': 'sr-bup',
+                    'backup_status': 'success',
+                    'task_type': 'database_dump',
+                    'database_name': db_name,
+                    'database_display_name': db_name,  # Используем реальное имя
+                    'backup_type': 'company_database'
+                }
+                return backup_info
+
+        # Проверяем бэкапы Барнаул
+        for pattern in DATABASE_BACKUP_PATTERNS["barnaul"]:
+            match = re.search(pattern, subject, re.IGNORECASE)
+            if match:
+                backup_name = match.group(1)
+                error_count = int(match.group(2))
+                # ИСПРАВЛЕНИЕ: используем реальное имя как display_name
+                backup_info = {
+                    'host_name': 'brn-backup',
+                    'backup_status': 'success' if error_count == 0 else 'failed',
+                    'task_type': 'cobian_backup',
+                    'database_name': backup_name,
+                    'database_display_name': backup_name,  # Используем реальное имя
+                    'error_count': error_count,
+                    'backup_type': 'barnaul'
+                }
+                return backup_info
+
+        # Проверяем бэкапы клиентов
+        for pattern in DATABASE_BACKUP_PATTERNS["clients"]:
+            match = re.search(pattern, subject, re.IGNORECASE)
+            if match:
+                db_name = match.group(1).lower()
+                # ИСПРАВЛЕНИЕ: используем реальное имя как display_name
+                backup_info = {
+                    'host_name': 'kc-1c',
+                    'backup_status': 'success',
+                    'task_type': 'client_database_dump',
+                    'database_name': db_name,
+                    'database_display_name': db_name,  # Используем реальное имя
+                    'backup_type': 'client'
+                }
+                return backup_info
+
+        # Проверяем бэкапы Yandex
+        for pattern in DATABASE_BACKUP_PATTERNS["yandex"]:
+            match = re.search(pattern, subject, re.IGNORECASE)
+            if match:
+                client_name = match.group(1)
+                # ИСПРАВЛЕНИЕ: используем реальное имя как display_name
+                backup_info = {
+                    'host_name': 'yandex-backup',
+                    'backup_status': 'success',
+                    'task_type': 'yandex_backup',
+                    'database_name': client_name,
+                    'database_display_name': client_name,  # Используем реальное имя
+                    'backup_type': 'yandex'
+                }
+                return backup_info
+
+        return None
+
+    except Exception as e:
+        logger.error(f"Ошибка парсинга бэкапа БД: {e}")
+        return None
+    
     def save_database_backup(self, backup_info, subject, email_date=None):
         """Сохраняет информацию о бэкапе базы данных"""
         try:
