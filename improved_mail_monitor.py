@@ -201,6 +201,58 @@ class BackupProcessor:
             logger.error(f"Ошибка парсинга бэкапа БД: {e}")
             return None
 
+    def save_database_backup(self, backup_info, subject, email_date=None):
+        """Сохраняет информацию о бэкапе базы данных"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            # Создаем таблицу для бэкапов БД если не существует
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS database_backups (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    host_name TEXT NOT NULL,
+                    database_name TEXT NOT NULL,
+                    database_display_name TEXT,
+                    backup_status TEXT NOT NULL,
+                    backup_type TEXT,
+                    task_type TEXT,
+                    error_count INTEGER DEFAULT 0,
+                    email_subject TEXT,
+                    received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            # Используем текущее время как время получения, если нет даты из письма
+            if email_date:
+                received_at = email_date.strftime('%Y-%m-%d %H:%M:%S')
+            else:
+                received_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            
+            cursor.execute('''
+                INSERT INTO database_backups 
+                (host_name, database_name, database_display_name, backup_status, backup_type, task_type, error_count, email_subject, received_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                backup_info['host_name'],
+                backup_info['database_name'],
+                backup_info.get('database_display_name'),
+                backup_info['backup_status'],
+                backup_info.get('backup_type'),
+                backup_info.get('task_type'),
+                backup_info.get('error_count', 0),
+                subject[:500],
+                received_at
+            ))
+            
+            conn.commit()
+            logger.info(f"✅ Сохранен бэкап БД: {backup_info['database_name']} - {backup_info['backup_status']}")
+            
+        except Exception as e:
+            logger.error(f"❌ Ошибка сохранения бэкапа БД в БД: {e}")
+        finally:
+            if 'conn' in locals():
+                conn.close()
 
     def parse_email_file(self, file_path):
         """Парсит email файл"""
