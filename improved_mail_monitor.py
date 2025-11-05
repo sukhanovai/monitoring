@@ -127,6 +127,9 @@ class BackupProcessor:
             logger.info(f"Тема письма: {subject}")
             logger.info(f"Дата письма: {email_date_str}")
             
+            # ДОБАВИМ ОТЛАДКУ ДЛЯ БЭКАПОВ БД
+            print(f"🎯 DEBUG: Обрабатываем письмо: {subject}")
+
             # Парсим дату письма
             email_date = None
             if email_date_str:
