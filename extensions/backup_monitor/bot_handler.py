@@ -129,29 +129,42 @@ class BackupMonitorBot:
         return results
     
     def get_database_backups_stats(self, hours=24):
-        """Получает статистику по бэкапам баз данных"""
+        """Получает статистику по бэкапам баз данных - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
         since_time = (datetime.now() - timedelta(hours=hours)).strftime('%Y-%m-%d %H:%M:%S')
         
+        # ИСПРАВЛЕНИЕ: убираем группировку по backup_status и считаем все записи
         cursor.execute('''
             SELECT 
                 backup_type,
+                database_name,
                 database_display_name,
-                backup_status,
-                COUNT(*) as backup_count,
+                COUNT(*) as total_backups,
+                SUM(CASE WHEN backup_status = 'success' THEN 1 ELSE 0 END) as successful_backups,
+                SUM(CASE WHEN backup_status = 'failed' THEN 1 ELSE 0 END) as failed_backups,
                 MAX(received_at) as last_backup
             FROM database_backups 
             WHERE received_at >= ?
-            GROUP BY backup_type, database_display_name, backup_status
-            ORDER BY backup_type, database_display_name, last_backup DESC
+            GROUP BY backup_type, database_name, database_display_name
+            ORDER BY backup_type, database_name, last_backup DESC
         ''', (since_time,))
         
         results = cursor.fetchall()
         conn.close()
         
-        return results
+        # Преобразуем результат в старый формат для совместимости
+        formatted_results = []
+        for backup_type, db_name, display_name, total, success, failed, last_backup in results:
+            # Добавляем записи для успешных бэкапов
+            if success > 0:
+                formatted_results.append((backup_type, db_name, display_name, 'success', success, last_backup))
+            # Добавляем записи для неудачных бэкапов
+            if failed > 0:
+                formatted_results.append((backup_type, db_name, display_name, 'failed', failed, last_backup))
+        
+        return formatted_results
 
     def get_database_backups_summary(self, hours=24):
         """Сводка по бэкапам баз данных"""
