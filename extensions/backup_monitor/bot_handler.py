@@ -182,57 +182,69 @@ class BackupMonitorBot:
         
         return summary
 
-    def get_database_details(self, backup_type, db_name, hours=24):
-        """Получает детальную информацию по конкретной базе данных - ДИАГНОСТИЧЕСКАЯ ВЕРСИЯ"""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        logger.debug(f"🔍 DEBUG get_database_details: backup_type='{backup_type}', db_name='{db_name}'")
-        
-        # ДИАГНОСТИКА 1: Посмотрим все доступные backup_type
-        cursor.execute("SELECT DISTINCT backup_type FROM database_backups")
-        all_types = cursor.fetchall()
-        logger.debug(f"🔍 DEBUG: Все backup_type в БД: {all_types}")
-        
-        # ДИАГНОСТИКА 2: Посмотрим все доступные database_name для нашего типа
-        cursor.execute("SELECT DISTINCT database_name FROM database_backups WHERE backup_type = ?", (backup_type,))
-        all_names = cursor.fetchall()
-        logger.debug(f"🔍 DEBUG: Все database_name для {backup_type}: {all_names}")
-        
-        # ДИАГНОСТИКА 3: Поищем любые записи для этого типа и имени (без временных ограничений)
-        cursor.execute('''
-            SELECT COUNT(*) 
-            FROM database_backups 
-            WHERE backup_type = ? AND database_name = ?
-        ''', (backup_type, db_name))
-        count_all_time = cursor.fetchone()[0]
-        logger.debug(f"🔍 DEBUG: Всего записей для {backup_type}.{db_name} за все время: {count_all_time}")
-        
-        # Основной запрос
-        cursor.execute('''
-            SELECT 
-                backup_status,
-                task_type,
-                error_count,
-                email_subject,
-                received_at
-            FROM database_backups 
-            WHERE backup_type = ? 
-            AND database_name = ?
-            AND datetime(received_at) >= datetime('now', ?)
-            ORDER BY received_at DESC
-            LIMIT 10
-        ''', (backup_type, db_name, f'-{hours} hours'))
-        
-        results = cursor.fetchall()
-        conn.close()
-        
-        logger.debug(f"🔍 DEBUG: Найдено записей за {hours} часов: {len(results)}")
-        for row in results:
-            logger.debug(f"🔍 DEBUG запись: {row}")
-        
-        return results
-
+    def get_database_details(backup_bot, backup_type, db_name, hours=168):
+        """Детальная информация по конкретной базе данных - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
+        try:
+            print(f"🔍 DEBUG: Получен запрос для {backup_type}.{db_name}")
+            
+            # Получаем детальные данные
+            details = backup_bot.get_database_details(backup_type, db_name, hours)
+            
+            print(f"🔍 DEBUG: Получено {len(details)} записей")
+            
+            if not details:
+                return f"📋 Детали по {db_name}\n\nНет данных за последние {hours} часов"
+                    
+            type_names = {
+                'company_database': '🏢 Основная БД',
+                'barnaul': '🏔️ Барнаул', 
+                'client': '👥 Клиентская',
+                'yandex': '☁️ Yandex'
+            }
+            
+            type_display = type_names.get(backup_type, f"📁 {backup_type}")
+            
+            message = f"📋 Детали по {db_name}\n"
+            message += f"Тип: {type_display}\n"
+            message += f"Период: {hours} часов\n\n"
+            
+            # Статистика
+            success_count = len([d for d in details if d[0] == 'success'])
+            failed_count = len([d for d in details if d[0] == 'failed'])
+            total_count = len(details)
+            
+            message += f"📊 Статистика:\n"
+            message += f"✅ Успешных: {success_count}\n"
+            message += f"❌ Ошибок: {failed_count}\n"
+            message += f"📈 Всего: {total_count}\n\n"
+            
+            # Последние бэкапы
+            message += "⏰ Последние бэкапы:\n"
+            
+            for status, task_type, error_count, subject, received_at in details[:5]:
+                status_icon = "✅" if status == 'success' else "❌"
+                try:
+                    backup_time = datetime.strptime(received_at, '%Y-%m-%d %H:%M:%S')
+                    time_str = backup_time.strftime('%d.%m %H:%M')
+                except:
+                    time_str = received_at[:16]
+                
+                message += f"{status_icon} {time_str} - {status}"
+                if error_count and error_count > 0:
+                    message += f" (ошибок: {error_count})"
+                if task_type:
+                    message += f" - {task_type}"
+                message += "\n"
+            
+            message += f"\n🕒 Обновлено: {datetime.now().strftime('%H:%M:%S')}"
+            return message
+            
+        except Exception as e:
+            print(f"❌ Ошибка в format_database_details: {e}")
+            import traceback
+            print(f"Подробности: {traceback.format_exc()}")
+            return f"❌ Ошибка при получении деталей БД: {e}"
+    
 def format_backup_summary(backup_bot):
     """Форматирует сводку по бэкапам за сегодня"""
     today_status = backup_bot.get_today_status()
@@ -682,41 +694,36 @@ def create_hosts_keyboard(backup_bot):
     return InlineKeyboardMarkup(keyboard)
 
 def create_database_list_keyboard(backup_bot, hours=168):
-    """Создает клавиатуру со списком баз данных - ДИАГНОСТИЧЕСКАЯ ВЕРСИЯ"""
+    """Создает клавиатуру со списком баз данных - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
     stats = backup_bot.get_database_backups_stats(hours)
     
-    logger.debug(f"🔍 DEBUG create_database_list_keyboard: получено {len(stats) if stats else 0} записей статистики")
-    
     if not stats:
-        logger.debug("🔍 DEBUG: Нет статистики для создания клавиатуры")
         return InlineKeyboardMarkup([
             [InlineKeyboardButton("🔄 Обновить", callback_data='db_backups_list')],
             [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')]
         ])
     
-    # ДИАГНОСТИКА: выведем всю статистику
-    for i, stat in enumerate(stats):
-        logger.debug(f"🔍 DEBUG статистика {i}: {stat}")
-    
-    # Собираем информацию о базах
+    # Собираем информацию о базах - используем реальные имена из БД
     databases = {}
     for backup_type, db_name, display_name, status, count, last_backup in stats:
         key = (backup_type, db_name)
         if key not in databases:
-            databases[key] = db_name
-    
-    logger.debug(f"🔍 DEBUG: Собрано уникальных баз данных: {len(databases)}")
-    for key, name in databases.items():
-        logger.debug(f"🔍 DEBUG база: {key} -> '{name}'")
+            # Используем display_name для отображения, но db_name для callback
+            databases[key] = {
+                'display_name': display_name if display_name else db_name,
+                'real_name': db_name
+            }
     
     keyboard = []
     row = []
     
-    for (backup_type, db_name), real_name in sorted(databases.items()):
-        callback_data = f"db_detail_{backup_type}_{real_name}"
-        button_text = real_name
+    for (backup_type, db_name), info in sorted(databases.items()):
+        display_name = info['display_name']
+        real_name = info['real_name']
         
-        logger.debug(f"🔍 DEBUG создаем кнопку: '{button_text}' -> '{callback_data}'")
+        # Создаем callback_data с реальным именем из БД
+        callback_data = f"db_detail_{backup_type}_{real_name}"
+        button_text = display_name
         
         row.append(InlineKeyboardButton(button_text, callback_data=callback_data))
         
@@ -880,13 +887,15 @@ def backup_callback(update, context):
             if extension_manager.is_extension_enabled('database_backup_monitor'):
                 # Извлекаем тип и имя БД из callback_data
                 parts = query.data.replace('db_detail_', '').split('_', 1)
-                logger.debug(f"🔍 DEBUG callback db_detail: parts={parts}")
+                
+                # ПРИНУДИТЕЛЬНАЯ ДИАГНОСТИКА В КОНСОЛЬ
+                print(f"🎯 DEBUG: Обрабатываем db_detail, parts={parts}")
                 
                 if len(parts) == 2:
                     backup_type = parts[0]
                     db_name = parts[1]
                     
-                    logger.debug(f"🔍 DEBUG: backup_type='{backup_type}', db_name='{db_name}'")
+                    print(f"🎯 DEBUG: backup_type='{backup_type}', db_name='{db_name}'")
                     
                     message = format_database_details(backup_bot, backup_type, db_name, 24)
                     keyboard = create_database_detail_keyboard(backup_type, db_name)
