@@ -140,6 +140,22 @@ class BackupProcessor:
                 else:
                     print(f"❌ DEBUG: Паттерн '{pattern}' не подошел для '{subject}'")
 
+            # Проверяем бэкапы от rubicon-1c
+            print(f"🎯 DEBUG: Проверяем письма от rubicon-1c")
+            rubicon_match = re.search(r'rubicon-1c\s+(\w+)\s+dump complete', subject, re.IGNORECASE)
+            if rubicon_match:
+                db_name = rubicon_match.group(1).lower()
+                print(f"✅ DEBUG: Найден бэкап rubicon-1c: '{db_name}'")
+                backup_info = {
+                    'host_name': 'rubicon-1c',
+                    'backup_status': 'success',
+                    'task_type': 'database_dump',
+                    'database_name': db_name,
+                    'database_display_name': db_name,
+                    'backup_type': 'client'
+                }
+                return backup_info
+
             # Проверяем бэкапы Барнаул
             for pattern in DATABASE_BACKUP_PATTERNS["barnaul"]:
                 print(f"🎯 DEBUG: Проверяем паттерн barnaul: '{pattern}'")
@@ -200,7 +216,7 @@ class BackupProcessor:
             print(f"💥 DEBUG: Ошибка в parse_database_backup: {e}")
             logger.error(f"Ошибка парсинга бэкапа БД: {e}")
             return None
-
+    
     def save_database_backup(self, backup_info, subject, email_date=None):
         """Сохраняет информацию о бэкапе базы данных, игнорируя дубликаты"""
         try:

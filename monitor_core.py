@@ -592,7 +592,7 @@ def control_panel_handler(update, context):
         [InlineKeyboardButton("📊 Полный отчет", callback_data='full_report')],
         [InlineKeyboardButton("🔧 Диагностика отчета", callback_data='debug_report')],
         [InlineKeyboardButton("↩️ Назад", callback_data='monitor_status'),
-         InlineKeyboardButton("❌ Закрыть", callback_data='close')]
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
     
     status_text = "🟢 Мониторинг активен" if monitoring_active else "🔴 Мониторинг приостановлен"

@@ -580,7 +580,7 @@ def create_main_backup_keyboard():
         [InlineKeyboardButton("🔄 Обновить", callback_data='backup_refresh'),
          InlineKeyboardButton("📋 Помощь", callback_data='backup_help')],
         [InlineKeyboardButton("↩️ Назад", callback_data='monitor_status'),
-         InlineKeyboardButton("⚫ Закрыть", callback_data='close')]
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ])
     
     return InlineKeyboardMarkup(keyboard)
@@ -593,7 +593,7 @@ def create_proxmox_backup_keyboard():
         [InlineKeyboardButton("❌ Ошибки", callback_data='backup_failed'),
          InlineKeyboardButton("📋 Все серверы", callback_data='backup_hosts')],
         [InlineKeyboardButton("↩️ Назад", callback_data='backup_main'),
-         InlineKeyboardButton("⚫ Закрыть", callback_data='close')]
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ])
 
 def create_database_backup_keyboard():
@@ -604,7 +604,7 @@ def create_database_backup_keyboard():
         [InlineKeyboardButton("🗃️ Список БД", callback_data='db_backups_list'),
          InlineKeyboardButton("🕐 За 48ч", callback_data='db_backups_48h')],
         [InlineKeyboardButton("↩️ Назад", callback_data='backup_main'),
-         InlineKeyboardButton("⚫ Закрыть", callback_data='close')]
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ])
 
 def create_hosts_keyboard(backup_bot):
@@ -627,7 +627,7 @@ def create_hosts_keyboard(backup_bot):
     # Добавляем кнопку возврата и закрытия
     keyboard.append([
         InlineKeyboardButton("↩️ Назад", callback_data='backup_proxmox'),
-        InlineKeyboardButton("⚫ Закрыть", callback_data='close')
+        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
     ])
 
     return InlineKeyboardMarkup(keyboard)
@@ -667,7 +667,7 @@ def create_database_list_keyboard(backup_bot, hours=24):
         [InlineKeyboardButton("🔄 Обновить", callback_data='db_backups_list'),
          InlineKeyboardButton("📊 Общий отчет", callback_data='db_backups_summary')],
         [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases'),
-         InlineKeyboardButton("⚫ Закрыть", callback_data='close')]
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ])
     
     return InlineKeyboardMarkup(keyboard)
@@ -678,7 +678,7 @@ def create_database_detail_keyboard(backup_type, db_name):
         [InlineKeyboardButton("🔄 Обновить", callback_data=f'db_detail_{backup_type}_{db_name.replace(" ", "_")}'),
          InlineKeyboardButton("📋 Список БД", callback_data='db_backups_list')],
         [InlineKeyboardButton("↩️ Назад к БД", callback_data='backup_databases'),
-         InlineKeyboardButton("⚫ Закрыть", callback_data='close')]
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ])
 
 def create_back_keyboard():
@@ -765,7 +765,7 @@ def backup_callback(update, context):
             message = format_host_status(backup_bot, host_name)
             keyboard = InlineKeyboardMarkup([
                 [InlineKeyboardButton("↩️ Назад к серверам", callback_data='backup_hosts'),
-                 InlineKeyboardButton("⚫ Закрыть", callback_data='close')]
+                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
 
         # Обработка бэкапов БД

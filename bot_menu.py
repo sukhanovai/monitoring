@@ -76,7 +76,7 @@ def start_command(update, context):
         [InlineKeyboardButton("🎛️ Управление", callback_data='control_panel')],
         [InlineKeyboardButton("🔧 Диагностика", callback_data='diagnose_menu')],
         [InlineKeyboardButton("🔇 Тихий режим", callback_data='silent_status')],
-        [InlineKeyboardButton("⚫ Закрыть", callback_data='close')] 
+        [InlineKeyboardButton("✖️ Закрыть", callback_data='close')] 
     ])
     
     reply_markup = InlineKeyboardMarkup(keyboard)
