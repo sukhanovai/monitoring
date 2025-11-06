@@ -495,7 +495,6 @@ def get_database_list(backup_bot, hours=168):
         
         for backup_type, db_name in sorted(databases):
             type_icon = type_names.get(backup_type, '📁')
-            # ИСПРАВЛЕНИЕ: используем реальное имя базы
             message += f"• {type_icon} {db_name}\n"
         
         message += f"\nНажмите на базу данных для просмотра деталей (данные за {hours}ч)"
@@ -504,7 +503,7 @@ def get_database_list(backup_bot, hours=168):
     except Exception as e:
         logger.error(f"Ошибка в get_database_list: {e}")
         return f"❌ Ошибка при получении списка БД: {e}"
-                
+            
 def format_database_details(backup_bot, backup_type, db_name, hours=168):
     """Детальная информация по конкретной базе данных"""
     try:
@@ -633,13 +632,12 @@ def create_hosts_keyboard(backup_bot):
 
     return InlineKeyboardMarkup(keyboard)
 
-def create_database_list_keyboard(backup_bot, hours=168):
+def create_database_list_keyboard(backup_bot, hours=24):
     """Создает клавиатуру со списком баз данных - ОБНОВЛЕННАЯ ВЕРСИЯ"""
     stats = backup_bot.get_database_backups_stats(hours)
     
     if not stats:
         return InlineKeyboardMarkup([
-            [InlineKeyboardButton("🔄 Обновить", callback_data='db_backups_list')],
             [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')]
         ])
     
@@ -652,9 +650,8 @@ def create_database_list_keyboard(backup_bot, hours=168):
     row = []
     
     for backup_type, db_name in sorted(databases):
-        # ИСПРАВЛЕНИЕ: используем реальное имя базы без префикса database_
         callback_data = f"db_detail_{backup_type}_{db_name}"
-        button_text = db_name  # Реальное имя базы
+        button_text = db_name
         
         row.append(InlineKeyboardButton(button_text, callback_data=callback_data))
         
@@ -667,8 +664,8 @@ def create_database_list_keyboard(backup_bot, hours=168):
     
     # Кнопки управления
     keyboard.extend([
-        [InlineKeyboardButton("🔄 Обновить список", callback_data='db_backups_list')],
-        [InlineKeyboardButton("📊 Показать все базы", callback_data='db_backups_detailed')],
+        [InlineKeyboardButton("🔄 Обновить", callback_data='db_backups_list'),
+         InlineKeyboardButton("📊 Общий отчет", callback_data='db_backups_summary')],
         [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ])
