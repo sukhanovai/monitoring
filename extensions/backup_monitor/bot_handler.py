@@ -174,12 +174,11 @@ class BackupMonitorBot:
         return summary
 
     def get_database_details(self, backup_type, db_name, hours=24):
-        """Получает детальную информацию по конкретной базе данных"""
+        """Получает детальную информацию по конкретной базе данных - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
-        since_time = (datetime.now() - timedelta(hours=hours)).strftime('%Y-%m-%d %H:%M:%S')
-        
+        # Используем тот же подход, что и в SQLite консоли
         cursor.execute('''
             SELECT 
                 backup_status,
@@ -190,10 +189,10 @@ class BackupMonitorBot:
             FROM database_backups 
             WHERE backup_type = ? 
             AND database_name = ?
-            AND received_at >= ?
+            AND datetime(received_at) >= datetime('now', ?)
             ORDER BY received_at DESC
             LIMIT 10
-        ''', (backup_type, db_name, since_time))
+        ''', (backup_type, db_name, f'-{hours} hours'))
         
         results = cursor.fetchall()
         conn.close()
