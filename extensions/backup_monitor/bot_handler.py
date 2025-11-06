@@ -506,18 +506,29 @@ def get_database_list(backup_bot, hours=168):
         return f"❌ Ошибка при получении списка БД: {e}"
                 
 def format_database_details(backup_bot, backup_type, db_name, hours=168):
-    """Детальная информация по конкретной базе данных - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
+    """Детальная информация по конкретной базе данных - ДИАГНОСТИЧЕСКАЯ ВЕРСИЯ"""
     try:
-        # Убираем возможный префикс database_ если он есть
-        if db_name.startswith('database_'):
-            db_name = db_name.replace('database_', '')
+        print(f"🔍 DEBUG format_database_details: backup_type='{backup_type}', db_name='{db_name}'")
         
         # Получаем детальные данные
         details = backup_bot.get_database_details(backup_type, db_name, hours)
         
-        if not details:
-            return f"📋 Детали по {db_name}\n\nНет данных за последние {hours} часов"
+        print(f"🔍 DEBUG: Получено {len(details)} записей")
         
+        if not details:
+            # Попробуем найти альтернативные варианты
+            print(f"🔍 DEBUG: Пробуем альтернативный поиск для '{db_name}'")
+            
+            # Получаем все записи этого типа за период
+            stats = backup_bot.get_database_backups_stats(hours)
+            matching_stats = [s for s in stats if s[0] == backup_type and s[1] == db_name]
+            print(f"🔍 DEBUG: В статистике найдено {len(matching_stats)} совпадений")
+            
+            for stat in matching_stats:
+                print(f"🔍 DEBUG совпадение: {stat}")
+            
+            return f"📋 Детали по {db_name}\n\nНет данных за последние {hours} часов\n\n🔍 DEBUG: В статистике {len(matching_stats)} записей"
+                
         type_names = {
             'company_database': '🏢 Основная БД',
             'barnaul': '🏔️ Барнаул', 
