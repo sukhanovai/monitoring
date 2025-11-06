@@ -248,7 +248,7 @@ def extensions_command(update, context):
     show_extensions_menu(update, context)
 
 def show_extensions_menu(update, context):
-    """Показывает меню управления расширениями - ОБНОВЛЕННАЯ ВЕРСИЯ"""
+    """Показывает меню управления расширениями - СТАБИЛЬНАЯ ВЕРСИЯ"""
     from telegram import InlineKeyboardMarkup, InlineKeyboardButton
     
     query = update.callback_query
@@ -273,7 +273,7 @@ def show_extensions_menu(update, context):
         message += f"   {ext_info['description']}\n"
         message += f"   Статус: {'Включено' if enabled else 'Отключено'}\n\n"
         
-        # Добавляем кнопку переключения для КАЖДОГО расширения
+        # Добавляем кнопку переключения для каждого расширения
         keyboard.append([
             InlineKeyboardButton(
                 f"{toggle_text} {ext_info['name']}", 
@@ -283,10 +283,10 @@ def show_extensions_menu(update, context):
     
     # Добавляем кнопки управления
     keyboard.extend([
+        [InlineKeyboardButton("🔄 Обновить статус", callback_data='extensions_refresh')],
         [InlineKeyboardButton("📊 Включить все", callback_data='ext_enable_all')],
         [InlineKeyboardButton("📋 Отключить все", callback_data='ext_disable_all')],
-        [InlineKeyboardButton("🔄 Обновить статус", callback_data='extensions_refresh')],
-        [InlineKeyboardButton("↩️ Назад в главное меню", callback_data='monitor_status'),
+        [InlineKeyboardButton("↩️ Назад", callback_data='monitor_status'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ])
     
@@ -304,7 +304,7 @@ def show_extensions_menu(update, context):
             parse_mode='Markdown',
             reply_markup=reply_markup
         )
-
+        
 def extensions_callback_handler(update, context):
     """Обработчик callback'ов для управления расширениями - ОПТИМИЗИРОВАННАЯ ВЕРСИЯ"""
     query = update.callback_query

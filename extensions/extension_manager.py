@@ -141,27 +141,13 @@ class ExtensionManager:
         else:
             return False, f"❌ Ошибка сохранения конфигурации"
     
-    def toggle_extension(update, context, extension_id):
-        """Переключает расширение - С ЗАЩИТОЙ КРИТИЧЕСКИХ ФУНКЦИЙ"""
-        query = update.callback_query
-        
-        # Защита от отключения критических функций
-        critical_extensions = ['resource_monitor']  # Можно добавить другие
-        if extension_id in critical_extensions and extension_manager.is_extension_enabled(extension_id):
-            query.answer("⚠️ Это расширение критично для работы системы", show_alert=True)
-            return
-        
-        success, message = extension_manager.toggle_extension(extension_id)
-        
-        if success:
-            query.answer(message)
-            # Небольшая задержка для стабильности
-            import time
-            time.sleep(0.5)
-            show_extensions_menu(update, context)
+    def toggle_extension(self, extension_id):
+        """Переключает состояние расширения"""
+        if self.is_extension_enabled(extension_id):
+            return self.disable_extension(extension_id)
         else:
-            query.answer(message, show_alert=True)
-                
+            return self.enable_extension(extension_id)
+    
     def get_extensions_status(self):
         """Возвращает статус всех расширений"""
         status = {}
@@ -206,23 +192,6 @@ class ExtensionManager:
     def is_web_interface_enabled(self):
         """Проверяет, включен ли веб-интерфейс"""
         return self.is_extension_enabled('web_interface')
-    def restart_required(self):
-        """Проверяет, требуется ли перезагрузка для применения изменений"""
-        # Можно добавить логику для определения необходимости перезагрузки
-        return True
-
-    def get_restart_message(self):
-        """Возвращает сообщение о необходимости перезагрузки"""
-        return (
-            "🔄 *Для применения изменений требуется перезагрузка*\n\n"
-            "Выполните вручную на сервере:\n"
-            "```bash\n"
-            "cd /opt/monitoring\n"
-            "pkill -f main.py\n"
-            "python main.py\n"
-            "```\n\n"
-            "Или используйте команду перезапуска (если настроена)."
-        )
 
 # Глобальный экземпляр менеджера расширений
 extension_manager = ExtensionManager()
