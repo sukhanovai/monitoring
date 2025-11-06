@@ -634,7 +634,7 @@ def create_hosts_keyboard(backup_bot):
     return InlineKeyboardMarkup(keyboard)
 
 def create_database_list_keyboard(backup_bot, hours=168):
-    """Создает клавиатуру со списком баз данных - ОБНОВЛЕННАЯ ВЕРСИЯ"""
+    """Создает клавиатуру со списком баз данных - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
     stats = backup_bot.get_database_backups_stats(hours)
     
     if not stats:
@@ -643,18 +643,25 @@ def create_database_list_keyboard(backup_bot, hours=168):
             [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')]
         ])
     
-    # ОБНОВЛЕНИЕ: работа с 6 значениями
-    databases = set()
+    # Собираем информацию о базах с приоритетом display_name
+    databases = {}
     for backup_type, db_name, display_name, status, count, last_backup in stats:
-        databases.add((backup_type, db_name))
+        key = (backup_type, db_name)
+        if key not in databases:
+            # ИСПРАВЛЕНИЕ: используем display_name если он есть и не равен db_name
+            button_text = display_name if display_name and display_name != db_name else db_name
+            databases[key] = {
+                'button_text': button_text,
+                'real_name': db_name
+            }
     
     keyboard = []
     row = []
     
-    for backup_type, db_name in sorted(databases):
-        # ИСПРАВЛЕНИЕ: используем реальное имя базы без префикса database_
-        callback_data = f"db_detail_{backup_type}_{db_name}"
-        button_text = db_name  # Реальное имя базы
+    for (backup_type, db_name), info in sorted(databases.items()):
+        # Используем реальное имя для callback_data
+        callback_data = f"db_detail_{backup_type}_{info['real_name']}"
+        button_text = info['button_text']
         
         row.append(InlineKeyboardButton(button_text, callback_data=callback_data))
         

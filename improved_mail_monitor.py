@@ -115,7 +115,7 @@ class BackupProcessor:
         return processed_count
     
     def parse_database_backup(self, subject, body):
-        """Парсит бэкапы баз данных из темы письма"""
+        """Парсит бэкапы баз данных из темы письма - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
         try:
             print(f"🎯 DEBUG parse_database_backup: Начало обработки темы: '{subject}'")
             backup_info = {}
@@ -127,16 +127,21 @@ class BackupProcessor:
                 if match:
                     db_name = match.group(1).lower()
                     print(f"✅ DEBUG: Найден бэкап company_database: '{db_name}' по паттерну: '{pattern}'")
-                    # Используем реальное имя как display_name
+                    
+                    # ИСПРАВЛЕНИЕ: получаем display_name из конфигурации
+                    display_name = DATABASE_BACKUP_CONFIG["company_databases"].get(db_name, db_name)
+                    print(f"✅ DEBUG: Display name для '{db_name}': '{display_name}'")
+                    
                     backup_info = {
                         'host_name': 'sr-bup',
                         'backup_status': 'success',
                         'task_type': 'database_dump',
-                        'database_name': db_name,
-                        'database_display_name': db_name,
+                        'database_name': db_name,  # реальное имя для поиска
+                        'database_display_name': display_name,  # отображаемое имя из конфига
                         'backup_type': 'company_database'
                     }
                     return backup_info
+                
                 else:
                     print(f"❌ DEBUG: Паттерн '{pattern}' не подошел для '{subject}'")
 
