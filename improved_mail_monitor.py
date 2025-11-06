@@ -562,37 +562,59 @@ class BackupProcessor:
 def parse_database_backup(self, subject, body):
     """Парсит бэкапы баз данных из темы письма"""
     try:
+        print(f"🎯 DEBUG parse_database_backup: Начало обработки темы: '{subject}'")
         backup_info = {}
 
         # Проверяем бэкапы основных баз данных
         for pattern in DATABASE_BACKUP_PATTERNS["company"]:
+            print(f"🎯 DEBUG: Проверяем паттерн company: '{pattern}'")
             match = re.search(pattern, subject, re.IGNORECASE)
             if match:
                 db_name = match.group(1).lower()
-                # ИСПРАВЛЕНИЕ: используем реальное имя как display_name
+                print(f"✅ DEBUG: Найден бэкап company_database: '{db_name}' по паттерну: '{pattern}'")
+                # Используем реальное имя как display_name
                 backup_info = {
                     'host_name': 'sr-bup',
                     'backup_status': 'success',
                     'task_type': 'database_dump',
                     'database_name': db_name,
-                    'database_display_name': db_name,  # Используем реальное имя
+                    'database_display_name': db_name,
                     'backup_type': 'company_database'
                 }
                 return backup_info
+            else:
+                print(f"❌ DEBUG: Паттерн '{pattern}' не подошел для '{subject}'")
+
+        # Проверяем бэкапы от rubicon-1c
+        print(f"🎯 DEBUG: Проверяем письма от rubicon-1c")
+        rubicon_match = re.search(r'rubicon-1c\s+(\w+)\s+dump complete', subject, re.IGNORECASE)
+        if rubicon_match:
+            db_name = rubicon_match.group(1).lower()
+            print(f"✅ DEBUG: Найден бэкап rubicon-1c: '{db_name}'")
+            backup_info = {
+                'host_name': 'rubicon-1c',
+                'backup_status': 'success',
+                'task_type': 'database_dump',
+                'database_name': db_name,
+                'database_display_name': db_name,
+                'backup_type': 'client'
+            }
+            return backup_info
 
         # Проверяем бэкапы Барнаул
         for pattern in DATABASE_BACKUP_PATTERNS["barnaul"]:
+            print(f"🎯 DEBUG: Проверяем паттерн barnaul: '{pattern}'")
             match = re.search(pattern, subject, re.IGNORECASE)
             if match:
                 backup_name = match.group(1)
                 error_count = int(match.group(2))
-                # ИСПРАВЛЕНИЕ: используем реальное имя как display_name
+                print(f"✅ DEBUG: Найден бэкап barnaul: '{backup_name}' с ошибками: {error_count}")
                 backup_info = {
                     'host_name': 'brn-backup',
                     'backup_status': 'success' if error_count == 0 else 'failed',
                     'task_type': 'cobian_backup',
                     'database_name': backup_name,
-                    'database_display_name': backup_name,  # Используем реальное имя
+                    'database_display_name': backup_name,
                     'error_count': error_count,
                     'backup_type': 'barnaul'
                 }
@@ -600,42 +622,46 @@ def parse_database_backup(self, subject, body):
 
         # Проверяем бэкапы клиентов
         for pattern in DATABASE_BACKUP_PATTERNS["clients"]:
+            print(f"🎯 DEBUG: Проверяем паттерн clients: '{pattern}'")
             match = re.search(pattern, subject, re.IGNORECASE)
             if match:
                 db_name = match.group(1).lower()
-                # ИСПРАВЛЕНИЕ: используем реальное имя как display_name
+                print(f"✅ DEBUG: Найден бэкап clients: '{db_name}'")
                 backup_info = {
                     'host_name': 'kc-1c',
                     'backup_status': 'success',
                     'task_type': 'client_database_dump',
                     'database_name': db_name,
-                    'database_display_name': db_name,  # Используем реальное имя
+                    'database_display_name': db_name,
                     'backup_type': 'client'
                 }
                 return backup_info
 
         # Проверяем бэкапы Yandex
         for pattern in DATABASE_BACKUP_PATTERNS["yandex"]:
+            print(f"🎯 DEBUG: Проверяем паттерн yandex: '{pattern}'")
             match = re.search(pattern, subject, re.IGNORECASE)
             if match:
                 client_name = match.group(1)
-                # ИСПРАВЛЕНИЕ: используем реальное имя как display_name
+                print(f"✅ DEBUG: Найден бэкап yandex: '{client_name}'")
                 backup_info = {
                     'host_name': 'yandex-backup',
                     'backup_status': 'success',
                     'task_type': 'yandex_backup',
                     'database_name': client_name,
-                    'database_display_name': client_name,  # Используем реальное имя
+                    'database_display_name': client_name,
                     'backup_type': 'yandex'
                 }
                 return backup_info
 
+        print(f"❌ DEBUG: Ни один паттерн не подошел для темы: '{subject}'")
         return None
 
     except Exception as e:
+        print(f"💥 DEBUG: Ошибка в parse_database_backup: {e}")
         logger.error(f"Ошибка парсинга бэкапа БД: {e}")
         return None
-    
+        
     def save_database_backup(self, backup_info, subject, email_date=None):
         """Сохраняет информацию о бэкапе базы данных"""
         try:
