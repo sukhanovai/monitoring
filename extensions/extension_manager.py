@@ -141,13 +141,27 @@ class ExtensionManager:
         else:
             return False, f"❌ Ошибка сохранения конфигурации"
     
-    def toggle_extension(self, extension_id):
-        """Переключает состояние расширения"""
-        if self.is_extension_enabled(extension_id):
-            return self.disable_extension(extension_id)
+    def toggle_extension(update, context, extension_id):
+        """Переключает расширение - С ЗАЩИТОЙ КРИТИЧЕСКИХ ФУНКЦИЙ"""
+        query = update.callback_query
+        
+        # Защита от отключения критических функций
+        critical_extensions = ['resource_monitor']  # Можно добавить другие
+        if extension_id in critical_extensions and extension_manager.is_extension_enabled(extension_id):
+            query.answer("⚠️ Это расширение критично для работы системы", show_alert=True)
+            return
+        
+        success, message = extension_manager.toggle_extension(extension_id)
+        
+        if success:
+            query.answer(message)
+            # Небольшая задержка для стабильности
+            import time
+            time.sleep(0.5)
+            show_extensions_menu(update, context)
         else:
-            return self.enable_extension(extension_id)
-    
+            query.answer(message, show_alert=True)
+                
     def get_extensions_status(self):
         """Возвращает статус всех расширений"""
         status = {}

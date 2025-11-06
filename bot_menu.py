@@ -248,7 +248,7 @@ def extensions_command(update, context):
     show_extensions_menu(update, context)
 
 def show_extensions_menu(update, context):
-    """Показывает меню управления расширениями"""
+    """Показывает меню управления расширениями - ОБНОВЛЕННАЯ ВЕРСИЯ"""
     from telegram import InlineKeyboardMarkup, InlineKeyboardButton
     
     query = update.callback_query
@@ -273,7 +273,7 @@ def show_extensions_menu(update, context):
         message += f"   {ext_info['description']}\n"
         message += f"   Статус: {'Включено' if enabled else 'Отключено'}\n\n"
         
-        # Добавляем кнопку переключения для каждого расширения
+        # Добавляем кнопку переключения для КАЖДОГО расширения
         keyboard.append([
             InlineKeyboardButton(
                 f"{toggle_text} {ext_info['name']}", 
@@ -283,10 +283,11 @@ def show_extensions_menu(update, context):
     
     # Добавляем кнопки управления
     keyboard.extend([
-        [InlineKeyboardButton("🔄 Обновить статус", callback_data='extensions_refresh')],
         [InlineKeyboardButton("📊 Включить все", callback_data='ext_enable_all')],
         [InlineKeyboardButton("📋 Отключить все", callback_data='ext_disable_all')],
-        [InlineKeyboardButton("↩️ Назад в главное меню", callback_data='monitor_status')]
+        [InlineKeyboardButton("🔄 Обновить статус", callback_data='extensions_refresh')],
+        [InlineKeyboardButton("↩️ Назад в главное меню", callback_data='monitor_status'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ])
     
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -305,7 +306,7 @@ def show_extensions_menu(update, context):
         )
 
 def extensions_callback_handler(update, context):
-    """Обработчик callback'ов для управления расширениями"""
+    """Обработчик callback'ов для управления расширениями - ОПТИМИЗИРОВАННАЯ ВЕРСИЯ"""
     query = update.callback_query
     query.answer()
     
@@ -323,7 +324,22 @@ def extensions_callback_handler(update, context):
     elif data.startswith('ext_toggle_'):
         extension_id = data.replace('ext_toggle_', '')
         toggle_extension(update, context, extension_id)
-
+    
+    elif data == 'monitor_status':
+        # ОПТИМИЗАЦИЯ: используем ленивую загрузку чтобы избежать циклических импортов
+        try:
+            from monitor_core import monitor_status
+            monitor_status(update, context)
+        except Exception as e:
+            logger.error(f"Ошибка при переходе к статусу мониторинга: {e}")
+            query.edit_message_text("❌ Ошибка при загрузке статуса мониторинга")
+    
+    elif data == 'close':
+        try:
+            query.delete_message()
+        except:
+            query.edit_message_text("✅ Меню закрыто")
+            
 def toggle_extension(update, context, extension_id):
     """Переключает расширение"""
     query = update.callback_query
