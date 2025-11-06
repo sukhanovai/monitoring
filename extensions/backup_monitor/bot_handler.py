@@ -4,10 +4,19 @@
 
 import sqlite3
 import logging
+import sys
 from datetime import datetime, timedelta
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
-# Настройка логирования
+# Настройка логирования в файл
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('/opt/monitoring/bot_debug.log'),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
 logger = logging.getLogger(__name__)
 
 class BackupMonitorBot:
@@ -178,35 +187,26 @@ class BackupMonitorBot:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
-        print(f"🔍 DEBUG get_database_details: backup_type='{backup_type}', db_name='{db_name}'")
+        logger.debug(f"🔍 DEBUG get_database_details: backup_type='{backup_type}', db_name='{db_name}'")
         
         # ДИАГНОСТИКА 1: Посмотрим все доступные backup_type
         cursor.execute("SELECT DISTINCT backup_type FROM database_backups")
         all_types = cursor.fetchall()
-        print(f"🔍 DEBUG: Все backup_type в БД: {all_types}")
+        logger.debug(f"🔍 DEBUG: Все backup_type в БД: {all_types}")
         
         # ДИАГНОСТИКА 2: Посмотрим все доступные database_name для нашего типа
         cursor.execute("SELECT DISTINCT database_name FROM database_backups WHERE backup_type = ?", (backup_type,))
         all_names = cursor.fetchall()
-        print(f"🔍 DEBUG: Все database_name для {backup_type}: {all_names}")
+        logger.debug(f"🔍 DEBUG: Все database_name для {backup_type}: {all_names}")
         
-        # ДИАГНОСТИКА 3: Посмотрим точные имена в БД
+        # ДИАГНОСТИКА 3: Поищем любые записи для этого типа и имени (без временных ограничений)
         cursor.execute('''
-            SELECT DISTINCT database_name, database_display_name 
+            SELECT COUNT(*) 
             FROM database_backups 
-            WHERE backup_type = ?
-        ''', (backup_type,))
-        exact_names = cursor.fetchall()
-        print(f"🔍 DEBUG: Точные имена для {backup_type}: {exact_names}")
-        
-        # ДИАГНОСТИКА 4: Поищем похожие имена
-        cursor.execute('''
-            SELECT DISTINCT database_name 
-            FROM database_backups 
-            WHERE database_name LIKE ? OR database_display_name LIKE ?
-        ''', (f'%{db_name}%', f'%{db_name}%'))
-        similar_names = cursor.fetchall()
-        print(f"🔍 DEBUG: Похожие на '{db_name}': {similar_names}")
+            WHERE backup_type = ? AND database_name = ?
+        ''', (backup_type, db_name))
+        count_all_time = cursor.fetchone()[0]
+        logger.debug(f"🔍 DEBUG: Всего записей для {backup_type}.{db_name} за все время: {count_all_time}")
         
         # Основной запрос
         cursor.execute('''
@@ -227,9 +227,9 @@ class BackupMonitorBot:
         results = cursor.fetchall()
         conn.close()
         
-        print(f"🔍 DEBUG: Найдено записей: {len(results)}")
+        logger.debug(f"🔍 DEBUG: Найдено записей за {hours} часов: {len(results)}")
         for row in results:
-            print(f"🔍 DEBUG запись: {row}")
+            logger.debug(f"🔍 DEBUG запись: {row}")
         
         return results
 
@@ -685,17 +685,18 @@ def create_database_list_keyboard(backup_bot, hours=168):
     """Создает клавиатуру со списком баз данных - ДИАГНОСТИЧЕСКАЯ ВЕРСИЯ"""
     stats = backup_bot.get_database_backups_stats(hours)
     
-    print(f"🔍 DEBUG create_database_list_keyboard: получено {len(stats) if stats else 0} записей статистики")
+    logger.debug(f"🔍 DEBUG create_database_list_keyboard: получено {len(stats) if stats else 0} записей статистики")
     
     if not stats:
+        logger.debug("🔍 DEBUG: Нет статистики для создания клавиатуры")
         return InlineKeyboardMarkup([
             [InlineKeyboardButton("🔄 Обновить", callback_data='db_backups_list')],
             [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')]
         ])
     
     # ДИАГНОСТИКА: выведем всю статистику
-    for i, stat in enumerate(stats[:5]):  # первые 5 записей
-        print(f"🔍 DEBUG статистика {i}: {stat}")
+    for i, stat in enumerate(stats):
+        logger.debug(f"🔍 DEBUG статистика {i}: {stat}")
     
     # Собираем информацию о базах
     databases = {}
@@ -704,17 +705,18 @@ def create_database_list_keyboard(backup_bot, hours=168):
         if key not in databases:
             databases[key] = db_name
     
-    print(f"🔍 DEBUG: Собрано баз данных: {len(databases)}")
+    logger.debug(f"🔍 DEBUG: Собрано уникальных баз данных: {len(databases)}")
     for key, name in databases.items():
-        print(f"🔍 DEBUG база: {key} -> '{name}'")
-  
+        logger.debug(f"🔍 DEBUG база: {key} -> '{name}'")
+    
     keyboard = []
     row = []
     
     for (backup_type, db_name), real_name in sorted(databases.items()):
-        # ИСПРАВЛЕНИЕ: используем реальное имя без префиксов
         callback_data = f"db_detail_{backup_type}_{real_name}"
-        button_text = real_name  # Реальное имя базы
+        button_text = real_name
+        
+        logger.debug(f"🔍 DEBUG создаем кнопку: '{button_text}' -> '{callback_data}'")
         
         row.append(InlineKeyboardButton(button_text, callback_data=callback_data))
         
@@ -878,31 +880,15 @@ def backup_callback(update, context):
             if extension_manager.is_extension_enabled('database_backup_monitor'):
                 # Извлекаем тип и имя БД из callback_data
                 parts = query.data.replace('db_detail_', '').split('_', 1)
-                print(f"🔍 DEBUG callback db_detail: parts={parts}")
+                logger.debug(f"🔍 DEBUG callback db_detail: parts={parts}")
                 
                 if len(parts) == 2:
                     backup_type = parts[0]
                     db_name = parts[1]
                     
-                    # ДИАГНОСТИКА: выведем что получилось
-                    print(f"🔍 DEBUG: backup_type='{backup_type}', db_name='{db_name}'")
+                    logger.debug(f"🔍 DEBUG: backup_type='{backup_type}', db_name='{db_name}'")
                     
-                    # Попробуем разные варианты имени
-                    original_name = db_name
-                    possible_names = [original_name]
-                    
-                    # Если имя содержит замены подчеркиваний
-                    if '_' in original_name:
-                        possible_names.append(original_name.replace('_', ' '))
-                    
-                    # Пробуем найти подходящее имя
-                    for test_name in possible_names:
-                        print(f"🔍 DEBUG: Пробуем имя '{test_name}'")
-                        message = format_database_details(backup_bot, backup_type, test_name, 24)
-                        if "Нет данных" not in message:
-                            print(f"🔍 DEBUG: Найдены данные для '{test_name}'")
-                            break
-                    
+                    message = format_database_details(backup_bot, backup_type, db_name, 24)
                     keyboard = create_database_detail_keyboard(backup_type, db_name)
                 else:
                     message = "❌ Ошибка формата запроса"
