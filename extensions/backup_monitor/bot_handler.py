@@ -506,8 +506,12 @@ def get_database_list(backup_bot, hours=168):
         return f"❌ Ошибка при получении списка БД: {e}"
                 
 def format_database_details(backup_bot, backup_type, db_name, hours=168):
-    """Детальная информация по конкретной базе данных"""
+    """Детальная информация по конкретной базе данных - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
     try:
+        # Убираем возможный префикс database_ если он есть
+        if db_name.startswith('database_'):
+            db_name = db_name.replace('database_', '')
+        
         # Получаем детальные данные
         details = backup_bot.get_database_details(backup_type, db_name, hours)
         
@@ -561,7 +565,7 @@ def format_database_details(backup_bot, backup_type, db_name, hours=168):
         import traceback
         logger.error(f"Подробности: {traceback.format_exc()}")
         return f"❌ Ошибка при получении деталей БД: {e}"
-        
+            
 def create_main_backup_keyboard():
     """Создает главное меню бэкапов"""
     from extensions.extension_manager import extension_manager
@@ -643,25 +647,21 @@ def create_database_list_keyboard(backup_bot, hours=168):
             [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')]
         ])
     
-    # Собираем информацию о базах с приоритетом display_name
+    # Собираем информацию о базах
     databases = {}
     for backup_type, db_name, display_name, status, count, last_backup in stats:
         key = (backup_type, db_name)
         if key not in databases:
-            # ИСПРАВЛЕНИЕ: используем display_name если он есть и не равен db_name
-            button_text = display_name if display_name and display_name != db_name else db_name
-            databases[key] = {
-                'button_text': button_text,
-                'real_name': db_name
-            }
+            # ИСПРАВЛЕНИЕ: используем реальное имя базы для всего
+            databases[key] = db_name
     
     keyboard = []
     row = []
     
-    for (backup_type, db_name), info in sorted(databases.items()):
-        # Используем реальное имя для callback_data
-        callback_data = f"db_detail_{backup_type}_{info['real_name']}"
-        button_text = info['button_text']
+    for (backup_type, db_name), real_name in sorted(databases.items()):
+        # ИСПРАВЛЕНИЕ: используем реальное имя без префиксов
+        callback_data = f"db_detail_{backup_type}_{real_name}"
+        button_text = real_name  # Реальное имя базы
         
         row.append(InlineKeyboardButton(button_text, callback_data=callback_data))
         
@@ -828,6 +828,9 @@ def backup_callback(update, context):
                 if len(parts) == 2:
                     backup_type = parts[0]
                     db_name = parts[1]
+                    # Убираем возможный префикс database_ если он есть
+                    if db_name.startswith('database_'):
+                        db_name = db_name.replace('database_', '')
                     message = format_database_details(backup_bot, backup_type, db_name, 24)
                     keyboard = create_database_detail_keyboard(backup_type, db_name)
                 else:
@@ -836,7 +839,7 @@ def backup_callback(update, context):
             else:
                 message = "❌ Мониторинг бэкапов БД отключен"
                 keyboard = create_main_backup_keyboard()
-
+                
         elif query.data == 'backup_main':
             message = "📊 Главное меню бэкапов\n\nВыберите тип бэкапов для просмотра:"
             keyboard = create_main_backup_keyboard()
