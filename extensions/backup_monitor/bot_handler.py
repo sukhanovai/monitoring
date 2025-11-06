@@ -174,29 +174,54 @@ class BackupMonitorBot:
         return summary
 
     def get_database_details(self, backup_type, db_name, hours=24):
-        """Получает детальную информацию по конкретной базе данных - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
+        """Получает детальную информацию - УНИВЕРСАЛЬНАЯ ВЕРСИЯ"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
-        # Используем тот же подход, что и в SQLite консоли
-        cursor.execute('''
-            SELECT 
-                backup_status,
-                task_type,
-                error_count,
-                email_subject,
-                received_at
-            FROM database_backups 
-            WHERE backup_type = ? 
-            AND database_name = ?
-            AND datetime(received_at) >= datetime('now', ?)
-            ORDER BY received_at DESC
-            LIMIT 10
-        ''', (backup_type, db_name, f'-{hours} hours'))
+        # Пробуем оба подхода
+        try:
+            # Подход 1: с использованием datetime SQLite
+            cursor.execute('''
+                SELECT 
+                    backup_status,
+                    task_type,
+                    error_count,
+                    email_subject,
+                    received_at
+                FROM database_backups 
+                WHERE backup_type = ? 
+                AND database_name = ?
+                AND datetime(received_at) >= datetime('now', ?)
+                ORDER BY received_at DESC
+                LIMIT 10
+            ''', (backup_type, db_name, f'-{hours} hours'))
+            
+            results = cursor.fetchall()
+            
+            if not results:
+                # Подход 2: с Python datetime
+                since_time = (datetime.now() - timedelta(hours=hours)).strftime('%Y-%m-%d %H:%M:%S')
+                cursor.execute('''
+                    SELECT 
+                        backup_status,
+                        task_type,
+                        error_count,
+                        email_subject,
+                        received_at
+                    FROM database_backups 
+                    WHERE backup_type = ? 
+                    AND database_name = ?
+                    AND received_at >= ?
+                    ORDER BY received_at DESC
+                    LIMIT 10
+                ''', (backup_type, db_name, since_time))
+                results = cursor.fetchall()
+                
+        except Exception as e:
+            print(f"❌ Ошибка в get_database_details: {e}")
+            results = []
         
-        results = cursor.fetchall()
         conn.close()
-        
         return results
 
 def format_backup_summary(backup_bot):
