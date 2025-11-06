@@ -174,54 +174,63 @@ class BackupMonitorBot:
         return summary
 
     def get_database_details(self, backup_type, db_name, hours=24):
-        """Получает детальную информацию - УНИВЕРСАЛЬНАЯ ВЕРСИЯ"""
+        """Получает детальную информацию по конкретной базе данных - ДИАГНОСТИЧЕСКАЯ ВЕРСИЯ"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
-        # Пробуем оба подхода
-        try:
-            # Подход 1: с использованием datetime SQLite
-            cursor.execute('''
-                SELECT 
-                    backup_status,
-                    task_type,
-                    error_count,
-                    email_subject,
-                    received_at
-                FROM database_backups 
-                WHERE backup_type = ? 
-                AND database_name = ?
-                AND datetime(received_at) >= datetime('now', ?)
-                ORDER BY received_at DESC
-                LIMIT 10
-            ''', (backup_type, db_name, f'-{hours} hours'))
-            
-            results = cursor.fetchall()
-            
-            if not results:
-                # Подход 2: с Python datetime
-                since_time = (datetime.now() - timedelta(hours=hours)).strftime('%Y-%m-%d %H:%M:%S')
-                cursor.execute('''
-                    SELECT 
-                        backup_status,
-                        task_type,
-                        error_count,
-                        email_subject,
-                        received_at
-                    FROM database_backups 
-                    WHERE backup_type = ? 
-                    AND database_name = ?
-                    AND received_at >= ?
-                    ORDER BY received_at DESC
-                    LIMIT 10
-                ''', (backup_type, db_name, since_time))
-                results = cursor.fetchall()
-                
-        except Exception as e:
-            print(f"❌ Ошибка в get_database_details: {e}")
-            results = []
+        print(f"🔍 DEBUG get_database_details: backup_type='{backup_type}', db_name='{db_name}'")
         
+        # ДИАГНОСТИКА 1: Посмотрим все доступные backup_type
+        cursor.execute("SELECT DISTINCT backup_type FROM database_backups")
+        all_types = cursor.fetchall()
+        print(f"🔍 DEBUG: Все backup_type в БД: {all_types}")
+        
+        # ДИАГНОСТИКА 2: Посмотрим все доступные database_name для нашего типа
+        cursor.execute("SELECT DISTINCT database_name FROM database_backups WHERE backup_type = ?", (backup_type,))
+        all_names = cursor.fetchall()
+        print(f"🔍 DEBUG: Все database_name для {backup_type}: {all_names}")
+        
+        # ДИАГНОСТИКА 3: Посмотрим точные имена в БД
+        cursor.execute('''
+            SELECT DISTINCT database_name, database_display_name 
+            FROM database_backups 
+            WHERE backup_type = ?
+        ''', (backup_type,))
+        exact_names = cursor.fetchall()
+        print(f"🔍 DEBUG: Точные имена для {backup_type}: {exact_names}")
+        
+        # ДИАГНОСТИКА 4: Поищем похожие имена
+        cursor.execute('''
+            SELECT DISTINCT database_name 
+            FROM database_backups 
+            WHERE database_name LIKE ? OR database_display_name LIKE ?
+        ''', (f'%{db_name}%', f'%{db_name}%'))
+        similar_names = cursor.fetchall()
+        print(f"🔍 DEBUG: Похожие на '{db_name}': {similar_names}")
+        
+        # Основной запрос
+        cursor.execute('''
+            SELECT 
+                backup_status,
+                task_type,
+                error_count,
+                email_subject,
+                received_at
+            FROM database_backups 
+            WHERE backup_type = ? 
+            AND database_name = ?
+            AND datetime(received_at) >= datetime('now', ?)
+            ORDER BY received_at DESC
+            LIMIT 10
+        ''', (backup_type, db_name, f'-{hours} hours'))
+        
+        results = cursor.fetchall()
         conn.close()
+        
+        print(f"🔍 DEBUG: Найдено записей: {len(results)}")
+        for row in results:
+            print(f"🔍 DEBUG запись: {row}")
+        
         return results
 
 def format_backup_summary(backup_bot):
@@ -673,8 +682,10 @@ def create_hosts_keyboard(backup_bot):
     return InlineKeyboardMarkup(keyboard)
 
 def create_database_list_keyboard(backup_bot, hours=168):
-    """Создает клавиатуру со списком баз данных - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
+    """Создает клавиатуру со списком баз данных - ДИАГНОСТИЧЕСКАЯ ВЕРСИЯ"""
     stats = backup_bot.get_database_backups_stats(hours)
+    
+    print(f"🔍 DEBUG create_database_list_keyboard: получено {len(stats) if stats else 0} записей статистики")
     
     if not stats:
         return InlineKeyboardMarkup([
@@ -682,14 +693,21 @@ def create_database_list_keyboard(backup_bot, hours=168):
             [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')]
         ])
     
+    # ДИАГНОСТИКА: выведем всю статистику
+    for i, stat in enumerate(stats[:5]):  # первые 5 записей
+        print(f"🔍 DEBUG статистика {i}: {stat}")
+    
     # Собираем информацию о базах
     databases = {}
     for backup_type, db_name, display_name, status, count, last_backup in stats:
         key = (backup_type, db_name)
         if key not in databases:
-            # ИСПРАВЛЕНИЕ: используем реальное имя базы для всего
             databases[key] = db_name
     
+    print(f"🔍 DEBUG: Собрано баз данных: {len(databases)}")
+    for key, name in databases.items():
+        print(f"🔍 DEBUG база: {key} -> '{name}'")
+  
     keyboard = []
     row = []
     
@@ -860,21 +878,36 @@ def backup_callback(update, context):
             if extension_manager.is_extension_enabled('database_backup_monitor'):
                 # Извлекаем тип и имя БД из callback_data
                 parts = query.data.replace('db_detail_', '').split('_', 1)
+                print(f"🔍 DEBUG callback db_detail: parts={parts}")
+                
                 if len(parts) == 2:
                     backup_type = parts[0]
                     db_name = parts[1]
-                    # Убираем возможный префикс database_ если он есть
-                    if db_name.startswith('database_'):
-                        db_name = db_name.replace('database_', '')
-                    message = format_database_details(backup_bot, backup_type, db_name, 24)
+                    
+                    # ДИАГНОСТИКА: выведем что получилось
+                    print(f"🔍 DEBUG: backup_type='{backup_type}', db_name='{db_name}'")
+                    
+                    # Попробуем разные варианты имени
+                    original_name = db_name
+                    possible_names = [original_name]
+                    
+                    # Если имя содержит замены подчеркиваний
+                    if '_' in original_name:
+                        possible_names.append(original_name.replace('_', ' '))
+                    
+                    # Пробуем найти подходящее имя
+                    for test_name in possible_names:
+                        print(f"🔍 DEBUG: Пробуем имя '{test_name}'")
+                        message = format_database_details(backup_bot, backup_type, test_name, 24)
+                        if "Нет данных" not in message:
+                            print(f"🔍 DEBUG: Найдены данные для '{test_name}'")
+                            break
+                    
                     keyboard = create_database_detail_keyboard(backup_type, db_name)
                 else:
                     message = "❌ Ошибка формата запроса"
                     keyboard = create_database_backup_keyboard()
-            else:
-                message = "❌ Мониторинг бэкапов БД отключен"
-                keyboard = create_main_backup_keyboard()
-                
+
         elif query.data == 'backup_main':
             message = "📊 Главное меню бэкапов\n\nВыберите тип бэкапов для просмотра:"
             keyboard = create_main_backup_keyboard()
