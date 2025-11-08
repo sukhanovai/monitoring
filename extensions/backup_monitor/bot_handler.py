@@ -851,30 +851,13 @@ def show_database_backups_summary(query, backup_bot, hours):
         query.edit_message_text("❌ Ошибка при получении данных")
 
 def show_database_backups_list(query, backup_bot):
-    """УЛУЧШЕННАЯ ВЕРСИЯ: Показывает список всех баз данных с группировкой по типам"""
+    """УЛУЧШЕННАЯ ВЕРСИЯ: Показывает список всех баз данных из конфигурации"""
     try:
-        # Используем исправленную функцию
-        stats = backup_bot.get_database_backups_stats_fixed(24)
-        
-        print(f"🔍 DEBUG: Получено статистик: {len(stats) if stats else 0}")
-        
-        if not stats:
-            query.edit_message_text(
-                "📋 *Список баз данных*\n\nНет данных за последние 24 часа",
-                parse_mode='Markdown',
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("🔄 Обновить", callback_data='db_backups_list')],
-                    [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')],
-                    [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-                ])
-            )
-            return
-
-        # Получаем правильные отображаемые имена
+        # Получаем все отображаемые имена из конфигурации
         display_names = backup_bot.get_database_display_names()
-        print(f"🔍 DEBUG: Отображаемые имена: {list(display_names.keys())[:10]}...")  # Покажем первые 10
+        print(f"🔍 DEBUG: Все базы из конфига: {list(display_names.keys())}")
         
-        # Группируем по типам и базам
+        # Группируем базы по типам из конфигурации
         databases_by_type = {
             'company_database': [],
             'barnaul': [],
@@ -882,42 +865,71 @@ def show_database_backups_list(query, backup_bot):
             'yandex': []
         }
         
-        # СЧЕТЧИК ДЛЯ ОТЛАДКИ
-        type_counter = {key: 0 for key in databases_by_type.keys()}
+        # Получаем статистику за более длительный период (7 дней) чтобы увидеть все базы
+        stats = backup_bot.get_database_backups_stats_fixed(168)  # 7 дней
         
-        for backup_type, db_name, db_display, status, count, last_backup in stats:
-            print(f"🔍 DEBUG: Обрабатываем: backup_type='{backup_type}', db_name='{db_name}', status='{status}', count={count}")
-            
-            if backup_type in databases_by_type:
-                type_counter[backup_type] += 1
-                # Используем отображаемое имя из конфига или оригинальное имя
-                display_name = display_names.get(db_name, db_display or db_name)
-                print(f"🔍 DEBUG: Отображаемое имя для '{db_name}': '{display_name}'")
-                
-                # Находим или создаем запись для базы
-                existing_db = next((db for db in databases_by_type[backup_type] if db['original_name'] == db_name), None)
-                if existing_db:
-                    existing_db[status] += count
-                    print(f"🔍 DEBUG: Обновлена существующая база: {db_name}")
-                else:
-                    databases_by_type[backup_type].append({
-                        'original_name': db_name,
-                        'display_name': display_name,
-                        'success': count if status == 'success' else 0,
-                        'failed': count if status == 'failed' else 0
-                    })
-                    print(f"🔍 DEBUG: Добавлена новая база: {db_name}")
-            else:
-                print(f"🔍 DEBUG: Пропущен неизвестный тип: {backup_type}")
-
-        print(f"🔍 DEBUG: Счетчик по типам: {type_counter}")
-        print(f"🔍 DEBUG: Найдено баз данных по типам: { {k: len(v) for k, v in databases_by_type.items()} }")
+        # Создаем словарь для статистики по базам
+        db_stats = {}
+        if stats:
+            for backup_type, db_name, db_display, status, count, last_backup in stats:
+                key = (backup_type, db_name)
+                if key not in db_stats:
+                    db_stats[key] = {'success': 0, 'failed': 0, 'last_backup': last_backup}
+                db_stats[key][status] += count
         
-        # ДЕТАЛЬНАЯ ИНФОРМАЦИЯ ПО КАЖДОМУ ТИПУ
-        for backup_type, dbs in databases_by_type.items():
-            db_names = [db['display_name'] for db in dbs]
-            print(f"🔍 DEBUG: {backup_type}: {db_names}")
+        # Заполняем списки базами из конфигурации
+        from config import DATABASE_BACKUP_CONFIG
+        
+        # Основные базы компании
+        for db_name, display_name in DATABASE_BACKUP_CONFIG["company_databases"].items():
+            key = ('company_database', db_name)
+            stats_info = db_stats.get(key, {'success': 0, 'failed': 0, 'last_backup': None})
+            databases_by_type['company_database'].append({
+                'original_name': db_name,
+                'display_name': display_name,
+                'success': stats_info['success'],
+                'failed': stats_info['failed'],
+                'last_backup': stats_info['last_backup']
+            })
+        
+        # Базы Барнаул
+        for db_name, display_name in DATABASE_BACKUP_CONFIG["barnaul_backups"].items():
+            key = ('barnaul', db_name)
+            stats_info = db_stats.get(key, {'success': 0, 'failed': 0, 'last_backup': None})
+            databases_by_type['barnaul'].append({
+                'original_name': db_name,
+                'display_name': display_name,
+                'success': stats_info['success'],
+                'failed': stats_info['failed'],
+                'last_backup': stats_info['last_backup']
+            })
+        
+        # Клиентские базы
+        for db_name, display_name in DATABASE_BACKUP_CONFIG["client_databases"].items():
+            key = ('client', db_name)
+            stats_info = db_stats.get(key, {'success': 0, 'failed': 0, 'last_backup': None})
+            databases_by_type['client'].append({
+                'original_name': db_name,
+                'display_name': display_name,
+                'success': stats_info['success'],
+                'failed': stats_info['failed'],
+                'last_backup': stats_info['last_backup']
+            })
+        
+        # Yandex базы
+        for db_name, display_name in DATABASE_BACKUP_CONFIG["yandex_backups"].items():
+            key = ('yandex', db_name)
+            stats_info = db_stats.get(key, {'success': 0, 'failed': 0, 'last_backup': None})
+            databases_by_type['yandex'].append({
+                'original_name': db_name,
+                'display_name': display_name,
+                'success': stats_info['success'],
+                'failed': stats_info['failed'],
+                'last_backup': stats_info['last_backup']
+            })
 
+        print(f"🔍 DEBUG: Базы из конфига по типам: { {k: len(v) for k, v in databases_by_type.items()} }")
+        
         # Создаем клавиатуру с группировкой по типам
         keyboard = []
         
@@ -992,7 +1004,7 @@ def show_database_backups_list(query, backup_bot):
                 [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ]
             query.edit_message_text(
-                "📋 *Список баз данных*\n\nНет данных о бэкапах баз данных за последние 24 часа",
+                "📋 *Список баз данных*\n\nНет данных о базах данных в конфигурации",
                 parse_mode='Markdown',
                 reply_markup=InlineKeyboardMarkup(keyboard)
             )
