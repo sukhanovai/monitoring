@@ -1,5 +1,5 @@
 """
-Server Monitoring System v2.1.0
+Server Monitoring System v2.2.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Меню бота
@@ -178,7 +178,7 @@ def control_command(update, context):
     return control_cmd(update, context)
 
 def servers_command(update, context):
-    from extensions.server_list import servers_command as servers_cmd
+    from extensions.server_checks import servers_command as servers_cmd
     return servers_cmd(update, context)
 
 def report_command(update, context):
@@ -187,11 +187,11 @@ def report_command(update, context):
     return send_morning_report_handler(update, context)
 
 def stats_command(update, context):
-    from extensions.reports import stats_command as stats_cmd
+    from extensions.utils import stats_command as stats_cmd
     return stats_cmd(update, context)
 
 def diagnose_ssh_command(update, context):
-    from extensions.single_check import diagnose_ssh_command as diagnose_cmd
+    from extensions.utils import diagnose_ssh_command as diagnose_cmd
     return diagnose_cmd(update, context)
 
 def backup_command(update, context):
@@ -941,7 +941,7 @@ def lazy_handler(pattern):
         elif pattern == 'toggle_silent':
             from monitor_core import toggle_silent_mode_handler as handler
         elif pattern == 'servers_list':
-            from extensions.server_list import servers_list_handler as handler
+            from extensions.server_checks import servers_list_handler as handler
         elif pattern == 'full_report':
             from monitor_core import send_morning_report_handler as handler
         elif pattern == 'resource_page':

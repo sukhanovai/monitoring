@@ -1,5 +1,5 @@
 """
-Server Monitoring System v2.1.0
+Server Monitoring System v2.2.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Ядро системы
@@ -114,7 +114,7 @@ def perform_manual_check(context, chat_id, progress_message_id):
     # Ленивая загрузка серверов
     global servers
     if not servers:
-        from extensions.server_list import initialize_servers
+        from extensions.server_checks import initialize_servers
         servers = initialize_servers()
     
     total_servers = len(servers)
@@ -210,7 +210,7 @@ def get_current_server_status():
     
     # Переинициализируем серверы если список пустой
     if not servers:
-        from extensions.server_list import initialize_servers
+        from extensions.server_checks import initialize_servers
         servers = initialize_servers()
         debug_log(f"🔄 Переинициализирован список серверов: {len(servers)} серверов")
     
@@ -493,7 +493,7 @@ def control_panel_handler(update, context):
     status_text = "🟢 Мониторинг активен" if monitoring_active else "🔴 Мониторинг приостановлен"
 
     query.edit_message_text(
-        f"🎛️ *Управление мониторингом*\n\n{status_text}",
+        f"🎛️ *Управление мониторинга*\n\n{status_text}",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
@@ -669,7 +669,7 @@ def perform_cpu_check(context, chat_id, progress_message_id):
         )
 
     try:
-        from extensions.separate_checks import check_all_servers_by_type
+        from extensions.server_checks import check_all_servers_by_type
         results, stats = check_all_servers_by_type()
 
         # Фильтруем только CPU и сортируем по убыванию нагрузки
@@ -781,7 +781,7 @@ def perform_ram_check(context, chat_id, progress_message_id):
         )
 
     try:
-        from extensions.separate_checks import check_all_servers_by_type
+        from extensions.server_checks import check_all_servers_by_type
         results, stats = check_all_servers_by_type()
 
         # Фильтруем только RAM и сортируем по убыванию использования
@@ -893,7 +893,7 @@ def perform_disk_check(context, chat_id, progress_message_id):
         )
 
     try:
-        from extensions.separate_checks import check_all_servers_by_type
+        from extensions.server_checks import check_all_servers_by_type
         results, stats = check_all_servers_by_type()
 
         # Фильтруем только Disk и сортируем по убыванию использования
@@ -1034,7 +1034,7 @@ def perform_linux_check(context, chat_id, progress_message_id):
         )
 
     try:
-        from extensions.separate_checks import check_linux_servers
+        from extensions.server_checks import check_linux_servers
         update_progress(0, "⏳ Подготовка...")
         results, total_servers = check_linux_servers(update_progress)
 
@@ -1121,7 +1121,7 @@ def perform_windows_check(context, chat_id, progress_message_id):
         return resources.get(key, default)
 
     try:
-        from extensions.separate_checks import (check_windows_2025_servers, check_domain_windows_servers,
+        from extensions.server_checks import (check_windows_2025_servers, check_domain_windows_servers,
                                               check_admin_windows_servers, check_standard_windows_servers)
 
         update_progress(0, "⏳ Подготовка...")
@@ -1251,7 +1251,7 @@ def check_other_resources_handler(update, context):
 def perform_other_check(context, chat_id, progress_message_id):
     """Выполняет проверку других серверов"""
     try:
-        from extensions.server_list import initialize_servers
+        from extensions.server_checks import initialize_servers
         servers = initialize_servers()
         ping_servers = [s for s in servers if s["type"] == "ping"]
 
@@ -1318,7 +1318,7 @@ def check_all_resources_handler(update, context):
 def perform_full_check(context, chat_id, progress_message_id):
     """Выполняет полную проверку всех серверов"""
     try:
-        from extensions.separate_checks import check_all_servers_by_type
+        from extensions.server_checks import check_all_servers_by_type
         results, stats = check_all_servers_by_type()
 
         total_checked = stats["windows_2025"]["checked"] + stats["standard_windows"]["checked"] + stats["linux"]["checked"]
@@ -1357,7 +1357,7 @@ def start_monitoring():
     debug_log = get_debug_log()
 
     # Ленивая инициализация серверов
-    from extensions.server_list import initialize_servers
+    from extensions.server_checks import initialize_servers
     servers = initialize_servers()
     
     # Исключаем сервер мониторинга из списка
@@ -1527,10 +1527,10 @@ def check_resources_automatically():
             # Получаем текущие ресурсы
             current_resources = None
             if server["type"] == "ssh":
-                from extensions.resource_check import get_linux_resources_improved
+                from extensions.server_checks import get_linux_resources_improved
                 current_resources = get_linux_resources_improved(ip)
             elif server["type"] == "rdp":
-                from extensions.resource_check import get_windows_resources_improved
+                from extensions.server_checks import get_windows_resources_improved
                 current_resources = get_windows_resources_improved(ip)
 
             if not current_resources:
@@ -1667,9 +1667,6 @@ def send_resource_alerts(alerts):
     debug_log = get_debug_log()
     debug_log(f"✅ Отправлены алерты по ресурсам: {len(alerts)} проблем")
 
-# Остальные функции (send_morning_report, debug_morning_report и т.д.) 
-# остаются аналогичными, но с использованием ленивых импортов и debug_log
-
 def close_menu(update, context):
     """Закрывает меню"""
     query = update.callback_query
@@ -1693,9 +1690,6 @@ def toggle_silent_mode_handler(update, context):
     query = update.callback_query
     query.answer()
     query.edit_message_text("🔇 Переключение тихого режима")
-
-# Функции для обработки утренних отчетов и диагностики остаются без изменений
-# так как они уже были оптимизированы в предыдущей версии
 
 def send_morning_report_handler(update, context):
     """Обработчик для принудительной отправки утреннего отчета"""
@@ -1848,7 +1842,7 @@ def get_backup_summary_for_report():
         db_stats = cursor.fetchall()
         conn.close()
         
-        # Формируем сообщение о бэкапах
+        # Формируем сообщение о бэкапам
         if total_backups == 0 and not db_stats:
             return "📭 Нет данных о бэкапах за указанный период\n"
         
@@ -1878,4 +1872,69 @@ def get_backup_summary_for_report():
         debug_log = get_debug_log()
         debug_log(f"Ошибка при получении данных о бэкапах: {e}")
         return f"❌ Ошибка получения данных о бэкапах: {str(e)}\n"
+
+def debug_morning_report(update, context):
+    """Отладочная функция для проверки утреннего отчета"""
+    query = update.callback_query
+    query.answer()
     
+    debug_log = get_debug_log()
+    debug_log("🔧 Запущена отладочная функция утреннего отчета")
+    
+    # Собираем текущий статус
+    current_status = get_current_server_status()
+    
+    message = f"🔧 *Отладочная информация утреннего отчета*\n\n"
+    message += f"🟢 Доступно: {len(current_status['ok'])}\n"
+    message += f"🔴 Недоступно: {len(current_status['failed'])}\n"
+    message += f"⏰ Время: {datetime.now().strftime('%H:%M:%S')}\n\n"
+    
+    # Проверяем данные для отчета
+    if morning_data and "status" in morning_data:
+        morning_status = morning_data["status"]
+        message += f"📊 *Данные утреннего отчета:*\n"
+        message += f"• Время сбора: {morning_data.get('collection_time', 'неизвестно')}\n"
+        message += f"• Доступно: {len(morning_status['ok'])}\n"
+        message += f"• Недоступно: {len(morning_status['failed'])}\n"
+    else:
+        message += f"❌ *Данные утреннего отчета отсутствуют*\n"
+    
+    query.edit_message_text(message, parse_mode='Markdown')
+
+def resource_history_command(update, context):
+    """Показывает историю ресурсов"""
+    query = update.callback_query
+    query.answer()
+    
+    message = "📈 *История ресурсов*\n\n"
+    
+    if not resource_history:
+        message += "История ресурсов пуста\n"
+    else:
+        for ip, history in list(resource_history.items())[:5]:  # Показываем первые 5 серверов
+            server_name = history[0]["server_name"] if history else "Неизвестно"
+            message += f"**{server_name}** ({ip}):\n"
+            
+            for entry in history[-3:]:  # Последние 3 записи
+                message += f"• {entry['timestamp'].strftime('%H:%M')}: CPU {entry['cpu']}%, RAM {entry['ram']}%, Disk {entry['disk']}%\n"
+            message += "\n"
+    
+    query.edit_message_text(message, parse_mode='Markdown')
+
+def resource_page_handler(update, context):
+    """Обработчик постраничного просмотра ресурсов"""
+    query = update.callback_query
+    query.answer()
+    query.edit_message_text("📄 Постраничный просмотр ресурсов в разработке")
+
+def refresh_resources_handler(update, context):
+    """Обработчик обновления ресурсов"""
+    query = update.callback_query
+    query.answer("🔄 Обновляем ресурсы...")
+    check_resources_handler(update, context)
+
+def close_resources_handler(update, context):
+    """Закрывает меню ресурсов"""
+    query = update.callback_query
+    query.answer()
+    query.delete_message()

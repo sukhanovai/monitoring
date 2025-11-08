@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Server Monitoring System v2.1.0
+Server Monitoring System v2.2.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Мониторинг почтового ящика
