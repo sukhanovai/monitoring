@@ -387,19 +387,34 @@ def backup_callback(update, context):
             host_name = data.replace('backup_host_', '')
             show_host_status(query, backup_bot, host_name)
         elif data.startswith('db_detail_'):
-            # Обработка деталей БД - ИСПРАВЛЕННАЯ ВЕРСИЯ
-            parts = data.replace('db_detail_', '').split('_')
-            print(f"🔍 DEBUG: Обрабатываем db_detail, parts={parts}")
-            
-            if len(parts) >= 2:
-                backup_type = parts[0]
-                # Все остальные части - это имя базы (может содержать подчеркивания)
-                db_name = '_'.join(parts[1:])
-                print(f"🔍 DEBUG: Извлечено backup_type={backup_type}, db_name={db_name}")
-                show_database_details(query, backup_bot, backup_type, db_name)
-            else:
-                print(f"❌ DEBUG: Неверный формат db_detail: {data}")
-                query.edit_message_text("❌ Ошибка: неверный формат запроса")
+            # Обработка деталей БД - ИСПРАВЛЕННАЯ ВЕРСИЯ С ДВОЙНЫМ РАЗДЕЛИТЕЛЕМ
+            try:
+                # Убираем префикс
+                remaining = data.replace('db_detail_', '')
+                print(f"🔍 DEBUG: Обрабатываем db_detail, remaining={remaining}")
+                
+                # Используем двойное подчеркивание как разделитель
+                if '__' in remaining:
+                    parts = remaining.split('__', 1)  # Разделяем только на 2 части
+                    backup_type = parts[0]
+                    db_name = parts[1]
+                    print(f"🔍 DEBUG: Извлечено backup_type={backup_type}, db_name={db_name}")
+                    show_database_details(query, backup_bot, backup_type, db_name)
+                else:
+                    # Fallback: пробуем найти последнее подчеркивание
+                    last_underscore = remaining.rfind('_')
+                    if last_underscore != -1:
+                        backup_type = remaining[:last_underscore]
+                        db_name = remaining[last_underscore + 1:]
+                        print(f"🔍 DEBUG: Fallback - backup_type={backup_type}, db_name={db_name}")
+                        show_database_details(query, backup_bot, backup_type, db_name)
+                    else:
+                        print(f"❌ DEBUG: Не найден разделитель в: {remaining}")
+                        query.edit_message_text("❌ Ошибка: неверный формат запроса")
+                    
+            except Exception as e:
+                print(f"❌ DEBUG: Ошибка при разборе db_detail: {e}")
+                query.edit_message_text("❌ Ошибка при обработке запроса")
         elif data == 'db_backups_24h':
             show_database_backups_summary(query, backup_bot, 24)
         elif data == 'db_backups_48h':
@@ -796,16 +811,13 @@ def show_database_backups_list(query, backup_bot):
             if len(button_text) > 15:
                 button_text = button_text[:12] + ".."
             
-            print(f"🔍 DEBUG: Создаем кнопку для {backup_type}.{db_name} -> {button_text}")
+            print(f"🔍 DEBUG: Создаем кнопку для {backup_type}.{db_name} -> callback: db_detail_{backup_type}__{db_name}")
             
             current_row.append(InlineKeyboardButton(
                 button_text, 
-                callback_data=f'db_detail_{backup_type}_{db_name}'
+                # Используем двойное подчеркивание как разделитель между типом и именем базы
+                callback_data=f'db_detail_{backup_type}__{db_name}'
             ))
-            
-            if len(current_row) >= 2:
-                keyboard.append(current_row)
-                current_row = []
         
         if current_row:
             keyboard.append(current_row)
