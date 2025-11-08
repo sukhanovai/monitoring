@@ -250,6 +250,8 @@ class BackupMonitorBot:
         
         since_time = (datetime.now() - timedelta(hours=hours)).strftime('%Y-%m-%d %H:%M:%S')
         
+        print(f"🔍 DEBUG: Запрос данных с {since_time}")
+        
         # ИСПРАВЛЕННЫЙ ЗАПРОС - правильное количество полей
         cursor.execute('''
             SELECT 
@@ -267,6 +269,17 @@ class BackupMonitorBot:
         
         results = cursor.fetchall()
         conn.close()
+        
+        print(f"🔍 DEBUG: get_database_backups_stats_fixed вернула {len(results)} записей")
+        
+        # Группируем результаты по типам для отладки
+        type_stats = {}
+        for backup_type, db_name, db_display, status, count, last_backup in results:
+            if backup_type not in type_stats:
+                type_stats[backup_type] = 0
+            type_stats[backup_type] += 1
+        
+        print(f"🔍 DEBUG: Распределение по типам: {type_stats}")
         
         return results
 
@@ -843,6 +856,8 @@ def show_database_backups_list(query, backup_bot):
         # Используем исправленную функцию
         stats = backup_bot.get_database_backups_stats_fixed(24)
         
+        print(f"🔍 DEBUG: Получено статистик: {len(stats) if stats else 0}")
+        
         if not stats:
             query.edit_message_text(
                 "📋 *Список баз данных*\n\nНет данных за последние 24 часа",
@@ -855,9 +870,10 @@ def show_database_backups_list(query, backup_bot):
             )
             return
 
-        # Получаем правильные отображаемые имена ЧЕРЕЗ МЕТОД КЛАССА
+        # Получаем правильные отображаемые имена
         display_names = backup_bot.get_database_display_names()
-       
+        print(f"🔍 DEBUG: Отображаемые имена: {list(display_names.keys())[:10]}...")  # Покажем первые 10
+        
         # Группируем по типам и базам
         databases_by_type = {
             'company_database': [],
@@ -866,15 +882,23 @@ def show_database_backups_list(query, backup_bot):
             'yandex': []
         }
         
+        # СЧЕТЧИК ДЛЯ ОТЛАДКИ
+        type_counter = {key: 0 for key in databases_by_type.keys()}
+        
         for backup_type, db_name, db_display, status, count, last_backup in stats:
+            print(f"🔍 DEBUG: Обрабатываем: backup_type='{backup_type}', db_name='{db_name}', status='{status}', count={count}")
+            
             if backup_type in databases_by_type:
+                type_counter[backup_type] += 1
                 # Используем отображаемое имя из конфига или оригинальное имя
                 display_name = display_names.get(db_name, db_display or db_name)
+                print(f"🔍 DEBUG: Отображаемое имя для '{db_name}': '{display_name}'")
                 
                 # Находим или создаем запись для базы
                 existing_db = next((db for db in databases_by_type[backup_type] if db['original_name'] == db_name), None)
                 if existing_db:
                     existing_db[status] += count
+                    print(f"🔍 DEBUG: Обновлена существующая база: {db_name}")
                 else:
                     databases_by_type[backup_type].append({
                         'original_name': db_name,
@@ -882,28 +906,41 @@ def show_database_backups_list(query, backup_bot):
                         'success': count if status == 'success' else 0,
                         'failed': count if status == 'failed' else 0
                     })
+                    print(f"🔍 DEBUG: Добавлена новая база: {db_name}")
+            else:
+                print(f"🔍 DEBUG: Пропущен неизвестный тип: {backup_type}")
 
+        print(f"🔍 DEBUG: Счетчик по типам: {type_counter}")
         print(f"🔍 DEBUG: Найдено баз данных по типам: { {k: len(v) for k, v in databases_by_type.items()} }")
+        
+        # ДЕТАЛЬНАЯ ИНФОРМАЦИЯ ПО КАЖДОМУ ТИПУ
+        for backup_type, dbs in databases_by_type.items():
+            db_names = [db['display_name'] for db in dbs]
+            print(f"🔍 DEBUG: {backup_type}: {db_names}")
 
         # Создаем клавиатуру с группировкой по типам
         keyboard = []
         
         type_configs = {
             'company_database': {'icon': '🏢', 'name': 'Основные БД компании'},
-            'barnaul': {'icon': '🏔️', 'name': 'Барнаул'}, 
+            'barnaul': {'icon': '🏔️', 'name': 'Бэкапы Барнаул'}, 
             'client': {'icon': '👥', 'name': 'Базы клиентов'},
-            'yandex': {'icon': '☁️', 'name': 'Yandex'}
+            'yandex': {'icon': '☁️', 'name': 'Бэкапы на Yandex'}
         }
 
         # Добавляем заголовки и кнопки для каждого типа
+        sections_added = 0
         for backup_type, type_config in type_configs.items():
             databases = databases_by_type[backup_type]
             if databases:
+                sections_added += 1
                 # Добавляем заголовок секции
                 keyboard.append([InlineKeyboardButton(
                     f"───── {type_config['icon']} {type_config['name']} ─────",
                     callback_data='no_action'
                 )])
+                
+                print(f"🔍 DEBUG: Добавляем секцию '{backup_type}' с {len(databases)} базами")
                 
                 # Добавляем кнопки баз данных для этого типа
                 current_row = []
@@ -926,6 +963,8 @@ def show_database_backups_list(query, backup_bot):
                     if len(button_text) > 15:
                         button_text = button_text[:12] + ".."
                     
+                    print(f"🔍 DEBUG: Создаем кнопку: {button_text} для {original_name}")
+                    
                     current_row.append(InlineKeyboardButton(
                         button_text, 
                         callback_data=f'db_detail_{backup_type}__{original_name}'
@@ -939,9 +978,25 @@ def show_database_backups_list(query, backup_bot):
                 # Добавляем пустую строку между секциями для визуального разделения
                 keyboard.append([])
         
+        print(f"🔍 DEBUG: Добавлено секций: {sections_added}")
+        
         # Убираем последнюю пустую строку если есть
         if keyboard and not keyboard[-1]:
             keyboard.pop()
+        
+        # Если нет ни одной базы данных, показываем сообщение
+        if sections_added == 0:
+            keyboard = [
+                [InlineKeyboardButton("🔄 Обновить", callback_data='db_backups_list')],
+                [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')],
+                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ]
+            query.edit_message_text(
+                "📋 *Список баз данных*\n\nНет данных о бэкапах баз данных за последние 24 часа",
+                parse_mode='Markdown',
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+            return
         
         # Добавляем кнопки управления
         keyboard.extend([
@@ -950,6 +1005,8 @@ def show_database_backups_list(query, backup_bot):
             [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
 
+        print(f"🔍 DEBUG: Итоговая клавиатура: {len(keyboard)} строк")
+        
         query.edit_message_text(
             "📋 *Список баз данных*\n\n*Секции:*\n🏢 Основные БД компании\n🏔️ Бэкапы Барнаул\n👥 Базы клиентов\n☁️ Бэкапы на Yandex\n\nВыберите базу для просмотра деталей:",
             parse_mode='Markdown',
