@@ -1,5 +1,5 @@
 """
-Server Monitoring System v2.2.1
+Server Monitoring System v2.3.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчик команд бота для мониторинга бэкапов
@@ -286,6 +286,91 @@ class BackupMonitorBot:
         
         return results
 
+    def get_stale_proxmox_backups(self, hours_threshold=24):
+        """Получает хосты, у которых не было бэкапов более указанного времени"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        threshold_time = (datetime.now() - timedelta(hours=hours_threshold)).strftime('%Y-%m-%d %H:%M:%S')
+        
+        # Получаем последний бэкап для каждого хоста
+        cursor.execute('''
+            SELECT 
+                host_name,
+                MAX(received_at) as last_backup
+            FROM proxmox_backups 
+            GROUP BY host_name
+            HAVING last_backup < ?
+            ORDER BY last_backup ASC
+        ''', (threshold_time,))
+        
+        stale_hosts = cursor.fetchall()
+        conn.close()
+        
+        return stale_hosts
+
+    def get_stale_database_backups(self, hours_threshold=24):
+        """Получает базы данных, у которых не было бэкапов более указанного времени"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        threshold_time = (datetime.now() - timedelta(hours=hours_threshold)).strftime('%Y-%m-%d %H:%M:%S')
+        
+        # Получаем последний бэкап для каждой базы данных
+        cursor.execute('''
+            SELECT 
+                backup_type,
+                database_name,
+                database_display_name,
+                MAX(received_at) as last_backup
+            FROM database_backups 
+            GROUP BY backup_type, database_name, database_display_name
+            HAVING last_backup < ?
+            ORDER BY last_backup ASC
+        ''', (threshold_time,))
+        
+        stale_databases = cursor.fetchall()
+        conn.close()
+        
+        return stale_databases
+
+    def get_backup_coverage_report(self, hours_threshold=24):
+        """Получает полный отчет о покрытии бэкапов"""
+        stale_hosts = self.get_stale_proxmox_backups(hours_threshold)
+        stale_databases = self.get_stale_database_backups(hours_threshold)
+        
+        # Получаем все известные хосты из конфигурации
+        from config import PROXMOX_HOSTS
+        all_configured_hosts = list(PROXMOX_HOSTS.keys())
+        
+        # Получаем все известные базы из конфигурации
+        from config import DATABASE_BACKUP_CONFIG
+        all_configured_databases = []
+        
+        # Основные базы компании
+        for db_key in DATABASE_BACKUP_CONFIG["company_databases"].keys():
+            all_configured_databases.append(('company_database', db_key))
+        
+        # Базы Барнаул
+        for db_key in DATABASE_BACKUP_CONFIG["barnaul_backups"].keys():
+            all_configured_databases.append(('barnaul', db_key))
+        
+        # Клиентские базы
+        for db_key in DATABASE_BACKUP_CONFIG["client_databases"].keys():
+            all_configured_databases.append(('client', db_key))
+        
+        # Yandex базы
+        for db_key in DATABASE_BACKUP_CONFIG["yandex_backups"].keys():
+            all_configured_databases.append(('yandex', db_key))
+        
+        return {
+            'stale_hosts': stale_hosts,
+            'stale_databases': stale_databases,
+            'all_configured_hosts': all_configured_hosts,
+            'all_configured_databases': all_configured_databases,
+            'hours_threshold': hours_threshold
+        }
+
 def format_database_details(backup_bot, backup_type, db_name, hours=168):
     """ИСПРАВЛЕННАЯ ВЕРСИЯ: Детальная информация по конкретной базе данных"""
     try:
@@ -379,7 +464,7 @@ def backup_command(update, context):
             [InlineKeyboardButton("🖥️ По хостам", callback_data='backup_hosts')],
             [InlineKeyboardButton("🗃️ Бэкапы БД", callback_data='backup_databases')],
             [InlineKeyboardButton("🔄 Обновить", callback_data='backup_refresh')],
-            [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]  # ДОБАВЛЕНО
+            [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ]
 
         update.message.reply_text(
@@ -470,6 +555,8 @@ def backup_callback(update, context):
         elif data.startswith('backup_host_'):
             host_name = data.replace('backup_host_', '')
             show_host_status(query, backup_bot, host_name)
+        elif data == 'backup_stale_hosts':
+            show_stale_hosts(query, backup_bot)
         elif data.startswith('db_detail_'):
             # Обработка деталей БД - ИСПРАВЛЕННАЯ ВЕРСИЯ С ДВОЙНЫМ РАЗДЕЛИТЕЛЕМ
             try:
@@ -511,6 +598,8 @@ def backup_callback(update, context):
             show_database_backups_detailed(query, backup_bot)
         elif data == 'db_backups_list':
             show_database_backups_list(query, backup_bot)
+        elif data == 'db_stale_list':
+            show_stale_databases(query, backup_bot)
         elif data == 'backup_main':
             show_main_menu(query)
 
@@ -530,7 +619,7 @@ def show_main_menu(query):
         [InlineKeyboardButton("🖥️ По хостам", callback_data='backup_hosts')],
         [InlineKeyboardButton("🗃️ Бэкапы БД", callback_data='backup_databases')],
         [InlineKeyboardButton("🔄 Обновить", callback_data='backup_refresh')],
-        [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]  # ДОБАВЛЕНО
+        [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
 
     query.edit_message_text(
@@ -551,7 +640,7 @@ def show_today_status(query, backup_bot):
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("🔄 Обновить", callback_data='backup_today')],
                     [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')],
-                    [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]  # ДОБАВЛЕНО
+                    [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
                 ])
             )
             return
@@ -580,9 +669,8 @@ def show_today_status(query, backup_bot):
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("🔄 Обновить", callback_data='backup_today')],
                 [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')],
-                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]  # ДОБАВЛЕНО
+                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
-
         )
 
     except Exception as e:
@@ -601,7 +689,7 @@ def show_recent_backups(query, backup_bot):
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("🔄 Обновить", callback_data='backup_24h')],
                     [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')],
-                    [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]  # ДОБАВЛЕНО
+                    [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
                 ])
             )
             return
@@ -634,7 +722,7 @@ def show_recent_backups(query, backup_bot):
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("🔄 Обновить", callback_data='backup_24h')],
                 [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')],
-                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]  # ДОБАВЛЕНО
+                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
         )
 
@@ -654,7 +742,7 @@ def show_failed_backups(query, backup_bot):
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("🔄 Обновить", callback_data='backup_failed')],
                     [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')],
-                    [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]  # ДОБАВЛЕНО
+                    [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
                 ])
             )
             return
@@ -681,7 +769,7 @@ def show_failed_backups(query, backup_bot):
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("🔄 Обновить", callback_data='backup_failed')],
                 [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')],
-                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]  # ДОБАВЛЕНО
+                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
         )
 
@@ -690,9 +778,13 @@ def show_failed_backups(query, backup_bot):
         query.edit_message_text("❌ Ошибка при получении данных")
 
 def show_hosts_menu(query, backup_bot):
-    """Показывает меню выбора хостов"""
+    """Показывает меню выбора хостов с отметкой об устаревших бэкапах"""
     try:
         hosts = backup_bot.get_all_hosts()
+        
+        # Получаем информацию об устаревших бэкапах
+        coverage_report = backup_bot.get_backup_coverage_report(24)
+        stale_hosts_dict = {host[0]: host[1] for host in coverage_report['stale_hosts']}
         
         if not hosts:
             query.edit_message_text(
@@ -700,31 +792,151 @@ def show_hosts_menu(query, backup_bot):
                 parse_mode='Markdown',
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')],
-                    [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]  # ДОБАВЛЕНО
+                    [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
                 ])
             )
             return
 
         keyboard = []
+        
+        # Добавляем заголовок с информацией об устаревших бэкапах
+        stale_count = len(coverage_report['stale_hosts'])
+        total_configured = len(coverage_report['all_configured_hosts'])
+        
+        if stale_count > 0:
+            keyboard.append([InlineKeyboardButton(
+                f"⚠️ {stale_count}/{total_configured} хостов без бэкапов >24ч",
+                callback_data='no_action'
+            )])
+            keyboard.append([])  # Пустая строка для разделения
+        
         # Создаем кнопки по 2 в ряд
         for i in range(0, len(hosts), 2):
             row = []
             if i < len(hosts):
-                row.append(InlineKeyboardButton(hosts[i], callback_data=f'backup_host_{hosts[i]}'))
+                host_name = hosts[i]
+                # Проверяем, есть ли у хоста устаревшие бэкапы
+                if host_name in stale_hosts_dict:
+                    display_name = f"🕒 {host_name}"
+                    last_backup = stale_hosts_dict[host_name]
+                    try:
+                        last_time = datetime.strptime(last_backup, '%Y-%m-%d %H:%M:%S')
+                        hours_ago = (datetime.now() - last_time).total_seconds() / 3600
+                        if hours_ago > 24:
+                            display_name = f"❌ {host_name}"
+                        elif hours_ago > 12:
+                            display_name = f"🕒 {host_name}"
+                    except:
+                        display_name = f"🕒 {host_name}"
+                else:
+                    display_name = f"✅ {host_name}"
+                
+                row.append(InlineKeyboardButton(display_name, callback_data=f'backup_host_{host_name}'))
+                
             if i + 1 < len(hosts):
-                row.append(InlineKeyboardButton(hosts[i + 1], callback_data=f'backup_host_{hosts[i + 1]}'))
+                host_name = hosts[i + 1]
+                if host_name in stale_hosts_dict:
+                    display_name = f"🕒 {host_name}"
+                    last_backup = stale_hosts_dict[host_name]
+                    try:
+                        last_time = datetime.strptime(last_backup, '%Y-%m-%d %H:%M:%S')
+                        hours_ago = (datetime.now() - last_time).total_seconds() / 3600
+                        if hours_ago > 24:
+                            display_name = f"❌ {host_name}"
+                        elif hours_ago > 12:
+                            display_name = f"🕒 {host_name}"
+                    except:
+                        display_name = f"🕒 {host_name}"
+                else:
+                    display_name = f"✅ {host_name}"
+                
+                row.append(InlineKeyboardButton(display_name, callback_data=f'backup_host_{host_name}'))
+            
             keyboard.append(row)
+        
+        # Добавляем кнопку для просмотра только проблемных хостов
+        if stale_count > 0:
+            keyboard.append([InlineKeyboardButton(
+                f"🔍 Показать только проблемные ({stale_count})", 
+                callback_data='backup_stale_hosts'
+            )])
         
         keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data='backup_main')])
 
+        message = "🖥️ *Выберите хост для просмотра бэкапов:*\n\n"
+        message += "✅ - нормальные бэкапы\n"
+        message += "🕒 - бэкапы >12 часов\n"
+        message += "❌ - бэкапы >24 часов\n\n"
+        message += f"*Статус:* {len(hosts) - stale_count}/{len(hosts)} хостов в норме"
+
         query.edit_message_text(
-            "🖥️ *Выберите хост для просмотра бэкапов:*",
+            message,
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
     except Exception as e:
         logger.error(f"Ошибка в show_hosts_menu: {e}")
+        query.edit_message_text("❌ Ошибка при получении данных")
+
+def show_stale_hosts(query, backup_bot):
+    """Показывает только хосты с устаревшими бэкапами"""
+    try:
+        coverage_report = backup_bot.get_backup_coverage_report(24)
+        stale_hosts = coverage_report['stale_hosts']
+        
+        if not stale_hosts:
+            query.edit_message_text(
+                "🎉 *Проблемные хосты*\n\nНет хостов с устаревшими бэкапами!",
+                parse_mode='Markdown',
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("↩️ Назад", callback_data='backup_hosts')],
+                    [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+                ])
+            )
+            return
+        
+        keyboard = []
+        message = "❌ *Хосты без бэкапов более 24 часов:*\n\n"
+        
+        for host_name, last_backup in stale_hosts:
+            try:
+                last_time = datetime.strptime(last_backup, '%Y-%m-%d %H:%M:%S')
+                hours_ago = int((datetime.now() - last_time).total_seconds() / 3600)
+                days_ago = hours_ago // 24
+                remaining_hours = hours_ago % 24
+                
+                if days_ago > 0:
+                    time_ago = f"{days_ago}д {remaining_hours}ч"
+                else:
+                    time_ago = f"{hours_ago}ч"
+                
+                message += f"• {host_name} - {time_ago} назад\n"
+                
+                keyboard.append([InlineKeyboardButton(
+                    f"🔍 {host_name} ({time_ago})", 
+                    callback_data=f'backup_host_{host_name}'
+                )])
+                
+            except Exception as e:
+                message += f"• {host_name} - ошибка времени\n"
+        
+        message += f"\n*Всего проблемных хостов:* {len(stale_hosts)}"
+        
+        keyboard.extend([
+            [InlineKeyboardButton("🔄 Обновить", callback_data='backup_stale_hosts')],
+            [InlineKeyboardButton("📋 Все хосты", callback_data='backup_hosts')],
+            [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')]
+        ])
+        
+        query.edit_message_text(
+            message,
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+        
+    except Exception as e:
+        logger.error(f"Ошибка в show_stale_hosts: {e}")
         query.edit_message_text("❌ Ошибка при получении данных")
 
 def show_host_status(query, backup_bot, host_name):
@@ -738,7 +950,7 @@ def show_host_status(query, backup_bot, host_name):
                 parse_mode='Markdown',
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("↩️ Назад", callback_data='backup_hosts')],
-                    [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]  # ДОБАВЛЕНО
+                    [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
                 ])
             )
             return
@@ -770,7 +982,7 @@ def show_host_status(query, backup_bot, host_name):
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("🔄 Обновить", callback_data=f'backup_host_{host_name}')],
                 [InlineKeyboardButton("↩️ Назад", callback_data='backup_hosts')],
-                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]  # ДОБАВЛЕНО
+                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
         )
 
@@ -785,7 +997,7 @@ def show_database_backups_menu(query, backup_bot):
         [InlineKeyboardButton("📈 Сводка за 48ч", callback_data='db_backups_48h')],
         [InlineKeyboardButton("📋 Список БД", callback_data='db_backups_list')],
         [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')],
-        [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]  # ДОБАВЛЕНО
+        [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
 
     query.edit_message_text(
@@ -806,7 +1018,7 @@ def show_database_backups_summary(query, backup_bot, hours):
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("🔄 Обновить", callback_data=f'db_backups_{hours}h')],
                     [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')],
-                    [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]  # ДОБАВЛЕНО
+                    [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
                 ])
             )
             return
@@ -845,7 +1057,7 @@ def show_database_backups_summary(query, backup_bot, hours):
                 [InlineKeyboardButton("🔄 Обновить", callback_data=f'db_backups_{hours}h')],
                 [InlineKeyboardButton("📋 Список БД", callback_data='db_backups_list')],
                 [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')],
-                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]  # ДОБАВЛЕНО
+                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
         )
 
@@ -854,8 +1066,14 @@ def show_database_backups_summary(query, backup_bot, hours):
         query.edit_message_text("❌ Ошибка при получении данных")
 
 def show_database_backups_list(query, backup_bot):
-    """УЛУЧШЕННАЯ ВЕРСИЯ: Показывает список всех баз данных из конфигурации"""
+    """УЛУЧШЕННАЯ ВЕРСИЯ: Показывает список всех баз данных из конфигурации с отметкой об устаревших бэкапах"""
     try:
+        # Получаем информацию об устаревших бэкапах
+        coverage_report = backup_bot.get_backup_coverage_report(24)
+        stale_databases_dict = {}
+        for backup_type, db_name, db_display, last_backup in coverage_report['stale_databases']:
+            stale_databases_dict[(backup_type, db_name)] = last_backup
+        
         # Получаем все отображаемые имена из конфигурации
         display_names = backup_bot.get_database_display_names()
         print(f"🔍 DEBUG: Все базы из конфига: {list(display_names.keys())}")
@@ -967,12 +1185,24 @@ def show_database_backups_list(query, backup_bot):
                     display_name = db_info['display_name']
                     original_name = db_info['original_name']
                     
+                    # Проверяем, есть ли у базы устаревшие бэкапы
+                    is_stale = (backup_type, original_name) in stale_databases_dict
+                    
                     if total > 0:
                         success_rate = (success / total) * 100
-                        status_icon = "🟢" if success_rate >= 80 else "🟡" if success_rate >= 50 else "🔴"
+                        if is_stale:
+                            status_icon = "❌"  # Бэкапов нет более 24 часов
+                        elif success_rate >= 80:
+                            status_icon = "✅"
+                        elif success_rate >= 50:
+                            status_icon = "🟡"
+                        else:
+                            status_icon = "🔴"
                         button_text = f"{status_icon} {display_name}"
                     else:
-                        button_text = f"⚪ {display_name}"
+                        # Если вообще нет бэкапов
+                        status_icon = "❌"
+                        button_text = f"{status_icon} {display_name}"
                     
                     # Ограничиваем длину текста кнопки
                     if len(button_text) > 15:
@@ -999,6 +1229,14 @@ def show_database_backups_list(query, backup_bot):
         if keyboard and not keyboard[-1]:
             keyboard.pop()
         
+        # Добавляем кнопку для просмотра только проблемных БД
+        stale_db_count = len(coverage_report['stale_databases'])
+        if stale_db_count > 0:
+            keyboard.append([InlineKeyboardButton(
+                f"🔍 Показать только проблемные БД ({stale_db_count})", 
+                callback_data='db_stale_list'
+            )])
+        
         # Если нет ни одной базы данных, показываем сообщение
         if sections_added == 0:
             keyboard = [
@@ -1023,7 +1261,7 @@ def show_database_backups_list(query, backup_bot):
         print(f"🔍 DEBUG: Итоговая клавиатура: {len(keyboard)} строк")
         
         query.edit_message_text(
-            "📋 *Список баз данных*\n\n*Секции:*\n🏢 Основные БД компании\n🏔️ Бэкапы Барнаул\n👥 Базы клиентов\n☁️ Бэкапы на Yandex\n\nВыберите базу для просмотра деталей:",
+            "📋 *Список баз данных*\n\n*Легенда:*\n✅ - нормальные бэкапы\n🟡 - есть проблемы\n🔴 - много ошибок\n❌ - нет бэкапов >24ч\n\n*Секции:*\n🏢 Основные БД компании\n🏔️ Бэкапы Барнаул\n👥 Базы клиентов\n☁️ Бэкапы на Yandex\n\nВыберите базу для просмотра деталей:",
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
@@ -1032,6 +1270,76 @@ def show_database_backups_list(query, backup_bot):
         logger.error(f"Ошибка в show_database_backups_list: {e}")
         import traceback
         logger.error(f"Подробности: {traceback.format_exc()}")
+        query.edit_message_text("❌ Ошибка при получении данных")
+
+def show_stale_databases(query, backup_bot):
+    """Показывает только базы данных с устаревшими бэкапами"""
+    try:
+        coverage_report = backup_bot.get_backup_coverage_report(24)
+        stale_databases = coverage_report['stale_databases']
+        
+        if not stale_databases:
+            query.edit_message_text(
+                "🎉 *Проблемные базы данных*\n\nНет БД с устаревшими бэкапами!",
+                parse_mode='Markdown',
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("↩️ Назад", callback_data='db_backups_list')],
+                    [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+                ])
+            )
+            return
+        
+        keyboard = []
+        message = "❌ *Базы данных без бэкапов более 24 часов:*\n\n"
+        
+        type_names = {
+            'company_database': '🏢',
+            'barnaul': '🏔️', 
+            'client': '👥',
+            'yandex': '☁️'
+        }
+        
+        for backup_type, db_name, db_display, last_backup in stale_databases:
+            try:
+                last_time = datetime.strptime(last_backup, '%Y-%m-%d %H:%M:%S')
+                hours_ago = int((datetime.now() - last_time).total_seconds() / 3600)
+                days_ago = hours_ago // 24
+                remaining_hours = hours_ago % 24
+                
+                if days_ago > 0:
+                    time_ago = f"{days_ago}д {remaining_hours}ч"
+                else:
+                    time_ago = f"{hours_ago}ч"
+                
+                type_icon = type_names.get(backup_type, '📁')
+                display_name = db_display or db_name
+                
+                message += f"• {type_icon} {display_name} - {time_ago} назад\n"
+                
+                keyboard.append([InlineKeyboardButton(
+                    f"🔍 {display_name} ({time_ago})", 
+                    callback_data=f'db_detail_{backup_type}__{db_name}'
+                )])
+                
+            except Exception as e:
+                message += f"• {db_name} - ошибка времени\n"
+        
+        message += f"\n*Всего проблемных БД:* {len(stale_databases)}"
+        
+        keyboard.extend([
+            [InlineKeyboardButton("🔄 Обновить", callback_data='db_stale_list')],
+            [InlineKeyboardButton("📋 Все БД", callback_data='db_backups_list')],
+            [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')]
+        ])
+        
+        query.edit_message_text(
+            message,
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+        
+    except Exception as e:
+        logger.error(f"Ошибка в show_stale_databases: {e}")
         query.edit_message_text("❌ Ошибка при получении данных")
 
 def show_database_details(query, backup_bot, backup_type, db_name):
@@ -1048,7 +1356,7 @@ def show_database_details(query, backup_bot, backup_type, db_name):
                 [InlineKeyboardButton("🔄 Обновить", callback_data=f'db_detail_{backup_type}_{db_name}')],
                 [InlineKeyboardButton("📋 Список БД", callback_data='db_backups_list')],
                 [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')],
-                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]  # ДОБАВЛЕНО
+                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
         )
 

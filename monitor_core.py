@@ -1,5 +1,5 @@
 """
-Server Monitoring System v2.2.1
+Server Monitoring System v2.3.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Ядро системы
@@ -1802,7 +1802,7 @@ def send_morning_report():
     debug_log(f"✅ Утренний отчет отправлен: {up_count}/{total_servers} доступно")
 
 def get_backup_summary_for_report():
-    """Получает сводку по бэкапам за последние 16 часов для утреннего отчета"""
+    """Получает сводку по бэкапам за последние 16 часов для утреннего отчета с информацией об устаревших бэкапах"""
     try:
         from extensions.backup_monitor.bot_handler import BackupMonitorBot
         backup_bot = BackupMonitorBot()
@@ -1840,6 +1840,12 @@ def get_backup_summary_for_report():
         ''', (since_time,))
         
         db_stats = cursor.fetchall()
+        
+        # Получаем информацию об устаревших бэкапах
+        coverage_report = backup_bot.get_backup_coverage_report(24)
+        stale_hosts_count = len(coverage_report['stale_hosts'])
+        stale_databases_count = len(coverage_report['stale_databases'])
+        
         conn.close()
         
         # Формируем сообщение о бэкапам
@@ -1851,7 +1857,12 @@ def get_backup_summary_for_report():
         # Proxmox бэкапы
         if total_backups > 0:
             success_rate = (successful_backups / total_backups) * 100 if total_backups > 0 else 0
-            message += f"• Proxmox: {successful_backups}/{total_backups} успешно ({success_rate:.1f}%)\n"
+            message += f"• Proxmox: {successful_backups}/{total_backups} успешно ({success_rate:.1f}%)"
+            
+            # Добавляем информацию об устаревших бэкапах хостов
+            if stale_hosts_count > 0:
+                message += f" ⚠️ {stale_hosts_count} хостов без бэкапов >24ч"
+            message += "\n"
         
         # Базы данных
         if db_stats:
@@ -1864,7 +1875,22 @@ def get_backup_summary_for_report():
                     'client': 'Клиенты',
                     'yandex': 'Yandex'
                 }.get(backup_type, backup_type)
-                message += f"  - {type_name}: {success_db}/{total_db} успешно ({db_success_rate:.1f}%)\n"
+                message += f"  - {type_name}: {success_db}/{total_db} успешно ({db_success_rate:.1f}%)"
+                
+                # Считаем устаревшие БД для этого типа
+                stale_for_type = len([db for db in coverage_report['stale_databases'] if db[0] == backup_type])
+                if stale_for_type > 0:
+                    message += f" ⚠️ {stale_for_type} БД без бэкапов >24ч"
+                message += "\n"
+        
+        # Общая информация об устаревших бэкапах
+        total_stale = stale_hosts_count + stale_databases_count
+        if total_stale > 0:
+            message += f"\n🚨 *Внимание:* {total_stale} проблем:\n"
+            if stale_hosts_count > 0:
+                message += f"• {stale_hosts_count} хостов без бэкапов >24ч\n"
+            if stale_databases_count > 0:
+                message += f"• {stale_databases_count} БД без бэкапов >24ч\n"
         
         return message
         
@@ -1872,7 +1898,7 @@ def get_backup_summary_for_report():
         debug_log = get_debug_log()
         debug_log(f"Ошибка при получении данных о бэкапах: {e}")
         return f"❌ Ошибка получения данных о бэкапах: {str(e)}\n"
-
+    
 def debug_morning_report(update, context):
     """Отладочная функция для проверки утреннего отчета"""
     query = update.callback_query

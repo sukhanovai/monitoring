@@ -1,5 +1,5 @@
 """
-Server Monitoring System v2.2.1
+Server Monitoring System v2.3.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Меню бота
@@ -890,7 +890,9 @@ def get_callback_handlers():
         CallbackQueryHandler(lambda u, c: lazy_handler('backup_databases')(u, c), pattern='^backup_databases$'),                
         CallbackQueryHandler(lambda u, c: lazy_handler('backup_host_')(u, c), pattern='^backup_host_'),
         CallbackQueryHandler(lambda u, c: lazy_handler('db_detail_')(u, c), pattern='^db_detail_'),
-        
+        CallbackQueryHandler(lambda u, c: lazy_handler('backup_stale_hosts')(u, c), pattern='^backup_stale_hosts$'),
+        CallbackQueryHandler(lambda u, c: lazy_handler('db_stale_list')(u, c), pattern='^db_stale_list$'),
+
         # Обработчики расширений
         CallbackQueryHandler(lambda u, c: lazy_handler('extensions_menu')(u, c), pattern='^extensions_menu$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('extensions_refresh')(u, c), pattern='^extensions_refresh$'),
@@ -1015,6 +1017,10 @@ def lazy_handler(pattern):
         elif pattern.startswith('db_detail_'):
             from extensions.backup_monitor.bot_handler import backup_callback as handler
             return handler(update, context)
+        elif pattern == 'backup_stale_hosts':
+            from extensions.backup_monitor.bot_handler import show_stale_hosts as handler
+        elif pattern == 'db_stale_list':
+            from extensions.backup_monitor.bot_handler import show_stale_databases as handler
         elif pattern == 'extensions_menu':
             from bot_menu import show_extensions_menu as handler
         elif pattern == 'extensions_refresh':
