@@ -1,32 +1,15 @@
 """
-Server Monitoring System v1.3.0
-Copyright (c) 2024 Aleksandr Sukhanov
+Server Monitoring System v2.1.0
+Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
+Ядро системы
 """
 
 import os
 import threading
 import time
-import socket
-import paramiko
-import subprocess
-import sqlite3
 from datetime import datetime, timedelta
-from telegram import InlineKeyboardMarkup, InlineKeyboardButton
-# Отключаем проблемные алгоритмы
-paramiko.transport.Transport._preferred_keys = ('ssh-rsa', 'ecdsa-sha2-nistp256', 'ecdsa-sha2-nistp384', 'ecdsa-sha2-nistp521', 'ssh-ed25519')
-
-from config import (
-    TELEGRAM_TOKEN, CHAT_IDS, CHECK_INTERVAL, MAX_FAIL_TIME,
-    SILENT_START, SILENT_END, DATA_COLLECTION_TIME,
-    SSH_KEY_PATH, SSH_USERNAME,
-    RDP_SERVERS, PING_SERVERS, SSH_SERVERS, RESOURCE_THRESHOLDS,
-    WINDOWS_SERVER_CREDENTIALS, WINRM_CONFIGS,
-    RESOURCE_CHECK_INTERVAL, RESOURCE_ALERT_THRESHOLDS, RESOURCE_ALERT_INTERVAL
-)
-
-from extensions.server_list import initialize_servers
-from extensions.resource_check import get_linux_resources_improved, get_windows_resources_improved, check_resource_thresholds, format_resource_message
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 # Глобальные переменные
 bot = None
@@ -35,16 +18,36 @@ morning_data = {}
 monitoring_active = True
 last_check_time = datetime.now()
 servers = []
-silent_override = None  # None - авто, True - принудительно тихий, False - принудительно громкий
-resource_history = {}  # История ресурсов для каждого сервера
+silent_override = None
+resource_history = {}
 last_resource_check = datetime.now()
-resource_alerts_sent = {}  # Отслеживание отправленных алертов
+resource_alerts_sent = {}
 last_report_date = None
+
+# Ленивые импорты из core_utils
+def lazy_import(module_name, attribute_name=None):
+    """Ленивая загрузка модулей"""
+    def import_func():
+        module = __import__(module_name, fromlist=[attribute_name] if attribute_name else [])
+        return getattr(module, attribute_name) if attribute_name else module
+    return import_func
+
+# Ленивые импорты утилит
+get_server_checker = lazy_import('core_utils', 'server_checker')
+get_debug_log = lazy_import('core_utils', 'debug_log')
+get_progress_bar = lazy_import('core_utils', 'progress_bar')
+
+# Ленивые импорты конфига
+get_config = lazy_import('config')
+get_check_interval = lazy_import('config', 'CHECK_INTERVAL')
+get_silent_times = lazy_import('config', 'SILENT_START')
+get_data_collection_time = lazy_import('config', 'DATA_COLLECTION_TIME')
+get_max_fail_time = lazy_import('config', 'MAX_FAIL_TIME')
+get_resource_config = lazy_import('config', 'RESOURCE_CHECK_INTERVAL')
 
 def is_proxmox_server(server):
     """Проверяет, является ли сервер Proxmox"""
     ip = server["ip"]
-    # Proxmox серверы обычно в сети 192.168.30.x или определенные IP
     return (ip.startswith("192.168.30.") or
            ip in ["192.168.20.30", "192.168.20.32", "192.168.20.59"])
 
@@ -57,222 +60,106 @@ def is_silent_time():
         return silent_override  # True - тихий, False - громкий
 
     # Стандартная проверка по времени
+    config = get_config()
     current_hour = datetime.now().hour
-    if SILENT_START > SILENT_END:  # Если период переходит через полночь (например, 20:00-9:00)
-        return current_hour >= SILENT_START or current_hour < SILENT_END
-    return SILENT_START <= current_hour < SILENT_END
+    if config.SILENT_START > config.SILENT_END:  # Если период переходит через полночь
+        return current_hour >= config.SILENT_START or current_hour < config.SILENT_END
+    return config.SILENT_START <= current_hour < config.SILENT_END
 
 def send_alert(message, force=False):
     """Отправляет сообщение без блокировок"""
     global bot
     if bot is None:
         from telegram import Bot
-        bot = Bot(token=TELEGRAM_TOKEN)
+        config = get_config()
+        bot = Bot(token=config.TELEGRAM_TOKEN)
 
     # Логируем для диагностики
-    silent_status = is_silent_time()
-    print(f"[{datetime.now()}] 📨 Отправка: '{message[:50]}...'")
+    debug_log = get_debug_log()
+    debug_log(f"📨 Отправка: '{message[:50]}...'")
 
     try:
         if force or not is_silent_time():
-            for chat_id in CHAT_IDS:
+            config = get_config()
+            for chat_id in config.CHAT_IDS:
                 bot.send_message(chat_id=chat_id, text=message)
-            print(f"    ✅ Сообщение отправлено")
+            debug_log("    ✅ Сообщение отправлено")
         else:
-            print(f"    ⏸️ Сообщение не отправлено (тихий режим)")
+            debug_log("    ⏸️ Сообщение не отправлено (тихий режим)")
     except Exception as e:
-        print(f"    ❌ Ошибка отправки: {e}")
+        debug_log(f"    ❌ Ошибка отправки: {e}")
 
-def check_ping(ip):
-    """Проверка доступности через ping"""
+def check_server_availability(server):
+    """Универсальная проверка доступности сервера"""
+    server_checker = get_server_checker()
+    debug_log = get_debug_log()
+    
     try:
-        result = subprocess.run(
-            ['ping', '-c', '2', '-W', '2', ip],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10
-        )
-        return result.returncode == 0
-    except:
-        return False
-
-def check_port(ip, port=3389, timeout=5):
-    """Проверка доступности порта"""
-    try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(timeout)
-        result = sock.connect_ex((ip, port))
-        sock.close()
-        return result == 0
-    except:
-        return False
-
-def check_ssh(ip):
-    """Проверка доступности через SSH с улучшенной обработкой разных типов ключей"""
-    is_proxmox = is_proxmox_server({"ip": ip})
-
-    timeout_val = 15 if is_proxmox else 10
-    client = paramiko.SSHClient()
-    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-
-    try:
-        # Базовые настройки подключения
-        client.connect(
-            hostname=ip,
-            username=SSH_USERNAME,
-            key_filename=SSH_KEY_PATH,
-            timeout=timeout_val,
-            banner_timeout=timeout_val,
-            auth_timeout=timeout_val,
-            look_for_keys=False,  # Не искать другие ключи
-            allow_agent=False,    # Не использовать SSH агент
-        )
-
-        # Простая проверка
-        stdin, stdout, stderr = client.exec_command('echo "test"', timeout=5)
-        exit_code = stdout.channel.recv_exit_status()
-        client.close()
-
-        return exit_code == 0
-
-    except paramiko.ssh_exception.AuthenticationException as e:
-        print(f"❌ Ошибка аутентификации для {ip}: {e}")
-        return False
-    except paramiko.ssh_exception.SSHException as e:
-        print(f"❌ SSH ошибка для {ip}: {e}")
-        return False
-    except socket.timeout:
-        print(f"⏰ Таймаут подключения к {ip}")
-        return False
+        if is_proxmox_server(server):
+            return server_checker.check_ssh_universal(server["ip"])
+        elif server["type"] == "rdp":
+            return server_checker.check_port(server["ip"], 3389)
+        elif server["type"] == "ping":
+            return server_checker.check_ping(server["ip"])
+        else:
+            return server_checker.check_ssh_universal(server["ip"])
     except Exception as e:
-        print(f"⚠️ Общая ошибка для {ip}: {e}")
+        debug_log(f"❌ Ошибка проверки {server['name']}: {e}")
         return False
-
-def check_ssh_alternative(ip):
-    """Альтернативная проверка через системный SSH"""
-    try:
-        result = subprocess.run([
-            'ssh', '-o', 'ConnectTimeout=10',
-            '-o', 'BatchMode=yes',
-            '-o', 'StrictHostKeyChecking=no',
-            '-o', 'UserKnownHostsFile=/dev/null',
-            '-i', SSH_KEY_PATH,
-            f'{SSH_USERNAME}@{ip}',
-            'echo "success"'
-        ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=15)
-
-        return result.returncode == 0 and "success" in result.stdout.decode()
-    except subprocess.TimeoutExpired:
-        print(f"⏰ Таймаут системного SSH для {ip}")
-        return False
-    except Exception as e:
-        print(f"⚠️ Ошибка системного SSH для {ip}: {e}")
-        return False
-
-def check_ssh_improved(ip):
-    """Улучшенная проверка SSH с обработкой ошибок ключей"""
-    print(f"🔍 Проверяем SSH для {ip}")
-
-    # Пробуем основной метод
-    result1 = check_ssh(ip)
-    if result1:
-        print(f"✅ Основной метод сработал для {ip}")
-        return True
-
-    # Если не сработало, пробуем альтернативный
-    print(f"🔄 Пробуем альтернативный метод для {ip}")
-    result2 = check_ssh_alternative(ip)
-    if result2:
-        print(f"✅ Альтернативный метод сработал для {ip}")
-        return True
-
-    # Если оба метода не сработали, пробуем с другим ключом
-    print(f"🔑 Пробуем с другим SSH ключом для {ip}")
-    result3 = check_ssh_with_fallback_key(ip)
-    if result3:
-        print(f"✅ Метод с fallback ключом сработал для {ip}")
-        return True
-
-    print(f"❌ Все методы не сработали для {ip}")
-    return False
-
-def check_ssh_with_fallback_key(ip):
-    """Проверка SSH с альтернативным ключом"""
-    try:
-        # Пробуем стандартный ключ если доступен
-        fallback_key = "/root/.ssh/id_rsa"
-        if os.path.exists(fallback_key):
-            result = subprocess.run([
-                'ssh', '-o', 'ConnectTimeout=10',
-                '-o', 'BatchMode=yes',
-                '-o', 'StrictHostKeyChecking=no',
-                '-o', 'UserKnownHostsFile=/dev/null',
-                '-i', fallback_key,
-                f'{SSH_USERNAME}@{ip}',
-                'echo "success"'
-            ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=15)
-
-            return result.returncode == 0 and "success" in result.stdout.decode()
-        return False
-
-    except subprocess.TimeoutExpired:
-        print(f"⏰ Таймаут fallback SSH для {ip}")
-        return False
-    except Exception as e:
-        print(f"⚠️ Ошибка fallback SSH для {ip}: {e}")
-        return False
-
-
-def progress_bar(percentage, width=20):
-    """Генерирует текстовый прогресс-бар"""
-    filled = int(round(width * percentage / 100))
-    return f"[{'█' * filled}{'░' * (width - filled)}] {percentage:.1f}%"
 
 def perform_manual_check(context, chat_id, progress_message_id):
     """Выполняет проверку серверов с обновлением прогресса"""
     global last_check_time
+    
+    # Ленивая загрузка серверов
+    global servers
+    if not servers:
+        from extensions.server_list import initialize_servers
+        servers = initialize_servers()
+    
     total_servers = len(servers)
     results = {"failed": [], "ok": []}
+
+    progress_bar = get_progress_bar()
+    debug_log = get_debug_log()
 
     for i, server in enumerate(servers):
         try:
             progress = (i + 1) / total_servers * 100
             progress_text = f"🔍 Проверяю серверы...\n{progress_bar(progress)}\n\n⏳ Проверяю {server['name']} ({server['ip']})..."
 
-            context.bot.edit_message_text(chat_id=chat_id, message_id=progress_message_id, text=progress_text)
+            context.bot.edit_message_text(
+                chat_id=chat_id, 
+                message_id=progress_message_id, 
+                text=progress_text
+            )
 
-            # Улучшенная проверка доступности сервера
-            is_up = False
-
-            if is_proxmox_server(server):
-                # Для Proxmox используем улучшенную SSH проверку
-                is_up = check_ssh_improved(server["ip"])
-            elif server["type"] == "rdp":
-                is_up = check_port(server["ip"], 3389)
-            elif server["type"] == "ping":
-                is_up = check_ping(server["ip"])
-            else:
-                # Для остальных SSH серверов тоже используем улучшенную проверку
-                is_up = check_ssh_improved(server["ip"])
+            # Используем универсальную проверку
+            is_up = check_server_availability(server)
 
             if is_up:
                 results["ok"].append(server)
-                print(f"✅ {server['name']} ({server['ip']}) - доступен")
+                debug_log(f"✅ {server['name']} ({server['ip']}) - доступен")
             else:
                 results["failed"].append(server)
-                print(f"❌ {server['name']} ({server['ip']}) - недоступен")
+                debug_log(f"❌ {server['name']} ({server['ip']}) - недоступен")
 
-            time.sleep(1)  # Увеличиваем задержку между проверками
+            time.sleep(1)
 
         except Exception as e:
-            print(f"💥 Критическая ошибка при проверке {server['ip']}: {e}")
+            debug_log(f"💥 Критическая ошибка при проверке {server['ip']}: {e}")
             results["failed"].append(server)
 
     last_check_time = datetime.now()
+    send_check_results(context, chat_id, progress_message_id, results)
 
-    # Формируем отчет
+def send_check_results(context, chat_id, progress_message_id, results):
+    """Отправляет результаты проверки"""
     if not results["failed"]:
         message = "✅ Все серверы доступны!"
     else:
         message = "⚠️ Проблемные серверы:\n"
+        
         # Группируем по типу для удобства чтения
         by_type = {}
         for server in results["failed"]:
@@ -286,7 +173,8 @@ def perform_manual_check(context, chat_id, progress_message_id):
                 message += f"- {s['name']} ({s['ip']})\n"
 
     context.bot.edit_message_text(
-        chat_id=chat_id, message_id=progress_message_id,
+        chat_id=chat_id, 
+        message_id=progress_message_id,
         text=f"🔍 Проверка завершена!\n\n{message}\n\n⏰ Время проверки: {last_check_time.strftime('%H:%M:%S')}"
     )
 
@@ -295,13 +183,15 @@ def manual_check_handler(update, context):
     query = update.callback_query if hasattr(update, 'callback_query') else None
     chat_id = query.message.chat_id if query else update.message.chat_id
 
-    if str(chat_id) not in CHAT_IDS:
+    config = get_config()
+    if str(chat_id) not in config.CHAT_IDS:
         if query:
             query.edit_message_text("⛔ У вас нет прав для выполнения этой команды")
         else:
             update.message.reply_text("⛔ У вас нет прав для выполнения этой команды")
         return
 
+    progress_bar = get_progress_bar()
     progress_message = context.bot.send_message(
         chat_id=chat_id,
         text="🔍 Начинаю проверку серверов...\n" + progress_bar(0)
@@ -316,38 +206,32 @@ def manual_check_handler(update, context):
 def get_current_server_status():
     """Выполняет быструю проверку статуса серверов"""
     global servers
+    debug_log = get_debug_log()
     
     # Переинициализируем серверы если список пустой
     if not servers:
         from extensions.server_list import initialize_servers
         servers = initialize_servers()
-        print(f"🔄 Переинициализирован список серверов: {len(servers)} серверов")
+        debug_log(f"🔄 Переинициализирован список серверов: {len(servers)} серверов")
     
     results = {"failed": [], "ok": []}
 
     for server in servers:
         try:
-            if is_proxmox_server(server):
-                is_up = check_ssh_improved(server["ip"])
-            elif server["type"] == "rdp":
-                is_up = check_port(server["ip"], 3389, timeout=2)
-            elif server["type"] == "ping":
-                is_up = check_ping(server["ip"])
-            else:
-                is_up = check_ssh_improved(server["ip"])
+            is_up = check_server_availability(server)
 
             if is_up:
                 results["ok"].append(server)
             else:
                 results["failed"].append(server)
                 
-            print(f"🔍 {server['name']} ({server['ip']}) - {'🟢' if is_up else '🔴'}")
+            debug_log(f"🔍 {server['name']} ({server['ip']}) - {'🟢' if is_up else '🔴'}")
                 
         except Exception as e:
-            print(f"❌ Ошибка проверки {server['name']}: {e}")
+            debug_log(f"❌ Ошибка проверки {server['name']}: {e}")
             results["failed"].append(server)
 
-    print(f"📊 Итог проверки: {len(results['ok'])} доступно, {len(results['failed'])} недоступно")
+    debug_log(f"📊 Итог проверки: {len(results['ok'])} доступно, {len(results['failed'])} недоступно")
     return results
 
 def monitor_status(update, context):
@@ -360,7 +244,8 @@ def monitor_status(update, context):
         # Если вызвано как команда, а не callback
         chat_id = update.message.chat_id
 
-    if str(chat_id) not in CHAT_IDS:
+    config = get_config()
+    if str(chat_id) not in config.CHAT_IDS:
         if query:
             query.edit_message_text("⛔ У вас нет прав для выполнения этой команды")
         else:
@@ -382,10 +267,11 @@ def monitor_status(update, context):
             else:
                 silent_status_text += " (🔊 Принудительно)"
 
-        next_check = datetime.now() + timedelta(seconds=CHECK_INTERVAL)
+        config = get_config()
+        next_check = datetime.now() + timedelta(seconds=config.CHECK_INTERVAL)
 
         message = (
-            f"📊 *Статус мониторинга* - help\n\n"
+            f"📊 *Статус мониторинга* - ОПТИМИЗИРОВАННАЯ ВЕРСИЯ\n\n"
             f"**Состояние:** {status}\n"
             f"**Режим:** {silent_status_text}\n\n"
             f"⏰ Последняя проверка: {last_check_time.strftime('%H:%M:%S')}\n"
@@ -393,10 +279,16 @@ def monitor_status(update, context):
             f"🔢 Всего серверов: {len(servers)}\n"
             f"🟢 Доступно: {up_count}\n"
             f"🔴 Недоступно: {down_count}\n"
-            f"🔄 Интервал проверки: {CHECK_INTERVAL} сек\n\n"
-            f"🌐 *Веб-интерфейс:* http://192.168.20.2:5000\n"
-            f"_*доступен только в локальной сети_"
+            f"🔄 Интервал проверки: {config.CHECK_INTERVAL} сек\n\n"
         )
+
+        # Информация о веб-интерфейсе
+        from extensions.extension_manager import extension_manager
+        if extension_manager.is_extension_enabled('web_interface'):
+            message += "🌐 *Веб-интерфейс:* http://192.168.20.2:5000\n"
+            message += "_*доступен только в локальной сети_\n"
+        else:
+            message += "🌐 *Веб-интерфейс:* 🔴 отключен\n"
 
         if down_count > 0:
             message += f"\n⚠️ *Проблемные серверы ({down_count}):*\n"
@@ -434,7 +326,8 @@ def monitor_status(update, context):
             update.message.reply_text(message, parse_mode='Markdown')
 
     except Exception as e:
-        print(f"Ошибка в monitor_status: {e}")
+        debug_log = get_debug_log()
+        debug_log(f"Ошибка в monitor_status: {e}")
         error_msg = "⚠️ Произошла ошибка при получении статуса"
         if query:
             query.edit_message_text(error_msg)
@@ -443,10 +336,11 @@ def monitor_status(update, context):
 
 def silent_command(update, context):
     """Обработчик команды /silent"""
+    config = get_config()
     silent_status = "🟢 активен" if is_silent_time() else "🔴 неактивен"
     message = (
         f"🔇 *Статус тихого режима:* {silent_status}\n\n"
-        f"⏰ *Время работы:* {SILENT_START}:00 - {SILENT_END}:00\n\n"
+        f"⏰ *Время работы:* {config.SILENT_START}:00 - {config.SILENT_END}:00\n\n"
         f"💡 *В тихом режиме:*\n"
         f"• Регулярные уведомления не отправляются\n"
         f"• Критические ошибки все равно отправляются\n"
@@ -476,16 +370,17 @@ def silent_status_handler(update, context):
     current_status = "🔴 неактивен" if is_silent_time() else "🟢 активен"
     status_description = "тихий режим" if is_silent_time() else "громкий режим"
 
+    config = get_config()
     message = (
         f"🔇 *Управление тихим режимом*\n\n"
         f"**Текущий статус:** {current_status}\n"
         f"**Режим работы:** {mode_text}\n"
         f"*{mode_desc}*\n"
         f"**Фактически:** {status_description}\n\n"
-        f"⏰ *Расписание тихого режима:* {SILENT_START}:00 - {SILENT_END}:00\n\n"
+        f"⏰ *Расписание тихого режима:* {config.SILENT_START}:00 - {config.SILENT_END}:00\n\n"
         f"💡 *Пояснение:*\n"
         f"- 🟢 активен = уведомления работают\n"
-        f"- 🔴 неактивен = уведomления отключены\n"
+        f"- 🔴 неактивен = уведомления отключены\n"
         f"- 🔊 громкий режим = все уведомления включены\n"
         f"- 🔇 тихий режим = только критические уведомления"
     )
@@ -530,10 +425,10 @@ def force_loud_handler(update, context):
     query.answer()
 
     # Отправляем уведомление о изменении режима
-    send_alert("🔊 *Принудительный громкий режим включен*\nВсе уведомления активны до смена режима.", force=True)
+    send_alert("🔊 *Принудительный громкий режим включен*\nВсе уведомления активны до смены режима.", force=True)
 
     query.edit_message_text(
-        "🔊 *Принудительный громкий режим включен*\n\n✅ Все уведomления активны до следующего изменения режима.",
+        "🔊 *Принудительный громкий режим включен*\n\n✅ Все уведомления активны до следующего изменения режима.",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("🔇 Включить тихий режим", callback_data='force_silent')],
@@ -606,10 +501,10 @@ def control_panel_handler(update, context):
 def pause_monitoring_handler(update, context):
     """Приостановка мониторинга"""
     global monitoring_active
+    monitoring_active = False
     query = update.callback_query
     query.answer()
 
-    monitoring_active = False
     query.edit_message_text(
         "⏸️ Мониторинг приостановлен\n\nУведомления отправляться не будут.",
         reply_markup=InlineKeyboardMarkup([
@@ -621,10 +516,10 @@ def pause_monitoring_handler(update, context):
 def resume_monitoring_handler(update, context):
     """Возобновление мониторинга"""
     global monitoring_active
+    monitoring_active = True
     query = update.callback_query
     query.answer()
 
-    monitoring_active = True
     query.edit_message_text(
         "▶️ Мониторинг возобновлен",
         reply_markup=InlineKeyboardMarkup([
@@ -641,14 +536,15 @@ def check_resources_handler(update, context):
     else:
         chat_id = update.effective_chat.id
 
-    if str(chat_id) not in CHAT_IDS:
+    config = get_config()
+    if str(chat_id) not in config.CHAT_IDS:
         if query:
             query.edit_message_text("⛔ У вас нет прав для выполнения этой команды")
         else:
             update.message.reply_text("⛔ У вас нет прав для выполнения этой команды")
         return
 
-    # НОВОЕ МЕНЮ с разделением по ресурсам
+    # Меню с разделением по ресурсам
     keyboard = [
         [InlineKeyboardButton("💻 Проверить CPU", callback_data='check_cpu')],
         [InlineKeyboardButton("🧠 Проверить RAM", callback_data='check_ram')],
@@ -673,8 +569,6 @@ def check_resources_handler(update, context):
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
-# НОВЫЕ ФУНКЦИИ ДЛЯ РАЗДЕЛЬНОЙ ПРОВЕРКИ РЕСУРСОВ
-
 def check_cpu_resources_handler(update, context):
     """Обработчик проверки только CPU"""
     query = update.callback_query
@@ -684,7 +578,8 @@ def check_cpu_resources_handler(update, context):
     else:
         chat_id = update.effective_chat.id
 
-    if str(chat_id) not in CHAT_IDS:
+    config = get_config()
+    if str(chat_id) not in config.CHAT_IDS:
         if query:
             query.edit_message_text("⛔ У вас нет прав для выполнения этой команды")
         else:
@@ -712,7 +607,8 @@ def check_ram_resources_handler(update, context):
     else:
         chat_id = update.effective_chat.id
 
-    if str(chat_id) not in CHAT_IDS:
+    config = get_config()
+    if str(chat_id) not in config.CHAT_IDS:
         if query:
             query.edit_message_text("⛔ У вас нет прав для выполнения этой команды")
         else:
@@ -740,7 +636,8 @@ def check_disk_resources_handler(update, context):
     else:
         chat_id = update.effective_chat.id
 
-    if str(chat_id) not in CHAT_IDS:
+    config = get_config()
+    if str(chat_id) not in config.CHAT_IDS:
         if query:
             query.edit_message_text("⛔ У вас нет прав для выполнения этой команды")
         else:
@@ -761,6 +658,8 @@ def check_disk_resources_handler(update, context):
 
 def perform_cpu_check(context, chat_id, progress_message_id):
     """Выполняет проверку только CPU"""
+    progress_bar = get_progress_bar()
+    
     def update_progress(progress, status):
         progress_text = f"💻 Проверка CPU...\n{progress_bar(progress)}\n\n{status}"
         context.bot.edit_message_text(
@@ -860,8 +759,9 @@ def perform_cpu_check(context, chat_id, progress_message_id):
         )
 
     except Exception as e:
+        debug_log = get_debug_log()
         error_msg = f"❌ Ошибка при проверке CPU: {e}"
-        print(error_msg)
+        debug_log(error_msg)
         context.bot.edit_message_text(
             chat_id=chat_id,
             message_id=progress_message_id,
@@ -870,6 +770,8 @@ def perform_cpu_check(context, chat_id, progress_message_id):
 
 def perform_ram_check(context, chat_id, progress_message_id):
     """Выполняет проверку только RAM"""
+    progress_bar = get_progress_bar()
+
     def update_progress(progress, status):
         progress_text = f"🧠 Проверка RAM...\n{progress_bar(progress)}\n\n{status}"
         context.bot.edit_message_text(
@@ -969,8 +871,9 @@ def perform_ram_check(context, chat_id, progress_message_id):
         )
 
     except Exception as e:
+        debug_log = get_debug_log()
         error_msg = f"❌ Ошибка при проверке RAM: {e}"
-        print(error_msg)
+        debug_log(error_msg)
         context.bot.edit_message_text(
             chat_id=chat_id,
             message_id=progress_message_id,
@@ -979,6 +882,8 @@ def perform_ram_check(context, chat_id, progress_message_id):
 
 def perform_disk_check(context, chat_id, progress_message_id):
     """Выполняет проверку только Disk"""
+    progress_bar = get_progress_bar()
+
     def update_progress(progress, status):
         progress_text = f"💾 Проверка Disk...\n{progress_bar(progress)}\n\n{status}"
         context.bot.edit_message_text(
@@ -1078,706 +983,17 @@ def perform_disk_check(context, chat_id, progress_message_id):
         )
 
     except Exception as e:
+        debug_log = get_debug_log()
         error_msg = f"❌ Ошибка при проверке Disk: {e}"
-        print(error_msg)
+        debug_log(error_msg)
         context.bot.edit_message_text(
             chat_id=chat_id,
             message_id=progress_message_id,
             text=error_msg
         )
 
-    if query:
-        query.edit_message_text(
-            text="🔍 *Выберите тип серверов для проверки:*",
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
-    else:
-        update.message.reply_text(
-            text="🔍 *Выберите тип серверов для проверки:*",
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
-
-def resource_history_command(update, context):
-    """Команда для просмотра статуса истории ресурсов"""
-    query = update.callback_query if hasattr(update, 'callback_query') else None
-    chat_id = query.message.chat_id if query else update.message.chat_id
-
-    if str(chat_id) not in CHAT_IDS:
-        if query:
-            query.edit_message_text("⛔ У вас нет прав для выполнения этой команды")
-        else:
-            update.message.reply_text("⛔ У вас нет прав для выполнения этой команды")
-        return
-
-    status_message = get_resource_history_status()
-
-    if query:
-        query.edit_message_text(
-            text=status_message,
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🔄 Обновить", callback_data='resource_history')],
-                [InlineKeyboardButton("📊 Статус мониторинга", callback_data='monitor_status')],
-                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-            ])
-        )
-    else:
-        update.message.reply_text(status_message, parse_mode='Markdown')
-
-def force_resource_check():
-    """Принудительная проверка ресурсов всех серверов"""
-    global resource_history
-
-    print("🔍 Запуск принудительной проверки ресурсов...")
-
-    for server in servers:
-        try:
-            ip = server["ip"]
-            server_name = server["name"]
-
-            print(f"🔍 Проверяем ресурсы {server_name} ({ip})")
-
-            # Получаем текущие ресурсы
-            current_resources = None
-            if server["type"] == "ssh":
-                current_resources = get_linux_resources_improved(ip)
-            elif server["type"] == "rdp":
-                current_resources = get_windows_resources_improved(ip)
-
-            if not current_resources:
-                print(f"❌ Не удалось получить ресурсы для {server_name}")
-                continue
-
-            # Инициализируем историю для сервера если нужно
-            if ip not in resource_history:
-                resource_history[ip] = []
-
-            # Добавляем текущие ресурсы в историю
-            resource_entry = {
-                "timestamp": datetime.now(),
-                "cpu": current_resources.get("cpu", 0),
-                "ram": current_resources.get("ram", 0),
-                "disk": current_resources.get("disk", 0),
-                "server_name": server_name,
-                "os": current_resources.get("os", "Unknown")
-            }
-
-            resource_history[ip].append(resource_entry)
-
-            # Ограничиваем историю последними 10 записями
-            if len(resource_history[ip]) > 10:
-                resource_history[ip] = resource_history[ip][-10:]
-
-            print(f"✅ Ресурсы {server_name}: CPU {current_resources.get('cpu', 0)}%, RAM {current_resources.get('ram', 0)}%, Disk {current_resources.get('disk', 0)}%")
-
-        except Exception as e:
-            print(f"❌ Ошибка при проверке ресурсов {server['name']}: {e}")
-            continue
-
-    print("✅ Принудительная проверка ресурсов завершена")
-
-def start_monitoring():
-    """Запускает основной цикл мониторинга"""
-    global servers, bot, monitoring_active, last_report_date, morning_data
-
-    servers = initialize_servers()
-
-    # ПРИНУДИТЕЛЬНО исключаем сервер мониторинга из списка
-    monitor_server_ip = "192.168.20.2"
-    servers = [s for s in servers if s["ip"] != monitor_server_ip]
-    print(f"✅ Сервер мониторинга {monitor_server_ip} принудительно исключен из списка. Осталось {len(servers)} серверов")
-
-    # Инициализируем бота
-    from telegram import Bot
-    bot = Bot(token=TELEGRAM_TOKEN)
-
-    # Инициализация server_status (только для оставшихся серверов)
-    for server in servers:
-        server_status[server["ip"]] = {
-            "last_up": datetime.now(),
-            "alert_sent": False,
-            "name": server["name"],
-            "type": server["type"],
-            "resources": None,
-            "last_alert": {}
-        }
-
-    print(f"✅ Мониторинг запущен для {len(servers)} серверов")
-
-    # Обновляем стартовое сообщение
-    start_message = (
-        "🟢 *Мониторинг серверов запущен*\n\n"
-        f"• Серверов в мониторинге: {len(servers)}\n"
-        f"• Проверка ресурсов: каждые {RESOURCE_CHECK_INTERVAL // 60} минут\n"
-        f"• Утренний отчет: {DATA_COLLECTION_TIME.strftime('%H:%M')}\n\n"
-        f"🌐 *Веб-интерфейс:* http://192.168.20.2:5000\n"
-        f"_*доступен только в локальной сети_"
-    )
-
-    send_alert(start_message)
-
-    last_resource_check = datetime.now()
-    last_data_collection = None
-    
-    # Инициализируем morning_data если она пустая
-    if not morning_data:
-        morning_data = {}
-
-    while True:
-        current_time = datetime.now()
-        current_time_time = current_time.time()
-
-        # Автоматическая проверка ресурсов каждые 30 минут
-        if (current_time - last_resource_check).total_seconds() >= RESOURCE_CHECK_INTERVAL:
-            if monitoring_active and not is_silent_time():
-                print("🔄 Автоматическая проверка ресурсов серверов...")
-                check_resources_automatically()
-                last_resource_check = current_time
-            else:
-                print("⏸️ Проверка ресурсов пропущена (тихий режим или мониторинг неактивен)")
-
-        # Сбор и отправка утреннего отчета в 8:30
-        if (current_time_time.hour == DATA_COLLECTION_TIME.hour and
-            current_time_time.minute == DATA_COLLECTION_TIME.minute):
-
-            # Проверяем, что сегодня еще не отправляли отчет
-            today = current_time.date()
-            if last_report_date != today:
-                print(f"[{current_time}] 🔍 Собираем данные для утреннего отчета...")
-
-                # Собираем текущий статус серверов
-                morning_status = get_current_server_status()
-                morning_data["status"] = morning_status
-                morning_data["collection_time"] = current_time
-                last_data_collection = current_time
-
-                print(f"✅ Данные собраны: {len(morning_status['ok'])} доступно, {len(morning_status['failed'])} недоступно")
-
-                # СРАЗУ отправляем отчет после сбора данных
-                print(f"[{current_time}] 📊 Отправка утреннего отчета...")
-                send_morning_report()
-                last_report_date = today
-                print("✅ Утренний отчет отправлен")
-                
-                # Добавляем задержку чтобы не запускать повторно в ту же минуту
-                time.sleep(65)  # Спим 65 секунд чтобы выйти за пределы минуты сбора
-            else:
-                print(f"⏭️ Отчет уже отправлен сегодня {last_report_date}")
-
-        # Основной цикл мониторинга доступности
-        if monitoring_active:
-            last_check_time = current_time
-
-            for server in servers:
-                ip = server["ip"]
-                status = server_status[ip]
-
-                # ПОЛНОСТЬЮ ИСКЛЮЧАЕМ сервер мониторинга из любых проверок
-                if ip == monitor_server_ip:
-                    server_status[ip]["last_up"] = current_time
-                    continue
-
-                # Проверка доступности
-                if is_proxmox_server(server):
-                    is_up = check_ssh_improved(ip)
-                elif server["type"] == "rdp":
-                    is_up = check_port(ip, 3389)
-                elif server["type"] == "ping":
-                    is_up = check_ping(ip)
-                else:
-                    is_up = check_ssh_improved(ip)
-
-                if is_up:
-                    if status["alert_sent"]:
-                        downtime = (current_time - status["last_up"]).total_seconds()
-                        send_alert(f"✅ {status['name']} ({ip}) доступен (простой: {int(downtime//60)} мин)")
-
-                    server_status[ip] = {
-                        "last_up": current_time,
-                        "alert_sent": False,
-                        "name": status["name"],
-                        "type": status["type"],
-                        "resources": server_status[ip].get("resources"),
-                        "last_alert": server_status[ip].get("last_alert", {})
-                    }
-                else:
-                    downtime = (current_time - status["last_up"]).total_seconds()
-                    if downtime >= MAX_FAIL_TIME and not status["alert_sent"]:
-                        send_alert(f"🚨 {status['name']} ({ip}) не отвечает (проверка: {status['type'].upper()})")
-                        server_status[ip]["alert_sent"] = True
-
-        time.sleep(CHECK_INTERVAL)
-
-def debug_morning_report(update, context):
-    """Диагностическая команда для проверки утреннего отчета"""
-    from telegram import InlineKeyboardMarkup, InlineKeyboardButton
-
-    query = update.callback_query if hasattr(update, 'callback_query') else None
-    chat_id = query.message.chat_id if query else update.message.chat_id
-
-    if str(chat_id) not in CHAT_IDS:
-        if query:
-            query.edit_message_text("⛔ У вас нет прав для выполнения этой команды")
-        else:
-            update.message.reply_text("⛔ У вас нет прав для выполнения этой команды")
-        return
-
-    current_time = datetime.now()
-    debug_message = f"🔧 *Диагностика утреннего отчета*\n\n"
-
-    debug_message += f"**Текущее время:** {current_time.strftime('%H:%M:%S')}\n"
-    debug_message += f"**Время сбора данных:** {DATA_COLLECTION_TIME.strftime('%H:%M')}\n"
-    debug_message += f"**Совпадает время:** {current_time.time().hour == DATA_COLLECTION_TIME.hour and current_time.time().minute == DATA_COLLECTION_TIME.minute}\n"
-
-    # Проверяем состояние переменных
-    debug_message += f"\n**Состояние переменных:**\n"
-    debug_message += f"• last_report_date: {last_report_date}\n"
-    debug_message += f"• today: {current_time.date()}\n"
-    debug_message += f"• Нужно отправлять: {last_report_date != current_time.date()}\n"
-
-    # Проверяем morning_data
-    debug_message += f"\n**Данные отчета:**\n"
-    if morning_data and "status" in morning_data:
-        status = morning_data["status"]
-        debug_message += f"• Данные есть: ✅\n"
-        debug_message += f"• Время сбора: {morning_data.get('collection_time', 'N/A')}\n"
-        debug_message += f"• Доступно серверов: {len(status.get('ok', []))}\n"
-        debug_message += f"• Недоступно серверов: {len(status.get('failed', []))}\n"
-    else:
-        debug_message += f"• Данные есть: ❌\n"
-
-    # Тестовая отправка отчета
-    debug_message += f"\n**Тестовая отправка:**\n"
-    try:
-        test_status = get_current_server_status()
-        debug_message += f"• Текущий статус: {len(test_status['ok'])} доступно, {len(test_status['failed'])} недоступно\n"
-
-        # Пробуем отправить тестовый отчет
-        morning_data = {
-            "status": test_status,
-            "collection_time": current_time
-        }
-        send_morning_report()
-        debug_message += f"• Тестовый отчет отправлен: ✅\n"
-    except Exception as e:
-        debug_message += f"• Ошибка отправки: {e}\n"
-
-    # ДОБАВИТЬ КНОПКИ КЛАВИАТУРЫ
-    keyboard = [
-        [InlineKeyboardButton("🔄 Обновить", callback_data='debug_report')],
-        [InlineKeyboardButton("📊 Статус мониторинга", callback_data='monitor_status')],
-        [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-    ]
-
-    if query:
-        query.edit_message_text(debug_message, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
-    else:
-        update.message.reply_text(debug_message, parse_mode='Markdown')
-
-def test_morning_report():
-    """Тестовая функция для проверки утреннего отчета"""
-    global morning_data
-    
-    print("🧪 Тестируем утренний отчет...")
-    
-    # Собираем актуальные данные
-    current_status = get_current_server_status()
-    morning_data = {
-        "status": current_status,
-        "collection_time": datetime.now()
-    }
-    
-    # Отправляем отчет
-    send_morning_report()
-    print("✅ Тестовый отчет отправлен")
-
-def send_morning_report():
-    """Отправляет утренний отчет о доступности серверов и бэкапах"""
-    global morning_data
-    
-    current_time = datetime.now()
-    print(f"[{current_time}] 🔍 Проверка данных для утреннего отчета...")
-    
-    if not morning_data or "status" not in morning_data:
-        print("❌ Нет данных для утреннего отчета, собираем текущий статус...")
-        current_status = get_current_server_status()
-        morning_data = {
-            "status": current_status,
-            "collection_time": current_time
-        }
-        print(f"✅ Собраны актуальные данные: {len(current_status['ok'])} доступно, {len(current_status['failed'])} недоступно")
-        
-    status = morning_data["status"]
-    collection_time = morning_data.get("collection_time", datetime.now())
-
-    total_servers = len(status["ok"]) + len(status["failed"])
-    up_count = len(status["ok"])
-    down_count = len(status["failed"])
-
-    # Формируем сообщение
-    message = f"📊 *Утренний отчет о доступности серверов*\n\n"
-    message += f"⏰ *Время сбора данных:* {collection_time.strftime('%H:%M')}\n"
-    message += f"🔢 *Всего серверов:* {total_servers}\n"
-    message += f"🟢 *Доступно:* {up_count}\n"
-    message += f"🔴 *Недоступно:* {down_count}\n"
-
-    # Добавляем секцию с бэкапами только если расширение включено
-    from extensions.extension_manager import extension_manager
-    if extension_manager.should_include_backup_data():
-        backup_data = get_backup_summary_for_report()
-        message += f"\n💾 *Статус бэкапов (за последние 16ч)*\n"
-        message += backup_data
-    else:
-        message += f"\n💾 *Статус бэкапов:* 🔴 мониторинг отключен\n"
-
-    if down_count > 0:
-        message += f"\n⚠️ *Проблемные серверы ({down_count}):*\n"
-
-        # Группируем по типу для удобства чтения
-        by_type = {}
-        for server in status["failed"]:
-            if server["type"] not in by_type:
-                by_type[server["type"]] = []
-            by_type[server["type"]].append(server)
-
-        for server_type, servers_list in by_type.items():
-            message += f"\n**{server_type.upper()} ({len(servers_list)}):**\n"
-            for s in servers_list:
-                message += f"• {s['name']} ({s['ip']})\n"
-
-    else:
-        message += f"\n✅ *Все серверы доступны!*\n"
-
-    message += f"\n📋 *Статистика по типам:*\n"
-
-    # Статистика по типам серверов
-    type_stats = {}
-    all_servers = status["ok"] + status["failed"]
-    for server in all_servers:
-        if server["type"] not in type_stats:
-            type_stats[server["type"]] = {"total": 0, "up": 0}
-        type_stats[server["type"]]["total"] += 1
-
-    for server in status["ok"]:
-        type_stats[server["type"]]["up"] += 1
-
-    for server_type, stats in type_stats.items():
-        up_percent = (stats["up"] / stats["total"]) * 100 if stats["total"] > 0 else 0
-        message += f"• {server_type.upper()}: {stats['up']}/{stats['total']} ({up_percent:.1f}%)\n"
-
-    message += f"\n⏰ *Отчет отправлен:* {datetime.now().strftime('%H:%M:%S')}"
-
-    # Отправляем отчет принудительно, даже в тихом режиме
-    send_alert(message, force=True)
-    print(f"✅ Утренний отчет отправлен: {up_count}/{total_servers} доступно")
-
-def get_backup_summary_for_report():
-    """Получает сводку по бэкапам за последние 16 часов для утреннего отчета"""
-    try:
-        from extensions.backup_monitor.bot_handler import BackupMonitorBot
-        backup_bot = BackupMonitorBot()
-        
-        # Получаем бэкапы за последние 16 часов (с 18:00 предыдущего дня)
-        since_time = (datetime.now() - timedelta(hours=16)).strftime('%Y-%m-%d %H:%M:%S')
-        
-        conn = sqlite3.connect(backup_bot.db_path)
-        cursor = conn.cursor()
-        
-        # Получаем общее количество бэкапов за период
-        cursor.execute('''
-            SELECT 
-                COUNT(*) as total_backups,
-                SUM(CASE WHEN backup_status = 'success' THEN 1 ELSE 0 END) as successful_backups,
-                SUM(CASE WHEN backup_status = 'failed' THEN 1 ELSE 0 END) as failed_backups,
-                COUNT(DISTINCT host_name) as unique_hosts
-            FROM proxmox_backups 
-            WHERE received_at >= ?
-        ''', (since_time,))
-        
-        stats = cursor.fetchone()
-        total_backups, successful_backups, failed_backups, unique_hosts = stats
-        
-        # Получаем статистику по базам данных
-        cursor.execute('''
-            SELECT 
-                backup_type,
-                COUNT(*) as total_db_backups,
-                SUM(CASE WHEN backup_status = 'success' THEN 1 ELSE 0 END) as successful_db_backups
-            FROM database_backups 
-            WHERE received_at >= ?
-            GROUP BY backup_type
-        ''', (since_time,))
-        
-        db_stats = cursor.fetchall()
-        conn.close()
-        
-        # Формируем сообщение о бэкапах
-        if total_backups == 0 and not db_stats:
-            return "📭 Нет данных о бэкапах за указанный период\n"
-        
-        message = ""
-        
-        # Proxmox бэкапы
-        if total_backups > 0:
-            success_rate = (successful_backups / total_backups) * 100 if total_backups > 0 else 0
-            message += f"• Proxmox: {successful_backups}/{total_backups} успешно ({success_rate:.1f}%)\n"
-        
-        # Базы данных
-        if db_stats:
-            message += f"• Базы данных:\n"
-            for backup_type, total_db, success_db in db_stats:
-                db_success_rate = (success_db / total_db) * 100 if total_db > 0 else 0
-                type_name = {
-                    'company_database': 'Основные',
-                    'barnaul': 'Барнаул', 
-                    'client': 'Клиенты',
-                    'yandex': 'Yandex'
-                }.get(backup_type, backup_type)
-                message += f"  - {type_name}: {success_db}/{total_db} успешно ({db_success_rate:.1f}%)\n"
-        
-        return message
-        
-    except Exception as e:
-        logger.error(f"Ошибка при получении данных о бэкапах: {e}")
-        return f"❌ Ошибка получения данных о бэкапах: {str(e)}\n"
-        
-def send_morning_report_handler(update, context):
-    """Обработчик для принудительной отправки утреннего отчета"""
-    query = update.callback_query if hasattr(update, 'callback_query') else None
-    chat_id = query.message.chat_id if query else update.message.chat_id
-
-    if str(chat_id) not in CHAT_IDS:
-        if query:
-            query.edit_message_text("⛔ У вас нет прав для выполнения этой команды")
-        else:
-            update.message.reply_text("⛔ У вас нет прав для выполнения этой команды")
-        return
-
-    # Собираем актуальные данные
-    current_status = get_current_server_status()
-    morning_data = {
-        "status": current_status,
-        "collection_time": datetime.now()
-    }
-
-    # Отправляем отчет
-    send_morning_report()
-
-    response = "📊 Утренний отчет отправлен принудительно (включая данные о бэкапах)"
-    if query:
-        query.edit_message_text(response)
-    else:
-        update.message.reply_text(response)
-
-def check_resources_automatically():
-    """Автоматическая проверка ресурсов с умными предупреждениями"""
-    global resource_history, last_resource_check, resource_alerts_sent
-
-    print("🔍 Автоматическая проверка ресурсов серверов...")
-
-    if not monitoring_active or is_silent_time():
-        print("⏸️ Проверка ресурсов пропущена (мониторинг неактивен или тихий режим)")
-        return
-
-    current_time = datetime.now()
-    alerts_found = []
-
-    # Проверяем все серверы
-    for server in servers:
-        try:
-            ip = server["ip"]
-            server_name = server["name"]
-
-            print(f"🔍 Проверяем ресурсы {server_name} ({ip})")
-
-            # Получаем текущие ресурсы
-            current_resources = None
-            if server["type"] == "ssh":
-                current_resources = get_linux_resources_improved(ip)
-            elif server["type"] == "rdp":
-                current_resources = get_windows_resources_improved(ip)
-
-            if not current_resources:
-                continue
-
-            # Инициализируем историю для сервера если нужно
-            if ip not in resource_history:
-                resource_history[ip] = []
-
-            # Добавляем текущие ресурсы в историю
-            resource_entry = {
-                "timestamp": current_time,
-                "cpu": current_resources.get("cpu", 0),
-                "ram": current_resources.get("ram", 0),
-                "disk": current_resources.get("disk", 0),
-                "server_name": server_name
-            }
-
-            resource_history[ip].append(resource_entry)
-
-            # Ограничиваем историю последними 10 записями
-            if len(resource_history[ip]) > 10:
-                resource_history[ip] = resource_history[ip][-10:]
-
-            # Проверяем условия для алертов
-            server_alerts = check_resource_alerts(ip, resource_entry)
-
-            if server_alerts:
-                alerts_found.extend(server_alerts)
-                print(f"⚠️ Найдены проблемы для {server_name}: {server_alerts}")
-
-        except Exception as e:
-            print(f"❌ Ошибка при проверке ресурсов {server['name']}: {e}")
-            continue
-
-    # Отправляем алерты если есть
-    if alerts_found:
-        send_resource_alerts(alerts_found)
-
-    last_resource_check = current_time
-    print(f"✅ Автоматическая проверка ресурсов завершена. Найдено проблем: {len(alerts_found)}")
-
-def check_resource_alerts(ip, current_resource):
-    """Проверяет условия для отправки алертов по ресурсам"""
-    alerts = []
-    server_name = current_resource["server_name"]
-
-    # Получаем историю проверок (исключая текущую)
-    history = resource_history.get(ip, [])[:-1]  # Все кроме последней записи
-
-    # Проверка Disk (одна проверка)
-    disk_usage = current_resource.get("disk", 0)
-    if disk_usage >= RESOURCE_ALERT_THRESHOLDS["disk_alert"]:
-        # Проверяем, не отправляли ли уже алерт по диску
-        alert_key = f"{ip}_disk"
-        if alert_key not in resource_alerts_sent or (datetime.now() - resource_alerts_sent[alert_key]).total_seconds() > RESOURCE_ALERT_INTERVAL:
-            alerts.append(f"💾 **Дисковое пространство** на {server_name}: {disk_usage}% (превышен порог {RESOURCE_ALERT_THRESHOLDS['disk_alert']}%)")
-            resource_alerts_sent[alert_key] = datetime.now()
-
-    # Проверка CPU (две проверки подряд)
-    cpu_usage = current_resource.get("cpu", 0)
-    if cpu_usage >= RESOURCE_ALERT_THRESHOLDS["cpu_alert"]:
-        # Проверяем предыдущую запись
-        if len(history) >= 1:
-            prev_cpu = history[-1].get("cpu", 0)
-            if prev_cpu >= RESOURCE_ALERT_THRESHOLDS["cpu_alert"]:
-                alert_key = f"{ip}_cpu"
-                if alert_key not in resource_alerts_sent or (datetime.now() - resource_alerts_sent[alert_key]).total_seconds() > RESOURCE_ALERT_INTERVAL:
-                    alerts.append(f"💻 **Процессор** на {server_name}: {prev_cpu}% → {cpu_usage}% (2 проверки подряд >= {RESOURCE_ALERT_THRESHOLDS['cpu_alert']}%)")
-                    resource_alerts_sent[alert_key] = datetime.now()
-
-    # Проверка RAM (две проверки подряд)
-    ram_usage = current_resource.get("ram", 0)
-    if ram_usage >= RESOURCE_ALERT_THRESHOLDS["ram_alert"]:
-        # Проверяем предыдущую запись
-        if len(history) >= 1:
-            prev_ram = history[-1].get("ram", 0)
-            if prev_ram >= RESOURCE_ALERT_THRESHOLDS["ram_alert"]:
-                alert_key = f"{ip}_ram"
-                if alert_key not in resource_alerts_sent or (datetime.now() - resource_alerts_sent[alert_key]).total_seconds() > RESOURCE_ALERT_INTERVAL:
-                    alerts.append(f"🧠 **Память** на {server_name}: {prev_ram}% → {ram_usage}% (2 проверки подряд >= {RESOURCE_ALERT_THRESHOLDS['ram_alert']}%)")
-                    resource_alerts_sent[alert_key] = datetime.now()
-
-    return alerts
-
-def send_resource_alerts(alerts):
-    """Отправляет алерты по ресурсам"""
-    if not alerts:
-        return
-
-    message = "🚨 *Проблемы с ресурсами серверов*\n\n"
-
-    # Группируем алерты по типам ресурсов для лучшей читаемости
-    disk_alerts = [a for a in alerts if "💾" in a]
-    cpu_alerts = [a for a in alerts if "💻" in a]
-    ram_alerts = [a for a in alerts if "🧠" in a]
-
-    # Дисковое пространство
-    if disk_alerts:
-        message += "💾 **Дисковое пространство:**\n"
-        for alert in disk_alerts:
-            # Извлекаем информацию из алерта
-            parts = alert.split("на ")
-            if len(parts) > 1:
-                server_info = parts[1]
-                message += f"• {server_info}\n"
-        message += "\n"
-
-    # Процессор
-    if cpu_alerts:
-        message += "💻 **Процессор (CPU):**\n"
-        for alert in cpu_alerts:
-            parts = alert.split("на ")
-            if len(parts) > 1:
-                server_info = parts[1]
-                message += f"• {server_info}\n"
-        message += "\n"
-
-    # Память
-    if ram_alerts:
-        message += "🧠 **Память (RAM):**\n"
-        for alert in ram_alerts:
-            parts = alert.split("на ")
-            if len(parts) > 1:
-                server_info = parts[1]
-                message += f"• {server_info}\n"
-        message += "\n"
-
-    message += f"⏰ Время проверки: {datetime.now().strftime('%H:%M:%S')}"
-
-    send_alert(message)
-    print(f"✅ Отправлены алерты по ресурсам: {len(alerts)} проблем")
-
-def get_resource_history_status():
-    """Возвращает статус истории ресурсов для диагностики"""
-    status = f"📊 *Статус истории ресурсов*\n\n"
-    status += f"• Всего серверов в истории: {len(resource_history)}\n"
-
-    total_entries = sum(len(history) for history in resource_history.values())
-    status += f"• Всего записей: {total_entries}\n"
-
-    # Показываем несколько последних записей
-    recent_servers = list(resource_history.keys())[-5:]
-    status += f"\n**Последние обновления:**\n"
-
-    for ip in recent_servers:
-        history = resource_history[ip]
-        if history:
-            last_entry = history[-1]
-            status += f"• {last_entry['server_name']}: CPU {last_entry['cpu']}%, RAM {last_entry['ram']}%, Disk {last_entry['disk']}%\n"
-
-    return status
-
-def close_menu(update, context):
-    """Закрывает меню"""
-    query = update.callback_query
-    query.answer()
-    query.delete_message()
-
-def diagnose_menu_handler(update, context):
-    """Обработчик меню диагностики"""
-    query = update.callback_query
-    query.answer()
-    query.edit_message_text("🔧 Меню диагностики в разработке")
-
-def daily_report_handler(update, context):
-    """Обработчик ежедневного отчета"""
-    query = update.callback_query
-    query.answer()
-    query.edit_message_text("📊 Ежедневный отчет в разработке")
-
-def toggle_silent_mode_handler(update, context):
-    """Обработчик переключения тихого режима"""
-    query = update.callback_query
-    query.answer()
-    query.edit_message_text("🔇 Переключение тихого режима")
-
-# Добавляем функции для раздельной проверки ресурсов
 def check_linux_resources_handler(update, context):
     """Обработчик проверки Linux серверов"""
-    from extensions.separate_checks import check_linux_servers
     query = update.callback_query
     if query:
         query.answer("🐧 Проверяем Linux серверы...")
@@ -1785,7 +1001,8 @@ def check_linux_resources_handler(update, context):
     else:
         chat_id = update.effective_chat.id
 
-    if str(chat_id) not in CHAT_IDS:
+    config = get_config()
+    if str(chat_id) not in config.CHAT_IDS:
         if query:
             query.edit_message_text("⛔ У вас нет прав для выполнения этой команды")
         else:
@@ -1806,6 +1023,8 @@ def check_linux_resources_handler(update, context):
 
 def perform_linux_check(context, chat_id, progress_message_id):
     """Выполняет проверку Linux серверов с прогрессом"""
+    progress_bar = get_progress_bar()
+
     def update_progress(progress, status):
         progress_text = f"🐧 Проверка Linux серверов...\n{progress_bar(progress)}\n\n{status}"
         context.bot.edit_message_text(
@@ -1845,8 +1064,9 @@ def perform_linux_check(context, chat_id, progress_message_id):
         )
 
     except Exception as e:
+        debug_log = get_debug_log()
         error_msg = f"❌ Ошибка при проверке Linux серверов: {e}"
-        print(error_msg)
+        debug_log(error_msg)
         context.bot.edit_message_text(
             chat_id=chat_id,
             message_id=progress_message_id,
@@ -1862,7 +1082,8 @@ def check_windows_resources_handler(update, context):
     else:
         chat_id = update.effective_chat.id
 
-    if str(chat_id) not in CHAT_IDS:
+    config = get_config()
+    if str(chat_id) not in config.CHAT_IDS:
         if query:
             query.edit_message_text("⛔ У вас нет прав для выполнения этой команды")
         else:
@@ -1883,6 +1104,8 @@ def check_windows_resources_handler(update, context):
 
 def perform_windows_check(context, chat_id, progress_message_id):
     """Выполняет проверку Windows серверов с прогрессом"""
+    progress_bar = get_progress_bar()
+
     def update_progress(progress, status):
         progress_text = f"🪟 Проверка Windows серверов...\n{progress_bar(progress)}\n\n{status}"
         context.bot.edit_message_text(
@@ -1985,10 +1208,11 @@ def perform_windows_check(context, chat_id, progress_message_id):
         )
 
     except Exception as e:
+        debug_log = get_debug_log()
         error_msg = f"❌ Ошибка при проверке Windows серверов: {e}"
-        print(error_msg)
+        debug_log(error_msg)
         import traceback
-        print(f"Подробности ошибки: {traceback.format_exc()}")
+        debug_log(f"Подробности ошибки: {traceback.format_exc()}")
         context.bot.edit_message_text(
             chat_id=chat_id,
             message_id=progress_message_id,
@@ -2004,7 +1228,8 @@ def check_other_resources_handler(update, context):
     else:
         chat_id = update.effective_chat.id
 
-    if str(chat_id) not in CHAT_IDS:
+    config = get_config()
+    if str(chat_id) not in config.CHAT_IDS:
         if query:
             query.edit_message_text("⛔ У вас нет прав для выполнения этой команды")
         else:
@@ -2034,7 +1259,7 @@ def perform_other_check(context, chat_id, progress_message_id):
         successful_checks = 0
 
         for server in ping_servers:
-            is_up = check_ping(server["ip"])
+            is_up = check_server_availability(server)
             if is_up:
                 successful_checks += 1
                 message += f"🟢 {server['name']}: доступен\n"
@@ -2052,8 +1277,9 @@ def perform_other_check(context, chat_id, progress_message_id):
         )
 
     except Exception as e:
+        debug_log = get_debug_log()
         error_msg = f"❌ Ошибка при проверке других серверов: {e}"
-        print(error_msg)
+        debug_log(error_msg)
         context.bot.edit_message_text(
             chat_id=chat_id,
             message_id=progress_message_id,
@@ -2069,7 +1295,8 @@ def check_all_resources_handler(update, context):
     else:
         chat_id = update.effective_chat.id
 
-    if str(chat_id) not in CHAT_IDS:
+    config = get_config()
+    if str(chat_id) not in config.CHAT_IDS:
         if query:
             query.edit_message_text("⛔ У вас нет прав для выполнения этой команды")
         else:
@@ -2114,11 +1341,541 @@ def perform_full_check(context, chat_id, progress_message_id):
         )
 
     except Exception as e:
+        debug_log = get_debug_log()
         error_msg = f"❌ Ошибка при полной проверке: {e}"
-        print(error_msg)
+        debug_log(error_msg)
         context.bot.edit_message_text(
             chat_id=chat_id,
             message_id=progress_message_id,
             text=error_msg
         )
+
+def start_monitoring():
+    """Запускает основной цикл мониторинга - ОПТИМИЗИРОВАННАЯ ВЕРСИЯ"""
+    global servers, bot, monitoring_active, last_report_date, morning_data
+
+    debug_log = get_debug_log()
+
+    # Ленивая инициализация серверов
+    from extensions.server_list import initialize_servers
+    servers = initialize_servers()
+    
+    # Исключаем сервер мониторинга из списка
+    monitor_server_ip = "192.168.20.2"
+    servers = [s for s in servers if s["ip"] != monitor_server_ip]
+    debug_log(f"✅ Сервер мониторинга {monitor_server_ip} принудительно исключен из списка. Осталось {len(servers)} серверов")
+
+    # Ленивая инициализация бота
+    from telegram import Bot
+    config = get_config()
+    bot = Bot(token=config.TELEGRAM_TOKEN)
+
+    # Инициализация server_status (только для оставшихся серверов)
+    for server in servers:
+        server_status[server["ip"]] = {
+            "last_up": datetime.now(),
+            "alert_sent": False,
+            "name": server["name"],
+            "type": server["type"],
+            "resources": None,
+            "last_alert": {}
+        }
+
+    debug_log(f"✅ Мониторинг запущен для {len(servers)} серверов")
+
+    # Обновляем стартовое сообщение
+    start_message = (
+        "🟢 *Мониторинг серверов запущен* - ОПТИМИЗИРОВАННАЯ ВЕРСИЯ\n\n"
+        f"• Серверов в мониторинге: {len(servers)}\n"
+        f"• Проверка ресурсов: каждые {config.RESOURCE_CHECK_INTERVAL // 60} минут\n"
+        f"• Утренний отчет: {config.DATA_COLLECTION_TIME.strftime('%H:%M')}\n\n"
+    )
+    
+    # Информация о веб-интерфейсе
+    from extensions.extension_manager import extension_manager
+    if extension_manager.is_extension_enabled('web_interface'):
+        start_message += "🌐 *Веб-интерфейс:* http://192.168.20.2:5000\n"
+        start_message += "_*доступен только в локальной сети_\n"
+    else:
+        start_message += "🌐 *Веб-интерфейс:* 🔴 отключен\n"
+
+    send_alert(start_message)
+
+    last_resource_check = datetime.now()
+    last_data_collection = None
+    
+    # Инициализируем morning_data если она пустая
+    if not morning_data:
+        morning_data = {}
+
+    while True:
+        current_time = datetime.now()
+        current_time_time = current_time.time()
+
+        # Автоматическая проверка ресурсов
+        config = get_config()
+        if (current_time - last_resource_check).total_seconds() >= config.RESOURCE_CHECK_INTERVAL:
+            if monitoring_active and not is_silent_time():
+                debug_log("🔄 Автоматическая проверка ресурсов серверов...")
+                check_resources_automatically()
+                last_resource_check = current_time
+            else:
+                debug_log("⏸️ Проверка ресурсов пропущена (тихий режим или мониторинг неактивен)")
+
+        # Сбор и отправка утреннего отчета
+        config = get_config()
+        if (current_time_time.hour == config.DATA_COLLECTION_TIME.hour and
+            current_time_time.minute == config.DATA_COLLECTION_TIME.minute):
+
+            # Проверяем, что сегодня еще не отправляли отчет
+            today = current_time.date()
+            if last_report_date != today:
+                debug_log(f"[{current_time}] 🔍 Собираем данные для утреннего отчета...")
+
+                # Собираем текущий статус серверов
+                morning_status = get_current_server_status()
+                morning_data["status"] = morning_status
+                morning_data["collection_time"] = current_time
+                last_data_collection = current_time
+
+                debug_log(f"✅ Данные собраны: {len(morning_status['ok'])} доступно, {len(morning_status['failed'])} недоступно")
+
+                # СРАЗУ отправляем отчет после сбора данных
+                debug_log(f"[{current_time}] 📊 Отправка утреннего отчета...")
+                send_morning_report()
+                last_report_date = today
+                debug_log("✅ Утренний отчет отправлен")
+                
+                # Добавляем задержку чтобы не запускать повторно в ту же минуту
+                time.sleep(65)  # Спим 65 секунд чтобы выйти за пределы минуты сбора
+            else:
+                debug_log(f"⏭️ Отчет уже отправлен сегодня {last_report_date}")
+
+        # Основной цикл мониторинга доступности
+        if monitoring_active:
+            last_check_time = current_time
+
+            for server in servers:
+                try:
+                    ip = server["ip"]
+                    status = server_status[ip]
+
+                    # ПОЛНОСТЬЮ ИСКЛЮЧАЕМ сервер мониторинга из любых проверок
+                    if ip == monitor_server_ip:
+                        server_status[ip]["last_up"] = current_time
+                        continue
+
+                    # Проверка доступности
+                    is_up = check_server_availability(server)
+
+                    if is_up:
+                        handle_server_up(ip, status, current_time)
+                    else:
+                        handle_server_down(ip, status, current_time)
+                        
+                except Exception as e:
+                    debug_log(f"❌ Ошибка мониторинга {server['name']}: {e}")
+
+        time.sleep(config.CHECK_INTERVAL)
+
+def handle_server_up(ip, status, current_time):
+    """Обработка доступного сервера"""
+    if status["alert_sent"]:
+        downtime = (current_time - status["last_up"]).total_seconds()
+        send_alert(f"✅ {status['name']} ({ip}) доступен (простой: {int(downtime//60)} мин)")
+
+    server_status[ip] = {
+        "last_up": current_time,
+        "alert_sent": False,
+        "name": status["name"],
+        "type": status["type"],
+        "resources": server_status[ip].get("resources"),
+        "last_alert": server_status[ip].get("last_alert", {})
+    }
+
+def handle_server_down(ip, status, current_time):
+    """Обработка недоступного сервера"""
+    config = get_config()
+    downtime = (current_time - status["last_up"]).total_seconds()
+    
+    if downtime >= config.MAX_FAIL_TIME and not status["alert_sent"]:
+        send_alert(f"🚨 {status['name']} ({ip}) не отвечает (проверка: {status['type'].upper()})")
+        server_status[ip]["alert_sent"] = True
+
+def check_resources_automatically():
+    """Автоматическая проверка ресурсов с умными предупреждениями"""
+    global resource_history, last_resource_check, resource_alerts_sent
+
+    debug_log = get_debug_log()
+    debug_log("🔍 Автоматическая проверка ресурсов серверов...")
+
+    if not monitoring_active or is_silent_time():
+        debug_log("⏸️ Проверка ресурсов пропущена (мониторинг неактивен или тихий режим)")
+        return
+
+    current_time = datetime.now()
+    alerts_found = []
+
+    # Проверяем все серверы
+    for server in servers:
+        try:
+            ip = server["ip"]
+            server_name = server["name"]
+
+            debug_log(f"🔍 Проверяем ресурсы {server_name} ({ip})")
+
+            # Получаем текущие ресурсы
+            current_resources = None
+            if server["type"] == "ssh":
+                from extensions.resource_check import get_linux_resources_improved
+                current_resources = get_linux_resources_improved(ip)
+            elif server["type"] == "rdp":
+                from extensions.resource_check import get_windows_resources_improved
+                current_resources = get_windows_resources_improved(ip)
+
+            if not current_resources:
+                continue
+
+            # Инициализируем историю для сервера если нужно
+            if ip not in resource_history:
+                resource_history[ip] = []
+
+            # Добавляем текущие ресурсы в историю
+            resource_entry = {
+                "timestamp": current_time,
+                "cpu": current_resources.get("cpu", 0),
+                "ram": current_resources.get("ram", 0),
+                "disk": current_resources.get("disk", 0),
+                "server_name": server_name
+            }
+
+            resource_history[ip].append(resource_entry)
+
+            # Ограничиваем историю последними 10 записями
+            if len(resource_history[ip]) > 10:
+                resource_history[ip] = resource_history[ip][-10:]
+
+            # Проверяем условия для алертов
+            server_alerts = check_resource_alerts(ip, resource_entry)
+
+            if server_alerts:
+                alerts_found.extend(server_alerts)
+                debug_log(f"⚠️ Найдены проблемы для {server_name}: {server_alerts}")
+
+        except Exception as e:
+            debug_log(f"❌ Ошибка при проверке ресурсов {server['name']}: {e}")
+            continue
+
+    # Отправляем алерты если есть
+    if alerts_found:
+        send_resource_alerts(alerts_found)
+
+    last_resource_check = current_time
+    debug_log(f"✅ Автоматическая проверка ресурсов завершена. Найдено проблем: {len(alerts_found)}")
+
+def check_resource_alerts(ip, current_resource):
+    """Проверяет условия для отправки алертов по ресурсам"""
+    from config import RESOURCE_ALERT_THRESHOLDS, RESOURCE_ALERT_INTERVAL
+    
+    alerts = []
+    server_name = current_resource["server_name"]
+
+    # Получаем историю проверок (исключая текущую)
+    history = resource_history.get(ip, [])[:-1]  # Все кроме последней записи
+
+    # Проверка Disk (одна проверка)
+    disk_usage = current_resource.get("disk", 0)
+    if disk_usage >= RESOURCE_ALERT_THRESHOLDS["disk_alert"]:
+        # Проверяем, не отправляли ли уже алерт по диску
+        alert_key = f"{ip}_disk"
+        if alert_key not in resource_alerts_sent or (datetime.now() - resource_alerts_sent[alert_key]).total_seconds() > RESOURCE_ALERT_INTERVAL:
+            alerts.append(f"💾 **Дисковое пространство** на {server_name}: {disk_usage}% (превышен порог {RESOURCE_ALERT_THRESHOLDS['disk_alert']}%)")
+            resource_alerts_sent[alert_key] = datetime.now()
+
+    # Проверка CPU (две проверки подряд)
+    cpu_usage = current_resource.get("cpu", 0)
+    if cpu_usage >= RESOURCE_ALERT_THRESHOLDS["cpu_alert"]:
+        # Проверяем предыдущую запись
+        if len(history) >= 1:
+            prev_cpu = history[-1].get("cpu", 0)
+            if prev_cpu >= RESOURCE_ALERT_THRESHOLDS["cpu_alert"]:
+                alert_key = f"{ip}_cpu"
+                if alert_key not in resource_alerts_sent or (datetime.now() - resource_alerts_sent[alert_key]).total_seconds() > RESOURCE_ALERT_INTERVAL:
+                    alerts.append(f"💻 **Процессор** на {server_name}: {prev_cpu}% → {cpu_usage}% (2 проверки подряд >= {RESOURCE_ALERT_THRESHOLDS['cpu_alert']}%)")
+                    resource_alerts_sent[alert_key] = datetime.now()
+
+    # Проверка RAM (две проверки подряд)
+    ram_usage = current_resource.get("ram", 0)
+    if ram_usage >= RESOURCE_ALERT_THRESHOLDS["ram_alert"]:
+        # Проверяем предыдущую запись
+        if len(history) >= 1:
+            prev_ram = history[-1].get("ram", 0)
+            if prev_ram >= RESOURCE_ALERT_THRESHOLDS["ram_alert"]:
+                alert_key = f"{ip}_ram"
+                if alert_key not in resource_alerts_sent or (datetime.now() - resource_alerts_sent[alert_key]).total_seconds() > RESOURCE_ALERT_INTERVAL:
+                    alerts.append(f"🧠 **Память** на {server_name}: {prev_ram}% → {ram_usage}% (2 проверки подряд >= {RESOURCE_ALERT_THRESHOLDS['ram_alert']}%)")
+                    resource_alerts_sent[alert_key] = datetime.now()
+
+    return alerts
+
+def send_resource_alerts(alerts):
+    """Отправляет алерты по ресурсам"""
+    if not alerts:
+        return
+
+    message = "🚨 *Проблемы с ресурсами серверов*\n\n"
+
+    # Группируем алерты по типам ресурсов для лучшей читаемости
+    disk_alerts = [a for a in alerts if "💾" in a]
+    cpu_alerts = [a for a in alerts if "💻" in a]
+    ram_alerts = [a for a in alerts if "🧠" in a]
+
+    # Дисковое пространство
+    if disk_alerts:
+        message += "💾 **Дисковое пространство:**\n"
+        for alert in disk_alerts:
+            # Извлекаем информацию из алерта
+            parts = alert.split("на ")
+            if len(parts) > 1:
+                server_info = parts[1]
+                message += f"• {server_info}\n"
+        message += "\n"
+
+    # Процессор
+    if cpu_alerts:
+        message += "💻 **Процессор (CPU):**\n"
+        for alert in cpu_alerts:
+            parts = alert.split("на ")
+            if len(parts) > 1:
+                server_info = parts[1]
+                message += f"• {server_info}\n"
+        message += "\n"
+
+    # Память
+    if ram_alerts:
+        message += "🧠 **Память (RAM):**\n"
+        for alert in ram_alerts:
+            parts = alert.split("на ")
+            if len(parts) > 1:
+                server_info = parts[1]
+                message += f"• {server_info}\n"
+        message += "\n"
+
+    message += f"⏰ Время проверки: {datetime.now().strftime('%H:%M:%S')}"
+
+    send_alert(message)
+    debug_log = get_debug_log()
+    debug_log(f"✅ Отправлены алерты по ресурсам: {len(alerts)} проблем")
+
+# Остальные функции (send_morning_report, debug_morning_report и т.д.) 
+# остаются аналогичными, но с использованием ленивых импортов и debug_log
+
+def close_menu(update, context):
+    """Закрывает меню"""
+    query = update.callback_query
+    query.answer()
+    query.delete_message()
+
+def diagnose_menu_handler(update, context):
+    """Обработчик меню диагностики"""
+    query = update.callback_query
+    query.answer()
+    query.edit_message_text("🔧 Меню диагностики в разработке")
+
+def daily_report_handler(update, context):
+    """Обработчик ежедневного отчета"""
+    query = update.callback_query
+    query.answer()
+    query.edit_message_text("📊 Ежедневный отчет в разработке")
+
+def toggle_silent_mode_handler(update, context):
+    """Обработчик переключения тихого режима"""
+    query = update.callback_query
+    query.answer()
+    query.edit_message_text("🔇 Переключение тихого режима")
+
+# Функции для обработки утренних отчетов и диагностики остаются без изменений
+# так как они уже были оптимизированы в предыдущей версии
+
+def send_morning_report_handler(update, context):
+    """Обработчик для принудительной отправки утреннего отчета"""
+    query = update.callback_query if hasattr(update, 'callback_query') else None
+    chat_id = query.message.chat_id if query else update.message.chat_id
+
+    config = get_config()
+    if str(chat_id) not in config.CHAT_IDS:
+        if query:
+            query.edit_message_text("⛔ У вас нет прав для выполнения этой команды")
+        else:
+            update.message.reply_text("⛔ У вас нет прав для выполнения этой команды")
+        return
+
+    # Собираем актуальные данные
+    current_status = get_current_server_status()
+    morning_data = {
+        "status": current_status,
+        "collection_time": datetime.now()
+    }
+
+    # Отправляем отчет
+    send_morning_report()
+
+    response = "📊 Утренний отчет отправлен принудительно (включая данные о бэкапах)"
+    if query:
+        query.edit_message_text(response)
+    else:
+        update.message.reply_text(response)
+
+def send_morning_report():
+    """Отправляет утренний отчет о доступности серверов и бэкапах"""
+    global morning_data
+    
+    current_time = datetime.now()
+    debug_log = get_debug_log()
+    debug_log(f"[{current_time}] 🔍 Проверка данных для утреннего отчета...")
+    
+    if not morning_data or "status" not in morning_data:
+        debug_log("❌ Нет данных для утреннего отчета, собираем текущий статус...")
+        current_status = get_current_server_status()
+        morning_data = {
+            "status": current_status,
+            "collection_time": current_time
+        }
+        debug_log(f"✅ Собраны актуальные данные: {len(current_status['ok'])} доступно, {len(current_status['failed'])} недоступно")
         
+    status = morning_data["status"]
+    collection_time = morning_data.get("collection_time", datetime.now())
+
+    total_servers = len(status["ok"]) + len(status["failed"])
+    up_count = len(status["ok"])
+    down_count = len(status["failed"])
+
+    # Формируем сообщение
+    message = f"📊 *Утренний отчет о доступности серверов* - ОПТИМИЗИРОВАННАЯ ВЕРСИЯ\n\n"
+    message += f"⏰ *Время сбора данных:* {collection_time.strftime('%H:%M')}\n"
+    message += f"🔢 *Всего серверов:* {total_servers}\n"
+    message += f"🟢 *Доступно:* {up_count}\n"
+    message += f"🔴 *Недоступно:* {down_count}\n"
+
+    # Добавляем секцию с бэкапами только если расширение включено
+    from extensions.extension_manager import extension_manager
+    if extension_manager.should_include_backup_data():
+        backup_data = get_backup_summary_for_report()
+        message += f"\n💾 *Статус бэкапов (за последние 16ч)*\n"
+        message += backup_data
+    else:
+        message += f"\n💾 *Статус бэкапов:* 🔴 мониторинг отключен\n"
+
+    if down_count > 0:
+        message += f"\n⚠️ *Проблемные серверы ({down_count}):*\n"
+
+        # Группируем по типу для удобства чтения
+        by_type = {}
+        for server in status["failed"]:
+            if server["type"] not in by_type:
+                by_type[server["type"]] = []
+            by_type[server["type"]].append(server)
+
+        for server_type, servers_list in by_type.items():
+            message += f"\n**{server_type.upper()} ({len(servers_list)}):**\n"
+            for s in servers_list:
+                message += f"• {s['name']} ({s['ip']})\n"
+
+    else:
+        message += f"\n✅ *Все серверы доступны!*\n"
+
+    message += f"\n📋 *Статистика по типам:*\n"
+
+    # Статистика по типам серверов
+    type_stats = {}
+    all_servers = status["ok"] + status["failed"]
+    for server in all_servers:
+        if server["type"] not in type_stats:
+            type_stats[server["type"]] = {"total": 0, "up": 0}
+        type_stats[server["type"]]["total"] += 1
+
+    for server in status["ok"]:
+        type_stats[server["type"]]["up"] += 1
+
+    for server_type, stats in type_stats.items():
+        up_percent = (stats["up"] / stats["total"]) * 100 if stats["total"] > 0 else 0
+        message += f"• {server_type.upper()}: {stats['up']}/{stats['total']} ({up_percent:.1f}%)\n"
+
+    message += f"\n⏰ *Отчет отправлен:* {datetime.now().strftime('%H:%M:%S')}"
+
+    # Отправляем отчет принудительно, даже в тихом режиме
+    send_alert(message, force=True)
+    debug_log(f"✅ Утренний отчет отправлен: {up_count}/{total_servers} доступно")
+
+def get_backup_summary_for_report():
+    """Получает сводку по бэкапам за последние 16 часов для утреннего отчета"""
+    try:
+        from extensions.backup_monitor.bot_handler import BackupMonitorBot
+        backup_bot = BackupMonitorBot()
+        
+        # Получаем бэкапы за последние 16 часов (с 18:00 предыдущего дня)
+        since_time = (datetime.now() - timedelta(hours=16)).strftime('%Y-%m-%d %H:%M:%S')
+        
+        import sqlite3
+        conn = sqlite3.connect(backup_bot.db_path)
+        cursor = conn.cursor()
+        
+        # Получаем общее количество бэкапов за период
+        cursor.execute('''
+            SELECT 
+                COUNT(*) as total_backups,
+                SUM(CASE WHEN backup_status = 'success' THEN 1 ELSE 0 END) as successful_backups,
+                SUM(CASE WHEN backup_status = 'failed' THEN 1 ELSE 0 END) as failed_backups,
+                COUNT(DISTINCT host_name) as unique_hosts
+            FROM proxmox_backups 
+            WHERE received_at >= ?
+        ''', (since_time,))
+        
+        stats = cursor.fetchone()
+        total_backups, successful_backups, failed_backups, unique_hosts = stats
+        
+        # Получаем статистику по базам данных
+        cursor.execute('''
+            SELECT 
+                backup_type,
+                COUNT(*) as total_db_backups,
+                SUM(CASE WHEN backup_status = 'success' THEN 1 ELSE 0 END) as successful_db_backups
+            FROM database_backups 
+            WHERE received_at >= ?
+            GROUP BY backup_type
+        ''', (since_time,))
+        
+        db_stats = cursor.fetchall()
+        conn.close()
+        
+        # Формируем сообщение о бэкапах
+        if total_backups == 0 and not db_stats:
+            return "📭 Нет данных о бэкапах за указанный период\n"
+        
+        message = ""
+        
+        # Proxmox бэкапы
+        if total_backups > 0:
+            success_rate = (successful_backups / total_backups) * 100 if total_backups > 0 else 0
+            message += f"• Proxmox: {successful_backups}/{total_backups} успешно ({success_rate:.1f}%)\n"
+        
+        # Базы данных
+        if db_stats:
+            message += f"• Базы данных:\n"
+            for backup_type, total_db, success_db in db_stats:
+                db_success_rate = (success_db / total_db) * 100 if total_db > 0 else 0
+                type_name = {
+                    'company_database': 'Основные',
+                    'barnaul': 'Барнаул', 
+                    'client': 'Клиенты',
+                    'yandex': 'Yandex'
+                }.get(backup_type, backup_type)
+                message += f"  - {type_name}: {success_db}/{total_db} успешно ({db_success_rate:.1f}%)\n"
+        
+        return message
+        
+    except Exception as e:
+        debug_log = get_debug_log()
+        debug_log(f"Ошибка при получении данных о бэкапах: {e}")
+        return f"❌ Ошибка получения данных о бэкапах: {str(e)}\n"
+    

@@ -1,5 +1,8 @@
 """
-Обработчик команд бота для мониторинга бэкапов Proxmox с кнопками
+Server Monitoring System v2.1.0
+Copyright (c) 2025 Aleksandr Sukhanov
+License: MIT
+Обработчик команд бота для мониторинга бэкапов
 """
 
 import sqlite3

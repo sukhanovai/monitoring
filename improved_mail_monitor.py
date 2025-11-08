@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """
-Улучшенный мониторинг почтового ящика - исправленная версия
+Server Monitoring System v2.1.0
+Copyright (c) 2025 Aleksandr Sukhanov
+License: MIT
+Мониторинг почтового ящика
 """
 
 import os

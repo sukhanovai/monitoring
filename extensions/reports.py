@@ -1,9 +1,8 @@
 """
-Server Monitoring System v1.3.0
-Copyright (c) 2024 Aleksandr Sukhanov
+Server Monitoring System v2.1.0
+Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 """
-
 def diagnose_ssh_command(update, context):
     if not context.args:
         update.message.reply_text("❌ Укажите IP или имя сервера: /diagnose_ssh <ip>")

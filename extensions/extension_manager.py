@@ -1,4 +1,7 @@
 """
+Server Monitoring System v2.1.0
+Copyright (c) 2025 Aleksandr Sukhanov
+License: MIT
 Менеджер расширений для мониторинга
 """
 
