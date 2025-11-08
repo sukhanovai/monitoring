@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Server Monitoring System v2.2.0
+Server Monitoring System v2.2.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Основной модуль запуска
@@ -75,7 +75,7 @@ def main():
             logger.info("✅ Веб-сервер запущен")
 
         # Запускаем сбор статистики
-        from extensions.stats_collector import save_monitoring_stats
+        from extensions.utils import save_monitoring_stats
         save_monitoring_stats()
         logger.info("✅ Сбор статистики запущен")
 
