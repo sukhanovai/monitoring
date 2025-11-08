@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Server Monitoring System v2.3.0
+Server Monitoring System v2.3.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Мониторинг почтового ящика
@@ -347,9 +347,40 @@ class BackupProcessor:
         ])
     
     def parse_subject(self, subject):
-        """Парсит тему письма"""
+        """Парсит тему письма - ОБНОВЛЕННАЯ ВЕРСИЯ для серверов с одинаковым IP"""
         # Пример: "vzdump backup status (sr-pve4.geltd.local): backup successful"
+        # Пример для rubicon: "vzdump backup status (pve2-rubicon): backup successful"
         
+        # Сначала проверяем специальные случаи серверов с одинаковым IP
+        if 'pve2-rubicon' in subject.lower():
+            host_name = 'pve2-rubicon'
+            # Ищем статус бэкапа
+            status_match = re.search(r':\s*([^:]+)$', subject)
+            if status_match:
+                raw_status = status_match.group(1).strip().lower()
+                normalized_status = self.normalize_status(raw_status)
+                return {
+                    'host_name': host_name,
+                    'backup_status': normalized_status,
+                    'raw_status': raw_status,
+                    'task_type': 'vzdump'
+                }
+        
+        if 'pve-rubicon' in subject.lower() and 'pve2-rubicon' not in subject.lower():
+            host_name = 'pve-rubicon'
+            # Ищем статус бэкапа
+            status_match = re.search(r':\s*([^:]+)$', subject)
+            if status_match:
+                raw_status = status_match.group(1).strip().lower()
+                normalized_status = self.normalize_status(raw_status)
+                return {
+                    'host_name': host_name,
+                    'backup_status': normalized_status,
+                    'raw_status': raw_status,
+                    'task_type': 'vzdump'
+                }
+        
+        # Стандартная обработка для остальных серверов
         # Извлекаем имя хоста
         host_match = re.search(r'\(([^)]+)\)', subject)
         if not host_match:
@@ -365,8 +396,17 @@ class BackupProcessor:
             return None
         
         raw_status = status_match.group(1).strip().lower()
+        normalized_status = self.normalize_status(raw_status)
         
-        # Нормализуем статус
+        return {
+            'host_name': host_name,
+            'backup_status': normalized_status,
+            'raw_status': raw_status,
+            'task_type': 'vzdump'
+        }
+
+    def normalize_status(self, raw_status):
+        """Нормализует статус бэкапа"""
         status_map = {
             'backup successful': 'success',
             'successful': 'success',
@@ -375,15 +415,7 @@ class BackupProcessor:
             'failed': 'failed',
             'error': 'failed'
         }
-        
-        normalized_status = status_map.get(raw_status, raw_status)
-        
-        return {
-            'host_name': host_name,
-            'backup_status': normalized_status,
-            'raw_status': raw_status,
-            'task_type': 'vzdump'
-        }
+        return status_map.get(raw_status, raw_status)
     
     def get_email_body(self, msg):
         """Извлекает тело письма"""

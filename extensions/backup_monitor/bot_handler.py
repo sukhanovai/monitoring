@@ -1,5 +1,5 @@
 """
-Server Monitoring System v2.3.0
+Server Monitoring System v2.3.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчик команд бота для мониторинга бэкапов
@@ -335,7 +335,7 @@ class BackupMonitorBot:
         return stale_databases
 
     def get_backup_coverage_report(self, hours_threshold=24):
-        """Получает полный отчет о покрытии бэкапов"""
+        """Получает полный отчет о покрытии бэкапов - ОБНОВЛЕНО для дублирующих IP"""
         stale_hosts = self.get_stale_proxmox_backups(hours_threshold)
         stale_databases = self.get_stale_database_backups(hours_threshold)
         
@@ -363,8 +363,24 @@ class BackupMonitorBot:
         for db_key in DATABASE_BACKUP_CONFIG["yandex_backups"].keys():
             all_configured_databases.append(('yandex', db_key))
         
+        # ФИЛЬТРУЕМ дублирующиеся хосты для корректного отображения
+        unique_stale_hosts = []
+        seen_ips = set()
+        
+        for host_name, last_backup in stale_hosts:
+            ip = PROXMOX_HOSTS.get(host_name)
+            if ip not in seen_ips:
+                unique_stale_hosts.append((host_name, last_backup))
+                seen_ips.add(ip)
+            else:
+                # Для дублирующихся IP добавляем оба имени через запятую
+                for i, (existing_host, existing_backup) in enumerate(unique_stale_hosts):
+                    if PROXMOX_HOSTS.get(existing_host) == ip:
+                        unique_stale_hosts[i] = (f"{existing_host}, {host_name}", last_backup)
+                        break
+        
         return {
-            'stale_hosts': stale_hosts,
+            'stale_hosts': unique_stale_hosts,
             'stale_databases': stale_databases,
             'all_configured_hosts': all_configured_hosts,
             'all_configured_databases': all_configured_databases,
