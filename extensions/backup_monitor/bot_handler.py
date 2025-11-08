@@ -246,29 +246,29 @@ class BackupMonitorBot:
         
         return results
 
-    def get_database_display_names(self):
-        """Получает отображаемые имена баз данных из конфигурации"""
-        from config import DATABASE_BACKUP_CONFIG
-        
-        display_names = {}
-        
-        # Основные базы компании
-        for db_key, display_name in DATABASE_BACKUP_CONFIG["company_databases"].items():
-            display_names[db_key] = display_name
-        
-        # Базы Барнаул
-        for db_key, display_name in DATABASE_BACKUP_CONFIG["barnaul_backups"].items():
-            display_names[db_key] = display_name
-        
-        # Клиентские базы
-        for db_key, display_name in DATABASE_BACKUP_CONFIG["client_databases"].items():
-            display_names[db_key] = display_name
-        
-        # Yandex базы
-        for db_key, display_name in DATABASE_BACKUP_CONFIG["yandex_backups"].items():
-            display_names[db_key] = display_name
-        
-        return display_names        
+def get_database_display_names(self):
+    """Получает отображаемые имена баз данных из конфигурации - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
+    from config import DATABASE_BACKUP_CONFIG
+    
+    display_names = {}
+    
+    # Основные базы компании
+    for db_key, display_name in DATABASE_BACKUP_CONFIG["company_databases"].items():
+        display_names[db_key] = display_name
+    
+    # Базы Барнаул
+    for db_key, display_name in DATABASE_BACKUP_CONFIG["barnaul_backups"].items():
+        display_names[db_key] = display_name
+    
+    # Клиентские базы - ИСПРАВЛЕНИЕ: используем правильный ключ
+    for db_key, display_name in DATABASE_BACKUP_CONFIG["client_databases"].items():
+        display_names[db_key] = display_name
+    
+    # Yandex базы
+    for db_key, display_name in DATABASE_BACKUP_CONFIG["yandex_backups"].items():
+        display_names[db_key] = display_name
+    
+    return display_names
 
 def format_database_details(backup_bot, backup_type, db_name, hours=168):
     """ИСПРАВЛЕННАЯ ВЕРСИЯ: Детальная информация по конкретной базе данных"""
@@ -362,7 +362,8 @@ def backup_command(update, context):
             [InlineKeyboardButton("❌ Ошибки", callback_data='backup_failed')],
             [InlineKeyboardButton("🖥️ По хостам", callback_data='backup_hosts')],
             [InlineKeyboardButton("🗃️ Бэкапы БД", callback_data='backup_databases')],
-            [InlineKeyboardButton("🔄 Обновить", callback_data='backup_refresh')]
+            [InlineKeyboardButton("🔄 Обновить", callback_data='backup_refresh')],
+            [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]  # ДОБАВЛЕНО
         ]
 
         update.message.reply_text(
@@ -432,6 +433,10 @@ def backup_callback(update, context):
         data = query.data
         backup_bot = BackupMonitorBot()
 
+        if data == 'no_action':
+            # Заглушка для заголовков секций - ничего не делаем
+            return
+            
         if data == 'backup_today':
             show_today_status(query, backup_bot)
         elif data == 'backup_24h':
@@ -501,14 +506,15 @@ def backup_callback(update, context):
             pass
 
 def show_main_menu(query):
-    """Показывает главное меню бэкапов"""
+    """Показывает главное меню бэкапов с кнопкой закрыть"""
     keyboard = [
         [InlineKeyboardButton("📊 Сегодня", callback_data='backup_today')],
         [InlineKeyboardButton("⏰ 24 часа", callback_data='backup_24h')],
         [InlineKeyboardButton("❌ Ошибки", callback_data='backup_failed')],
         [InlineKeyboardButton("🖥️ По хостам", callback_data='backup_hosts')],
         [InlineKeyboardButton("🗃️ Бэкапы БД", callback_data='backup_databases')],
-        [InlineKeyboardButton("🔄 Обновить", callback_data='backup_refresh')]
+        [InlineKeyboardButton("🔄 Обновить", callback_data='backup_refresh')],
+        [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]  # ДОБАВЛЕНО
     ]
 
     query.edit_message_text(
@@ -528,7 +534,8 @@ def show_today_status(query, backup_bot):
                 parse_mode='Markdown',
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("🔄 Обновить", callback_data='backup_today')],
-                    [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')]
+                    [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')],
+                    [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]  # ДОБАВЛЕНО
                 ])
             )
             return
@@ -556,8 +563,10 @@ def show_today_status(query, backup_bot):
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("🔄 Обновить", callback_data='backup_today')],
-                [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')]
+                [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')],
+                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]  # ДОБАВЛЕНО
             ])
+
         )
 
     except Exception as e:
@@ -575,7 +584,8 @@ def show_recent_backups(query, backup_bot):
                 parse_mode='Markdown',
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("🔄 Обновить", callback_data='backup_24h')],
-                    [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')]
+                    [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')],
+                    [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]  # ДОБАВЛЕНО
                 ])
             )
             return
@@ -607,7 +617,8 @@ def show_recent_backups(query, backup_bot):
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("🔄 Обновить", callback_data='backup_24h')],
-                [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')]
+                [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')],
+                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]  # ДОБАВЛЕНО
             ])
         )
 
@@ -626,7 +637,8 @@ def show_failed_backups(query, backup_bot):
                 parse_mode='Markdown',
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("🔄 Обновить", callback_data='backup_failed')],
-                    [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')]
+                    [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')],
+                    [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]  # ДОБАВЛЕНО
                 ])
             )
             return
@@ -652,7 +664,8 @@ def show_failed_backups(query, backup_bot):
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("🔄 Обновить", callback_data='backup_failed')],
-                [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')]
+                [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')],
+                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]  # ДОБАВЛЕНО
             ])
         )
 
@@ -670,7 +683,8 @@ def show_hosts_menu(query, backup_bot):
                 "🖥️ *Бэкапы по хостам*\n\nНет данных о хостах",
                 parse_mode='Markdown',
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')]
+                    [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')],
+                    [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]  # ДОБАВЛЕНО
                 ])
             )
             return
@@ -707,7 +721,8 @@ def show_host_status(query, backup_bot, host_name):
                 f"🖥️ *Бэкапы {host_name}*\n\nНет данных по этому хосту",
                 parse_mode='Markdown',
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("↩️ Назад", callback_data='backup_hosts')]
+                    [InlineKeyboardButton("↩️ Назад", callback_data='backup_hosts')],
+                    [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]  # ДОБАВЛЕНО
                 ])
             )
             return
@@ -738,7 +753,8 @@ def show_host_status(query, backup_bot, host_name):
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("🔄 Обновить", callback_data=f'backup_host_{host_name}')],
-                [InlineKeyboardButton("↩️ Назад", callback_data='backup_hosts')]
+                [InlineKeyboardButton("↩️ Назад", callback_data='backup_hosts')],
+                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]  # ДОБАВЛЕНО
             ])
         )
 
@@ -747,12 +763,13 @@ def show_host_status(query, backup_bot, host_name):
         query.edit_message_text("❌ Ошибка при получении данных")
 
 def show_database_backups_menu(query, backup_bot):
-    """Показывает меню бэкапов баз данных"""
+    """Показывает меню бэкапов баз данных с кнопкой закрыть"""
     keyboard = [
         [InlineKeyboardButton("📊 Сводка за 24ч", callback_data='db_backups_24h')],
         [InlineKeyboardButton("📈 Сводка за 48ч", callback_data='db_backups_48h')],
         [InlineKeyboardButton("📋 Список БД", callback_data='db_backups_list')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')]
+        [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')],
+        [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]  # ДОБАВЛЕНО
     ]
 
     query.edit_message_text(
@@ -772,7 +789,8 @@ def show_database_backups_summary(query, backup_bot, hours):
                 parse_mode='Markdown',
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("🔄 Обновить", callback_data=f'db_backups_{hours}h')],
-                    [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')]
+                    [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')],
+                    [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]  # ДОБАВЛЕНО
                 ])
             )
             return
@@ -810,7 +828,8 @@ def show_database_backups_summary(query, backup_bot, hours):
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("🔄 Обновить", callback_data=f'db_backups_{hours}h')],
                 [InlineKeyboardButton("📋 Список БД", callback_data='db_backups_list')],
-                [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')]
+                [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')],
+                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]  # ДОБАВЛЕНО
             ])
         )
 
@@ -819,7 +838,7 @@ def show_database_backups_summary(query, backup_bot, hours):
         query.edit_message_text("❌ Ошибка при получении данных")
 
 def show_database_backups_list(query, backup_bot):
-    """ИСПРАВЛЕННАЯ ВЕРСИЯ: Показывает список всех баз данных с кнопками для деталей"""
+    """УЛУЧШЕННАЯ ВЕРСИЯ: Показывает список всех баз данных с группировкой по типам"""
     try:
         # Используем исправленную функцию
         stats = backup_bot.get_database_backups_stats_fixed(24)
@@ -830,7 +849,8 @@ def show_database_backups_list(query, backup_bot):
                 parse_mode='Markdown',
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("🔄 Обновить", callback_data='db_backups_list')],
-                    [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')]
+                    [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')],
+                    [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
                 ])
             )
             return
@@ -839,84 +859,99 @@ def show_database_backups_list(query, backup_bot):
         display_names = backup_bot.get_database_display_names()
         
         # Группируем по типам и базам
-        databases = {}
+        databases_by_type = {
+            'company_database': [],
+            'barnaul': [],
+            'client': [],
+            'yandex': []
+        }
+        
         for backup_type, db_name, db_display, status, count, last_backup in stats:
-            key = (backup_type, db_name)
-            if key not in databases:
+            if backup_type in databases_by_type:
                 # Используем отображаемое имя из конфига или оригинальное имя
                 display_name = display_names.get(db_name, db_display or db_name)
-                databases[key] = {
-                    'success': 0, 
-                    'failed': 0, 
-                    'display_name': display_name,
-                    'original_name': db_name  # Сохраняем оригинальное имя для callback
-                }
-            databases[key][status] += count
+                
+                # Находим или создаем запись для базы
+                existing_db = next((db for db in databases_by_type[backup_type] if db['original_name'] == db_name), None)
+                if existing_db:
+                    existing_db[status] += count
+                else:
+                    databases_by_type[backup_type].append({
+                        'original_name': db_name,
+                        'display_name': display_name,
+                        'success': count if status == 'success' else 0,
+                        'failed': count if status == 'failed' else 0
+                    })
 
-        print(f"🔍 DEBUG: Найдено баз данных: {len(databases)}")
-        for key, info in databases.items():
-            print(f"🔍 DEBUG: {key} -> {info}")
+        print(f"🔍 DEBUG: Найдено баз данных по типам: { {k: len(v) for k, v in databases_by_type.items()} }")
 
-        # Создаем клавиатуру
+        # Создаем клавиатуру с группировкой по типам
         keyboard = []
         
-        type_names = {
-            'company_database': '🏢',
-            'barnaul': '🏔️', 
-            'client': '👥',
-            'yandex': '☁️'
+        type_configs = {
+            'company_database': {'icon': '🏢', 'name': 'Основные БД компании'},
+            'barnaul': {'icon': '🏔️', 'name': 'Барнаул'}, 
+            'client': {'icon': '👥', 'name': 'Базы клиентов'},
+            'yandex': {'icon': '☁️', 'name': 'Yandex'}
         }
 
-        # Сортируем базы по типу и имени
-        sorted_databases = sorted(databases.items(), key=lambda x: (x[0][0], x[1]['display_name']))
-        
-        current_row = []
-        buttons_count = 0
-        
-        for (backup_type, db_name), stats in sorted_databases:
-            type_icon = type_names.get(backup_type, '📁')
-            success = stats.get('success', 0)
-            failed = stats.get('failed', 0)
-            total = success + failed
-            
-            display_name = stats['display_name']
-            original_name = stats['original_name']
-            
-            if total > 0:
-                success_rate = (success / total) * 100
-                status_icon = "🟢" if success_rate >= 80 else "🟡" if success_rate >= 50 else "🔴"
-                button_text = f"{type_icon}{status_icon} {display_name}"
-            else:
-                button_text = f"{type_icon}⚪ {display_name}"
-            
-            # Ограничиваем длину текста кнопки
-            if len(button_text) > 15:
-                button_text = button_text[:12] + ".."
-            
-            print(f"🔍 DEBUG: Создаем кнопку для {backup_type}.{original_name} -> {display_name}")
-            
-            current_row.append(InlineKeyboardButton(
-                button_text, 
-                callback_data=f'db_detail_{backup_type}__{original_name}'  # Используем оригинальное имя для callback
-            ))
-            buttons_count += 1
-            
-            # Размещаем по 2 кнопки в строке
-            if buttons_count % 2 == 0:
-                keyboard.append(current_row)
+        # Добавляем заголовки и кнопки для каждого типа
+        for backup_type, type_config in type_configs.items():
+            databases = databases_by_type[backup_type]
+            if databases:
+                # Добавляем заголовок секции
+                keyboard.append([InlineKeyboardButton(
+                    f"───── {type_config['icon']} {type_config['name']} ─────",
+                    callback_data='no_action'
+                )])
+                
+                # Добавляем кнопки баз данных для этого типа
                 current_row = []
+                for i, db_info in enumerate(sorted(databases, key=lambda x: x['display_name'])):
+                    success = db_info.get('success', 0)
+                    failed = db_info.get('failed', 0)
+                    total = success + failed
+                    
+                    display_name = db_info['display_name']
+                    original_name = db_info['original_name']
+                    
+                    if total > 0:
+                        success_rate = (success / total) * 100
+                        status_icon = "🟢" if success_rate >= 80 else "🟡" if success_rate >= 50 else "🔴"
+                        button_text = f"{status_icon} {display_name}"
+                    else:
+                        button_text = f"⚪ {display_name}"
+                    
+                    # Ограничиваем длину текста кнопки
+                    if len(button_text) > 15:
+                        button_text = button_text[:12] + ".."
+                    
+                    current_row.append(InlineKeyboardButton(
+                        button_text, 
+                        callback_data=f'db_detail_{backup_type}__{original_name}'
+                    ))
+                    
+                    # Размещаем по 2 кнопки в строке
+                    if len(current_row) == 2 or i == len(databases) - 1:
+                        keyboard.append(current_row)
+                        current_row = []
+                
+                # Добавляем пустую строку между секциями для визуального разделения
+                keyboard.append([])
         
-        # Добавляем оставшиеся кнопки
-        if current_row:
-            keyboard.append(current_row)
+        # Убираем последнюю пустую строку если есть
+        if keyboard and not keyboard[-1]:
+            keyboard.pop()
         
+        # Добавляем кнопки управления
         keyboard.extend([
             [InlineKeyboardButton("🔄 Обновить", callback_data='db_backups_list')],
-            [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')]
+            [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')],
+            [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
 
         query.edit_message_text(
-            "📋 *Список баз данных*\n\nВыберите базу для просмотра деталей:",
+            "📋 *Список баз данных*\n\n*Секции:*\n🏢 Основные БД компании\n🏔️ Бэкапы Барнаул\n👥 Базы клиентов\n☁️ Бэкапы на Yandex\n\nВыберите базу для просмотра деталей:",
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
@@ -940,7 +975,8 @@ def show_database_details(query, backup_bot, backup_type, db_name):
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("🔄 Обновить", callback_data=f'db_detail_{backup_type}_{db_name}')],
                 [InlineKeyboardButton("📋 Список БД", callback_data='db_backups_list')],
-                [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')]
+                [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')],
+                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]  # ДОБАВЛЕНО
             ])
         )
 
