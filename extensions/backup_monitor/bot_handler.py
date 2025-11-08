@@ -218,19 +218,74 @@ class BackupMonitorBot:
             import traceback
             print(f"Подробности: {traceback.format_exc()}")
             return []
+        
+    def get_database_backups_stats_fixed(self, hours=24):
+        """Исправленная версия получения статистики по бэкапам БД"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        since_time = (datetime.now() - timedelta(hours=hours)).strftime('%Y-%m-%d %H:%M:%S')
+        
+        # ИСПРАВЛЕННЫЙ ЗАПРОС - правильное количество полей
+        cursor.execute('''
+            SELECT 
+                backup_type,
+                database_name,
+                database_display_name,
+                backup_status,
+                COUNT(*) as backup_count,
+                MAX(received_at) as last_backup
+            FROM database_backups 
+            WHERE received_at >= ?
+            GROUP BY backup_type, database_name, database_display_name, backup_status
+            ORDER BY backup_type, database_name, last_backup DESC
+        ''', (since_time,))
+        
+        results = cursor.fetchall()
+        conn.close()
+        
+        return results
+
+    def get_database_display_names(self):
+        """Получает отображаемые имена баз данных из конфигурации"""
+        from config import DATABASE_BACKUP_CONFIG
+        
+        display_names = {}
+        
+        # Основные базы компании
+        for db_key, display_name in DATABASE_BACKUP_CONFIG["company_databases"].items():
+            display_names[db_key] = display_name
+        
+        # Базы Барнаул
+        for db_key, display_name in DATABASE_BACKUP_CONFIG["barnaul_backups"].items():
+            display_names[db_key] = display_name
+        
+        # Клиентские базы
+        for db_key, display_name in DATABASE_BACKUP_CONFIG["client_databases"].items():
+            display_names[db_key] = display_name
+        
+        # Yandex базы
+        for db_key, display_name in DATABASE_BACKUP_CONFIG["yandex_backups"].items():
+            display_names[db_key] = display_name
+        
+        return display_names        
 
 def format_database_details(backup_bot, backup_type, db_name, hours=168):
-    """Детальная информация по конкретной базе данных - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
+    """ИСПРАВЛЕННАЯ ВЕРСИЯ: Детальная информация по конкретной базе данных"""
     try:
         print(f"🔍 DEBUG: Получен запрос для {backup_type}.{db_name}")
         
-        # Получаем детальные данные ИЗ КЛАССА
+        # Получаем правильное отображаемое имя
+        display_names = backup_bot.get_database_display_names()
+        display_name = display_names.get(db_name, db_name)
+        
+        # Получаем детальные данные
         details = backup_bot.get_database_details(backup_type, db_name, hours)
         
-        print(f"🔍 DEBUG: Получено {len(details)} записей, структура: {details}")
+        print(f"🔍 DEBUG: Получено {len(details)} записей")
         
         if not details:
-            return f"📋 Детали по {db_name}\n\nНет данных за последние {hours} часов"
+            return f"📋 Детали по {display_name}\n\nНет данных за последние {hours} часов"
                 
         type_names = {
             'company_database': '🏢 Основная БД',
@@ -241,22 +296,29 @@ def format_database_details(backup_bot, backup_type, db_name, hours=168):
         
         type_display = type_names.get(backup_type, f"📁 {backup_type}")
         
-        message = f"📋 Детали по {db_name}\n"
-        message += f"Тип: {type_display}\n"
-        message += f"Период: {hours} часов\n\n"
+        message = f"📋 *Детали по {display_name}*\n"
+        message += f"*Тип:* {type_display}\n"
+        message += f"*Период:* {hours} часов\n\n"
         
         # Статистика
         success_count = len([d for d in details if d[0] == 'success'])
         failed_count = len([d for d in details if d[0] == 'failed'])
         total_count = len(details)
         
-        message += f"📊 Статистика:\n"
+        message += f"📊 *Статистика:*\n"
         message += f"✅ Успешных: {success_count}\n"
         message += f"❌ Ошибок: {failed_count}\n"
         message += f"📈 Всего: {total_count}\n\n"
         
         # Последние бэкапы
-        message += "⏰ Последние бэкапы:\n"
+        message += "⏰ *Последние бэкапы:*\n"
+        
+        task_type_names = {
+            'database_dump': 'Дамп БД',
+            'client_database_dump': 'Дамп клиентской БД', 
+            'cobian_backup': 'Резервное копирование',
+            'yandex_backup': 'Yandex Backup'
+        }
         
         for status, task_type, error_count, subject, received_at in details[:5]:
             status_icon = "✅" if status == 'success' else "❌"
@@ -266,14 +328,15 @@ def format_database_details(backup_bot, backup_type, db_name, hours=168):
             except:
                 time_str = received_at[:16]
             
-            message += f"{status_icon} {time_str} - {status}"
+            # Преобразуем тип задачи в понятный формат
+            task_display = task_type_names.get(task_type, task_type or 'Резервное копирование')
+            
+            message += f"{status_icon} *{time_str}* - {status} - {task_display}"
             if error_count and error_count > 0:
                 message += f" (ошибок: {error_count})"
-            if task_type:
-                message += f" - {task_type}"
             message += "\n"
         
-        message += f"\n🕒 Обновлено: {datetime.now().strftime('%H:%M:%S')}"
+        message += f"\n🕒 *Обновлено:* {datetime.now().strftime('%H:%M:%S')}"
         return message
         
     except Exception as e:
@@ -281,7 +344,7 @@ def format_database_details(backup_bot, backup_type, db_name, hours=168):
         import traceback
         print(f"Подробности: {traceback.format_exc()}")
         return f"❌ Ошибка при получении деталей БД: {e}"
-
+    
 def backup_command(update, context):
     """Обработчик команды /backup"""
     try:
@@ -756,9 +819,10 @@ def show_database_backups_summary(query, backup_bot, hours):
         query.edit_message_text("❌ Ошибка при получении данных")
 
 def show_database_backups_list(query, backup_bot):
-    """Показывает список всех баз данных с кнопками для деталей - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
+    """ИСПРАВЛЕННАЯ ВЕРСИЯ: Показывает список всех баз данных с кнопками для деталей"""
     try:
-        stats = backup_bot.get_database_backups_stats(24)
+        # Используем исправленную функцию
+        stats = backup_bot.get_database_backups_stats_fixed(24)
         
         if not stats:
             query.edit_message_text(
@@ -771,19 +835,30 @@ def show_database_backups_list(query, backup_bot):
             )
             return
 
+        # Получаем правильные отображаемые имена
+        display_names = backup_bot.get_database_display_names()
+        
         # Группируем по типам и базам
         databases = {}
         for backup_type, db_name, db_display, status, count, last_backup in stats:
             key = (backup_type, db_name)
             if key not in databases:
-                databases[key] = {'success': 0, 'failed': 0, 'display_name': db_display or db_name}
+                # Используем отображаемое имя из конфига или оригинальное имя
+                display_name = display_names.get(db_name, db_display or db_name)
+                databases[key] = {
+                    'success': 0, 
+                    'failed': 0, 
+                    'display_name': display_name,
+                    'original_name': db_name  # Сохраняем оригинальное имя для callback
+                }
             databases[key][status] += count
 
-        print(f"🔍 DEBUG: Найдено баз данных: {list(databases.keys())}")
+        print(f"🔍 DEBUG: Найдено баз данных: {len(databases)}")
+        for key, info in databases.items():
+            print(f"🔍 DEBUG: {key} -> {info}")
 
         # Создаем клавиатуру
         keyboard = []
-        current_row = []
         
         type_names = {
             'company_database': '🏢',
@@ -792,13 +867,20 @@ def show_database_backups_list(query, backup_bot):
             'yandex': '☁️'
         }
 
-        for (backup_type, db_name), stats in databases.items():
+        # Сортируем базы по типу и имени
+        sorted_databases = sorted(databases.items(), key=lambda x: (x[0][0], x[1]['display_name']))
+        
+        current_row = []
+        buttons_count = 0
+        
+        for (backup_type, db_name), stats in sorted_databases:
             type_icon = type_names.get(backup_type, '📁')
             success = stats.get('success', 0)
             failed = stats.get('failed', 0)
             total = success + failed
             
-            display_name = stats.get('display_name', db_name)
+            display_name = stats['display_name']
+            original_name = stats['original_name']
             
             if total > 0:
                 success_rate = (success / total) * 100
@@ -811,14 +893,20 @@ def show_database_backups_list(query, backup_bot):
             if len(button_text) > 15:
                 button_text = button_text[:12] + ".."
             
-            print(f"🔍 DEBUG: Создаем кнопку для {backup_type}.{db_name} -> callback: db_detail_{backup_type}__{db_name}")
+            print(f"🔍 DEBUG: Создаем кнопку для {backup_type}.{original_name} -> {display_name}")
             
             current_row.append(InlineKeyboardButton(
                 button_text, 
-                # Используем двойное подчеркивание как разделитель между типом и именем базы
-                callback_data=f'db_detail_{backup_type}__{db_name}'
+                callback_data=f'db_detail_{backup_type}__{original_name}'  # Используем оригинальное имя для callback
             ))
+            buttons_count += 1
+            
+            # Размещаем по 2 кнопки в строке
+            if buttons_count % 2 == 0:
+                keyboard.append(current_row)
+                current_row = []
         
+        # Добавляем оставшиеся кнопки
         if current_row:
             keyboard.append(current_row)
         
@@ -838,7 +926,7 @@ def show_database_backups_list(query, backup_bot):
         import traceback
         logger.error(f"Подробности: {traceback.format_exc()}")
         query.edit_message_text("❌ Ошибка при получении данных")
-        
+
 def show_database_details(query, backup_bot, backup_type, db_name):
     """Показывает детальную информацию по конкретной базе данных - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
     try:
