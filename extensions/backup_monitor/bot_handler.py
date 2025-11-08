@@ -387,12 +387,19 @@ def backup_callback(update, context):
             host_name = data.replace('backup_host_', '')
             show_host_status(query, backup_bot, host_name)
         elif data.startswith('db_detail_'):
-            # Обработка деталей БД
+            # Обработка деталей БД - ИСПРАВЛЕННАЯ ВЕРСИЯ
             parts = data.replace('db_detail_', '').split('_')
+            print(f"🔍 DEBUG: Обрабатываем db_detail, parts={parts}")
+            
             if len(parts) >= 2:
                 backup_type = parts[0]
+                # Все остальные части - это имя базы (может содержать подчеркивания)
                 db_name = '_'.join(parts[1:])
+                print(f"🔍 DEBUG: Извлечено backup_type={backup_type}, db_name={db_name}")
                 show_database_details(query, backup_bot, backup_type, db_name)
+            else:
+                print(f"❌ DEBUG: Неверный формат db_detail: {data}")
+                query.edit_message_text("❌ Ошибка: неверный формат запроса")
         elif data == 'db_backups_24h':
             show_database_backups_summary(query, backup_bot, 24)
         elif data == 'db_backups_48h':
@@ -734,7 +741,7 @@ def show_database_backups_summary(query, backup_bot, hours):
         query.edit_message_text("❌ Ошибка при получении данных")
 
 def show_database_backups_list(query, backup_bot):
-    """Показывает список всех баз данных с кнопками для деталей"""
+    """Показывает список всех баз данных с кнопками для деталей - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
     try:
         stats = backup_bot.get_database_backups_stats(24)
         
@@ -757,6 +764,8 @@ def show_database_backups_list(query, backup_bot):
                 databases[key] = {'success': 0, 'failed': 0, 'display_name': db_display or db_name}
             databases[key][status] += count
 
+        print(f"🔍 DEBUG: Найдено баз данных: {list(databases.keys())}")
+
         # Создаем клавиатуру
         keyboard = []
         current_row = []
@@ -774,16 +783,20 @@ def show_database_backups_list(query, backup_bot):
             failed = stats.get('failed', 0)
             total = success + failed
             
+            display_name = stats.get('display_name', db_name)
+            
             if total > 0:
                 success_rate = (success / total) * 100
                 status_icon = "🟢" if success_rate >= 80 else "🟡" if success_rate >= 50 else "🔴"
-                button_text = f"{type_icon}{status_icon} {db_name}"
+                button_text = f"{type_icon}{status_icon} {display_name}"
             else:
-                button_text = f"{type_icon}⚪ {db_name}"
+                button_text = f"{type_icon}⚪ {display_name}"
             
             # Ограничиваем длину текста кнопки
             if len(button_text) > 15:
-                button_text = button_text[:15] + ".."
+                button_text = button_text[:12] + ".."
+            
+            print(f"🔍 DEBUG: Создаем кнопку для {backup_type}.{db_name} -> {button_text}")
             
             current_row.append(InlineKeyboardButton(
                 button_text, 
@@ -810,11 +823,15 @@ def show_database_backups_list(query, backup_bot):
 
     except Exception as e:
         logger.error(f"Ошибка в show_database_backups_list: {e}")
+        import traceback
+        logger.error(f"Подробности: {traceback.format_exc()}")
         query.edit_message_text("❌ Ошибка при получении данных")
-
+        
 def show_database_details(query, backup_bot, backup_type, db_name):
-    """Показывает детальную информацию по конкретной базе данных"""
+    """Показывает детальную информацию по конкретной базе данных - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
     try:
+        print(f"🔍 DEBUG: show_database_details вызвана с backup_type={backup_type}, db_name={db_name}")
+        
         details_text = format_database_details(backup_bot, backup_type, db_name, 168)
         
         query.edit_message_text(
@@ -829,6 +846,8 @@ def show_database_details(query, backup_bot, backup_type, db_name):
 
     except Exception as e:
         logger.error(f"Ошибка в show_database_details: {e}")
+        import traceback
+        logger.error(f"Подробности: {traceback.format_exc()}")
         query.edit_message_text("❌ Ошибка при получении деталей БД")
 
 def show_database_backups_detailed(query, backup_bot):
@@ -906,4 +925,3 @@ def setup_backup_handlers(dispatcher):
     dispatcher.add_handler(CommandHandler("backup_help", backup_help_command))
     dispatcher.add_handler(CallbackQueryHandler(backup_callback, pattern='^backup_'))
     dispatcher.add_handler(CallbackQueryHandler(backup_callback, pattern='^db_'))
-    
