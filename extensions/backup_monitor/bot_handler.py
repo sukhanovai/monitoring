@@ -24,6 +24,30 @@ class BackupMonitorBot:
         from config import BACKUP_DATABASE_CONFIG
         self.db_path = BACKUP_DATABASE_CONFIG['backups_db']
 
+    def get_database_display_names(self):
+        """Получает отображаемые имена баз данных из конфигурации"""
+        from config import DATABASE_BACKUP_CONFIG
+        
+        display_names = {}
+        
+        # Основные базы компании
+        for db_key, display_name in DATABASE_BACKUP_CONFIG["company_databases"].items():
+            display_names[db_key] = display_name
+        
+        # Базы Барнаул
+        for db_key, display_name in DATABASE_BACKUP_CONFIG["barnaul_backups"].items():
+            display_names[db_key] = display_name
+        
+        # Клиентские базы
+        for db_key, display_name in DATABASE_BACKUP_CONFIG["client_databases"].items():
+            display_names[db_key] = display_name
+        
+        # Yandex базы
+        for db_key, display_name in DATABASE_BACKUP_CONFIG["yandex_backups"].items():
+            display_names[db_key] = display_name
+        
+        return display_names
+
     def get_today_status(self):
         """Статус бэкапов за сегодня"""
         conn = sqlite3.connect(self.db_path)
@@ -246,36 +270,12 @@ class BackupMonitorBot:
         
         return results
 
-def get_database_display_names(self):
-    """Получает отображаемые имена баз данных из конфигурации - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
-    from config import DATABASE_BACKUP_CONFIG
-    
-    display_names = {}
-    
-    # Основные базы компании
-    for db_key, display_name in DATABASE_BACKUP_CONFIG["company_databases"].items():
-        display_names[db_key] = display_name
-    
-    # Базы Барнаул
-    for db_key, display_name in DATABASE_BACKUP_CONFIG["barnaul_backups"].items():
-        display_names[db_key] = display_name
-    
-    # Клиентские базы - ИСПРАВЛЕНИЕ: используем правильный ключ
-    for db_key, display_name in DATABASE_BACKUP_CONFIG["client_databases"].items():
-        display_names[db_key] = display_name
-    
-    # Yandex базы
-    for db_key, display_name in DATABASE_BACKUP_CONFIG["yandex_backups"].items():
-        display_names[db_key] = display_name
-    
-    return display_names
-
 def format_database_details(backup_bot, backup_type, db_name, hours=168):
     """ИСПРАВЛЕННАЯ ВЕРСИЯ: Детальная информация по конкретной базе данных"""
     try:
         print(f"🔍 DEBUG: Получен запрос для {backup_type}.{db_name}")
         
-        # Получаем правильное отображаемое имя
+        # Получаем правильное отображаемое имя через метод класса
         display_names = backup_bot.get_database_display_names()
         display_name = display_names.get(db_name, db_name)
         
@@ -855,9 +855,9 @@ def show_database_backups_list(query, backup_bot):
             )
             return
 
-        # Получаем правильные отображаемые имена
+        # Получаем правильные отображаемые имена ЧЕРЕЗ МЕТОД КЛАССА
         display_names = backup_bot.get_database_display_names()
-        
+       
         # Группируем по типам и базам
         databases_by_type = {
             'company_database': [],
