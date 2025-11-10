@@ -1,5 +1,5 @@
 """
-Server Monitoring System v2.4.0
+Server Monitoring System v2.4.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Мониторинг бэкапов Proxmox
@@ -11,17 +11,6 @@ from datetime import datetime, timedelta
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CommandHandler, CallbackQueryHandler
 
-# Импортируем наши утилиты и обработчики
-from backup_utils import BackupBase, StatusCalculator, DisplayFormatters
-from backup_handlers import (
-    create_main_menu, create_navigation_buttons,
-    show_main_menu, show_today_status, show_recent_backups, show_failed_backups,
-    show_hosts_menu, show_stale_hosts, show_host_status,
-    show_database_backups_menu, show_database_backups_list, show_stale_databases,
-    show_database_backups_summary, show_database_details,
-    format_database_details
-)
-
 # Настройка логирования
 logging.basicConfig(
     level=logging.DEBUG,
@@ -32,6 +21,39 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+
+# Импортируем наши утилиты и обработчики
+try:
+    from .backup_utils import BackupBase, StatusCalculator, DisplayFormatters
+    from .backup_handlers import (
+        create_main_menu, create_navigation_buttons,
+        show_main_menu, show_today_status, show_recent_backups, show_failed_backups,
+        show_hosts_menu, show_stale_hosts, show_host_status,
+        show_database_backups_menu, show_database_backups_list, show_stale_databases,
+        show_database_backups_summary, show_database_details,
+        format_database_details
+    )
+    logger.info("✅ Модули backup_utils и backup_handlers успешно импортированы")
+except ImportError as e:
+    logger.error(f"❌ Ошибка импорта модулей: {e}")
+    # Альтернативный импорт для случаев, когда относительные импорты не работают
+    try:
+        import os
+        import sys
+        sys.path.append('/opt/monitoring/extensions/backup_monitor')
+        from backup_utils import BackupBase, StatusCalculator, DisplayFormatters
+        from backup_handlers import (
+            create_main_menu, create_navigation_buttons,
+            show_main_menu, show_today_status, show_recent_backups, show_failed_backups,
+            show_hosts_menu, show_stale_hosts, show_host_status,
+            show_database_backups_menu, show_database_backups_list, show_stale_databases,
+            show_database_backups_summary, show_database_details,
+            format_database_details
+        )
+        logger.info("✅ Модули импортированы через абсолютный путь")
+    except ImportError as e2:
+        logger.error(f"❌ Критическая ошибка импорта: {e2}")
+        raise
 
 class BackupMonitorBot(BackupBase):
     """Оптимизированный класс для мониторинга бэкапов"""
