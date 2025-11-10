@@ -1,5 +1,5 @@
 """
-Server Monitoring System v2.3.2
+Server Monitoring System v2.3.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчик команд бота для мониторинга бэкапов
@@ -427,6 +427,61 @@ class BackupMonitorBot:
 
         return results
 
+    def get_host_recent_status(self, host_name, hours=48):
+        """Получает статус хоста с учетом бэкапов за указанный период"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        since_time = (datetime.now() - timedelta(hours=hours)).strftime('%Y-%m-%d %H:%M:%S')
+
+        cursor.execute('''
+            SELECT backup_status, received_at
+            FROM proxmox_backups
+            WHERE host_name = ? 
+            AND received_at >= ?
+            ORDER BY received_at DESC
+        ''', (host_name, since_time))
+
+        results = cursor.fetchall()
+        conn.close()
+
+        return results
+
+    def get_host_display_status(self, host_name):
+        """Определяет отображаемый статус хоста с учетом последних бэкапов"""
+        # Получаем бэкапы за последние 48 часов
+        recent_backups = self.get_host_recent_status(host_name, 48)
+        
+        if not recent_backups:
+            return "stale"  # Нет бэкапов за 48 часов
+        
+        # Проверяем последний бэкап
+        last_status, last_time = recent_backups[0]
+        
+        # Если последний бэкап неудачный - показываем как проблемный
+        if last_status == 'failed':
+            return "failed"
+        
+        # Проверяем, есть ли неудачные бэкапы в последних 3
+        recent_failed = any(status == 'failed' for status, _ in recent_backups[:3])
+        if recent_failed:
+            return "recent_failed"
+        
+        # Проверяем свежесть бэкапов
+        try:
+            last_backup_time = datetime.strptime(last_time, '%Y-%m-%d %H:%M:%S')
+            hours_since_last = (datetime.now() - last_backup_time).total_seconds() / 3600
+            
+            if hours_since_last > 48:
+                return "stale"
+            elif hours_since_last > 24:
+                return "old"
+            else:
+                return "success"
+                
+        except Exception:
+            return "unknown"
+    
 def format_database_details(backup_bot, backup_type, db_name, hours=168):
     """ИСПРАВЛЕННАЯ ВЕРСИЯ: Детальная информация по конкретной базе данных"""
     try:
@@ -838,20 +893,6 @@ def show_hosts_menu(query, backup_bot):
     try:
         hosts = backup_bot.get_all_hosts()
         
-        # Получаем информацию об устаревших бэкапах
-        coverage_report = backup_bot.get_backup_coverage_report(24)
-        stale_hosts_dict = {host[0]: host[1] for host in coverage_report['stale_hosts']}
-        
-        # ПОЛУЧАЕМ ПОСЛЕДНИЕ СТАТУСЫ БЭКАПОВ ДЛЯ КАЖДОГО ХОСТА
-        host_last_status = {}
-        for host_name in hosts:
-            host_status = backup_bot.get_host_status(host_name)
-            if host_status:
-                # Берем самый последний бэкап (первый в списке)
-                last_backup = host_status[0]
-                status = last_backup[0]  # статус бэкапа
-                host_last_status[host_name] = status
-        
         if not hosts:
             query.edit_message_text(
                 "🖥️ *Бэкапы по хостам*\n\nНет данных о хостах",
@@ -865,84 +906,77 @@ def show_hosts_menu(query, backup_bot):
 
         keyboard = []
         
-        # Добавляем заголовок с информацией об устаревших бэкапах
-        stale_count = len(coverage_report['stale_hosts'])
-        total_configured = len(coverage_report['all_configured_hosts'])
+        # Получаем статусы для всех хостов
+        host_statuses = {}
+        status_counts = {"success": 0, "recent_failed": 0, "failed": 0, "old": 0, "stale": 0, "unknown": 0}
         
-        if stale_count > 0:
-            keyboard.append([InlineKeyboardButton(
-                f"⚠️ {stale_count}/{total_configured} хостов без бэкапов >24ч",
-                callback_data='no_action'
-            )])
-            keyboard.append([])  # Пустая строка для разделения
+        for host_name in hosts:
+            status = backup_bot.get_host_display_status(host_name)
+            host_statuses[host_name] = status
+            status_counts[status] += 1
         
-        # Создаем кнопки по 2 в ряд
-        for i in range(0, len(hosts), 2):
+        # Добавляем заголовок со статистикой
+        problem_count = status_counts["failed"] + status_counts["recent_failed"] + status_counts["stale"]
+        keyboard.append([InlineKeyboardButton(
+            f"📊 Статус: {status_counts['success']}✅ {problem_count}🚨",
+            callback_data='no_action'
+        )])
+        keyboard.append([])  # Пустая строка
+        
+        # Создаем кнопки по 2 в ряд, сортируем по статусу
+        sorted_hosts = sorted(hosts, key=lambda x: (
+            host_statuses[x] != "failed",      # Сначала failed
+            host_statuses[x] != "recent_failed", # Потом recent_failed  
+            host_statuses[x] != "stale",       # Потом stale
+            host_statuses[x] != "old",         # Потом old
+            x.lower()                          # Затем по имени
+        ))
+        
+        for i in range(0, len(sorted_hosts), 2):
             row = []
             for j in range(2):
-                if i + j < len(hosts):
-                    host_name = hosts[i + j]
+                if i + j < len(sorted_hosts):
+                    host_name = sorted_hosts[i + j]
+                    status = host_statuses[host_name]
                     
-                    # ОПРЕДЕЛЯЕМ СТАТУС ХОСТА ПО ПОСЛЕДНЕМУ БЭКАПУ
-                    last_status = host_last_status.get(host_name)
-                    
-                    # Проверяем, есть ли у хоста устаревшие бэкапы
-                    if host_name in stale_hosts_dict:
-                        last_backup = stale_hosts_dict[host_name]
-                        try:
-                            last_time = datetime.strptime(last_backup, '%Y-%m-%d %H:%M:%S')
-                            hours_ago = (datetime.now() - last_time).total_seconds() / 3600
-                            if hours_ago > 24:
-                                display_name = f"❌ {host_name}"  # Нет бэкапов >24ч
-                            elif hours_ago > 12:
-                                display_name = f"🕒 {host_name}"  # Бэкапы >12ч
-                            else:
-                                # Если бэкап свежий, но статус неудачный
-                                if last_status == 'failed':
-                                    display_name = f"🔴 {host_name}"  # Последний бэкап неудачный
-                                else:
-                                    display_name = f"🟡 {host_name}"  # Бэкап свежий но есть проблемы
-                        except:
-                            display_name = f"🕒 {host_name}"
+                    # Определяем отображаемое имя и иконку
+                    if status == "success":
+                        display_name = f"✅ {host_name}"
+                    elif status == "failed":
+                        display_name = f"🔴 {host_name}"
+                    elif status == "recent_failed":
+                        display_name = f"🟠 {host_name}"
+                    elif status == "old":
+                        display_name = f"🟡 {host_name}"
+                    elif status == "stale":
+                        display_name = f"⚫ {host_name}"
                     else:
-                        # Хост имеет свежие бэкапы, проверяем статус последнего
-                        if last_status == 'failed':
-                            display_name = f"🔴 {host_name}"  # Последний бэкап неудачный
-                        elif last_status == 'success':
-                            display_name = f"✅ {host_name}"  # Последний бэкап успешный
-                        else:
-                            display_name = f"⚪ {host_name}"  # Статус неизвестен
+                        display_name = f"⚪ {host_name}"
                     
                     row.append(InlineKeyboardButton(display_name, callback_data=f'backup_host_{host_name}'))
             
-            if row:  # Добавляем только непустые строки
+            if row:
                 keyboard.append(row)
         
         # Добавляем кнопку для просмотра только проблемных хостов
-        problem_hosts_count = len([h for h in hosts if host_last_status.get(h) == 'failed' or h in stale_hosts_dict])
-        if problem_hosts_count > 0:
+        if problem_count > 0:
             keyboard.append([InlineKeyboardButton(
-                f"🔍 Показать проблемные ({problem_hosts_count})", 
+                f"🔍 Показать проблемные ({problem_count})", 
                 callback_data='backup_stale_hosts'
             )])
         
         keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data='backup_main')])
 
-        # ОБНОВЛЯЕМ ЛЕГЕНДУ
+        # Обновляем легенду
         message = "🖥️ *Выберите хост для просмотра бэкапов:*\n\n"
-        message += "✅ - последний бэкап успешен\n"
-        message += "🔴 - последний бэкап неудачен\n" 
-        message += "🟡 - есть проблемы с расписанием\n"
-        message += "🕒 - бэкапы >12 часов\n"
-        message += "❌ - бэкапы >24 часов\n"
+        message += "✅ - все бэкапы успешны (последние 48ч)\n"
+        message += "🔴 - последний бэкап неудачен\n"
+        message += "🟠 - есть неудачные бэкапы в истории\n" 
+        message += "🟡 - последний бэкап старше 24ч\n"
+        message += "⚫ - нет бэкапов >48ч\n"
         message += "⚪ - статус неизвестен\n\n"
         
-        # Считаем статистику
-        success_count = len([h for h in hosts if host_last_status.get(h) == 'success'])
-        failed_count = len([h for h in hosts if host_last_status.get(h) == 'failed'])
-        unknown_count = len([h for h in hosts if host_last_status.get(h) is None])
-        
-        message += f"*Статистика:* {success_count}✅ {failed_count}🔴 {unknown_count}⚪"
+        message += f"*Статистика:* {status_counts['success']}✅ {status_counts['recent_failed']}🟠 {status_counts['failed']}🔴 {status_counts['old']}🟡 {status_counts['stale']}⚫"
 
         query.edit_message_text(
             message,
@@ -959,28 +993,17 @@ def show_hosts_menu(query, backup_bot):
 def show_stale_hosts(query, backup_bot):
     """Показывает только проблемные хосты - ОБНОВЛЕННАЯ ВЕРСИЯ"""
     try:
-        coverage_report = backup_bot.get_backup_coverage_report(24)
-        stale_hosts = coverage_report['stale_hosts']
-        
-        # Получаем хосты с неудачными бэкапами
-        all_hosts_with_status = backup_bot.get_all_hosts_with_status()
-        failed_hosts = [(host, "failed") for host, status in all_hosts_with_status if status == 'failed']
-        
-        # Объединяем проблемные хосты
+        hosts = backup_bot.get_all_hosts()
         problem_hosts = []
         
-        # Добавляем хосты с устаревшими бэкапами
-        for host_name, last_backup in stale_hosts:
-            problem_hosts.append((host_name, "stale", last_backup))
-        
-        # Добавляем хосты с неудачными бэкапами (если их еще нет в списке)
-        for host_name, status in failed_hosts:
-            if not any(host == host_name for host, _, _ in problem_hosts):
-                # Получаем время последнего бэкапа для неудачного хоста
-                host_status = backup_bot.get_host_status(host_name)
-                if host_status:
-                    last_backup = host_status[0][4]  # received_at
-                    problem_hosts.append((host_name, "failed", last_backup))
+        for host_name in hosts:
+            status = backup_bot.get_host_display_status(host_name)
+            if status in ["failed", "recent_failed", "stale"]:
+                # Получаем детальную информацию для времени
+                recent_backups = backup_bot.get_host_recent_status(host_name, 72)  # 3 дня
+                if recent_backups:
+                    last_time = recent_backups[0][1]
+                    problem_hosts.append((host_name, status, last_time))
         
         if not problem_hosts:
             query.edit_message_text(
@@ -996,8 +1019,8 @@ def show_stale_hosts(query, backup_bot):
         keyboard = []
         message = "🚨 *Проблемные хосты:*\n\n"
         
-        # Сортируем проблемные хосты по типу проблемы
-        problem_hosts.sort(key=lambda x: (x[1] != 'failed', x[1]))  # Сначала failed, потом stale
+        # Сортируем по серьезности проблемы
+        problem_hosts.sort(key=lambda x: (x[1] != "failed", x[1] != "recent_failed", x[1] != "stale"))
         
         for host_name, problem_type, last_backup in problem_hosts:
             try:
@@ -1012,9 +1035,11 @@ def show_stale_hosts(query, backup_bot):
                     time_ago = f"{hours_ago}ч"
                 
                 if problem_type == 'failed':
-                    problem_text = f"🔴 {host_name} - неудачный бэкап ({time_ago} назад)"
+                    problem_text = f"🔴 {host_name} - последний бэкап неудачен ({time_ago} назад)"
+                elif problem_type == 'recent_failed':
+                    problem_text = f"🟠 {host_name} - есть неудачные бэкапы ({time_ago} назад)"
                 else:
-                    problem_text = f"❌ {host_name} - нет бэкапов ({time_ago} назад)"
+                    problem_text = f"⚫ {host_name} - нет свежих бэкапов ({time_ago} назад)"
                 
                 message += f"• {problem_text}\n"
                 
@@ -1043,7 +1068,7 @@ def show_stale_hosts(query, backup_bot):
     except Exception as e:
         logger.error(f"Ошибка в show_stale_hosts: {e}")
         query.edit_message_text("❌ Ошибка при получении данных")
-        
+
 def show_host_status(query, backup_bot, host_name):
     """Показывает статус конкретного хоста"""
     try:
