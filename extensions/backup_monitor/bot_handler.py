@@ -1,5 +1,5 @@
 """
-Server Monitoring System v2.3.3
+Server Monitoring System v2.3.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчик команд бота для мониторинга бэкапов
@@ -482,6 +482,71 @@ class BackupMonitorBot:
         except Exception:
             return "unknown"
     
+    def get_database_recent_status(self, backup_type, db_name, hours=48):
+        """Получает статус БД с учетом бэкапов за указанный период"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        since_time = (datetime.now() - timedelta(hours=hours)).strftime('%Y-%m-%d %H:%M:%S')
+
+        cursor.execute('''
+            SELECT backup_status, received_at, error_count
+            FROM database_backups
+            WHERE backup_type = ? 
+            AND database_name = ?
+            AND received_at >= ?
+            ORDER BY received_at DESC
+        ''', (backup_type, db_name, since_time))
+
+        results = cursor.fetchall()
+        conn.close()
+
+        return results
+
+    def get_database_display_status(self, backup_type, db_name):
+        """Определяет отображаемый статус БД с учетом последних бэкапов"""
+        # Получаем бэкапы за последние 48 часов
+        recent_backups = self.get_database_recent_status(backup_type, db_name, 48)
+        
+        if not recent_backups:
+            return "stale"  # Нет бэкапов за 48 часов
+        
+        # Проверяем последний бэкап
+        last_status, last_time, last_error_count = recent_backups[0]
+        
+        # Если последний бэкап неудачный - показываем как проблемный
+        if last_status == 'failed':
+            return "failed"
+        
+        # Проверяем количество ошибок в последнем бэкапе
+        if last_error_count and last_error_count > 0:
+            return "warning"
+        
+        # Проверяем, есть ли неудачные бэкапы в последних 3
+        recent_failed = any(status == 'failed' for status, _, _ in recent_backups[:3])
+        if recent_failed:
+            return "recent_failed"
+            
+        # Проверяем бэкапы с ошибками в последних 3
+        recent_errors = any(error_count and error_count > 0 for _, _, error_count in recent_backups[:3])
+        if recent_errors:
+            return "recent_errors"
+        
+        # Проверяем свежесть бэкапов
+        try:
+            last_backup_time = datetime.strptime(last_time, '%Y-%m-%d %H:%M:%S')
+            hours_since_last = (datetime.now() - last_backup_time).total_seconds() / 3600
+            
+            if hours_since_last > 48:
+                return "stale"
+            elif hours_since_last > 24:
+                return "old"
+            else:
+                return "success"
+                
+        except Exception:
+            return "unknown"
+        
 def format_database_details(backup_bot, backup_type, db_name, hours=168):
     """ИСПРАВЛЕННАЯ ВЕРСИЯ: Детальная информация по конкретной базе данных"""
     try:
@@ -1196,7 +1261,7 @@ def show_database_backups_summary(query, backup_bot, hours):
         query.edit_message_text("❌ Ошибка при получении данных")
 
 def show_database_backups_list(query, backup_bot):
-    """УЛУЧШЕННАЯ ВЕРСИЯ: Показывает список всех баз данных из конфигурации с отметкой об устаревших бэкапах"""
+    """УЛУЧШЕННАЯ ВЕРСИЯ: Показывает список всех баз данных с правильным статусом"""
     try:
         # Получаем информацию об устаревших бэкапах
         coverage_report = backup_bot.get_backup_coverage_report(24)
@@ -1206,7 +1271,6 @@ def show_database_backups_list(query, backup_bot):
         
         # Получаем все отображаемые имена из конфигурации
         display_names = backup_bot.get_database_display_names()
-        print(f"🔍 DEBUG: Все базы из конфига: {list(display_names.keys())}")
         
         # Группируем базы по типам из конфигурации
         databases_by_type = {
@@ -1216,8 +1280,8 @@ def show_database_backups_list(query, backup_bot):
             'yandex': []
         }
         
-        # Получаем статистику за более длительный период (7 дней) чтобы увидеть все базы
-        stats = backup_bot.get_database_backups_stats_fixed(168)  # 7 дней
+        # Получаем статистику за более длительный период (7 дней)
+        stats = backup_bot.get_database_backups_stats_fixed(168)
         
         # Создаем словарь для статистики по базам
         db_stats = {}
@@ -1235,9 +1299,11 @@ def show_database_backups_list(query, backup_bot):
         for db_name, display_name in DATABASE_BACKUP_CONFIG["company_databases"].items():
             key = ('company_database', db_name)
             stats_info = db_stats.get(key, {'success': 0, 'failed': 0, 'last_backup': None})
+            status = backup_bot.get_database_display_status('company_database', db_name)
             databases_by_type['company_database'].append({
                 'original_name': db_name,
                 'display_name': display_name,
+                'status': status,
                 'success': stats_info['success'],
                 'failed': stats_info['failed'],
                 'last_backup': stats_info['last_backup']
@@ -1247,9 +1313,11 @@ def show_database_backups_list(query, backup_bot):
         for db_name, display_name in DATABASE_BACKUP_CONFIG["barnaul_backups"].items():
             key = ('barnaul', db_name)
             stats_info = db_stats.get(key, {'success': 0, 'failed': 0, 'last_backup': None})
+            status = backup_bot.get_database_display_status('barnaul', db_name)
             databases_by_type['barnaul'].append({
                 'original_name': db_name,
                 'display_name': display_name,
+                'status': status,
                 'success': stats_info['success'],
                 'failed': stats_info['failed'],
                 'last_backup': stats_info['last_backup']
@@ -1259,9 +1327,11 @@ def show_database_backups_list(query, backup_bot):
         for db_name, display_name in DATABASE_BACKUP_CONFIG["client_databases"].items():
             key = ('client', db_name)
             stats_info = db_stats.get(key, {'success': 0, 'failed': 0, 'last_backup': None})
+            status = backup_bot.get_database_display_status('client', db_name)
             databases_by_type['client'].append({
                 'original_name': db_name,
                 'display_name': display_name,
+                'status': status,
                 'success': stats_info['success'],
                 'failed': stats_info['failed'],
                 'last_backup': stats_info['last_backup']
@@ -1271,16 +1341,16 @@ def show_database_backups_list(query, backup_bot):
         for db_name, display_name in DATABASE_BACKUP_CONFIG["yandex_backups"].items():
             key = ('yandex', db_name)
             stats_info = db_stats.get(key, {'success': 0, 'failed': 0, 'last_backup': None})
+            status = backup_bot.get_database_display_status('yandex', db_name)
             databases_by_type['yandex'].append({
                 'original_name': db_name,
                 'display_name': display_name,
+                'status': status,
                 'success': stats_info['success'],
                 'failed': stats_info['failed'],
                 'last_backup': stats_info['last_backup']
             })
 
-        print(f"🔍 DEBUG: Базы из конфига по типам: { {k: len(v) for k, v in databases_by_type.items()} }")
-        
         # Создаем клавиатуру с группировкой по типам
         keyboard = []
         
@@ -1291,54 +1361,62 @@ def show_database_backups_list(query, backup_bot):
             'yandex': {'icon': '☁️', 'name': 'Бэкапы на Yandex'}
         }
 
+        # Статистика по статусам
+        status_counts = {"success": 0, "recent_failed": 0, "failed": 0, "warning": 0, 
+                        "recent_errors": 0, "old": 0, "stale": 0, "unknown": 0}
+
         # Добавляем заголовки и кнопки для каждого типа
         sections_added = 0
         for backup_type, type_config in type_configs.items():
             databases = databases_by_type[backup_type]
             if databases:
                 sections_added += 1
-                # Добавляем заголовок секции
+                
+                # Считаем статистику для этого типа
+                type_status_counts = {}
+                for db in databases:
+                    status = db['status']
+                    status_counts[status] = status_counts.get(status, 0) + 1
+                    type_status_counts[status] = type_status_counts.get(status, 0) + 1
+                
+                # Добавляем заголовок секции со статистикой
+                type_success = type_status_counts.get('success', 0)
+                type_problems = len(databases) - type_success
                 keyboard.append([InlineKeyboardButton(
-                    f"───── {type_config['icon']} {type_config['name']} ─────",
+                    f"───── {type_config['icon']} {type_config['name']} ({type_success}✅ {type_problems}🚨) ─────",
                     callback_data='no_action'
                 )])
-                
-                print(f"🔍 DEBUG: Добавляем секцию '{backup_type}' с {len(databases)} базами")
                 
                 # Добавляем кнопки баз данных для этого типа
                 current_row = []
                 for i, db_info in enumerate(sorted(databases, key=lambda x: x['display_name'])):
-                    success = db_info.get('success', 0)
-                    failed = db_info.get('failed', 0)
-                    total = success + failed
-                    
+                    status = db_info['status']
                     display_name = db_info['display_name']
                     original_name = db_info['original_name']
                     
-                    # Проверяем, есть ли у базы устаревшие бэкапы
-                    is_stale = (backup_type, original_name) in stale_databases_dict
-                    
-                    if total > 0:
-                        success_rate = (success / total) * 100
-                        if is_stale:
-                            status_icon = "❌"  # Бэкапов нет более 24 часов
-                        elif success_rate >= 80:
-                            status_icon = "✅"
-                        elif success_rate >= 50:
-                            status_icon = "🟡"
-                        else:
-                            status_icon = "🔴"
-                        button_text = f"{status_icon} {display_name}"
+                    # Определяем иконку статуса
+                    if status == "success":
+                        status_icon = "✅"
+                    elif status == "failed":
+                        status_icon = "🔴"
+                    elif status == "recent_failed":
+                        status_icon = "🟠"
+                    elif status == "warning":
+                        status_icon = "🟡"
+                    elif status == "recent_errors":
+                        status_icon = "🟠"
+                    elif status == "old":
+                        status_icon = "🟡"
+                    elif status == "stale":
+                        status_icon = "⚫"
                     else:
-                        # Если вообще нет бэкапов
-                        status_icon = "❌"
-                        button_text = f"{status_icon} {display_name}"
+                        status_icon = "⚪"
+                    
+                    button_text = f"{status_icon} {display_name}"
                     
                     # Ограничиваем длину текста кнопки
                     if len(button_text) > 15:
                         button_text = button_text[:12] + ".."
-                    
-                    print(f"🔍 DEBUG: Создаем кнопку: {button_text} для {original_name}")
                     
                     current_row.append(InlineKeyboardButton(
                         button_text, 
@@ -1353,17 +1431,17 @@ def show_database_backups_list(query, backup_bot):
                 # Добавляем пустую строку между секциями для визуального разделения
                 keyboard.append([])
         
-        print(f"🔍 DEBUG: Добавлено секций: {sections_added}")
-        
         # Убираем последнюю пустую строку если есть
         if keyboard and not keyboard[-1]:
             keyboard.pop()
         
         # Добавляем кнопку для просмотра только проблемных БД
-        stale_db_count = len(coverage_report['stale_databases'])
-        if stale_db_count > 0:
+        problem_db_count = (status_counts.get('failed', 0) + status_counts.get('recent_failed', 0) + 
+                          status_counts.get('warning', 0) + status_counts.get('recent_errors', 0) + 
+                          status_counts.get('stale', 0))
+        if problem_db_count > 0:
             keyboard.append([InlineKeyboardButton(
-                f"🔍 Показать только проблемные БД ({stale_db_count})", 
+                f"🔍 Показать только проблемные БД ({problem_db_count})", 
                 callback_data='db_stale_list'
             )])
         
@@ -1388,10 +1466,32 @@ def show_database_backups_list(query, backup_bot):
             [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
 
-        print(f"🔍 DEBUG: Итоговая клавиатура: {len(keyboard)} строк")
+        # Обновляем легенду
+        message = "📋 *Список баз данных*\n\n"
+        message += "*Легенда:*\n"
+        message += "✅ - все бэкапы успешны\n"
+        message += "🔴 - последний бэкап неудачен\n"
+        message += "🟠 - есть неудачные бэкапы в истории\n"
+        message += "🟡 - есть предупреждения/ошибки\n"
+        message += "⚫ - нет свежих бэкапов (>48ч)\n"
+        message += "⚪ - статус неизвестен\n\n"
         
+        message += "*Секции:*\n"
+        message += "🏢 Основные БД компании\n"
+        message += "🏔️ Бэкапы Барнаул\n"
+        message += "👥 Базы клиентов\n"
+        message += "☁️ Бэкапы на Yandex\n\n"
+        
+        # Общая статистика
+        total_success = status_counts.get('success', 0)
+        total_problems = problem_db_count
+        total_unknown = status_counts.get('unknown', 0)
+        message += f"*Статистика:* {total_success}✅ {total_problems}🚨 {total_unknown}⚪\n\n"
+        
+        message += "Выберите базу для просмотра деталей:"
+
         query.edit_message_text(
-            "📋 *Список баз данных*\n\n*Легенда:*\n✅ - нормальные бэкапы\n🟡 - есть проблемы\n🔴 - много ошибок\n❌ - нет бэкапов >24ч\n\n*Секции:*\n🏢 Основные БД компании\n🏔️ Бэкапы Барнаул\n👥 Базы клиентов\n☁️ Бэкапы на Yandex\n\nВыберите базу для просмотра деталей:",
+            message,
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
@@ -1403,14 +1503,48 @@ def show_database_backups_list(query, backup_bot):
         query.edit_message_text("❌ Ошибка при получении данных")
 
 def show_stale_databases(query, backup_bot):
-    """Показывает только базы данных с устаревшими бэкапами"""
+    """Показывает только проблемные базы данных - ОБНОВЛЕННАЯ ВЕРСИЯ"""
     try:
-        coverage_report = backup_bot.get_backup_coverage_report(24)
-        stale_databases = coverage_report['stale_databases']
+        from config import DATABASE_BACKUP_CONFIG
         
-        if not stale_databases:
+        problem_databases = []
+        
+        # Проверяем все базы из конфигурации
+        # Основные базы компании
+        for db_name, display_name in DATABASE_BACKUP_CONFIG["company_databases"].items():
+            status = backup_bot.get_database_display_status('company_database', db_name)
+            if status not in ['success', 'unknown']:
+                recent = backup_bot.get_database_recent_status('company_database', db_name, 72)
+                last_time = recent[0][1] if recent else None
+                problem_databases.append(('company_database', db_name, display_name, status, last_time))
+        
+        # Базы Барнаул
+        for db_name, display_name in DATABASE_BACKUP_CONFIG["barnaul_backups"].items():
+            status = backup_bot.get_database_display_status('barnaul', db_name)
+            if status not in ['success', 'unknown']:
+                recent = backup_bot.get_database_recent_status('barnaul', db_name, 72)
+                last_time = recent[0][1] if recent else None
+                problem_databases.append(('barnaul', db_name, display_name, status, last_time))
+        
+        # Клиентские базы
+        for db_name, display_name in DATABASE_BACKUP_CONFIG["client_databases"].items():
+            status = backup_bot.get_database_display_status('client', db_name)
+            if status not in ['success', 'unknown']:
+                recent = backup_bot.get_database_recent_status('client', db_name, 72)
+                last_time = recent[0][1] if recent else None
+                problem_databases.append(('client', db_name, display_name, status, last_time))
+        
+        # Yandex базы
+        for db_name, display_name in DATABASE_BACKUP_CONFIG["yandex_backups"].items():
+            status = backup_bot.get_database_display_status('yandex', db_name)
+            if status not in ['success', 'unknown']:
+                recent = backup_bot.get_database_recent_status('yandex', db_name, 72)
+                last_time = recent[0][1] if recent else None
+                problem_databases.append(('yandex', db_name, display_name, status, last_time))
+
+        if not problem_databases:
             query.edit_message_text(
-                "🎉 *Проблемные базы данных*\n\nНет БД с устаревшими бэкапами!",
+                "🎉 *Проблемные базы данных*\n\nНет БД с проблемными бэкапами!",
                 parse_mode='Markdown',
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("↩️ Назад", callback_data='db_backups_list')],
@@ -1420,7 +1554,11 @@ def show_stale_databases(query, backup_bot):
             return
         
         keyboard = []
-        message = "❌ *Базы данных без бэкапов более 24 часов:*\n\n"
+        message = "🚨 *Проблемные базы данных:*\n\n"
+        
+        # Сортируем по серьезности проблемы
+        problem_priority = {'failed': 1, 'recent_failed': 2, 'warning': 3, 'recent_errors': 4, 'stale': 5, 'old': 6}
+        problem_databases.sort(key=lambda x: (problem_priority.get(x[3], 99), x[2]))
         
         type_names = {
             'company_database': '🏢',
@@ -1429,32 +1567,47 @@ def show_stale_databases(query, backup_bot):
             'yandex': '☁️'
         }
         
-        for backup_type, db_name, db_display, last_backup in stale_databases:
+        for backup_type, db_name, display_name, problem_type, last_backup in problem_databases:
+            type_icon = type_names.get(backup_type, '📁')
+            
             try:
-                last_time = datetime.strptime(last_backup, '%Y-%m-%d %H:%M:%S')
-                hours_ago = int((datetime.now() - last_time).total_seconds() / 3600)
-                days_ago = hours_ago // 24
-                remaining_hours = hours_ago % 24
-                
-                if days_ago > 0:
-                    time_ago = f"{days_ago}д {remaining_hours}ч"
+                if last_backup:
+                    last_time = datetime.strptime(last_backup, '%Y-%m-%d %H:%M:%S')
+                    hours_ago = int((datetime.now() - last_time).total_seconds() / 3600)
+                    days_ago = hours_ago // 24
+                    remaining_hours = hours_ago % 24
+                    
+                    if days_ago > 0:
+                        time_ago = f"{days_ago}д {remaining_hours}ч"
+                    else:
+                        time_ago = f"{hours_ago}ч"
                 else:
-                    time_ago = f"{hours_ago}ч"
+                    time_ago = "неизвестно"
                 
-                type_icon = type_names.get(backup_type, '📁')
-                display_name = db_display or db_name
+                if problem_type == 'failed':
+                    problem_text = f"🔴 {type_icon} {display_name} - последний бэкап неудачен ({time_ago} назад)"
+                elif problem_type == 'recent_failed':
+                    problem_text = f"🟠 {type_icon} {display_name} - есть неудачные бэкапы ({time_ago} назад)"
+                elif problem_type in ['warning', 'recent_errors']:
+                    problem_text = f"🟡 {type_icon} {display_name} - есть ошибки в бэкапах ({time_ago} назад)"
+                elif problem_type == 'stale':
+                    problem_text = f"⚫ {type_icon} {display_name} - нет свежих бэкапов ({time_ago} назад)"
+                elif problem_type == 'old':
+                    problem_text = f"🟡 {type_icon} {display_name} - бэкапы устарели ({time_ago} назад)"
+                else:
+                    problem_text = f"⚪ {type_icon} {display_name} - проблема ({time_ago} назад)"
                 
-                message += f"• {type_icon} {display_name} - {time_ago} назад\n"
+                message += f"• {problem_text}\n"
                 
                 keyboard.append([InlineKeyboardButton(
-                    f"🔍 {display_name} ({time_ago})", 
+                    f"🔍 {display_name}", 
                     callback_data=f'db_detail_{backup_type}__{db_name}'
                 )])
                 
             except Exception as e:
-                message += f"• {db_name} - ошибка времени\n"
+                message += f"• {type_icon} {display_name} - ошибка времени\n"
         
-        message += f"\n*Всего проблемных БД:* {len(stale_databases)}"
+        message += f"\n*Всего проблемных БД:* {len(problem_databases)}"
         
         keyboard.extend([
             [InlineKeyboardButton("🔄 Обновить", callback_data='db_stale_list')],
