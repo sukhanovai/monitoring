@@ -339,29 +339,141 @@ def get_linux_resources_improved(ip, timeout=20):
     return resources
 
 def get_windows_resources_improved(ip, timeout=30):
-    """Улучшенное получение ресурсов Windows сервера"""
+    """Улучшенное получение ресурсов Windows сервера через WinRM"""
     if not check_ping(ip):
         return None
 
-    # Упрощенная реализация - заглушка для демонстрации
-    # В реальной реализации здесь будет логика с WinRM
     try:
-        # Проверяем доступность RDP порта как индикатор доступности
+        # Импортируем здесь чтобы избежать циклических импортов
+        import winrm
+        import xml.etree.ElementTree as ET
+        
+        # Получаем учетные данные для этого сервера
+        credentials = get_windows_server_credentials(ip)
+        
+        resources = {
+            "cpu": 0.0, "ram": 0.0, "disk": 0.0,
+            "load_avg": "N/A", "uptime": "N/A", 
+            "os": "Windows Server",
+            "timestamp": datetime.now().strftime("%H:%M:%S"),
+            "status": "available",
+            "access_method": "WinRM",
+            "server_type": get_windows_server_type(ip)
+        }
+        
+        # Пробуем подключиться с разными учетными данными
+        session = None
+        last_error = None
+        
+        for cred in credentials:
+            try:
+                username = cred["username"]
+                password = cred["password"]
+                
+                # Создаем сессию WinRM
+                session = winrm.Session(
+                    ip, 
+                    auth=(username, password),
+                    transport='ntlm',
+                    server_cert_validation='ignore',
+                    read_timeout_sec=timeout
+                )
+                
+                # Проверяем подключение
+                result = session.run_cmd('echo test')
+                if result.status_code == 0:
+                    break  # Успешное подключение
+                else:
+                    session = None
+                    
+            except Exception as e:
+                last_error = str(e)
+                session = None
+                continue
+        
+        if not session:
+            return None
+        
+        # Получаем загрузку CPU через WMI
+        try:
+            cpu_ps = """
+Get-Counter "\\Processor(_Total)\\% Processor Time" -SampleInterval 1 -MaxSamples 2 | 
+ForEach-Object {$_.CounterSamples[0].CookedValue} | 
+Measure-Object -Average | 
+Select-Object -ExpandProperty Average
+"""
+            result = session.run_ps(cpu_ps)
+            if result.status_code == 0 and result.std_out.strip():
+                cpu_usage = float(result.std_out.strip())
+                resources["cpu"] = round(cpu_usage, 1)
+        except Exception as e:
+            print(f"CPU check error for {ip}: {e}")
+        
+        # Получаем использование памяти
+        try:
+            ram_ps = """
+$computerInfo = Get-WmiObject -Class Win32_OperatingSystem
+$totalMemory = [math]::Round($computerInfo.TotalVisibleMemorySize / 1MB, 2)
+$freeMemory = [math]::Round($computerInfo.FreePhysicalMemory / 1MB, 2)
+$usedMemory = $totalMemory - $freeMemory
+$memoryUsage = ($usedMemory / $totalMemory) * 100
+[math]::Round($memoryUsage, 1)
+"""
+            result = session.run_ps(ram_ps)
+            if result.status_code == 0 and result.std_out.strip():
+                ram_usage = float(result.std_out.strip())
+                resources["ram"] = ram_usage
+        except Exception as e:
+            print(f"RAM check error for {ip}: {e}")
+        
+        # Получаем использование диска
+        try:
+            disk_ps = """
+Get-WmiObject -Class Win32_LogicalDisk -Filter "DriveType=3" | 
+Where-Object {$_.DeviceID -eq 'C:'} | 
+ForEach-Object {
+    $usedSpace = $_.Size - $_.FreeSpace
+    $usagePercent = ($usedSpace / $_.Size) * 100
+    [math]::Round($usagePercent, 1)
+}
+"""
+            result = session.run_ps(disk_ps)
+            if result.status_code == 0 and result.std_out.strip():
+                disk_usage = float(result.std_out.strip())
+                resources["disk"] = disk_usage
+        except Exception as e:
+            print(f"Disk check error for {ip}: {e}")
+        
+        # Получаем информацию о времени работы
+        try:
+            uptime_ps = """
+$os = Get-WmiObject -Class Win32_OperatingSystem
+$uptime = (Get-Date) - $os.ConvertToDateTime($os.LastBootUpTime)
+"{0}d {1}h {2}m" -f $uptime.Days, $uptime.Hours, $uptime.Minutes
+"""
+            result = session.run_ps(uptime_ps)
+            if result.status_code == 0 and result.std_out.strip():
+                resources["uptime"] = result.std_out.strip()
+        except Exception as e:
+            print(f"Uptime check error for {ip}: {e}")
+        
+        return resources
+        
+    except Exception as e:
+        print(f"WinRM connection error for {ip}: {e}")
+        # Fallback: проверяем доступность через RDP порт
         if check_port(ip, 3389, 5):
             return {
                 "cpu": 0.0, "ram": 0.0, "disk": 0.0,
                 "load_avg": "N/A", "uptime": "N/A", 
                 "os": "Windows Server",
                 "timestamp": datetime.now().strftime("%H:%M:%S"),
-                "status": "available",
+                "status": "available_no_metrics",
                 "access_method": "RDP",
                 "server_type": get_windows_server_type(ip)
             }
-        else:
-            return None
-    except Exception:
         return None
-
+    
 def check_resource_thresholds(ip, resources, server_name):
     """Проверяет превышение порогов ресурсов"""
     alerts = []
