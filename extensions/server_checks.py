@@ -1,5 +1,5 @@
 """
-Server Monitoring System v2.4.1
+Server Monitoring System v2.4.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Унифицированные проверки серверов: ресурсы, доступность, список
@@ -14,76 +14,25 @@ import os
 sys.path.insert(0, '/opt/monitoring')
 
 from config import (RDP_SERVERS, SSH_SERVERS, PING_SERVERS, SSH_KEY_PATH, SSH_USERNAME, 
-                   RESOURCE_THRESHOLDS, WINDOWS_SERVER_CREDENTIALS, WINRM_CONFIGS)
+                   RESOURCE_THRESHOLDS, WINDOWS_SERVER_CREDENTIALS, WINRM_CONFIGS,
+                   SERVER_CONFIG)
 
-# === СПИСОК СЕРВЕРОВ (из server_list.py) ===
+# === СПИСОК СЕРВЕРОВ (теперь полностью из config.py) ===
 
 def initialize_servers():
-    """Инициализация списка серверов с привязкой IP к именам"""
+    """Инициализация списка серверов из конфигурации"""
     servers = []
     
-    # Windows RDP серверы - ПРАВИЛЬНЫЕ ИМЕНА
-    windows_servers = {
-        "192.168.20.3": "SR-DC2",
-        "192.168.20.4": "SR-DC1", 
-        "192.168.20.6": "ts1",
-        "192.168.20.9": "TSR-SR7",
-        "192.168.20.26": "SR-WTW",
-        "192.168.20.38": "ts4",
-        "192.168.20.42": "TOOLS",
-        "192.168.20.47": "ts2",
-        "192.168.20.56": "ts3",
-        "192.168.20.57": "ts5",
-        "192.168.21.133": "TSR-1C72"
-    }
-    
-    for ip in RDP_SERVERS:
-        name = windows_servers.get(ip, f"Windows-{ip.split('.')[-1]}")
+    # Windows RDP серверы
+    for ip, name in SERVER_CONFIG["windows_servers"].items():
         servers.append({
             "ip": ip,
             "name": name,
             "type": "rdp"
         })
     
-    # Linux SSH серверы - ПРАВИЛЬНЫЕ ИМЕНА
-    linux_servers = {
-        "192.168.30.101": "pve1",
-        "192.168.30.102": "pve2",
-        "192.168.30.103": "pve3",
-        "192.168.30.104": "pve4",
-        "192.168.30.105": "pve5",
-        "192.168.30.106": "pve6",
-        "192.168.30.108": "pve8",
-        "192.168.30.110": "pve10",
-        "192.168.30.112": "pve12",
-        "192.168.30.113": "pve13",
-        "192.168.30.114": "pve14",
-        "192.168.20.5": "network",
-        "192.168.20.8": "sr-1cork",
-        "192.168.20.10": "sr-web-fe",
-        "192.168.20.11": "sr-web",
-        "192.168.20.13": "unifi",
-        "192.168.20.14": "smb3",
-        "192.168.20.17": "docs",
-        "192.168.20.22": "sr-goods",
-        "192.168.20.25": "db",
-        "192.168.20.30": "bup3",
-        "192.168.20.32": "bup",
-        "192.168.20.35": "sr-slk",
-        "192.168.20.37": "exchange",
-        "192.168.20.39": "wms",
-        "192.168.20.41": "awiki",
-        "192.168.20.44": "np",
-        "192.168.20.48": "smb1",
-        "192.168.20.49": "mail",
-        "192.168.20.51": "buh",
-        "192.168.20.58": "devel",
-        "192.168.20.59": "bup2",
-        "192.168.20.74": "smb4"
-    }
-    
-    for ip in SSH_SERVERS:
-        name = linux_servers.get(ip, f"Linux-{ip.split('.')[-1]}")
+    # Linux SSH серверы
+    for ip, name in SERVER_CONFIG["linux_servers"].items():
         servers.append({
             "ip": ip,
             "name": name,
@@ -91,10 +40,10 @@ def initialize_servers():
         })
     
     # Ping-only серверы
-    for ip in PING_SERVERS:
+    for ip, name in SERVER_CONFIG["ping_servers"].items():
         servers.append({
             "ip": ip,
-            "name": f"Ping-{ip.split('.')[-1]}",
+            "name": name,
             "type": "ping"
         })
     
@@ -179,7 +128,7 @@ def servers_list_handler(update, context):
     """Обработчик кнопки списка серверов"""
     return servers_command(update, context)
 
-# === УТИЛИТЫ ПРОВЕРКИ (из resource_check.py) ===
+# === УТИЛИТЫ ПРОВЕРКИ ===
 
 def check_port(ip, port, timeout=5):
     """Проверка доступности порта"""
@@ -227,7 +176,7 @@ def get_windows_server_type(ip):
             return server_type
     return "unknown"
 
-# === РАЗДЕЛЬНЫЕ ПРОВЕРКИ (из separate_checks.py) ===
+# === РАЗДЕЛЬНЫЕ ПРОВЕРКИ ===
 
 def check_linux_servers(progress_callback=None):
     """Проверка всех Linux серверов"""
@@ -302,7 +251,6 @@ def check_all_servers_by_type():
 
 def get_linux_resources_improved(ip, timeout=20):
     """Получение ресурсов Linux сервера"""
-    # Реализация из resource_check.py (сокращено для примера)
     if not check_port(ip, 22, 3):
         return None
     
@@ -362,7 +310,6 @@ def get_linux_resources_improved(ip, timeout=20):
 
 def get_windows_resources_improved(ip, timeout=30):
     """Улучшенное получение ресурсов Windows сервера"""
-    # Реализация из resource_check.py (сокращено для примера)
     if not check_ping(ip):
         return None
 
