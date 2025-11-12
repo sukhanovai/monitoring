@@ -1,5 +1,5 @@
 """
-Server Monitoring System v2.4.2
+Server Monitoring System v2.4.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Унифицированные проверки серверов: ресурсы, доступность, список
@@ -17,7 +17,7 @@ from config import (RDP_SERVERS, SSH_SERVERS, PING_SERVERS, SSH_KEY_PATH, SSH_US
                    RESOURCE_THRESHOLDS, WINDOWS_SERVER_CREDENTIALS, WINRM_CONFIGS,
                    SERVER_CONFIG)
 
-# === СПИСОК СЕРВЕРОВ (теперь полностью из config.py) ===
+# === СПИСОК СЕРВЕРОВ ===
 
 def initialize_servers():
     """Инициализация списка серверов из конфигурации"""
@@ -176,7 +176,53 @@ def get_windows_server_type(ip):
             return server_type
     return "unknown"
 
-# === РАЗДЕЛЬНЫЕ ПРОВЕРКИ ===
+# === РАЗДЕЛЬНЫЕ ПРОВЕРКИ WINDOWS СЕРВЕРОВ ===
+
+def check_domain_windows_servers(progress_callback=None):
+    """Проверка доменных Windows серверов"""
+    servers = [s for s in get_servers_by_type("rdp") 
+               if s["ip"] in WINDOWS_SERVER_CREDENTIALS["domain_servers"]["servers"]]
+    return check_windows_servers_generic(servers, "domain", progress_callback)
+
+def check_admin_windows_servers(progress_callback=None):
+    """Проверка Windows серверов с учеткой Admin"""
+    servers = [s for s in get_servers_by_type("rdp") 
+               if s["ip"] in WINDOWS_SERVER_CREDENTIALS["admin_servers"]["servers"]]
+    return check_windows_servers_generic(servers, "admin", progress_callback)
+
+def check_standard_windows_servers(progress_callback=None):
+    """Проверка стандартных Windows серверов"""
+    servers = [s for s in get_servers_by_type("rdp") 
+               if s["ip"] in WINDOWS_SERVER_CREDENTIALS["standard_windows"]["servers"]]
+    return check_windows_servers_generic(servers, "standard", progress_callback)
+
+def check_windows_servers_generic(servers, server_type, progress_callback=None):
+    """Универсальная функция проверки Windows серверов"""
+    results = []
+    
+    for i, server in enumerate(servers):
+        if progress_callback:
+            progress = (i + 1) / len(servers) * 100
+            progress_callback(progress, f"Проверяем {server['name']} ({server_type})...")
+        
+        try:
+            resources = get_windows_resources_improved(server["ip"])
+            results.append({
+                "server": server,
+                "resources": resources,
+                "success": resources is not None
+            })
+        except Exception as e:
+            results.append({
+                "server": server,
+                "resources": None,
+                "success": False,
+                "error": str(e)
+            })
+    
+    return results, len(servers)
+
+# === РАЗДЕЛЬНЫЕ ПРОВЕРКИ LINUX СЕРВЕРОВ ===
 
 def check_linux_servers(progress_callback=None):
     """Проверка всех Linux серверов"""
@@ -209,42 +255,26 @@ def check_windows_2025_servers(progress_callback=None):
     """Проверка Windows Server 2025"""
     servers = [s for s in get_servers_by_type("rdp") 
                if s["ip"] in WINDOWS_SERVER_CREDENTIALS["windows_2025"]["servers"]]
-    results = []
-    
-    for i, server in enumerate(servers):
-        if progress_callback:
-            progress = (i + 1) / len(servers) * 100
-            progress_callback(progress, f"Проверяем {server['name']}...")
-        
-        try:
-            resources = get_windows_resources_improved(server["ip"])
-            results.append({
-                "server": server,
-                "resources": resources,
-                "success": resources is not None
-            })
-        except Exception as e:
-            results.append({
-                "server": server,
-                "resources": None,
-                "success": False,
-                "error": str(e)
-            })
-    
-    return results, len(servers)
+    return check_windows_servers_generic(servers, "windows_2025", progress_callback)
 
 def check_all_servers_by_type():
     """Проверка всех серверов по типам"""
     linux_results, linux_total = check_linux_servers()
     win2025_results, win2025_total = check_windows_2025_servers()
+    domain_results, domain_total = check_domain_windows_servers()
+    admin_results, admin_total = check_admin_windows_servers()
+    standard_results, standard_total = check_standard_windows_servers()
     
     stats = {
         "linux": {"checked": linux_total, "success": len([r for r in linux_results if r["success"]])},
         "windows_2025": {"checked": win2025_total, "success": len([r for r in win2025_results if r["success"]])},
-        "standard_windows": {"checked": 0, "success": 0}  # Можно добавить другие типы
+        "domain_windows": {"checked": domain_total, "success": len([r for r in domain_results if r["success"]])},
+        "admin_windows": {"checked": admin_total, "success": len([r for r in admin_results if r["success"]])},
+        "standard_windows": {"checked": standard_total, "success": len([r for r in standard_results if r["success"]])}
     }
     
-    all_results = linux_results + win2025_results
+    all_results = (linux_results + win2025_results + domain_results + 
+                   admin_results + standard_results)
     return all_results, stats
 
 # === ОСНОВНЫЕ ФУНКЦИИ ПРОВЕРКИ РЕСУРСОВ ===
@@ -313,16 +343,24 @@ def get_windows_resources_improved(ip, timeout=30):
     if not check_ping(ip):
         return None
 
-    # Упрощенная реализация - в реальном коде здесь будет полная логика
-    return {
-        "cpu": 0.0, "ram": 0.0, "disk": 0.0,
-        "load_avg": "N/A", "uptime": "N/A", 
-        "os": "Windows Server",
-        "timestamp": datetime.now().strftime("%H:%M:%S"),
-        "status": "available",
-        "access_method": "WinRM",
-        "server_type": get_windows_server_type(ip)
-    }
+    # Упрощенная реализация - заглушка для демонстрации
+    # В реальной реализации здесь будет логика с WinRM
+    try:
+        # Проверяем доступность RDP порта как индикатор доступности
+        if check_port(ip, 3389, 5):
+            return {
+                "cpu": 0.0, "ram": 0.0, "disk": 0.0,
+                "load_avg": "N/A", "uptime": "N/A", 
+                "os": "Windows Server",
+                "timestamp": datetime.now().strftime("%H:%M:%S"),
+                "status": "available",
+                "access_method": "RDP",
+                "server_type": get_windows_server_type(ip)
+            }
+        else:
+            return None
+    except Exception:
+        return None
 
 def check_resource_thresholds(ip, resources, server_name):
     """Проверяет превышение порогов ресурсов"""

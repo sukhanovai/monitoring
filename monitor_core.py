@@ -1,5 +1,5 @@
 """
-Server Monitoring System v2.4.2
+Server Monitoring System v2.4.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Ядро системы
@@ -271,7 +271,7 @@ def monitor_status(update, context):
         next_check = datetime.now() + timedelta(seconds=config.CHECK_INTERVAL)
 
         message = (
-            f"📊 *Статус мониторинга* - ОПТИМИЗИРОВАННАЯ ВЕРСИЯ\n\n"
+            f"📊 *Статус мониторинга*\n\n"
             f"**Состояние:** {status}\n"
             f"**Режим:** {silent_status_text}\n\n"
             f"⏰ Последняя проверка: {last_check_time.strftime('%H:%M:%S')}\n"
@@ -1121,8 +1121,17 @@ def perform_windows_check(context, chat_id, progress_message_id):
         return resources.get(key, default)
 
     try:
-        from extensions.server_checks import (check_windows_2025_servers, check_domain_windows_servers,
-                                              check_admin_windows_servers, check_standard_windows_servers)
+        from extensions.server_checks import (
+            initialize_servers,
+            check_linux_servers,
+            check_windows_2025_servers,
+            check_domain_windows_servers,
+            check_admin_windows_servers, 
+            check_standard_windows_servers,
+            check_all_servers_by_type,
+            get_linux_resources_improved,
+            get_windows_resources_improved
+        )
 
         update_progress(0, "⏳ Подготовка...")
 
@@ -1351,7 +1360,7 @@ def perform_full_check(context, chat_id, progress_message_id):
         )
 
 def start_monitoring():
-    """Запускает основной цикл мониторинга - ОПТИМИЗИРОВАННАЯ ВЕРСИЯ"""
+    """Запускает основной цикл мониторинга"""
     global servers, bot, monitoring_active, last_report_date, morning_data
 
     debug_log = get_debug_log()
@@ -1385,7 +1394,7 @@ def start_monitoring():
 
     # Обновляем стартовое сообщение
     start_message = (
-        "🟢 *Мониторинг серверов запущен* - ОПТИМИЗИРОВАННАЯ ВЕРСИЯ\n\n"
+        "🟢 *Мониторинг серверов запущен*\n\n"
         f"• Серверов в мониторинге: {len(servers)}\n"
         f"• Проверка ресурсов: каждые {config.RESOURCE_CHECK_INTERVAL // 60} минут\n"
         f"• Утренний отчет: {config.DATA_COLLECTION_TIME.strftime('%H:%M')}\n\n"
@@ -1745,7 +1754,7 @@ def send_morning_report():
     down_count = len(status["failed"])
 
     # Формируем сообщение
-    message = f"📊 *Утренний отчет о доступности серверов* - ОПТИМИЗИРОВАННАЯ ВЕРСИЯ\n\n"
+    message = f"📊 *Утренний отчет о доступности серверов*\n\n"
     message += f"⏰ *Время сбора данных:* {collection_time.strftime('%H:%M')}\n"
     message += f"🔢 *Всего серверов:* {total_servers}\n"
     message += f"🟢 *Доступно:* {up_count}\n"

@@ -1,5 +1,5 @@
 """
-Server Monitoring System v2.4.2
+Server Monitoring System v2.4.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Меню бота
@@ -99,7 +99,7 @@ def start_command(update, context):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     welcome_text = (
-        "🤖 *Серверный мониторинг - ОПТИМИЗИРОВАННАЯ ВЕРСИЯ*\n\n"
+        "🤖 *Серверный мониторинг*\n\n"
         "✅ Система работает\n\n"
     )
     
@@ -124,7 +124,7 @@ def help_command(update, context):
         return
 
     help_text = (
-        "🤖 *Помощь по мониторингу - ОПТИМИЗИРОВАННАЯ ВЕРСИЯ*\n\n"
+        "🤖 *Помощь по мониторингу*\n\n"
         "*Основные команды:*\n"
         "• `/start` - Главное меню\n"
         "• `/status` - Статус мониторинга\n"
@@ -278,7 +278,7 @@ def extensions_command(update, context):
     show_extensions_menu(update, context)
 
 def show_extensions_menu(update, context):
-    """Показывает меню управления расширениями - ОПТИМИЗИРОВАННАЯ ВЕРСИЯ"""
+    """Показывает меню управления расширениями"""
     from telegram import InlineKeyboardMarkup, InlineKeyboardButton
     
     query = update.callback_query
@@ -287,7 +287,7 @@ def show_extensions_menu(update, context):
     extension_manager = get_extension_manager()
     extensions_status = extension_manager.get_extensions_status()
     
-    message = "🛠️ *Управление расширениями - ОПТИМИЗИРОВАННАЯ ВЕРСИЯ*\n\n"
+    message = "🛠️ *Управление расширениями*\n\n"
     message += "📊 *Статус расширений:*\n\n"
     
     # Создаем клавиатуру
@@ -337,7 +337,7 @@ def show_extensions_menu(update, context):
         )
         
 def extensions_callback_handler(update, context):
-    """Обработчик callback'ов для управления расширениями - ОПТИМИЗИРОВАННАЯ ВЕРСИЯ"""
+    """Обработчик callback'ов для управления расширениями"""
     query = update.callback_query
     query.answer()
     
@@ -441,7 +441,7 @@ def show_debug_menu(update, context):
     except ImportError:
         debug_status = "🔴 НЕДОСТУПНА"
     
-    message = "🐛 *Управление отладкой - ОПТИМИЗИРОВАННАЯ ВЕРСИЯ*\n\n"
+    message = "🐛 *Управление отладкой*\n\n"
     message += f"*Текущий статус:* {debug_status}\n\n"
     
     message += "*Функции отладки:*\n"
