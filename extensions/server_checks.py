@@ -339,141 +339,255 @@ def get_linux_resources_improved(ip, timeout=20):
     return resources
 
 def get_windows_resources_improved(ip, timeout=30):
-    """Улучшенное получение ресурсов Windows сервера через WinRM"""
+    """Улучшенное получение ресурсов Windows сервера с несколькими методами"""
     if not check_ping(ip):
         return None
 
+    resources = {
+        "cpu": 0.0, "ram": 0.0, "disk": 0.0,
+        "load_avg": "N/A", "uptime": "N/A", 
+        "os": "Windows Server",
+        "timestamp": datetime.now().strftime("%H:%M:%S"),
+        "status": "available",
+        "access_method": "Mixed",
+        "server_type": get_windows_server_type(ip)
+    }
+    
+    # Метод 1: Попробуем WinRM с PowerShell
+    winrm_result = get_windows_resources_winrm(ip, timeout)
+    if winrm_result and any([winrm_result.get("cpu", 0) > 0, winrm_result.get("ram", 0) > 0]):
+        return winrm_result
+    
+    # Метод 2: Попробуем WMI
+    wmi_result = get_windows_resources_wmi(ip, timeout)
+    if wmi_result and any([wmi_result.get("cpu", 0) > 0, wmi_result.get("ram", 0) > 0]):
+        return wmi_result
+    
+    # Метод 3: Базовое получение только диска через другие методы
+    disk_result = get_windows_disk_only(ip, timeout)
+    if disk_result:
+        return disk_result
+    
+    # Если все методы не сработали, но сервер доступен
+    if check_port(ip, 3389, 5):
+        resources["status"] = "available_no_metrics"
+        resources["access_method"] = "RDP_only"
+        return resources
+    
+    return None
+
+def get_windows_resources_winrm(ip, timeout=30):
+    """Получение ресурсов через WinRM"""
     try:
-        # Импортируем здесь чтобы избежать циклических импортов
         import winrm
-        import xml.etree.ElementTree as ET
         
-        # Получаем учетные данные для этого сервера
         credentials = get_windows_server_credentials(ip)
         
-        resources = {
-            "cpu": 0.0, "ram": 0.0, "disk": 0.0,
-            "load_avg": "N/A", "uptime": "N/A", 
-            "os": "Windows Server",
-            "timestamp": datetime.now().strftime("%H:%M:%S"),
-            "status": "available",
-            "access_method": "WinRM",
-            "server_type": get_windows_server_type(ip)
-        }
+        for cred in credentials:
+            try:
+                username = cred["username"]
+                password = cred["password"]
+                domain = ""
+                
+                # Если имя пользователя содержит домен
+                if "\\" in username:
+                    domain, username = username.split("\\", 1)
+                
+                # Подключаемся к WinRM
+                if domain:
+                    session = winrm.Session(
+                        ip,
+                        auth=(f"{domain}\\{username}", password),
+                        transport='ntlm',
+                        server_cert_validation='ignore',
+                        read_timeout_sec=timeout
+                    )
+                else:
+                    session = winrm.Session(
+                        ip,
+                        auth=(username, password),
+                        transport='ntlm', 
+                        server_cert_validation='ignore',
+                        read_timeout_sec=timeout
+                    )
+                
+                # Простая проверка подключения
+                result = session.run_cmd('hostname')
+                if result.status_code != 0:
+                    continue
+                
+                resources = {
+                    "cpu": 0.0, "ram": 0.0, "disk": 0.0,
+                    "os": "Windows Server",
+                    "timestamp": datetime.now().strftime("%H:%M:%S"),
+                    "access_method": "WinRM"
+                }
+                
+                # Комплексный PowerShell скрипт для получения всех метрик
+                ps_script = """
+# CPU Usage
+$cpu = Get-WmiObject -Class Win32_Processor | Measure-Object -Property LoadPercentage -Average | Select-Object -ExpandProperty Average
+if (-not $cpu) { $cpu = 0 }
+
+# Memory Usage  
+$os = Get-WmiObject -Class Win32_OperatingSystem
+$totalMem = [math]::Round($os.TotalVisibleMemorySize / 1MB, 2)
+$freeMem = [math]::Round($os.FreePhysicalMemory / 1MB, 2)
+$usedMem = $totalMem - $freeMem
+$memPercent = [math]::Round(($usedMem / $totalMem) * 100, 1)
+
+# Disk Usage
+$disk = Get-WmiObject -Class Win32_LogicalDisk -Filter "DeviceID='C:'"
+if ($disk) {
+    $diskPercent = [math]::Round((($disk.Size - $disk.FreeSpace) / $disk.Size) * 100, 1)
+} else {
+    $diskPercent = 0
+}
+
+# Output as CSV
+"$cpu,$memPercent,$diskPercent"
+"""
+                
+                result = session.run_ps(ps_script)
+                if result.status_code == 0 and result.std_out:
+                    parts = result.std_out.strip().split(',')
+                    if len(parts) == 3:
+                        resources["cpu"] = float(parts[0]) if parts[0] else 0.0
+                        resources["ram"] = float(parts[1]) if parts[1] else 0.0
+                        resources["disk"] = float(parts[2]) if parts[2] else 0.0
+                
+                # Если получили хоть какие-то данные
+                if resources["cpu"] > 0 or resources["ram"] > 0 or resources["disk"] > 0:
+                    return resources
+                    
+            except Exception as e:
+                print(f"WinRM error for {ip} with {cred['username']}: {e}")
+                continue
+                
+        return None
         
-        # Пробуем подключиться с разными учетными данными
-        session = None
-        last_error = None
+    except ImportError:
+        print("WinRM library not available")
+        return None
+    except Exception as e:
+        print(f"WinRM general error for {ip}: {e}")
+        return None
+
+def get_windows_resources_wmi(ip, timeout=30):
+    """Получение ресурсов через WMI (альтернативный метод)"""
+    try:
+        import pythoncom
+        import wmi
+        
+        credentials = get_windows_server_credentials(ip)
         
         for cred in credentials:
             try:
                 username = cred["username"]
                 password = cred["password"]
                 
-                # Создаем сессию WinRM
-                session = winrm.Session(
-                    ip, 
-                    auth=(username, password),
-                    transport='ntlm',
-                    server_cert_validation='ignore',
-                    read_timeout_sec=timeout
+                # Инициализация COM для WMI
+                pythoncom.CoInitialize()
+                
+                # Подключаемся к WMI
+                connection = wmi.WMI(
+                    computer=ip,
+                    user=username,
+                    password=password
                 )
                 
-                # Проверяем подключение
-                result = session.run_cmd('echo test')
-                if result.status_code == 0:
-                    break  # Успешное подключение
-                else:
-                    session = None
+                resources = {
+                    "cpu": 0.0, "ram": 0.0, "disk": 0.0,
+                    "os": "Windows Server", 
+                    "timestamp": datetime.now().strftime("%H:%M:%S"),
+                    "access_method": "WMI"
+                }
+                
+                # CPU - средняя загрузка всех процессоров
+                cpu_loads = []
+                for processor in connection.Win32_Processor():
+                    if processor.LoadPercentage:
+                        cpu_loads.append(float(processor.LoadPercentage))
+                
+                if cpu_loads:
+                    resources["cpu"] = round(sum(cpu_loads) / len(cpu_loads), 1)
+                
+                # Memory
+                for os in connection.Win32_OperatingSystem():
+                    total = int(os.TotalVisibleMemorySize)
+                    free = int(os.FreePhysicalMemory)
+                    if total > 0:
+                        resources["ram"] = round(((total - free) / total) * 100, 1)
+                
+                # Disk C:
+                for disk in connection.Win32_LogicalDisk(DeviceID='C:'):
+                    total_size = int(disk.Size)
+                    free_space = int(disk.FreeSpace)
+                    if total_size > 0:
+                        resources["disk"] = round(((total_size - free_space) / total_size) * 100, 1)
+                
+                pythoncom.CoUninitialize()
+                
+                # Если получили данные
+                if resources["cpu"] > 0 or resources["ram"] > 0 or resources["disk"] > 0:
+                    return resources
                     
             except Exception as e:
-                last_error = str(e)
-                session = None
+                print(f"WMI error for {ip} with {cred['username']}: {e}")
                 continue
+                
+        return None
         
-        if not session:
-            return None
+    except ImportError:
+        print("WMI library not available")
+        return None
+    except Exception as e:
+        print(f"WMI general error for {ip}: {e}")
+        return None
+
+def get_windows_disk_only(ip, timeout=30):
+    """Минимальная проверка - только диск через разные методы"""
+    try:
+        # Простая проверка через net use (если доступны общие папки)
+        import subprocess
         
-        # Получаем загрузку CPU через WMI
-        try:
-            cpu_ps = """
-Get-Counter "\\Processor(_Total)\\% Processor Time" -SampleInterval 1 -MaxSamples 2 | 
-ForEach-Object {$_.CounterSamples[0].CookedValue} | 
-Measure-Object -Average | 
-Select-Object -ExpandProperty Average
-"""
-            result = session.run_ps(cpu_ps)
-            if result.status_code == 0 and result.std_out.strip():
-                cpu_usage = float(result.std_out.strip())
-                resources["cpu"] = round(cpu_usage, 1)
-        except Exception as e:
-            print(f"CPU check error for {ip}: {e}")
+        credentials = get_windows_server_credentials(ip)
         
-        # Получаем использование памяти
-        try:
-            ram_ps = """
-$computerInfo = Get-WmiObject -Class Win32_OperatingSystem
-$totalMemory = [math]::Round($computerInfo.TotalVisibleMemorySize / 1MB, 2)
-$freeMemory = [math]::Round($computerInfo.FreePhysicalMemory / 1MB, 2)
-$usedMemory = $totalMemory - $freeMemory
-$memoryUsage = ($usedMemory / $totalMemory) * 100
-[math]::Round($memoryUsage, 1)
-"""
-            result = session.run_ps(ram_ps)
-            if result.status_code == 0 and result.std_out.strip():
-                ram_usage = float(result.std_out.strip())
-                resources["ram"] = ram_usage
-        except Exception as e:
-            print(f"RAM check error for {ip}: {e}")
-        
-        # Получаем использование диска
-        try:
-            disk_ps = """
-Get-WmiObject -Class Win32_LogicalDisk -Filter "DriveType=3" | 
-Where-Object {$_.DeviceID -eq 'C:'} | 
-ForEach-Object {
-    $usedSpace = $_.Size - $_.FreeSpace
-    $usagePercent = ($usedSpace / $_.Size) * 100
-    [math]::Round($usagePercent, 1)
-}
-"""
-            result = session.run_ps(disk_ps)
-            if result.status_code == 0 and result.std_out.strip():
-                disk_usage = float(result.std_out.strip())
-                resources["disk"] = disk_usage
-        except Exception as e:
-            print(f"Disk check error for {ip}: {e}")
-        
-        # Получаем информацию о времени работы
-        try:
-            uptime_ps = """
-$os = Get-WmiObject -Class Win32_OperatingSystem
-$uptime = (Get-Date) - $os.ConvertToDateTime($os.LastBootUpTime)
-"{0}d {1}h {2}m" -f $uptime.Days, $uptime.Hours, $uptime.Minutes
-"""
-            result = session.run_ps(uptime_ps)
-            if result.status_code == 0 and result.std_out.strip():
-                resources["uptime"] = result.std_out.strip()
-        except Exception as e:
-            print(f"Uptime check error for {ip}: {e}")
-        
-        return resources
+        for cred in credentials:
+            try:
+                username = cred["username"]
+                password = cred["password"]
+                
+                # Пробуем подключиться к административной share
+                cmd = f'net use \\\\{ip}\\admin$ {password} /user:{username}'
+                result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=10)
+                
+                if result.returncode == 0:
+                    # Если подключились, пытаемся получить информацию о диске
+                    ps_script = "Get-WmiObject -Class Win32_LogicalDisk -Filter \"DeviceID='C:'\" | Select-Object Size,FreeSpace"
+                    # Здесь можно добавить выполнение PowerShell через psexec или аналоги
+                    
+                    resources = {
+                        "cpu": 0.0, "ram": 0.0, "disk": 0.0,
+                        "os": "Windows Server",
+                        "timestamp": datetime.now().strftime("%H:%M:%S"),
+                        "access_method": "NetUse",
+                        "status": "basic_access"
+                    }
+                    
+                    # Отключаем соединение
+                    subprocess.run(f'net use \\\\{ip}\\admin$ /delete', shell=True, capture_output=True)
+                    return resources
+                    
+            except Exception as e:
+                continue
+                
+        return None
         
     except Exception as e:
-        print(f"WinRM connection error for {ip}: {e}")
-        # Fallback: проверяем доступность через RDP порт
-        if check_port(ip, 3389, 5):
-            return {
-                "cpu": 0.0, "ram": 0.0, "disk": 0.0,
-                "load_avg": "N/A", "uptime": "N/A", 
-                "os": "Windows Server",
-                "timestamp": datetime.now().strftime("%H:%M:%S"),
-                "status": "available_no_metrics",
-                "access_method": "RDP",
-                "server_type": get_windows_server_type(ip)
-            }
+        print(f"Disk only check error for {ip}: {e}")
         return None
-    
+        
 def check_resource_thresholds(ip, resources, server_name):
     """Проверяет превышение порогов ресурсов"""
     alerts = []

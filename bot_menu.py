@@ -1,5 +1,5 @@
 """
-Server Monitoring System v2.4.4
+Server Monitoring System v2.4.5
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Меню бота
@@ -812,6 +812,55 @@ def show_advanced_debug(query):
     except Exception as e:
         query.edit_message_text(f"❌ Ошибка загрузки расширенных настроек: {e}")
 
+def diagnose_windows_command(update, context):
+    """Диагностика подключения к Windows серверам"""
+    if not context.args:
+        update.message.reply_text("❌ Укажите IP Windows сервера: /diagnose_windows <ip>")
+        return
+    
+    ip = context.args[0]
+    
+    from extensions.server_checks import get_windows_resources_improved, get_windows_resources_winrm, get_windows_resources_wmi
+    
+    message = f"🔧 *Диагностика Windows сервера {ip}*\n\n"
+    
+    # Проверка базовой доступности
+    from extensions.server_checks import check_ping, check_port
+    ping_ok = check_ping(ip)
+    rdp_ok = check_port(ip, 3389)
+    winrm_ok = check_port(ip, 5985)
+    
+    message += f"• Ping: {'🟢 OK' if ping_ok else '🔴 FAIL'}\n"
+    message += f"• RDP порт (3389): {'🟢 OK' if rdp_ok else '🔴 FAIL'}\n" 
+    message += f"• WinRM порт (5985): {'🟢 OK' if winrm_ok else '🔴 FAIL'}\n\n"
+    
+    # Тестируем методы получения ресурсов
+    message += "*Тестирование методов:*\n"
+    
+    # WinRM
+    winrm_result = get_windows_resources_winrm(ip)
+    if winrm_result:
+        message += f"• WinRM: 🟢 OK (CPU: {winrm_result.get('cpu', 0)}%, RAM: {winrm_result.get('ram', 0)}%)\n"
+    else:
+        message += "• WinRM: 🔴 FAIL\n"
+    
+    # WMI  
+    wmi_result = get_windows_resources_wmi(ip)
+    if wmi_result:
+        message += f"• WMI: 🟢 OK (CPU: {wmi_result.get('cpu', 0)}%, RAM: {wmi_result.get('ram', 0)}%)\n"
+    else:
+        message += "• WMI: 🔴 FAIL\n"
+    
+    # Комбинированный метод
+    combined_result = get_windows_resources_improved(ip)
+    if combined_result:
+        message += f"• Combined: 🟢 OK (CPU: {combined_result.get('cpu', 0)}%, RAM: {combined_result.get('ram', 0)}%, Disk: {combined_result.get('disk', 0)}%)\n"
+        message += f"• Method: {combined_result.get('access_method', 'unknown')}\n"
+    else:
+        message += "• Combined: 🔴 FAIL\n"
+    
+    update.message.reply_text(message, parse_mode='Markdown')
+
 def get_handlers():
     """Возвращает обработчики команд для бота"""
     return [
@@ -830,7 +879,8 @@ def get_handlers():
         CommandHandler("backup", backup_command),
         CommandHandler("backup_search", backup_search_command),
         CommandHandler("backup_help", backup_help_command),
-        CommandHandler("debug", debug_command),  # НОВЫЙ ОБРАБОТЧИК
+        CommandHandler("debug", debug_command),
+        CommandHandler("diagnose_windows", diagnose_windows_command),
     ]
 
 def get_callback_handlers():
