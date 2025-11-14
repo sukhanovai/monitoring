@@ -288,6 +288,42 @@ class SettingsManager:
         
         conn.close()
         return servers
+    
+    @property
+    def conn(self):
+        """Свойство для получения соединения с БД"""
+        return sqlite3.connect(self.db_path)
+
+    def get_backup_patterns(self):
+        """Получить паттерны бэкапов"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT pattern_type, pattern, category FROM backup_patterns WHERE enabled = 1')
+        
+        patterns = {}
+        for pattern_type, pattern, category in cursor.fetchall():
+            if category not in patterns:
+                patterns[category] = {}
+            if pattern_type not in patterns[category]:
+                patterns[category][pattern_type] = []
+            patterns[category][pattern_type].append(pattern)
+        
+        conn.close()
+        return patterns
+
+    def get_proxmox_hosts(self):
+        """Получить хосты Proxmox"""
+        return self.get_setting('PROXMOX_HOSTS', {})
+
+    def get_database_config(self):
+        """Получить конфигурацию баз данных"""
+        return self.get_setting('DATABASE_CONFIG', {})
+
+    def get_server_timeouts(self):
+        """Получить таймауты серверов"""
+        return self.get_setting('SERVER_TIMEOUTS', {})
+    
 
 # Глобальный экземпляр менеджера настроек
 settings_manager = SettingsManager()
