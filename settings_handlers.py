@@ -25,11 +25,18 @@ def settings_command(update, context):
         [InlineKeyboardButton("↩️ Назад", callback_data='monitor_status')]
     ]
     
-    update.message.reply_text(
-        "⚙️ *Управление настройками*\n\nВыберите категорию для настройки:",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
+    if update.message:
+        update.message.reply_text(
+            "⚙️ *Управление настройками*\n\nВыберите категорию для настройки:",
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+    else:
+        update.callback_query.edit_message_text(
+            "⚙️ *Управление настройками*\n\nВыберите категорию для настройки:",
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
 
 def show_telegram_settings(update, context):
     """Показать настройки Telegram"""
@@ -235,12 +242,7 @@ def settings_callback_handler(update, context):
     data = query.data
     
     if data == 'settings_main':
-        # Эмулируем команду /settings
-        from telegram import Update
-        from telegram.ext import CallbackContext
-        fake_update = Update(update.update_id, message=query.message)
-        fake_context = CallbackContext.from_update(update, context)
-        settings_command(fake_update, fake_context)
+        settings_command(update, context)
     elif data == 'settings_telegram':
         show_telegram_settings(update, context)
     elif data == 'settings_monitoring':
@@ -352,6 +354,34 @@ def handle_setting_value(update, context):
         update.message.reply_text(f"❌ Ошибка: {e}\nПопробуйте еще раз:")
     except Exception as e:
         update.message.reply_text(f"❌ Ошибка сохранения: {e}")
+
+def show_web_settings(update, context):
+    """Показать настройки веб-интерфейса"""
+    query = update.callback_query
+    query.answer()
+    
+    web_port = settings_manager.get_setting('WEB_PORT', 5000)
+    web_host = settings_manager.get_setting('WEB_HOST', '0.0.0.0')
+    
+    message = (
+        "🌐 *Настройки веб-интерфейса*\n\n"
+        f"• Порт: {web_port}\n"
+        f"• Хост: {web_host}\n\n"
+        "Выберите параметр для изменения:"
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton("🔌 Порт веб-интерфейса", callback_data='set_web_port')],
+        [InlineKeyboardButton("🌐 Хост веб-интерфейса", callback_data='set_web_host')],
+        [InlineKeyboardButton("🔄 Обновить", callback_data='settings_web')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main')]
+    ]
+    
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
 
 def get_settings_handlers():
     """Получить обработчики для настроек"""

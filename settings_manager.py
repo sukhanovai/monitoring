@@ -313,27 +313,6 @@ class SettingsManager:
         conn.close()
         return patterns
 
-    def get_windows_credentials_db(self):
-        """Получить учетные данные Windows из БД (для config.py)"""
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            SELECT username, password, server_type 
-            FROM windows_credentials 
-            WHERE enabled = 1 
-            ORDER BY server_type, priority
-        ''')
-        
-        credentials = {}
-        for username, password, server_type in cursor.fetchall():
-            if server_type not in credentials:
-                credentials[server_type] = []
-            credentials[server_type].append({"username": username, "password": password})
-        
-        conn.close()
-        return credentials
-
     def get_backup_status_map(self):
         """Получить карту статусов бэкапов"""
         return self.get_setting('BACKUP_STATUS_MAP', {
@@ -369,7 +348,28 @@ class SettingsManager:
             'WEB_PORT': self.get_setting('WEB_PORT', 5000),
             'WEB_HOST': self.get_setting('WEB_HOST', '0.0.0.0')
         }
-    
+
+    def get_windows_credentials_db(self):
+        """Получить учетные данные Windows из БД"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT username, password, server_type 
+            FROM windows_credentials 
+            WHERE enabled = 1 
+            ORDER BY server_type, priority
+        ''')
+        
+        credentials = {}
+        for username, password, server_type in cursor.fetchall():
+            if server_type not in credentials:
+                credentials[server_type] = []
+            credentials[server_type].append({"username": username, "password": password})
+        
+        conn.close()
+        return credentials
+        
     def get_proxmox_hosts(self):
         """Получить хосты Proxmox"""
         return self.get_setting('PROXMOX_HOSTS', {})
