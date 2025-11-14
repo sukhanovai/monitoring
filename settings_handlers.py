@@ -251,12 +251,22 @@ def settings_callback_handler(update, context):
         show_time_settings(update, context)
     elif data == 'settings_resources':
         show_resource_settings(update, context)
+    elif data == 'settings_auth':
+        show_auth_settings(update, context)
+    elif data == 'settings_servers':
+        show_servers_settings(update, context)
     elif data == 'settings_backup':
         show_backup_settings(update, context)
     elif data == 'settings_web':
         show_web_settings(update, context)
     elif data == 'settings_view_all':
         show_all_settings(update, context)
+    elif data == 'backup_times':
+        show_backup_times(update, context)
+    elif data == 'backup_databases':
+        show_backup_databases(update, context)
+    elif data == 'backup_patterns':
+        show_backup_patterns_menu(update, context)
     elif data.startswith('set_'):
         handle_setting_input(update, context, data.replace('set_', ''))
     else:
@@ -306,13 +316,15 @@ def handle_setting_value(update, context):
     
     try:
         # Определяем тип данных и преобразуем
-        if setting_key in ['check_interval', 'max_fail_time', 'silent_start', 'silent_end', 
-                          'cpu_warning', 'cpu_critical', 'ram_warning', 'ram_critical', 
-                          'disk_warning', 'disk_critical']:
+        setting_types = {
+            'check_interval': 'int', 'max_fail_time': 'int', 'silent_start': 'int', 'silent_end': 'int',
+            'cpu_warning': 'int', 'cpu_critical': 'int', 'ram_warning': 'int', 'ram_critical': 'int',
+            'disk_warning': 'int', 'disk_critical': 'int', 'web_port': 'int',
+            'backup_alert_hours': 'int', 'backup_stale_hours': 'int'
+        }
+        
+        if setting_key in setting_types and setting_types[setting_key] == 'int':
             new_value = int(new_value)
-        elif setting_key == 'telegram_token':
-            # Просто строка
-            pass
         elif setting_key == 'data_collection':
             # Проверяем формат времени
             import re
@@ -322,17 +334,14 @@ def handle_setting_value(update, context):
         # Сохраняем настройку
         category_map = {
             'telegram_token': 'telegram',
-            'check_interval': 'monitoring', 
-            'max_fail_time': 'monitoring',
-            'silent_start': 'time',
-            'silent_end': 'time',
-            'data_collection': 'time',
-            'cpu_warning': 'resources',
-            'cpu_critical': 'resources',
-            'ram_warning': 'resources', 
-            'ram_critical': 'resources',
-            'disk_warning': 'resources',
-            'disk_critical': 'resources'
+            'check_interval': 'monitoring', 'max_fail_time': 'monitoring',
+            'silent_start': 'time', 'silent_end': 'time', 'data_collection': 'time',
+            'cpu_warning': 'resources', 'cpu_critical': 'resources',
+            'ram_warning': 'resources', 'ram_critical': 'resources',
+            'disk_warning': 'resources', 'disk_critical': 'resources',
+            'ssh_username': 'auth', 'ssh_key_path': 'auth',
+            'web_port': 'web', 'web_host': 'web',
+            'backup_alert_hours': 'backup', 'backup_stale_hours': 'backup'
         }
         
         db_key = setting_key.upper() if setting_key != 'telegram_token' else 'TELEGRAM_TOKEN'
@@ -354,7 +363,7 @@ def handle_setting_value(update, context):
         update.message.reply_text(f"❌ Ошибка: {e}\nПопробуйте еще раз:")
     except Exception as e:
         update.message.reply_text(f"❌ Ошибка сохранения: {e}")
-
+        
 def show_web_settings(update, context):
     """Показать настройки веб-интерфейса"""
     query = update.callback_query
@@ -393,3 +402,196 @@ def get_settings_handlers():
         CallbackQueryHandler(settings_callback_handler, pattern='^manage_'),
         MessageHandler(Filters.text & ~Filters.command, handle_setting_value)
     ]
+
+def show_auth_settings(update, context):
+    """Показать настройки аутентификации"""
+    query = update.callback_query
+    query.answer()
+    
+    ssh_username = settings_manager.get_setting('SSH_USERNAME', 'root')
+    ssh_key_path = settings_manager.get_setting('SSH_KEY_PATH', '/root/.ssh/id_rsa')
+    
+    message = (
+        "🔐 *Настройки аутентификации*\n\n"
+        f"• SSH пользователь: {ssh_username}\n"
+        f"• Путь к SSH ключу: {ssh_key_path}\n\n"
+        "Выберите параметр для изменения:"
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton("👤 SSH пользователь", callback_data='set_ssh_username')],
+        [InlineKeyboardButton("🔑 Путь к SSH ключу", callback_data='set_ssh_key_path')],
+        [InlineKeyboardButton("🔄 Обновить", callback_data='settings_auth')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main')]
+    ]
+    
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def show_servers_settings(update, context):
+    """Показать настройки серверов"""
+    query = update.callback_query
+    query.answer()
+    
+    servers = settings_manager.get_all_servers()
+    windows_servers = [s for s in servers if s['type'] == 'rdp']
+    linux_servers = [s for s in servers if s['type'] == 'ssh']
+    ping_servers = [s for s in servers if s['type'] == 'ping']
+    
+    message = (
+        "🖥️ *Настройки серверов*\n\n"
+        f"• Windows серверов: {len(windows_servers)}\n"
+        f"• Linux серверов: {len(linux_servers)}\n"
+        f"• Ping серверов: {len(ping_servers)}\n"
+        f"• Всего серверов: {len(servers)}\n\n"
+        "Выберите действие:"
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton("📋 Список серверов", callback_data='servers_list')],
+        [InlineKeyboardButton("➕ Добавить сервер", callback_data='add_server')],
+        [InlineKeyboardButton("🔄 Обновить", callback_data='settings_servers')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main')]
+    ]
+    
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def show_backup_times(update, context):
+    """Показать настройки временных интервалов бэкапов"""
+    query = update.callback_query
+    query.answer()
+    
+    alert_hours = settings_manager.get_setting('BACKUP_ALERT_HOURS', 24)
+    stale_hours = settings_manager.get_setting('BACKUP_STALE_HOURS', 36)
+    
+    message = (
+        "⏰ *Временные интервалы бэкапов*\n\n"
+        f"• Алерты через: {alert_hours} часов\n"
+        f"• Устаревание через: {stale_hours} часов\n\n"
+        "Выберите параметр для изменения:"
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton("🚨 Часы для алертов", callback_data='set_backup_alert_hours')],
+        [InlineKeyboardButton("📅 Часы для устаревания", callback_data='set_backup_stale_hours')],
+        [InlineKeyboardButton("🔄 Обновить", callback_data='backup_times')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup')]
+    ]
+    
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def show_backup_databases(update, context):
+    """Показать настройки баз данных для бэкапов"""
+    query = update.callback_query
+    query.answer()
+    
+    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    
+    message = "🗃️ *Базы данных для бэкапов*\n\n"
+    
+    for category, databases in db_config.items():
+        message += f"*{category.upper()}* ({len(databases)} БД):\n"
+        for db_key, db_name in list(databases.items())[:3]:  # Показываем первые 3
+            message += f"• {db_name}\n"
+        if len(databases) > 3:
+            message += f"• ... и еще {len(databases) - 3} БД\n"
+        message += "\n"
+    
+    message += "Выберите действие:"
+    
+    keyboard = [
+        [InlineKeyboardButton("📋 Просмотр всех БД", callback_data='view_all_databases')],
+        [InlineKeyboardButton("➕ Добавить БД", callback_data='add_database')],
+        [InlineKeyboardButton("🔄 Обновить", callback_data='backup_databases')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup')]
+    ]
+    
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def show_backup_patterns_menu(update, context):
+    """Показать меню паттернов бэкапов"""
+    query = update.callback_query
+    query.answer()
+    
+    patterns = settings_manager.get_backup_patterns()
+    
+    message = "🔍 *Паттерны бэкапов*\n\n"
+    
+    total_patterns = 0
+    for category, category_patterns in patterns.items():
+        if isinstance(category_patterns, dict):
+            for pattern_type, pattern_list in category_patterns.items():
+                message += f"*{pattern_type}*: {len(pattern_list)} паттернов\n"
+                total_patterns += len(pattern_list)
+        else:
+            message += f"*{category}*: {len(category_patterns)} паттернов\n"
+            total_patterns += len(category_patterns)
+    
+    message += f"\nВсего паттернов: {total_patterns}\n\n"
+    message += "Выберите действие:"
+    
+    keyboard = [
+        [InlineKeyboardButton("📋 Просмотр паттернов", callback_data='view_patterns')],
+        [InlineKeyboardButton("➕ Добавить паттерн", callback_data='add_pattern')],
+        [InlineKeyboardButton("🔄 Обновить", callback_data='backup_patterns')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup')]
+    ]
+    
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def handle_setting_input(update, context, setting_key):
+    """Обработчик ввода значений настроек"""
+    query = update.callback_query
+    query.answer()
+    
+    # Сохраняем какое настройку меняем
+    context.user_data['editing_setting'] = setting_key
+    
+    setting_descriptions = {
+        'telegram_token': 'Введите новый токен Telegram бота:',
+        'check_interval': 'Введите новый интервал проверки (в секундах):',
+        'max_fail_time': 'Введите максимальное время простоя (в секундах):',
+        'silent_start': 'Введите час начала тихого режима (0-23):',
+        'silent_end': 'Введите час окончания тихого режима (0-23):',
+        'data_collection': 'Введите время сбора данных (формат HH:MM):',
+        'cpu_warning': 'Введите порог предупреждения для CPU (%):',
+        'cpu_critical': 'Введите критический порог для CPU (%):',
+        'ram_warning': 'Введите порог предупреждения для RAM (%):',
+        'ram_critical': 'Введите критический порог для RAM (%):',
+        'disk_warning': 'Введите порог предупреждения для Disk (%):',
+        'disk_critical': 'Введите критический порог для Disk (%):',
+        'ssh_username': 'Введите имя пользователя SSH:',
+        'ssh_key_path': 'Введите путь к SSH ключу:',
+        'web_port': 'Введите порт веб-интерфейса:',
+        'web_host': 'Введите хост веб-интерфейса:',
+        'backup_alert_hours': 'Введите количество часов для алертов о бэкапах:',
+        'backup_stale_hours': 'Введите количество часов для устаревших бэкапов:',
+    }
+    
+    message = setting_descriptions.get(setting_key, f'Введите новое значение для {setting_key}:')
+    
+    query.edit_message_text(
+        message,
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("❌ Отмена", callback_data='settings_main')]
+        ])
+    )
