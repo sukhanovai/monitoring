@@ -81,7 +81,8 @@ def start_command(update, context):
         [InlineKeyboardButton("ℹ️ Статус мониторинга", callback_data='monitor_status')],
         [InlineKeyboardButton("📋 Список серверов", callback_data='servers_list')],
         [InlineKeyboardButton("📊 Проверить ресурсы", callback_data='check_resources')],
-        [InlineKeyboardButton("🐛 Отладка", callback_data='debug_menu')],  # НОВАЯ КНОПКА
+        [InlineKeyboardButton("⚙️ Управление настройками", callback_data='settings_main')],
+        [InlineKeyboardButton("🐛 Отладка", callback_data='debug_menu')],
     ]
     
     extension_manager = get_extension_manager()

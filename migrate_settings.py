@@ -1,35 +1,38 @@
 #!/usr/bin/env python3
 """
-Скрипт миграции настроек из config.py в базу данных - FIXED VERSION
+Скрипт миграции ВСЕХ настроек из config.py в базу данных - COMPLETE VERSION
 """
 
 import sys
 import os
 import sqlite3
 import json
+import shutil
+from datetime import datetime
 
 # Добавляем путь для импортов
 sys.path.insert(0, '/opt/monitoring')
 
-def migrate_settings():
-    """Перенос настроек из config.py в базу данных"""
+def migrate_all_settings():
+    """Перенос ВСЕХ настроек из config.py в базу данных"""
     
-    print("🔄 Начинаем миграцию настроек в базу данных...")
+    print("🔄 Начинаем полную миграцию настроек в базу данных...")
     
     # Импортируем старый config
     try:
-        from config import (
+        from config_original import (  # Используем оригинальный config
             TELEGRAM_TOKEN, CHAT_IDS, CHECK_INTERVAL, MAX_FAIL_TIME,
             SILENT_START, SILENT_END, DATA_COLLECTION_TIME,
             RESOURCE_CHECK_INTERVAL, RESOURCE_ALERT_INTERVAL,
             RESOURCE_THRESHOLDS, SSH_USERNAME, SSH_KEY_PATH,
             WINDOWS_CREDENTIALS, WINDOWS_SERVER_CONFIGS,
             SERVER_CONFIG, SERVER_TIMEOUTS, PROXMOX_HOSTS,
-            BACKUP_PATTERNS, DATABASE_CONFIG
+            BACKUP_PATTERNS, DATABASE_CONFIG, BACKUP_STATUS_MAP,
+            DUPLICATE_IP_HOSTS, HOSTNAME_ALIASES, WEB_PORT, WEB_HOST
         )
-        print("✅ Старый config.py загружен")
+        print("✅ Оригинальный config.py загружен")
     except Exception as e:
-        print(f"❌ Ошибка загрузки config.py: {e}")
+        print(f"❌ Ошибка загрузки оригинального config.py: {e}")
         return False
     
     # Инициализируем менеджер настроек
@@ -67,6 +70,10 @@ def migrate_settings():
         settings_manager.set_setting('SSH_USERNAME', SSH_USERNAME, 'auth', 'Имя пользователя SSH', 'string')
         settings_manager.set_setting('SSH_KEY_PATH', SSH_KEY_PATH, 'auth', 'Путь к SSH ключу', 'string')
         
+        # === ВЕБ-ИНТЕРФЕЙС ===
+        settings_manager.set_setting('WEB_PORT', WEB_PORT, 'web', 'Порт веб-интерфейса', 'int')
+        settings_manager.set_setting('WEB_HOST', WEB_HOST, 'web', 'Хост веб-интерфейса', 'string')
+        
         print("✅ Базовые настройки перенесены")
         
         # === УЧЕТНЫЕ ДАННЫЕ WINDOWS ===
@@ -83,9 +90,10 @@ def migrate_settings():
         
         # === БЭКАПЫ ===
         print("💾 Переносим настройки бэкапов...")
-        migrate_backup_settings(settings_manager, BACKUP_PATTERNS, DATABASE_CONFIG, PROXMOX_HOSTS)
+        migrate_backup_settings(settings_manager, BACKUP_PATTERNS, DATABASE_CONFIG, PROXMOX_HOSTS, 
+                              BACKUP_STATUS_MAP, DUPLICATE_IP_HOSTS, HOSTNAME_ALIASES)
         
-        print("🎉 Миграция завершена успешно!")
+        print("🎉 Полная миграция завершена успешно!")
         print("\n📊 Статистика миграции:")
         show_migration_stats(settings_manager)
         
@@ -177,7 +185,8 @@ def migrate_timeouts(settings_manager, server_timeouts):
     settings_manager.set_setting('SERVER_TIMEOUTS', json.dumps(server_timeouts), 'monitoring', 'Таймауты для разных типов серверов', 'dict')
     print(f"✅ Таймауты перенесены: {len(server_timeouts)} настроек")
 
-def migrate_backup_settings(settings_manager, backup_patterns, database_config, proxmox_hosts):
+def migrate_backup_settings(settings_manager, backup_patterns, database_config, proxmox_hosts, 
+                          backup_status_map, duplicate_ip_hosts, hostname_aliases):
     """Перенос настроек бэкапов"""
     conn = settings_manager.get_connection()
     cursor = conn.cursor()
@@ -208,11 +217,12 @@ def migrate_backup_settings(settings_manager, backup_patterns, database_config, 
     conn.commit()
     conn.close()
     
-    # Сохраняем конфигурацию баз данных (отдельное соединение)
+    # Сохраняем остальные настройки бэкапов
     settings_manager.set_setting('DATABASE_CONFIG', json.dumps(database_config), 'backup', 'Конфигурация баз данных для бэкапов', 'dict')
-    
-    # Сохраняем хосты Proxmox (отдельное соединение)
     settings_manager.set_setting('PROXMOX_HOSTS', json.dumps(proxmox_hosts), 'backup', 'Хосты Proxmox для мониторинга бэкапов', 'dict')
+    settings_manager.set_setting('BACKUP_STATUS_MAP', json.dumps(backup_status_map), 'backup', 'Статусы бэкапов', 'dict')
+    settings_manager.set_setting('DUPLICATE_IP_HOSTS', json.dumps(duplicate_ip_hosts), 'backup', 'Хосты с одинаковыми IP', 'dict')
+    settings_manager.set_setting('HOSTNAME_ALIASES', json.dumps(hostname_aliases), 'backup', 'Алиасы имен хостов', 'dict')
     
     print(f"✅ Настройки бэкапов перенесены: {pattern_count} паттернов")
 
@@ -255,8 +265,8 @@ def show_migration_stats(settings_manager):
         value = settings_manager.get_setting(setting)
         print(f"   {setting}: {value}")
 
-def backup_old_config():
-    """Создать резервную копию старого config.py"""
+def backup_and_rename_config():
+    """Создать резервную копию и переименовать config.py"""
     import shutil
     from datetime import datetime
     
@@ -267,34 +277,48 @@ def backup_old_config():
     backup_file = os.path.join(backup_dir, f'config_backup_{timestamp}.py')
     
     try:
+        # Создаем резервную копию оригинального config.py
         shutil.copy2('/opt/monitoring/config.py', backup_file)
         print(f"✅ Резервная копия создана: {backup_file}")
+        
+        # Переименовываем оригинальный config.py
+        original_config = '/opt/monitoring/config_original.py'
+        if os.path.exists('/opt/monitoring/config.py'):
+            shutil.move('/opt/monitoring/config.py', original_config)
+            print(f"✅ Оригинальный config.py переименован в config_original.py")
+        
         return True
     except Exception as e:
         print(f"❌ Ошибка создания резервной копии: {e}")
         return False
 
 if __name__ == "__main__":
-    print("=" * 50)
-    print("🔄 МИГРАЦИЯ НАСТРОЕК В БАЗУ ДАННЫХ")
-    print("=" * 50)
+    print("=" * 60)
+    print("🔄 ПОЛНАЯ МИГРАЦИЯ НАСТРОЕК В БАЗУ ДАННЫХ")
+    print("=" * 60)
     
-    # Создаем резервную копию
-    if not backup_old_config():
+    # Создаем резервную копию и переименовываем
+    if not backup_and_rename_config():
         print("❌ Не удалось создать резервную копию. Прерываем миграцию.")
         sys.exit(1)
     
     # Выполняем миграцию
-    if migrate_settings():
+    if migrate_all_settings():
         print("\n✅ Миграция завершена успешно!")
         print("\n📝 Дальнейшие действия:")
-        print("1. Убедитесь, что миграция прошла успешно")
-        print("2. Проверьте работу бота с новыми настройками")
-        print("3. Удалите старые настройки из config.py (опционально)")
-        print("4. Используйте команду /settings в боте для управления настройками")
+        print("1. Убедитесь, что новый config.py загружает настройки из БД")
+        print("2. Перезапустите сервис: systemctl restart server-monitor.service")
+        print("3. Используйте команду /settings в боте для управления настройками")
+        print("4. Проверьте работу всех функций мониторинга")
     else:
         print("\n❌ Миграция завершилась с ошибками!")
-        print("⚠️  Система продолжит использовать старый config.py")
+        print("⚠️  Восстанавливаем оригинальный config.py...")
+        # Восстанавливаем оригинальный config.py
+        try:
+            shutil.copy2('/opt/monitoring/config_original.py', '/opt/monitoring/config.py')
+            print("✅ Оригинальный config.py восстановлен")
+        except:
+            print("❌ Не удалось восстановить оригинальный config.py")
     
-    print("=" * 50)
+    print("=" * 60)
     

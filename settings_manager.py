@@ -1,6 +1,8 @@
 """
-Server Monitoring System v2.4.8
-Settings Manager with Database Storage - FIXED VERSION
+Server Monitoring System v3.0.0
+Copyright (c) 2025 Aleksandr Sukhanov
+License: MIT
+Менеджер настроек БД
 """
 
 import sqlite3
@@ -332,6 +334,42 @@ class SettingsManager:
         conn.close()
         return credentials
 
+    def get_backup_status_map(self):
+        """Получить карту статусов бэкапов"""
+        return self.get_setting('BACKUP_STATUS_MAP', {
+            'backup successful': 'success',
+            'successful': 'success',
+            'ok': 'success',
+            'completed': 'success', 
+            'finished': 'success',
+            'backup failed': 'failed',
+            'failed': 'failed',
+            'error': 'failed',
+            'errors': 'failed',
+            'warning': 'warning',
+            'partial': 'partial'
+        })
+
+    def get_duplicate_ip_hosts(self):
+        """Получить хосты с одинаковыми IP"""
+        return self.get_setting('DUPLICATE_IP_HOSTS', {
+            '95.170.153.118': ['pve-rubicon', 'pve2-rubicon']
+        })
+
+    def get_hostname_aliases(self):
+        """Получить алиасы имен хостов"""
+        return self.get_setting('HOSTNAME_ALIASES', {
+            'pve-rubicon': ['rubicon', 'pve-rubicon', 'rubicon-pve', 'pve1-rubicon'],
+            'pve2-rubicon': ['rubicon2', 'pve2-rubicon', 'rubicon2-pve', 'pve-rubicon2'],
+        })
+
+    def get_web_settings(self):
+        """Получить настройки веб-интерфейса"""
+        return {
+            'WEB_PORT': self.get_setting('WEB_PORT', 5000),
+            'WEB_HOST': self.get_setting('WEB_HOST', '0.0.0.0')
+        }
+    
     def get_proxmox_hosts(self):
         """Получить хосты Proxmox"""
         return self.get_setting('PROXMOX_HOSTS', {})
