@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Скрипт миграции ВСЕХ настроек из config.py в базу данных - COMPLETE VERSION
+Финальная миграция настроек в БД
 """
 
 import sys
@@ -8,19 +8,25 @@ import os
 import sqlite3
 import json
 import shutil
-from datetime import datetime
 
-# Добавляем путь для импортов
 sys.path.insert(0, '/opt/monitoring')
 
-def migrate_all_settings():
-    """Перенос ВСЕХ настроек из config.py в базу данных"""
+def migrate_final():
+    print("🔄 Запуск финальной миграции...")
     
-    print("🔄 Начинаем полную миграцию настроек в базу данных...")
+    # Проверяем существование config.py
+    if not os.path.exists('/opt/monitoring/config.py'):
+        print("❌ config.py не найден!")
+        return False
     
-    # Импортируем старый config
     try:
-        from config_original import (  # Используем оригинальный config
+        # Создаем резервную копию
+        backup_file = '/opt/monitoring/config_backup_final.py'
+        shutil.copy2('/opt/monitoring/config.py', backup_file)
+        print(f"✅ Резервная копия создана: {backup_file}")
+        
+        # Импортируем текущий config
+        from config import (
             TELEGRAM_TOKEN, CHAT_IDS, CHECK_INTERVAL, MAX_FAIL_TIME,
             SILENT_START, SILENT_END, DATA_COLLECTION_TIME,
             RESOURCE_CHECK_INTERVAL, RESOURCE_ALERT_INTERVAL,
@@ -30,72 +36,124 @@ def migrate_all_settings():
             BACKUP_PATTERNS, DATABASE_CONFIG, BACKUP_STATUS_MAP,
             DUPLICATE_IP_HOSTS, HOSTNAME_ALIASES, WEB_PORT, WEB_HOST
         )
-        print("✅ Оригинальный config.py загружен")
-    except Exception as e:
-        print(f"❌ Ошибка загрузки оригинального config.py: {e}")
-        return False
-    
-    # Инициализируем менеджер настроек
-    from settings_manager import SettingsManager
-    settings_manager = SettingsManager()
-    
-    try:
-        # === БАЗОВЫЕ НАСТРОЙКИ ===
-        print("📝 Переносим базовые настройки...")
+        
+        print("✅ Текущий config.py загружен")
+        
+        # Инициализируем менеджер настроек
+        from settings_manager import SettingsManager
+        settings_manager = SettingsManager()
+        
+        # Мигрируем основные настройки
+        print("📝 Мигрируем основные настройки...")
+        
         settings_manager.set_setting('TELEGRAM_TOKEN', TELEGRAM_TOKEN, 'telegram', 'Токен Telegram бота', 'string')
         settings_manager.set_setting('CHAT_IDS', json.dumps(CHAT_IDS), 'telegram', 'ID чатов для уведомлений', 'list')
-        
-        # === ИНТЕРВАЛЫ ПРОВЕРОК ===
         settings_manager.set_setting('CHECK_INTERVAL', CHECK_INTERVAL, 'monitoring', 'Интервал проверки серверов (секунды)', 'int')
         settings_manager.set_setting('MAX_FAIL_TIME', MAX_FAIL_TIME, 'monitoring', 'Максимальное время простоя до алерта (секунды)', 'int')
-        
-        # === ВРЕМЕННЫЕ НАСТРОЙКИ ===
         settings_manager.set_setting('SILENT_START', SILENT_START, 'time', 'Начало тихого режима (час)', 'int')
         settings_manager.set_setting('SILENT_END', SILENT_END, 'time', 'Конец тихого режима (час)', 'int')
         settings_manager.set_setting('DATA_COLLECTION_TIME', DATA_COLLECTION_TIME.strftime('%H:%M'), 'time', 'Время сбора данных для отчета', 'time')
-        
-        # === НАСТРОЙКИ РЕСУРСОВ ===
         settings_manager.set_setting('RESOURCE_CHECK_INTERVAL', RESOURCE_CHECK_INTERVAL, 'resources', 'Интервал проверки ресурсов (секунды)', 'int')
         settings_manager.set_setting('RESOURCE_ALERT_INTERVAL', RESOURCE_ALERT_INTERVAL, 'resources', 'Интервал повторных алертов ресурсов (секунды)', 'int')
-        
-        # Пороги ресурсов
         settings_manager.set_setting('CPU_WARNING', RESOURCE_THRESHOLDS.get('cpu_warning', 80), 'resources', 'Порог предупреждения CPU (%)', 'int')
         settings_manager.set_setting('CPU_CRITICAL', RESOURCE_THRESHOLDS.get('cpu_critical', 90), 'resources', 'Порог критического CPU (%)', 'int')
         settings_manager.set_setting('RAM_WARNING', RESOURCE_THRESHOLDS.get('ram_warning', 85), 'resources', 'Порог предупреждения RAM (%)', 'int')
         settings_manager.set_setting('RAM_CRITICAL', RESOURCE_THRESHOLDS.get('ram_critical', 95), 'resources', 'Порог критического RAM (%)', 'int')
         settings_manager.set_setting('DISK_WARNING', RESOURCE_THRESHOLDS.get('disk_warning', 80), 'resources', 'Порог предупреждения Disk (%)', 'int')
         settings_manager.set_setting('DISK_CRITICAL', RESOURCE_THRESHOLDS.get('disk_critical', 90), 'resources', 'Порог критического Disk (%)', 'int')
-        
-        # === АУТЕНТИФИКАЦИЯ ===
         settings_manager.set_setting('SSH_USERNAME', SSH_USERNAME, 'auth', 'Имя пользователя SSH', 'string')
         settings_manager.set_setting('SSH_KEY_PATH', SSH_KEY_PATH, 'auth', 'Путь к SSH ключу', 'string')
-        
-        # === ВЕБ-ИНТЕРФЕЙС ===
         settings_manager.set_setting('WEB_PORT', WEB_PORT, 'web', 'Порт веб-интерфейса', 'int')
         settings_manager.set_setting('WEB_HOST', WEB_HOST, 'web', 'Хост веб-интерфейса', 'string')
         
-        print("✅ Базовые настройки перенесены")
+        # Мигрируем Windows учетные данные
+        print("🖥️ Мигрируем учетные данные Windows...")
+        conn = settings_manager.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM windows_credentials')
         
-        # === УЧЕТНЫЕ ДАННЫЕ WINDOWS ===
-        print("🖥️ Переносим учетные данные Windows...")
-        migrate_windows_credentials(settings_manager, WINDOWS_CREDENTIALS, WINDOWS_SERVER_CONFIGS)
+        priority = 0
+        for cred in WINDOWS_CREDENTIALS:
+            cursor.execute('INSERT INTO windows_credentials (username, password, server_type, priority) VALUES (?, ?, ?, ?)',
+                         (cred['username'], cred['password'], 'default', priority))
+            priority += 1
         
-        # === СЕРВЕРЫ ===
-        print("🔌 Переносим настройки серверов...")
-        migrate_servers(settings_manager, SERVER_CONFIG, WINDOWS_SERVER_CONFIGS)
+        for server_type, config in WINDOWS_SERVER_CONFIGS.items():
+            for cred in config.get('credentials', []):
+                cursor.execute('INSERT INTO windows_credentials (username, password, server_type, priority) VALUES (?, ?, ?, ?)',
+                             (cred['username'], cred['password'], server_type, 0))
         
-        # === ТАЙМАУТЫ ===
-        print("⏱️ Переносим таймауты...")
-        migrate_timeouts(settings_manager, SERVER_TIMEOUTS)
+        conn.commit()
+        conn.close()
         
-        # === БЭКАПЫ ===
-        print("💾 Переносим настройки бэкапов...")
-        migrate_backup_settings(settings_manager, BACKUP_PATTERNS, DATABASE_CONFIG, PROXMOX_HOSTS, 
-                              BACKUP_STATUS_MAP, DUPLICATE_IP_HOSTS, HOSTNAME_ALIASES)
+        # Мигрируем серверы
+        print("🔌 Мигрируем серверы...")
+        conn = settings_manager.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM servers')
         
-        print("🎉 Полная миграция завершена успешно!")
-        print("\n📊 Статистика миграции:")
-        show_migration_stats(settings_manager)
+        server_count = 0
+        for ip, name in SERVER_CONFIG.get('windows_servers', {}).items():
+            server_type = 'standard_windows'
+            for win_type, config in WINDOWS_SERVER_CONFIGS.items():
+                if ip in config.get('servers', []):
+                    server_type = win_type
+                    break
+            cursor.execute('INSERT INTO servers (ip, name, type, timeout) VALUES (?, ?, ?, ?)', 
+                         (ip, name, 'rdp', 30))
+            server_count += 1
+        
+        for ip, name in SERVER_CONFIG.get('linux_servers', {}).items():
+            cursor.execute('INSERT INTO servers (ip, name, type, timeout) VALUES (?, ?, ?, ?)', 
+                         (ip, name, 'ssh', 15))
+            server_count += 1
+        
+        for ip, name in SERVER_CONFIG.get('ping_servers', {}).items():
+            cursor.execute('INSERT INTO servers (ip, name, type, timeout) VALUES (?, ?, ?, ?)', 
+                         (ip, name, 'ping', 10))
+            server_count += 1
+        
+        conn.commit()
+        conn.close()
+        
+        # Мигрируем остальные настройки
+        print("💾 Мигрируем настройки бэкапов...")
+        settings_manager.set_setting('SERVER_TIMEOUTS', json.dumps(SERVER_TIMEOUTS), 'monitoring', 'Таймауты серверов', 'dict')
+        settings_manager.set_setting('PROXMOX_HOSTS', json.dumps(PROXMOX_HOSTS), 'backup', 'Хосты Proxmox', 'dict')
+        settings_manager.set_setting('DATABASE_CONFIG', json.dumps(DATABASE_CONFIG), 'backup', 'Конфигурация БД', 'dict')
+        settings_manager.set_setting('BACKUP_STATUS_MAP', json.dumps(BACKUP_STATUS_MAP), 'backup', 'Статусы бэкапов', 'dict')
+        settings_manager.set_setting('DUPLICATE_IP_HOSTS', json.dumps(DUPLICATE_IP_HOSTS), 'backup', 'Хосты с одинаковыми IP', 'dict')
+        settings_manager.set_setting('HOSTNAME_ALIASES', json.dumps(HOSTNAME_ALIASES), 'backup', 'Алиасы хостов', 'dict')
+        
+        # Мигрируем паттерны бэкапов
+        conn = settings_manager.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM backup_patterns')
+        
+        pattern_count = 0
+        for pattern_type, patterns in BACKUP_PATTERNS.items():
+            if isinstance(patterns, list):
+                for pattern in patterns:
+                    cursor.execute('INSERT INTO backup_patterns (pattern_type, pattern, category) VALUES (?, ?, ?)',
+                                 (pattern_type, pattern, 'proxmox'))
+                    pattern_count += 1
+            elif isinstance(patterns, dict):
+                for sub_type, sub_patterns in patterns.items():
+                    if isinstance(sub_patterns, list):
+                        for pattern in sub_patterns:
+                            cursor.execute('INSERT INTO backup_patterns (pattern_type, pattern, category) VALUES (?, ?, ?)',
+                                         (f"{pattern_type}_{sub_type}", pattern, 'database'))
+                            pattern_count += 1
+        
+        conn.commit()
+        conn.close()
+        
+        print("✅ Миграция завершена успешно!")
+        print(f"📊 Статистика:")
+        print(f"   - Настроек: {len(settings_manager.get_all_settings())}")
+        print(f"   - Серверов: {server_count}")
+        print(f"   - Учетных записей: {len(WINDOWS_CREDENTIALS)}")
+        print(f"   - Паттернов: {pattern_count}")
         
         return True
         
@@ -105,220 +163,10 @@ def migrate_all_settings():
         traceback.print_exc()
         return False
 
-def migrate_windows_credentials(settings_manager, windows_credentials, windows_server_configs):
-    """Перенос учетных данных Windows"""
-    conn = settings_manager.get_connection()
-    cursor = conn.cursor()
-    
-    # Очищаем старые данные
-    cursor.execute('DELETE FROM windows_credentials')
-    
-    # Добавляем базовые учетные данные
-    priority = 0
-    for cred in windows_credentials:
-        cursor.execute('''
-            INSERT INTO windows_credentials (username, password, server_type, priority)
-            VALUES (?, ?, ?, ?)
-        ''', (cred['username'], cred['password'], 'default', priority))
-        priority += 1
-    
-    # Добавляем специфичные для типов серверов
-    for server_type, config in windows_server_configs.items():
-        for cred in config.get('credentials', []):
-            cursor.execute('''
-                INSERT INTO windows_credentials (username, password, server_type, priority)
-                VALUES (?, ?, ?, ?)
-            ''', (cred['username'], cred['password'], server_type, 0))
-    
-    conn.commit()
-    conn.close()
-    print(f"✅ Учетные данные Windows перенесены: {len(windows_credentials)} записей")
-
-def migrate_servers(settings_manager, server_config, windows_server_configs):
-    """Перенос настроек серверов"""
-    conn = settings_manager.get_connection()
-    cursor = conn.cursor()
-    
-    # Очищаем старые данные
-    cursor.execute('DELETE FROM servers')
-    
-    server_count = 0
-    
-    # Windows серверы
-    for ip, name in server_config.get('windows_servers', {}).items():
-        # Определяем тип Windows сервера
-        server_type = 'standard_windows'
-        for win_type, config in windows_server_configs.items():
-            if ip in config.get('servers', []):
-                server_type = win_type
-                break
-        
-        cursor.execute('''
-            INSERT INTO servers (ip, name, type, timeout)
-            VALUES (?, ?, ?, ?)
-        ''', (ip, name, 'rdp', 30))
-        server_count += 1
-    
-    # Linux серверы
-    for ip, name in server_config.get('linux_servers', {}).items():
-        cursor.execute('''
-            INSERT INTO servers (ip, name, type, timeout)
-            VALUES (?, ?, ?, ?)
-        ''', (ip, name, 'ssh', 15))
-        server_count += 1
-    
-    # Ping серверы
-    for ip, name in server_config.get('ping_servers', {}).items():
-        cursor.execute('''
-            INSERT INTO servers (ip, name, type, timeout)
-            VALUES (?, ?, ?, ?)
-        ''', (ip, name, 'ping', 10))
-        server_count += 1
-    
-    conn.commit()
-    conn.close()
-    print(f"✅ Серверы перенесены: {server_count} серверов")
-
-def migrate_timeouts(settings_manager, server_timeouts):
-    """Перенос таймаутов"""
-    # Сохраняем таймауты как JSON в настройках
-    settings_manager.set_setting('SERVER_TIMEOUTS', json.dumps(server_timeouts), 'monitoring', 'Таймауты для разных типов серверов', 'dict')
-    print(f"✅ Таймауты перенесены: {len(server_timeouts)} настроек")
-
-def migrate_backup_settings(settings_manager, backup_patterns, database_config, proxmox_hosts, 
-                          backup_status_map, duplicate_ip_hosts, hostname_aliases):
-    """Перенос настроек бэкапов"""
-    conn = settings_manager.get_connection()
-    cursor = conn.cursor()
-    
-    # Очищаем старые данные
-    cursor.execute('DELETE FROM backup_patterns')
-    
-    # Паттерны Proxmox
-    pattern_count = 0
-    for pattern_type, patterns in backup_patterns.items():
-        if isinstance(patterns, list):
-            for pattern in patterns:
-                cursor.execute('''
-                    INSERT INTO backup_patterns (pattern_type, pattern, category)
-                    VALUES (?, ?, ?)
-                ''', (pattern_type, pattern, 'proxmox'))
-                pattern_count += 1
-        elif isinstance(patterns, dict):
-            for sub_type, sub_patterns in patterns.items():
-                if isinstance(sub_patterns, list):
-                    for pattern in sub_patterns:
-                        cursor.execute('''
-                            INSERT INTO backup_patterns (pattern_type, pattern, category)
-                            VALUES (?, ?, ?)
-                        ''', (f"{pattern_type}_{sub_type}", pattern, 'database'))
-                        pattern_count += 1
-    
-    conn.commit()
-    conn.close()
-    
-    # Сохраняем остальные настройки бэкапов
-    settings_manager.set_setting('DATABASE_CONFIG', json.dumps(database_config), 'backup', 'Конфигурация баз данных для бэкапов', 'dict')
-    settings_manager.set_setting('PROXMOX_HOSTS', json.dumps(proxmox_hosts), 'backup', 'Хосты Proxmox для мониторинга бэкапов', 'dict')
-    settings_manager.set_setting('BACKUP_STATUS_MAP', json.dumps(backup_status_map), 'backup', 'Статусы бэкапов', 'dict')
-    settings_manager.set_setting('DUPLICATE_IP_HOSTS', json.dumps(duplicate_ip_hosts), 'backup', 'Хосты с одинаковыми IP', 'dict')
-    settings_manager.set_setting('HOSTNAME_ALIASES', json.dumps(hostname_aliases), 'backup', 'Алиасы имен хостов', 'dict')
-    
-    print(f"✅ Настройки бэкапов перенесены: {pattern_count} паттернов")
-
-def show_migration_stats(settings_manager):
-    """Показать статистику миграции"""
-    conn = settings_manager.get_connection()
-    cursor = conn.cursor()
-    
-    # Настройки
-    cursor.execute('SELECT COUNT(*) FROM settings')
-    settings_count = cursor.fetchone()[0]
-    
-    # Серверы
-    cursor.execute('SELECT COUNT(*) FROM servers')
-    servers_count = cursor.fetchone()[0]
-    
-    # Учетные данные Windows
-    cursor.execute('SELECT COUNT(*) FROM windows_credentials')
-    credentials_count = cursor.fetchone()[0]
-    
-    # Паттерны бэкапов
-    cursor.execute('SELECT COUNT(*) FROM backup_patterns')
-    patterns_count = cursor.fetchone()[0]
-    
-    conn.close()
-    
-    print(f"📁 Настроек: {settings_count}")
-    print(f"🔌 Серверов: {servers_count}")
-    print(f"🔑 Учетных записей Windows: {credentials_count}")
-    print(f"🔍 Паттернов бэкапов: {patterns_count}")
-    
-    # Показываем основные настройки
-    print("\n🔧 Основные настройки:")
-    important_settings = [
-        'TELEGRAM_TOKEN', 'CHECK_INTERVAL', 'SILENT_START', 'SILENT_END',
-        'RESOURCE_CHECK_INTERVAL', 'CPU_WARNING', 'RAM_WARNING', 'DISK_WARNING'
-    ]
-    
-    for setting in important_settings:
-        value = settings_manager.get_setting(setting)
-        print(f"   {setting}: {value}")
-
-def backup_and_rename_config():
-    """Создать резервную копию и переименовать config.py"""
-    import shutil
-    from datetime import datetime
-    
-    backup_dir = '/opt/monitoring/backups'
-    os.makedirs(backup_dir, exist_ok=True)
-    
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    backup_file = os.path.join(backup_dir, f'config_backup_{timestamp}.py')
-    
-    try:
-        # Создаем резервную копию оригинального config.py
-        shutil.copy2('/opt/monitoring/config.py', backup_file)
-        print(f"✅ Резервная копия создана: {backup_file}")
-        
-        # Переименовываем оригинальный config.py
-        original_config = '/opt/monitoring/config_original.py'
-        if os.path.exists('/opt/monitoring/config.py'):
-            shutil.move('/opt/monitoring/config.py', original_config)
-            print(f"✅ Оригинальный config.py переименован в config_original.py")
-        
-        return True
-    except Exception as e:
-        print(f"❌ Ошибка создания резервной копии: {e}")
-        return False
-
 if __name__ == "__main__":
-    print("=" * 60)
-    print("🔄 ПОЛНАЯ МИГРАЦИЯ НАСТРОЕК В БАЗУ ДАННЫХ")
-    print("=" * 60)
-    
-    # Создаем резервную копию и переименовываем
-    if not backup_and_rename_config():
-        print("❌ Не удалось создать резервную копию. Прерываем миграцию.")
-        sys.exit(1)
-    
-    # Выполняем миграцию
-    if migrate_all_settings():
-        print("\n✅ Миграция завершена успешно!")
-        print("\n📝 Дальнейшие действия:")
-        print("1. Убедитесь, что новый config.py загружает настройки из БД")
-        print("2. Перезапустите сервис: systemctl restart server-monitor.service")
-        print("3. Используйте команду /settings в боте для управления настройками")
-        print("4. Проверьте работу всех функций мониторинга")
+    if migrate_final():
+        print("\n🎉 Финальная миграция завершена!")
+        print("📝 Теперь можно заменить config.py на версию с БД")
     else:
-        print("\n❌ Миграция завершилась с ошибками!")
-        print("⚠️  Восстанавливаем оригинальный config.py...")
-        # Восстанавливаем оригинальный config.py
-        try:
-            shutil.copy2('/opt/monitoring/config_original.py', '/opt/monitoring/config.py')
-            print("✅ Оригинальный config.py восстановлен")
-        except:
-            print("❌ Не удалось восстановить оригинальный config.py")
-    
-    print("=" * 60)
-    
+        print("\n❌ Миграция не удалась!")
+        

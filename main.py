@@ -5,13 +5,12 @@ Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Основной модуль запуска
 """
+
 import os
 import sys
 import time
 import logging
 from datetime import datetime
-from settings_manager import settings_manager
-from settings_handlers import get_settings_handlers
 
 # Добавляем путь для импортов
 sys.path.insert(0, '/opt/monitoring')
@@ -61,8 +60,13 @@ def main():
             dispatcher.add_handler(handler)
 
         # Добавляем обработчики настроек
-        for handler in get_settings_handlers():
-            dispatcher.add_handler(handler)
+        try:
+            from settings_handlers import get_settings_handlers
+            for handler in get_settings_handlers():
+                dispatcher.add_handler(handler)
+            logger.info("✅ Обработчики настроек добавлены")
+        except ImportError as e:
+            logger.warning(f"⚠️ Обработчики настроек недоступны: {e}")
 
         # Ленивая загрузка расширений
         from extensions.extension_manager import extension_manager
