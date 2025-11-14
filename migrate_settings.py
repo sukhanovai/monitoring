@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Скрипт миграции настроек из config.py в базу данных
+Скрипт миграции настроек из config.py в базу данных - FIXED VERSION
 """
 
 import sys
@@ -99,7 +99,7 @@ def migrate_settings():
 
 def migrate_windows_credentials(settings_manager, windows_credentials, windows_server_configs):
     """Перенос учетных данных Windows"""
-    conn = sqlite3.connect(settings_manager.db_path)
+    conn = settings_manager.get_connection()
     cursor = conn.cursor()
     
     # Очищаем старые данные
@@ -128,7 +128,7 @@ def migrate_windows_credentials(settings_manager, windows_credentials, windows_s
 
 def migrate_servers(settings_manager, server_config, windows_server_configs):
     """Перенос настроек серверов"""
-    conn = sqlite3.connect(settings_manager.db_path)
+    conn = settings_manager.get_connection()
     cursor = conn.cursor()
     
     # Очищаем старые данные
@@ -179,7 +179,7 @@ def migrate_timeouts(settings_manager, server_timeouts):
 
 def migrate_backup_settings(settings_manager, backup_patterns, database_config, proxmox_hosts):
     """Перенос настроек бэкапов"""
-    conn = sqlite3.connect(settings_manager.db_path)
+    conn = settings_manager.get_connection()
     cursor = conn.cursor()
     
     # Очищаем старые данные
@@ -205,19 +205,20 @@ def migrate_backup_settings(settings_manager, backup_patterns, database_config, 
                         ''', (f"{pattern_type}_{sub_type}", pattern, 'database'))
                         pattern_count += 1
     
-    # Сохраняем конфигурацию баз данных
-    settings_manager.set_setting('DATABASE_CONFIG', json.dumps(database_config), 'backup', 'Конфигурация баз данных для бэкапов', 'dict')
-    
-    # Сохраняем хосты Proxmox
-    settings_manager.set_setting('PROXMOX_HOSTS', json.dumps(proxmox_hosts), 'backup', 'Хосты Proxmox для мониторинга бэкапов', 'dict')
-    
     conn.commit()
     conn.close()
+    
+    # Сохраняем конфигурацию баз данных (отдельное соединение)
+    settings_manager.set_setting('DATABASE_CONFIG', json.dumps(database_config), 'backup', 'Конфигурация баз данных для бэкапов', 'dict')
+    
+    # Сохраняем хосты Proxmox (отдельное соединение)
+    settings_manager.set_setting('PROXMOX_HOSTS', json.dumps(proxmox_hosts), 'backup', 'Хосты Proxmox для мониторинга бэкапов', 'dict')
+    
     print(f"✅ Настройки бэкапов перенесены: {pattern_count} паттернов")
 
 def show_migration_stats(settings_manager):
     """Показать статистику миграции"""
-    conn = sqlite3.connect(settings_manager.db_path)
+    conn = settings_manager.get_connection()
     cursor = conn.cursor()
     
     # Настройки

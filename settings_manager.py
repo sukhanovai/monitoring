@@ -1,6 +1,6 @@
 """
-Server Monitoring System v3.0.0
-Менеджер настроек БД
+Server Monitoring System v2.4.8
+Settings Manager with Database Storage - FIXED VERSION
 """
 
 import sqlite3
@@ -13,11 +13,15 @@ class SettingsManager:
         self.db_path = db_path
         self.init_database()
     
+    def get_connection(self):
+        """Получить соединение с БД"""
+        return sqlite3.connect(self.db_path)
+    
     def init_database(self):
         """Инициализация базы данных настроек"""
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         
-        conn = sqlite3.connect(self.db_path)
+        conn = self.get_connection()
         cursor = conn.cursor()
         
         # Таблица основных настроек
@@ -116,7 +120,7 @@ class SettingsManager:
             ('BACKUP_STALE_HOURS', '36', 'backup', 'Часы для устаревших бэкапов', 'int'),
         ]
         
-        conn = sqlite3.connect(self.db_path)
+        conn = self.get_connection()
         cursor = conn.cursor()
         
         for key, value, category, description, data_type in default_settings:
@@ -130,7 +134,7 @@ class SettingsManager:
     
     def get_setting(self, key, default=None):
         """Получить значение настройки"""
-        conn = sqlite3.connect(self.db_path)
+        conn = self.get_connection()
         cursor = conn.cursor()
         
         cursor.execute('SELECT value, data_type FROM settings WHERE key = ?', (key,))
@@ -178,7 +182,7 @@ class SettingsManager:
         else:
             value = str(value)
         
-        conn = sqlite3.connect(self.db_path)
+        conn = self.get_connection()
         cursor = conn.cursor()
         
         cursor.execute('''
@@ -192,7 +196,7 @@ class SettingsManager:
     
     def get_all_settings(self, category=None):
         """Получить все настройки"""
-        conn = sqlite3.connect(self.db_path)
+        conn = self.get_connection()
         cursor = conn.cursor()
         
         if category:
@@ -221,7 +225,7 @@ class SettingsManager:
     
     def get_categories(self):
         """Получить список категорий"""
-        conn = sqlite3.connect(self.db_path)
+        conn = self.get_connection()
         cursor = conn.cursor()
         
         cursor.execute('SELECT DISTINCT category FROM settings ORDER BY category')
@@ -232,7 +236,7 @@ class SettingsManager:
 
     def get_servers_by_type(self, server_type):
         """Получить серверы по типу"""
-        conn = sqlite3.connect(self.db_path)
+        conn = self.get_connection()
         cursor = conn.cursor()
         
         cursor.execute('SELECT ip, name FROM servers WHERE type = ? AND enabled = 1', (server_type,))
@@ -243,7 +247,7 @@ class SettingsManager:
 
     def add_server(self, ip, name, server_type, credentials=None, timeout=30):
         """Добавить сервер"""
-        conn = sqlite3.connect(self.db_path)
+        conn = self.get_connection()
         cursor = conn.cursor()
         
         credentials_json = json.dumps(credentials) if credentials else '[]'
@@ -259,7 +263,7 @@ class SettingsManager:
 
     def delete_server(self, ip):
         """Удалить сервер"""
-        conn = sqlite3.connect(self.db_path)
+        conn = self.get_connection()
         cursor = conn.cursor()
         
         cursor.execute('DELETE FROM servers WHERE ip = ?', (ip,))
@@ -270,7 +274,7 @@ class SettingsManager:
 
     def get_all_servers(self):
         """Получить все серверы"""
-        conn = sqlite3.connect(self.db_path)
+        conn = self.get_connection()
         cursor = conn.cursor()
         
         cursor.execute('SELECT ip, name, type, credentials, timeout FROM servers WHERE enabled = 1')
@@ -288,15 +292,10 @@ class SettingsManager:
         
         conn.close()
         return servers
-    
-    @property
-    def conn(self):
-        """Свойство для получения соединения с БД"""
-        return sqlite3.connect(self.db_path)
 
     def get_backup_patterns(self):
         """Получить паттерны бэкапов"""
-        conn = sqlite3.connect(self.db_path)
+        conn = self.get_connection()
         cursor = conn.cursor()
         
         cursor.execute('SELECT pattern_type, pattern, category FROM backup_patterns WHERE enabled = 1')
@@ -323,7 +322,6 @@ class SettingsManager:
     def get_server_timeouts(self):
         """Получить таймауты серверов"""
         return self.get_setting('SERVER_TIMEOUTS', {})
-    
 
 # Глобальный экземпляр менеджера настроек
 settings_manager = SettingsManager()
