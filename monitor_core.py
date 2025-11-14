@@ -1,5 +1,5 @@
 """
-Server Monitoring System v2.4.5
+Server Monitoring System v2.4.6
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Ядро системы
@@ -1121,16 +1121,12 @@ def perform_windows_check(context, chat_id, progress_message_id):
         return resources.get(key, default)
 
     try:
+        # ДИНАМИЧЕСКИЙ ИМПОРТ для избежания циклических зависимостей
         from extensions.server_checks import (
-            initialize_servers,
-            check_linux_servers,
             check_windows_2025_servers,
             check_domain_windows_servers,
             check_admin_windows_servers, 
-            check_standard_windows_servers,
-            check_all_servers_by_type,
-            get_linux_resources_improved,
-            get_windows_resources_improved
+            check_standard_windows_servers
         )
 
         update_progress(0, "⏳ Подготовка...")
@@ -1140,7 +1136,7 @@ def perform_windows_check(context, chat_id, progress_message_id):
         domain_results, domain_total = check_domain_windows_servers(update_progress)
         admin_results, admin_total = check_admin_windows_servers(update_progress)
         win_std_results, win_std_total = check_standard_windows_servers(update_progress)
-
+        
         message = f"🪟 **Проверка Windows серверов**\n\n"
 
         # Windows 2025
