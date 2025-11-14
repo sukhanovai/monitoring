@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """
-Улучшенный мониторинг почтового ящика - исправленная версия
+Server Monitoring System v2.4.8
+Copyright (c) 2025 Aleksandr Sukhanov
+License: MIT
+Мониторинг почтового ящика
 """
 
 import os
@@ -15,7 +18,8 @@ from datetime import datetime
 from email.utils import parsedate_to_datetime
 from config import (
     PROXMOX_HOSTS, PROXMOX_SUBJECT_PATTERNS, HOSTNAME_PATTERNS, 
-    BACKUP_STATUS_MAP, BACKUP_DATABASE_CONFIG
+    BACKUP_STATUS_MAP, BACKUP_DATABASE_CONFIG, DATABASE_BACKUP_PATTERNS,
+    DATABASE_BACKUP_CONFIG
 )
 
 # Настройка логирования
@@ -113,6 +117,169 @@ class BackupProcessor:
     
         return processed_count
     
+    def parse_database_backup(self, subject, body):
+        """Парсит бэкапы баз данных из темы письма - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
+        try:
+            print(f"🎯 DEBUG parse_database_backup: Начало обработки темы: '{subject}'")
+            backup_info = {}
+
+            # Проверяем бэкапы основных баз данных
+            for pattern in DATABASE_BACKUP_PATTERNS["company"]:
+                print(f"🎯 DEBUG: Проверяем паттерн company: '{pattern}'")
+                match = re.search(pattern, subject, re.IGNORECASE)
+                if match:
+                    db_name = match.group(1).lower()
+                    print(f"✅ DEBUG: Найден бэкап company_database: '{db_name}' по паттерну: '{pattern}'")
+                    
+                    # ИСПРАВЛЕНИЕ: получаем display_name из конфигурации
+                    display_name = DATABASE_BACKUP_CONFIG["company_databases"].get(db_name, db_name)
+                    print(f"✅ DEBUG: Display name для '{db_name}': '{display_name}'")
+                    
+                    backup_info = {
+                        'host_name': 'sr-bup',
+                        'backup_status': 'success',
+                        'task_type': 'database_dump',
+                        'database_name': db_name,  # реальное имя для поиска
+                        'database_display_name': display_name,  # отображаемое имя из конфига
+                        'backup_type': 'company_database'
+                    }
+                    return backup_info
+                
+                else:
+                    print(f"❌ DEBUG: Паттерн '{pattern}' не подошел для '{subject}'")
+
+            # Проверяем бэкапы от rubicon-1c
+            print(f"🎯 DEBUG: Проверяем письма от rubicon-1c")
+            rubicon_match = re.search(r'rubicon-1c\s+(\w+)\s+dump complete', subject, re.IGNORECASE)
+            if rubicon_match:
+                db_name = rubicon_match.group(1).lower()
+                print(f"✅ DEBUG: Найден бэкап rubicon-1c: '{db_name}'")
+                backup_info = {
+                    'host_name': 'rubicon-1c',
+                    'backup_status': 'success',
+                    'task_type': 'database_dump',
+                    'database_name': db_name,
+                    'database_display_name': db_name,
+                    'backup_type': 'client'
+                }
+                return backup_info
+
+            # Проверяем бэкапы Барнаул
+            for pattern in DATABASE_BACKUP_PATTERNS["barnaul"]:
+                print(f"🎯 DEBUG: Проверяем паттерн barnaul: '{pattern}'")
+                match = re.search(pattern, subject, re.IGNORECASE)
+                if match:
+                    backup_name = match.group(1)
+                    error_count = int(match.group(2))
+                    print(f"✅ DEBUG: Найден бэкап barnaul: '{backup_name}' с ошибками: {error_count}")
+                    backup_info = {
+                        'host_name': 'brn-backup',
+                        'backup_status': 'success' if error_count == 0 else 'failed',
+                        'task_type': 'cobian_backup',
+                        'database_name': backup_name,
+                        'database_display_name': backup_name,
+                        'error_count': error_count,
+                        'backup_type': 'barnaul'
+                    }
+                    return backup_info
+
+            # Проверяем бэкапы клиентов
+            for pattern in DATABASE_BACKUP_PATTERNS["clients"]:
+                print(f"🎯 DEBUG: Проверяем паттерн clients: '{pattern}'")
+                match = re.search(pattern, subject, re.IGNORECASE)
+                if match:
+                    db_name = match.group(1).lower()
+                    print(f"✅ DEBUG: Найден бэкап clients: '{db_name}'")
+                    backup_info = {
+                        'host_name': 'kc-1c',
+                        'backup_status': 'success',
+                        'task_type': 'client_database_dump',
+                        'database_name': db_name,
+                        'database_display_name': db_name,
+                        'backup_type': 'client'
+                    }
+                    return backup_info
+
+            # Проверяем бэкапы Yandex
+            for pattern in DATABASE_BACKUP_PATTERNS["yandex"]:
+                print(f"🎯 DEBUG: Проверяем паттерн yandex: '{pattern}'")
+                match = re.search(pattern, subject, re.IGNORECASE)
+                if match:
+                    client_name = match.group(1)
+                    print(f"✅ DEBUG: Найден бэкап yandex: '{client_name}'")
+                    backup_info = {
+                        'host_name': 'yandex-backup',
+                        'backup_status': 'success',
+                        'task_type': 'yandex_backup',
+                        'database_name': client_name,
+                        'database_display_name': client_name,
+                        'backup_type': 'yandex'
+                    }
+                    return backup_info
+
+            print(f"❌ DEBUG: Ни один паттерн не подошел для темы: '{subject}'")
+            return None
+
+        except Exception as e:
+            print(f"💥 DEBUG: Ошибка в parse_database_backup: {e}")
+            logger.error(f"Ошибка парсинга бэкапа БД: {e}")
+            return None
+    
+    def save_database_backup(self, backup_info, subject, email_date=None):
+        """Сохраняет информацию о бэкапе базы данных, игнорируя дубликаты"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            # Создаем таблицу для бэкапов БД если не существует
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS database_backups (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    host_name TEXT NOT NULL,
+                    database_name TEXT NOT NULL,
+                    database_display_name TEXT,
+                    backup_status TEXT NOT NULL,
+                    backup_type TEXT,
+                    task_type TEXT,
+                    error_count INTEGER DEFAULT 0,
+                    email_subject TEXT,
+                    received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(host_name, database_name, received_at)
+                )
+            ''')
+            
+            # Используем текущее время как время получения, если нет даты из письма
+            if email_date:
+                received_at = email_date.strftime('%Y-%m-%d %H:%M:%S')
+            else:
+                received_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            
+            # Используем INSERT OR IGNORE чтобы избежать дубликатов
+            cursor.execute('''
+                INSERT OR IGNORE INTO database_backups 
+                (host_name, database_name, database_display_name, backup_status, backup_type, task_type, error_count, email_subject, received_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                backup_info['host_name'],
+                backup_info['database_name'],
+                backup_info.get('database_display_name'),
+                backup_info['backup_status'],
+                backup_info.get('backup_type'),
+                backup_info.get('task_type'),
+                backup_info.get('error_count', 0),
+                subject[:500],
+                received_at
+            ))
+            
+            conn.commit()
+            logger.info(f"✅ Сохранен бэкап БД: {backup_info['database_display_name']} - {backup_info['backup_status']}")
+            
+        except Exception as e:
+            logger.error(f"❌ Ошибка сохранения бэкапа БД в БД: {e}")
+        finally:
+            if 'conn' in locals():
+                conn.close()
+
     def parse_email_file(self, file_path):
         """Парсит email файл"""
         try:
@@ -126,6 +293,9 @@ class BackupProcessor:
             logger.info(f"Тема письма: {subject}")
             logger.info(f"Дата письма: {email_date_str}")
             
+            # ДОБАВИМ ОТЛАДКУ ДЛЯ БЭКАПОВ БД
+            print(f"🎯 DEBUG: Обрабатываем письмо: {subject}")
+
             # Парсим дату письма
             email_date = None
             if email_date_str:
@@ -135,7 +305,14 @@ class BackupProcessor:
                     logger.warning(f"Не удалось распарсить дату письма: {e}")
                     email_date = datetime.now()
             
-            # Проверяем, это ли письмо о бэкапе Proxmox
+            # Сначала проверяем, это ли письмо о бэкапе базы данных
+            db_backup_info = self.parse_database_backup(subject, self.get_email_body(msg))
+            if db_backup_info:
+                logger.info(f"📊 Обнаружен бэкап базы данных: {db_backup_info['database_display_name']}")
+                self.save_database_backup(db_backup_info, subject, email_date)
+                return db_backup_info
+            
+            # Затем проверяем, это ли письмо о бэкапе Proxmox
             if not self.is_proxmox_backup_email(subject):
                 logger.info(f"Пропускаем не-Proxmox письмо: {subject[:50]}...")
                 return None
@@ -158,7 +335,7 @@ class BackupProcessor:
         except Exception as e:
             logger.error(f"Ошибка парсинга файла {file_path}: {e}")
             return None
-    
+        
     def is_proxmox_backup_email(self, subject):
         """Проверяет, является ли письмо отчетом о бэкапе Proxmox"""
         subject_lower = subject.lower()
@@ -170,9 +347,40 @@ class BackupProcessor:
         ])
     
     def parse_subject(self, subject):
-        """Парсит тему письма"""
+        """Парсит тему письма - ОБНОВЛЕННАЯ ВЕРСИЯ для серверов с одинаковым IP"""
         # Пример: "vzdump backup status (sr-pve4.geltd.local): backup successful"
+        # Пример для rubicon: "vzdump backup status (pve2-rubicon): backup successful"
         
+        # Сначала проверяем специальные случаи серверов с одинаковым IP
+        if 'pve2-rubicon' in subject.lower():
+            host_name = 'pve2-rubicon'
+            # Ищем статус бэкапа
+            status_match = re.search(r':\s*([^:]+)$', subject)
+            if status_match:
+                raw_status = status_match.group(1).strip().lower()
+                normalized_status = self.normalize_status(raw_status)
+                return {
+                    'host_name': host_name,
+                    'backup_status': normalized_status,
+                    'raw_status': raw_status,
+                    'task_type': 'vzdump'
+                }
+        
+        if 'pve-rubicon' in subject.lower() and 'pve2-rubicon' not in subject.lower():
+            host_name = 'pve-rubicon'
+            # Ищем статус бэкапа
+            status_match = re.search(r':\s*([^:]+)$', subject)
+            if status_match:
+                raw_status = status_match.group(1).strip().lower()
+                normalized_status = self.normalize_status(raw_status)
+                return {
+                    'host_name': host_name,
+                    'backup_status': normalized_status,
+                    'raw_status': raw_status,
+                    'task_type': 'vzdump'
+                }
+        
+        # Стандартная обработка для остальных серверов
         # Извлекаем имя хоста
         host_match = re.search(r'\(([^)]+)\)', subject)
         if not host_match:
@@ -188,8 +396,17 @@ class BackupProcessor:
             return None
         
         raw_status = status_match.group(1).strip().lower()
+        normalized_status = self.normalize_status(raw_status)
         
-        # Нормализуем статус
+        return {
+            'host_name': host_name,
+            'backup_status': normalized_status,
+            'raw_status': raw_status,
+            'task_type': 'vzdump'
+        }
+
+    def normalize_status(self, raw_status):
+        """Нормализует статус бэкапа"""
         status_map = {
             'backup successful': 'success',
             'successful': 'success',
@@ -198,15 +415,7 @@ class BackupProcessor:
             'failed': 'failed',
             'error': 'failed'
         }
-        
-        normalized_status = status_map.get(raw_status, raw_status)
-        
-        return {
-            'host_name': host_name,
-            'backup_status': normalized_status,
-            'raw_status': raw_status,
-            'task_type': 'vzdump'
-        }
+        return status_map.get(raw_status, raw_status)
     
     def get_email_body(self, msg):
         """Извлекает тело письма"""
@@ -370,7 +579,7 @@ class BackupProcessor:
             return f"{seconds}s"
 
     def save_backup_report(self, backup_info, subject, email_date=None):
-        """Сохраняет отчет в базу с корректным временем"""
+        """Сохраняет отчет в базу с корректным временем, игнорируя дубликаты"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
@@ -381,8 +590,9 @@ class BackupProcessor:
             else:
                 received_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             
+            # Используем INSERT OR IGNORE чтобы избежать дубликатов
             cursor.execute('''
-                INSERT INTO proxmox_backups 
+                INSERT OR IGNORE INTO proxmox_backups 
                 (host_name, backup_status, task_type, duration, total_size, error_message, email_subject, received_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ''', (

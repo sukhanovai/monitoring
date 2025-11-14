@@ -1,7 +1,8 @@
 """
-Server Monitoring System v1.3.0
-Copyright (c) 2024 Aleksandr Sukhanov
+Server Monitoring System v2.4.8
+Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
+Веб-интерфейс
 """
 
 from flask import Flask, jsonify, render_template_string, request
