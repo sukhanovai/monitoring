@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Server Monitoring System v2.4.8
+Server Monitoring System v3.0.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Основной модуль запуска
@@ -10,6 +10,8 @@ import sys
 import time
 import logging
 from datetime import datetime
+from settings_manager import settings_manager
+from settings_handlers import get_settings_handlers
 
 # Добавляем путь для импортов
 sys.path.insert(0, '/opt/monitoring')
@@ -33,7 +35,7 @@ def setup_logging():
 logger = setup_logging()
 
 def main():
-    """Основная функция запуска - ОПТИМИЗИРОВАННАЯ"""
+    """Основная функция запуска"""
     try:
         logger.info("🚀 Запуск оптимизированной версии мониторинга...")
         
@@ -56,6 +58,10 @@ def main():
             dispatcher.add_handler(handler)
 
         for handler in get_callback_handlers():
+            dispatcher.add_handler(handler)
+
+        # Добавляем обработчики настроек
+        for handler in get_settings_handlers():
             dispatcher.add_handler(handler)
 
         # Ленивая загрузка расширений

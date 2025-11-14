@@ -1,5 +1,5 @@
 """
-Server Monitoring System v2.4.1
+Server Monitoring System v3.0.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Унифицированные проверки серверов: ресурсы, доступность, список

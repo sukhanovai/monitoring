@@ -1,5 +1,5 @@
 """
-Server Monitoring System v2.4.8
+Server Monitoring System v3.0.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Меню бота
@@ -39,7 +39,8 @@ def setup_menu(bot):
             BotCommand("diagnose_ssh", "Диагностика SSH"),
             BotCommand("silent", "Тихий режим"),
             BotCommand("extensions", "🛠️ Управление расширениями"),
-            BotCommand("debug", "🐛 Управление отладкой"),  # НОВАЯ КОМАНДА
+            BotCommand("settings", "⚙️ Управление настройками"),
+            BotCommand("debug", "🐛 Управление отладкой"),
             BotCommand("help", "Помощь"),
         ]
         
