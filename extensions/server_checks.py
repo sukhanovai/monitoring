@@ -353,31 +353,41 @@ def get_windows_resources_improved(ip, timeout=30):
         "server_type": get_windows_server_type(ip)
     }
     
-    # Метод 1: Попробуем WinRM с PowerShell
-    winrm_result = get_windows_resources_winrm(ip, timeout)
-    if winrm_result and any([winrm_result.get("cpu", 0) > 0, winrm_result.get("ram", 0) > 0]):
-        return winrm_result
+    # Метод 1: Попробуем WinRM с PowerShell (с исправленной кодировкой)
+    try:
+        winrm_result = get_windows_resources_winrm(ip, timeout)
+        if winrm_result and any([winrm_result.get("cpu", 0) > 0, winrm_result.get("ram", 0) > 0, winrm_result.get("disk", 0) > 0]):
+            print(f"✅ WinRM успешно получил данные для {ip}: CPU={winrm_result.get('cpu')}%, RAM={winrm_result.get('ram')}%, Disk={winrm_result.get('disk')}%")
+            return winrm_result
+        elif winrm_result:
+            print(f"⚠️ WinRM подключился к {ip}, но не получил метрики")
+    except Exception as e:
+        print(f"❌ WinRM ошибка для {ip}: {e}")
     
     # Метод 2: Попробуем WMI
-    wmi_result = get_windows_resources_wmi(ip, timeout)
-    if wmi_result and any([wmi_result.get("cpu", 0) > 0, wmi_result.get("ram", 0) > 0]):
-        return wmi_result
-    
-    # Метод 3: Базовое получение только диска через другие методы
-    disk_result = get_windows_disk_only(ip, timeout)
-    if disk_result:
-        return disk_result
+    try:
+        wmi_result = get_windows_resources_wmi(ip, timeout)
+        if wmi_result and any([wmi_result.get("cpu", 0) > 0, wmi_result.get("ram", 0) > 0, wmi_result.get("disk", 0) > 0]):
+            print(f"✅ WMI успешно получил данные для {ip}: CPU={wmi_result.get('cpu')}%, RAM={wmi_result.get('ram')}%, Disk={wmi_result.get('disk')}%")
+            return wmi_result
+    except Exception as e:
+        print(f"❌ WMI ошибка для {ip}: {e}")
     
     # Если все методы не сработали, но сервер доступен
     if check_port(ip, 3389, 5):
         resources["status"] = "available_no_metrics"
         resources["access_method"] = "RDP_only"
+        resources["cpu"] = 0.0
+        resources["ram"] = 0.0
+        resources["disk"] = 0.0
+        print(f"⚠️ Сервер {ip} доступен по RDP, но метрики не получены")
         return resources
     
+    print(f"❌ Сервер {ip} недоступен для мониторинга ресурсов")
     return None
 
 def get_windows_resources_winrm(ip, timeout=30):
-    """Получение ресурсов через WinRM"""
+    """Получение ресурсов через WinRM с исправлением кодировки"""
     try:
         import winrm
         
@@ -449,12 +459,24 @@ if ($disk) {
 """
                 
                 result = session.run_ps(ps_script)
-                if result.status_code == 0 and result.std_out:
-                    parts = result.std_out.strip().split(',')
-                    if len(parts) == 3:
-                        resources["cpu"] = float(parts[0]) if parts[0] else 0.0
-                        resources["ram"] = float(parts[1]) if parts[1] else 0.0
-                        resources["disk"] = float(parts[2]) if parts[2] else 0.0
+                if result.status_code == 0:
+                    # ИСПРАВЛЕНИЕ: корректная обработка вывода с учетом кодировки
+                    output = ""
+                    if hasattr(result, 'std_out') and result.std_out:
+                        if isinstance(result.std_out, bytes):
+                            output = result.std_out.decode('utf-8', errors='ignore')
+                        else:
+                            output = str(result.std_out)
+                    
+                    if output:
+                        parts = output.strip().split(',')
+                        if len(parts) == 3:
+                            try:
+                                resources["cpu"] = float(parts[0]) if parts[0] and parts[0].strip() else 0.0
+                                resources["ram"] = float(parts[1]) if parts[1] and parts[1].strip() else 0.0
+                                resources["disk"] = float(parts[2]) if parts[2] and parts[2].strip() else 0.0
+                            except (ValueError, TypeError) as e:
+                                print(f"Error parsing resources for {ip}: {e}, parts: {parts}")
                 
                 # Если получили хоть какие-то данные
                 if resources["cpu"] > 0 or resources["ram"] > 0 or resources["disk"] > 0:
@@ -472,7 +494,7 @@ if ($disk) {
     except Exception as e:
         print(f"WinRM general error for {ip}: {e}")
         return None
-
+    
 def get_windows_resources_wmi(ip, timeout=30):
     """Получение ресурсов через WMI (альтернативный метод)"""
     try:
