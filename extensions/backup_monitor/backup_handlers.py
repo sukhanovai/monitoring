@@ -1,5 +1,5 @@
 """
-Server Monitoring System v2.4.7
+Server Monitoring System v2.4.8
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчики для бота бэкапов
@@ -457,10 +457,10 @@ def show_database_backups_list(query, backup_bot):
         
         # Заполняем списки базами из конфигурации
         config_mapping = [
-            ('company_database', DATABASE_BACKUP_CONFIG["company_databases"]),
-            ('barnaul', DATABASE_BACKUP_CONFIG["barnaul_backups"]),
-            ('client', DATABASE_BACKUP_CONFIG["client_databases"]),
-            ('yandex', DATABASE_BACKUP_CONFIG["yandex_backups"])
+            ('company_database', DATABASE_BACKUP_CONFIG.get("company_databases", {})),
+            ('barnaul', DATABASE_BACKUP_CONFIG.get("barnaul_backups", {})),
+            ('client', DATABASE_BACKUP_CONFIG.get("client_databases", {})),
+            ('yandex', DATABASE_BACKUP_CONFIG.get("yandex_backups", {}))
         ]
         
         for backup_type, config_dict in config_mapping:
@@ -507,10 +507,10 @@ def show_stale_databases(query, backup_bot):
         
         # Проверяем все базы из конфигурации
         config_mapping = [
-            ('company_database', DATABASE_BACKUP_CONFIG["company_databases"]),
-            ('barnaul', DATABASE_BACKUP_CONFIG["barnaul_backups"]),
-            ('client', DATABASE_BACKUP_CONFIG["client_databases"]),
-            ('yandex', DATABASE_BACKUP_CONFIG["yandex_backups"])
+            ('company_database', DATABASE_BACKUP_CONFIG.get("company_databases", {})),
+            ('barnaul', DATABASE_BACKUP_CONFIG.get("barnaul_backups", {})),
+            ('client', DATABASE_BACKUP_CONFIG.get("client_databases", {})),
+            ('yandex', DATABASE_BACKUP_CONFIG.get("yandex_backups", {}))
         ]
         
         for backup_type, config_dict in config_mapping:
