@@ -311,6 +311,27 @@ class SettingsManager:
         conn.close()
         return patterns
 
+    def get_windows_credentials_db(self):
+        """Получить учетные данные Windows из БД (для config.py)"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT username, password, server_type 
+            FROM windows_credentials 
+            WHERE enabled = 1 
+            ORDER BY server_type, priority
+        ''')
+        
+        credentials = {}
+        for username, password, server_type in cursor.fetchall():
+            if server_type not in credentials:
+                credentials[server_type] = []
+            credentials[server_type].append({"username": username, "password": password})
+        
+        conn.close()
+        return credentials
+
     def get_proxmox_hosts(self):
         """Получить хосты Proxmox"""
         return self.get_setting('PROXMOX_HOSTS', {})
