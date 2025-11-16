@@ -26,31 +26,48 @@ PROXMOX_SUBJECT_PATTERNS = BACKUP_PATTERNS.get("proxmox_proxmox_subject", BACKUP
 HOSTNAME_PATTERNS = BACKUP_PATTERNS.get("proxmox_hostname_extraction", BACKUP_PATTERNS.get("hostname_extraction", []))
 
 # Исправленная секция - правильное извлечение паттернов из структуры БД
+# Исправленная секция - правильное извлечение паттернов из структуры БД
 def get_database_patterns_from_config():
     """Правильно извлекает паттерны из конфигурации"""
+    # Временный логгер для отладки
+    temp_logger = logging.getLogger(__name__)
+    temp_logger.setLevel(logging.INFO)
+    
     try:
+        temp_logger.info(f"🔍 DEBUG: Полная структура BACKUP_PATTERNS: {BACKUP_PATTERNS}")
+        
         # Получаем всю структуру паттернов
         all_patterns = BACKUP_PATTERNS
         
-        # Ищем паттерны баз данных
+        # Ищем паттерны баз данных - проверяем разные возможные структуры
         if 'database' in all_patterns:
             db_patterns = all_patterns['database']
-            return {
-                "company": db_patterns.get("database_company", []),
-                "barnaul": db_patterns.get("database_barnaul", []),
-                "client": db_patterns.get("database_client", []),
-                "yandex": db_patterns.get("database_yandex", [])
+            temp_logger.info(f"🔍 DEBUG: Найден раздел 'database': {db_patterns}")
+            
+            result = {
+                "company": db_patterns.get("database_company", db_patterns.get("database_database_company", [])),
+                "barnaul": db_patterns.get("database_barnaul", db_patterns.get("database_database_barnaul", [])),
+                "client": db_patterns.get("database_client", db_patterns.get("database_database_client", [])),
+                "yandex": db_patterns.get("database_yandex", db_patterns.get("database_database_yandex", []))
             }
+            
         else:
-            # Альтернативный поиск в плоской структуре
-            return {
+            temp_logger.info("🔍 DEBUG: Раздел 'database' не найден, ищем в корне")
+            # Ищем в корневой структуре
+            result = {
                 "company": all_patterns.get("database_company", all_patterns.get("database_database_company", [])),
                 "barnaul": all_patterns.get("database_barnaul", all_patterns.get("database_database_barnaul", [])),
                 "client": all_patterns.get("database_client", all_patterns.get("database_database_client", [])),
                 "yandex": all_patterns.get("database_yandex", all_patterns.get("database_database_yandex", []))
             }
+        
+        temp_logger.info(f"🔍 DEBUG: Извлеченные паттерны: {result}")
+        return result
+        
     except Exception as e:
-        logger.error(f"Ошибка извлечения паттернов: {e}")
+        temp_logger.error(f"❌ Ошибка извлечения паттернов: {e}")
+        import traceback
+        temp_logger.error(f"❌ Traceback: {traceback.format_exc()}")
         return {"company": [], "barnaul": [], "client": [], "yandex": []}
 
 DATABASE_BACKUP_PATTERNS = get_database_patterns_from_config()
