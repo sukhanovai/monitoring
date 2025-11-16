@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Server Monitoring System v3.0.0
+Server Monitoring System v3.0.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Мониторинг почтового ящика
@@ -17,10 +17,14 @@ import email.policy
 from datetime import datetime
 from email.utils import parsedate_to_datetime
 from config import (
-    PROXMOX_HOSTS, PROXMOX_SUBJECT_PATTERNS, HOSTNAME_PATTERNS, 
-    BACKUP_STATUS_MAP, BACKUP_DATABASE_CONFIG, DATABASE_BACKUP_PATTERNS,
-    DATABASE_BACKUP_CONFIG
+    PROXMOX_HOSTS, BACKUP_STATUS_MAP, BACKUP_DATABASE_CONFIG,
+    DATABASE_BACKUP_CONFIG, BACKUP_PATTERNS
 )
+
+# Используем паттерны из BACKUP_PATTERNS
+PROXMOX_SUBJECT_PATTERNS = BACKUP_PATTERNS["proxmox_subject"]
+HOSTNAME_PATTERNS = BACKUP_PATTERNS["hostname_extraction"]
+DATABASE_BACKUP_PATTERNS = BACKUP_PATTERNS["database"]
 
 # Настройка логирования
 logging.basicConfig(
