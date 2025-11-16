@@ -22,42 +22,9 @@ from config import (
 )
 
 # Адаптация к новой структуре конфига
-PROXMOX_SUBJECT_PATTERNS = BACKUP_PATTERNS.get("proxmox_subject", [
-    r'vzdump backup status',
-    r'proxmox backup',
-    r'pve\d+ backup', 
-    r'bup\d+ backup',
-    r'rubicon.*backup',
-    r'pve2-rubicon.*backup'
-])
-
-HOSTNAME_PATTERNS = BACKUP_PATTERNS.get("hostname_extraction", [
-    r'\(([^)]+)\)',
-    r'from\s+([^\s]+)', 
-    r'host\s+([^\s]+)',
-    r'\((pve2-rubicon[^)]*)\)',
-    r'\((pve-rubicon[^)]*)\)'
-])
-
-DATABASE_BACKUP_PATTERNS = BACKUP_PATTERNS.get("database", {
-    "company": [
-        r'sr-bup (\w+) dump complete',
-        r'(\w+)_dump complete', 
-        r'dump (\w+) complete',
-        r'Backup 1C7\.7 (\w+) OK',
-        r'Backup (\w+) OK'
-    ],
-    "barnaul": [
-        r'cobian BRN backup (\w+), errors:(\d+)'
-    ],
-    "client": [
-        r'kc-1c (\w+) dump complete',
-        r'rubicon-1c (\w+) dump complete' 
-    ],
-    "yandex": [
-        r'yandex (\w+) backup'
-    ]
-})
+PROXMOX_SUBJECT_PATTERNS = BACKUP_PATTERNS.get("proxmox_subject", [])
+HOSTNAME_PATTERNS = BACKUP_PATTERNS.get("hostname_extraction", [])
+DATABASE_BACKUP_PATTERNS = BACKUP_PATTERNS.get("database", {})
 
 # Настройка логирования
 logging.basicConfig(
@@ -160,11 +127,13 @@ class BackupProcessor:
             logger.info(f"🎯 Парсим бэкап БД: '{subject}'")
             backup_info = {}
 
-            # ДОБАВИМ ОТЛАДКУ ДЛЯ ПАТТЕРНОВ
-            logger.info(f"🔍 Доступные паттерны company: {DATABASE_BACKUP_PATTERNS.get('company', [])}")
-
+            # ИСПРАВЛЕНИЕ: правильная структура паттернов
+            database_patterns = DATABASE_BACKUP_PATTERNS
+            
             # Проверяем бэкапы основных баз данных
-            company_patterns = DATABASE_BACKUP_PATTERNS.get("company", [])
+            company_patterns = database_patterns.get("company", [])
+            logger.info(f"🔍 Доступные паттерны company: {company_patterns}")
+            
             for i, pattern in enumerate(company_patterns):
                 match = re.search(pattern, subject, re.IGNORECASE)
                 logger.info(f"🔍 Проверяем паттерн {i+1}: '{pattern}' -> совпадение: {bool(match)}")
@@ -186,23 +155,8 @@ class BackupProcessor:
                     }
                     return backup_info
 
-            # Проверяем бэкапы от rubicon-1c
-            rubicon_match = re.search(r'rubicon-1c\s+(\w+)\s+dump complete', subject, re.IGNORECASE)
-            if rubicon_match:
-                db_name = rubicon_match.group(1).lower()
-                logger.info(f"✅ Найден бэкап rubicon-1c: '{db_name}'")
-                backup_info = {
-                    'host_name': 'rubicon-1c',
-                    'backup_status': 'success',
-                    'task_type': 'database_dump',
-                    'database_name': db_name,
-                    'database_display_name': db_name,
-                    'backup_type': 'client'
-                }
-                return backup_info
-
             # Проверяем бэкапы Барнаул
-            barnaul_patterns = DATABASE_BACKUP_PATTERNS.get("barnaul", [])
+            barnaul_patterns = database_patterns.get("barnaul", [])
             for pattern in barnaul_patterns:
                 match = re.search(pattern, subject, re.IGNORECASE)
                 if match:
@@ -221,7 +175,7 @@ class BackupProcessor:
                     return backup_info
 
             # Проверяем бэкапы клиентов
-            client_patterns = DATABASE_BACKUP_PATTERNS.get("client", [])
+            client_patterns = database_patterns.get("client", [])
             for pattern in client_patterns:
                 match = re.search(pattern, subject, re.IGNORECASE)
                 if match:
@@ -238,7 +192,7 @@ class BackupProcessor:
                     return backup_info
 
             # Проверяем бэкапы Yandex
-            yandex_patterns = DATABASE_BACKUP_PATTERNS.get("yandex", [])
+            yandex_patterns = database_patterns.get("yandex", [])
             for pattern in yandex_patterns:
                 match = re.search(pattern, subject, re.IGNORECASE)
                 if match:
@@ -262,7 +216,7 @@ class BackupProcessor:
             import traceback
             logger.error(traceback.format_exc())
             return None
-            
+                
     def save_database_backup(self, backup_info, subject, email_date=None):
         """Сохраняет информацию о бэкапе базы данных, игнорируя дубликаты"""
         try:
