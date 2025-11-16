@@ -24,12 +24,36 @@ from config import (
 # Адаптация к новой структуре конфига
 PROXMOX_SUBJECT_PATTERNS = BACKUP_PATTERNS.get("proxmox_proxmox_subject", BACKUP_PATTERNS.get("proxmox_subject", []))
 HOSTNAME_PATTERNS = BACKUP_PATTERNS.get("proxmox_hostname_extraction", BACKUP_PATTERNS.get("hostname_extraction", []))
-DATABASE_BACKUP_PATTERNS = {
-    "company": BACKUP_PATTERNS.get("database_database_company", []),
-    "barnaul": BACKUP_PATTERNS.get("database_database_barnaul", []),
-    "client": BACKUP_PATTERNS.get("database_database_client", []),
-    "yandex": BACKUP_PATTERNS.get("database_database_yandex", [])
-}
+
+# Исправленная секция - правильное извлечение паттернов из структуры БД
+def get_database_patterns_from_config():
+    """Правильно извлекает паттерны из конфигурации"""
+    try:
+        # Получаем всю структуру паттернов
+        all_patterns = BACKUP_PATTERNS
+        
+        # Ищем паттерны баз данных
+        if 'database' in all_patterns:
+            db_patterns = all_patterns['database']
+            return {
+                "company": db_patterns.get("database_company", []),
+                "barnaul": db_patterns.get("database_barnaul", []),
+                "client": db_patterns.get("database_client", []),
+                "yandex": db_patterns.get("database_yandex", [])
+            }
+        else:
+            # Альтернативный поиск в плоской структуре
+            return {
+                "company": all_patterns.get("database_company", all_patterns.get("database_database_company", [])),
+                "barnaul": all_patterns.get("database_barnaul", all_patterns.get("database_database_barnaul", [])),
+                "client": all_patterns.get("database_client", all_patterns.get("database_database_client", [])),
+                "yandex": all_patterns.get("database_yandex", all_patterns.get("database_database_yandex", []))
+            }
+    except Exception as e:
+        logger.error(f"Ошибка извлечения паттернов: {e}")
+        return {"company": [], "barnaul": [], "client": [], "yandex": []}
+
+DATABASE_BACKUP_PATTERNS = get_database_patterns_from_config()
 
 # Настройка логирования
 logging.basicConfig(
@@ -41,7 +65,12 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+
+# Логируем для отладки
 logger.info(f"🔍 Загружены паттерны company: {DATABASE_BACKUP_PATTERNS.get('company', [])}")
+logger.info(f"🔍 Загружены паттерны barnaul: {DATABASE_BACKUP_PATTERNS.get('barnaul', [])}")
+logger.info(f"🔍 Загружены паттерны client: {DATABASE_BACKUP_PATTERNS.get('client', [])}")
+logger.info(f"🔍 Загружены паттерны yandex: {DATABASE_BACKUP_PATTERNS.get('yandex', [])}")
 
 class BackupProcessor:
     """Обработчик бэкапов"""
