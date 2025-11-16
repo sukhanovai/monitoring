@@ -21,10 +21,43 @@ from config import (
     DATABASE_BACKUP_CONFIG, BACKUP_PATTERNS
 )
 
-# Используем паттерны из BACKUP_PATTERNS
-PROXMOX_SUBJECT_PATTERNS = BACKUP_PATTERNS["proxmox_subject"]
-HOSTNAME_PATTERNS = BACKUP_PATTERNS["hostname_extraction"]
-DATABASE_BACKUP_PATTERNS = BACKUP_PATTERNS["database"]
+# Адаптация к новой структуре конфига
+PROXMOX_SUBJECT_PATTERNS = BACKUP_PATTERNS.get("proxmox_subject", [
+    r'vzdump backup status',
+    r'proxmox backup',
+    r'pve\d+ backup', 
+    r'bup\d+ backup',
+    r'rubicon.*backup',
+    r'pve2-rubicon.*backup'
+])
+
+HOSTNAME_PATTERNS = BACKUP_PATTERNS.get("hostname_extraction", [
+    r'\(([^)]+)\)',
+    r'from\s+([^\s]+)', 
+    r'host\s+([^\s]+)',
+    r'\((pve2-rubicon[^)]*)\)',
+    r'\((pve-rubicon[^)]*)\)'
+])
+
+DATABASE_BACKUP_PATTERNS = BACKUP_PATTERNS.get("database", {
+    "company": [
+        r'sr-bup (\w+) dump complete',
+        r'(\w+)_dump complete', 
+        r'dump (\w+) complete',
+        r'Backup 1C7\.7 (\w+) OK',
+        r'Backup (\w+) OK'
+    ],
+    "barnaul": [
+        r'cobian BRN backup (\w+), errors:(\d+)'
+    ],
+    "client": [
+        r'kc-1c (\w+) dump complete',
+        r'rubicon-1c (\w+) dump complete' 
+    ],
+    "yandex": [
+        r'yandex (\w+) backup'
+    ]
+})
 
 # Настройка логирования
 logging.basicConfig(
