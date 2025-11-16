@@ -349,10 +349,11 @@ class BackupProcessor:
                 logger.info(f"📊 Обнаружен бэкап базы данных: {db_backup_info['database_display_name']}")
                 self.save_database_backup(db_backup_info, subject, email_date)
                 return db_backup_info
-            
+
             # Затем проверяем, это ли письмо о бэкапе Proxmox
             if not self.is_proxmox_backup_email(subject):
-                logger.info(f"Пропускаем не-Proxmox письмо: {subject[:50]}...")
+                # НЕ пропускаем письмо если это бэкап БД - он уже обработан выше
+                logger.info(f"Пропускаем не-Proxmox и не-БД письмо: {subject[:50]}...")
                 return None
             
             # Извлекаем информацию из темы
