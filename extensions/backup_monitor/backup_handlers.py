@@ -5,6 +5,8 @@ License: MIT
 Обработчики для бота бэкапов
 """
 
+import sys
+import os
 import logging
 from datetime import datetime, timedelta
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
