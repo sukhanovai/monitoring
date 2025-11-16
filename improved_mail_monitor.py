@@ -160,11 +160,14 @@ class BackupProcessor:
             logger.info(f"🎯 Парсим бэкап БД: '{subject}'")
             backup_info = {}
 
-            # ИСПРАВЛЕНИЕ: используем правильные ключи
+            # ДОБАВИМ ОТЛАДКУ ДЛЯ ПАТТЕРНОВ
+            logger.info(f"🔍 Доступные паттерны company: {DATABASE_BACKUP_PATTERNS.get('company', [])}")
+
             # Проверяем бэкапы основных баз данных
             company_patterns = DATABASE_BACKUP_PATTERNS.get("company", [])
-            for pattern in company_patterns:
+            for i, pattern in enumerate(company_patterns):
                 match = re.search(pattern, subject, re.IGNORECASE)
+                logger.info(f"🔍 Проверяем паттерн {i+1}: '{pattern}' -> совпадение: {bool(match)}")
                 if match:
                     db_name = match.group(1).lower()
                     logger.info(f"✅ Найден бэкап company_database: '{db_name}' по паттерну: '{pattern}'")
