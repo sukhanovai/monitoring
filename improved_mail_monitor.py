@@ -160,14 +160,16 @@ class BackupProcessor:
             logger.info(f"🎯 Парсим бэкап БД: '{subject}'")
             backup_info = {}
 
+            # ИСПРАВЛЕНИЕ: используем правильные ключи
             # Проверяем бэкапы основных баз данных
-            for pattern in DATABASE_BACKUP_PATTERNS["company"]:
+            company_patterns = DATABASE_BACKUP_PATTERNS.get("company", [])
+            for pattern in company_patterns:
                 match = re.search(pattern, subject, re.IGNORECASE)
                 if match:
                     db_name = match.group(1).lower()
                     logger.info(f"✅ Найден бэкап company_database: '{db_name}' по паттерну: '{pattern}'")
                     
-                    # ИСПРАВЛЕНИЕ: получаем display_name из новой структуры конфига
+                    # Получаем display_name из новой структуры конфига
                     display_name = DATABASE_BACKUP_CONFIG.get("company", {}).get(db_name, db_name)
                     logger.info(f"✅ Display name для '{db_name}': '{display_name}'")
                     
@@ -197,7 +199,8 @@ class BackupProcessor:
                 return backup_info
 
             # Проверяем бэкапы Барнаул
-            for pattern in DATABASE_BACKUP_PATTERNS["barnaul"]:
+            barnaul_patterns = DATABASE_BACKUP_PATTERNS.get("barnaul", [])
+            for pattern in barnaul_patterns:
                 match = re.search(pattern, subject, re.IGNORECASE)
                 if match:
                     backup_name = match.group(1)
@@ -215,7 +218,8 @@ class BackupProcessor:
                     return backup_info
 
             # Проверяем бэкапы клиентов
-            for pattern in DATABASE_BACKUP_PATTERNS["client"]:
+            client_patterns = DATABASE_BACKUP_PATTERNS.get("client", [])
+            for pattern in client_patterns:
                 match = re.search(pattern, subject, re.IGNORECASE)
                 if match:
                     db_name = match.group(1).lower()
@@ -231,7 +235,8 @@ class BackupProcessor:
                     return backup_info
 
             # Проверяем бэкапы Yandex
-            for pattern in DATABASE_BACKUP_PATTERNS["yandex"]:
+            yandex_patterns = DATABASE_BACKUP_PATTERNS.get("yandex", [])
+            for pattern in yandex_patterns:
                 match = re.search(pattern, subject, re.IGNORECASE)
                 if match:
                     client_name = match.group(1)
@@ -254,7 +259,7 @@ class BackupProcessor:
             import traceback
             logger.error(traceback.format_exc())
             return None
-        
+            
     def save_database_backup(self, backup_info, subject, email_date=None):
         """Сохраняет информацию о бэкапе базы данных, игнорируя дубликаты"""
         try:
