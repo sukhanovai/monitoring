@@ -136,7 +136,7 @@ class BackupProcessor:
                     print(f"✅ DEBUG: Найден бэкап company_database: '{db_name}' по паттерну: '{pattern}'")
                     
                     # ИСПРАВЛЕНИЕ: получаем display_name из конфигурации
-                    display_name = DATABASE_BACKUP_CONFIG["company_databases"].get(db_name, db_name)
+                    display_name = DATABASE_BACKUP_CONFIG.get("company_databases", {}).get(db_name, db_name)
                     print(f"✅ DEBUG: Display name для '{db_name}': '{display_name}'")
                     
                     backup_info = {
