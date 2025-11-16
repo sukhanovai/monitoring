@@ -22,9 +22,14 @@ from config import (
 )
 
 # Адаптация к новой структуре конфига
-PROXMOX_SUBJECT_PATTERNS = BACKUP_PATTERNS.get("proxmox_subject", [])
-HOSTNAME_PATTERNS = BACKUP_PATTERNS.get("hostname_extraction", [])
-DATABASE_BACKUP_PATTERNS = BACKUP_PATTERNS.get("database", {})
+PROXMOX_SUBJECT_PATTERNS = BACKUP_PATTERNS.get("proxmox_proxmox_subject", BACKUP_PATTERNS.get("proxmox_subject", []))
+HOSTNAME_PATTERNS = BACKUP_PATTERNS.get("proxmox_hostname_extraction", BACKUP_PATTERNS.get("hostname_extraction", []))
+DATABASE_BACKUP_PATTERNS = {
+    "company": BACKUP_PATTERNS.get("database_database_company", []),
+    "barnaul": BACKUP_PATTERNS.get("database_database_barnaul", []),
+    "client": BACKUP_PATTERNS.get("database_database_client", []),
+    "yandex": BACKUP_PATTERNS.get("database_database_yandex", [])
+}
 
 # Настройка логирования
 logging.basicConfig(
@@ -36,6 +41,7 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+logger.info(f"🔍 Загружены паттерны company: {DATABASE_BACKUP_PATTERNS.get('company', [])}")
 
 class BackupProcessor:
     """Обработчик бэкапов"""
