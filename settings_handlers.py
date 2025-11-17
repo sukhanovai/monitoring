@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.0.2
+Server Monitoring System v3.1.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчики для управления настройками через бота
@@ -69,6 +69,7 @@ def show_telegram_settings(update, context):
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
+# В show_monitoring_settings добавьте:
 def show_monitoring_settings(update, context):
     """Показать настройки мониторинга"""
     query = update.callback_query
@@ -77,16 +78,30 @@ def show_monitoring_settings(update, context):
     check_interval = settings_manager.get_setting('CHECK_INTERVAL', 60)
     max_fail_time = settings_manager.get_setting('MAX_FAIL_TIME', 900)
     
+    # Новые настройки таймаутов
+    windows_2025_timeout = settings_manager.get_setting('WINDOWS_2025_TIMEOUT', 35)
+    domain_timeout = settings_manager.get_setting('DOMAIN_SERVERS_TIMEOUT', 20)
+    admin_timeout = settings_manager.get_setting('ADMIN_SERVERS_TIMEOUT', 25)
+    standard_timeout = settings_manager.get_setting('STANDARD_WINDOWS_TIMEOUT', 30)
+    linux_timeout = settings_manager.get_setting('LINUX_TIMEOUT', 15)
+    
     message = (
         "🔧 *Настройки мониторинга*\n\n"
         f"• Интервал проверки: {check_interval} сек\n"
-        f"• Макс. время простоя: {max_fail_time} сек ({max_fail_time//60} мин)\n\n"
+        f"• Макс. время простоя: {max_fail_time} сек\n\n"
+        "*Таймауты серверов:*\n"
+        f"• Windows 2025: {windows_2025_timeout} сек\n"
+        f"• Доменные серверы: {domain_timeout} сек\n"
+        f"• Admin серверы: {admin_timeout} сек\n"
+        f"• Стандартные Windows: {standard_timeout} сек\n"
+        f"• Linux серверы: {linux_timeout} сек\n\n"
         "Выберите параметр для изменения:"
     )
     
     keyboard = [
         [InlineKeyboardButton("⏱️ Интервал проверки", callback_data='set_check_interval')],
         [InlineKeyboardButton("🚨 Макс. время простоя", callback_data='set_max_fail_time')],
+        [InlineKeyboardButton("⏰ Таймауты серверов", callback_data='server_timeouts')],
         [InlineKeyboardButton("🔄 Обновить", callback_data='settings_monitoring')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_main')]
     ]
