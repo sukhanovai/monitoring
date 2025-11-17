@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.2.0
+Server Monitoring System v3.3.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчики для управления настройками через бота
@@ -59,7 +59,6 @@ def show_telegram_settings(update, context):
     keyboard = [
         [InlineKeyboardButton("🔑 Установить токен", callback_data='set_telegram_token')],
         [InlineKeyboardButton("💬 Управление чатами", callback_data='manage_chats')],
-        [InlineKeyboardButton("🔄 Проверить настройки", callback_data='settings_telegram')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_main')]
     ]
     
@@ -69,7 +68,6 @@ def show_telegram_settings(update, context):
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
-# В show_monitoring_settings добавьте:
 def show_monitoring_settings(update, context):
     """Показать настройки мониторинга"""
     query = update.callback_query
@@ -102,7 +100,6 @@ def show_monitoring_settings(update, context):
         [InlineKeyboardButton("⏱️ Интервал проверки", callback_data='set_check_interval')],
         [InlineKeyboardButton("🚨 Макс. время простоя", callback_data='set_max_fail_time')],
         [InlineKeyboardButton("⏰ Таймауты серверов", callback_data='server_timeouts')],
-        [InlineKeyboardButton("🔄 Обновить", callback_data='settings_monitoring')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_main')]
     ]
     
@@ -132,7 +129,6 @@ def show_time_settings(update, context):
         [InlineKeyboardButton("🔇 Начало тихого режима", callback_data='set_silent_start')],
         [InlineKeyboardButton("🔊 Конец тихого режима", callback_data='set_silent_end')],
         [InlineKeyboardButton("📊 Время сбора данных", callback_data='set_data_collection')],
-        [InlineKeyboardButton("🔄 Обновить", callback_data='settings_time')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_main')]
     ]
     
@@ -172,7 +168,6 @@ def show_resource_settings(update, context):
         [InlineKeyboardButton("🧠 RAM критический", callback_data='set_ram_critical')],
         [InlineKeyboardButton("💾 Disk предупреждение", callback_data='set_disk_warning')],
         [InlineKeyboardButton("💾 Disk критический", callback_data='set_disk_critical')],
-        [InlineKeyboardButton("🔄 Обновить", callback_data='settings_resources')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_main')]
     ]
     
@@ -205,7 +200,6 @@ def show_backup_settings(update, context):
         [InlineKeyboardButton("⏰ Временные интервалы", callback_data='backup_times')],
         [InlineKeyboardButton("🗃️ Базы данных", callback_data='backup_databases')],
         [InlineKeyboardButton("🔍 Паттерны", callback_data='backup_patterns')],
-        [InlineKeyboardButton("🔄 Обновить", callback_data='settings_backup')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_main')]
     ]
     
@@ -240,7 +234,6 @@ def show_all_settings(update, context):
         message += "\n"
     
     keyboard = [
-        [InlineKeyboardButton("🔄 Обновить", callback_data='settings_view_all')],
         [InlineKeyboardButton("⚙️ Управление настройками", callback_data='settings_main')],
         [InlineKeyboardButton("↩️ Назад", callback_data='monitor_status')]
     ]
@@ -397,7 +390,6 @@ def show_web_settings(update, context):
     keyboard = [
         [InlineKeyboardButton("🔌 Порт веб-интерфейса", callback_data='set_web_port')],
         [InlineKeyboardButton("🌐 Хост веб-интерфейса", callback_data='set_web_host')],
-        [InlineKeyboardButton("🔄 Обновить", callback_data='settings_web')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_main')]
     ]
     
@@ -436,7 +428,6 @@ def show_auth_settings(update, context):
     keyboard = [
         [InlineKeyboardButton("👤 SSH пользователь", callback_data='set_ssh_username')],
         [InlineKeyboardButton("🔑 Путь к SSH ключу", callback_data='set_ssh_key_path')],
-        [InlineKeyboardButton("🔄 Обновить", callback_data='settings_auth')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_main')]
     ]
     
@@ -468,7 +459,6 @@ def show_servers_settings(update, context):
     keyboard = [
         [InlineKeyboardButton("📋 Список серверов", callback_data='servers_list')],
         [InlineKeyboardButton("➕ Добавить сервер", callback_data='add_server')],
-        [InlineKeyboardButton("🔄 Обновить", callback_data='settings_servers')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_main')]
     ]
     
@@ -496,7 +486,6 @@ def show_backup_times(update, context):
     keyboard = [
         [InlineKeyboardButton("🚨 Часы для алертов", callback_data='set_backup_alert_hours')],
         [InlineKeyboardButton("📅 Часы для устаревания", callback_data='set_backup_stale_hours')],
-        [InlineKeyboardButton("🔄 Обновить", callback_data='backup_times')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup')]
     ]
     
@@ -528,7 +517,6 @@ def show_backup_databases(update, context):
     keyboard = [
         [InlineKeyboardButton("📋 Просмотр всех БД", callback_data='view_all_databases')],
         [InlineKeyboardButton("➕ Добавить БД", callback_data='add_database')],
-        [InlineKeyboardButton("🔄 Обновить", callback_data='backup_databases')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup')]
     ]
     
@@ -563,7 +551,6 @@ def show_backup_patterns_menu(update, context):
     keyboard = [
         [InlineKeyboardButton("📋 Просмотр паттернов", callback_data='view_patterns')],
         [InlineKeyboardButton("➕ Добавить паттерн", callback_data='add_pattern')],
-        [InlineKeyboardButton("🔄 Обновить", callback_data='backup_patterns')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup')]
     ]
     

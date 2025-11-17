@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.2.0
+Server Monitoring System v3.3.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Ядро системы
@@ -392,7 +392,6 @@ def silent_status_handler(update, context):
             [InlineKeyboardButton("🔇 Включить принудительно тихий", callback_data='force_silent')],
             [InlineKeyboardButton("🔊 Включить принудительно громкий", callback_data='force_loud')],
             [InlineKeyboardButton("🔄 Вернуть автоматический режим", callback_data='auto_mode')],
-            [InlineKeyboardButton("📊 Статус мониторинга", callback_data='monitor_status')],
             [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
     )
@@ -413,7 +412,7 @@ def force_silent_handler(update, context):
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("🔊 Включить громкий режим", callback_data='force_loud')],
             [InlineKeyboardButton("🔄 Автоматический режим", callback_data='auto_mode')],
-            [InlineKeyboardButton("📊 Статус мониторинга", callback_data='monitor_status')]
+            [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
     )
 
@@ -433,7 +432,7 @@ def force_loud_handler(update, context):
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("🔇 Включить тихий режим", callback_data='force_silent')],
             [InlineKeyboardButton("🔄 Автоматический режим", callback_data='auto_mode')],
-            [InlineKeyboardButton("📊 Статус мониторинга", callback_data='monitor_status')]
+            [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
     )
 
@@ -453,7 +452,7 @@ def auto_mode_handler(update, context):
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("🔇 Принудительно тихий", callback_data='force_silent')],
             [InlineKeyboardButton("🔊 Принудительно громкий", callback_data='force_loud')],
-            [InlineKeyboardButton("📊 Статус мониторинга", callback_data='monitor_status')]
+            [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
     )
 
@@ -462,8 +461,7 @@ def control_command(update, context):
     keyboard = [
         [InlineKeyboardButton("⏸️ Приостановить мониторинг", callback_data='pause_monitoring')],
         [InlineKeyboardButton("▶️ Возобновить мониторинг", callback_data='resume_monitoring')],
-        [InlineKeyboardButton("🔍 Проверить ресурсы", callback_data='check_resources')],
-        [InlineKeyboardButton("📊 Полный отчет", callback_data='full_report')],
+        [InlineKeyboardButton("📊 Утренний отчет", callback_data='full_report')],
         [InlineKeyboardButton("↩️ Назад", callback_data='monitor_status')]
     ]
 
@@ -483,8 +481,7 @@ def control_panel_handler(update, context):
     keyboard = [
         [InlineKeyboardButton("⏸️ Приостановить мониторинг", callback_data='pause_monitoring')],
         [InlineKeyboardButton("▶️ Возобновить мониторинг", callback_data='resume_monitoring')],
-        [InlineKeyboardButton("🔍 Проверить ресурсы", callback_data='check_resources')],
-        [InlineKeyboardButton("📊 Полный отчет", callback_data='full_report')],
+        [InlineKeyboardButton("📊 Утренний отчет", callback_data='full_report')],
         [InlineKeyboardButton("🔧 Диагностика отчета", callback_data='debug_report')],
         [InlineKeyboardButton("↩️ Назад", callback_data='monitor_status'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]

@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.2.0
+Server Monitoring System v3.3.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Меню бота
@@ -78,7 +78,6 @@ def start_command(update, context):
 
     keyboard = [
         [InlineKeyboardButton("🔄 Проверить серверы", callback_data='manual_check')],
-        [InlineKeyboardButton("ℹ️ Статус мониторинга", callback_data='monitor_status')],
         [InlineKeyboardButton("📋 Список серверов", callback_data='servers_list')],
         [InlineKeyboardButton("📊 Проверить ресурсы", callback_data='check_resources')],
         [InlineKeyboardButton("⚙️ Управление настройками", callback_data='settings_main')],
@@ -129,7 +128,6 @@ def help_command(update, context):
         "🤖 *Помощь по мониторингу*\n\n"
         "*Основные команды:*\n"
         "• `/start` - Главное меню\n"
-        "• `/status` - Статус мониторинга\n"
         "• `/check` - Быстрая проверка серверов\n"
         "• `/servers` - Список всех серверов\n"
         "• `/control` - Управление мониторингом\n"
@@ -316,7 +314,6 @@ def show_extensions_menu(update, context):
     
     # Добавляем кнопки управления
     keyboard.extend([
-        [InlineKeyboardButton("🔄 Обновить статус", callback_data='extensions_refresh')],
         [InlineKeyboardButton("📊 Включить все", callback_data='ext_enable_all')],
         [InlineKeyboardButton("📋 Отключить все", callback_data='ext_disable_all')],
         [InlineKeyboardButton("↩️ Назад", callback_data='monitor_status'),
@@ -534,7 +531,6 @@ def enable_debug_mode(query):
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("🔴 Выключить", callback_data='debug_disable')],
-                [InlineKeyboardButton("📊 Статус", callback_data='debug_status')],
                 [InlineKeyboardButton("🔧 Расширенная", callback_data='debug_advanced')],
                 [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu')]
             ])
@@ -570,7 +566,6 @@ def disable_debug_mode(query):
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("🟢 Включить", callback_data='debug_enable')],
-                [InlineKeyboardButton("📊 Статус", callback_data='debug_status')],
                 [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu')]
             ])
         )
@@ -679,7 +674,7 @@ def clear_debug_logs(query):
             message,
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("📊 Статус", callback_data='debug_status')],
+                [InlineKeyboardButton("🔧 Диагностика", callback_data='debug_diagnose')],
                 [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu')]
             ])
         )
@@ -761,7 +756,6 @@ def run_diagnostic(query):
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("🔄 Перезапустить", callback_data='debug_diagnose')],
-                [InlineKeyboardButton("📊 Статус", callback_data='debug_status')],
                 [InlineKeyboardButton("🔧 Расширенная", callback_data='debug_advanced')],
                 [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu')]
             ])
@@ -794,8 +788,6 @@ def show_advanced_debug(query):
             message,
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🔄 Обновить", callback_data='debug_advanced')],
-                [InlineKeyboardButton("📊 Статус", callback_data='debug_status')],
                 [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu')]
             ])
         )
@@ -807,7 +799,6 @@ def show_advanced_debug(query):
             "Убедитесь, что файл существует в папке проекта.",
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("📊 Статус", callback_data='debug_status')],
                 [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu')]
             ])
         )
