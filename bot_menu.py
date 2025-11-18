@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.2
+Server Monitoring System v3.3.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Меню бота
@@ -914,14 +914,9 @@ def get_callback_handlers():
         CallbackQueryHandler(lambda u, c: lazy_handler('check_disk')(u, c), pattern='^check_disk$'),
 
         # Обработчики для бэкапов
-        CallbackQueryHandler(lambda u, c: lazy_handler('backup_today')(u, c), pattern='^backup_today$'),
-        CallbackQueryHandler(lambda u, c: lazy_handler('backup_24h')(u, c), pattern='^backup_24h$'),
-        CallbackQueryHandler(lambda u, c: lazy_handler('backup_failed')(u, c), pattern='^backup_failed$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('backup_hosts')(u, c), pattern='^backup_hosts$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('backup_refresh')(u, c), pattern='^backup_refresh$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('backup_host_')(u, c), pattern='^backup_host_'),
-        CallbackQueryHandler(lambda u, c: lazy_handler('db_backups_24h')(u, c), pattern='^db_backups_24h$'),
-        CallbackQueryHandler(lambda u, c: lazy_handler('db_backups_48h')(u, c), pattern='^db_backups_48h$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('db_backups_today')(u, c), pattern='^db_backups_today$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('db_backups_summary')(u, c), pattern='^db_backups_summary$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('db_backups_detailed')(u, c), pattern='^db_backups_detailed$'),
@@ -932,7 +927,6 @@ def get_callback_handlers():
         CallbackQueryHandler(lambda u, c: lazy_handler('backup_host_')(u, c), pattern='^backup_host_'),
         CallbackQueryHandler(lambda u, c: lazy_handler('db_detail_')(u, c), pattern='^db_detail_'),
         CallbackQueryHandler(lambda u, c: lazy_handler('backup_stale_hosts')(u, c), pattern='^backup_stale_hosts$'),
-        CallbackQueryHandler(lambda u, c: lazy_handler('db_stale_list')(u, c), pattern='^db_stale_list$'),
 
         # Обработчики расширений
         CallbackQueryHandler(lambda u, c: lazy_handler('extensions_menu')(u, c), pattern='^extensions_menu$'),

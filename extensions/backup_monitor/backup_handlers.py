@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.2
+Server Monitoring System v3.3.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчики для бота бэкапов
@@ -21,11 +21,9 @@ formatters = DisplayFormatters()
 def create_main_menu():
     """Создает главное меню бэкапов"""
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("📊 Сегодня", callback_data='backup_today')],
-        [InlineKeyboardButton("⏰ 24 часа", callback_data='backup_24h')],
-        [InlineKeyboardButton("❌ Ошибки", callback_data='backup_failed')],
         [InlineKeyboardButton("🖥️ По хостам", callback_data='backup_hosts')],
         [InlineKeyboardButton("🗃️ Бэкапы БД", callback_data='backup_databases')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='monitor_status')],
         [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ])
 
@@ -85,7 +83,10 @@ def create_hosts_keyboard(hosts, host_statuses, show_problems_button=True):
             callback_data='backup_stale_hosts'
         )])
     
-    keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data='backup_main')])
+    keyboard.append([
+        InlineKeyboardButton("↩️ Назад", callback_data='backup_main'),
+        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+    ])
     
     return InlineKeyboardMarkup(keyboard)
 
@@ -126,12 +127,12 @@ def create_databases_keyboard(databases_by_type, problem_db_count=0):
     if keyboard and not keyboard[-1]:
         keyboard.pop()
     
-    # Кнопка проблемных БД
-    if problem_db_count > 0:
-        keyboard.append([InlineKeyboardButton(
-            f"🔍 Показать проблемные БД ({problem_db_count})", 
-            callback_data='db_stale_list'
-        )])
+#    # Кнопка проблемных БД
+#    if problem_db_count > 0:
+#        keyboard.append([InlineKeyboardButton(
+#            f"🔍 Показать проблемные БД ({problem_db_count})", 
+#            callback_data='db_stale_list'
+#        )])
     
     # Кнопки управления
     keyboard.extend([
@@ -415,7 +416,7 @@ def show_host_status(query, backup_bot, host_name):
             parse_mode='Markdown',
             reply_markup=create_navigation_buttons(
                 back_button='backup_hosts', 
-                refresh_button=f'backup_host_{host_name}'
+                refresh_button=None
             )
         )
 
@@ -426,8 +427,6 @@ def show_host_status(query, backup_bot, host_name):
 def show_database_backups_menu(query, backup_bot):
     """Показывает меню бэкапов баз данных"""
     keyboard = [
-        [InlineKeyboardButton("📊 Сводка за 24ч", callback_data='db_backups_24h')],
-        [InlineKeyboardButton("📈 Сводка за 48ч", callback_data='db_backups_48h')],
         [InlineKeyboardButton("📋 Список БД", callback_data='db_backups_list')],
         [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')],
         [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]

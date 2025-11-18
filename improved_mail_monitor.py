@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Server Monitoring System v3.3.2
+Server Monitoring System v3.3.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Мониторинг почтового ящика
@@ -503,13 +503,22 @@ class BackupProcessor:
                         raw_time = time_match.group(1)
                         # Конвертируем в стандартный формат
                         info['duration'] = self.parse_duration(raw_time)
+
+#                # Ищем общий размер
+#                elif 'total size' in line_lower:
+#                    size_match = re.search(r'(\d+\.?\d*\s*[GMK]?i?B)', line, re.IGNORECASE)
+#                    if size_match:
+#                        info['total_size'] = size_match.group(1)
                 
-                # Ищем общий размер
-                elif 'total size' in line_lower:
-                    size_match = re.search(r'(\d+\.?\d*\s*[GMK]?i?B)', line, re.IGNORECASE)
+                elif any(keyword in line_lower for keyword in ['total size', 'total backup size', 'size:', 'backup size']):
+                    # Ищем размер в разных форматах: 1.2TB, 500GB, 123.45 GiB и т.д.
+                    size_match = re.search(r'(\d+\.?\d*)\s*([TGMK]i?B)', line, re.IGNORECASE)
                     if size_match:
-                        info['total_size'] = size_match.group(1)
-                
+                        size_value = size_match.group(1)
+                        size_unit = size_match.group(2).upper()
+                        info['total_size'] = f"{size_value} {size_unit}"
+                        logger.info(f"✅ Найден размер бэкапа: {info['total_size']}")
+
                 # Ищем секцию с деталями VM
                 elif 'vmid' in line_lower and 'name' in line_lower and 'status' in line_lower:
                     in_details_section = True
