@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Server Monitoring System v3.3.7
+Server Monitoring System v3.3.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Мониторинг почтового ящика
@@ -21,45 +21,43 @@ from config import (
     DATABASE_BACKUP_CONFIG, BACKUP_PATTERNS
 )
 
-# Адаптация к новой структуре конфига
-PROXMOX_SUBJECT_PATTERNS = BACKUP_PATTERNS.get("proxmox_proxmox_subject", BACKUP_PATTERNS.get("proxmox_subject", []))
-HOSTNAME_PATTERNS = BACKUP_PATTERNS.get("proxmox_hostname_extraction", BACKUP_PATTERNS.get("hostname_extraction", []))
+# Настройка логирования
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('/opt/monitoring/logs/mail_monitor.log'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 
-# Исправленная секция - правильное извлечение паттернов из структуры БД
-# Исправленная секция - правильное извлечение паттернов из структуры БД
 def get_database_patterns_from_config():
     """Правильно извлекает паттерны из конфигурации"""
-    # Временный логгер для отладки
     temp_logger = logging.getLogger(__name__)
     temp_logger.setLevel(logging.INFO)
     
     try:
-        temp_logger.info(f"🔍 DEBUG: Полная структура BACKUP_PATTERNS: {BACKUP_PATTERNS}")
-        
         # Получаем всю структуру паттернов
         all_patterns = BACKUP_PATTERNS
         
-        # Ищем паттерны баз данных - проверяем разные возможные структуры
+        temp_logger.info(f"🔍 DEBUG: Полная структура BACKUP_PATTERNS ключи: {list(all_patterns.keys())}")
+        
+        # Ищем паттерны баз данных
         if 'database' in all_patterns:
             db_patterns = all_patterns['database']
-            temp_logger.info(f"🔍 DEBUG: Найден раздел 'database': {db_patterns}")
+            temp_logger.info(f"🔍 DEBUG: Найден раздел 'database': {list(db_patterns.keys())}")
             
             result = {
-                "company": db_patterns.get("database_company", db_patterns.get("database_database_company", [])),
-                "barnaul": db_patterns.get("database_barnaul", db_patterns.get("database_database_barnaul", [])),
-                "client": db_patterns.get("database_client", db_patterns.get("database_database_client", [])),
-                "yandex": db_patterns.get("database_yandex", db_patterns.get("database_database_yandex", []))
+                "company": db_patterns.get("company", []),
+                "barnaul": db_patterns.get("barnaul", []),
+                "client": db_patterns.get("client", []),
+                "yandex": db_patterns.get("yandex", [])
             }
             
         else:
-            temp_logger.info("🔍 DEBUG: Раздел 'database' не найден, ищем в корне")
-            # Ищем в корневой структуре
-            result = {
-                "company": all_patterns.get("database_company", all_patterns.get("database_database_company", [])),
-                "barnaul": all_patterns.get("database_barnaul", all_patterns.get("database_database_barnaul", [])),
-                "client": all_patterns.get("database_client", all_patterns.get("database_database_client", [])),
-                "yandex": all_patterns.get("database_yandex", all_patterns.get("database_database_yandex", []))
-            }
+            temp_logger.info("🔍 DEBUG: Раздел 'database' не найден, используем пустые паттерны")
+            result = {"company": [], "barnaul": [], "client": [], "yandex": []}
         
         temp_logger.info(f"🔍 DEBUG: Извлеченные паттерны: {result}")
         return result
@@ -72,22 +70,11 @@ def get_database_patterns_from_config():
 
 DATABASE_BACKUP_PATTERNS = get_database_patterns_from_config()
 
-# Настройка логирования
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('/opt/monitoring/logs/mail_monitor.log'),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger(__name__)
-
 # Логируем для отладки
-logger.info(f"🔍 Загружены паттерны company: {DATABASE_BACKUP_PATTERNS.get('company', [])}")
-logger.info(f"🔍 Загружены паттерны barnaul: {DATABASE_BACKUP_PATTERNS.get('barnaul', [])}")
-logger.info(f"🔍 Загружены паттерны client: {DATABASE_BACKUP_PATTERNS.get('client', [])}")
-logger.info(f"🔍 Загружены паттерны yandex: {DATABASE_BACKUP_PATTERNS.get('yandex', [])}")
+logger.info(f"🔍 Итоговые паттерны company: {DATABASE_BACKUP_PATTERNS.get('company', [])}")
+logger.info(f"🔍 Итоговые паттерны barnaul: {DATABASE_BACKUP_PATTERNS.get('barnaul', [])}")
+logger.info(f"🔍 Итоговые паттерны client: {DATABASE_BACKUP_PATTERNS.get('client', [])}")
+logger.info(f"🔍 Итоговые паттерны yandex: {DATABASE_BACKUP_PATTERNS.get('yandex', [])}")
 
 class BackupProcessor:
     """Обработчик бэкапов"""
@@ -174,28 +161,55 @@ class BackupProcessor:
         return processed_count
     
     def parse_database_backup(self, subject, body):
-        """Парсит бэкапы баз данных из темы письма - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
+        """Парсит бэкапы баз данных из темы письма - УЛУЧШЕННАЯ ВЕРСИЯ"""
         try:
             logger.info(f"🎯 Парсим бэкап БД: '{subject}'")
             backup_info = {}
 
-            # ИСПРАВЛЕНИЕ: правильная структура паттернов
+            # ДОБАВИМ ПРЯМУЮ ПРОВЕРКУ ДЛЯ ОТЛАДКИ
+            subject_lower = subject.lower()
+            
+            # Проверяем письма sr-bup (company databases)
+            if 'sr-bup' in subject_lower and 'dump complete' in subject_lower:
+                # Пример: "sr-bup wms dump complete"
+                match = re.search(r'sr-bup (.+?) dump complete', subject_lower)
+                if match:
+                    db_name = match.group(1).strip()
+                    logger.info(f"✅ Найден бэкап company_database: '{db_name}'")
+                    
+                    # Получаем display_name из конфигурации
+                    from config import DATABASE_BACKUP_CONFIG
+                    company_dbs = DATABASE_BACKUP_CONFIG.get("company_databases", {})
+                    display_name = company_dbs.get(db_name, db_name)
+                    
+                    backup_info = {
+                        'host_name': 'sr-bup',
+                        'backup_status': 'success',
+                        'task_type': 'database_dump',
+                        'database_name': db_name,
+                        'database_display_name': display_name,
+                        'backup_type': 'company_database'
+                    }
+                    return backup_info
+
+            # Используем паттерны из конфигурации как запасной вариант
             database_patterns = DATABASE_BACKUP_PATTERNS
             
             # Проверяем бэкапы основных баз данных
             company_patterns = database_patterns.get("company", [])
-            logger.info(f"🔍 Доступные паттерны company: {company_patterns}")
+            logger.info(f"🔍 Проверяем {len(company_patterns)} паттернов company")
             
             for i, pattern in enumerate(company_patterns):
                 match = re.search(pattern, subject, re.IGNORECASE)
-                logger.info(f"🔍 Проверяем паттерн {i+1}: '{pattern}' -> совпадение: {bool(match)}")
+                logger.info(f"🔍 Паттерн {i+1}: '{pattern}' -> совпадение: {bool(match)}")
                 if match:
                     db_name = match.group(1).lower()
-                    logger.info(f"✅ Найден бэкап company_database: '{db_name}' по паттерну: '{pattern}'")
+                    logger.info(f"✅ Найден бэкап company_database по паттерну: '{db_name}'")
                     
-                    # Получаем display_name из новой структуры конфига
-                    display_name = DATABASE_BACKUP_CONFIG.get("company", {}).get(db_name, db_name)
-                    logger.info(f"✅ Display name для '{db_name}': '{display_name}'")
+                    # Получаем display_name из конфигурации
+                    from config import DATABASE_BACKUP_CONFIG
+                    company_dbs = DATABASE_BACKUP_CONFIG.get("company_databases", {})
+                    display_name = company_dbs.get(db_name, db_name)
                     
                     backup_info = {
                         'host_name': 'sr-bup',
@@ -337,17 +351,25 @@ class BackupProcessor:
             logger.info(f"Тема письма: {subject}")
             logger.info(f"Дата письма: {email_date_str}")
             
-            # ДОБАВИМ ОТЛАДКУ ДЛЯ БЭКАПОВ БД
-            print(f"🎯 DEBUG: Обрабатываем письмо: {subject}")
-
-            # Парсим дату письма
+            # УЛУЧШЕННЫЙ ПАРСИНГ ДАТЫ
             email_date = None
             if email_date_str:
                 try:
                     email_date = parsedate_to_datetime(email_date_str)
+                    logger.info(f"✅ Дата письма распарсена: {email_date}")
                 except Exception as e:
-                    logger.warning(f"Не удалось распарсить дату письма: {e}")
-                    email_date = datetime.now()
+                    logger.warning(f"Не удалось распарсить дату письма '{email_date_str}': {e}")
+                    # Пробуем альтернативные форматы
+                    try:
+                        # Формат: Mon, 18 Nov 2024 03:00:01 +0300
+                        email_date = datetime.strptime(email_date_str, '%a, %d %b %Y %H:%M:%S %z')
+                        logger.info(f"✅ Дата письма распарсена альтернативным методом: {email_date}")
+                    except:
+                        logger.warning("❌ Не удалось распарсить дату альтернативным методом, используем текущее время")
+                        email_date = datetime.now()
+            else:
+                logger.warning("❌ Дата письма отсутствует, используем текущее время")
+                email_date = datetime.now()
             
             # Сначала проверяем, это ли письмо о бэкапе базы данных
             db_backup_info = self.parse_database_backup(subject, self.get_email_body(msg))
@@ -490,11 +512,28 @@ class BackupProcessor:
         
         try:
             lines = body.split('\n')
-            in_details_section = False
             
             for line in lines:
                 line = line.strip()
                 line_lower = line.lower()
+                
+                # УЛУЧШЕННЫЙ ПОИСК РАЗМЕРА - ищем в разных местах
+                if any(keyword in line_lower for keyword in ['total size', 'backup size', 'size:', 'data size', 'total backup']):
+                    # Ищем размер в разных форматах: 1.2TB, 500GB, 123.45 GiB, 1,234.56 MB и т.д.
+                    size_patterns = [
+                        r'(\d+\.?\d*)\s*([TGMK]i?B)',  # 1.2TB, 500GB, 123.45 GiB
+                        r'(\d[\d,]*\.?\d*)\s*([TGMK]i?B)',  # 1,234.56 MB
+                        r'size[:\s]+(\d+\.?\d*)\s*([TGMK]i?B)',  # Size: 1.2TB
+                    ]
+                    
+                    for pattern in size_patterns:
+                        size_match = re.search(pattern, line, re.IGNORECASE)
+                        if size_match:
+                            size_value = size_match.group(1).replace(',', '')
+                            size_unit = size_match.group(2).upper()
+                            info['total_size'] = f"{size_value} {size_unit}"
+                            logger.info(f"✅ Найден размер бэкапа: {info['total_size']}")
+                            break
                 
                 # Ищем общее время выполнения
                 if 'total running time' in line_lower:
@@ -503,22 +542,7 @@ class BackupProcessor:
                         raw_time = time_match.group(1)
                         # Конвертируем в стандартный формат
                         info['duration'] = self.parse_duration(raw_time)
-
-#                # Ищем общий размер
-#                elif 'total size' in line_lower:
-#                    size_match = re.search(r'(\d+\.?\d*\s*[GMK]?i?B)', line, re.IGNORECASE)
-#                    if size_match:
-#                        info['total_size'] = size_match.group(1)
                 
-                elif any(keyword in line_lower for keyword in ['total size', 'total backup size', 'size:', 'backup size']):
-                    # Ищем размер в разных форматах: 1.2TB, 500GB, 123.45 GiB и т.д.
-                    size_match = re.search(r'(\d+\.?\d*)\s*([TGMK]i?B)', line, re.IGNORECASE)
-                    if size_match:
-                        size_value = size_match.group(1)
-                        size_unit = size_match.group(2).upper()
-                        info['total_size'] = f"{size_value} {size_unit}"
-                        logger.info(f"✅ Найден размер бэкапа: {info['total_size']}")
-
                 # Ищем секцию с деталями VM
                 elif 'vmid' in line_lower and 'name' in line_lower and 'status' in line_lower:
                     in_details_section = True
@@ -644,7 +668,7 @@ class BackupProcessor:
             else:
                 received_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             
-            # Используем INSERT OR IGNORE чтобы избежать дубликатов
+            # Используем INSERT OR IGNORE чтобы избежать дубликаты
             cursor.execute('''
                 INSERT OR IGNORE INTO proxmox_backups 
                 (host_name, backup_status, task_type, duration, total_size, error_message, email_subject, received_at)
