@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.5
+Server Monitoring System v3.3.6
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчики для бота бэкапов
@@ -429,10 +429,12 @@ def show_database_backups_menu(query, backup_bot):
     try:
         from config import DATABASE_BACKUP_CONFIG
         
+        print(f"🔍 DEBUG DATABASE_BACKUP_CONFIG: {DATABASE_BACKUP_CONFIG}")  # Для отладки
+        
         # Создаем клавиатуру с кнопками для каждой БД
         keyboard = []
         
-        # Добавляем БД из разных типов
+        # Используем правильную структуру из конфига
         config_mapping = [
             ('company_database', DATABASE_BACKUP_CONFIG.get("company", {})),
             ('barnaul', DATABASE_BACKUP_CONFIG.get("barnaul", {})),
@@ -440,8 +442,15 @@ def show_database_backups_menu(query, backup_bot):
             ('yandex', DATABASE_BACKUP_CONFIG.get("yandex", {}))
         ]
         
+        print(f"🔍 DEBUG config_mapping: {config_mapping}")  # Для отладки
+        
+        has_databases = False
+        
         for backup_type, config_dict in config_mapping:
             if config_dict:
+                print(f"🔍 DEBUG Processing {backup_type}: {config_dict}")  # Для отладки
+                has_databases = True
+                
                 # Добавляем заголовок типа
                 type_display = formatters.get_type_display(backup_type)
                 keyboard.append([InlineKeyboardButton(
@@ -452,35 +461,47 @@ def show_database_backups_menu(query, backup_bot):
                 # Добавляем кнопки БД
                 current_row = []
                 for db_name, display_name in sorted(config_dict.items()):
-                    status = backup_bot.get_database_display_status(backup_type, db_name)
-                    display_btn = formatters.get_db_display_name(display_name, status)
-                    
-                    current_row.append(InlineKeyboardButton(
-                        display_btn,
-                        callback_data=f'db_detail_{backup_type}__{db_name}'
-                    ))
-                    
-                    # По 2 кнопки в строке
-                    if len(current_row) == 2:
-                        keyboard.append(current_row)
-                        current_row = []
+                    try:
+                        status = backup_bot.get_database_display_status(backup_type, db_name)
+                        display_btn = formatters.get_db_display_name(display_name, status)
+                        
+                        current_row.append(InlineKeyboardButton(
+                            display_btn,
+                            callback_data=f'db_detail_{backup_type}__{db_name}'
+                        ))
+                        
+                        # По 2 кнопки в строке
+                        if len(current_row) == 2:
+                            keyboard.append(current_row)
+                            current_row = []
+                    except Exception as e:
+                        print(f"❌ Ошибка обработки БД {db_name}: {e}")
+                        continue
                 
                 if current_row:
                     keyboard.append(current_row)
                 
                 keyboard.append([])  # Пустая строка между типами
         
-        # Убираем последнюю пустую строку
-        if keyboard and not keyboard[-1]:
-            keyboard.pop()
-        
-        # Кнопки навигации
-        keyboard.extend([
-            [InlineKeyboardButton("↩️ Назад", callback_data='backup_main'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
-        
-        message = "🗃️ *Бэкапы баз данных*\n\nВыберите базу данных для просмотра деталей:"
+        # Если нет БД, показываем сообщение
+        if not has_databases:
+            message = "🗃️ *Бэкапы баз данных*\n\n❌ Нет настроенных баз данных в конфигурации."
+            keyboard = [
+                [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')],
+                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ]
+        else:
+            # Убираем последнюю пустую строку
+            if keyboard and not keyboard[-1]:
+                keyboard.pop()
+            
+            # Кнопки навигации
+            keyboard.extend([
+                [InlineKeyboardButton("↩️ Назад", callback_data='backup_main'),
+                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ])
+            
+            message = "🗃️ *Бэкапы баз данных*\n\nВыберите базу данных для просмотра деталей:"
         
         query.edit_message_text(
             message,
@@ -490,8 +511,10 @@ def show_database_backups_menu(query, backup_bot):
 
     except Exception as e:
         logger.error(f"Ошибка в show_database_backups_menu: {e}")
-        query.edit_message_text("❌ Ошибка при получении данных")
-        
+        import traceback
+        logger.error(traceback.format_exc())
+        query.edit_message_text("❌ Ошибка при получении данных конфигурации БД")
+                
 #def show_database_backups_list(query, backup_bot):
     # """Показывает список всех баз данных"""
     # try:

@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.5
+Server Monitoring System v3.3.6
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Меню бота
