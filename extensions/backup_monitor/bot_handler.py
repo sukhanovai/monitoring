@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.3
+Server Monitoring System v3.3.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Мониторинг бэкапов Proxmox

@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.3
+Server Monitoring System v3.3.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчики для бота бэкапов
@@ -23,7 +23,7 @@ def create_main_menu():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("🖥️ По хостам", callback_data='backup_hosts')],
         [InlineKeyboardButton("🗃️ Бэкапы БД", callback_data='backup_databases')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='monitor_status')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='monitor_main')],
         [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ])
 
@@ -426,34 +426,14 @@ def show_host_status(query, backup_bot, host_name):
 
 def show_database_backups_menu(query, backup_bot):
     """Показывает меню бэкапов баз данных"""
-    keyboard = [
-        [InlineKeyboardButton("📋 Список БД", callback_data='db_backups_list')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')],
-        [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-    ]
-
-    query.edit_message_text(
-        "🗃️ *Бэкапы баз данных*\n\nВыберите опцию:",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
-
-def show_database_backups_list(query, backup_bot):
-    """Показывает список всех баз данных"""
     try:
+        # Получаем список БД для отображения
         from config import DATABASE_BACKUP_CONFIG
         
-        # Группируем базы по типам
-        databases_by_type = {
-            'company_database': [],
-            'barnaul': [],
-            'client': [],
-            'yandex': []
-        }
+        # Создаем клавиатуру с кнопками для каждой БД
+        keyboard = []
         
-        problem_db_count = 0
-        
-        # Заполняем списки базами из конфигурации
+        # Добавляем БД из разных типов
         config_mapping = [
             ('company_database', DATABASE_BACKUP_CONFIG.get("company_databases", {})),
             ('barnaul', DATABASE_BACKUP_CONFIG.get("barnaul_backups", {})),
@@ -462,39 +442,114 @@ def show_database_backups_list(query, backup_bot):
         ]
         
         for backup_type, config_dict in config_mapping:
-            for db_name, display_name in config_dict.items():
-                status = backup_bot.get_database_display_status(backup_type, db_name)
+            if config_dict:
+                # Добавляем заголовок типа
+                type_display = formatters.get_type_display(backup_type)
+                keyboard.append([InlineKeyboardButton(
+                    f"───── {type_display} ─────",
+                    callback_data='no_action'
+                )])
                 
-                if status not in ['success', 'unknown']:
-                    problem_db_count += 1
+                # Добавляем кнопки БД
+                current_row = []
+                for db_name, display_name in sorted(config_dict.items()):
+                    status = backup_bot.get_database_display_status(backup_type, db_name)
+                    display_btn = formatters.get_db_display_name(display_name, status)
+                    
+                    current_row.append(InlineKeyboardButton(
+                        display_btn,
+                        callback_data=f'db_detail_{backup_type}__{db_name}'
+                    ))
+                    
+                    # По 2 кнопки в строке
+                    if len(current_row) == 2:
+                        keyboard.append(current_row)
+                        current_row = []
                 
-                databases_by_type[backup_type].append({
-                    'original_name': db_name,
-                    'display_name': display_name,
-                    'status': status
-                })
-
-        # Создаем сообщение с легендой
-        message = "📋 *Список баз данных*\n\n"
-        message += "*Легенда:*\n"
-        message += "✅ - все бэкапы успешны\n"
-        message += "🔴 - последний бэкап неудачен\n"
-        message += "🟠 - есть неудачные бэкапы/ошибки\n"
-        message += "🟡 - есть предупреждения\n"
-        message += "⚫ - нет свежих бэкапов\n"
-        message += "⚪ - статус неизвестен\n\n"
+                if current_row:
+                    keyboard.append(current_row)
+                
+                keyboard.append([])  # Пустая строка между типами
         
-        message += "Выберите базу для просмотра деталей:"
-
+        # Убираем последнюю пустую строку
+        if keyboard and not keyboard[-1]:
+            keyboard.pop()
+        
+        # Кнопки навигации
+        keyboard.extend([
+            [InlineKeyboardButton("↩️ Назад", callback_data='backup_main'),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ])
+        
+        message = "🗃️ *Бэкапы баз данных*\n\nВыберите базу данных для просмотра деталей:"
+        
         query.edit_message_text(
             message,
             parse_mode='Markdown',
-            reply_markup=create_databases_keyboard(databases_by_type, problem_db_count)
+            reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
     except Exception as e:
-        logger.error(f"Ошибка в show_database_backups_list: {e}")
+        logger.error(f"Ошибка в show_database_backups_menu: {e}")
         query.edit_message_text("❌ Ошибка при получении данных")
+
+#def show_database_backups_list(query, backup_bot):
+    # """Показывает список всех баз данных"""
+    # try:
+    #     from config import DATABASE_BACKUP_CONFIG
+        
+    #     # Группируем базы по типам
+    #     databases_by_type = {
+    #         'company_database': [],
+    #         'barnaul': [],
+    #         'client': [],
+    #         'yandex': []
+    #     }
+        
+    #     problem_db_count = 0
+        
+    #     # Заполняем списки базами из конфигурации
+    #     config_mapping = [
+    #         ('company_database', DATABASE_BACKUP_CONFIG.get("company_databases", {})),
+    #         ('barnaul', DATABASE_BACKUP_CONFIG.get("barnaul_backups", {})),
+    #         ('client', DATABASE_BACKUP_CONFIG.get("client_databases", {})),
+    #         ('yandex', DATABASE_BACKUP_CONFIG.get("yandex_backups", {}))
+    #     ]
+        
+    #     for backup_type, config_dict in config_mapping:
+    #         for db_name, display_name in config_dict.items():
+    #             status = backup_bot.get_database_display_status(backup_type, db_name)
+                
+    #             if status not in ['success', 'unknown']:
+    #                 problem_db_count += 1
+                
+    #             databases_by_type[backup_type].append({
+    #                 'original_name': db_name,
+    #                 'display_name': display_name,
+    #                 'status': status
+    #             })
+
+    #     # Создаем сообщение с легендой
+    #     message = "📋 *Список баз данных*\n\n"
+    #     message += "*Легенда:*\n"
+    #     message += "✅ - все бэкапы успешны\n"
+    #     message += "🔴 - последний бэкап неудачен\n"
+    #     message += "🟠 - есть неудачные бэкапы/ошибки\n"
+    #     message += "🟡 - есть предупреждения\n"
+    #     message += "⚫ - нет свежих бэкапов\n"
+    #     message += "⚪ - статус неизвестен\n\n"
+        
+    #     message += "Выберите базу для просмотра деталей:"
+
+    #     query.edit_message_text(
+    #         message,
+    #         parse_mode='Markdown',
+    #         reply_markup=create_databases_keyboard(databases_by_type, problem_db_count)
+    #     )
+
+    # except Exception as e:
+    #     logger.error(f"Ошибка в show_database_backups_list: {e}")
+    #     query.edit_message_text("❌ Ошибка при получении данных")
 
 def show_stale_databases(query, backup_bot):
     """Показывает только проблемные базы данных"""
