@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.4
+Server Monitoring System v3.3.5
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Меню бота
@@ -158,6 +158,10 @@ def help_command(update, context):
     help_text += "*Используйте кнопки меню для удобного управления*"
     
     update.message.reply_text(help_text, parse_mode='Markdown')
+
+def main_menu_handler(update, context):
+    """Обработчик для главного меню"""
+    return start_command(update, context)
 
 def monitor_main_handler(update, context):
     """Обработчик для главного меню"""
@@ -903,6 +907,7 @@ def get_callback_handlers():
         CallbackQueryHandler(lambda u, c: lazy_handler('resource_history')(u, c), pattern='^resource_history$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('debug_report')(u, c), pattern='^debug_report$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('monitor_main')(u, c), pattern='^monitor_main$'),
+        CallbackQueryHandler(lambda u, c: lazy_handler('main_menu')(u, c), pattern='^main_menu$'),
 
         # Обработчики для постраничного просмотра ресурсов
         CallbackQueryHandler(lambda u, c: lazy_handler('resource_page')(u, c), pattern='^resource_page_'),

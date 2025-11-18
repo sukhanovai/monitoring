@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.4
+Server Monitoring System v3.3.5
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Мониторинг бэкапов Proxmox
@@ -29,7 +29,7 @@ try:
         create_main_menu, create_navigation_buttons,
         show_main_menu, show_today_status, show_recent_backups, show_failed_backups,
         show_hosts_menu, show_stale_hosts, show_host_status,
-        show_database_backups_menu, show_database_backups_list, show_stale_databases,
+        show_database_backups_menu, show_stale_databases,
         show_database_backups_summary, show_database_details,
         format_database_details
     )
@@ -46,7 +46,7 @@ except ImportError as e:
             create_main_menu, create_navigation_buttons,
             show_main_menu, show_today_status, show_recent_backups, show_failed_backups,
             show_hosts_menu, show_stale_hosts, show_host_status,
-            show_database_backups_menu, show_database_backups_list, show_stale_databases,
+            show_database_backups_menu, show_stale_databases,
             show_database_backups_summary, show_database_details,
             format_database_details
         )

@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.4
+Server Monitoring System v3.3.5
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчики для бота бэкапов
@@ -23,7 +23,7 @@ def create_main_menu():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("🖥️ По хостам", callback_data='backup_hosts')],
         [InlineKeyboardButton("🗃️ Бэкапы БД", callback_data='backup_databases')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='monitor_main')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='main_menu')],
         [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ])
 
@@ -425,9 +425,8 @@ def show_host_status(query, backup_bot, host_name):
         query.edit_message_text("❌ Ошибка при получении данных")
 
 def show_database_backups_menu(query, backup_bot):
-    """Показывает меню бэкапов баз данных"""
+    """Показывает меню бэкапов баз данных с прямым доступом к БД"""
     try:
-        # Получаем список БД для отображения
         from config import DATABASE_BACKUP_CONFIG
         
         # Создаем клавиатуру с кнопками для каждой БД
@@ -435,10 +434,10 @@ def show_database_backups_menu(query, backup_bot):
         
         # Добавляем БД из разных типов
         config_mapping = [
-            ('company_database', DATABASE_BACKUP_CONFIG.get("company_databases", {})),
-            ('barnaul', DATABASE_BACKUP_CONFIG.get("barnaul_backups", {})),
-            ('client', DATABASE_BACKUP_CONFIG.get("client_databases", {})),
-            ('yandex', DATABASE_BACKUP_CONFIG.get("yandex_backups", {}))
+            ('company_database', DATABASE_BACKUP_CONFIG.get("company", {})),
+            ('barnaul', DATABASE_BACKUP_CONFIG.get("barnaul", {})),
+            ('client', DATABASE_BACKUP_CONFIG.get("client", {})),
+            ('yandex', DATABASE_BACKUP_CONFIG.get("yandex", {}))
         ]
         
         for backup_type, config_dict in config_mapping:
@@ -492,7 +491,7 @@ def show_database_backups_menu(query, backup_bot):
     except Exception as e:
         logger.error(f"Ошибка в show_database_backups_menu: {e}")
         query.edit_message_text("❌ Ошибка при получении данных")
-
+        
 #def show_database_backups_list(query, backup_bot):
     # """Показывает список всех баз данных"""
     # try:
