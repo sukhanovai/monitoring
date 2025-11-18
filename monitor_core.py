@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.1
+Server Monitoring System v3.3.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Ядро системы
@@ -546,11 +546,10 @@ def check_resources_handler(update, context):
         [InlineKeyboardButton("💻 Проверить CPU", callback_data='check_cpu')],
         [InlineKeyboardButton("🧠 Проверить RAM", callback_data='check_ram')],
         [InlineKeyboardButton("💾 Проверить Disk", callback_data='check_disk')],
-        [InlineKeyboardButton("🔍 Все ресурсы", callback_data='check_all_resources')],
         [InlineKeyboardButton("🐧 Linux серверы", callback_data='check_linux')],
         [InlineKeyboardButton("🪟 Windows серверы", callback_data='check_windows')],
         [InlineKeyboardButton("📡 Другие серверы", callback_data='check_other')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='control_panel'),
+        [InlineKeyboardButton("↩️ Назад", callback_data='monitor_status'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
 
@@ -655,7 +654,7 @@ def check_disk_resources_handler(update, context):
     thread.start()
 
 def perform_cpu_check(context, chat_id, progress_message_id):
-    """Выполняет проверку только CPU"""
+    """Выполняет проверку только CPU с детальным прогрессом"""
     progress_bar = get_progress_bar()
     
     def update_progress(progress, status):
@@ -667,23 +666,51 @@ def perform_cpu_check(context, chat_id, progress_message_id):
         )
 
     try:
-        update_progress(10, "⏳ Собираем данные о серверах...")
-        from extensions.server_checks import check_all_servers_by_type
-        results, stats = check_all_servers_by_type()
-
-        # Фильтруем только CPU и сортируем по убыванию нагрузки
+        update_progress(10, "⏳ Получаем список серверов...")
+        
+        # Получаем все серверы для проверки
+        from extensions.server_checks import initialize_servers
+        all_servers = initialize_servers()
+        ssh_servers = [s for s in all_servers if s["type"] == "ssh"]
+        rdp_servers = [s for s in all_servers if s["type"] == "rdp"]
+        servers = ssh_servers + rdp_servers
+        
+        total_servers = len(servers)
         cpu_results = []
-        for result in results:
-            server = result["server"]
-            resources = result["resources"]
-            cpu_value = resources.get('cpu', 0) if resources else 0
+        
+        update_progress(15, f"⏳ Начинаем проверку {total_servers} серверов...")
+        
+        for i, server in enumerate(servers):
+            current_progress = 15 + (i / total_servers * 75)  # 15-90%
+            server_info = f"{server['name']} ({server['ip']})"
+            update_progress(current_progress, f"🔍 Проверяем {server_info}...")
+            
+            try:
+                resources = None
+                if server["type"] == "ssh":
+                    from extensions.server_checks import get_linux_resources_improved
+                    resources = get_linux_resources_improved(server["ip"])
+                elif server["type"] == "rdp":
+                    from extensions.server_checks import get_windows_resources_improved
+                    resources = get_windows_resources_improved(server["ip"])
+                
+                cpu_value = resources.get('cpu', 0) if resources else 0
+                
+                cpu_results.append({
+                    "server": server,
+                    "cpu": cpu_value,
+                    "success": resources is not None
+                })
+                
+            except Exception as e:
+                cpu_results.append({
+                    "server": server,
+                    "cpu": 0,
+                    "success": False
+                })
 
-            cpu_results.append({
-                "server": server,
-                "cpu": cpu_value,
-                "success": result["success"]
-            })
-
+        update_progress(95, "⏳ Формируем отчет...")
+        
         # Сортируем по убыванию CPU
         cpu_results.sort(key=lambda x: x["cpu"], reverse=True)
 
@@ -735,9 +762,11 @@ def perform_cpu_check(context, chat_id, progress_message_id):
         total_servers = len(cpu_results)
         high_load = len([r for r in cpu_results if r["cpu"] > 80])
         medium_load = len([r for r in cpu_results if 60 < r["cpu"] <= 80])
+        successful_checks = len([r for r in cpu_results if r["success"]])
 
         message += f"\n**📊 Статистика:**\n"
         message += f"• Всего серверов: {total_servers}\n"
+        message += f"• Успешно проверено: {successful_checks}\n"
         message += f"• Высокая нагрузка (>80%): {high_load}\n"
         message += f"• Средняя нагрузка (60-80%): {medium_load}\n"
 
@@ -752,7 +781,6 @@ def perform_cpu_check(context, chat_id, progress_message_id):
                 [InlineKeyboardButton("🔄 Обновить", callback_data='check_cpu')],
                 [InlineKeyboardButton("🧠 Проверить RAM", callback_data='check_ram')],
                 [InlineKeyboardButton("💾 Проверить Disk", callback_data='check_disk')],
-                [InlineKeyboardButton("🔍 Все ресурсы", callback_data='check_resources')],
                 [InlineKeyboardButton("↩️ Назад", callback_data='check_resources'),
                  InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
@@ -769,7 +797,7 @@ def perform_cpu_check(context, chat_id, progress_message_id):
         )
 
 def perform_ram_check(context, chat_id, progress_message_id):
-    """Выполняет проверку только RAM"""
+    """Выполняет проверку только RAM с детальным прогрессом"""
     progress_bar = get_progress_bar()
 
     def update_progress(progress, status):
@@ -781,23 +809,51 @@ def perform_ram_check(context, chat_id, progress_message_id):
         )
 
     try:
-        update_progress(10, "⏳ Собираем данные о серверах...")
-        from extensions.server_checks import check_all_servers_by_type
-        results, stats = check_all_servers_by_type()
-
-        # Фильтруем только RAM и сортируем по убыванию использования
+        update_progress(10, "⏳ Получаем список серверов...")
+        
+        # Получаем все серверы для проверки
+        from extensions.server_checks import initialize_servers
+        all_servers = initialize_servers()
+        ssh_servers = [s for s in all_servers if s["type"] == "ssh"]
+        rdp_servers = [s for s in all_servers if s["type"] == "rdp"]
+        servers = ssh_servers + rdp_servers
+        
+        total_servers = len(servers)
         ram_results = []
-        for result in results:
-            server = result["server"]
-            resources = result["resources"]
-            ram_value = resources.get('ram', 0) if resources else 0
+        
+        update_progress(15, f"⏳ Начинаем проверку {total_servers} серверов...")
+        
+        for i, server in enumerate(servers):
+            current_progress = 15 + (i / total_servers * 75)  # 15-90%
+            server_info = f"{server['name']} ({server['ip']})"
+            update_progress(current_progress, f"🔍 Проверяем {server_info}...")
+            
+            try:
+                resources = None
+                if server["type"] == "ssh":
+                    from extensions.server_checks import get_linux_resources_improved
+                    resources = get_linux_resources_improved(server["ip"])
+                elif server["type"] == "rdp":
+                    from extensions.server_checks import get_windows_resources_improved
+                    resources = get_windows_resources_improved(server["ip"])
+                
+                ram_value = resources.get('ram', 0) if resources else 0
+                
+                ram_results.append({
+                    "server": server,
+                    "ram": ram_value,
+                    "success": resources is not None
+                })
+                
+            except Exception as e:
+                ram_results.append({
+                    "server": server,
+                    "ram": 0,
+                    "success": False
+                })
 
-            ram_results.append({
-                "server": server,
-                "ram": ram_value,
-                "success": result["success"]
-            })
-
+        update_progress(95, "⏳ Формируем отчет...")
+        
         # Сортируем по убыванию RAM
         ram_results.sort(key=lambda x: x["ram"], reverse=True)
 
@@ -849,9 +905,11 @@ def perform_ram_check(context, chat_id, progress_message_id):
         total_servers = len(ram_results)
         high_usage = len([r for r in ram_results if r["ram"] > 85])
         medium_usage = len([r for r in ram_results if 70 < r["ram"] <= 85])
+        successful_checks = len([r for r in ram_results if r["success"]])
 
         message += f"\n**📊 Статистика:**\n"
         message += f"• Всего серверов: {total_servers}\n"
+        message += f"• Успешно проверено: {successful_checks}\n"
         message += f"• Высокое использование (>85%): {high_usage}\n"
         message += f"• Среднее использование (70-85%): {medium_usage}\n"
 
@@ -866,7 +924,6 @@ def perform_ram_check(context, chat_id, progress_message_id):
                 [InlineKeyboardButton("🔄 Обновить", callback_data='check_ram')],
                 [InlineKeyboardButton("💻 Проверить CPU", callback_data='check_cpu')],
                 [InlineKeyboardButton("💾 Проверить Disk", callback_data='check_disk')],
-                [InlineKeyboardButton("🔍 Все ресурсы", callback_data='check_resources')],
                 [InlineKeyboardButton("↩️ Назад", callback_data='check_resources'),
                  InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
@@ -883,7 +940,7 @@ def perform_ram_check(context, chat_id, progress_message_id):
         )
 
 def perform_disk_check(context, chat_id, progress_message_id):
-    """Выполняет проверку только Disk"""
+    """Выполняет проверку только Disk с детальным прогрессом"""
     progress_bar = get_progress_bar()
 
     def update_progress(progress, status):
@@ -895,23 +952,51 @@ def perform_disk_check(context, chat_id, progress_message_id):
         )
 
     try:
-        update_progress(10, "⏳ Собираем данные о серверах...")
-        from extensions.server_checks import check_all_servers_by_type
-        results, stats = check_all_servers_by_type()
-
-        # Фильтруем только Disk и сортируем по убыванию использования
+        update_progress(10, "⏳ Получаем список серверов...")
+        
+        # Получаем все серверы для проверки
+        from extensions.server_checks import initialize_servers
+        all_servers = initialize_servers()
+        ssh_servers = [s for s in all_servers if s["type"] == "ssh"]
+        rdp_servers = [s for s in all_servers if s["type"] == "rdp"]
+        servers = ssh_servers + rdp_servers
+        
+        total_servers = len(servers)
         disk_results = []
-        for result in results:
-            server = result["server"]
-            resources = result["resources"]
-            disk_value = resources.get('disk', 0) if resources else 0
+        
+        update_progress(15, f"⏳ Начинаем проверку {total_servers} серверов...")
+        
+        for i, server in enumerate(servers):
+            current_progress = 15 + (i / total_servers * 75)  # 15-90%
+            server_info = f"{server['name']} ({server['ip']})"
+            update_progress(current_progress, f"🔍 Проверяем {server_info}...")
+            
+            try:
+                resources = None
+                if server["type"] == "ssh":
+                    from extensions.server_checks import get_linux_resources_improved
+                    resources = get_linux_resources_improved(server["ip"])
+                elif server["type"] == "rdp":
+                    from extensions.server_checks import get_windows_resources_improved
+                    resources = get_windows_resources_improved(server["ip"])
+                
+                disk_value = resources.get('disk', 0) if resources else 0
+                
+                disk_results.append({
+                    "server": server,
+                    "disk": disk_value,
+                    "success": resources is not None
+                })
+                
+            except Exception as e:
+                disk_results.append({
+                    "server": server,
+                    "disk": 0,
+                    "success": False
+                })
 
-            disk_results.append({
-                "server": server,
-                "disk": disk_value,
-                "success": result["success"]
-            })
-
+        update_progress(95, "⏳ Формируем отчет...")
+        
         # Сортируем по убыванию Disk
         disk_results.sort(key=lambda x: x["disk"], reverse=True)
 
@@ -963,9 +1048,11 @@ def perform_disk_check(context, chat_id, progress_message_id):
         total_servers = len(disk_results)
         critical_usage = len([r for r in disk_results if r["disk"] > 90])
         warning_usage = len([r for r in disk_results if 80 < r["disk"] <= 90])
+        successful_checks = len([r for r in disk_results if r["success"]])
 
         message += f"\n**📊 Статистика:**\n"
         message += f"• Всего серверов: {total_servers}\n"
+        message += f"• Успешно проверено: {successful_checks}\n"
         message += f"• Критическое использование (>90%): {critical_usage}\n"
         message += f"• Предупреждение (80-90%): {warning_usage}\n"
 
@@ -980,7 +1067,6 @@ def perform_disk_check(context, chat_id, progress_message_id):
                 [InlineKeyboardButton("🔄 Обновить", callback_data='check_disk')],
                 [InlineKeyboardButton("💻 Проверить CPU", callback_data='check_cpu')],
                 [InlineKeyboardButton("🧠 Проверить RAM", callback_data='check_ram')],
-                [InlineKeyboardButton("🔍 Все ресурсы", callback_data='check_resources')],
                 [InlineKeyboardButton("↩️ Назад", callback_data='check_resources'),
                  InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
@@ -995,7 +1081,7 @@ def perform_disk_check(context, chat_id, progress_message_id):
             message_id=progress_message_id,
             text=error_msg
         )
-
+        
 def check_linux_resources_handler(update, context):
     """Обработчик проверки Linux серверов"""
     query = update.callback_query

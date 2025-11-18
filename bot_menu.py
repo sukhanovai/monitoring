@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.1
+Server Monitoring System v3.3.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Меню бота
@@ -907,7 +907,6 @@ def get_callback_handlers():
         CallbackQueryHandler(lambda u, c: lazy_handler('check_linux')(u, c), pattern='^check_linux$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('check_windows')(u, c), pattern='^check_windows$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('check_other')(u, c), pattern='^check_other$'),
-        CallbackQueryHandler(lambda u, c: lazy_handler('check_all_resources')(u, c), pattern='^check_all_resources$'),
         
         # Обработчики для раздельной проверки ресурсов
         CallbackQueryHandler(lambda u, c: lazy_handler('check_cpu')(u, c), pattern='^check_cpu$'),
@@ -1001,8 +1000,6 @@ def lazy_handler(pattern):
             from monitor_core import check_windows_resources_handler as handler
         elif pattern == 'check_other':
             from monitor_core import check_other_resources_handler as handler
-        elif pattern == 'check_all_resources':
-            from monitor_core import check_all_resources_handler as handler
         # Обработчики для раздельной проверки ресурсов
         elif pattern == 'check_cpu':
             from monitor_core import check_cpu_resources_handler as handler

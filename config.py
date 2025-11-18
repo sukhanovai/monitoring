@@ -1,7 +1,8 @@
 """
-Server Monitoring System config - DATABASE VERSION
+Server Monitoring System v3.3.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
+Конфигурация настроек обмена с БД мониторинга
 """
 
 import os
