@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.6
+Server Monitoring System v3.3.7
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Меню бота
@@ -960,7 +960,10 @@ def lazy_handler(pattern):
     """Ленивая загрузка обработчиков"""
     def wrapper(update, context):
         # Динамически импортируем обработчик при вызове
-        if pattern == 'manual_check':
+        if pattern == 'main_menu':
+            from bot_menu import start_command
+            return start_command(update, context)
+        elif pattern == 'manual_check':
             from monitor_core import manual_check_handler as handler
         elif pattern == 'monitor_status':
             from monitor_core import monitor_status as handler

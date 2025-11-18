@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.6
+Server Monitoring System v3.3.7
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчики для бота бэкапов
@@ -434,12 +434,12 @@ def show_database_backups_menu(query, backup_bot):
         # Создаем клавиатуру с кнопками для каждой БД
         keyboard = []
         
-        # Используем правильную структуру из конфига
+        # ИСПРАВЛЕННАЯ структура - используем правильные ключи из конфига
         config_mapping = [
-            ('company_database', DATABASE_BACKUP_CONFIG.get("company", {})),
-            ('barnaul', DATABASE_BACKUP_CONFIG.get("barnaul", {})),
-            ('client', DATABASE_BACKUP_CONFIG.get("client", {})),
-            ('yandex', DATABASE_BACKUP_CONFIG.get("yandex", {}))
+            ('company_database', DATABASE_BACKUP_CONFIG.get("company_databases", {})),
+            ('barnaul', DATABASE_BACKUP_CONFIG.get("barnaul_backups", {})),
+            ('client', DATABASE_BACKUP_CONFIG.get("client_databases", {})),
+            ('yandex', DATABASE_BACKUP_CONFIG.get("yandex_backups", {}))
         ]
         
         print(f"🔍 DEBUG config_mapping: {config_mapping}")  # Для отладки
@@ -448,7 +448,7 @@ def show_database_backups_menu(query, backup_bot):
         
         for backup_type, config_dict in config_mapping:
             if config_dict:
-                print(f"🔍 DEBUG Processing {backup_type}: {config_dict}")  # Для отладки
+                print(f"🔍 DEBUG Processing {backup_type}: {len(config_dict)} databases")  # Для отладки
                 has_databases = True
                 
                 # Добавляем заголовок типа
@@ -514,7 +514,7 @@ def show_database_backups_menu(query, backup_bot):
         import traceback
         logger.error(traceback.format_exc())
         query.edit_message_text("❌ Ошибка при получении данных конфигурации БД")
-                
+                        
 #def show_database_backups_list(query, backup_bot):
     # """Показывает список всех баз данных"""
     # try:
