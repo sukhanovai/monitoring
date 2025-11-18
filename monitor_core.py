@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.0
+Server Monitoring System v3.3.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Ядро системы
@@ -550,7 +550,8 @@ def check_resources_handler(update, context):
         [InlineKeyboardButton("🐧 Linux серверы", callback_data='check_linux')],
         [InlineKeyboardButton("🪟 Windows серверы", callback_data='check_windows')],
         [InlineKeyboardButton("📡 Другие серверы", callback_data='check_other')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='control_panel')]
+        [InlineKeyboardButton("↩️ Назад", callback_data='control_panel'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
 
     if query:
@@ -666,6 +667,7 @@ def perform_cpu_check(context, chat_id, progress_message_id):
         )
 
     try:
+        update_progress(10, "⏳ Собираем данные о серверах...")
         from extensions.server_checks import check_all_servers_by_type
         results, stats = check_all_servers_by_type()
 
@@ -751,7 +753,8 @@ def perform_cpu_check(context, chat_id, progress_message_id):
                 [InlineKeyboardButton("🧠 Проверить RAM", callback_data='check_ram')],
                 [InlineKeyboardButton("💾 Проверить Disk", callback_data='check_disk')],
                 [InlineKeyboardButton("🔍 Все ресурсы", callback_data='check_resources')],
-                [InlineKeyboardButton("↩️ Назад", callback_data='control_panel')]
+                [InlineKeyboardButton("↩️ Назад", callback_data='check_resources'),
+                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
         )
 
@@ -778,6 +781,7 @@ def perform_ram_check(context, chat_id, progress_message_id):
         )
 
     try:
+        update_progress(10, "⏳ Собираем данные о серверах...")
         from extensions.server_checks import check_all_servers_by_type
         results, stats = check_all_servers_by_type()
 
@@ -863,7 +867,8 @@ def perform_ram_check(context, chat_id, progress_message_id):
                 [InlineKeyboardButton("💻 Проверить CPU", callback_data='check_cpu')],
                 [InlineKeyboardButton("💾 Проверить Disk", callback_data='check_disk')],
                 [InlineKeyboardButton("🔍 Все ресурсы", callback_data='check_resources')],
-                [InlineKeyboardButton("↩️ Назад", callback_data='control_panel')]
+                [InlineKeyboardButton("↩️ Назад", callback_data='check_resources'),
+                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
         )
 
@@ -890,6 +895,7 @@ def perform_disk_check(context, chat_id, progress_message_id):
         )
 
     try:
+        update_progress(10, "⏳ Собираем данные о серверах...")
         from extensions.server_checks import check_all_servers_by_type
         results, stats = check_all_servers_by_type()
 
@@ -975,7 +981,8 @@ def perform_disk_check(context, chat_id, progress_message_id):
                 [InlineKeyboardButton("💻 Проверить CPU", callback_data='check_cpu')],
                 [InlineKeyboardButton("🧠 Проверить RAM", callback_data='check_ram')],
                 [InlineKeyboardButton("🔍 Все ресурсы", callback_data='check_resources')],
-                [InlineKeyboardButton("↩️ Назад", callback_data='control_panel')]
+                [InlineKeyboardButton("↩️ Назад", callback_data='check_resources'),
+                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
         )
 
@@ -1057,7 +1064,12 @@ def perform_linux_check(context, chat_id, progress_message_id):
             chat_id=chat_id,
             message_id=progress_message_id,
             text=message,
-            parse_mode='Markdown'
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔄 Обновить", callback_data='check_linux')],
+                [InlineKeyboardButton("↩️ Назад", callback_data='check_resources'),
+                InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ])
         )
 
     except Exception as e:
@@ -1206,9 +1218,14 @@ def perform_windows_check(context, chat_id, progress_message_id):
             chat_id=chat_id,
             message_id=progress_message_id,
             text=message,
-            parse_mode='Markdown'
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔄 Обновить", callback_data='check_windows')],
+                [InlineKeyboardButton("↩️ Назад", callback_data='check_resources'),
+                InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ])
         )
-
+    
     except Exception as e:
         debug_log = get_debug_log()
         error_msg = f"❌ Ошибка при проверке Windows серверов: {e}"
@@ -1275,7 +1292,12 @@ def perform_other_check(context, chat_id, progress_message_id):
             chat_id=chat_id,
             message_id=progress_message_id,
             text=message,
-            parse_mode='Markdown'
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔄 Обновить", callback_data='check_other')],
+                [InlineKeyboardButton("↩️ Назад", callback_data='check_resources'),
+                InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ])
         )
 
     except Exception as e:
@@ -1319,7 +1341,18 @@ def check_all_resources_handler(update, context):
 
 def perform_full_check(context, chat_id, progress_message_id):
     """Выполняет полную проверку всех серверов"""
+    progress_bar = get_progress_bar()
+    
+    def update_progress(progress, status):
+        progress_text = f"🔍 Полная проверка всех серверов...\n{progress_bar(progress)}\n\n{status}"
+        context.bot.edit_message_text(
+            chat_id=chat_id,
+            message_id=progress_message_id,
+            text=progress_text
+        )
+
     try:
+        update_progress(10, "⏳ Подготовка...")
         from extensions.server_checks import check_all_servers_by_type
         results, stats = check_all_servers_by_type()
 
@@ -1339,7 +1372,12 @@ def perform_full_check(context, chat_id, progress_message_id):
             chat_id=chat_id,
             message_id=progress_message_id,
             text=message,
-            parse_mode='Markdown'
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔄 Обновить", callback_data='check_all_resources')],
+                [InlineKeyboardButton("↩️ Назад", callback_data='check_resources'),
+                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ])
         )
 
     except Exception as e:

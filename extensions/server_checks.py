@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.0
+Server Monitoring System v3.3.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Унифицированные проверки серверов: ресурсы, доступность, список
@@ -106,8 +106,7 @@ def servers_command(update, context):
         message += "\n"
     
     keyboard = [
-        [InlineKeyboardButton("🔄 Обновить список", callback_data='servers_list')],
-        [InlineKeyboardButton("📊 Статус мониторинга", callback_data='monitor_status')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers')],
         [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
     

@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.0
+Server Monitoring System v3.3.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Меню бота
@@ -78,12 +78,11 @@ def start_command(update, context):
 
     keyboard = [
         [InlineKeyboardButton("🔄 Проверить серверы", callback_data='manual_check')],
-        [InlineKeyboardButton("📋 Список серверов", callback_data='servers_list')],
         [InlineKeyboardButton("📊 Проверить ресурсы", callback_data='check_resources')],
         [InlineKeyboardButton("⚙️ Управление настройками", callback_data='settings_main')],
         [InlineKeyboardButton("🐛 Отладка", callback_data='debug_menu')],
     ]
-    
+   
     extension_manager = get_extension_manager()
     if (extension_manager.is_extension_enabled('backup_monitor') or 
         extension_manager.is_extension_enabled('database_backup_monitor')):

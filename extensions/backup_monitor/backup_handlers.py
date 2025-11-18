@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.0
+Server Monitoring System v3.3.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчики для бота бэкапов
@@ -26,7 +26,6 @@ def create_main_menu():
         [InlineKeyboardButton("❌ Ошибки", callback_data='backup_failed')],
         [InlineKeyboardButton("🖥️ По хостам", callback_data='backup_hosts')],
         [InlineKeyboardButton("🗃️ Бэкапы БД", callback_data='backup_databases')],
-        [InlineKeyboardButton("🔄 Обновить", callback_data='backup_refresh')],
         [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ])
 
@@ -136,7 +135,6 @@ def create_databases_keyboard(databases_by_type, problem_db_count=0):
     
     # Кнопки управления
     keyboard.extend([
-        [InlineKeyboardButton("🔄 Обновить", callback_data='db_backups_list')],
         [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')],
         [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ])
@@ -364,7 +362,6 @@ def show_stale_hosts(query, backup_bot):
         message += f"\n*Всего проблемных хостов:* {len(problem_hosts)}"
         
         keyboard.extend([
-            [InlineKeyboardButton("🔄 Обновить", callback_data='backup_stale_hosts')],
             [InlineKeyboardButton("📋 Все хосты", callback_data='backup_hosts')],
             [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')]
         ])
@@ -565,7 +562,6 @@ def show_stale_databases(query, backup_bot):
         message += f"\n*Всего проблемных БД:* {len(problem_databases)}"
         
         keyboard.extend([
-            [InlineKeyboardButton("🔄 Обновить", callback_data='db_stale_list')],
             [InlineKeyboardButton("📋 Все БД", callback_data='db_backups_list')],
             [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')]
         ])
