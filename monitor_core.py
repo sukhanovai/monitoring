@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.11
+Server Monitoring System v3.3.12
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Ядро системы
@@ -392,10 +392,11 @@ def silent_status_handler(update, context):
             [InlineKeyboardButton("🔇 Включить принудительно тихий", callback_data='force_silent')],
             [InlineKeyboardButton("🔊 Включить принудительно громкий", callback_data='force_loud')],
             [InlineKeyboardButton("🔄 Вернуть автоматический режим", callback_data='auto_mode')],
-            [InlineKeyboardButton("↩️ Назад в управление", callback_data='control_panel'),  # НОВАЯ КНОПКА
+            [InlineKeyboardButton("↩️ Назад в управление", callback_data='control_panel'),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
     )
+
 def force_silent_handler(update, context):
     """Включает принудительный тихий режим"""
     global silent_override
@@ -466,7 +467,7 @@ def control_panel_handler(update, context):
         [InlineKeyboardButton("📊 Утренний отчет", callback_data='full_report')],
         [InlineKeyboardButton("🔇 Управление тихим режимом", callback_data='silent_status')],
         [InlineKeyboardButton("🔧 Диагностика отчета", callback_data='debug_report')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='monitor_status'),
+        [InlineKeyboardButton("↩️ Назад", callback_data='main_menu'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
     

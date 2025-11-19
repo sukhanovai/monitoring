@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.11
+Server Monitoring System v3.3.12
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Меню бота
@@ -96,7 +96,6 @@ def start_command(update, context):
     keyboard.extend([
         [InlineKeyboardButton("🛠️ Управление расширениями", callback_data='extensions_menu')],
         [InlineKeyboardButton("🎛️ Управление", callback_data='control_panel')],
-        [InlineKeyboardButton("🔇 Тихий режим", callback_data='silent_status')],
         [InlineKeyboardButton("✖️ Закрыть", callback_data='close')] 
     ])
     
@@ -904,8 +903,6 @@ def get_callback_handlers():
         CallbackQueryHandler(lambda u, c: lazy_handler('monitor_status')(u, c), pattern='^monitor_status$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('servers_list')(u, c), pattern='^servers_list$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('silent_status')(u, c), pattern='^silent_status$'),
-        CallbackQueryHandler(lambda u, c: lazy_handler('pause_monitoring')(u, c), pattern='^pause_monitoring$'),
-        CallbackQueryHandler(lambda u, c: lazy_handler('resume_monitoring')(u, c), pattern='^resume_monitoring$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('check_resources')(u, c), pattern='^check_resources$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('control_panel')(u, c), pattern='^control_panel$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('daily_report')(u, c), pattern='^daily_report$'),
@@ -921,7 +918,6 @@ def get_callback_handlers():
         CallbackQueryHandler(lambda u, c: lazy_handler('monitor_main')(u, c), pattern='^monitor_main$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('main_menu')(u, c), pattern='^main_menu$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('toggle_monitoring')(u, c), pattern='^toggle_monitoring$'),
-
 
         # Обработчики для постраничного просмотра ресурсов
         CallbackQueryHandler(lambda u, c: lazy_handler('resource_page')(u, c), pattern='^resource_page_'),
