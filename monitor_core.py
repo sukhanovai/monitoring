@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.10
+Server Monitoring System v3.3.11
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Ядро системы
@@ -392,10 +392,10 @@ def silent_status_handler(update, context):
             [InlineKeyboardButton("🔇 Включить принудительно тихий", callback_data='force_silent')],
             [InlineKeyboardButton("🔊 Включить принудительно громкий", callback_data='force_loud')],
             [InlineKeyboardButton("🔄 Вернуть автоматический режим", callback_data='auto_mode')],
-            [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("↩️ Назад в управление", callback_data='control_panel'),  # НОВАЯ КНОПКА
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
     )
-
 def force_silent_handler(update, context):
     """Включает принудительный тихий режим"""
     global silent_override
@@ -403,18 +403,10 @@ def force_silent_handler(update, context):
     query = update.callback_query
     query.answer()
 
-    # Отправляем уведомление о изменении режима
     send_alert("🔇 *Принудительный тихий режим включен*\nВсе уведомления отключены до смены режима.", force=True)
 
-    query.edit_message_text(
-        "🔇 *Принудительный тихий режим включен*\n\n✅ Все уведомления отключены до следующего изменения режима.",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🔊 Включить громкий режим", callback_data='force_loud')],
-            [InlineKeyboardButton("🔄 Автоматический режим", callback_data='auto_mode')],
-            [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
-    )
+    # Возвращаемся в управление тихим режимом
+    silent_status_handler(update, context)
 
 def force_loud_handler(update, context):
     """Включает принудительный громкий режим"""
@@ -423,18 +415,10 @@ def force_loud_handler(update, context):
     query = update.callback_query
     query.answer()
 
-    # Отправляем уведомление о изменении режима
     send_alert("🔊 *Принудительный громкий режим включен*\nВсе уведомления активны до смены режима.", force=True)
 
-    query.edit_message_text(
-        "🔊 *Принудительный громкий режим включен*\n\n✅ Все уведомления активны до следующего изменения режима.",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🔇 Включить тихий режим", callback_data='force_silent')],
-            [InlineKeyboardButton("🔄 Автоматический режим", callback_data='auto_mode')],
-            [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
-    )
+    # Возвращаемся в управление тихим режимом
+    silent_status_handler(update, context)
 
 def auto_mode_handler(update, context):
     """Включает автоматический режим"""
@@ -446,16 +430,9 @@ def auto_mode_handler(update, context):
     current_status = "активен" if is_silent_time() else "неактивен"
     send_alert(f"🔄 *Автоматический режим включен*\nТихий режим сейчас {current_status}.", force=True)
 
-    query.edit_message_text(
-        f"🔄 *Автоматический режим включен*\n\n✅ Тихий режим работает по расписанию.\n📊 Текущий статус: {current_status}",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🔇 Принудительно тихий", callback_data='force_silent')],
-            [InlineKeyboardButton("🔊 Принудительно громкий", callback_data='force_loud')],
-            [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
-    )
-
+    # Возвращаемся в управление тихим режимом
+    silent_status_handler(update, context)
+    
 def control_command(update, context):
     """Обработчик команды /control"""
     keyboard = [
@@ -478,10 +455,16 @@ def control_panel_handler(update, context):
     query = update.callback_query
     query.answer()
 
+    # Создаем кнопку управления мониторингом (объединенная 7.1 и 7.2)
+    monitoring_button = InlineKeyboardButton(
+        "⏸️ Приостановить мониторинг" if monitoring_active else "▶️ Возобновить мониторинг",
+        callback_data='toggle_monitoring'
+    )
+
     keyboard = [
-        [InlineKeyboardButton("⏸️ Приостановить мониторинг", callback_data='pause_monitoring')],
-        [InlineKeyboardButton("▶️ Возобновить мониторинг", callback_data='resume_monitoring')],
+        [monitoring_button],
         [InlineKeyboardButton("📊 Утренний отчет", callback_data='full_report')],
+        [InlineKeyboardButton("🔇 Управление тихим режимом", callback_data='silent_status')],
         [InlineKeyboardButton("🔧 Диагностика отчета", callback_data='debug_report')],
         [InlineKeyboardButton("↩️ Назад", callback_data='monitor_status'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
@@ -494,6 +477,24 @@ def control_panel_handler(update, context):
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
+def toggle_monitoring_handler(update, context):
+    """Переключает состояние мониторинга"""
+    global monitoring_active
+    monitoring_active = not monitoring_active
+    query = update.callback_query
+    query.answer()
+
+    status_text = "▶️ Мониторинг возобновлен" if monitoring_active else "⏸️ Мониторинг приостановлен"
+    
+    # Отправляем уведомление о изменении статуса
+    if monitoring_active:
+        send_alert("🟢 *Мониторинг возобновлен*\nРегулярные проверки серверов активированы.", force=True)
+    else:
+        send_alert("🔴 *Мониторинг приостановлен*\nРегулярные проверки серверов отключены.", force=True)
+
+    # Возвращаемся в панель управления
+    control_panel_handler(update, context)
 
 def pause_monitoring_handler(update, context):
     """Приостановка мониторинга"""

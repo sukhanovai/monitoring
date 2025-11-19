@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.10
+Server Monitoring System v3.3.11
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Меню бота
@@ -35,7 +35,7 @@ def setup_menu(bot):
             BotCommand("servers", "Список серверов"),
             BotCommand("report", "Ежедневный отчет"),
             BotCommand("stats", "Статистика"),
-            BotCommand("control", "Управление"),
+            BotCommand("control", "Управление"),  # Объединенное управление
             BotCommand("diagnose_ssh", "Диагностика SSH"),
             BotCommand("silent", "Тихий режим"),
             BotCommand("extensions", "🛠️ Управление расширениями"),
@@ -73,7 +73,12 @@ def check_access(chat_id):
 def start_command(update, context):
     """Обработчик команды /start с отладочной информацией"""
     if not check_access(update.effective_chat.id):
-        update.message.reply_text("⛔ У вас нет прав для использования этого бота")
+        # Для callback и обычных сообщений
+        if update.message:
+            update.message.reply_text("⛔ У вас нет прав для использования этого бота")
+        elif update.callback_query:
+            update.callback_query.answer("⛔ У вас нет прав")
+            update.callback_query.edit_message_text("⛔ У вас нет прав для использования этого бота")
         return
 
     keyboard = [
@@ -91,7 +96,6 @@ def start_command(update, context):
     keyboard.extend([
         [InlineKeyboardButton("🛠️ Управление расширениями", callback_data='extensions_menu')],
         [InlineKeyboardButton("🎛️ Управление", callback_data='control_panel')],
-        [InlineKeyboardButton("🔧 Диагностика", callback_data='diagnose_menu')],
         [InlineKeyboardButton("🔇 Тихий режим", callback_data='silent_status')],
         [InlineKeyboardButton("✖️ Закрыть", callback_data='close')] 
     ])
@@ -116,7 +120,15 @@ def start_command(update, context):
     else:
         welcome_text += "🌐 *Веб-интерфейс:* 🔴 отключен\n"
     
-    update.message.reply_text(welcome_text, parse_mode='Markdown', reply_markup=reply_markup)
+    # Отправка сообщения в зависимости от типа обновления
+    if update.message:
+        update.message.reply_text(welcome_text, parse_mode='Markdown', reply_markup=reply_markup)
+    elif update.callback_query:
+        update.callback_query.edit_message_text(
+            welcome_text, 
+            parse_mode='Markdown', 
+            reply_markup=reply_markup
+        )
 
 def help_command(update, context):
     """Обработчик команды /help"""
@@ -908,6 +920,8 @@ def get_callback_handlers():
         CallbackQueryHandler(lambda u, c: lazy_handler('debug_report')(u, c), pattern='^debug_report$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('monitor_main')(u, c), pattern='^monitor_main$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('main_menu')(u, c), pattern='^main_menu$'),
+        CallbackQueryHandler(lambda u, c: lazy_handler('toggle_monitoring')(u, c), pattern='^toggle_monitoring$'),
+
 
         # Обработчики для постраничного просмотра ресурсов
         CallbackQueryHandler(lambda u, c: lazy_handler('resource_page')(u, c), pattern='^resource_page_'),
@@ -977,6 +991,8 @@ def lazy_handler(pattern):
             from monitor_core import check_resources_handler as handler
         elif pattern == 'control_panel':
             from monitor_core import control_panel_handler as handler
+        elif pattern == 'toggle_monitoring':
+            from monitor_core import toggle_monitoring_handler as handler
         elif pattern == 'daily_report':
             from monitor_core import send_morning_report_handler as handler
         elif pattern == 'diagnose_menu':
