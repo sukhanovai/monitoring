@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.9
+Server Monitoring System v3.3.10
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Мониторинг бэкапов Proxmox
@@ -361,6 +361,8 @@ def backup_callback(update, context):
         elif data.startswith('backup_host_'):
             host_name = data.replace('backup_host_', '')
             show_host_status(query, backup_bot, host_name)
+        elif data == 'backup_main':
+            show_main_menu(query)
             
         # Обработчики для баз данных
         elif data.startswith('db_detail_'):
@@ -394,7 +396,7 @@ def backup_callback(update, context):
         elif data == 'db_backups_summary':
             show_database_backups_summary(query, backup_bot, 24)
         elif data == 'db_backups_list':
-            show_database_backups_list(query, backup_bot)
+            show_database_backups_menu(query, backup_bot)
         elif data == 'db_stale_list':
             show_stale_databases(query, backup_bot)
         elif data == 'backup_main':

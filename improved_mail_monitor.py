@@ -248,8 +248,9 @@ class BackupProcessor:
                     }
                     return backup_info
 
-            # 5. Проверяем письма cobian BRN (barnaul backups)
+            # 5. Проверяем письма cobian BRN (barnaul backups) - разные форматы
             elif 'cobian brn backup' in subject_lower:
+                # Формат 1: cobian BRN backup 1c_smb, errors:0
                 match = re.search(r'cobian brn backup (.+?), errors:(\d+)', subject_lower)
                 if match:
                     db_name = match.group(1).strip()
@@ -269,6 +270,55 @@ class BackupProcessor:
                         'backup_type': 'barnaul'
                     }
                     return backup_info
+                
+                # Формат 2: cobian BRN backup 1c_smb, errors:е (кириллическая 'е')
+                match = re.search(r'cobian brn backup (.+?), errors:([еe])', subject_lower)
+                if match:
+                    db_name = match.group(1).strip()
+                    error_char = match.group(2)
+                    error_count = 0 if error_char in ['е', 'e'] else 1  # 'е' или 'e' = 0 ошибок
+                    logger.info(f"✅ Найден бэкап barnaul: '{db_name}' с ошибками: {error_count}")
+                    
+                    barnaul_dbs = DATABASE_BACKUP_CONFIG.get("barnaul_backups", {})
+                    display_name = barnaul_dbs.get(db_name, db_name)
+                    
+                    backup_info = {
+                        'host_name': 'brn-backup',
+                        'backup_status': 'success' if error_count == 0 else 'failed',
+                        'task_type': 'cobian_backup',
+                        'database_name': db_name,
+                        'database_display_name': display_name,
+                        'error_count': error_count,
+                        'backup_type': 'barnaul'
+                    }
+                    return backup_info
+
+            # 6. Проверяем письма Backup 1C7.7 TRADE OK
+            elif 'backup 1c7.7' in subject_lower or 'backup 1c' in subject_lower:
+                # Ищем название базы после "Backup 1C7.7"
+                match = re.search(r'backup 1c7\.7 (.+?) (ok|success|complete)', subject_lower, re.IGNORECASE)
+                if not match:
+                    # Альтернативный формат: Backup 1C7.7 TRADE OK
+                    match = re.search(r'backup 1c7?\.?7? (.+?) (ok|success|complete)', subject_lower, re.IGNORECASE)
+                
+                if match:
+                    db_name = match.group(1).strip().lower()
+                    status = match.group(2).lower()
+                    logger.info(f"✅ Найден бэкап 1C7.7: '{db_name}' статус: {status}")
+                    
+                    # Ищем в company databases
+                    company_dbs = DATABASE_BACKUP_CONFIG.get("company_databases", {})
+                    display_name = company_dbs.get(db_name, db_name)
+                    
+                    backup_info = {
+                        'host_name': '1c7-backup',
+                        'backup_status': 'success' if status in ['ok', 'success'] else 'failed',
+                        'task_type': '1c7_backup',
+                        'database_name': db_name,
+                        'database_display_name': display_name,
+                        'backup_type': 'company_database'
+                    }
+                    return backup_info
 
             logger.info(f"❌ Ни один паттерн не подошел для темы: '{subject}'")
             return None
@@ -278,7 +328,7 @@ class BackupProcessor:
             import traceback
             logger.error(traceback.format_exc())
             return None
-                    
+                        
     def save_database_backup(self, backup_info, subject, email_date=None):
         """Сохраняет информацию о бэкапе базы данных, игнорируя дубликаты"""
         try:
