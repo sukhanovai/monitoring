@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.8
+Server Monitoring System v3.3.9
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчики для бота бэкапов
@@ -429,12 +429,10 @@ def show_database_backups_menu(query, backup_bot):
     try:
         from config import DATABASE_BACKUP_CONFIG
         
-        print(f"🔍 DEBUG DATABASE_BACKUP_CONFIG: {DATABASE_BACKUP_CONFIG}")  # Для отладки
-        
         # Создаем клавиатуру с кнопками для каждой БД
         keyboard = []
         
-        # ИСПРАВЛЕННАЯ структура - используем правильные ключи из конфига
+        # Используем правильную структуру из конфига
         config_mapping = [
             ('company_database', DATABASE_BACKUP_CONFIG.get("company_databases", {})),
             ('barnaul', DATABASE_BACKUP_CONFIG.get("barnaul_backups", {})),
@@ -442,13 +440,10 @@ def show_database_backups_menu(query, backup_bot):
             ('yandex', DATABASE_BACKUP_CONFIG.get("yandex_backups", {}))
         ]
         
-        print(f"🔍 DEBUG config_mapping: {config_mapping}")  # Для отладки
-        
         has_databases = False
         
         for backup_type, config_dict in config_mapping:
             if config_dict:
-                print(f"🔍 DEBUG Processing {backup_type}: {len(config_dict)} databases")  # Для отладки
                 has_databases = True
                 
                 # Добавляем заголовок типа
@@ -475,7 +470,7 @@ def show_database_backups_menu(query, backup_bot):
                             keyboard.append(current_row)
                             current_row = []
                     except Exception as e:
-                        print(f"❌ Ошибка обработки БД {db_name}: {e}")
+                        logger.error(f"❌ Ошибка обработки БД {db_name}: {e}")
                         continue
                 
                 if current_row:
@@ -495,7 +490,7 @@ def show_database_backups_menu(query, backup_bot):
             if keyboard and not keyboard[-1]:
                 keyboard.pop()
             
-            # Кнопки навигации
+            # Кнопки навигации - ИСПРАВЛЕНО: правильный callback_data
             keyboard.extend([
                 [InlineKeyboardButton("↩️ Назад", callback_data='backup_main'),
                  InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
@@ -514,7 +509,7 @@ def show_database_backups_menu(query, backup_bot):
         import traceback
         logger.error(traceback.format_exc())
         query.edit_message_text("❌ Ошибка при получении данных конфигурации БД")
-                        
+                                
 #def show_database_backups_list(query, backup_bot):
     # """Показывает список всех баз данных"""
     # try:
