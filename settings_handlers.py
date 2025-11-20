@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.13
+Server Monitoring System v3.3.14
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчики для управления настройками через бота
@@ -183,7 +183,7 @@ def show_resource_settings(update, context):
     )
 
 def show_backup_settings(update, context):
-    """Показать настройки бэкапов"""
+    """Показать настройки бэкапов - С КНОПКОЙ ЗАКРЫТЬ"""
     query = update.callback_query
     query.answer()
     
@@ -279,7 +279,7 @@ def settings_callback_handler(update, context):
     elif data == 'backup_times':
         show_backup_times(update, context)
     elif data == 'backup_databases':
-        show_backup_databases(update, context)
+        show_backup_databases_settings(update, context)
     elif data == 'backup_patterns':
         show_backup_patterns_menu(update, context)
     elif data.startswith('set_'):
@@ -380,7 +380,7 @@ def handle_setting_value(update, context):
         update.message.reply_text(f"❌ Ошибка сохранения: {e}")
         
 def show_web_settings(update, context):
-    """Показать настройки веб-интерфейса"""
+    """Показать настройки веб-интерфейса - С КНОПКОЙ ЗАКРЫТЬ"""
     query = update.callback_query
     query.answer()
     
@@ -397,7 +397,8 @@ def show_web_settings(update, context):
     keyboard = [
         [InlineKeyboardButton("🔌 Порт веб-интерфейса", callback_data='set_web_port')],
         [InlineKeyboardButton("🌐 Хост веб-интерфейса", callback_data='set_web_host')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main')]
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
     
     query.edit_message_text(
@@ -445,7 +446,7 @@ def show_auth_settings(update, context):
     )
 
 def show_servers_settings(update, context):
-    """Показать настройки серверов"""
+    """Показать настройки серверов - С КНОПКОЙ ЗАКРЫТЬ"""
     query = update.callback_query
     query.answer()
     
@@ -466,7 +467,8 @@ def show_servers_settings(update, context):
     keyboard = [
         [InlineKeyboardButton("📋 Список серверов", callback_data='servers_list')],
         [InlineKeyboardButton("➕ Добавить сервер", callback_data='add_server')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main')]
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
     
     query.edit_message_text(
@@ -476,7 +478,7 @@ def show_servers_settings(update, context):
     )
 
 def show_backup_times(update, context):
-    """Показать настройки временных интервалов бэкапов"""
+    """Показать настройки временных интервалов бэкапов - С КНОПКОЙ ЗАКРЫТЬ"""
     query = update.callback_query
     query.answer()
     
@@ -493,7 +495,45 @@ def show_backup_times(update, context):
     keyboard = [
         [InlineKeyboardButton("🚨 Часы для алертов", callback_data='set_backup_alert_hours')],
         [InlineKeyboardButton("📅 Часы для устаревания", callback_data='set_backup_stale_hours')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup')]
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ]
+    
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def show_backup_databases_settings(update, context):
+    """Показать настройки баз данных для бэкапов - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
+    query = update.callback_query
+    query.answer()
+    
+    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    
+    message = "🗃️ *Настройки баз данных для бэкапов*\n\n"
+    
+    if not db_config:
+        message += "❌ *Базы данных не настроены*\n\n"
+    else:
+        for category, databases in db_config.items():
+            message += f"*{category.upper()}* ({len(databases)} БД):\n"
+            for db_key, db_name in list(databases.items())[:3]:
+                message += f"• {db_name}\n"
+            if len(databases) > 3:
+                message += f"• ... и еще {len(databases) - 3} БД\n"
+            message += "\n"
+    
+    message += "Выберите действие:"
+    
+    keyboard = [
+        [InlineKeyboardButton("📋 Просмотр всех БД", callback_data='view_all_databases')],
+        [InlineKeyboardButton("➕ Добавить категорию БД", callback_data='add_database_category')],
+        [InlineKeyboardButton("✏️ Редактировать БД", callback_data='edit_databases')],
+        [InlineKeyboardButton("🗑️ Удалить категорию", callback_data='delete_database_category')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
     
     query.edit_message_text(
@@ -536,7 +576,7 @@ def show_backup_databases(update, context):
     )
 
 def show_backup_patterns_menu(update, context):
-    """Показать меню паттернов бэкапов"""
+    """Показать меню паттернов бэкапов - С КНОПКОЙ ЗАКРЫТЬ"""
     query = update.callback_query
     query.answer()
     
@@ -560,7 +600,8 @@ def show_backup_patterns_menu(update, context):
     keyboard = [
         [InlineKeyboardButton("📋 Просмотр паттернов", callback_data='view_patterns')],
         [InlineKeyboardButton("➕ Добавить паттерн", callback_data='add_pattern')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup')]
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
     
     query.edit_message_text(

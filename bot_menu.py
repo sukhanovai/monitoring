@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.13
+Server Monitoring System v3.3.14
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Меню бота
@@ -587,26 +587,19 @@ def disable_debug_mode(query):
         query.edit_message_text(f"❌ Ошибка выключения отладки: {e}")
 
 def show_debug_status(query):
-    """Показывает статус отладки и системную информацию"""
+    """Показывает статус отладки и системную информацию - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
     import os
-    import psutil
     from datetime import datetime
     
     try:
-        # Системная информация
-        disk_usage = psutil.disk_usage('/')
-        memory = psutil.virtual_memory()
-        load = psutil.getloadavg()
+        # Пытаемся импортировать psutil, но если нет - работаем без него
+        try:
+            import psutil
+            psutil_available = True
+        except ImportError:
+            psutil_available = False
         
-        # Информация о логах
-        debug_log_path = '/opt/monitoring/logs/debug.log'
-        log_size = os.path.getsize(debug_log_path) if os.path.exists(debug_log_path) else 0
-        
-        mail_log_path = '/opt/monitoring/logs/mail_monitor.log'
-        mail_log_size = os.path.getsize(mail_log_path) if os.path.exists(mail_log_path) else 0
-        
-        bot_log_path = '/opt/monitoring/bot_debug.log'
-        bot_log_size = os.path.getsize(bot_log_path) if os.path.exists(bot_log_path) else 0
+        message = "📊 *Статус системы и отладки*\n\n"
         
         # Статус отладки
         try:
@@ -615,18 +608,43 @@ def show_debug_status(query):
         except ImportError:
             debug_status = "🔴 НЕДОСТУПЕН"
         
-        message = "📊 *Статус системы и отладки*\n\n"
         message += f"🐛 *Режим отладки:* {debug_status}\n\n"
         
-        message += "*Системные ресурсы:*\n"
-        message += f"• Загрузка CPU: {load[0]:.2f} {load[1]:.2f} {load[2]:.2f}\n"
-        message += f"• Память: {memory.percent:.1f}% использовано\n"
-        message += f"• Диск: {disk_usage.percent:.1f}% использовано\n\n"
+        # Системная информация (если psutil доступен)
+        if psutil_available:
+            try:
+                disk_usage = psutil.disk_usage('/')
+                memory = psutil.virtual_memory()
+                load = psutil.getloadavg()
+                
+                message += "*Системные ресурсы:*\n"
+                message += f"• Загрузка CPU: {load[0]:.2f} {load[1]:.2f} {load[2]:.2f}\n"
+                message += f"• Память: {memory.percent:.1f}% использовано\n"
+                message += f"• Диск: {disk_usage.percent:.1f}% использовано\n\n"
+            except Exception as e:
+                message += f"*Системные ресурсы:* Ошибка получения: {str(e)[:50]}\n\n"
+        else:
+            message += "*Системные ресурсы:* Модуль psutil не установлен\n\n"
         
+        # Информация о логах
         message += "*Логи:*\n"
-        message += f"• Отладочный лог: {log_size / 1024 / 1024:.2f} MB\n"
-        message += f"• Лог почты: {mail_log_size / 1024 / 1024:.2f} MB\n"
-        message += f"• Лог бота: {bot_log_size / 1024 / 1024:.2f} MB\n\n"
+        log_files = {
+            'debug.log': '/opt/monitoring/logs/debug.log',
+            'bot_debug.log': '/opt/monitoring/bot_debug.log', 
+            'mail_monitor.log': '/opt/monitoring/logs/mail_monitor.log'
+        }
+        
+        for log_name, log_path in log_files.items():
+            try:
+                if os.path.exists(log_path):
+                    log_size = os.path.getsize(log_path)
+                    message += f"• {log_name}: {log_size / 1024 / 1024:.2f} MB\n"
+                else:
+                    message += f"• {log_name}: файл не существует\n"
+            except Exception as e:
+                message += f"• {log_name}: ошибка проверки\n"
+        
+        message += "\n"
         
         # Информация о процессах
         try:
@@ -637,7 +655,15 @@ def show_debug_status(query):
         except:
             message += "*Процессы Python:* Недоступно\n"
         
-        message += f"🕒 *Обновлено:* {datetime.now().strftime('%H:%M:%S')}"
+        # Информация о расширениях
+        try:
+            extension_manager = get_extension_manager()
+            enabled_extensions = extension_manager.get_enabled_extensions()
+            message += f"*Включено расширений:* {len(enabled_extensions)}\n"
+        except:
+            message += "*Включено расширений:* Недоступно\n"
+        
+        message += f"\n🕒 *Обновлено:* {datetime.now().strftime('%H:%M:%S')}"
 
         query.edit_message_text(
             message,
@@ -645,16 +671,16 @@ def show_debug_status(query):
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("🔄 Обновить", callback_data='debug_status')],
                 [InlineKeyboardButton("🗑️ Очистить логи", callback_data='debug_clear_logs')],
-                [InlineKeyboardButton("🔧 Диагностика", callback_data='debug_diagnose')],
-                [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu')]
+                [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu'),
+                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
         )
         
     except Exception as e:
-        query.edit_message_text(f"❌ Ошибка получения статуса: {e}")
+        query.edit_message_text(f"❌ Ошибка получения статуса: {str(e)[:100]}")
 
 def clear_debug_logs(query):
-    """Очищает файлы логов - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
+    """Очищает файлы логов - БЕЗ КНОПКИ ДИАГНОСТИКИ"""
     import os
     import logging
     
@@ -671,7 +697,6 @@ def clear_debug_logs(query):
         for log_file in log_files:
             try:
                 if os.path.exists(log_file):
-                    # Враппер для безопасной очистки
                     with open(log_file, 'w') as f:
                         f.write('')
                     cleared += 1
@@ -701,7 +726,7 @@ def clear_debug_logs(query):
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("🔄 Обновить", callback_data='debug_clear_logs')],
-                [InlineKeyboardButton("🔧 Диагностика", callback_data='debug_diagnose')],
+                [InlineKeyboardButton("📊 Статус системы", callback_data='debug_status')],
                 [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu'),
                  InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
@@ -746,7 +771,9 @@ def run_diagnostic(query):
                         status = "🔴"
                         message += f"{status} {service}: файл не найден\n"
             except Exception as e:
-                message += f"🔴 {service}: ошибка проверки ({str(e)[:50]})\n"
+                # Экранируем специальные символы Markdown
+                error_msg = str(e)[:50].replace('_', '\\_').replace('*', '\\*').replace('`', '\\`')
+                message += f"🔴 {service}: ошибка проверки ({error_msg})\n"
         
         message += "\n*Проверка процессов:*\n"
         
@@ -772,17 +799,23 @@ def run_diagnostic(query):
         
         # Проверка расширений
         message += "\n*Проверка расширений:*\n"
-        extension_manager = get_extension_manager()
-        enabled_extensions = extension_manager.get_enabled_extensions()
-        
-        for ext_id in enabled_extensions:
-            status = "🟢"
-            message += f"{status} {ext_id}: включено\n"
+        try:
+            extension_manager = get_extension_manager()
+            enabled_extensions = extension_manager.get_enabled_extensions()
+            
+            for ext_id in enabled_extensions:
+                status = "🟢"
+                message += f"{status} {ext_id}: включено\n"
+        except Exception as e:
+            message += "🔴 Расширения: ошибка проверки\n"
         
         message += f"\n🕒 *Диагностика завершена:* {datetime.now().strftime('%H:%M:%S')}"
 
+        # Экранируем все сообщение для безопасного отображения в Markdown
+        safe_message = message.replace('_', '\\_').replace('*', '\\*').replace('`', '\\`').replace('[', '\\[').replace(']', '\\]')
+
         query.edit_message_text(
-            message,
+            safe_message,
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("🔄 Перезапустить", callback_data='debug_diagnose')],
@@ -793,10 +826,10 @@ def run_diagnostic(query):
         )
         
     except Exception as e:
-        query.edit_message_text(f"❌ Ошибка диагностики: {e}")
+        query.edit_message_text(f"❌ Ошибка диагностики: {str(e)[:100]}")
 
 def show_advanced_debug(query):
-    """Показывает расширенные настройки отладки - УЛУЧШЕННАЯ ВЕРСИЯ"""
+    """Показывает расширенные настройки отладки - БЕЗ КНОПКИ ОСНОВНЫХ НАСТРОЕК"""
     try:
         from debug_config import debug_config
         debug_info = debug_config.get_debug_info()
@@ -836,7 +869,6 @@ def show_advanced_debug(query):
 
         keyboard = [
             [InlineKeyboardButton("🔄 Обновить", callback_data='debug_advanced')],
-            [InlineKeyboardButton("⚙️ Основные настройки", callback_data='debug_menu')],
             [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu'),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ]
@@ -859,7 +891,7 @@ def show_advanced_debug(query):
             ])
         )
     except Exception as e:
-        query.edit_message_text(f"❌ Ошибка загрузки расширенных настроек: {e}")
+        query.edit_message_text(f"❌ Ошибка загрузки расширенных настроек: {str(e)[:100]}")
 
 def diagnose_windows_command(update, context):
     """Диагностика подключения к Windows серверам"""
