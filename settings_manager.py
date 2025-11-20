@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.12
+Server Monitoring System v3.3.13
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Менеджер настроек БД

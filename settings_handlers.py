@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.12
+Server Monitoring System v3.3.13
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчики для управления настройками через бота
@@ -22,7 +22,8 @@ def settings_command(update, context):
         [InlineKeyboardButton("💾 Бэкапы", callback_data='settings_backup')],
         [InlineKeyboardButton("🌐 Веб-интерфейс", callback_data='settings_web')],
         [InlineKeyboardButton("📊 Просмотр всех настроек", callback_data='settings_view_all')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='monitor_status')]
+        [InlineKeyboardButton("↩️ Назад", callback_data='main_menu'),
+        InlineKeyboardButton("✖️ Закрыть", callback_data='close')]    
     ]
     
     if update.message:
@@ -59,7 +60,8 @@ def show_telegram_settings(update, context):
     keyboard = [
         [InlineKeyboardButton("🔑 Установить токен", callback_data='set_telegram_token')],
         [InlineKeyboardButton("💬 Управление чатами", callback_data='manage_chats')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main')]
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
     
     query.edit_message_text(
@@ -100,7 +102,8 @@ def show_monitoring_settings(update, context):
         [InlineKeyboardButton("⏱️ Интервал проверки", callback_data='set_check_interval')],
         [InlineKeyboardButton("🚨 Макс. время простоя", callback_data='set_max_fail_time')],
         [InlineKeyboardButton("⏰ Таймауты серверов", callback_data='server_timeouts')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main')]
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
     
     query.edit_message_text(
@@ -129,7 +132,8 @@ def show_time_settings(update, context):
         [InlineKeyboardButton("🔇 Начало тихого режима", callback_data='set_silent_start')],
         [InlineKeyboardButton("🔊 Конец тихого режима", callback_data='set_silent_end')],
         [InlineKeyboardButton("📊 Время сбора данных", callback_data='set_data_collection')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main')]
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
     
     query.edit_message_text(
@@ -168,7 +172,8 @@ def show_resource_settings(update, context):
         [InlineKeyboardButton("🧠 RAM критический", callback_data='set_ram_critical')],
         [InlineKeyboardButton("💾 Disk предупреждение", callback_data='set_disk_warning')],
         [InlineKeyboardButton("💾 Disk критический", callback_data='set_disk_critical')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main')]
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
     
     query.edit_message_text(
@@ -200,7 +205,8 @@ def show_backup_settings(update, context):
         [InlineKeyboardButton("⏰ Временные интервалы", callback_data='backup_times')],
         [InlineKeyboardButton("🗃️ Базы данных", callback_data='backup_databases')],
         [InlineKeyboardButton("🔍 Паттерны", callback_data='backup_patterns')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main')]
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
     
     query.edit_message_text(
@@ -235,7 +241,8 @@ def show_all_settings(update, context):
     
     keyboard = [
         [InlineKeyboardButton("⚙️ Управление настройками", callback_data='settings_main')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='monitor_status')]
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
     
     query.edit_message_text(
@@ -496,17 +503,17 @@ def show_backup_times(update, context):
     )
 
 def show_backup_databases(update, context):
-    """Показать настройки баз данных для бэкапов"""
+    """Показать настройки баз данных для бэкапов - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
     query = update.callback_query
     query.answer()
     
     db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
     
-    message = "🗃️ *Базы данных для бэкапов*\n\n"
+    message = "🗃️ *Настройки баз данных для бэкапов*\n\n"
     
     for category, databases in db_config.items():
         message += f"*{category.upper()}* ({len(databases)} БД):\n"
-        for db_key, db_name in list(databases.items())[:3]:  # Показываем первые 3
+        for db_key, db_name in list(databases.items())[:3]:
             message += f"• {db_name}\n"
         if len(databases) > 3:
             message += f"• ... и еще {len(databases) - 3} БД\n"
@@ -516,8 +523,10 @@ def show_backup_databases(update, context):
     
     keyboard = [
         [InlineKeyboardButton("📋 Просмотр всех БД", callback_data='view_all_databases')],
-        [InlineKeyboardButton("➕ Добавить БД", callback_data='add_database')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup')]
+        [InlineKeyboardButton("➕ Добавить БД", callback_data='add_database'),
+         InlineKeyboardButton("✏️ Редактировать БД", callback_data='edit_databases')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
     
     query.edit_message_text(

@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.12
+Server Monitoring System v3.3.13
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Меню бота
@@ -445,7 +445,7 @@ def debug_command(update, context):
     show_debug_menu(update, context)
 
 def show_debug_menu(update, context):
-    """Показывает меню управления отладкой"""
+    """Показывает меню управления отладкой - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
     from telegram import InlineKeyboardMarkup, InlineKeyboardButton
     
     query = update.callback_query if hasattr(update, 'callback_query') else None
@@ -462,22 +462,17 @@ def show_debug_menu(update, context):
     message = "🐛 *Управление отладкой*\n\n"
     message += f"*Текущий статус:* {debug_status}\n\n"
     
-    message += "*Функции отладки:*\n"
-    message += "• Детальное логирование всех операций\n"
-    message += "• Отладочные сообщения в консоли\n"
-    message += "• Запись отладочных данных в файлы\n"
-    message += "• Диагностика подключений\n\n"
-    
-    message += "*Внимание:* Включение отладки может увеличить нагрузку!\n"
+    # Кнопка-переключатель вместо двух отдельных
+    toggle_text = "🔴 Выключить отладку" if DEBUG_MODE else "🟢 Включить отладку"
+    toggle_data = 'debug_disable' if DEBUG_MODE else 'debug_enable'
 
     keyboard = [
-        [InlineKeyboardButton("🟢 Включить отладку", callback_data='debug_enable')],
-        [InlineKeyboardButton("🔴 Выключить отладку", callback_data='debug_disable')],
+        [InlineKeyboardButton(toggle_text, callback_data=toggle_data)],
         [InlineKeyboardButton("📊 Статус системы", callback_data='debug_status')],
         [InlineKeyboardButton("🗑️ Очистить логи", callback_data='debug_clear_logs')],
         [InlineKeyboardButton("📋 Диагностика", callback_data='debug_diagnose')],
         [InlineKeyboardButton("🔧 Расширенная отладка", callback_data='debug_advanced')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='monitor_status'),
+        [InlineKeyboardButton("↩️ Назад", callback_data='main_menu'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
     
@@ -659,7 +654,10 @@ def show_debug_status(query):
         query.edit_message_text(f"❌ Ошибка получения статуса: {e}")
 
 def clear_debug_logs(query):
-    """Очищает файлы логов"""
+    """Очищает файлы логов - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
+    import os
+    import logging
+    
     try:
         log_files = [
             '/opt/monitoring/logs/debug.log',
@@ -673,18 +671,27 @@ def clear_debug_logs(query):
         for log_file in log_files:
             try:
                 if os.path.exists(log_file):
+                    # Враппер для безопасной очистки
                     with open(log_file, 'w') as f:
                         f.write('')
                     cleared += 1
+                    
+                    # Переконфигурируем логгер если это debug.log
+                    if log_file.endswith('debug.log'):
+                        logging.getLogger().handlers[0].flush()
                 else:
-                    errors.append(f"Файл не существует: {log_file}")
+                    # Создаем пустой файл если не существует
+                    os.makedirs(os.path.dirname(log_file), exist_ok=True)
+                    with open(log_file, 'w') as f:
+                        f.write('')
+                    cleared += 1
             except Exception as e:
                 errors.append(f"Ошибка очистки {log_file}: {e}")
         
         message = f"✅ *Логи очищены*\n\nОчищено файлов: {cleared}/{len(log_files)}"
         
         if errors:
-            message += f"\n\n*Ошибки:*\n" + "\n".join(errors[:3])  # Показываем только первые 3 ошибки
+            message += f"\n\n*Ошибки:*\n" + "\n".join(errors[:3])
         
         debug_log = get_debug_log()
         debug_log("🗑️ Логи очищены через меню бота")
@@ -693,8 +700,10 @@ def clear_debug_logs(query):
             message,
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🔄 Обновить", callback_data='debug_clear_logs')],
                 [InlineKeyboardButton("🔧 Диагностика", callback_data='debug_diagnose')],
-                [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu')]
+                [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu'),
+                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
         )
         
@@ -702,18 +711,20 @@ def clear_debug_logs(query):
         query.edit_message_text(f"❌ Ошибка очистки логов: {e}")
 
 def run_diagnostic(query):
-    """Запускает диагностику системы"""
+    """Запускает диагностику системы - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
+    import subprocess
+    import socket
+    import os
+    from datetime import datetime
+    
     try:
-        import subprocess
-        import socket
-        
         message = "🔧 *Диагностика системы*\n\n"
         
         # Проверка подключения к базовым сервисам
         checks = [
             ("Веб-интерфейс", "192.168.20.2", 5000),
             ("SSH демон", "localhost", 22),
-            ("База бэкапов", "localhost", None),  # SQLite, проверяем файл
+            ("База бэкапов", "localhost", None),
         ]
         
         for service, host, port in checks:
@@ -776,7 +787,8 @@ def run_diagnostic(query):
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("🔄 Перезапустить", callback_data='debug_diagnose')],
                 [InlineKeyboardButton("🔧 Расширенная", callback_data='debug_advanced')],
-                [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu')]
+                [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu'),
+                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
         )
         
@@ -784,7 +796,7 @@ def run_diagnostic(query):
         query.edit_message_text(f"❌ Ошибка диагностики: {e}")
 
 def show_advanced_debug(query):
-    """Показывает расширенные настройки отладки"""
+    """Показывает расширенные настройки отладки - УЛУЧШЕННАЯ ВЕРСИЯ"""
     try:
         from debug_config import debug_config
         debug_info = debug_config.get_debug_info()
@@ -801,14 +813,38 @@ def show_advanced_debug(query):
         message += f"• Ресурсы отладка: {'🟢 ВКЛ' if debug_info['resource_debug'] else '🔴 ВЫКЛ'}\n"
         message += f"• Бэкапы отладка: {'🟢 ВКЛ' if debug_info['backup_debug'] else '🔴 ВЫКЛ'}\n\n"
         
-        message += f"*Последнее изменение:* {debug_info['last_modified'][:19]}"
+        message += f"*Статус логов:*\n"
+        
+        # Добавляем информацию о размерах логов
+        log_files = {
+            'debug.log': '/opt/monitoring/logs/debug.log',
+            'bot_debug.log': '/opt/monitoring/bot_debug.log',
+            'mail_monitor.log': '/opt/monitoring/logs/mail_monitor.log'
+        }
+        
+        for log_name, log_path in log_files.items():
+            try:
+                if os.path.exists(log_path):
+                    size = os.path.getsize(log_path) / 1024 / 1024
+                    message += f"• {log_name}: {size:.2f} MB\n"
+                else:
+                    message += f"• {log_name}: файл не существует\n"
+            except:
+                message += f"• {log_name}: ошибка проверки\n"
+        
+        message += f"\n*Последнее изменение:* {debug_info['last_modified'][:19]}"
+
+        keyboard = [
+            [InlineKeyboardButton("🔄 Обновить", callback_data='debug_advanced')],
+            [InlineKeyboardButton("⚙️ Основные настройки", callback_data='debug_menu')],
+            [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu'),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ]
 
         query.edit_message_text(
             message,
             parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu')]
-            ])
+            reply_markup=InlineKeyboardMarkup(keyboard)
         )
         
     except ImportError:
@@ -818,7 +854,8 @@ def show_advanced_debug(query):
             "Убедитесь, что файл существует в папке проекта.",
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu')]
+                [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu'),
+                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
         )
     except Exception as e:
@@ -918,6 +955,7 @@ def get_callback_handlers():
         CallbackQueryHandler(lambda u, c: lazy_handler('monitor_main')(u, c), pattern='^monitor_main$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('main_menu')(u, c), pattern='^main_menu$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('toggle_monitoring')(u, c), pattern='^toggle_monitoring$'),
+        CallbackQueryHandler(lambda u, c: lazy_handler('close')(u, c), pattern='^close$'),
 
         # Обработчики для постраничного просмотра ресурсов
         CallbackQueryHandler(lambda u, c: lazy_handler('resource_page')(u, c), pattern='^resource_page_'),
