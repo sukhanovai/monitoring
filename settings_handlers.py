@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.22
+Server Monitoring System v3.3.23
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчики для управления настройками через бота
@@ -10,16 +10,19 @@ from telegram.ext import CommandHandler, CallbackQueryHandler, MessageHandler, F
 from settings_manager import settings_manager
 import json
 
-# === ДОБАВЬТЕ ЭТОТ ИМПОРТ СЮДА ===
-try:
-    from core_utils import debug_log as get_debug_log
-except ImportError:
-    # Заглушка если модуль не доступен
-    def get_debug_log():
-        def log(message):
+def get_debug_log():
+    """Безопасная функция для логирования"""
+    try:
+        from core_utils import debug_log
+        return debug_log
+    except ImportError:
+        # Заглушка если модуль не доступен
+        def fallback_log(message):
             print(f"DEBUG: {message}")
-        return log
-    
+        return fallback_log
+
+debug_logger = get_debug_log()
+
 def settings_command(update, context):
     """Команда управления настройками"""
     keyboard = [
@@ -304,7 +307,7 @@ def show_all_settings(update, context):
     )
 
 def settings_callback_handler(update, context):
-    """Обработчик callback'ов настроек - ПОЛНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ"""
+    """Обработчик callback'ов настроек"""
     query = update.callback_query
     data = query.data
     
@@ -321,7 +324,7 @@ def settings_callback_handler(update, context):
         elif data == 'settings_resources':
             show_resource_settings(update, context)
         elif data == 'settings_auth':
-            show_auth_settings(update, context)
+            show_auth_settings(update, context)  # Теперь упрощенная версия
         elif data == 'settings_servers':
             show_servers_settings(update, context)
         elif data == 'settings_backup':
@@ -353,7 +356,7 @@ def settings_callback_handler(update, context):
         elif data == 'manage_chats':
             manage_chats_handler(update, context)
         elif data == 'server_timeouts':
-            show_server_timeouts(update, context)  # Теперь исправленная версия
+            show_server_timeouts(update, context)  # Теперь упрощенная версия
         elif data == 'add_server':
             add_server_handler(update, context)
         
@@ -418,13 +421,8 @@ def settings_callback_handler(update, context):
     
     except Exception as e:
         print(f"❌ Ошибка в settings_callback_handler: {e}")
-        # ИСПРАВЛЕННЫЙ ВЫЗОВ get_debug_log
-        try:
-            debug_log_func = get_debug_log()
-            debug_log_func(f"Ошибка в settings_callback_handler: {e}")
-        except Exception as log_error:
-            print(f"❌ Ошибка логирования: {log_error}")
-        
+        # ИСПРАВЛЕННЫЙ ВЫЗОВ - используем готовый логгер
+        debug_logger(f"Ошибка в settings_callback_handler: {e}")
         query.answer("❌ Произошла ошибка при обработке запроса")
     
     query.answer()
@@ -583,22 +581,20 @@ def get_settings_handlers():
     ]
 
 def show_auth_settings(update, context):
-    """Показать настройки аутентификации - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
+    """Показать настройки аутентификации - УПРОЩЕННАЯ БЕЗ MARKDOWN ВЕРСИЯ"""
     query = update.callback_query
     query.answer()
     
     ssh_username = settings_manager.get_setting('SSH_USERNAME', 'root')
     ssh_key_path = settings_manager.get_setting('SSH_KEY_PATH', '/root/.ssh/id_rsa')
     
+    # Простой текст без Markdown
     message = (
-        "🔐 *Настройки аутентификации*\n\n"
-        f"• SSH пользователь: `{ssh_username}`\n"
-        f"• Путь к SSH ключу: `{ssh_key_path}`\n\n"
+        "🔐 Настройки аутентификации\n\n"
+        f"• SSH пользователь: {ssh_username}\n"
+        f"• Путь к SSH ключу: {ssh_key_path}\n\n"
         "Выберите параметр для изменения:"
     )
-    
-    # Экранируем все специальные символы Markdown
-    safe_message = message.replace('_', '\\_').replace('*', '\\*').replace('`', '\\`')
     
     keyboard = [
         [InlineKeyboardButton("👤 SSH пользователь", callback_data='set_ssh_username')],
@@ -608,11 +604,10 @@ def show_auth_settings(update, context):
     ]
     
     query.edit_message_text(
-        safe_message,
-        parse_mode='MarkdownV2',
+        message,  # Без parse_mode
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
-    
+
 def show_servers_settings(update, context):
     """Показать настройки серверов - С КНОПКОЙ ЗАКРЫТЬ"""
     query = update.callback_query
@@ -943,23 +938,22 @@ def manage_chats_handler(update, context):
     )
 
 def show_server_timeouts(update, context):
-    """Таймауты серверов - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
+    """Таймауты серверов - УПРОЩЕННАЯ БЕЗ MARKDOWN ВЕРСИЯ"""
     query = update.callback_query
     query.answer()
     
     timeouts = settings_manager.get_setting('SERVER_TIMEOUTS', {})
     
-    message = "⏰ *Таймауты серверов*\n\n"
+    # Простой текст без Markdown
+    message = "⏰ Таймауты серверов\n\n"
     
     if timeouts:
         for server_type, timeout in timeouts.items():
-            # Экранируем подчеркивания в названиях типов серверов
-            safe_type = server_type.replace('_', '\\_')
-            message += f"• {safe_type}: {timeout} сек\n"
+            message += f"• {server_type}: {timeout} сек\n"
     else:
-        message += "❌ *Таймауты не настроены*\n"
-        message += "Используются значения по умолчанию\\.\n\n"
-        message += "*Таймауты по умолчанию:*\n"
+        message += "❌ Таймауты не настроены\n"
+        message += "Используются значения по умолчанию.\n\n"
+        message += "Таймауты по умолчанию:\n"
         message += "• Windows 2025: 35 сек\n"
         message += "• Доменные серверы: 20 сек\n"
         message += "• Admin серверы: 25 сек\n"
@@ -968,9 +962,6 @@ def show_server_timeouts(update, context):
         message += "• Ping серверы: 10 сек\n"
     
     message += "\nВыберите параметр для изменения:"
-    
-    # Экранируем все специальные символы Markdown
-    safe_message = message.replace('*', '\\*').replace('_', '\\_').replace('`', '\\`').replace('[', '\\[').replace(']', '\\]')
     
     keyboard = [
         [InlineKeyboardButton("🖥️ Windows 2025", callback_data='set_windows_2025_timeout')],
@@ -984,8 +975,7 @@ def show_server_timeouts(update, context):
     ]
     
     query.edit_message_text(
-        safe_message,
-        parse_mode='MarkdownV2',  # Используем MarkdownV2 для лучшей совместимости
+        message,  # Без parse_mode
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
