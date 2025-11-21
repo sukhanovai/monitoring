@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.23
+Server Monitoring System v3.4.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Меню бота
@@ -993,7 +993,15 @@ def get_callback_handlers():
         CallbackQueryHandler(settings_callback_handler, pattern='^backup_times$'),
         CallbackQueryHandler(settings_callback_handler, pattern='^backup_patterns$'),
         CallbackQueryHandler(settings_callback_handler, pattern='^manage_'),
+
+        # Обработчики аутентификации
+        CallbackQueryHandler(settings_callback_handler, pattern='^settings_auth$'),
+        CallbackQueryHandler(settings_callback_handler, pattern='^ssh_auth_settings$'),
         
+        # Обработчики Windows аутентификации
+        CallbackQueryHandler(settings_callback_handler, pattern='^windows_auth_'),
+        CallbackQueryHandler(settings_callback_handler, pattern='^cred_type_'),
+
         # Обработчики для таймаутов серверов
         CallbackQueryHandler(settings_callback_handler, pattern='^server_timeouts$'),
         CallbackQueryHandler(settings_callback_handler, pattern='^set_windows_2025_timeout$'),

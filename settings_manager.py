@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.23
+Server Monitoring System v3.4.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Менеджер настроек БД
@@ -382,5 +382,114 @@ class SettingsManager:
         """Получить таймауты серверов"""
         return self.get_setting('SERVER_TIMEOUTS', {})
 
+    def get_windows_credentials(self, server_type=None):
+        """Получить учетные данные Windows"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        if server_type:
+            cursor.execute('''
+                SELECT id, username, password, server_type, priority, enabled 
+                FROM windows_credentials 
+                WHERE server_type = ? AND enabled = 1 
+                ORDER BY priority
+            ''', (server_type,))
+        else:
+            cursor.execute('''
+                SELECT id, username, password, server_type, priority, enabled 
+                FROM windows_credentials 
+                WHERE enabled = 1 
+                ORDER BY server_type, priority
+            ''')
+        
+        credentials = []
+        for id, username, password, cred_server_type, priority, enabled in cursor.fetchall():
+            credentials.append({
+                'id': id,
+                'username': username,
+                'password': password,
+                'server_type': cred_server_type,
+                'priority': priority,
+                'enabled': enabled
+            })
+        
+        conn.close()
+        return credentials
+    
+    def add_windows_credential(self, username, password, server_type='default', priority=0):
+        """Добавить учетные данные Windows"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT INTO windows_credentials (username, password, server_type, priority)
+            VALUES (?, ?, ?, ?)
+        ''', (username, password, server_type, priority))
+        
+        conn.commit()
+        conn.close()
+        return True
+    
+    def update_windows_credential(self, cred_id, username=None, password=None, server_type=None, priority=None, enabled=None):
+        """Обновить учетные данные Windows"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        update_fields = []
+        params = []
+        
+        if username is not None:
+            update_fields.append("username = ?")
+            params.append(username)
+        if password is not None:
+            update_fields.append("password = ?")
+            params.append(password)
+        if server_type is not None:
+            update_fields.append("server_type = ?")
+            params.append(server_type)
+        if priority is not None:
+            update_fields.append("priority = ?")
+            params.append(priority)
+        if enabled is not None:
+            update_fields.append("enabled = ?")
+            params.append(enabled)
+        
+        if not update_fields:
+            return False
+        
+        params.append(cred_id)
+        
+        cursor.execute(f'''
+            UPDATE windows_credentials 
+            SET {', '.join(update_fields)} 
+            WHERE id = ?
+        ''', params)
+        
+        conn.commit()
+        conn.close()
+        return True
+    
+    def delete_windows_credential(self, cred_id):
+        """Удалить учетные данные Windows"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('DELETE FROM windows_credentials WHERE id = ?', (cred_id,))
+        
+        conn.commit()
+        conn.close()
+        return True
+    
+    def get_windows_server_types(self):
+        """Получить типы Windows серверов"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT DISTINCT server_type FROM windows_credentials ORDER BY server_type')
+        types = [row[0] for row in cursor.fetchall()]
+        
+        conn.close()
+        return types
+    
 # Глобальный экземпляр менеджера настроек
 settings_manager = SettingsManager()

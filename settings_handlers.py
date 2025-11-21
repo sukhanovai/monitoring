@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.23
+Server Monitoring System v3.4.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчики для управления настройками через бота
@@ -409,6 +409,28 @@ def settings_callback_handler(update, context):
         elif data.startswith('server_type_'):
             handle_server_type(update, context)
         
+        # Аутентификация
+        elif data == 'settings_auth':
+            show_auth_settings(update, context)
+        elif data == 'ssh_auth_settings':
+            show_ssh_auth_settings(update, context)
+        
+        # Windows аутентификация
+        elif data == 'windows_auth_main':
+            show_windows_auth_settings(update, context)
+        elif data == 'windows_auth_list':
+            show_windows_auth_list(update, context)
+        elif data == 'windows_auth_add':
+            show_windows_auth_add(update, context)
+        elif data == 'windows_auth_by_type':
+            show_windows_auth_by_type(update, context)
+        elif data == 'windows_auth_manage_types':
+            show_windows_auth_manage_types(update, context)
+        
+        # Обработчики типов для Windows учетных данных
+        elif data.startswith('cred_type_'):
+            handle_credential_type_selection(update, context)
+
         # Обработчики для закрытия меню
         elif data == 'close':
             try:
@@ -476,6 +498,10 @@ def handle_setting_input(update, context, setting_key):
 
 def handle_setting_value(update, context):
     """Обработчик получения значения настройки - ОБНОВЛЕННАЯ ВЕРСИЯ"""
+    # Сначала проверяем, не добавляется ли Windows учетная запись
+    if context.user_data.get('adding_windows_cred'):
+        return handle_windows_credential_input(update, context)
+    
     # Сначала проверяем, не добавляется ли сервер
     if context.user_data.get('adding_server'):
         return handle_server_input(update, context)
@@ -581,30 +607,65 @@ def get_settings_handlers():
     ]
 
 def show_auth_settings(update, context):
-    """Показать настройки аутентификации - УПРОЩЕННАЯ БЕЗ MARKDOWN ВЕРСИЯ"""
+    """Показать настройки аутентификации - ОБНОВЛЕННАЯ ВЕРСИЯ"""
     query = update.callback_query
     query.answer()
     
     ssh_username = settings_manager.get_setting('SSH_USERNAME', 'root')
     ssh_key_path = settings_manager.get_setting('SSH_KEY_PATH', '/root/.ssh/id_rsa')
     
-    # Простой текст без Markdown
+    # Получаем статистику по Windows учетным данным
+    windows_creds = settings_manager.get_windows_credentials()
+    
     message = (
-        "🔐 Настройки аутентификации\n\n"
-        f"• SSH пользователь: {ssh_username}\n"
-        f"• Путь к SSH ключу: {ssh_key_path}\n\n"
+        "🔐 *Настройки аутентификации*\n\n"
+        "*SSH аутентификация:*\n"
+        f"• Пользователь: `{ssh_username}`\n"
+        f"• Путь к ключу: `{ssh_key_path}`\n\n"
+        "*Windows аутентификация:*\n"
+        f"• Учетных записей: {len(windows_creds)}\n"
+        f"• Типов серверов: {len(settings_manager.get_windows_server_types())}\n\n"
+        "Выберите раздел для настройки:"
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton("👤 SSH аутентификация", callback_data='ssh_auth_settings')],
+        [InlineKeyboardButton("🖥️ Windows аутентификация", callback_data='windows_auth_main')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ]
+    
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def show_ssh_auth_settings(update, context):
+    """Показать настройки SSH аутентификации"""
+    query = update.callback_query
+    query.answer()
+    
+    ssh_username = settings_manager.get_setting('SSH_USERNAME', 'root')
+    ssh_key_path = settings_manager.get_setting('SSH_KEY_PATH', '/root/.ssh/id_rsa')
+    
+    message = (
+        "👤 *SSH аутентификация*\n\n"
+        f"• SSH пользователь: `{ssh_username}`\n"
+        f"• Путь к SSH ключу: `{ssh_key_path}`\n\n"
         "Выберите параметр для изменения:"
     )
     
     keyboard = [
         [InlineKeyboardButton("👤 SSH пользователь", callback_data='set_ssh_username')],
         [InlineKeyboardButton("🔑 Путь к SSH ключу", callback_data='set_ssh_key_path')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_auth'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
     
     query.edit_message_text(
-        message,  # Без parse_mode
+        message,
+        parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
@@ -1256,6 +1317,310 @@ def handle_db_category_input(update, context):
     # Очищаем состояние
     context.user_data['adding_db_category'] = False
     
+def show_windows_auth_settings(update, context):
+    """Показать настройки аутентификации Windows - ОСНОВНОЕ МЕНЮ"""
+    query = update.callback_query
+    query.answer()
+    
+    # Получаем статистику по учетным данным
+    credentials = settings_manager.get_windows_credentials()
+    server_types = settings_manager.get_windows_server_types()
+    
+    # Группируем по типам серверов
+    stats = {}
+    for cred in credentials:
+        server_type = cred['server_type']
+        if server_type not in stats:
+            stats[server_type] = 0
+        stats[server_type] += 1
+    
+    message = "🖥️ *Управление аутентификацией Windows*\n\n"
+    message += f"• Всего учетных записей: {len(credentials)}\n"
+    message += f"• Типов серверов: {len(server_types)}\n\n"
+    
+    if stats:
+        message += "*Учетные данные по типам:*\n"
+        for server_type, count in stats.items():
+            message += f"• {server_type}: {count} учетных записей\n"
+    else:
+        message += "❌ *Учетные данные не настроены*\n"
+    
+    message += "\nВыберите действие:"
+    
+    keyboard = [
+        [InlineKeyboardButton("👥 Просмотр всех учетных записей", callback_data='windows_auth_list')],
+        [InlineKeyboardButton("➕ Добавить учетную запись", callback_data='windows_auth_add')],
+        [InlineKeyboardButton("📊 Учетные данные по типам", callback_data='windows_auth_by_type')],
+        [InlineKeyboardButton("⚙️ Управление типами серверов", callback_data='windows_auth_manage_types')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_auth'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ]
+    
+    query.edit_message_text(
+        message,
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def show_windows_auth_list(update, context):
+    """Показать список всех учетных записей Windows"""
+    query = update.callback_query
+    query.answer()
+    
+    credentials = settings_manager.get_windows_credentials()
+    
+    message = "👥 *Все учетные записи Windows*\n\n"
+    
+    if not credentials:
+        message += "❌ *Учетные записи не найдены*\n"
+    else:
+        for i, cred in enumerate(credentials, 1):
+            status = "🟢" if cred['enabled'] else "🔴"
+            message += f"{status} *{cred['server_type']}* (приоритет: {cred['priority']})\n"
+            message += f"   Пользователь: `{cred['username']}`\n"
+            message += f"   Пароль: `{'*' * 8}`\n"
+            message += f"   ID: {cred['id']}\n\n"
+    
+    keyboard = [
+        [InlineKeyboardButton("➕ Добавить учетную запись", callback_data='windows_auth_add')],
+        [InlineKeyboardButton("✏️ Редактировать", callback_data='windows_auth_edit')],
+        [InlineKeyboardButton("🗑️ Удалить", callback_data='windows_auth_delete')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='windows_auth_main'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ]
+    
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def show_windows_auth_add(update, context):
+    """Показать форму добавления учетной записи Windows"""
+    query = update.callback_query
+    query.answer()
+    
+    # Начинаем процесс добавления
+    context.user_data['adding_windows_cred'] = True
+    context.user_data['cred_stage'] = 'username'
+    
+    message = (
+        "➕ *Добавление учетной записи Windows*\n\n"
+        "Введите имя пользователя:\n\n"
+        "_Пример: Administrator_"
+    )
+    
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("❌ Отмена", callback_data='windows_auth_main')]
+        ])
+    )
+
+def show_windows_auth_by_type(update, context):
+    """Показать учетные данные по типам серверов"""
+    query = update.callback_query
+    query.answer()
+    
+    server_types = settings_manager.get_windows_server_types()
+    
+    message = "📊 *Учетные данные по типам серверов*\n\n"
+    
+    if not server_types:
+        message += "❌ *Типы серверов не настроены*\n"
+    else:
+        for server_type in server_types:
+            credentials = settings_manager.get_windows_credentials(server_type)
+            message += f"*{server_type}* ({len(credentials)} учетных записей):\n"
+            
+            for cred in credentials[:3]:  # Показываем первые 3
+                status = "🟢" if cred['enabled'] else "🔴"
+                message += f"  {status} {cred['username']} (приоритет: {cred['priority']})\n"
+            
+            if len(credentials) > 3:
+                message += f"  ... и еще {len(credentials) - 3} учетных записей\n"
+            message += "\n"
+    
+    keyboard = [
+        [InlineKeyboardButton("👥 Просмотр всех", callback_data='windows_auth_list')],
+        [InlineKeyboardButton("➕ Добавить учетную запись", callback_data='windows_auth_add')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='windows_auth_main'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ]
+    
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def handle_windows_credential_input(update, context):
+    """Обработчик ввода данных учетной записи Windows"""
+    if 'adding_windows_cred' not in context.user_data:
+        return
+    
+    user_input = update.message.text
+    stage = context.user_data.get('cred_stage')
+    
+    try:
+        if stage == 'username':
+            context.user_data['cred_username'] = user_input
+            context.user_data['cred_stage'] = 'password'
+            
+            update.message.reply_text(
+                "🔒 Введите пароль:\n\n"
+                "_Пароль будет сохранен в зашифрованном виде_",
+                parse_mode='Markdown',
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("❌ Отмена", callback_data='windows_auth_main')]
+                ])
+            )
+            
+        elif stage == 'password':
+            context.user_data['cred_password'] = user_input
+            context.user_data['cred_stage'] = 'server_type'
+            
+            # Предлагаем стандартные типы серверов
+            keyboard = [
+                [InlineKeyboardButton("🖥️ Windows 2025", callback_data='cred_type_windows_2025')],
+                [InlineKeyboardButton("🌐 Доменные серверы", callback_data='cred_type_domain_servers')],
+                [InlineKeyboardButton("🔧 Admin серверы", callback_data='cred_type_admin_servers')],
+                [InlineKeyboardButton("💻 Стандартные Windows", callback_data='cred_type_standard_windows')],
+                [InlineKeyboardButton("⚙️ Другой тип", callback_data='cred_type_custom')],
+                [InlineKeyboardButton("❌ Отмена", callback_data='windows_auth_main')]
+            ]
+            
+            update.message.reply_text(
+                "🖥️ Выберите тип серверов для этих учетных данных:",
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+            
+        elif stage == 'server_type_custom':
+            context.user_data['cred_server_type'] = user_input
+            context.user_data['cred_stage'] = 'priority'
+            
+            update.message.reply_text(
+                "📊 Введите приоритет (число):\n\n"
+                "_Учетные данные с более высоким приоритетом будут использоваться первыми_",
+                parse_mode='Markdown',
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("❌ Отмена", callback_data='windows_auth_main')]
+                ])
+            )
+            
+        elif stage == 'priority':
+            try:
+                priority = int(user_input)
+                context.user_data['cred_priority'] = priority
+                
+                # Сохраняем учетные данные
+                username = context.user_data['cred_username']
+                password = context.user_data['cred_password']
+                server_type = context.user_data['cred_server_type']
+                
+                success = settings_manager.add_windows_credential(
+                    username, password, server_type, priority
+                )
+                
+                if success:
+                    # Очищаем контекст
+                    for key in ['adding_windows_cred', 'cred_stage', 'cred_username', 
+                               'cred_password', 'cred_server_type', 'cred_priority']:
+                        context.user_data.pop(key, None)
+                    
+                    update.message.reply_text(
+                        f"✅ *Учетная запись добавлена!*\n\n"
+                        f"• Пользователь: `{username}`\n"
+                        f"• Тип серверов: `{server_type}`\n"
+                        f"• Приоритет: `{priority}`",
+                        parse_mode='Markdown',
+                        reply_markup=InlineKeyboardMarkup([
+                            [InlineKeyboardButton("➕ Добавить еще", callback_data='windows_auth_add'),
+                             InlineKeyboardButton("👥 Просмотр всех", callback_data='windows_auth_list')],
+                            [InlineKeyboardButton("↩️ Назад", callback_data='windows_auth_main')]
+                        ])
+                    )
+                else:
+                    update.message.reply_text("❌ Ошибка при сохранении учетных данных")
+                    
+            except ValueError:
+                update.message.reply_text("❌ Приоритет должен быть числом. Попробуйте снова:")
+                
+    except Exception as e:
+        update.message.reply_text(f"❌ Ошибка: {e}")
+        # Сбрасываем состояние при ошибке
+        context.user_data['adding_windows_cred'] = False
+
+def handle_credential_type_selection(update, context):
+    """Обработчик выбора типа сервера для учетных данных"""
+    query = update.callback_query
+    query.answer()
+    
+    if 'adding_windows_cred' not in context.user_data:
+        return
+    
+    cred_type = query.data.replace('cred_type_', '')
+    
+    type_mapping = {
+        'windows_2025': 'windows_2025',
+        'domain_servers': 'domain_servers', 
+        'admin_servers': 'admin_servers',
+        'standard_windows': 'standard_windows'
+    }
+    
+    if cred_type == 'custom':
+        context.user_data['cred_stage'] = 'server_type_custom'
+        query.edit_message_text(
+            "✏️ Введите название типа серверов:\n\n"
+            "_Пример: backup_servers, web_servers_",
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("❌ Отмена", callback_data='windows_auth_main')]
+            ])
+        )
+    else:
+        context.user_data['cred_server_type'] = type_mapping.get(cred_type, cred_type)
+        context.user_data['cred_stage'] = 'priority'
+        
+        query.edit_message_text(
+            "📊 Введите приоритет (число):\n\n"
+            "_Учетные данные с более высоким приоритетом будут использоваться первыми_",
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("❌ Отмена", callback_data='windows_auth_main')]
+            ])
+        )
+
+def show_windows_auth_manage_types(update, context):
+    """Управление типами серверов"""
+    query = update.callback_query
+    query.answer()
+    
+    server_types = settings_manager.get_windows_server_types()
+    
+    message = "⚙️ *Управление типами серверов*\n\n"
+    
+    if not server_types:
+        message += "❌ *Типы серверов не настроены*\n"
+    else:
+        message += "*Существующие типы:*\n"
+        for server_type in server_types:
+            credentials = settings_manager.get_windows_credentials(server_type)
+            enabled_count = sum(1 for cred in credentials if cred['enabled'])
+            message += f"• {server_type}: {enabled_count}/{len(credentials)} активных учетных записей\n"
+    
+    keyboard = [
+        [InlineKeyboardButton("🔄 Обновить список", callback_data='windows_auth_manage_types')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='windows_auth_main'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ]
+    
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
 # Обработчики для неработающих кнопок
 def add_chat_handler(update, context):
     """Добавить чат - заглушка"""
