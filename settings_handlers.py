@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.16
+Server Monitoring System v3.3.17
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчики для управления настройками через бота
@@ -40,7 +40,7 @@ def settings_command(update, context):
         )
 
 def show_telegram_settings(update, context):
-    """Показать настройки Telegram"""
+    """Показать настройки Telegram - ОБНОВЛЕННАЯ ВЕРСИЯ"""
     query = update.callback_query
     query.answer()
     
@@ -71,7 +71,7 @@ def show_telegram_settings(update, context):
     )
 
 def show_monitoring_settings(update, context):
-    """Показать настройки мониторинга"""
+    """Показать настройки мониторинга - ОБНОВЛЕННАЯ ВЕРСИЯ"""
     query = update.callback_query
     query.answer()
     
@@ -294,10 +294,11 @@ def show_all_settings(update, context):
     )
 
 def settings_callback_handler(update, context):
-    """Обработчик callback'ов настроек - ОБНОВЛЕННАЯ ВЕРСИЯ"""
+    """Обработчик callback'ов настроек - ПОЛНАЯ ВЕРСИЯ"""
     query = update.callback_query
     data = query.data
     
+    # Основные категории настроек
     if data == 'settings_main':
         settings_command(update, context)
     elif data == 'settings_telegram':
@@ -318,32 +319,44 @@ def settings_callback_handler(update, context):
         show_web_settings(update, context)
     elif data == 'settings_view_all':
         show_all_settings(update, context)
+    
+    # Подпункты
     elif data == 'backup_times':
         show_backup_times(update, context)
     elif data == 'backup_patterns':
         show_backup_patterns_menu(update, context)
     
-    # Обработчики для настроек БД с префиксом settings_db_
+    # Новые обработчики для настроек БД
     elif data == 'settings_db_main':
         show_backup_databases_settings(update, context)
     elif data == 'settings_db_add_category':
         add_database_category_handler(update, context)
     elif data == 'settings_db_edit_category':
-        edit_database_category_handler(update, context)
+        edit_databases_handler(update, context)
     elif data == 'settings_db_delete_category':
         delete_database_category_handler(update, context)
     elif data == 'settings_db_view_all':
         view_all_databases_handler(update, context)
     
+    # Обработчики для новых пунктов меню
+    elif data == 'manage_chats':
+        manage_chats_handler(update, context)
+    elif data == 'server_timeouts':
+        show_server_timeouts(update, context)
+    elif data == 'add_server':
+        add_server_handler(update, context)
+    
+    # Обработчики для установки значений
     elif data.startswith('set_'):
         handle_setting_input(update, context, data.replace('set_', ''))
+    
     else:
         query.answer("⚙️ Этот раздел в разработке")
     
     query.answer()
-    
+
 def handle_setting_input(update, context, setting_key):
-    """Обработчик ввода значений настроек"""
+    """Обработчик ввода значений настроек - ОБНОВЛЕННАЯ ВЕРСИЯ"""
     query = update.callback_query
     query.answer()
     
@@ -351,6 +364,7 @@ def handle_setting_input(update, context, setting_key):
     context.user_data['editing_setting'] = setting_key
     
     setting_descriptions = {
+        # Существующие настройки...
         'telegram_token': 'Введите новый токен Telegram бота:',
         'check_interval': 'Введите новый интервал проверки (в секундах):',
         'max_fail_time': 'Введите максимальное время простоя (в секундах):',
@@ -363,6 +377,20 @@ def handle_setting_input(update, context, setting_key):
         'ram_critical': 'Введите критический порог для RAM (%):',
         'disk_warning': 'Введите порог предупреждения для Disk (%):',
         'disk_critical': 'Введите критический порог для Disk (%):',
+        'ssh_username': 'Введите имя пользователя SSH:',
+        'ssh_key_path': 'Введите путь к SSH ключу:',
+        'web_port': 'Введите порт веб-интерфейса:',
+        'web_host': 'Введите хост веб-интерфейса:',
+        'backup_alert_hours': 'Введите количество часов для алертов о бэкапах:',
+        'backup_stale_hours': 'Введите количество часов для устаревших бэкапов:',
+        
+        # Новые таймауты серверов
+        'windows_2025_timeout': 'Введите таймаут для Windows 2025 серверов (в секундах):',
+        'domain_servers_timeout': 'Введите таймаут для доменных серверов (в секундах):',
+        'admin_servers_timeout': 'Введите таймаут для Admin серверов (в секундах):',
+        'standard_windows_timeout': 'Введите таймаут для стандартных Windows серверов (в секундах):',
+        'linux_timeout': 'Введите таймаут для Linux серверов (в секундах):',
+        'ping_timeout': 'Введите таймаут для Ping серверов (в секундах):',
     }
     
     message = setting_descriptions.get(setting_key, f'Введите новое значение для {setting_key}:')
@@ -792,4 +820,201 @@ def view_all_databases_handler(update, context):
             [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')]
         ])
     )
+
+def manage_chats_handler(update, context):
+    """Управление чатами - 3.1.2"""
+    query = update.callback_query
+    query.answer()
     
+    chat_ids = settings_manager.get_setting('CHAT_IDS', [])
+    
+    message = "💬 *Управление чатами*\n\n"
+    message += f"Текущее количество чатов: {len(chat_ids)}\n\n"
+    
+    if chat_ids:
+        message += "*Текущие чаты:*\n"
+        for i, chat_id in enumerate(chat_ids[:5], 1):  # Показываем первые 5
+            message += f"{i}. `{chat_id}`\n"
+        if len(chat_ids) > 5:
+            message += f"... и еще {len(chat_ids) - 5} чатов\n"
+    else:
+        message += "❌ *Чаты не настроены*\n"
+    
+    message += "\nВыберите действие:"
+    
+    keyboard = [
+        [InlineKeyboardButton("➕ Добавить чат", callback_data='add_chat')],
+        [InlineKeyboardButton("🗑️ Удалить чат", callback_data='remove_chat')],
+        [InlineKeyboardButton("📋 Список всех чатов", callback_data='list_all_chats')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_telegram'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ]
+    
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def show_server_timeouts(update, context):
+    """Таймауты серверов - 3.3.3"""
+    query = update.callback_query
+    query.answer()
+    
+    timeouts = settings_manager.get_setting('SERVER_TIMEOUTS', {})
+    
+    message = "⏰ *Таймауты серверов*\n\n"
+    
+    if timeouts:
+        for server_type, timeout in timeouts.items():
+            message += f"• {server_type}: {timeout} сек\n"
+    else:
+        message += "❌ *Таймауты не настроены*\n"
+        message += "Используются значения по умолчанию.\n\n"
+        message += "*Таймауты по умолчанию:*\n"
+        message += "• Windows 2025: 35 сек\n"
+        message += "• Доменные серверы: 20 сек\n"
+        message += "• Admin серверы: 25 сек\n"
+        message += "• Стандартные Windows: 30 сек\n"
+        message += "• Linux серверы: 15 сек\n"
+        message += "• Ping серверы: 10 сек\n"
+    
+    message += "\nВыберите параметр для изменения:"
+    
+    keyboard = [
+        [InlineKeyboardButton("🖥️ Windows 2025", callback_data='set_windows_2025_timeout')],
+        [InlineKeyboardButton("🌐 Доменные серверы", callback_data='set_domain_servers_timeout')],
+        [InlineKeyboardButton("🔧 Admin серверы", callback_data='set_admin_servers_timeout')],
+        [InlineKeyboardButton("💻 Стандартные Windows", callback_data='set_standard_windows_timeout')],
+        [InlineKeyboardButton("🐧 Linux серверы", callback_data='set_linux_timeout')],
+        [InlineKeyboardButton("📡 Ping серверы", callback_data='set_ping_timeout')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_monitoring'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ]
+    
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def add_server_handler(update, context):
+    """Добавить сервер - 3.6.2"""
+    query = update.callback_query
+    query.answer()
+    
+    query.edit_message_text(
+        "➕ *Добавление сервера*\n\n"
+        "Эта функция находится в разработке.\n"
+        "Скоро здесь можно будет добавлять новые серверы для мониторинга.\n\n"
+        "*Планируемые возможности:*\n"
+        "• Добавление Windows серверов (RDP)\n"
+        "• Добавление Linux серверов (SSH)\n"
+        "• Добавление серверов для ping-проверки\n"
+        "• Настройка учетных данных\n"
+        "• Настройка таймаутов",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers'),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ])
+    )
+
+def view_all_databases_handler(update, context):
+    """Просмотр всех БД - 3.7.2.1"""
+    query = update.callback_query
+    query.answer()
+    
+    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    
+    message = "📋 *Все базы данных для мониторинга*\n\n"
+    
+    if not db_config:
+        message += "❌ *Нет настроенных баз данных*\n\n"
+        message += "Добавьте категории и базы данных в настройках."
+    else:
+        total_dbs = 0
+        for category, databases in db_config.items():
+            message += f"📁 *{category.upper()}* ({len(databases)} БД):\n"
+            for db_key, db_name in databases.items():
+                message += f"   • {db_name}\n"
+                total_dbs += 1
+            message += "\n"
+        
+        message += f"*Итого:* {total_dbs} баз данных в {len(db_config)} категориях"
+    
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ])
+    )
+
+def add_database_category_handler(update, context):
+    """Добавить категорию БД - 3.7.2.2"""
+    query = update.callback_query
+    query.answer()
+    
+    query.edit_message_text(
+        "➕ *Добавление категории баз данных*\n\n"
+        "Эта функция находится в разработке.\n"
+        "Скоро здесь можно будет добавлять новые категории БД для мониторинга.\n\n"
+        "*Планируемые возможности:*\n"
+        "• Создание новой категории (например: 'company', 'client', 'backup')\n"
+        "• Добавление списка баз данных в категорию\n"
+        "• Настройка паттернов именования\n"
+        "• Настройка интервалов проверки",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ])
+    )
+
+def edit_databases_handler(update, context):
+    """Редактировать БД - 3.7.2.3"""
+    query = update.callback_query
+    query.answer()
+    
+    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    
+    if not db_config:
+        keyboard = [[InlineKeyboardButton("➕ Добавить категорию", callback_data='settings_db_add_category')]]
+    else:
+        keyboard = []
+        for category in db_config.keys():
+            keyboard.append([InlineKeyboardButton(f"✏️ {category}", callback_data=f'settings_db_edit_{category}')])
+    
+    keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')])
+    
+    query.edit_message_text(
+        "✏️ *Редактирование баз данных*\n\n"
+        "Выберите категорию для редактирования:",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def delete_database_category_handler(update, context):
+    """Удалить категорию БД - 3.7.2.4"""
+    query = update.callback_query
+    query.answer()
+    
+    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    
+    if not db_config:
+        keyboard = [[InlineKeyboardButton("➕ Добавить категорию", callback_data='settings_db_add_category')]]
+    else:
+        keyboard = []
+        for category in db_config.keys():
+            keyboard.append([InlineKeyboardButton(f"🗑️ {category}", callback_data=f'settings_db_delete_{category}')])
+    
+    keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')])
+    
+    query.edit_message_text(
+        "🗑️ *Удаление категории баз данных*\n\n"
+        "Выберите категорию для удаления:",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
