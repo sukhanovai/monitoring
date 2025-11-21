@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.15
+Server Monitoring System v3.3.16
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Меню бота
@@ -8,6 +8,20 @@ License: MIT
 from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CommandHandler, CallbackQueryHandler
 
+# Ленивые импорты для настроек
+def lazy_import_settings_handler():
+    """Ленивая загрузка обработчика настроек"""
+    try:
+        from settings_handlers import settings_callback_handler
+        return settings_callback_handler
+    except ImportError as e:
+        print(f"❌ Ошибка импорта settings_callback_handler: {e}")
+        # Заглушка на случай ошибки
+        def fallback_handler(update, context):
+            query = update.callback_query
+            query.answer("⚙️ Модуль настроек временно недоступен")
+        return fallback_handler
+
 # Ленивые импорты
 def lazy_import(module_name, attribute_name=None):
     """Ленивая загрузка модулей"""
@@ -15,6 +29,9 @@ def lazy_import(module_name, attribute_name=None):
         module = __import__(module_name, fromlist=[attribute_name] if attribute_name else [])
         return getattr(module, attribute_name) if attribute_name else module
     return import_func
+
+# Получаем обработчик настроек
+settings_callback_handler = lazy_import_settings_handler()
 
 # Ленивые импорты конфига
 get_config = lazy_import('config')
@@ -967,6 +984,16 @@ def get_handlers():
 def get_callback_handlers():
     """Возвращает обработчики callback-запросов с ленивой загрузкой"""
     return [
+        # Обработчики настроек (используем ленивую загрузку)
+        CallbackQueryHandler(settings_callback_handler, pattern='^settings_'),
+        CallbackQueryHandler(settings_callback_handler, pattern='^set_'),
+        CallbackQueryHandler(settings_callback_handler, pattern='^backup_times$'),
+        CallbackQueryHandler(settings_callback_handler, pattern='^backup_patterns$'),
+        CallbackQueryHandler(settings_callback_handler, pattern='^manage_'),
+        
+        # Обработчики для настроек БД с префиксом settings_db_
+        CallbackQueryHandler(settings_callback_handler, pattern='^settings_db_'),
+
         # Основные обработчики
         CallbackQueryHandler(lambda u, c: lazy_handler('manual_check')(u, c), pattern='^manual_check$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('monitor_status')(u, c), pattern='^monitor_status$'),

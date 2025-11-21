@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.15
+Server Monitoring System v3.3.16
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчики для управления настройками через бота
@@ -183,7 +183,7 @@ def show_resource_settings(update, context):
     )
 
 def show_backup_settings(update, context):
-    """Показать настройки бэкапов - С КНОПКОЙ ЗАКРЫТЬ"""
+    """Показать настройки бэкапов - С ИЗМЕНЕННЫМ CALLBACK"""
     query = update.callback_query
     query.answer()
     
@@ -203,7 +203,7 @@ def show_backup_settings(update, context):
     
     keyboard = [
         [InlineKeyboardButton("⏰ Временные интервалы", callback_data='backup_times')],
-        [InlineKeyboardButton("🗃️ Базы данных", callback_data='backup_databases')],
+        [InlineKeyboardButton("🗃️ Базы данных", callback_data='settings_db_main')],
         [InlineKeyboardButton("🔍 Паттерны", callback_data='backup_patterns')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
@@ -216,7 +216,7 @@ def show_backup_settings(update, context):
     )
 
 def show_backup_databases_settings(update, context):
-    """Показать настройки баз данных для бэкапов - НОВАЯ ФУНКЦИЯ"""
+    """Показать настройки баз данных для бэкапов"""
     query = update.callback_query
     query.answer()
     
@@ -243,10 +243,10 @@ def show_backup_databases_settings(update, context):
     message += "Выберите действие:"
     
     keyboard = [
-        [InlineKeyboardButton("➕ Добавить категорию", callback_data='backup_db_add_category')],
-        [InlineKeyboardButton("✏️ Редактировать категорию", callback_data='backup_db_edit_category')],
-        [InlineKeyboardButton("🗑️ Удалить категорию", callback_data='backup_db_delete_category')],
-        [InlineKeyboardButton("📋 Просмотр всех БД", callback_data='backup_db_view_all')],
+        [InlineKeyboardButton("➕ Добавить категорию", callback_data='settings_db_add_category')],
+        [InlineKeyboardButton("✏️ Редактировать категорию", callback_data='settings_db_edit_category')],
+        [InlineKeyboardButton("🗑️ Удалить категорию", callback_data='settings_db_delete_category')],
+        [InlineKeyboardButton("📋 Просмотр всех БД", callback_data='settings_db_view_all')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
@@ -320,19 +320,19 @@ def settings_callback_handler(update, context):
         show_all_settings(update, context)
     elif data == 'backup_times':
         show_backup_times(update, context)
-    elif data == 'backup_databases':
-        show_backup_databases_settings(update, context)
     elif data == 'backup_patterns':
         show_backup_patterns_menu(update, context)
     
-    # Новые обработчики для настроек БД
-    elif data == 'backup_db_add_category':
+    # Обработчики для настроек БД с префиксом settings_db_
+    elif data == 'settings_db_main':
+        show_backup_databases_settings(update, context)
+    elif data == 'settings_db_add_category':
         add_database_category_handler(update, context)
-    elif data == 'backup_db_edit_category':
+    elif data == 'settings_db_edit_category':
         edit_database_category_handler(update, context)
-    elif data == 'backup_db_delete_category':
+    elif data == 'settings_db_delete_category':
         delete_database_category_handler(update, context)
-    elif data == 'backup_db_view_all':
+    elif data == 'settings_db_view_all':
         view_all_databases_handler(update, context)
     
     elif data.startswith('set_'):
@@ -341,7 +341,7 @@ def settings_callback_handler(update, context):
         query.answer("⚙️ Этот раздел в разработке")
     
     query.answer()
-
+    
 def handle_setting_input(update, context, setting_key):
     """Обработчик ввода значений настроек"""
     query = update.callback_query
