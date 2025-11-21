@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.14
+Server Monitoring System v3.3.15
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Утилиты: диагностика, отчеты, статистика

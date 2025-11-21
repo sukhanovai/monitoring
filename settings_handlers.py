@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.14
+Server Monitoring System v3.3.15
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчики для управления настройками через бота
@@ -215,6 +215,48 @@ def show_backup_settings(update, context):
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
+def show_backup_databases_settings(update, context):
+    """Показать настройки баз данных для бэкапов - НОВАЯ ФУНКЦИЯ"""
+    query = update.callback_query
+    query.answer()
+    
+    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    
+    message = "🗃️ *Настройки баз данных для бэкапов*\n\n"
+    
+    if not db_config:
+        message += "❌ *Базы данных не настроены*\n\n"
+        message += "Здесь вы можете настроить категории и базы данных для мониторинга бэкапов."
+    else:
+        message += "*Текущие настройки:*\n\n"
+        for category, databases in db_config.items():
+            message += f"📁 *{category.upper()}*\n"
+            message += f"   Количество БД: {len(databases)}\n"
+            # Показываем несколько примеров
+            sample_dbs = list(databases.values())[:2]
+            for db_name in sample_dbs:
+                message += f"   • {db_name}\n"
+            if len(databases) > 2:
+                message += f"   • ... и еще {len(databases) - 2} БД\n"
+            message += "\n"
+    
+    message += "Выберите действие:"
+    
+    keyboard = [
+        [InlineKeyboardButton("➕ Добавить категорию", callback_data='backup_db_add_category')],
+        [InlineKeyboardButton("✏️ Редактировать категорию", callback_data='backup_db_edit_category')],
+        [InlineKeyboardButton("🗑️ Удалить категорию", callback_data='backup_db_delete_category')],
+        [InlineKeyboardButton("📋 Просмотр всех БД", callback_data='backup_db_view_all')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ]
+    
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
 def show_all_settings(update, context):
     """Показать все настройки"""
     query = update.callback_query
@@ -252,7 +294,7 @@ def show_all_settings(update, context):
     )
 
 def settings_callback_handler(update, context):
-    """Обработчик callback'ов настроек"""
+    """Обработчик callback'ов настроек - ОБНОВЛЕННАЯ ВЕРСИЯ"""
     query = update.callback_query
     data = query.data
     
@@ -282,6 +324,17 @@ def settings_callback_handler(update, context):
         show_backup_databases_settings(update, context)
     elif data == 'backup_patterns':
         show_backup_patterns_menu(update, context)
+    
+    # Новые обработчики для настроек БД
+    elif data == 'backup_db_add_category':
+        add_database_category_handler(update, context)
+    elif data == 'backup_db_edit_category':
+        edit_database_category_handler(update, context)
+    elif data == 'backup_db_delete_category':
+        delete_database_category_handler(update, context)
+    elif data == 'backup_db_view_all':
+        view_all_databases_handler(update, context)
+    
     elif data.startswith('set_'):
         handle_setting_input(update, context, data.replace('set_', ''))
     else:
@@ -647,3 +700,96 @@ def handle_setting_input(update, context, setting_key):
             [InlineKeyboardButton("❌ Отмена", callback_data='settings_main')]
         ])
     )
+
+def add_database_category_handler(update, context):
+    """Обработчик добавления категории БД"""
+    query = update.callback_query
+    query.answer()
+    
+    query.edit_message_text(
+        "➕ *Добавление категории баз данных*\n\n"
+        "Эта функция находится в разработке.\n"
+        "Скоро здесь можно будет добавлять новые категории БД для мониторинга.",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')]
+        ])
+    )
+
+def edit_database_category_handler(update, context):
+    """Обработчик редактирования категории БД"""
+    query = update.callback_query
+    query.answer()
+    
+    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    
+    if not db_config:
+        keyboard = [[InlineKeyboardButton("➕ Добавить категорию", callback_data='backup_db_add_category')]]
+    else:
+        keyboard = []
+        for category in db_config.keys():
+            keyboard.append([InlineKeyboardButton(f"✏️ {category}", callback_data=f'edit_category_{category}')])
+    
+    keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')])
+    
+    query.edit_message_text(
+        "✏️ *Редактирование категорий баз данных*\n\n"
+        "Выберите категорию для редактирования:",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def delete_database_category_handler(update, context):
+    """Обработчик удаления категории БД"""
+    query = update.callback_query
+    query.answer()
+    
+    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    
+    if not db_config:
+        keyboard = [[InlineKeyboardButton("➕ Добавить категорию", callback_data='backup_db_add_category')]]
+    else:
+        keyboard = []
+        for category in db_config.keys():
+            keyboard.append([InlineKeyboardButton(f"🗑️ {category}", callback_data=f'delete_category_{category}')])
+    
+    keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')])
+    
+    query.edit_message_text(
+        "🗑️ *Удаление категории баз данных*\n\n"
+        "Выберите категорию для удаления:",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def view_all_databases_handler(update, context):
+    """Обработчик просмотра всех БД"""
+    query = update.callback_query
+    query.answer()
+    
+    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    
+    message = "📋 *Все базы данных для мониторинга*\n\n"
+    
+    if not db_config:
+        message += "❌ *Нет настроенных баз данных*\n\n"
+        message += "Добавьте категории и базы данных в настройках."
+    else:
+        total_dbs = 0
+        for category, databases in db_config.items():
+            message += f"📁 *{category.upper()}* ({len(databases)} БД):\n"
+            for db_key, db_name in databases.items():
+                message += f"   • {db_name}\n"
+                total_dbs += 1
+            message += "\n"
+        
+        message += f"*Итого:* {total_dbs} баз данных в {len(db_config)} категориях"
+    
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')]
+        ])
+    )
+    

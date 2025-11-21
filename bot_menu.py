@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.14
+Server Monitoring System v3.3.15
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Меню бота
@@ -988,6 +988,14 @@ def get_callback_handlers():
         CallbackQueryHandler(lambda u, c: lazy_handler('main_menu')(u, c), pattern='^main_menu$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('toggle_monitoring')(u, c), pattern='^toggle_monitoring$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('close')(u, c), pattern='^close$'),
+
+        # Обработчики настроек (должны быть ВЫШЕ обработчиков бэкапов)
+        CallbackQueryHandler(settings_callback_handler, pattern='^settings_'),
+        CallbackQueryHandler(settings_callback_handler, pattern='^set_'),
+        CallbackQueryHandler(settings_callback_handler, pattern='^backup_times$'),
+        CallbackQueryHandler(settings_callback_handler, pattern='^backup_databases$'),
+        CallbackQueryHandler(settings_callback_handler, pattern='^backup_patterns$'),
+        CallbackQueryHandler(settings_callback_handler, pattern='^backup_db_'),
 
         # Обработчики для постраничного просмотра ресурсов
         CallbackQueryHandler(lambda u, c: lazy_handler('resource_page')(u, c), pattern='^resource_page_'),
