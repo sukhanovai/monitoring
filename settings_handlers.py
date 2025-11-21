@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.21
+Server Monitoring System v3.3.22
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчики для управления настройками через бота
@@ -321,7 +321,7 @@ def settings_callback_handler(update, context):
         elif data == 'settings_resources':
             show_resource_settings(update, context)
         elif data == 'settings_auth':
-            show_auth_settings(update, context)  # Теперь исправленная версия
+            show_auth_settings(update, context)
         elif data == 'settings_servers':
             show_servers_settings(update, context)
         elif data == 'settings_backup':
@@ -329,7 +329,7 @@ def settings_callback_handler(update, context):
         elif data == 'settings_web':
             show_web_settings(update, context)
         elif data == 'settings_view_all':
-            view_all_settings_handler(update, context)  # Заглушка для просмотра всех настроек
+            view_all_settings_handler(update, context)
         
         # Подпункты
         elif data == 'backup_times':
@@ -353,7 +353,7 @@ def settings_callback_handler(update, context):
         elif data == 'manage_chats':
             manage_chats_handler(update, context)
         elif data == 'server_timeouts':
-            show_server_timeouts(update, context)
+            show_server_timeouts(update, context)  # Теперь исправленная версия
         elif data == 'add_server':
             add_server_handler(update, context)
         
@@ -363,15 +363,15 @@ def settings_callback_handler(update, context):
         
         # Управление чатами
         elif data == 'add_chat':
-            add_chat_handler(update, context)  # Заглушка
+            add_chat_handler(update, context)
         elif data == 'remove_chat':
-            remove_chat_handler(update, context)  # Заглушка
+            remove_chat_handler(update, context)
         
         # Паттерны бэкапов
         elif data == 'view_patterns':
-            view_patterns_handler(update, context)  # Заглушка
+            view_patterns_handler(update, context)
         elif data == 'add_pattern':
-            add_pattern_handler(update, context)  # Заглушка
+            add_pattern_handler(update, context)
         
         # Обработчики для редактирования и удаления категорий БД
         elif data.startswith('settings_db_edit_'):
@@ -402,6 +402,10 @@ def settings_callback_handler(update, context):
         elif data == 'set_ping_timeout':
             handle_setting_input(update, context, 'ping_timeout')
         
+        # Обработчики типов серверов
+        elif data.startswith('server_type_'):
+            handle_server_type(update, context)
+        
         # Обработчики для закрытия меню
         elif data == 'close':
             try:
@@ -414,8 +418,13 @@ def settings_callback_handler(update, context):
     
     except Exception as e:
         print(f"❌ Ошибка в settings_callback_handler: {e}")
-        debug_log = get_debug_log()
-        debug_log(f"Ошибка в settings_callback_handler: {e}")
+        # ИСПРАВЛЕННЫЙ ВЫЗОВ get_debug_log
+        try:
+            debug_log_func = get_debug_log()
+            debug_log_func(f"Ошибка в settings_callback_handler: {e}")
+        except Exception as log_error:
+            print(f"❌ Ошибка логирования: {log_error}")
+        
         query.answer("❌ Произошла ошибка при обработке запроса")
     
     query.answer()
@@ -581,7 +590,6 @@ def show_auth_settings(update, context):
     ssh_username = settings_manager.get_setting('SSH_USERNAME', 'root')
     ssh_key_path = settings_manager.get_setting('SSH_KEY_PATH', '/root/.ssh/id_rsa')
     
-    # Экранируем сообщение для безопасного отображения в Markdown
     message = (
         "🔐 *Настройки аутентификации*\n\n"
         f"• SSH пользователь: `{ssh_username}`\n"
@@ -589,7 +597,7 @@ def show_auth_settings(update, context):
         "Выберите параметр для изменения:"
     )
     
-    # Экранируем все специальные символы
+    # Экранируем все специальные символы Markdown
     safe_message = message.replace('_', '\\_').replace('*', '\\*').replace('`', '\\`')
     
     keyboard = [
@@ -601,10 +609,10 @@ def show_auth_settings(update, context):
     
     query.edit_message_text(
         safe_message,
-        parse_mode='Markdown',
+        parse_mode='MarkdownV2',
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
-
+    
 def show_servers_settings(update, context):
     """Показать настройки серверов - С КНОПКОЙ ЗАКРЫТЬ"""
     query = update.callback_query
@@ -935,7 +943,7 @@ def manage_chats_handler(update, context):
     )
 
 def show_server_timeouts(update, context):
-    """Таймауты серверов - 3.3.3"""
+    """Таймауты серверов - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
     query = update.callback_query
     query.answer()
     
@@ -945,10 +953,12 @@ def show_server_timeouts(update, context):
     
     if timeouts:
         for server_type, timeout in timeouts.items():
-            message += f"• {server_type}: {timeout} сек\n"
+            # Экранируем подчеркивания в названиях типов серверов
+            safe_type = server_type.replace('_', '\\_')
+            message += f"• {safe_type}: {timeout} сек\n"
     else:
         message += "❌ *Таймауты не настроены*\n"
-        message += "Используются значения по умолчанию.\n\n"
+        message += "Используются значения по умолчанию\\.\n\n"
         message += "*Таймауты по умолчанию:*\n"
         message += "• Windows 2025: 35 сек\n"
         message += "• Доменные серверы: 20 сек\n"
@@ -958,6 +968,9 @@ def show_server_timeouts(update, context):
         message += "• Ping серверы: 10 сек\n"
     
     message += "\nВыберите параметр для изменения:"
+    
+    # Экранируем все специальные символы Markdown
+    safe_message = message.replace('*', '\\*').replace('_', '\\_').replace('`', '\\`').replace('[', '\\[').replace(']', '\\]')
     
     keyboard = [
         [InlineKeyboardButton("🖥️ Windows 2025", callback_data='set_windows_2025_timeout')],
@@ -971,8 +984,8 @@ def show_server_timeouts(update, context):
     ]
     
     query.edit_message_text(
-        message,
-        parse_mode='Markdown',
+        safe_message,
+        parse_mode='MarkdownV2',  # Используем MarkdownV2 для лучшей совместимости
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
