@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.20
+Server Monitoring System v3.3.21
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Меню бота
@@ -979,8 +979,9 @@ def get_handlers():
         CommandHandler("backup_help", backup_help_command),
         CommandHandler("debug", debug_command),
         CommandHandler("diagnose_windows", diagnose_windows_command),
-        MessageHandler(Filters.text & ~Filters.command, handle_setting_value),
-        MessageHandler(Filters.text & ~Filters.command, handle_server_input),
+        
+        # Обработчик сообщений с ленивой загрузкой
+        MessageHandler(Filters.text & ~Filters.command, lazy_message_handler()),
     ]
 
 def get_callback_handlers():
@@ -1229,3 +1230,15 @@ def lazy_handler(pattern):
 
         return handler(update, context)
     return wrapper
+
+def lazy_message_handler():
+    """Ленивая загрузка обработчика сообщений"""
+    def handler(update, context):
+        try:
+            from settings_handlers import handle_setting_value
+            return handle_setting_value(update, context)
+        except ImportError as e:
+            print(f"❌ Ошибка импорта handle_setting_value: {e}")
+            # Если не удалось импортировать, просто игнорируем сообщение
+            return
+    return handler
