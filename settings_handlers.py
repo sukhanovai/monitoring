@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.19
+Server Monitoring System v3.3.20
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчики для управления настройками через бота
@@ -468,7 +468,16 @@ def handle_setting_input(update, context, setting_key):
     )
 
 def handle_setting_value(update, context):
-    """Обработчик получения значения настройки"""
+    """Обработчик получения значения настройки - ОБНОВЛЕННАЯ ВЕРСИЯ"""
+    # Сначала проверяем, не добавляется ли сервер
+    if context.user_data.get('adding_server'):
+        return handle_server_input(update, context)
+    
+    # Затем проверяем, не добавляется ли категория БД
+    if context.user_data.get('adding_db_category'):
+        return handle_db_category_input(update, context)
+    
+    # Если это обычная настройка
     if 'editing_setting' not in context.user_data:
         return
     
@@ -1205,6 +1214,45 @@ def not_implemented_handler(update, context, feature_name=""):
         ])
     )
 
+def handle_db_category_input(update, context):
+    """Обработчик ввода категории БД"""
+    if 'adding_db_category' not in context.user_data:
+        return
+    
+    category_name = update.message.text.strip()
+    
+    try:
+        # Получаем текущую конфигурацию БД
+        db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+        
+        # Добавляем новую категорию
+        if category_name not in db_config:
+            db_config[category_name] = {}
+            settings_manager.set_setting('DATABASE_CONFIG', db_config)
+            
+            update.message.reply_text(
+                f"✅ *Категория '{category_name}' добавлена!*\n\n"
+                "Теперь вы можете добавить базы данных в эту категорию.",
+                parse_mode='Markdown',
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("✏️ Добавить БД", callback_data=f'edit_db_category_{category_name}'),
+                     InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
+                ])
+            )
+        else:
+            update.message.reply_text(
+                f"❌ Категория '{category_name}' уже существует!",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
+                ])
+            )
+    
+    except Exception as e:
+        update.message.reply_text(f"❌ Ошибка: {e}")
+    
+    # Очищаем состояние
+    context.user_data['adding_db_category'] = False
+    
 # Обработчики для неработающих кнопок
 def add_chat_handler(update, context):
     """Добавить чат - заглушка"""

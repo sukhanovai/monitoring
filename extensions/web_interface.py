@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.19
+Server Monitoring System v3.3.20
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Веб-интерфейс

@@ -1,12 +1,12 @@
 """
-Server Monitoring System v3.3.19
+Server Monitoring System v3.3.20
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Меню бота
 """
 
 from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import CommandHandler, CallbackQueryHandler
+from telegram.ext import CommandHandler, CallbackQueryHandler, MessageHandler, Filters
 
 # Ленивые импорты для настроек
 def lazy_import_settings_handler():
