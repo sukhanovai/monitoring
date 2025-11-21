@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.17
+Server Monitoring System v3.3.18
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Утилиты для работы с бэкапами

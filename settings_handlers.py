@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.17
+Server Monitoring System v3.3.18
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчики для управления настройками через бота
@@ -10,6 +10,16 @@ from telegram.ext import CommandHandler, CallbackQueryHandler, MessageHandler, F
 from settings_manager import settings_manager
 import json
 
+# === ДОБАВЬТЕ ЭТОТ ИМПОРТ СЮДА ===
+try:
+    from core_utils import debug_log as get_debug_log
+except ImportError:
+    # Заглушка если модуль не доступен
+    def get_debug_log():
+        def log(message):
+            print(f"DEBUG: {message}")
+        return log
+    
 def settings_command(update, context):
     """Команда управления настройками"""
     keyboard = [
@@ -294,64 +304,119 @@ def show_all_settings(update, context):
     )
 
 def settings_callback_handler(update, context):
-    """Обработчик callback'ов настроек - ПОЛНАЯ ВЕРСИЯ"""
+    """Обработчик callback'ов настроек - ПОЛНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ"""
     query = update.callback_query
     data = query.data
     
-    # Основные категории настроек
-    if data == 'settings_main':
-        settings_command(update, context)
-    elif data == 'settings_telegram':
-        show_telegram_settings(update, context)
-    elif data == 'settings_monitoring':
-        show_monitoring_settings(update, context)
-    elif data == 'settings_time':
-        show_time_settings(update, context)
-    elif data == 'settings_resources':
-        show_resource_settings(update, context)
-    elif data == 'settings_auth':
-        show_auth_settings(update, context)
-    elif data == 'settings_servers':
-        show_servers_settings(update, context)
-    elif data == 'settings_backup':
-        show_backup_settings(update, context)
-    elif data == 'settings_web':
-        show_web_settings(update, context)
-    elif data == 'settings_view_all':
-        show_all_settings(update, context)
+    try:
+        # Основные категории настроек
+        if data == 'settings_main':
+            settings_command(update, context)
+        elif data == 'settings_telegram':
+            show_telegram_settings(update, context)
+        elif data == 'settings_monitoring':
+            show_monitoring_settings(update, context)
+        elif data == 'settings_time':
+            show_time_settings(update, context)
+        elif data == 'settings_resources':
+            show_resource_settings(update, context)
+        elif data == 'settings_auth':
+            show_auth_settings(update, context)  # Теперь исправленная версия
+        elif data == 'settings_servers':
+            show_servers_settings(update, context)
+        elif data == 'settings_backup':
+            show_backup_settings(update, context)
+        elif data == 'settings_web':
+            show_web_settings(update, context)
+        elif data == 'settings_view_all':
+            view_all_settings_handler(update, context)  # Заглушка для просмотра всех настроек
+        
+        # Подпункты
+        elif data == 'backup_times':
+            show_backup_times(update, context)
+        elif data == 'backup_patterns':
+            show_backup_patterns_menu(update, context)
+        
+        # Новые обработчики для настроек БД
+        elif data == 'settings_db_main':
+            show_backup_databases_settings(update, context)
+        elif data == 'settings_db_add_category':
+            add_database_category_handler(update, context)
+        elif data == 'settings_db_edit_category':
+            edit_databases_handler(update, context)
+        elif data == 'settings_db_delete_category':
+            delete_database_category_handler(update, context)
+        elif data == 'settings_db_view_all':
+            view_all_databases_handler(update, context)
+        
+        # Обработчики для новых пунктов меню
+        elif data == 'manage_chats':
+            manage_chats_handler(update, context)
+        elif data == 'server_timeouts':
+            show_server_timeouts(update, context)
+        elif data == 'add_server':
+            add_server_handler(update, context)
+        
+        # Обработчики для установки значений
+        elif data.startswith('set_'):
+            handle_setting_input(update, context, data.replace('set_', ''))
+        
+        # Управление чатами
+        elif data == 'add_chat':
+            add_chat_handler(update, context)  # Заглушка
+        elif data == 'remove_chat':
+            remove_chat_handler(update, context)  # Заглушка
+        
+        # Паттерны бэкапов
+        elif data == 'view_patterns':
+            view_patterns_handler(update, context)  # Заглушка
+        elif data == 'add_pattern':
+            add_pattern_handler(update, context)  # Заглушка
+        
+        # Обработчики для редактирования и удаления категорий БД
+        elif data.startswith('settings_db_edit_'):
+            category = data.replace('settings_db_edit_', '')
+            edit_database_category_details(update, context, category)
+        elif data.startswith('settings_db_delete_'):
+            category = data.replace('settings_db_delete_', '')
+            delete_database_category_confirmation(update, context, category)
+        
+        # Обработчики для серверов
+        elif data == 'servers_list':
+            show_servers_list(update, context)
+        elif data.startswith('delete_server_'):
+            ip = data.replace('delete_server_', '')
+            delete_server_confirmation(update, context, ip)
+        
+        # Обработчики для таймаутов серверов
+        elif data == 'set_windows_2025_timeout':
+            handle_setting_input(update, context, 'windows_2025_timeout')
+        elif data == 'set_domain_servers_timeout':
+            handle_setting_input(update, context, 'domain_servers_timeout')
+        elif data == 'set_admin_servers_timeout':
+            handle_setting_input(update, context, 'admin_servers_timeout')
+        elif data == 'set_standard_windows_timeout':
+            handle_setting_input(update, context, 'standard_windows_timeout')
+        elif data == 'set_linux_timeout':
+            handle_setting_input(update, context, 'linux_timeout')
+        elif data == 'set_ping_timeout':
+            handle_setting_input(update, context, 'ping_timeout')
+        
+        # Обработчики для закрытия меню
+        elif data == 'close':
+            try:
+                query.delete_message()
+            except:
+                query.edit_message_text("✅ Меню закрыто")
+        
+        else:
+            query.answer("⚙️ Этот раздел в разработке")
     
-    # Подпункты
-    elif data == 'backup_times':
-        show_backup_times(update, context)
-    elif data == 'backup_patterns':
-        show_backup_patterns_menu(update, context)
-    
-    # Новые обработчики для настроек БД
-    elif data == 'settings_db_main':
-        show_backup_databases_settings(update, context)
-    elif data == 'settings_db_add_category':
-        add_database_category_handler(update, context)
-    elif data == 'settings_db_edit_category':
-        edit_databases_handler(update, context)
-    elif data == 'settings_db_delete_category':
-        delete_database_category_handler(update, context)
-    elif data == 'settings_db_view_all':
-        view_all_databases_handler(update, context)
-    
-    # Обработчики для новых пунктов меню
-    elif data == 'manage_chats':
-        manage_chats_handler(update, context)
-    elif data == 'server_timeouts':
-        show_server_timeouts(update, context)
-    elif data == 'add_server':
-        add_server_handler(update, context)
-    
-    # Обработчики для установки значений
-    elif data.startswith('set_'):
-        handle_setting_input(update, context, data.replace('set_', ''))
-    
-    else:
-        query.answer("⚙️ Этот раздел в разработке")
+    except Exception as e:
+        print(f"❌ Ошибка в settings_callback_handler: {e}")
+        debug_log = get_debug_log()
+        debug_log(f"Ошибка в settings_callback_handler: {e}")
+        query.answer("❌ Произошла ошибка при обработке запроса")
     
     query.answer()
 
@@ -500,28 +565,33 @@ def get_settings_handlers():
     ]
 
 def show_auth_settings(update, context):
-    """Показать настройки аутентификации"""
+    """Показать настройки аутентификации - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
     query = update.callback_query
     query.answer()
     
     ssh_username = settings_manager.get_setting('SSH_USERNAME', 'root')
     ssh_key_path = settings_manager.get_setting('SSH_KEY_PATH', '/root/.ssh/id_rsa')
     
+    # Экранируем сообщение для безопасного отображения в Markdown
     message = (
         "🔐 *Настройки аутентификации*\n\n"
-        f"• SSH пользователь: {ssh_username}\n"
-        f"• Путь к SSH ключу: {ssh_key_path}\n\n"
+        f"• SSH пользователь: `{ssh_username}`\n"
+        f"• Путь к SSH ключу: `{ssh_key_path}`\n\n"
         "Выберите параметр для изменения:"
     )
+    
+    # Экранируем все специальные символы
+    safe_message = message.replace('_', '\\_').replace('*', '\\*').replace('`', '\\`')
     
     keyboard = [
         [InlineKeyboardButton("👤 SSH пользователь", callback_data='set_ssh_username')],
         [InlineKeyboardButton("🔑 Путь к SSH ключу", callback_data='set_ssh_key_path')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main')]
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
     
     query.edit_message_text(
-        message,
+        safe_message,
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
@@ -822,7 +892,7 @@ def view_all_databases_handler(update, context):
     )
 
 def manage_chats_handler(update, context):
-    """Управление чатами - 3.1.2"""
+    """Управление чатами - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ КНОПКИ СПИСКА ВСЕХ ЧАТОВ"""
     query = update.callback_query
     query.answer()
     
@@ -833,7 +903,7 @@ def manage_chats_handler(update, context):
     
     if chat_ids:
         message += "*Текущие чаты:*\n"
-        for i, chat_id in enumerate(chat_ids[:5], 1):  # Показываем первые 5
+        for i, chat_id in enumerate(chat_ids[:5], 1):
             message += f"{i}. `{chat_id}`\n"
         if len(chat_ids) > 5:
             message += f"... и еще {len(chat_ids) - 5} чатов\n"
@@ -845,7 +915,6 @@ def manage_chats_handler(update, context):
     keyboard = [
         [InlineKeyboardButton("➕ Добавить чат", callback_data='add_chat')],
         [InlineKeyboardButton("🗑️ Удалить чат", callback_data='remove_chat')],
-        [InlineKeyboardButton("📋 Список всех чатов", callback_data='list_all_chats')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_telegram'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
@@ -1018,3 +1087,56 @@ def delete_database_category_handler(update, context):
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
+def not_implemented_handler(update, context, feature_name=""):
+    """Обработчик для функций в разработке"""
+    query = update.callback_query
+    query.answer()
+    
+    message = f"🛠️ *Функция в разработке*\n\n"
+    if feature_name:
+        message += f"Функция '{feature_name}' находится в разработке.\n"
+    message += "Скоро здесь будет доступна новая функциональность."
+    
+    # Определяем откуда пришел запрос для кнопки "Назад"
+    back_button = 'settings_main'
+    if hasattr(query, 'data'):
+        if 'telegram' in query.data:
+            back_button = 'settings_telegram'
+        elif 'backup' in query.data:
+            back_button = 'settings_backup'
+        elif 'servers' in query.data:
+            back_button = 'settings_servers'
+        elif 'monitoring' in query.data:
+            back_button = 'settings_monitoring'
+    
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data=back_button),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ])
+    )
+
+# Обработчики для неработающих кнопок
+def add_chat_handler(update, context):
+    """Добавить чат - заглушка"""
+    not_implemented_handler(update, context, "Добавление чата")
+
+def remove_chat_handler(update, context):
+    """Удалить чат - заглушка"""
+    not_implemented_handler(update, context, "Удаление чата")
+
+def view_all_settings_handler(update, context):
+    """Просмотр всех настроек - заглушка"""
+    not_implemented_handler(update, context, "Просмотр всех настроек")
+
+def view_patterns_handler(update, context):
+    """Просмотр паттернов - заглушка"""
+    not_implemented_handler(update, context, "Просмотр паттернов")
+
+def add_pattern_handler(update, context):
+    """Добавить паттерн - заглушка"""
+    not_implemented_handler(update, context, "Добавление паттерна")
+    
