@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.18
+Server Monitoring System v3.3.19
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчики для управления настройками через бота
@@ -968,41 +968,127 @@ def show_server_timeouts(update, context):
     )
 
 def add_server_handler(update, context):
-    """Добавить сервер - 3.6.2"""
+    """Добавить сервер - ОСНОВНАЯ РЕАЛИЗАЦИЯ"""
     query = update.callback_query
     query.answer()
     
-    query.edit_message_text(
+    # Сохраняем состояние добавления сервера
+    context.user_data['adding_server'] = True
+    context.user_data['server_stage'] = 'ip'
+    
+    message = (
         "➕ *Добавление сервера*\n\n"
-        "Эта функция находится в разработке.\n"
-        "Скоро здесь можно будет добавлять новые серверы для мониторинга.\n\n"
-        "*Планируемые возможности:*\n"
-        "• Добавление Windows серверов (RDP)\n"
-        "• Добавление Linux серверов (SSH)\n"
-        "• Добавление серверов для ping-проверки\n"
-        "• Настройка учетных данных\n"
-        "• Настройка таймаутов",
+        "Введите IP-адрес сервера:\n\n"
+        "_Пример: 192.168.1.100_"
+    )
+    
+    query.edit_message_text(
+        message,
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("❌ Отмена", callback_data='settings_servers')]
         ])
     )
 
+def handle_server_input(update, context):
+    """Обработчик ввода данных сервера"""
+    if 'adding_server' not in context.user_data or not context.user_data['adding_server']:
+        return
+    
+    user_input = update.message.text
+    stage = context.user_data.get('server_stage', 'ip')
+    
+    try:
+        if stage == 'ip':
+            # Проверка IP-адреса
+            import re
+            ip_pattern = r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$'
+            if not re.match(ip_pattern, user_input):
+                update.message.reply_text("❌ Неверный формат IP-адреса. Попробуйте снова:")
+                return
+            
+            context.user_data['server_ip'] = user_input
+            context.user_data['server_stage'] = 'name'
+            
+            update.message.reply_text(
+                "📝 Введите имя сервера:\n\n"
+                "_Пример: web-server-01_",
+                parse_mode='Markdown'
+            )
+            
+        elif stage == 'name':
+            context.user_data['server_name'] = user_input
+            context.user_data['server_stage'] = 'type'
+            
+            keyboard = [
+                [InlineKeyboardButton("🖥️ Windows (RDP)", callback_data='server_type_rdp')],
+                [InlineKeyboardButton("🐧 Linux (SSH)", callback_data='server_type_ssh')],
+                [InlineKeyboardButton("📡 Ping Only", callback_data='server_type_ping')],
+                [InlineKeyboardButton("❌ Отмена", callback_data='settings_servers')]
+            ]
+            
+            update.message.reply_text(
+                "🔧 Выберите тип сервера:",
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+            
+    except Exception as e:
+        update.message.reply_text(f"❌ Ошибка: {e}")
+        # Сбрасываем состояние при ошибке
+        context.user_data['adding_server'] = False
+
+def handle_server_type(update, context):
+    """Обработчик выбора типа сервера"""
+    query = update.callback_query
+    query.answer()
+    
+    if 'adding_server' not in context.user_data:
+        return
+    
+    server_type = query.data.replace('server_type_', '')
+    server_ip = context.user_data.get('server_ip')
+    server_name = context.user_data.get('server_name')
+    
+    try:
+        # Добавляем сервер в базу
+        success = settings_manager.add_server(server_ip, server_name, server_type)
+        
+        if success:
+            message = f"✅ *Сервер добавлен!*\n\n• IP: `{server_ip}`\n• Имя: `{server_name}`\n• Тип: `{server_type}`"
+            
+            # Очищаем состояние
+            context.user_data['adding_server'] = False
+            context.user_data.pop('server_ip', None)
+            context.user_pop('server_name', None)
+            context.user_data.pop('server_stage', None)
+        else:
+            message = "❌ Ошибка при добавлении сервера"
+        
+        query.edit_message_text(
+            message,
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад к серверам", callback_data='settings_servers'),
+                 InlineKeyboardButton("➕ Добавить еще", callback_data='add_server')]
+            ])
+        )
+        
+    except Exception as e:
+        query.edit_message_text(f"❌ Ошибка: {e}")
+
 def view_all_databases_handler(update, context):
-    """Просмотр всех БД - 3.7.2.1"""
+    """Просмотр всех БД - ОСНОВНАЯ РЕАЛИЗАЦИЯ"""
     query = update.callback_query
     query.answer()
     
     db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
     
-    message = "📋 *Все базы данных для мониторинга*\n\n"
-    
     if not db_config:
-        message += "❌ *Нет настроенных баз данных*\n\n"
-        message += "Добавьте категории и базы данных в настройках."
+        message = "📋 *Все базы данных*\n\n❌ *Нет настроенных баз данных*"
     else:
+        message = "📋 *Все базы данных*\n\n"
         total_dbs = 0
+        
         for category, databases in db_config.items():
             message += f"📁 *{category.upper()}* ({len(databases)} БД):\n"
             for db_key, db_name in databases.items():
@@ -1022,28 +1108,28 @@ def view_all_databases_handler(update, context):
     )
 
 def add_database_category_handler(update, context):
-    """Добавить категорию БД - 3.7.2.2"""
+    """Добавить категорию БД - ОСНОВНАЯ РЕАЛИЗАЦИЯ"""
     query = update.callback_query
     query.answer()
     
+    context.user_data['adding_db_category'] = True
+    
+    message = (
+        "➕ *Добавление категории БД*\n\n"
+        "Введите название новой категории:\n\n"
+        "_Пример: company, client, backup_"
+    )
+    
     query.edit_message_text(
-        "➕ *Добавление категории баз данных*\n\n"
-        "Эта функция находится в разработке.\n"
-        "Скоро здесь можно будет добавлять новые категории БД для мониторинга.\n\n"
-        "*Планируемые возможности:*\n"
-        "• Создание новой категории (например: 'company', 'client', 'backup')\n"
-        "• Добавление списка баз данных в категорию\n"
-        "• Настройка паттернов именования\n"
-        "• Настройка интервалов проверки",
+        message,
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("❌ Отмена", callback_data='settings_db_main')]
         ])
     )
 
 def edit_databases_handler(update, context):
-    """Редактировать БД - 3.7.2.3"""
+    """Редактировать БД - ОСНОВНАЯ РЕАЛИЗАЦИЯ"""
     query = update.callback_query
     query.answer()
     
@@ -1054,7 +1140,7 @@ def edit_databases_handler(update, context):
     else:
         keyboard = []
         for category in db_config.keys():
-            keyboard.append([InlineKeyboardButton(f"✏️ {category}", callback_data=f'settings_db_edit_{category}')])
+            keyboard.append([InlineKeyboardButton(f"✏️ {category}", callback_data=f'edit_db_category_{category}')])
     
     keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')])
     
@@ -1066,7 +1152,7 @@ def edit_databases_handler(update, context):
     )
 
 def delete_database_category_handler(update, context):
-    """Удалить категорию БД - 3.7.2.4"""
+    """Удалить категорию БД - ОСНОВНАЯ РЕАЛИЗАЦИЯ"""
     query = update.callback_query
     query.answer()
     
@@ -1077,17 +1163,17 @@ def delete_database_category_handler(update, context):
     else:
         keyboard = []
         for category in db_config.keys():
-            keyboard.append([InlineKeyboardButton(f"🗑️ {category}", callback_data=f'settings_db_delete_{category}')])
+            keyboard.append([InlineKeyboardButton(f"🗑️ {category}", callback_data=f'delete_db_category_{category}')])
     
     keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')])
     
     query.edit_message_text(
-        "🗑️ *Удаление категории баз данных*\n\n"
+        "🗑️ *Удаление категории БД*\n\n"
         "Выберите категорию для удаления:",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
-
+    
 def not_implemented_handler(update, context, feature_name=""):
     """Обработчик для функций в разработке"""
     query = update.callback_query

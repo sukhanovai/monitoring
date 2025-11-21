@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.3.18
+Server Monitoring System v3.3.19
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Меню бота
@@ -979,6 +979,8 @@ def get_handlers():
         CommandHandler("backup_help", backup_help_command),
         CommandHandler("debug", debug_command),
         CommandHandler("diagnose_windows", diagnose_windows_command),
+        MessageHandler(Filters.text & ~Filters.command, handle_setting_value),
+        MessageHandler(Filters.text & ~Filters.command, handle_server_input),
     ]
 
 def get_callback_handlers():
@@ -991,6 +993,15 @@ def get_callback_handlers():
         CallbackQueryHandler(settings_callback_handler, pattern='^backup_patterns$'),
         CallbackQueryHandler(settings_callback_handler, pattern='^manage_'),
         
+        # Обработчики для таймаутов серверов
+        CallbackQueryHandler(settings_callback_handler, pattern='^server_timeouts$'),
+        CallbackQueryHandler(settings_callback_handler, pattern='^set_windows_2025_timeout$'),
+        CallbackQueryHandler(settings_callback_handler, pattern='^set_domain_servers_timeout$'),
+        CallbackQueryHandler(settings_callback_handler, pattern='^set_admin_servers_timeout$'),
+        CallbackQueryHandler(settings_callback_handler, pattern='^set_standard_windows_timeout$'),
+        CallbackQueryHandler(settings_callback_handler, pattern='^set_linux_timeout$'),
+        CallbackQueryHandler(settings_callback_handler, pattern='^set_ping_timeout$'),
+
         # Обработчики для настроек БД с префиксом settings_db_
         CallbackQueryHandler(settings_callback_handler, pattern='^settings_db_'),
 
@@ -1068,6 +1079,13 @@ def get_callback_handlers():
         CallbackQueryHandler(lambda u, c: lazy_handler('ext_disable_all')(u, c), pattern='^ext_disable_all$'),
         CallbackQueryHandler(lambda u, c: extensions_callback_handler(u, c), pattern='^ext_toggle_'),
         
+        # Обработчики для серверов
+        CallbackQueryHandler(settings_callback_handler, pattern='^server_type_'),
+        
+        # Обработчики для БД
+        CallbackQueryHandler(settings_callback_handler, pattern='^edit_db_category_'),
+        CallbackQueryHandler(settings_callback_handler, pattern='^delete_db_category_'),
+
         # НОВЫЕ ОБРАБОТЧИКИ ОТЛАДКИ
         CallbackQueryHandler(debug_callback_handler, pattern='^debug_enable$'),
         CallbackQueryHandler(debug_callback_handler, pattern='^debug_disable$'),
