@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.4.0
+Server Monitoring System v3.4.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчики для управления настройками через бота
@@ -311,6 +311,12 @@ def settings_callback_handler(update, context):
     query = update.callback_query
     data = query.data
     
+    # если это callback от бэкапов, НЕ обрабатываем здесь
+    if data.startswith('db_') or data.startswith('backup_'):
+        query.answer("⚙️ Перенаправление к модулю бэкапов...")
+        # Передаем обработку дальше по цепочке
+        return
+
     try:
         # Основные категории настроек
         if data == 'settings_main':

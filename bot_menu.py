@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.4.0
+Server Monitoring System v3.4.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Меню бота
@@ -1011,8 +1011,14 @@ def get_callback_handlers():
         CallbackQueryHandler(settings_callback_handler, pattern='^set_linux_timeout$'),
         CallbackQueryHandler(settings_callback_handler, pattern='^set_ping_timeout$'),
 
-        # Обработчики для настроек БД с префиксом settings_db_
-        CallbackQueryHandler(settings_callback_handler, pattern='^settings_db_'),
+        # Обработчики для настроек БД
+        CallbackQueryHandler(settings_callback_handler, pattern='^settings_db_main$'),
+        CallbackQueryHandler(settings_callback_handler, pattern='^settings_db_add_category$'),
+        CallbackQueryHandler(settings_callback_handler, pattern='^settings_db_edit_category$'),
+        CallbackQueryHandler(settings_callback_handler, pattern='^settings_db_delete_category$'),
+        CallbackQueryHandler(settings_callback_handler, pattern='^settings_db_view_all$'),
+        CallbackQueryHandler(settings_callback_handler, pattern='^settings_db_edit_'),
+        CallbackQueryHandler(settings_callback_handler, pattern='^settings_db_delete_'),
 
         # Основные обработчики
         CallbackQueryHandler(lambda u, c: lazy_handler('manual_check')(u, c), pattern='^manual_check$'),
@@ -1044,12 +1050,11 @@ def get_callback_handlers():
         CallbackQueryHandler(settings_callback_handler, pattern='^settings_view_all$'),
 
         # Обработчики настроек (должны быть ВЫШЕ обработчиков бэкапов)
-        CallbackQueryHandler(settings_callback_handler, pattern='^settings_'),
-        CallbackQueryHandler(settings_callback_handler, pattern='^set_'),
-        CallbackQueryHandler(settings_callback_handler, pattern='^backup_times$'),
-        CallbackQueryHandler(settings_callback_handler, pattern='^backup_databases$'),
-        CallbackQueryHandler(settings_callback_handler, pattern='^backup_patterns$'),
-        CallbackQueryHandler(settings_callback_handler, pattern='^backup_db_'),
+        CallbackQueryHandler(lambda u, c: lazy_handler('db_backups_today')(u, c), pattern='^db_backups_today$'),
+        CallbackQueryHandler(lambda u, c: lazy_handler('db_backups_summary')(u, c), pattern='^db_backups_summary$'),
+        CallbackQueryHandler(lambda u, c: lazy_handler('db_backups_detailed')(u, c), pattern='^db_backups_detailed$'),
+        CallbackQueryHandler(lambda u, c: lazy_handler('db_backups_list')(u, c), pattern='^db_backups_list$'),
+        CallbackQueryHandler(lambda u, c: lazy_handler('db_detail_')(u, c), pattern='^db_detail_'),
 
         # Обработчики для постраничного просмотра ресурсов
         CallbackQueryHandler(lambda u, c: lazy_handler('resource_page')(u, c), pattern='^resource_page_'),

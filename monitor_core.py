@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.4.0
+Server Monitoring System v3.4.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Ядро системы
