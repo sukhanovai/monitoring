@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.4.2
+Server Monitoring System v3.4.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Мониторинг бэкапов Proxmox
@@ -419,6 +419,19 @@ def get_database_config(self):
         "client_databases": DATABASE_BACKUP_CONFIG.get("client_databases", {}),
         "yandex_backups": DATABASE_BACKUP_CONFIG.get("yandex_backups", {})
     }
+
+def get_database_config_for_report(self):
+    """Получает конфигурацию баз данных для отчета"""
+    from config import DATABASE_BACKUP_CONFIG
+    
+    # Собираем все базы из конфигурации
+    all_databases = {}
+    all_databases.update(DATABASE_BACKUP_CONFIG.get("company_databases", {}))
+    all_databases.update(DATABASE_BACKUP_CONFIG.get("barnaul_backups", {}))
+    all_databases.update(DATABASE_BACKUP_CONFIG.get("client_databases", {}))
+    all_databases.update(DATABASE_BACKUP_CONFIG.get("yandex_backups", {}))
+    
+    return all_databases
 
 # === НАСТРОЙКА ОБРАБОТЧИКОВ ===
 
