@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.5.0
+Server Monitoring System v3.5.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Менеджер расширений для мониторинга

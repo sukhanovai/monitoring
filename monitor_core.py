@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.5.0
+Server Monitoring System v3.5.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Ядро системы
@@ -1989,12 +1989,32 @@ def get_backup_summary_for_report(period_hours=16):
         
         # Получаем все хосты из конфигурации
         from config import PROXMOX_HOSTS
-        all_hosts = list(PROXMOX_HOSTS.keys())
+        
+        # ФИЛЬТРУЕМ активные хосты - только те, которые реально существуют
+        # Получаем список всех хостов, которые были в бэкапах за последние 7 дней
+        cursor.execute('''
+            SELECT DISTINCT host_name 
+            FROM proxmox_backups 
+            WHERE received_at >= datetime('now', '-7 days')
+        ''')
+        active_hosts_from_db = [row[0] for row in cursor.fetchall()]
+        
+        # Берем только те хосты из конфигурации, которые есть в активных хостах из БД
+        all_hosts = [host for host in PROXMOX_HOSTS.keys() if host in active_hosts_from_db]
+        
+        # Если активных хостов мало, используем все из конфигурации как fallback
+        if len(all_hosts) < 10:  # Если меньше 10 хостов, вероятно что-то не так
+            all_hosts = list(PROXMOX_HOSTS.keys())
+            debug_log(f"⚠️  Используем все хосты из конфигурации: {len(all_hosts)}")
+        else:
+            debug_log(f"✅ Используем активные хосты: {len(all_hosts)}")
         
         # Считаем успешные - ВСЕ хосты у которых последний бэкап успешный
         hosts_with_success = len([r for r in proxmox_results if r[1] == 'success'])
         
-        debug_log(f"📊 Proxmox: {hosts_with_success}/{len(all_hosts)} успешно (всего хостов: {len(all_hosts)})")
+        debug_log(f"📊 Proxmox: {hosts_with_success}/{len(all_hosts)} успешно (активных хостов: {len(all_hosts)})")
+        debug_log(f"📊 Хосты из конфигурации: {list(PROXMOX_HOSTS.keys())}")
+        debug_log(f"📊 Активные хосты из БД: {active_hosts_from_db}")
         
         # 2. Базы данных - ИСПРАВЛЕННАЯ ЛОГИКА: ищем ПОСЛЕДНИЙ бэкап для каждой базы
         cursor.execute('''
@@ -2116,7 +2136,7 @@ def get_backup_summary_for_report(period_hours=16):
         import traceback
         debug_log(f"💥 Traceback: {traceback.format_exc()}")
         return "❌ Ошибка формирования отчета о бэкапах\n"
-                            
+                                
 def debug_backup_data():
     """Временная функция для отладки данных бэкапов"""
     try:
