@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.5.2
+Server Monitoring System v3.6.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчики для управления настройками через бота
@@ -437,6 +437,34 @@ def settings_callback_handler(update, context):
         elif data.startswith('cred_type_'):
             handle_credential_type_selection(update, context)
 
+        # Обработчики управления типами серверов Windows
+        elif data.startswith('manage_type_'):
+            handle_server_type_management(update, context)
+
+        # Обработчики для управления типами серверов (подтверждение операций)
+        elif data.startswith('merge_confirm_'):
+            parts = data.replace('merge_confirm_', '').split('_')
+            if len(parts) >= 2:
+                source_type = parts[0]
+                target_type = '_'.join(parts[1:])
+                merge_server_types_confirmation(update, context, source_type, target_type)
+
+        elif data.startswith('delete_type_confirm_'):
+            server_type = data.replace('delete_type_confirm_', '')
+            delete_server_type_confirmation(update, context, server_type)
+
+        # Обработчики для выполнения операций с типами серверов
+        elif data.startswith('merge_execute_'):
+            parts = data.replace('merge_execute_', '').split('_')
+            if len(parts) >= 2:
+                source_type = parts[0]
+                target_type = '_'.join(parts[1:])
+                execute_server_type_merge(update, context, source_type, target_type)
+
+        elif data.startswith('delete_type_execute_'):
+            server_type = data.replace('delete_type_execute_', '')
+            execute_server_type_delete(update, context, server_type)
+
         # Обработчики для закрытия меню
         elif data == 'close':
             try:
@@ -449,7 +477,6 @@ def settings_callback_handler(update, context):
     
     except Exception as e:
         print(f"❌ Ошибка в settings_callback_handler: {e}")
-        # ИСПРАВЛЕННЫЙ ВЫЗОВ - используем готовый логгер
         debug_logger(f"Ошибка в settings_callback_handler: {e}")
         query.answer("❌ Произошла ошибка при обработке запроса")
     
@@ -508,7 +535,15 @@ def handle_setting_value(update, context):
     if context.user_data.get('adding_windows_cred'):
         return handle_windows_credential_input(update, context)
     
-    # Сначала проверяем, не добавляется ли сервер
+    # Проверяем, не создается ли тип серверов
+    if context.user_data.get('creating_server_type'):
+        return handle_server_type_creation(update, context)
+    
+    # Проверяем, не редактируется ли тип серверов
+    if context.user_data.get('editing_server_type'):
+        return handle_server_type_editing(update, context)
+    
+    # Затем проверяем, не добавляется ли сервер
     if context.user_data.get('adding_server'):
         return handle_server_input(update, context)
     
@@ -519,7 +554,7 @@ def handle_setting_value(update, context):
     # Если это обычная настройка
     if 'editing_setting' not in context.user_data:
         return
-    
+        
     setting_key = context.user_data['editing_setting']
     new_value = update.message.text
     
@@ -1598,7 +1633,7 @@ def handle_credential_type_selection(update, context):
         )
 
 def show_windows_auth_manage_types(update, context):
-    """Управление типами серверов"""
+    """Управление типами серверов - ОБНОВЛЕННАЯ ВЕРСИЯ С НАСТРОЙКАМИ"""
     query = update.callback_query
     query.answer()
     
@@ -1613,19 +1648,403 @@ def show_windows_auth_manage_types(update, context):
         for server_type in server_types:
             credentials = settings_manager.get_windows_credentials(server_type)
             enabled_count = sum(1 for cred in credentials if cred['enabled'])
-            message += f"• {server_type}: {enabled_count}/{len(credentials)} активных учетных записей\n"
+            message += f"• *{server_type}*: {enabled_count}/{len(credentials)} активных учетных записей\n"
     
-    keyboard = [
-        [InlineKeyboardButton("🔄 Обновить список", callback_data='windows_auth_manage_types')],
+    message += "\n*Доступные действия:*\n"
+    message += "• *Переименовать тип* - изменить название типа серверов\n"
+    message += "• *Объединить типы* - объединить два типа в один\n"
+    message += "• *Удалить тип* - удалить тип (учетные записи сохранятся)\n"
+    
+    keyboard = []
+    
+    # Кнопки для каждого типа серверов
+    for server_type in server_types:
+        keyboard.append([
+            InlineKeyboardButton(f"✏️ {server_type}", callback_data=f'manage_type_edit_{server_type}'),
+            InlineKeyboardButton(f"🔄 {server_type}", callback_data=f'manage_type_merge_{server_type}')
+        ])
+    
+    # Общие действия
+    keyboard.extend([
+        [InlineKeyboardButton("➕ Создать новый тип", callback_data='manage_type_create')],
+        [InlineKeyboardButton("🗑️ Удалить тип", callback_data='manage_type_delete')],
+        [InlineKeyboardButton("📊 Статистика по типам", callback_data='manage_type_stats')],
         [InlineKeyboardButton("↩️ Назад", callback_data='windows_auth_main'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-    ]
+    ])
     
     query.edit_message_text(
         message,
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
+def handle_server_type_management(update, context):
+    """Обработчик управления типами серверов"""
+    query = update.callback_query
+    data = query.data
+    
+    if data == 'manage_type_create':
+        create_server_type_handler(update, context)
+    elif data == 'manage_type_delete':
+        delete_server_type_handler(update, context)
+    elif data == 'manage_type_stats':
+        show_server_type_stats(update, context)
+    elif data.startswith('manage_type_edit_'):
+        server_type = data.replace('manage_type_edit_', '')
+        edit_server_type_handler(update, context, server_type)
+    elif data.startswith('manage_type_merge_'):
+        server_type = data.replace('manage_type_merge_', '')
+        merge_server_type_handler(update, context, server_type)
+       
+
+def create_server_type_handler(update, context):
+    """Создание нового типа серверов"""
+    query = update.callback_query
+    query.answer()
+    
+    context.user_data['creating_server_type'] = True
+    
+    query.edit_message_text(
+        "➕ *Создание нового типа серверов*\n\n"
+        "Введите название для нового типа:\n\n"
+        "_Пример: web_servers, database_servers, backup_servers_",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("❌ Отмена", callback_data='windows_auth_manage_types')]
+        ])
+    )
+
+def edit_server_type_handler(update, context, old_type):
+    """Редактирование типа серверов"""
+    query = update.callback_query
+    query.answer()
+    
+    context.user_data['editing_server_type'] = True
+    context.user_data['old_server_type'] = old_type
+    
+    credentials = settings_manager.get_windows_credentials(old_type)
+    
+    query.edit_message_text(
+        f"✏️ *Редактирование типа серверов*\n\n"
+        f"Текущее название: *{old_type}*\n"
+        f"Количество учетных записей: {len(credentials)}\n\n"
+        "Введите новое название для этого типа:",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("❌ Отмена", callback_data='windows_auth_manage_types')]
+        ])
+    )
+
+def merge_server_type_handler(update, context, source_type):
+    """Объединение типов серверов"""
+    query = update.callback_query
+    query.answer()
+    
+    server_types = settings_manager.get_windows_server_types()
+    # Исключаем текущий тип из списка для объединения
+    target_types = [t for t in server_types if t != source_type]
+    
+    if not target_types:
+        query.answer("❌ Нет других типов для объединения")
+        return
+    
+    message = f"🔄 *Объединение типов серверов*\n\n"
+    message += f"Источник: *{source_type}*\n"
+    message += f"Учетных записей: {len(settings_manager.get_windows_credentials(source_type))}\n\n"
+    message += "Выберите целевой тип для объединения:"
+    
+    keyboard = []
+    for target_type in target_types:
+        cred_count = len(settings_manager.get_windows_credentials(target_type))
+        keyboard.append([
+            InlineKeyboardButton(
+                f"🔄 {target_type} ({cred_count})", 
+                callback_data=f'merge_confirm_{source_type}_{target_type}'
+            )
+        ])
+    
+    keyboard.append([InlineKeyboardButton("❌ Отмена", callback_data='windows_auth_manage_types')])
+    
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def delete_server_type_handler(update, context):
+    """Удаление типа серверов"""
+    query = update.callback_query
+    query.answer()
+    
+    server_types = settings_manager.get_windows_server_types()
+    
+    message = "🗑️ *Удаление типа серверов*\n\n"
+    message += "Выберите тип для удаления:\n\n"
+    message += "*Внимание:* При удалении типа все учетные записи этого типа будут перемещены в тип 'default'"
+    
+    keyboard = []
+    for server_type in server_types:
+        if server_type != 'default':  # Не позволяем удалить тип 'default'
+            cred_count = len(settings_manager.get_windows_credentials(server_type))
+            keyboard.append([
+                InlineKeyboardButton(
+                    f"🗑️ {server_type} ({cred_count})", 
+                    callback_data=f'delete_type_confirm_{server_type}'
+                )
+            ])
+    
+    keyboard.append([InlineKeyboardButton("❌ Отмена", callback_data='windows_auth_manage_types')])
+    
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def show_server_type_stats(update, context):
+    """Показать статистику по типам серверов"""
+    query = update.callback_query
+    query.answer()
+    
+    server_types = settings_manager.get_windows_server_types()
+    
+    message = "📊 *Статистика по типам серверов*\n\n"
+    
+    total_credentials = 0
+    for server_type in server_types:
+        credentials = settings_manager.get_windows_credentials(server_type)
+        enabled_count = sum(1 for cred in credentials if cred['enabled'])
+        total_credentials += len(credentials)
+        
+        message += f"*{server_type}*\n"
+        message += f"• Всего учетных записей: {len(credentials)}\n"
+        message += f"• Активных: {enabled_count}\n"
+        message += f"• Неактивных: {len(credentials) - enabled_count}\n\n"
+    
+    message += f"*Общая статистика:*\n"
+    message += f"• Типов серверов: {len(server_types)}\n"
+    message += f"• Всего учетных записей: {total_credentials}\n"
+    message += f"• Среднее на тип: {total_credentials / len(server_types):.1f} учетных записей"
+    
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🔄 Обновить", callback_data='manage_type_stats')],
+            [InlineKeyboardButton("↩️ Назад", callback_data='windows_auth_manage_types'),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ])
+    )
+
+def merge_server_types_confirmation(update, context, source_type, target_type):
+    """Подтверждение объединения типов серверов"""
+    query = update.callback_query
+    query.answer()
+    
+    source_creds = settings_manager.get_windows_credentials(source_type)
+    target_creds = settings_manager.get_windows_credentials(target_type)
+    
+    message = f"🔄 *Подтверждение объединения*\n\n"
+    message += f"*Источник:* {source_type}\n"
+    message += f"• Учетных записей: {len(source_creds)}\n\n"
+    message += f"*Цель:* {target_type}\n"
+    message += f"• Учетных записей: {len(target_creds)}\n\n"
+    message += f"*После объединения:*\n"
+    message += f"• Тип {source_type} будет удален\n"
+    message += f"• Все учетные записи будут перемещены в {target_type}\n"
+    message += f"• Итоговое количество: {len(source_creds) + len(target_creds)} учетных записей\n\n"
+    message += "Вы уверены, что хотите выполнить объединение?"
+    
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton("✅ Да, объединить", callback_data=f'merge_execute_{source_type}_{target_type}'),
+                InlineKeyboardButton("❌ Отмена", callback_data='windows_auth_manage_types')
+            ]
+        ])
+    )
+
+def delete_server_type_confirmation(update, context, server_type):
+    """Подтверждение удаления типа серверов"""
+    query = update.callback_query
+    query.answer()
+    
+    credentials = settings_manager.get_windows_credentials(server_type)
+    
+    message = f"🗑️ *Подтверждение удаления*\n\n"
+    message += f"Тип: *{server_type}*\n"
+    message += f"Учетных записей: {len(credentials)}\n\n"
+    message += "*Внимание:* Все учетные записи этого типа будут перемещены в тип 'default'\n\n"
+    message += "Вы уверены, что хотите удалить этот тип?"
+    
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton("✅ Да, удалить", callback_data=f'delete_type_execute_{server_type}'),
+                InlineKeyboardButton("❌ Отмена", callback_data='windows_auth_manage_types')
+            ]
+        ])
+    )
+
+def execute_server_type_merge(update, context, source_type, target_type):
+    """Выполнение объединения типов серверов"""
+    query = update.callback_query
+    query.answer()
+    
+    try:
+        # Получаем учетные данные исходного типа
+        source_credentials = settings_manager.get_windows_credentials(source_type)
+        
+        # Обновляем тип для каждой учетной записи
+        for cred in source_credentials:
+            settings_manager.update_windows_credential(
+                cred['id'], 
+                server_type=target_type
+            )
+        
+        message = f"✅ *Типы серверов объединены!*\n\n"
+        message += f"• Тип *{source_type}* удален\n"
+        message += f"• Все учетные записи перемещены в *{target_type}*\n"
+        message += f"• Перемещено учетных записей: {len(source_credentials)}"
+        
+        query.edit_message_text(
+            message,
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ К управлению типами", callback_data='windows_auth_manage_types')]
+            ])
+        )
+        
+    except Exception as e:
+        query.edit_message_text(f"❌ Ошибка при объединении типов: {str(e)}")
+
+def execute_server_type_delete(update, context, server_type):
+    """Выполнение удаления типа серверов"""
+    query = update.callback_query
+    query.answer()
+    
+    try:
+        # Получаем учетные данные удаляемого типа
+        credentials = settings_manager.get_windows_credentials(server_type)
+        
+        # Перемещаем все учетные записи в тип 'default'
+        for cred in credentials:
+            settings_manager.update_windows_credential(
+                cred['id'], 
+                server_type='default'
+            )
+        
+        message = f"✅ *Тип серверов удален!*\n\n"
+        message += f"• Тип *{server_type}* удален\n"
+        message += f"• Все учетные записи перемещены в тип 'default'\n"
+        message += f"• Перемещено учетных записей: {len(credentials)}"
+        
+        query.edit_message_text(
+            message,
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ К управлению типами", callback_data='windows_auth_manage_types')]
+            ])
+        )
+        
+    except Exception as e:
+        query.edit_message_text(f"❌ Ошибка при удалении типа: {str(e)}")
+
+def handle_server_type_creation(update, context):
+    """Обработчик создания нового типа серверов"""
+    new_type = update.message.text.strip()
+    
+    try:
+        # Проверяем, не существует ли уже такой тип
+        existing_types = settings_manager.get_windows_server_types()
+        if new_type in existing_types:
+            update.message.reply_text(
+                f"❌ Тип '{new_type}' уже существует!",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("↩️ Назад", callback_data='windows_auth_manage_types')]
+                ])
+            )
+            return
+        
+        # Создаем новую учетную запись с этим типом (можно пустую)
+        success = settings_manager.add_windows_credential(
+            username=f"user_{new_type}",
+            password="temp_password",
+            server_type=new_type,
+            priority=0
+        )
+        
+        if success:
+            # Сразу удаляем временную учетную запись, если нужно
+            # или оставляем как шаблон
+            
+            update.message.reply_text(
+                f"✅ *Тип серверов '{new_type}' создан!*\n\n"
+                "Теперь вы можете добавить учетные записи для этого типа.",
+                parse_mode='Markdown',
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("➕ Добавить учетную запись", callback_data='windows_auth_add'),
+                     InlineKeyboardButton("↩️ К управлению типами", callback_data='windows_auth_manage_types')]
+                ])
+            )
+        else:
+            update.message.reply_text("❌ Ошибка при создании типа")
+    
+    except Exception as e:
+        update.message.reply_text(f"❌ Ошибка: {e}")
+    
+    # Очищаем контекст
+    context.user_data['creating_server_type'] = False
+
+def handle_server_type_editing(update, context):
+    """Обработчик редактирования типа серверов"""
+    new_type = update.message.text.strip()
+    old_type = context.user_data.get('old_server_type')
+    
+    try:
+        # Проверяем, не существует ли уже такой тип
+        existing_types = settings_manager.get_windows_server_types()
+        if new_type in existing_types and new_type != old_type:
+            update.message.reply_text(
+                f"❌ Тип '{new_type}' уже существует!",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("↩️ Назад", callback_data='windows_auth_manage_types')]
+                ])
+            )
+            return
+        
+        # Получаем все учетные записи старого типа
+        credentials = settings_manager.get_windows_credentials(old_type)
+        
+        # Обновляем тип для каждой учетной записи
+        for cred in credentials:
+            settings_manager.update_windows_credential(
+                cred['id'], 
+                server_type=new_type
+            )
+        
+        update.message.reply_text(
+            f"✅ *Тип серверов переименован!*\n\n"
+            f"• Старое название: {old_type}\n"
+            f"• Новое название: {new_type}\n"
+            f"• Обновлено учетных записей: {len(credentials)}",
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ К управлению типами", callback_data='windows_auth_manage_types')]
+            ])
+        )
+    
+    except Exception as e:
+        update.message.reply_text(f"❌ Ошибка: {e}")
+    
+    # Очищаем контекст
+    context.user_data['editing_server_type'] = False
+    context.user_data.pop('old_server_type', None)
 
 # Обработчики для неработающих кнопок
 def add_chat_handler(update, context):
