@@ -430,7 +430,7 @@ Systemd сервис:
 sudo nano /etc/systemd/system/server-monitor.service
 
 [Unit]
-Description=Server Monitoring System v3.4.3
+Description=Server Monitoring System v3.4.4
 After=network.target
 
 [Service]
