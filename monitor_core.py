@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.4.6
+Server Monitoring System v3.4.7
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Ядро системы
@@ -1933,7 +1933,7 @@ def send_morning_report():
     debug_log(f"✅ Утренний отчет отправлен: {up_count}/{total_servers} доступно")
 
 def get_backup_summary_for_report():
-    """Получает сводку по бэкапам за последние 16 часов - ПРОСТАЯ И ПОНЯТНАЯ ВЕРСИЯ"""
+    """Получает сводку по бэкапам за последние 24 часа - ИСПРАВЛЕННАЯ ЛОГИКА"""
     try:
         debug_log = get_debug_log()
         debug_log("🔄 Начинаем сбор данных для отчета о бэкапах...")
@@ -1948,12 +1948,13 @@ def get_backup_summary_for_report():
             debug_log(f"❌ База данных не найдена: {db_path}")
             return "❌ База данных бэкапов недоступна\n"
         
-        since_time = (datetime.now() - timedelta(hours=16)).strftime('%Y-%m-%d %H:%M:%S')
+        # Ищем бэкапы за последние 24 часа (а не 16)
+        since_time = (datetime.now() - timedelta(hours=24)).strftime('%Y-%m-%d %H:%M:%S')
         
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
-        # 1. Proxmox бэкапы - простой подсчет
+        # 1. Proxmox бэкапы - считаем ПОСЛЕДНИЕ бэкапы для каждого хоста
         cursor.execute('''
             SELECT host_name, backup_status, MAX(received_at) as last_backup
             FROM proxmox_backups 
@@ -1962,17 +1963,17 @@ def get_backup_summary_for_report():
         ''', (since_time,))
         
         proxmox_results = cursor.fetchall()
-        debug_log(f"📊 Proxmox хостов с бэкапами: {len(proxmox_results)}")
         
         # Получаем все хосты из конфигурации
         from config import PROXMOX_HOSTS
         all_hosts = list(PROXMOX_HOSTS.keys())
-        debug_log(f"📊 Всего отслеживаемых хостов: {len(all_hosts)}")
         
-        # Считаем успешные
+        # Считаем успешные - ВСЕ хосты у которых последний бэкап успешный
         hosts_with_success = len([r for r in proxmox_results if r[1] == 'success'])
         
-        # 2. Базы данных - ДИАГНОСТИКА: посмотрим что вообще есть в базе
+        debug_log(f"📊 Proxmox: {hosts_with_success}/{len(all_hosts)} успешно (всего хостов: {len(all_hosts)})")
+        
+        # 2. Базы данных - ИСПРАВЛЕННАЯ ЛОГИКА: ищем ПОСЛЕДНИЙ бэкап для каждой базы
         cursor.execute('''
             SELECT backup_type, database_name, backup_status, MAX(received_at) as last_backup
             FROM database_backups 
@@ -1981,23 +1982,10 @@ def get_backup_summary_for_report():
         ''', (since_time,))
         
         db_results = cursor.fetchall()
-        debug_log(f"📊 Всего БД с бэкапами в периоде: {len(db_results)}")
         
-        # Группируем по типам что ЕСТЬ в базе
-        db_by_type = {}
-        for backup_type, db_name, status, last_backup in db_results:
-            if backup_type not in db_by_type:
-                db_by_type[backup_type] = {'success': 0, 'total': 0}
-            db_by_type[backup_type]['total'] += 1
-            if status == 'success':
-                db_by_type[backup_type]['success'] += 1
-        
-        debug_log(f"📊 БД по типам из БД: {db_by_type}")
-        
-        # 3. Получаем КОНФИГУРАЦИЮ чтобы понять сколько должно быть
+        # Получаем конфигурацию
         from config import DATABASE_BACKUP_CONFIG
         
-        # Собираем ВСЕ базы из конфигурации
         config_databases = {
             'company_database': DATABASE_BACKUP_CONFIG.get("company_databases", {}),
             'barnaul': DATABASE_BACKUP_CONFIG.get("barnaul_backups", {}),
@@ -2005,34 +1993,34 @@ def get_backup_summary_for_report():
             'yandex': DATABASE_BACKUP_CONFIG.get("yandex_backups", {})
         }
         
-        debug_log("📊 Конфигурация баз данных:")
-        for category, dbs in config_databases.items():
-            debug_log(f"  {category}: {len(dbs)} баз - {list(dbs.keys())}")
-        
-        # 4. Считаем статистику СРАВНИВАЯ с конфигурацией
+        # Считаем статистику - КАЖДАЯ база считается успешной если у нее есть успешный бэкап за период
         db_stats = {}
         for category, databases in config_databases.items():
             total_in_config = len(databases)
             if total_in_config > 0:
-                # Ищем успешные бэкапы для баз этой категории
-                successful_in_period = 0
+                successful_count = 0
+                
+                # Для каждой базы в категории проверяем есть ли успешный бэкап
                 for db_key in databases.keys():
-                    # Ищем эту базу в результатах из БД
+                    found_success = False
                     for backup_type, db_name, status, last_backup in db_results:
                         if backup_type == category and db_name == db_key and status == 'success':
-                            successful_in_period += 1
+                            found_success = True
                             break
+                    
+                    if found_success:
+                        successful_count += 1
                 
                 db_stats[category] = {
                     'total': total_in_config,
-                    'successful': successful_in_period
+                    'successful': successful_count
                 }
-                debug_log(f"📊 {category}: {successful_in_period}/{total_in_config} успешно")
+                debug_log(f"📊 {category}: {successful_count}/{total_in_config} успешно")
         
-        # 5. Устаревшие бэкапы
+        # 3. Устаревшие бэкапы (более 24 часов) - ПРАВИЛЬНЫЙ подсчет
         stale_threshold = (datetime.now() - timedelta(hours=24)).strftime('%Y-%m-%d %H:%M:%S')
         
-        # Устаревшие хосты
+        # Устаревшие хосты - те у которых последний бэкап старше 24 часов
         cursor.execute('''
             SELECT host_name, MAX(received_at) as last_backup
             FROM proxmox_backups 
@@ -2041,7 +2029,7 @@ def get_backup_summary_for_report():
         ''', (stale_threshold,))
         stale_hosts = cursor.fetchall()
         
-        # Устаревшие БД
+        # Устаревшие БД - те у которых последний бэкап старше 24 часов
         cursor.execute('''
             SELECT backup_type, database_name, MAX(received_at) as last_backup
             FROM database_backups 
@@ -2105,7 +2093,7 @@ def get_backup_summary_for_report():
         import traceback
         debug_log(f"💥 Traceback: {traceback.format_exc()}")
         return "❌ Ошибка формирования отчета о бэкапах\n"
-                        
+                            
 def debug_backup_data():
     """Временная функция для отладки данных бэкапов"""
     try:
