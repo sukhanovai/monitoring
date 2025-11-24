@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Server Monitoring System v3.4.1
+Server Monitoring System v3.4.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Основной модуль запуска
