@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.5.1
+Server Monitoring System v3.5.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Ядро системы
@@ -1961,6 +1961,9 @@ def get_backup_summary_for_report(period_hours=16):
         debug_log = get_debug_log()
         debug_log(f"🔄 Сбор данных о бэкапах за {period_hours} часов...")
         
+        # ДИАГНОСТИКА КОНФИГУРАЦИИ
+        debug_proxmox_config()
+        
         import sqlite3
         import os
         from datetime import datetime, timedelta
@@ -1971,11 +1974,26 @@ def get_backup_summary_for_report(period_hours=16):
             debug_log(f"❌ База данных не найдена: {db_path}")
             return "❌ База данных бэкапов недоступна\n"
         
-        # Используем переданный период
         since_time = (datetime.now() - timedelta(hours=period_hours)).strftime('%Y-%m-%d %H:%M:%S')
         
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
+        
+        # ДЕТАЛЬНАЯ ДИАГНОСТИКА: какие хосты есть в базе
+        cursor.execute('''
+            SELECT DISTINCT host_name, COUNT(*) as backup_count, 
+                   MAX(received_at) as last_backup,
+                   SUM(CASE WHEN backup_status = 'success' THEN 1 ELSE 0 END) as success_count
+            FROM proxmox_backups 
+            WHERE received_at >= datetime('now', '-7 days')
+            GROUP BY host_name
+            ORDER BY last_backup DESC
+        ''')
+        all_hosts_from_db = cursor.fetchall()
+        
+        debug_log("📊 ДИАГНОСТИКА - Все хосты из БД за 7 дней:")
+        for host_name, count, last_backup, success_count in all_hosts_from_db:
+            debug_log(f"  - {host_name}: {success_count}/{count} успешно, последний: {last_backup}")
         
         # 1. Proxmox бэкапы - считаем ПОСЛЕДНИЕ бэкапы для каждого хоста
         cursor.execute('''
@@ -1987,34 +2005,47 @@ def get_backup_summary_for_report(period_hours=16):
         
         proxmox_results = cursor.fetchall()
         
+        debug_log("📊 ДИАГНОСТИКА - Хосты с бэкапами за указанный период:")
+        for host_name, status, last_backup in proxmox_results:
+            debug_log(f"  - {host_name}: {status}, последний: {last_backup}")
+        
         # Получаем все хосты из конфигурации
         from config import PROXMOX_HOSTS
         
-        # ФИЛЬТРУЕМ активные хосты - только те, которые реально существуют
-        # Получаем список всех хостов, которые были в бэкапах за последние 7 дней
-        cursor.execute('''
-            SELECT DISTINCT host_name 
-            FROM proxmox_backups 
-            WHERE received_at >= datetime('now', '-7 days')
-        ''')
-        active_hosts_from_db = [row[0] for row in cursor.fetchall()]
+        debug_log("📊 ДИАГНОСТИКА - Хосты из конфигурации PROXMOX_HOSTS:")
+        for host in PROXMOX_HOSTS.keys():
+            debug_log(f"  - {host}")
         
-        # Берем только те хосты из конфигурации, которые есть в активных хостах из БД
-        all_hosts = [host for host in PROXMOX_HOSTS.keys() if host in active_hosts_from_db]
+        # Определяем активные хосты
+        active_host_names = [row[0] for row in all_hosts_from_db]
+        all_hosts = [host for host in PROXMOX_HOSTS.keys() if host in active_host_names]
         
-        # Если активных хостов мало, используем все из конфигурации как fallback
-        if len(all_hosts) < 10:  # Если меньше 10 хостов, вероятно что-то не так
-            all_hosts = list(PROXMOX_HOSTS.keys())
-            debug_log(f"⚠️  Используем все хосты из конфигурации: {len(all_hosts)}")
-        else:
-            debug_log(f"✅ Используем активные хосты: {len(all_hosts)}")
+        # Если все еще не 15, используем альтернативный метод
+        if len(all_hosts) != 15:
+            debug_log(f"⚠️  Найдено {len(all_hosts)} активных хостов, ожидалось 15")
+            debug_log("🔍 Пробуем альтернативный метод подсчета...")
+            
+            # Метод 2: берем все уникальные хосты из БД за 30 дней
+            cursor.execute('''
+                SELECT DISTINCT host_name 
+                FROM proxmox_backups 
+                WHERE received_at >= datetime('now', '-30 days')
+                ORDER BY host_name
+            ''')
+            all_unique_hosts = [row[0] for row in cursor.fetchall()]
+            
+            debug_log("📊 ДИАГНОСТИКА - Все уникальные хосты за 30 дней:")
+            for host in all_unique_hosts:
+                debug_log(f"  - {host}")
+            
+            all_hosts = all_unique_hosts
+        
+        debug_log(f"✅ Итоговый список хостов: {len(all_hosts)} - {all_hosts}")
         
         # Считаем успешные - ВСЕ хосты у которых последний бэкап успешный
         hosts_with_success = len([r for r in proxmox_results if r[1] == 'success'])
         
-        debug_log(f"📊 Proxmox: {hosts_with_success}/{len(all_hosts)} успешно (активных хостов: {len(all_hosts)})")
-        debug_log(f"📊 Хосты из конфигурации: {list(PROXMOX_HOSTS.keys())}")
-        debug_log(f"📊 Активные хосты из БД: {active_hosts_from_db}")
+        debug_log(f"📊 Proxmox итог: {hosts_with_success}/{len(all_hosts)} успешно")
         
         # 2. Базы данных - ИСПРАВЛЕННАЯ ЛОГИКА: ищем ПОСЛЕДНИЙ бэкап для каждой базы
         cursor.execute('''
@@ -2136,7 +2167,7 @@ def get_backup_summary_for_report(period_hours=16):
         import traceback
         debug_log(f"💥 Traceback: {traceback.format_exc()}")
         return "❌ Ошибка формирования отчета о бэкапах\n"
-                                
+                                    
 def debug_backup_data():
     """Временная функция для отладки данных бэкапов"""
     try:
@@ -2250,3 +2281,16 @@ def close_resources_handler(update, context):
     query = update.callback_query
     query.answer()
     query.delete_message()
+
+def debug_proxmox_config():
+    """Временная функция для диагностики конфигурации Proxmox"""
+    debug_log = get_debug_log()
+    try:
+        from config import PROXMOX_HOSTS
+        debug_log("=== ДИАГНОСТИКА KONФИГУРАЦИИ PROXMOX ===")
+        debug_log(f"Всего хостов в PROXMOX_HOSTS: {len(PROXMOX_HOSTS)}")
+        for i, host in enumerate(PROXMOX_HOSTS.keys(), 1):
+            debug_log(f"{i}. {host}")
+        debug_log("=======================================")
+    except Exception as e:
+        debug_log(f"❌ Ошибка диагностики конфигурации: {e}")

@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.5.1
+Server Monitoring System v3.5.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчики для бота бэкапов
