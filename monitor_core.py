@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.4.7
+Server Monitoring System v3.5.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Ядро системы
@@ -1562,15 +1562,18 @@ def start_monitoring():
 
                 # Собираем текущий статус серверов
                 morning_status = get_current_server_status()
-                morning_data["status"] = morning_status
-                morning_data["collection_time"] = current_time
+                morning_data = {
+                    "status": morning_status,
+                    "collection_time": current_time,
+                    "manual_call": False  # Автоматический вызов
+                }
                 last_data_collection = current_time
 
                 debug_log(f"✅ Данные собраны: {len(morning_status['ok'])} доступно, {len(morning_status['failed'])} недоступно")
 
                 # СРАЗУ отправляем отчет после сбора данных
                 debug_log(f"[{current_time}] 📊 Отправка утреннего отчета...")
-                send_morning_report()
+                send_morning_report(manual_call=False)  # Автоматический вызов
                 last_report_date = today
                 debug_log("✅ Утренний отчет отправлен")
                 
@@ -1832,64 +1835,77 @@ def send_morning_report_handler(update, context):
             update.message.reply_text("⛔ У вас нет прав для выполнения этой команды")
         return
 
-    # Собираем актуальные данные
-    current_status = get_current_server_status()
-    morning_data = {
-        "status": current_status,
-        "collection_time": datetime.now()
-    }
+    # Вызываем отчет с флагом manual_call=True
+    send_morning_report(manual_call=True)
 
-    # Отправляем отчет
-    send_morning_report()
-
-    response = "📊 Утренний отчет отправлен принудительно (включая данные о бэкапах)"
+    response = "📊 Отчет отправлен (данные актуальны на момент запроса)"
     if query:
         query.edit_message_text(response)
     else:
         update.message.reply_text(response)
 
-def send_morning_report():
-    """Отправляет утренний отчет о доступности серверов и бэкапах"""
+def send_morning_report(manual_call=False):
+    """Отправляет утренний отчет о доступности серверов и бэкапах
+    
+    Args:
+        manual_call (bool): Если True - отчет вызван вручную, если False - по расписанию
+    """
     global morning_data
-
-    # ДИАГНОСТИКА
-    debug_backup_data()
- 
+    
     current_time = datetime.now()
     debug_log = get_debug_log()
-    debug_log(f"[{current_time}] 🔍 Проверка данных для утреннего отчета...")
     
-    if not morning_data or "status" not in morning_data:
-        debug_log("❌ Нет данных для утреннего отчета, собираем текущий статус...")
+    if manual_call:
+        debug_log(f"[{current_time}] 📊 Ручной вызов отчета")
+        # Для ручного вызова собираем СВЕЖИЕ данные
         current_status = get_current_server_status()
         morning_data = {
             "status": current_status,
-            "collection_time": current_time
+            "collection_time": current_time,
+            "manual_call": True  # Помечаем как ручной вызов
         }
-        debug_log(f"✅ Собраны актуальные данные: {len(current_status['ok'])} доступно, {len(current_status['failed'])} недоступно")
-        
+    else:
+        debug_log(f"[{current_time}] 📊 Автоматический утренний отчет")
+        # Для автоматического отчета используем данные собранные в DATA_COLLECTION_TIME
+        if not morning_data or "status" not in morning_data:
+            debug_log("❌ Нет данных для утреннего отчета, собираем текущий статус...")
+            current_status = get_current_server_status()
+            morning_data = {
+                "status": current_status,
+                "collection_time": current_time,
+                "manual_call": False
+            }
+    
     status = morning_data["status"]
     collection_time = morning_data.get("collection_time", datetime.now())
+    is_manual = morning_data.get("manual_call", False)
 
     total_servers = len(status["ok"]) + len(status["failed"])
     up_count = len(status["ok"])
     down_count = len(status["failed"])
 
-    # Формируем сообщение
-    message = f"📊 *Утренний отчет о доступности серверов*\n\n"
-    message += f"⏰ *Время сбора данных:* {collection_time.strftime('%H:%M')}\n"
+    # Формируем сообщение с указанием типа отчета
+    if is_manual:
+        report_type = "Ручной запрос"
+        time_prefix = "⏰ *Время проверки:*"
+    else:
+        report_type = "Утренний отчет"
+        time_prefix = "⏰ *Время сбора данных:*"
+
+    message = f"📊 *{report_type} о доступности серверов*\n\n"
+    message += f"{time_prefix} {collection_time.strftime('%H:%M')}\n"
     message += f"🔢 *Всего серверов:* {total_servers}\n"
     message += f"🟢 *Доступно:* {up_count}\n"
     message += f"🔴 *Недоступно:* {down_count}\n"
 
-    # Добавляем секцию с бэкапами только если расширение включено
-    from extensions.extension_manager import extension_manager
-    if extension_manager.should_include_backup_data():
-        backup_data = get_backup_summary_for_report()
-        message += f"\n💾 *Статус бэкапов (за последние 16ч)*\n"
-        message += backup_data
+    # Для ручного отчета используем другой период бэкапов
+    if is_manual:
+        backup_data = get_backup_summary_for_report(period_hours=24)  # Последние 24 часа
     else:
-        message += f"\n💾 *Статус бэкапов:* 🔴 мониторинг отключен\n"
+        backup_data = get_backup_summary_for_report(period_hours=16)  # С 18:00 предыдущего дня
+
+    message += f"\n💾 *Статус бэкапов ({'за последние 24ч' if is_manual else 'за последние 16ч'})*\n"
+    message += backup_data
 
     if down_count > 0:
         message += f"\n⚠️ *Проблемные серверы ({down_count}):*\n"
@@ -1926,17 +1942,24 @@ def send_morning_report():
         up_percent = (stats["up"] / stats["total"]) * 100 if stats["total"] > 0 else 0
         message += f"• {server_type.upper()}: {stats['up']}/{stats['total']} ({up_percent:.1f}%)\n"
 
-    message += f"\n⏰ *Отчет отправлен:* {datetime.now().strftime('%H:%M:%S')}"
+    if is_manual:
+        message += f"\n⏰ *Отчет сформирован:* {datetime.now().strftime('%H:%M:%S')}"
+    else:
+        message += f"\n⏰ *Отчет отправлен:* {datetime.now().strftime('%H:%M:%S')}"
 
     # Отправляем отчет принудительно, даже в тихом режиме
     send_alert(message, force=True)
-    debug_log(f"✅ Утренний отчет отправлен: {up_count}/{total_servers} доступно")
-
-def get_backup_summary_for_report():
-    """Получает сводку по бэкапам за последние 24 часа - ИСПРАВЛЕННАЯ ЛОГИКА"""
+    debug_log(f"✅ {report_type} отправлен: {up_count}/{total_servers} доступно")
+    
+def get_backup_summary_for_report(period_hours=16):
+    """Получает сводку по бэкапам за указанный период
+    
+    Args:
+        period_hours (int): Количество часов для периода (16 для авто-отчета, 24 для ручного)
+    """
     try:
         debug_log = get_debug_log()
-        debug_log("🔄 Начинаем сбор данных для отчета о бэкапах...")
+        debug_log(f"🔄 Сбор данных о бэкапах за {period_hours} часов...")
         
         import sqlite3
         import os
@@ -1948,8 +1971,8 @@ def get_backup_summary_for_report():
             debug_log(f"❌ База данных не найдена: {db_path}")
             return "❌ База данных бэкапов недоступна\n"
         
-        # Ищем бэкапы за последние 24 часа (а не 16)
-        since_time = (datetime.now() - timedelta(hours=24)).strftime('%Y-%m-%d %H:%M:%S')
+        # Используем переданный период
+        since_time = (datetime.now() - timedelta(hours=period_hours)).strftime('%Y-%m-%d %H:%M:%S')
         
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
