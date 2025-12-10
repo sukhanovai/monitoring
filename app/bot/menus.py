@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.7.0
+Server Monitoring System v3.7.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Меню бота
@@ -85,8 +85,10 @@ def setup_menu(bot):
 
 def check_access(chat_id):
     """Проверка доступа к боту"""
-    config = get_config()
+#  config = get_config()
+    from app.config.settings import CHAT_IDS
     return str(chat_id) in config.CHAT_IDS
+
 
 def start_command(update, context):
     """Обработчик команды /start с отладочной информацией"""
