@@ -60,6 +60,7 @@ class BackupMonitorBot(BackupBase):
     
     def __init__(self):
         from app.config.settings import BACKUP_DATABASE_CONFIG
+        from app.config.settings import BACKUP_DATABASE_CONFIG
         super().__init__(BACKUP_DATABASE_CONFIG['backups_db'])
         self.status_calc = StatusCalculator()
         self.formatters = DisplayFormatters()
@@ -68,6 +69,7 @@ class BackupMonitorBot(BackupBase):
     
     def get_database_display_names(self):
         """Получает отображаемые имена баз данных из конфигурации"""
+        from app.config.settings import DATABASE_BACKUP_CONFIG
         from app.config.settings import DATABASE_BACKUP_CONFIG
         
         display_names = {}
@@ -236,6 +238,7 @@ class BackupMonitorBot(BackupBase):
         
         # Получаем все известные хосты и БД из конфигурации
         from app.config.settings import PROXMOX_HOSTS, DATABASE_BACKUP_CONFIG
+        from app.config.settings import PROXMOX_HOSTS, DATABASE_BACKUP_CONFIG
         
         all_configured_hosts = list(PROXMOX_HOSTS.keys())
         all_configured_databases = []
@@ -266,6 +269,7 @@ def backup_command(update, context):
     """Обработчик команды /backup"""
     try:
         from app.extensions.extension_manager import extension_manager
+        from app.extensions.extension_manager import extension_manager
         if not extension_manager.is_extension_enabled('backup_monitor'):
             update.message.reply_text(
                 "❌ Функционал мониторинга бэкапов отключен. "
@@ -287,6 +291,7 @@ def backup_search_command(update, context):
     """Обработчик команды /backup_search"""
     try:
         from app.extensions.extension_manager import extension_manager
+        from app.extensions.extension_manager import extension_manager
         if not extension_manager.is_extension_enabled('backup_monitor'):
             update.message.reply_text("❌ Функционал мониторинга бэкапов отключен.")
             return
@@ -300,6 +305,7 @@ def backup_search_command(update, context):
 def backup_help_command(update, context):
     """Обработчик команды /backup_help"""
     try:
+        from app.extensions.extension_manager import extension_manager
         from app.extensions.extension_manager import extension_manager
         if not extension_manager.is_extension_enabled('backup_monitor'):
             update.message.reply_text("❌ Функционал мониторинга бэкапов отключен.")
@@ -412,6 +418,7 @@ def backup_callback(update, context):
 def get_database_config(self):
     """Получает полную конфигурацию баз данных"""
     from app.config.settings import DATABASE_BACKUP_CONFIG
+    from app.config.settings import DATABASE_BACKUP_CONFIG
     
     return {
         "company_databases": DATABASE_BACKUP_CONFIG.get("company_databases", {}),
@@ -422,6 +429,7 @@ def get_database_config(self):
 
 def get_database_config_for_report(self):
     """Получает конфигурацию баз данных для отчета"""
+    from app.config.settings import DATABASE_BACKUP_CONFIG
     from app.config.settings import DATABASE_BACKUP_CONFIG
     
     # Собираем все базы из конфигурации

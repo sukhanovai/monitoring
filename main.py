@@ -36,7 +36,7 @@ logger = setup_logging()
 def main():
     """Основная функция запуска"""
     try:
-        logger.info("🚀 Запуск оптимизированной версии мониторинга...")
+        logger.info("🚀 Запуск мониторинга с новой структурой...")
         
         # Ленивая загрузка конфигурации
         from app.config.settings import TELEGRAM_TOKEN
@@ -50,6 +50,7 @@ def main():
 
         # Настройка меню
         from app.bot.menus import setup_menu, get_handlers, get_callback_handlers
+        from app.bot.menus import setup_menu, get_handlers, get_callback_handlers
         setup_menu(updater.bot)
 
         # Добавляем обработчики
@@ -62,6 +63,7 @@ def main():
         # Добавляем обработчики настроек
         try:
             from app.bot.handlers import get_settings_handlers
+            from app.bot.handlers import get_settings_handlers
             for handler in get_settings_handlers():
                 dispatcher.add_handler(handler)
             logger.info("✅ Обработчики настроек добавлены")
@@ -70,9 +72,11 @@ def main():
 
         # Ленивая загрузка расширений
         from app.extensions.extension_manager import extension_manager
+        from app.extensions.extension_manager import extension_manager
         
         # Настраиваем обработчики бэкапов если расширение включено
         if extension_manager.is_extension_enabled('backup_monitor'):
+            from app.extensions.backup_monitor.bot_handler import setup_backup_handlers
             from app.extensions.backup_monitor.bot_handler import setup_backup_handlers
             setup_backup_handlers(dispatcher)
             logger.info("✅ Обработчики бэкапов настроены")
@@ -80,20 +84,31 @@ def main():
         # Запускаем веб-сервер если расширение включено
         if extension_manager.is_extension_enabled('web_interface'):
             from app.extensions.web_interface import start_web_server
+            from app.extensions.web_interface import start_web_server
             web_thread = threading.Thread(target=start_web_server, daemon=True)
             web_thread.start()
             logger.info("✅ Веб-сервер запущен")
 
         # Запускаем сбор статистики
         from app.extensions.utils import save_monitoring_stats
+        from app.extensions.utils import save_monitoring_stats
         save_monitoring_stats()
         logger.info("✅ Сбор статистики запущен")
 
         # Запускаем основной мониторинг
         from app.core.monitoring import start_monitoring
+        from app.core.monitoring import start_monitoring
         monitor_thread = threading.Thread(target=start_monitoring, daemon=True)
         monitor_thread.start()
         logger.info("✅ Основной мониторинг запущен")
+
+        # Запускаем мониторинг почты если файл существует
+        mail_monitor_path = '/opt/monitoring/app/extensions/mail_monitor.py'
+        if os.path.exists(mail_monitor_path):
+            from app.extensions.mail_monitor import main as mail_monitor_main
+            mail_thread = threading.Thread(target=mail_monitor_main, daemon=True)
+            mail_thread.start()
+            logger.info("✅ Мониторинг почты запущен")
 
         # Запускаем бота
         updater.start_polling()

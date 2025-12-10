@@ -1,5 +1,9 @@
 """
+<<<<<<< HEAD
 Server Monitoring System v3.7.0
+=======
+Server Monitoring System v3.8.5
+>>>>>>> cf669c04bcbe47b259351aeabc331767e3d1282b
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Конфигурация отладки системы мониторинга

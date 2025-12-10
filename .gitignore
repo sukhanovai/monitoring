@@ -1,35 +1,91 @@
-# Конфиденциальные данные
-.env
-*.key
-*.pem
-id_rsa*
-*.ppk
-
-# Логи и данные
-data/
-*.log
-logs/
+# Python
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# Виртуальное окружение
+# Virtual Environment
 venv/
-.env/
-.venv/
-
-# Системные файлы
-.DS_Store
-Thumbs.db
+ENV/
+env/
+.venv
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
 
-# Резервные копии
-*.bak
+# Logs
+*.log
+logs/*.log
+bot_debug.log
+
+# Database
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Backups
+backups/
 *.backup
-*_backup*
+*.bak
+
+# Data files (но оставляем структуру)
+data/*.db
+data/*.json
+!data/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db
+.directory
+
+# Security
+*.pem
+*.key
+id_rsa*
+!id_rsa.pub
+*.env
+.env*
+config_local.py
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Documentation builds
+docs/_build/
+site/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Project specific
+monitoring_stats.json
+settings.db
+backups.db
+debug_config.json
+extensions_config.json

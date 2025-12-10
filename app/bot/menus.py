@@ -13,6 +13,7 @@ def lazy_import_settings_handler():
     """Ленивая загрузка обработчика настроек"""
     try:
         from app.bot.handlers import settings_callback_handler
+        from app.bot.handlers import settings_callback_handler
         return settings_callback_handler
     except ImportError as e:
         print(f"❌ Ошибка импорта settings_callback_handler: {e}")
@@ -34,13 +35,13 @@ def lazy_import(module_name, attribute_name=None):
 settings_callback_handler = lazy_import_settings_handler()
 
 # Ленивые импорты конфига
-get_config = lazy_import('config')
-get_chat_ids = lazy_import('config', 'CHAT_IDS')
-get_telegram_token = lazy_import('config', 'TELEGRAM_TOKEN')
+get_config = lazy_import('app.config.settings')
+get_chat_ids = lazy_import('app.config.settings', 'CHAT_IDS')
+get_telegram_token = lazy_import('app.config.settings', 'TELEGRAM_TOKEN')
 
 # Ленивые импорты утилит
-get_debug_log = lazy_import('core_utils', 'debug_log')
-get_extension_manager = lazy_import('extensions.extension_manager', 'extension_manager')
+get_debug_log = lazy_import('app.utils.common', 'debug_log')
+get_extension_manager = lazy_import('app.extensions.extension_manager', 'extension_manager')
 
 def setup_menu(bot):
     """Настройка меню бота с ленивой загрузкой расширений"""
@@ -126,6 +127,7 @@ def start_command(update, context):
     # Информация о отладке
     try:
         from app.utils.common import DEBUG_MODE
+        from app.utils.common import DEBUG_MODE
         welcome_text += f"🐛 *Режим отладки:* {'🟢 ВКЛ' if DEBUG_MODE else '🔴 ВЫКЛ'}\n"
     except ImportError:
         welcome_text += "🐛 *Режим отладки:* 🔴 Недоступен\n"
@@ -194,39 +196,48 @@ def main_menu_handler(update, context):
 def monitor_main_handler(update, context):
     """Обработчик для главного меню"""
     from app.bot.menus import start_command
+    from app.bot.menus import start_command
     return start_command(update, context)
 
 # Заглушки для команд (импорты внутри функций чтобы избежать циклических импортов)
 def check_command(update, context):
     from app.core.monitoring import manual_check_handler
+    from app.core.monitoring import manual_check_handler
     return manual_check_handler(update, context)
 
 def status_command(update, context):
+    from app.core.monitoring import monitor_status
     from app.core.monitoring import monitor_status
     return monitor_status(update, context)
 
 def silent_command(update, context):
     from app.core.monitoring import silent_command as silent_cmd
+    from app.core.monitoring import silent_command as silent_cmd
     return silent_cmd(update, context)
 
 def control_command(update, context):
     from app.core.monitoring import control_command as control_cmd
+    from app.core.monitoring import control_command as control_cmd
     return control_cmd(update, context)
 
 def servers_command(update, context):
+    from app.extensions.server_checks import servers_command as servers_cmd
     from app.extensions.server_checks import servers_command as servers_cmd
     return servers_cmd(update, context)
 
 def report_command(update, context):
     """Команда для принудительной отправки утреннего отчета"""
     from app.core.monitoring import send_morning_report_handler
+    from app.core.monitoring import send_morning_report_handler
     return send_morning_report_handler(update, context)
 
 def stats_command(update, context):
     from app.extensions.utils import stats_command as stats_cmd
+    from app.extensions.utils import stats_command as stats_cmd
     return stats_cmd(update, context)
 
 def diagnose_ssh_command(update, context):
+    from app.extensions.utils import diagnose_ssh_command as diagnose_cmd
     from app.extensions.utils import diagnose_ssh_command as diagnose_cmd
     return diagnose_cmd(update, context)
 
@@ -244,6 +255,7 @@ def backup_command(update, context):
         return
     
     from app.extensions.backup_monitor.bot_handler import backup_command as backup_cmd
+    from app.extensions.backup_monitor.bot_handler import backup_command as backup_cmd
     return backup_cmd(update, context)
 
 def backup_search_command(update, context):
@@ -256,6 +268,7 @@ def backup_search_command(update, context):
         )
         return
     
+    from app.extensions.backup_monitor.bot_handler import backup_search_command as backup_search_cmd
     from app.extensions.backup_monitor.bot_handler import backup_search_command as backup_search_cmd
     return backup_search_cmd(update, context)
 
@@ -270,6 +283,7 @@ def backup_help_command(update, context):
         return
     
     from app.extensions.backup_monitor.bot_handler import backup_help_command as backup_help_cmd
+    from app.extensions.backup_monitor.bot_handler import backup_help_command as backup_help_cmd
     return backup_help_cmd(update, context)
 
 def fix_monitor_command(update, context):
@@ -280,6 +294,7 @@ def fix_monitor_command(update, context):
 
     try:
         # Динамический импорт чтобы избежать циклических зависимостей
+        from app.core.monitoring import server_status
         from app.core.monitoring import server_status
         from datetime import datetime
 
@@ -395,6 +410,7 @@ def extensions_callback_handler(update, context):
         # ОПТИМИЗАЦИЯ: используем ленивую загрузку чтобы избежать циклических импортов
         try:
             from app.core.monitoring import monitor_status
+            from app.core.monitoring import monitor_status
             monitor_status(update, context)
         except Exception as e:
             debug_log = get_debug_log()
@@ -426,6 +442,7 @@ def enable_all_extensions(update, context):
     
     extension_manager = get_extension_manager()
     from app.extensions.extension_manager import AVAILABLE_EXTENSIONS
+    from app.extensions.extension_manager import AVAILABLE_EXTENSIONS
     
     enabled_count = 0
     for ext_id in AVAILABLE_EXTENSIONS:
@@ -441,6 +458,7 @@ def disable_all_extensions(update, context):
     query = update.callback_query
     
     extension_manager = get_extension_manager()
+    from app.extensions.extension_manager import AVAILABLE_EXTENSIONS
     from app.extensions.extension_manager import AVAILABLE_EXTENSIONS
     
     disabled_count = 0
@@ -471,6 +489,7 @@ def show_debug_menu(update, context):
     # Получаем статус отладки
     debug_status = "🔴 ВЫКЛЮЧЕНА"
     try:
+        from app.utils.common import DEBUG_MODE
         from app.utils.common import DEBUG_MODE
         debug_status = "🟢 ВКЛЮЧЕНА" if DEBUG_MODE else "🔴 ВЫКЛЮЧЕНА"
     except ImportError:
@@ -544,6 +563,7 @@ def enable_debug_mode(query):
         # Обновляем конфигурацию отладки если доступна
         try:
             from app.config.debug_config import debug_config
+            from app.config.debug_config import debug_config
             debug_config.enable_debug()
         except ImportError:
             pass
@@ -583,6 +603,7 @@ def disable_debug_mode(query):
         # Обновляем конфигурацию отладки если доступна
         try:
             from app.config.debug_config import debug_config
+            from app.config.debug_config import debug_config
             debug_config.disable_debug()
         except ImportError:
             pass
@@ -620,6 +641,7 @@ def show_debug_status(query):
         
         # Статус отладки
         try:
+            from app.utils.common import DEBUG_MODE
             from app.utils.common import DEBUG_MODE
             debug_status = "🟢 ВКЛ" if DEBUG_MODE else "🔴 ВЫКЛ"
         except ImportError:
@@ -849,6 +871,7 @@ def show_advanced_debug(query):
     """Показывает расширенные настройки отладки - БЕЗ КНОПКИ ОСНОВНЫХ НАСТРОЕК"""
     try:
         from app.config.debug_config import debug_config
+        from app.config.debug_config import debug_config
         debug_info = debug_config.get_debug_info()
         
         message = "🔧 *Расширенные настройки отладки*\n\n"
@@ -919,10 +942,12 @@ def diagnose_windows_command(update, context):
     ip = context.args[0]
     
     from app.extensions.server_checks import get_windows_resources_improved, get_windows_resources_winrm, get_windows_resources_wmi
+    from app.extensions.server_checks import get_windows_resources_improved, get_windows_resources_winrm, get_windows_resources_wmi
     
     message = f"🔧 *Диагностика Windows сервера {ip}*\n\n"
     
     # Проверка базовой доступности
+    from app.extensions.server_checks import check_ping, check_port
     from app.extensions.server_checks import check_ping, check_port
     ping_ok = check_ping(ip)
     rdp_ok = check_port(ip, 3389)
@@ -1116,123 +1141,174 @@ def lazy_handler(pattern):
         # Динамически импортируем обработчик при вызове
         if pattern == 'main_menu':
             from app.bot.menus import start_command
+            from app.bot.menus import start_command
             return start_command(update, context)
         elif pattern == 'manual_check':
             from app.core.monitoring import manual_check_handler as handler
+            from app.core.monitoring import manual_check_handler as handler
         elif pattern == 'monitor_status':
+            from app.core.monitoring import monitor_status as handler
             from app.core.monitoring import monitor_status as handler
         elif pattern == 'silent_status':
             from app.core.monitoring import silent_status_handler as handler
+            from app.core.monitoring import silent_status_handler as handler
         elif pattern == 'pause_monitoring':
+            from app.core.monitoring import pause_monitoring_handler as handler
             from app.core.monitoring import pause_monitoring_handler as handler
         elif pattern == 'resume_monitoring':
             from app.core.monitoring import resume_monitoring_handler as handler
+            from app.core.monitoring import resume_monitoring_handler as handler
         elif pattern == 'check_resources':
+            from app.core.monitoring import check_resources_handler as handler
             from app.core.monitoring import check_resources_handler as handler
         elif pattern == 'control_panel':
             from app.core.monitoring import control_panel_handler as handler
+            from app.core.monitoring import control_panel_handler as handler
         elif pattern == 'toggle_monitoring':
+            from app.core.monitoring import toggle_monitoring_handler as handler
             from app.core.monitoring import toggle_monitoring_handler as handler
         elif pattern == 'daily_report':
             from app.core.monitoring import send_morning_report_handler as handler
+            from app.core.monitoring import send_morning_report_handler as handler
         elif pattern == 'diagnose_menu':
+            from app.core.monitoring import diagnose_menu_handler as handler
             from app.core.monitoring import diagnose_menu_handler as handler
         elif pattern == 'close':
             from app.core.monitoring import close_menu as handler
+            from app.core.monitoring import close_menu as handler
         elif pattern == 'force_silent':
+            from app.core.monitoring import force_silent_handler as handler
             from app.core.monitoring import force_silent_handler as handler
         elif pattern == 'force_loud':
             from app.core.monitoring import force_loud_handler as handler
+            from app.core.monitoring import force_loud_handler as handler
         elif pattern == 'auto_mode':
+            from app.core.monitoring import auto_mode_handler as handler
             from app.core.monitoring import auto_mode_handler as handler
         elif pattern == 'toggle_silent':
             from app.core.monitoring import toggle_silent_mode_handler as handler
+            from app.core.monitoring import toggle_silent_mode_handler as handler
         elif pattern == 'servers_list':
+            from app.extensions.server_checks import servers_list_handler as handler
             from app.extensions.server_checks import servers_list_handler as handler
         elif pattern == 'full_report':
             from app.core.monitoring import send_morning_report_handler as handler
+            from app.core.monitoring import send_morning_report_handler as handler
         elif pattern == 'resource_page':
+            from app.core.monitoring import resource_page_handler as handler
             from app.core.monitoring import resource_page_handler as handler
         elif pattern == 'refresh_resources':
             from app.core.monitoring import refresh_resources_handler as handler
+            from app.core.monitoring import refresh_resources_handler as handler
         elif pattern == 'close_resources':
+            from app.core.monitoring import close_resources_handler as handler
             from app.core.monitoring import close_resources_handler as handler
         # Новые обработчики для раздельной проверки
         elif pattern == 'check_linux':
             from app.core.monitoring import check_linux_resources_handler as handler
+            from app.core.monitoring import check_linux_resources_handler as handler
         elif pattern == 'check_windows':
             from app.core.monitoring import check_windows_resources_handler as handler
+            from app.core.monitoring import check_windows_resources_handler as handler
         elif pattern == 'check_other':
+            from app.core.monitoring import check_other_resources_handler as handler
             from app.core.monitoring import check_other_resources_handler as handler
         # Обработчики для раздельной проверки ресурсов
         elif pattern == 'check_cpu':
             from app.core.monitoring import check_cpu_resources_handler as handler
+            from app.core.monitoring import check_cpu_resources_handler as handler
         elif pattern == 'check_ram':
+            from app.core.monitoring import check_ram_resources_handler as handler
             from app.core.monitoring import check_ram_resources_handler as handler
         elif pattern == 'check_disk':
             from app.core.monitoring import check_disk_resources_handler as handler
+            from app.core.monitoring import check_disk_resources_handler as handler
         elif pattern == 'resource_history':
+            from app.core.monitoring import resource_history_command as handler
             from app.core.monitoring import resource_history_command as handler
         elif pattern == 'debug_report':
             from app.core.monitoring import debug_morning_report as handler
+            from app.core.monitoring import debug_morning_report as handler
         elif pattern == 'backup_today':
+            from app.extensions.backup_monitor.bot_handler import backup_callback as handler
             from app.extensions.backup_monitor.bot_handler import backup_callback as handler
             return handler(update, context)
         elif pattern == 'backup_24h':
             from app.extensions.backup_monitor.bot_handler import backup_callback as handler
+            from app.extensions.backup_monitor.bot_handler import backup_callback as handler
             return handler(update, context)
         elif pattern == 'db_backups_24h':
+            from app.extensions.backup_monitor.bot_handler import backup_callback as handler
             from app.extensions.backup_monitor.bot_handler import backup_callback as handler
             return handler(update, context)
         elif pattern == 'db_backups_48h':
             from app.extensions.backup_monitor.bot_handler import backup_callback as handler
+            from app.extensions.backup_monitor.bot_handler import backup_callback as handler
             return handler(update, context)
         elif pattern == 'backup_failed':
+            from app.extensions.backup_monitor.bot_handler import backup_callback as handler
             from app.extensions.backup_monitor.bot_handler import backup_callback as handler
             return handler(update, context)
         elif pattern == 'backup_hosts':
             from app.extensions.backup_monitor.bot_handler import backup_callback as handler
+            from app.extensions.backup_monitor.bot_handler import backup_callback as handler
             return handler(update, context)
         elif pattern == 'backup_refresh':
+            from app.extensions.backup_monitor.bot_handler import backup_callback as handler
             from app.extensions.backup_monitor.bot_handler import backup_callback as handler
             return handler(update, context)
         elif pattern.startswith('backup_host_'):
             from app.extensions.backup_monitor.bot_handler import backup_callback as handler
+            from app.extensions.backup_monitor.bot_handler import backup_callback as handler
             return handler(update, context)
         elif pattern == 'backup_main':
+            from app.extensions.backup_monitor.bot_handler import backup_callback as handler
             from app.extensions.backup_monitor.bot_handler import backup_callback as handler
             return handler(update, context)
         elif pattern == 'backup_proxmox':
             from app.extensions.backup_monitor.bot_handler import backup_callback as handler
+            from app.extensions.backup_monitor.bot_handler import backup_callback as handler
             return handler(update, context)
         elif pattern == 'backup_databases':
+            from app.extensions.backup_monitor.bot_handler import backup_callback as handler
             from app.extensions.backup_monitor.bot_handler import backup_callback as handler
             return handler(update, context)
         elif pattern == 'db_backups_summary':
             from app.extensions.backup_monitor.bot_handler import backup_callback as handler
+            from app.extensions.backup_monitor.bot_handler import backup_callback as handler
             return handler(update, context)
         elif pattern == 'db_backups_detailed':
+            from app.extensions.backup_monitor.bot_handler import backup_callback as handler
             from app.extensions.backup_monitor.bot_handler import backup_callback as handler
             return handler(update, context)
         elif pattern == 'db_backups_list':
             from app.extensions.backup_monitor.bot_handler import backup_callback as handler
+            from app.extensions.backup_monitor.bot_handler import backup_callback as handler
             return handler(update, context)
         elif pattern.startswith('db_detail_'):
+            from app.extensions.backup_monitor.bot_handler import backup_callback as handler
             from app.extensions.backup_monitor.bot_handler import backup_callback as handler
             return handler(update, context)
         elif pattern == 'backup_stale_hosts':
             from app.extensions.backup_monitor.bot_handler import show_stale_hosts as handler
+            from app.extensions.backup_monitor.bot_handler import show_stale_hosts as handler
         elif pattern == 'db_stale_list':
+            from app.extensions.backup_monitor.bot_handler import show_stale_databases as handler
             from app.extensions.backup_monitor.bot_handler import show_stale_databases as handler
         elif pattern == 'extensions_menu':
             from app.bot.menus import show_extensions_menu as handler
+            from app.bot.menus import show_extensions_menu as handler
         elif pattern == 'extensions_refresh':
+            from app.bot.menus import show_extensions_menu as handler
             from app.bot.menus import show_extensions_menu as handler
         elif pattern == 'ext_enable_all':
             from app.bot.menus import enable_all_extensions as handler
+            from app.bot.menus import enable_all_extensions as handler
         elif pattern == 'ext_disable_all':
             from app.bot.menus import disable_all_extensions as handler
+            from app.bot.menus import disable_all_extensions as handler
         elif pattern == 'debug_menu':
+            from app.bot.menus import show_debug_menu as handler
             from app.bot.menus import show_debug_menu as handler
         else:
             def default_handler(update, context):
@@ -1248,6 +1324,7 @@ def lazy_message_handler():
     """Ленивая загрузка обработчика сообщений"""
     def handler(update, context):
         try:
+            from app.bot.handlers import handle_setting_value
             from app.bot.handlers import handle_setting_value
             return handle_setting_value(update, context)
         except ImportError as e:

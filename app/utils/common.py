@@ -71,6 +71,7 @@ class ServerChecker:
             # Ленивая загрузка конфига
             if username is None or key_path is None:
                 from app.config.settings import SSH_USERNAME, SSH_KEY_PATH
+                from app.config.settings import SSH_USERNAME, SSH_KEY_PATH
                 username = SSH_USERNAME
                 key_path = SSH_KEY_PATH
 

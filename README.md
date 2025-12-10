@@ -430,7 +430,11 @@ Systemd сервис:
 sudo nano /etc/systemd/system/server-monitor.service
 
 [Unit]
+<<<<<<< HEAD
 Description=Server Monitoring System v3.7.0
+=======
+Description=Server Monitoring System v3.8.5
+>>>>>>> cf669c04bcbe47b259351aeabc331767e3d1282b
 After=network.target
 
 [Service]
@@ -456,9 +460,9 @@ sudo systemctl start server-monitor
 ├── main.py                      # Основной процесс мониторинга
 ├── improved_mail_monitor.py     # Обработчик почты для бэкапов
 ├── config.py                    # Конфигурация системы
-├── monitor_core.py              # Ядро мониторинга
-├── bot_menu.py                  # Telegram бот и меню
-├── core_utils.py                # Общие утилиты
+├── app.core.monitoring.py              # Ядро мониторинга
+├── app.bot.menus.py                  # Telegram бот и меню
+├── app.utils.common.py                # Общие утилиты
 ├── debug_config.py              # Настройки отладки
 ├── extensions/
 │   ├── extension_manager.py     # Менеджер расширений

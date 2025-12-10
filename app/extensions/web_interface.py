@@ -7,10 +7,12 @@ License: MIT
 
 from flask import Flask, jsonify, render_template_string, request
 from app.config.settings import WEB_PORT, WEB_HOST
+from app.config.settings import WEB_PORT, WEB_HOST
 import threading
 from datetime import datetime
 import json
 import os
+from app.config.settings import STATS_FILE, DATA_DIR
 from app.config.settings import STATS_FILE, DATA_DIR
 import subprocess
 import sys
@@ -807,6 +809,7 @@ def get_monitoring_stats():
         
         # Получаем настройки из конфига
         from app.config.settings import CHECK_INTERVAL, RESOURCE_CHECK_INTERVAL
+        from app.config.settings import CHECK_INTERVAL, RESOURCE_CHECK_INTERVAL
         resource_check_minutes = RESOURCE_CHECK_INTERVAL // 60
         
         # Считаем проблемы с ресурсами
@@ -878,17 +881,20 @@ def api_run_check():
         if check_type == 'quick':
             # Запуск быстрой проверки доступности
             from app.core.monitoring import get_current_server_status
+            from app.core.monitoring import get_current_server_status
             status = get_current_server_status()
             message = f"✅ Быстрая проверка выполнена: {len(status['ok'])} доступно, {len(status['failed'])} недоступно"
             
         elif check_type == 'resources':
             # Запуск проверки ресурсов
             from app.core.monitoring import check_resources_automatically
+            from app.core.monitoring import check_resources_automatically
             check_resources_automatically()
             message = "✅ Проверка ресурсов выполнена. Данные обновятся через 1-2 минуты."
             
         elif check_type == 'report':
             # Формирование отчета
+            from app.core.monitoring import send_morning_report
             from app.core.monitoring import send_morning_report
             send_morning_report()
             message = "✅ Отчет сформирован и отправлен в Telegram"
@@ -909,15 +915,18 @@ def api_run_action():
     try:
         if action == 'check_all':
             from app.core.monitoring import get_current_server_status
+            from app.core.monitoring import get_current_server_status
             status = get_current_server_status()
             message = f"✅ Проверка всех серверов выполнена: {len(status['ok'])} доступно, {len(status['failed'])} недоступно"
             
         elif action == 'check_resources':
             from app.core.monitoring import check_resources_automatically
+            from app.core.monitoring import check_resources_automatically
             check_resources_automatically()
             message = "✅ Проверка ресурсов запущена. Данные обновятся через 1-2 минуты."
             
         elif action == 'morning_report':
+            from app.core.monitoring import send_morning_report
             from app.core.monitoring import send_morning_report
             send_morning_report()
             message = "✅ Утренний отчет отправлен в Telegram"
@@ -990,7 +999,7 @@ def api_manage_servers():
     """API для управления списком серверов"""
     if request.method == 'GET':
         # Получить список серверов
-        from extensions.server_list import initialize_servers
+        from app.extensions.server_list import initialize_servers
         servers = initialize_servers()
         return jsonify({"servers": servers})
     

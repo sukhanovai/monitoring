@@ -10,6 +10,7 @@ import os
 import time
 from datetime import datetime, timedelta
 from app.config.settings import STATS_FILE, DATA_DIR
+from app.config.settings import STATS_FILE, DATA_DIR
 
 # === ДИАГНОСТИКА SSH (из single_check.py) ===
 
@@ -21,6 +22,7 @@ def diagnose_ssh_command(update, context):
 
     target = context.args[0]
     
+    from app.extensions.server_checks import initialize_servers
     from app.extensions.server_checks import initialize_servers
     servers = initialize_servers()
     server = None
@@ -41,11 +43,13 @@ def diagnose_ssh_command(update, context):
         # Проверка доступности порта
         port = 22
         from app.core.monitoring import check_port
+        from app.core.monitoring import check_port
         is_port_open = check_port(server["ip"], port, timeout=10)
         message += f"Порт {port} (SSH): {'🟢 Открыт' if is_port_open else '🔴 Закрыт'}\n"
 
         if is_port_open:
             # Проверка SSH подключения
+            from app.core.monitoring import check_ssh, check_ssh_alternative
             from app.core.monitoring import check_ssh, check_ssh_alternative
             
             message += "\n*Проверка Paramiko (основной метод):*\n"
@@ -137,7 +141,7 @@ def get_backup_stats():
     # Заглушка - реализовать логику
     return {"total": 0, "successful": 0, "failed": 0}
 
-# === ОБРАБОТЧИКИ ДЛЯ BOT_MENU ===
+# === ОБРАБОТЧИКИ ДЛЯ app.bot.menus ===
 
 def stats_command(update, context):
     """Обработчик команды /stats"""

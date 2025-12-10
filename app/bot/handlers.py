@@ -8,11 +8,13 @@ License: MIT
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CommandHandler, CallbackQueryHandler, MessageHandler, Filters
 from app.config.settings_manager import settings_manager
+from app.config.settings_manager import settings_manager
 import json
 
 def get_debug_log():
     """Безопасная функция для логирования"""
     try:
+        from app.utils.common import debug_log
         from app.utils.common import debug_log
         return debug_log
     except ImportError:
@@ -57,8 +59,8 @@ def show_telegram_settings(update, context):
     query = update.callback_query
     query.answer()
     
-    token = settings_manager.get_setting('TELEGRAM_TOKEN', '')
-    chat_ids = settings_manager.get_setting('CHAT_IDS', [])
+    token = app.config.settings_manager.get_setting('TELEGRAM_TOKEN', '')
+    chat_ids = app.config.settings_manager.get_setting('CHAT_IDS', [])
     
     token_display = "🟢 Установлен" if token else "🔴 Не установлен"
     chats_display = f"{len(chat_ids)} чатов" if chat_ids else "🔴 Не настроены"
@@ -88,15 +90,15 @@ def show_monitoring_settings(update, context):
     query = update.callback_query
     query.answer()
     
-    check_interval = settings_manager.get_setting('CHECK_INTERVAL', 60)
-    max_fail_time = settings_manager.get_setting('MAX_FAIL_TIME', 900)
+    check_interval = app.config.settings_manager.get_setting('CHECK_INTERVAL', 60)
+    max_fail_time = app.config.settings_manager.get_setting('MAX_FAIL_TIME', 900)
     
     # Новые настройки таймаутов
-    windows_2025_timeout = settings_manager.get_setting('WINDOWS_2025_TIMEOUT', 35)
-    domain_timeout = settings_manager.get_setting('DOMAIN_SERVERS_TIMEOUT', 20)
-    admin_timeout = settings_manager.get_setting('ADMIN_SERVERS_TIMEOUT', 25)
-    standard_timeout = settings_manager.get_setting('STANDARD_WINDOWS_TIMEOUT', 30)
-    linux_timeout = settings_manager.get_setting('LINUX_TIMEOUT', 15)
+    windows_2025_timeout = app.config.settings_manager.get_setting('WINDOWS_2025_TIMEOUT', 35)
+    domain_timeout = app.config.settings_manager.get_setting('DOMAIN_SERVERS_TIMEOUT', 20)
+    admin_timeout = app.config.settings_manager.get_setting('ADMIN_SERVERS_TIMEOUT', 25)
+    standard_timeout = app.config.settings_manager.get_setting('STANDARD_WINDOWS_TIMEOUT', 30)
+    linux_timeout = app.config.settings_manager.get_setting('LINUX_TIMEOUT', 15)
     
     message = (
         "🔧 *Настройки мониторинга*\n\n"
@@ -130,9 +132,9 @@ def show_time_settings(update, context):
     query = update.callback_query
     query.answer()
     
-    silent_start = settings_manager.get_setting('SILENT_START', 20)
-    silent_end = settings_manager.get_setting('SILENT_END', 9)
-    data_collection = settings_manager.get_setting('DATA_COLLECTION_TIME', '08:30')
+    silent_start = app.config.settings_manager.get_setting('SILENT_START', 20)
+    silent_end = app.config.settings_manager.get_setting('SILENT_END', 9)
+    data_collection = app.config.settings_manager.get_setting('DATA_COLLECTION_TIME', '08:30')
     
     message = (
         "⏰ *Временные настройки*\n\n"
@@ -160,12 +162,12 @@ def show_resource_settings(update, context):
     query = update.callback_query
     query.answer()
     
-    cpu_warning = settings_manager.get_setting('CPU_WARNING', 80)
-    cpu_critical = settings_manager.get_setting('CPU_CRITICAL', 90)
-    ram_warning = settings_manager.get_setting('RAM_WARNING', 85)
-    ram_critical = settings_manager.get_setting('RAM_CRITICAL', 95)
-    disk_warning = settings_manager.get_setting('DISK_WARNING', 80)
-    disk_critical = settings_manager.get_setting('DISK_CRITICAL', 90)
+    cpu_warning = app.config.settings_manager.get_setting('CPU_WARNING', 80)
+    cpu_critical = app.config.settings_manager.get_setting('CPU_CRITICAL', 90)
+    ram_warning = app.config.settings_manager.get_setting('RAM_WARNING', 85)
+    ram_critical = app.config.settings_manager.get_setting('RAM_CRITICAL', 95)
+    disk_warning = app.config.settings_manager.get_setting('DISK_WARNING', 80)
+    disk_critical = app.config.settings_manager.get_setting('DISK_CRITICAL', 90)
     
     message = (
         "💻 *Настройки ресурсов*\n\n"
@@ -200,10 +202,10 @@ def show_backup_settings(update, context):
     query = update.callback_query
     query.answer()
     
-    backup_alert_hours = settings_manager.get_setting('BACKUP_ALERT_HOURS', 24)
-    backup_stale_hours = settings_manager.get_setting('BACKUP_STALE_HOURS', 36)
+    backup_alert_hours = app.config.settings_manager.get_setting('BACKUP_ALERT_HOURS', 24)
+    backup_stale_hours = app.config.settings_manager.get_setting('BACKUP_STALE_HOURS', 36)
     
-    database_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    database_config = app.config.settings_manager.get_setting('DATABASE_CONFIG', {})
     db_categories = list(database_config.keys()) if database_config else []
     
     message = (
@@ -233,7 +235,7 @@ def show_backup_databases_settings(update, context):
     query = update.callback_query
     query.answer()
     
-    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    db_config = app.config.settings_manager.get_setting('DATABASE_CONFIG', {})
     
     message = "🗃️ *Настройки баз данных для бэкапов*\n\n"
     
@@ -275,13 +277,13 @@ def show_all_settings(update, context):
     query = update.callback_query
     query.answer()
     
-    all_settings = settings_manager.get_all_settings()
+    all_settings = app.config.settings_manager.get_all_settings()
     
     message = "📊 *Все настройки системы*\n\n"
     
-    for category in settings_manager.get_categories():
+    for category in app.config.settings_manager.get_categories():
         message += f"*{category.upper()}:*\n"
-        category_settings = {k: v for k, v in all_settings.items() if k.lower().startswith(category.lower()) or settings_manager.get_setting(k, category='') == category}
+        category_settings = {k: v for k, v in all_settings.items() if k.lower().startswith(category.lower()) or app.config.settings_manager.get_setting(k, category='') == category}
         
         for key, value in category_settings.items():
             if key == 'TELEGRAM_TOKEN' and value:
@@ -591,7 +593,7 @@ def handle_setting_value(update, context):
         db_key = setting_key.upper() if setting_key != 'telegram_token' else 'TELEGRAM_TOKEN'
         category = category_map.get(setting_key, 'general')
         
-        settings_manager.set_setting(db_key, new_value, category)
+        app.config.settings_manager.set_setting(db_key, new_value, category)
         
         # Очищаем контекст
         del context.user_data['editing_setting']
@@ -613,8 +615,8 @@ def show_web_settings(update, context):
     query = update.callback_query
     query.answer()
     
-    web_port = settings_manager.get_setting('WEB_PORT', 5000)
-    web_host = settings_manager.get_setting('WEB_HOST', '0.0.0.0')
+    web_port = app.config.settings_manager.get_setting('WEB_PORT', 5000)
+    web_host = app.config.settings_manager.get_setting('WEB_HOST', '0.0.0.0')
     
     message = (
         "🌐 *Настройки веб-интерфейса*\n\n"
@@ -652,11 +654,11 @@ def show_auth_settings(update, context):
     query = update.callback_query
     query.answer()
     
-    ssh_username = settings_manager.get_setting('SSH_USERNAME', 'root')
-    ssh_key_path = settings_manager.get_setting('SSH_KEY_PATH', '/root/.ssh/id_rsa')
+    ssh_username = app.config.settings_manager.get_setting('SSH_USERNAME', 'root')
+    ssh_key_path = app.config.settings_manager.get_setting('SSH_KEY_PATH', '/root/.ssh/id_rsa')
     
     # Получаем статистику по Windows учетным данным
-    windows_creds = settings_manager.get_windows_credentials()
+    windows_creds = app.config.settings_manager.get_windows_credentials()
     
     message = (
         "🔐 *Настройки аутентификации*\n\n"
@@ -665,7 +667,7 @@ def show_auth_settings(update, context):
         f"• Путь к ключу: `{ssh_key_path}`\n\n"
         "*Windows аутентификация:*\n"
         f"• Учетных записей: {len(windows_creds)}\n"
-        f"• Типов серверов: {len(settings_manager.get_windows_server_types())}\n\n"
+        f"• Типов серверов: {len(app.config.settings_manager.get_windows_server_types())}\n\n"
         "Выберите раздел для настройки:"
     )
     
@@ -687,8 +689,8 @@ def show_ssh_auth_settings(update, context):
     query = update.callback_query
     query.answer()
     
-    ssh_username = settings_manager.get_setting('SSH_USERNAME', 'root')
-    ssh_key_path = settings_manager.get_setting('SSH_KEY_PATH', '/root/.ssh/id_rsa')
+    ssh_username = app.config.settings_manager.get_setting('SSH_USERNAME', 'root')
+    ssh_key_path = app.config.settings_manager.get_setting('SSH_KEY_PATH', '/root/.ssh/id_rsa')
     
     message = (
         "👤 *SSH аутентификация*\n\n"
@@ -715,7 +717,7 @@ def show_servers_settings(update, context):
     query = update.callback_query
     query.answer()
     
-    servers = settings_manager.get_all_servers()
+    servers = app.config.settings_manager.get_all_servers()
     windows_servers = [s for s in servers if s['type'] == 'rdp']
     linux_servers = [s for s in servers if s['type'] == 'ssh']
     ping_servers = [s for s in servers if s['type'] == 'ping']
@@ -747,8 +749,8 @@ def show_backup_times(update, context):
     query = update.callback_query
     query.answer()
     
-    alert_hours = settings_manager.get_setting('BACKUP_ALERT_HOURS', 24)
-    stale_hours = settings_manager.get_setting('BACKUP_STALE_HOURS', 36)
+    alert_hours = app.config.settings_manager.get_setting('BACKUP_ALERT_HOURS', 24)
+    stale_hours = app.config.settings_manager.get_setting('BACKUP_STALE_HOURS', 36)
     
     message = (
         "⏰ *Временные интервалы бэкапов*\n\n"
@@ -775,7 +777,7 @@ def show_backup_databases_settings(update, context):
     query = update.callback_query
     query.answer()
     
-    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    db_config = app.config.settings_manager.get_setting('DATABASE_CONFIG', {})
     
     message = "🗃️ *Настройки баз данных для бэкапов*\n\n"
     
@@ -812,7 +814,7 @@ def show_backup_databases(update, context):
     query = update.callback_query
     query.answer()
     
-    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    db_config = app.config.settings_manager.get_setting('DATABASE_CONFIG', {})
     
     message = "🗃️ *Настройки баз данных для бэкапов*\n\n"
     
@@ -845,7 +847,7 @@ def show_backup_patterns_menu(update, context):
     query = update.callback_query
     query.answer()
     
-    patterns = settings_manager.get_backup_patterns()
+    patterns = app.config.settings_manager.get_backup_patterns()
     
     message = "🔍 *Паттерны бэкапов*\n\n"
     
@@ -933,7 +935,7 @@ def edit_database_category_handler(update, context):
     query = update.callback_query
     query.answer()
     
-    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    db_config = app.config.settings_manager.get_setting('DATABASE_CONFIG', {})
     
     if not db_config:
         keyboard = [[InlineKeyboardButton("➕ Добавить категорию", callback_data='backup_db_add_category')]]
@@ -956,7 +958,7 @@ def delete_database_category_handler(update, context):
     query = update.callback_query
     query.answer()
     
-    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    db_config = app.config.settings_manager.get_setting('DATABASE_CONFIG', {})
     
     if not db_config:
         keyboard = [[InlineKeyboardButton("➕ Добавить категорию", callback_data='backup_db_add_category')]]
@@ -979,7 +981,7 @@ def view_all_databases_handler(update, context):
     query = update.callback_query
     query.answer()
     
-    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    db_config = app.config.settings_manager.get_setting('DATABASE_CONFIG', {})
     
     message = "📋 *Все базы данных для мониторинга*\n\n"
     
@@ -1010,7 +1012,7 @@ def manage_chats_handler(update, context):
     query = update.callback_query
     query.answer()
     
-    chat_ids = settings_manager.get_setting('CHAT_IDS', [])
+    chat_ids = app.config.settings_manager.get_setting('CHAT_IDS', [])
     
     message = "💬 *Управление чатами*\n\n"
     message += f"Текущее количество чатов: {len(chat_ids)}\n\n"
@@ -1044,7 +1046,7 @@ def show_server_timeouts(update, context):
     query = update.callback_query
     query.answer()
     
-    timeouts = settings_manager.get_setting('SERVER_TIMEOUTS', {})
+    timeouts = app.config.settings_manager.get_setting('SERVER_TIMEOUTS', {})
     
     # Простой текст без Markdown
     message = "⏰ Таймауты серверов\n\n"
@@ -1165,7 +1167,7 @@ def handle_server_type(update, context):
     
     try:
         # Добавляем сервер в базу
-        success = settings_manager.add_server(server_ip, server_name, server_type)
+        success = app.config.settings_manager.add_server(server_ip, server_name, server_type)
         
         if success:
             message = f"✅ *Сервер добавлен!*\n\n• IP: `{server_ip}`\n• Имя: `{server_name}`\n• Тип: `{server_type}`"
@@ -1195,7 +1197,7 @@ def view_all_databases_handler(update, context):
     query = update.callback_query
     query.answer()
     
-    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    db_config = app.config.settings_manager.get_setting('DATABASE_CONFIG', {})
     
     if not db_config:
         message = "📋 *Все базы данных*\n\n❌ *Нет настроенных баз данных*"
@@ -1247,7 +1249,7 @@ def edit_databases_handler(update, context):
     query = update.callback_query
     query.answer()
     
-    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    db_config = app.config.settings_manager.get_setting('DATABASE_CONFIG', {})
     
     if not db_config:
         keyboard = [[InlineKeyboardButton("➕ Добавить категорию", callback_data='settings_db_add_category')]]
@@ -1270,7 +1272,7 @@ def delete_database_category_handler(update, context):
     query = update.callback_query
     query.answer()
     
-    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    db_config = app.config.settings_manager.get_setting('DATABASE_CONFIG', {})
     
     if not db_config:
         keyboard = [[InlineKeyboardButton("➕ Добавить категорию", callback_data='settings_db_add_category')]]
@@ -1328,12 +1330,12 @@ def handle_db_category_input(update, context):
     
     try:
         # Получаем текущую конфигурацию БД
-        db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+        db_config = app.config.settings_manager.get_setting('DATABASE_CONFIG', {})
         
         # Добавляем новую категорию
         if category_name not in db_config:
             db_config[category_name] = {}
-            settings_manager.set_setting('DATABASE_CONFIG', db_config)
+            app.config.settings_manager.set_setting('DATABASE_CONFIG', db_config)
             
             update.message.reply_text(
                 f"✅ *Категория '{category_name}' добавлена!*\n\n"
@@ -1364,8 +1366,8 @@ def show_windows_auth_settings(update, context):
     query.answer()
     
     # Получаем статистику по учетным данным
-    credentials = settings_manager.get_windows_credentials()
-    server_types = settings_manager.get_windows_server_types()
+    credentials = app.config.settings_manager.get_windows_credentials()
+    server_types = app.config.settings_manager.get_windows_server_types()
     
     # Группируем по типам серверов
     stats = {}
@@ -1407,7 +1409,7 @@ def show_windows_auth_list(update, context):
     query = update.callback_query
     query.answer()
     
-    credentials = settings_manager.get_windows_credentials()
+    credentials = app.config.settings_manager.get_windows_credentials()
     
     message = "👥 *Все учетные записи Windows*\n\n"
     
@@ -1463,7 +1465,7 @@ def show_windows_auth_by_type(update, context):
     query = update.callback_query
     query.answer()
     
-    server_types = settings_manager.get_windows_server_types()
+    server_types = app.config.settings_manager.get_windows_server_types()
     
     message = "📊 *Учетные данные по типам серверов*\n\n"
     
@@ -1471,7 +1473,7 @@ def show_windows_auth_by_type(update, context):
         message += "❌ *Типы серверов не настроены*\n"
     else:
         for server_type in server_types:
-            credentials = settings_manager.get_windows_credentials(server_type)
+            credentials = app.config.settings_manager.get_windows_credentials(server_type)
             message += f"*{server_type}* ({len(credentials)} учетных записей):\n"
             
             for cred in credentials[:3]:  # Показываем первые 3
@@ -1559,7 +1561,7 @@ def handle_windows_credential_input(update, context):
                 password = context.user_data['cred_password']
                 server_type = context.user_data['cred_server_type']
                 
-                success = settings_manager.add_windows_credential(
+                success = app.config.settings_manager.add_windows_credential(
                     username, password, server_type, priority
                 )
                 
@@ -1637,7 +1639,7 @@ def show_windows_auth_manage_types(update, context):
     query = update.callback_query
     query.answer()
     
-    server_types = settings_manager.get_windows_server_types()
+    server_types = app.config.settings_manager.get_windows_server_types()
     
     message = "⚙️ *Управление типами серверов*\n\n"
     
@@ -1646,7 +1648,7 @@ def show_windows_auth_manage_types(update, context):
     else:
         message += "*Существующие типы:*\n"
         for server_type in server_types:
-            credentials = settings_manager.get_windows_credentials(server_type)
+            credentials = app.config.settings_manager.get_windows_credentials(server_type)
             enabled_count = sum(1 for cred in credentials if cred['enabled'])
             message += f"• *{server_type}*: {enabled_count}/{len(credentials)} активных учетных записей\n"
     
@@ -1723,7 +1725,7 @@ def edit_server_type_handler(update, context, old_type):
     context.user_data['editing_server_type'] = True
     context.user_data['old_server_type'] = old_type
     
-    credentials = settings_manager.get_windows_credentials(old_type)
+    credentials = app.config.settings_manager.get_windows_credentials(old_type)
     
     query.edit_message_text(
         f"✏️ *Редактирование типа серверов*\n\n"
@@ -1741,7 +1743,7 @@ def merge_server_type_handler(update, context, source_type):
     query = update.callback_query
     query.answer()
     
-    server_types = settings_manager.get_windows_server_types()
+    server_types = app.config.settings_manager.get_windows_server_types()
     # Исключаем текущий тип из списка для объединения
     target_types = [t for t in server_types if t != source_type]
     
@@ -1751,12 +1753,12 @@ def merge_server_type_handler(update, context, source_type):
     
     message = f"🔄 *Объединение типов серверов*\n\n"
     message += f"Источник: *{source_type}*\n"
-    message += f"Учетных записей: {len(settings_manager.get_windows_credentials(source_type))}\n\n"
+    message += f"Учетных записей: {len(app.config.settings_manager.get_windows_credentials(source_type))}\n\n"
     message += "Выберите целевой тип для объединения:"
     
     keyboard = []
     for target_type in target_types:
-        cred_count = len(settings_manager.get_windows_credentials(target_type))
+        cred_count = len(app.config.settings_manager.get_windows_credentials(target_type))
         keyboard.append([
             InlineKeyboardButton(
                 f"🔄 {target_type} ({cred_count})", 
@@ -1777,7 +1779,7 @@ def delete_server_type_handler(update, context):
     query = update.callback_query
     query.answer()
     
-    server_types = settings_manager.get_windows_server_types()
+    server_types = app.config.settings_manager.get_windows_server_types()
     
     message = "🗑️ *Удаление типа серверов*\n\n"
     message += "Выберите тип для удаления:\n\n"
@@ -1786,7 +1788,7 @@ def delete_server_type_handler(update, context):
     keyboard = []
     for server_type in server_types:
         if server_type != 'default':  # Не позволяем удалить тип 'default'
-            cred_count = len(settings_manager.get_windows_credentials(server_type))
+            cred_count = len(app.config.settings_manager.get_windows_credentials(server_type))
             keyboard.append([
                 InlineKeyboardButton(
                     f"🗑️ {server_type} ({cred_count})", 
@@ -1807,13 +1809,13 @@ def show_server_type_stats(update, context):
     query = update.callback_query
     query.answer()
     
-    server_types = settings_manager.get_windows_server_types()
+    server_types = app.config.settings_manager.get_windows_server_types()
     
     message = "📊 *Статистика по типам серверов*\n\n"
     
     total_credentials = 0
     for server_type in server_types:
-        credentials = settings_manager.get_windows_credentials(server_type)
+        credentials = app.config.settings_manager.get_windows_credentials(server_type)
         enabled_count = sum(1 for cred in credentials if cred['enabled'])
         total_credentials += len(credentials)
         
@@ -1842,8 +1844,8 @@ def merge_server_types_confirmation(update, context, source_type, target_type):
     query = update.callback_query
     query.answer()
     
-    source_creds = settings_manager.get_windows_credentials(source_type)
-    target_creds = settings_manager.get_windows_credentials(target_type)
+    source_creds = app.config.settings_manager.get_windows_credentials(source_type)
+    target_creds = app.config.settings_manager.get_windows_credentials(target_type)
     
     message = f"🔄 *Подтверждение объединения*\n\n"
     message += f"*Источник:* {source_type}\n"
@@ -1872,7 +1874,7 @@ def delete_server_type_confirmation(update, context, server_type):
     query = update.callback_query
     query.answer()
     
-    credentials = settings_manager.get_windows_credentials(server_type)
+    credentials = app.config.settings_manager.get_windows_credentials(server_type)
     
     message = f"🗑️ *Подтверждение удаления*\n\n"
     message += f"Тип: *{server_type}*\n"
@@ -1898,11 +1900,11 @@ def execute_server_type_merge(update, context, source_type, target_type):
     
     try:
         # Получаем учетные данные исходного типа
-        source_credentials = settings_manager.get_windows_credentials(source_type)
+        source_credentials = app.config.settings_manager.get_windows_credentials(source_type)
         
         # Обновляем тип для каждой учетной записи
         for cred in source_credentials:
-            settings_manager.update_windows_credential(
+            app.config.settings_manager.update_windows_credential(
                 cred['id'], 
                 server_type=target_type
             )
@@ -1930,11 +1932,11 @@ def execute_server_type_delete(update, context, server_type):
     
     try:
         # Получаем учетные данные удаляемого типа
-        credentials = settings_manager.get_windows_credentials(server_type)
+        credentials = app.config.settings_manager.get_windows_credentials(server_type)
         
         # Перемещаем все учетные записи в тип 'default'
         for cred in credentials:
-            settings_manager.update_windows_credential(
+            app.config.settings_manager.update_windows_credential(
                 cred['id'], 
                 server_type='default'
             )
@@ -1961,7 +1963,7 @@ def handle_server_type_creation(update, context):
     
     try:
         # Проверяем, не существует ли уже такой тип
-        existing_types = settings_manager.get_windows_server_types()
+        existing_types = app.config.settings_manager.get_windows_server_types()
         if new_type in existing_types:
             update.message.reply_text(
                 f"❌ Тип '{new_type}' уже существует!",
@@ -1972,7 +1974,7 @@ def handle_server_type_creation(update, context):
             return
         
         # Создаем новую учетную запись с этим типом (можно пустую)
-        success = settings_manager.add_windows_credential(
+        success = app.config.settings_manager.add_windows_credential(
             username=f"user_{new_type}",
             password="temp_password",
             server_type=new_type,
@@ -2008,7 +2010,7 @@ def handle_server_type_editing(update, context):
     
     try:
         # Проверяем, не существует ли уже такой тип
-        existing_types = settings_manager.get_windows_server_types()
+        existing_types = app.config.settings_manager.get_windows_server_types()
         if new_type in existing_types and new_type != old_type:
             update.message.reply_text(
                 f"❌ Тип '{new_type}' уже существует!",
@@ -2019,11 +2021,11 @@ def handle_server_type_editing(update, context):
             return
         
         # Получаем все учетные записи старого типа
-        credentials = settings_manager.get_windows_credentials(old_type)
+        credentials = app.config.settings_manager.get_windows_credentials(old_type)
         
         # Обновляем тип для каждой учетной записи
         for cred in credentials:
-            settings_manager.update_windows_credential(
+            app.config.settings_manager.update_windows_credential(
                 cred['id'], 
                 server_type=new_type
             )

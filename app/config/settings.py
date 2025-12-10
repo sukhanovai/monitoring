@@ -12,6 +12,7 @@ from datetime import time as dt_time
 # Импортируем менеджер настроек
 try:
     from app.config.settings_manager import settings_manager
+    from app.config.settings_manager import settings_manager
     USE_DB = True
 except ImportError:
     USE_DB = False
@@ -79,7 +80,7 @@ def get_windows_credentials_db():
         return {'default': []}
 
     try:
-        return settings_manager.get_windows_credentials_db()
+        return app.config.settings_manager.get_windows_credentials_db()
     except Exception as e:
         print(f"❌ Ошибка получения учетных данных из БД: {e}")
         return {'default': []}
@@ -96,39 +97,39 @@ def get_windows_server_configs():
 
     try:
         configs = {}
-        servers = settings_manager.get_all_servers()
-        
+        servers = app.config.settings_manager.get_all_servers()
+
         # Группируем серверы по типам
         windows_servers = [s for s in servers if s['type'] == 'rdp']
-        
+
         # windows_2025 серверы
         win2025_ips = [s['ip'] for s in windows_servers if s['ip'] in ["192.168.20.6", "192.168.20.38", "192.168.20.47", "192.168.20.56", "192.168.20.57"]]
         configs["windows_2025"] = {
             "servers": win2025_ips,
             "credentials": WINDOWS_CREDENTIALS_DB.get('windows_2025', WINDOWS_CREDENTIALS[:2])
         }
-        
+
         # domain серверы
         domain_ips = [s['ip'] for s in windows_servers if s['ip'] in ["192.168.20.3", "192.168.20.4"]]
         configs["domain_servers"] = {
             "servers": domain_ips,
             "credentials": WINDOWS_CREDENTIALS_DB.get('domain_servers', [])
         }
-        
+
         # admin серверы
         admin_ips = [s['ip'] for s in windows_servers if s['ip'] in ["192.168.21.133"]]
         configs["admin_servers"] = {
             "servers": admin_ips,
             "credentials": WINDOWS_CREDENTIALS_DB.get('admin_servers', [])
         }
-        
+
         # standard windows серверы
         standard_ips = [s['ip'] for s in windows_servers if s['ip'] in ["192.168.20.9", "192.168.20.26", "192.168.20.42"]]
         configs["standard_windows"] = {
             "servers": standard_ips,
             "credentials": WINDOWS_CREDENTIALS_DB.get('standard_windows', [])
         }
-        
+
         return configs
     except Exception as e:
         print(f"❌ Ошибка получения конфигурации серверов из БД: {e}")
@@ -147,7 +148,7 @@ def get_servers_config():
         return {"windows_servers": {}, "linux_servers": {}, "ping_servers": {}}
 
     try:
-        servers = settings_manager.get_all_servers()
+        servers = app.config.settings_manager.get_all_servers()
 
         config = {
             "windows_servers": {},
@@ -261,4 +262,3 @@ if USE_DB:
     print("✅ Config загружает настройки из базы данных")
 else:
     print("⚠️ Config использует значения по умолчанию (база данных недоступна)")
-    
