@@ -1233,7 +1233,6 @@ def perform_windows_check(context, chat_id, progress_message_id):
     try:
         # ДИНАМИЧЕСКИЙ ИМПОРТ для избежания циклических зависимостей
         from app.extensions.server_checks import (
-        from app.extensions.server_checks import (
             check_windows_2025_servers,
             check_domain_windows_servers,
             check_admin_windows_servers, 
