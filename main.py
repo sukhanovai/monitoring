@@ -3,7 +3,7 @@
 Server Monitoring System v3.7.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
-Основной модуль запуска
+Основной модуль запуска 1
 """
 
 import os
