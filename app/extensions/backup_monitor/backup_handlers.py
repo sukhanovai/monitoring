@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.6.0
+Server Monitoring System v3.7.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчики для бота бэкапов
@@ -427,7 +427,7 @@ def show_host_status(query, backup_bot, host_name):
 def show_database_backups_menu(query, backup_bot):
     """Показывает меню бэкапов баз данных с прямым доступом к БД"""
     try:
-        from config import DATABASE_BACKUP_CONFIG
+        from app.config.settings import DATABASE_BACKUP_CONFIG
         
         # Создаем клавиатуру с кнопками для каждой БД
         keyboard = []
@@ -571,7 +571,7 @@ def show_database_backups_menu(query, backup_bot):
 def show_stale_databases(query, backup_bot):
     """Показывает только проблемные базы данных"""
     try:
-        from config import DATABASE_BACKUP_CONFIG
+        from app.config.settings import DATABASE_BACKUP_CONFIG
         
         problem_databases = []
         

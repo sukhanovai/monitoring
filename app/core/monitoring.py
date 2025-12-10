@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.6.0
+Server Monitoring System v3.7.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Ядро системы
@@ -114,7 +114,7 @@ def perform_manual_check(context, chat_id, progress_message_id):
     # Ленивая загрузка серверов
     global servers
     if not servers:
-        from extensions.server_checks import initialize_servers
+        from app.extensions.server_checks import initialize_servers
         servers = initialize_servers()
     
     total_servers = len(servers)
@@ -210,7 +210,7 @@ def get_current_server_status():
     
     # Переинициализируем серверы если список пустой
     if not servers:
-        from extensions.server_checks import initialize_servers
+        from app.extensions.server_checks import initialize_servers
         servers = initialize_servers()
         debug_log(f"🔄 Переинициализирован список серверов: {len(servers)} серверов")
     
@@ -283,7 +283,7 @@ def monitor_status(update, context):
         )
 
         # Информация о веб-интерфейсе
-        from extensions.extension_manager import extension_manager
+        from app.extensions.extension_manager import extension_manager
         if extension_manager.is_extension_enabled('web_interface'):
             message += "🌐 *Веб-интерфейс:* http://192.168.20.2:5000\n"
             message += "_*доступен только в локальной сети_\n"
@@ -671,7 +671,7 @@ def perform_cpu_check(context, chat_id, progress_message_id):
         update_progress(10, "⏳ Получаем список серверов...")
         
         # Получаем все серверы для проверки
-        from extensions.server_checks import initialize_servers
+        from app.extensions.server_checks import initialize_servers
         all_servers = initialize_servers()
         ssh_servers = [s for s in all_servers if s["type"] == "ssh"]
         rdp_servers = [s for s in all_servers if s["type"] == "rdp"]
@@ -690,10 +690,10 @@ def perform_cpu_check(context, chat_id, progress_message_id):
             try:
                 resources = None
                 if server["type"] == "ssh":
-                    from extensions.server_checks import get_linux_resources_improved
+                    from app.extensions.server_checks import get_linux_resources_improved
                     resources = get_linux_resources_improved(server["ip"])
                 elif server["type"] == "rdp":
-                    from extensions.server_checks import get_windows_resources_improved
+                    from app.extensions.server_checks import get_windows_resources_improved
                     resources = get_windows_resources_improved(server["ip"])
                 
                 cpu_value = resources.get('cpu', 0) if resources else 0
@@ -814,7 +814,7 @@ def perform_ram_check(context, chat_id, progress_message_id):
         update_progress(10, "⏳ Получаем список серверов...")
         
         # Получаем все серверы для проверки
-        from extensions.server_checks import initialize_servers
+        from app.extensions.server_checks import initialize_servers
         all_servers = initialize_servers()
         ssh_servers = [s for s in all_servers if s["type"] == "ssh"]
         rdp_servers = [s for s in all_servers if s["type"] == "rdp"]
@@ -833,10 +833,10 @@ def perform_ram_check(context, chat_id, progress_message_id):
             try:
                 resources = None
                 if server["type"] == "ssh":
-                    from extensions.server_checks import get_linux_resources_improved
+                    from app.extensions.server_checks import get_linux_resources_improved
                     resources = get_linux_resources_improved(server["ip"])
                 elif server["type"] == "rdp":
-                    from extensions.server_checks import get_windows_resources_improved
+                    from app.extensions.server_checks import get_windows_resources_improved
                     resources = get_windows_resources_improved(server["ip"])
                 
                 ram_value = resources.get('ram', 0) if resources else 0
@@ -957,7 +957,7 @@ def perform_disk_check(context, chat_id, progress_message_id):
         update_progress(10, "⏳ Получаем список серверов...")
         
         # Получаем все серверы для проверки
-        from extensions.server_checks import initialize_servers
+        from app.extensions.server_checks import initialize_servers
         all_servers = initialize_servers()
         ssh_servers = [s for s in all_servers if s["type"] == "ssh"]
         rdp_servers = [s for s in all_servers if s["type"] == "rdp"]
@@ -976,10 +976,10 @@ def perform_disk_check(context, chat_id, progress_message_id):
             try:
                 resources = None
                 if server["type"] == "ssh":
-                    from extensions.server_checks import get_linux_resources_improved
+                    from app.extensions.server_checks import get_linux_resources_improved
                     resources = get_linux_resources_improved(server["ip"])
                 elif server["type"] == "rdp":
-                    from extensions.server_checks import get_windows_resources_improved
+                    from app.extensions.server_checks import get_windows_resources_improved
                     resources = get_windows_resources_improved(server["ip"])
                 
                 disk_value = resources.get('disk', 0) if resources else 0
@@ -1126,7 +1126,7 @@ def perform_linux_check(context, chat_id, progress_message_id):
         )
 
     try:
-        from extensions.server_checks import check_linux_servers
+        from app.extensions.server_checks import check_linux_servers
         update_progress(0, "⏳ Подготовка...")
         results, total_servers = check_linux_servers(update_progress)
 
@@ -1219,7 +1219,7 @@ def perform_windows_check(context, chat_id, progress_message_id):
 
     try:
         # ДИНАМИЧЕСКИЙ ИМПОРТ для избежания циклических зависимостей
-        from extensions.server_checks import (
+        from app.extensions.server_checks import (
             check_windows_2025_servers,
             check_domain_windows_servers,
             check_admin_windows_servers, 
@@ -1358,7 +1358,7 @@ def check_other_resources_handler(update, context):
 def perform_other_check(context, chat_id, progress_message_id):
     """Выполняет проверку других серверов"""
     try:
-        from extensions.server_checks import initialize_servers
+        from app.extensions.server_checks import initialize_servers
         servers = initialize_servers()
         ping_servers = [s for s in servers if s["type"] == "ping"]
 
@@ -1441,7 +1441,7 @@ def perform_full_check(context, chat_id, progress_message_id):
 
     try:
         update_progress(10, "⏳ Подготовка...")
-        from extensions.server_checks import check_all_servers_by_type
+        from app.extensions.server_checks import check_all_servers_by_type
         results, stats = check_all_servers_by_type()
 
         total_checked = stats["windows_2025"]["checked"] + stats["standard_windows"]["checked"] + stats["linux"]["checked"]
@@ -1485,7 +1485,7 @@ def start_monitoring():
     debug_log = get_debug_log()
 
     # Ленивая инициализация серверов
-    from extensions.server_checks import initialize_servers
+    from app.extensions.server_checks import initialize_servers
     servers = initialize_servers()
     
     # Исключаем сервер мониторинга из списка
@@ -1520,7 +1520,7 @@ def start_monitoring():
     )
     
     # Информация о веб-интерфейсе
-    from extensions.extension_manager import extension_manager
+    from app.extensions.extension_manager import extension_manager
     if extension_manager.is_extension_enabled('web_interface'):
         start_message += "🌐 *Веб-интерфейс:* http://192.168.20.2:5000\n"
         start_message += "_*доступен только в локальной сети_\n"
@@ -1658,10 +1658,10 @@ def check_resources_automatically():
             # Получаем текущие ресурсы
             current_resources = None
             if server["type"] == "ssh":
-                from extensions.server_checks import get_linux_resources_improved
+                from app.extensions.server_checks import get_linux_resources_improved
                 current_resources = get_linux_resources_improved(ip)
             elif server["type"] == "rdp":
-                from extensions.server_checks import get_windows_resources_improved
+                from app.extensions.server_checks import get_windows_resources_improved
                 current_resources = get_windows_resources_improved(ip)
 
             if not current_resources:
@@ -1706,7 +1706,7 @@ def check_resources_automatically():
 
 def check_resource_alerts(ip, current_resource):
     """Проверяет условия для отправки алертов по ресурсам"""
-    from config import RESOURCE_ALERT_THRESHOLDS, RESOURCE_ALERT_INTERVAL
+    from app.config.settings import RESOURCE_ALERT_THRESHOLDS, RESOURCE_ALERT_INTERVAL
     
     alerts = []
     server_name = current_resource["server_name"]
@@ -2010,7 +2010,7 @@ def get_backup_summary_for_report(period_hours=16):
             debug_log(f"  - {host_name}: {status}, последний: {last_backup}")
         
         # Получаем все хосты из конфигурации
-        from config import PROXMOX_HOSTS
+        from app.config.settings import PROXMOX_HOSTS
         
         debug_log("📊 ДИАГНОСТИКА - Хосты из конфигурации PROXMOX_HOSTS:")
         for host in PROXMOX_HOSTS.keys():
@@ -2058,7 +2058,7 @@ def get_backup_summary_for_report(period_hours=16):
         db_results = cursor.fetchall()
         
         # Получаем конфигурацию
-        from config import DATABASE_BACKUP_CONFIG
+        from app.config.settings import DATABASE_BACKUP_CONFIG
         
         config_databases = {
             'company_database': DATABASE_BACKUP_CONFIG.get("company_databases", {}),
@@ -2286,7 +2286,7 @@ def debug_proxmox_config():
     """Временная функция для диагностики конфигурации Proxmox"""
     debug_log = get_debug_log()
     try:
-        from config import PROXMOX_HOSTS
+        from app.config.settings import PROXMOX_HOSTS
         debug_log("=== ДИАГНОСТИКА KONФИГУРАЦИИ PROXMOX ===")
         debug_log(f"Всего хостов в PROXMOX_HOSTS: {len(PROXMOX_HOSTS)}")
         for i, host in enumerate(PROXMOX_HOSTS.keys(), 1):

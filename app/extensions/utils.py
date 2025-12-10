@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.6.0
+Server Monitoring System v3.7.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Утилиты: диагностика, отчеты, статистика
@@ -9,7 +9,7 @@ import json
 import os
 import time
 from datetime import datetime, timedelta
-from config import STATS_FILE, DATA_DIR
+from app.config.settings import STATS_FILE, DATA_DIR
 
 # === ДИАГНОСТИКА SSH (из single_check.py) ===
 
@@ -21,7 +21,7 @@ def diagnose_ssh_command(update, context):
 
     target = context.args[0]
     
-    from extensions.server_checks import initialize_servers
+    from app.extensions.server_checks import initialize_servers
     servers = initialize_servers()
     server = None
 
@@ -40,13 +40,13 @@ def diagnose_ssh_command(update, context):
     try:
         # Проверка доступности порта
         port = 22
-        from monitor_core import check_port
+        from app.core.monitoring import check_port
         is_port_open = check_port(server["ip"], port, timeout=10)
         message += f"Порт {port} (SSH): {'🟢 Открыт' if is_port_open else '🔴 Закрыт'}\n"
 
         if is_port_open:
             # Проверка SSH подключения
-            from monitor_core import check_ssh, check_ssh_alternative
+            from app.core.monitoring import check_ssh, check_ssh_alternative
             
             message += "\n*Проверка Paramiko (основной метод):*\n"
             result1 = check_ssh(server["ip"])

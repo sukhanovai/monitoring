@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.6.0
+Server Monitoring System v3.7.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Утилиты ядра мониторинга
@@ -70,7 +70,7 @@ class ServerChecker:
         try:
             # Ленивая загрузка конфига
             if username is None or key_path is None:
-                from config import SSH_USERNAME, SSH_KEY_PATH
+                from app.config.settings import SSH_USERNAME, SSH_KEY_PATH
                 username = SSH_USERNAME
                 key_path = SSH_KEY_PATH
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Server Monitoring System v3.6.0
+Server Monitoring System v3.7.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Основной модуль запуска
@@ -17,7 +17,7 @@ sys.path.insert(0, '/opt/monitoring')
 
 def setup_logging():
     """Настройка логирования с учетом отладки"""
-    from core_utils import DEBUG_MODE
+    from app.utils.common import DEBUG_MODE
     
     log_level = logging.DEBUG if DEBUG_MODE else logging.INFO
     
@@ -39,7 +39,7 @@ def main():
         logger.info("🚀 Запуск оптимизированной версии мониторинга...")
         
         # Ленивая загрузка конфигурации
-        from config import TELEGRAM_TOKEN
+        from app.config.settings import TELEGRAM_TOKEN
         
         # Инициализация бота
         from telegram.ext import Updater
@@ -49,7 +49,7 @@ def main():
         dispatcher = updater.dispatcher
 
         # Настройка меню
-        from bot_menu import setup_menu, get_handlers, get_callback_handlers
+        from app.bot.menus import setup_menu, get_handlers, get_callback_handlers
         setup_menu(updater.bot)
 
         # Добавляем обработчики
@@ -61,7 +61,7 @@ def main():
 
         # Добавляем обработчики настроек
         try:
-            from settings_handlers import get_settings_handlers
+            from app.bot.handlers import get_settings_handlers
             for handler in get_settings_handlers():
                 dispatcher.add_handler(handler)
             logger.info("✅ Обработчики настроек добавлены")
@@ -69,28 +69,28 @@ def main():
             logger.warning(f"⚠️ Обработчики настроек недоступны: {e}")
 
         # Ленивая загрузка расширений
-        from extensions.extension_manager import extension_manager
+        from app.extensions.extension_manager import extension_manager
         
         # Настраиваем обработчики бэкапов если расширение включено
         if extension_manager.is_extension_enabled('backup_monitor'):
-            from extensions.backup_monitor.bot_handler import setup_backup_handlers
+            from app.extensions.backup_monitor.bot_handler import setup_backup_handlers
             setup_backup_handlers(dispatcher)
             logger.info("✅ Обработчики бэкапов настроены")
 
         # Запускаем веб-сервер если расширение включено
         if extension_manager.is_extension_enabled('web_interface'):
-            from extensions.web_interface import start_web_server
+            from app.extensions.web_interface import start_web_server
             web_thread = threading.Thread(target=start_web_server, daemon=True)
             web_thread.start()
             logger.info("✅ Веб-сервер запущен")
 
         # Запускаем сбор статистики
-        from extensions.utils import save_monitoring_stats
+        from app.extensions.utils import save_monitoring_stats
         save_monitoring_stats()
         logger.info("✅ Сбор статистики запущен")
 
         # Запускаем основной мониторинг
-        from monitor_core import start_monitoring
+        from app.core.monitoring import start_monitoring
         monitor_thread = threading.Thread(target=start_monitoring, daemon=True)
         monitor_thread.start()
         logger.info("✅ Основной мониторинг запущен")

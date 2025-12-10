@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.6.0
+Server Monitoring System v3.7.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Конфигурация настроек обмена с БД мониторинга
@@ -11,7 +11,7 @@ from datetime import time as dt_time
 
 # Импортируем менеджер настроек
 try:
-    from settings_manager import settings_manager
+    from app.config.settings_manager import settings_manager
     USE_DB = True
 except ImportError:
     USE_DB = False
