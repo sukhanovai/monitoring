@@ -87,7 +87,7 @@ def check_access(chat_id):
     """Проверка доступа к боту"""
 #  config = get_config()
     from app.config.settings import CHAT_IDS
-    return str(chat_id) in config.CHAT_IDS
+    return str(chat_id) in CHAT_IDS
 
 
 def start_command(update, context):
