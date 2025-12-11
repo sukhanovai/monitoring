@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.8.0
+Server Monitoring System v3.8.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Утилиты: диагностика, отчеты, статистика
@@ -9,7 +9,7 @@ import json
 import os
 import time
 from datetime import datetime, timedelta
-from config import STATS_FILE, DATA_DIR
+from app.config.config import STATS_FILE, DATA_DIR
 
 # === ДИАГНОСТИКА SSH (из single_check.py) ===
 

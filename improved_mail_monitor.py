@@ -16,7 +16,7 @@ from email import message_from_bytes
 import email.policy
 from datetime import datetime
 from email.utils import parsedate_to_datetime
-from config import (
+from app.config.config import (
     PROXMOX_HOSTS, BACKUP_STATUS_MAP, BACKUP_DATABASE_CONFIG,
     DATABASE_BACKUP_CONFIG, BACKUP_PATTERNS
 )

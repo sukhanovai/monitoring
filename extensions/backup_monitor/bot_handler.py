@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.8.0
+Server Monitoring System v3.8.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Мониторинг бэкапов Proxmox
@@ -59,7 +59,7 @@ class BackupMonitorBot(BackupBase):
     """Оптимизированный класс для мониторинга бэкапов"""
     
     def __init__(self):
-        from config import BACKUP_DATABASE_CONFIG
+        from app.config.config import BACKUP_DATABASE_CONFIG
         super().__init__(BACKUP_DATABASE_CONFIG['backups_db'])
         self.status_calc = StatusCalculator()
         self.formatters = DisplayFormatters()
@@ -68,7 +68,7 @@ class BackupMonitorBot(BackupBase):
     
     def get_database_display_names(self):
         """Получает отображаемые имена баз данных из конфигурации"""
-        from config import DATABASE_BACKUP_CONFIG
+        from app.config.config import DATABASE_BACKUP_CONFIG
         
         display_names = {}
         
@@ -235,7 +235,7 @@ class BackupMonitorBot(BackupBase):
         stale_databases = self.get_stale_database_backups(hours_threshold)
         
         # Получаем все известные хосты и БД из конфигурации
-        from config import PROXMOX_HOSTS, DATABASE_BACKUP_CONFIG
+        from app.config.config import PROXMOX_HOSTS, DATABASE_BACKUP_CONFIG
         
         all_configured_hosts = list(PROXMOX_HOSTS.keys())
         all_configured_databases = []
@@ -411,7 +411,7 @@ def backup_callback(update, context):
 
 def get_database_config(self):
     """Получает полную конфигурацию баз данных"""
-    from config import DATABASE_BACKUP_CONFIG
+    from app.config.config import DATABASE_BACKUP_CONFIG
     
     return {
         "company_databases": DATABASE_BACKUP_CONFIG.get("company_databases", {}),
@@ -422,7 +422,7 @@ def get_database_config(self):
 
 def get_database_config_for_report(self):
     """Получает конфигурацию баз данных для отчета"""
-    from config import DATABASE_BACKUP_CONFIG
+    from app.config.config import DATABASE_BACKUP_CONFIG
     
     # Собираем все базы из конфигурации
     all_databases = {}

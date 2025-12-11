@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.8.0
+Server Monitoring System v3.8.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Ядро системы
@@ -1706,7 +1706,7 @@ def check_resources_automatically():
 
 def check_resource_alerts(ip, current_resource):
     """Проверяет условия для отправки алертов по ресурсам"""
-    from config import RESOURCE_ALERT_THRESHOLDS, RESOURCE_ALERT_INTERVAL
+    from app.config.config import RESOURCE_ALERT_THRESHOLDS, RESOURCE_ALERT_INTERVAL
     
     alerts = []
     server_name = current_resource["server_name"]
@@ -2010,7 +2010,7 @@ def get_backup_summary_for_report(period_hours=16):
             debug_log(f"  - {host_name}: {status}, последний: {last_backup}")
         
         # Получаем все хосты из конфигурации
-        from config import PROXMOX_HOSTS
+        from app.config.config import PROXMOX_HOSTS
         
         debug_log("📊 ДИАГНОСТИКА - Хосты из конфигурации PROXMOX_HOSTS:")
         for host in PROXMOX_HOSTS.keys():
@@ -2058,7 +2058,7 @@ def get_backup_summary_for_report(period_hours=16):
         db_results = cursor.fetchall()
         
         # Получаем конфигурацию
-        from config import DATABASE_BACKUP_CONFIG
+        from app.config.config import DATABASE_BACKUP_CONFIG
         
         config_databases = {
             'company_database': DATABASE_BACKUP_CONFIG.get("company_databases", {}),
@@ -2286,7 +2286,7 @@ def debug_proxmox_config():
     """Временная функция для диагностики конфигурации Proxmox"""
     debug_log = get_debug_log()
     try:
-        from config import PROXMOX_HOSTS
+        from app.config.config import PROXMOX_HOSTS
         debug_log("=== ДИАГНОСТИКА KONФИГУРАЦИИ PROXMOX ===")
         debug_log(f"Всего хостов в PROXMOX_HOSTS: {len(PROXMOX_HOSTS)}")
         for i, host in enumerate(PROXMOX_HOSTS.keys(), 1):

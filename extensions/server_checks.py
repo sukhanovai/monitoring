@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.8.0
+Server Monitoring System v3.8.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Унифицированные проверки серверов: ресурсы, доступность, список
@@ -13,7 +13,7 @@ import sys
 import os
 sys.path.insert(0, '/opt/monitoring')
 
-from config import (RDP_SERVERS, SSH_SERVERS, PING_SERVERS, SSH_KEY_PATH, SSH_USERNAME, 
+from app.config.config import (RDP_SERVERS, SSH_SERVERS, PING_SERVERS, SSH_KEY_PATH, SSH_USERNAME, 
                    RESOURCE_THRESHOLDS, WINDOWS_SERVER_CREDENTIALS, WINRM_CONFIGS,
                    SERVER_CONFIG)
 
