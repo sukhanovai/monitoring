@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.8.3
+Server Monitoring System v3.9.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Меню бота
@@ -34,9 +34,9 @@ def lazy_import(module_name, attribute_name=None):
 settings_callback_handler = lazy_import_settings_handler()
 
 # Ленивые импорты конфига
-get_config = lazy_import('app.config.config')
-def get_config_value():
-    return get_config()
+get_config = lazy_import('config')
+get_chat_ids = lazy_import('config', 'CHAT_IDS')
+get_telegram_token = lazy_import('config', 'TELEGRAM_TOKEN')
 
 # Ленивые импорты утилит
 get_debug_log = lazy_import('core_utils', 'debug_log')
@@ -84,10 +84,8 @@ def setup_menu(bot):
 
 def check_access(chat_id):
     """Проверка доступа к боту"""
-    config_module = get_config()
-    return str(chat_id) in config_module.CHAT_IDS
-#    config = get_config_value()
-#    return str(chat_id) in config.CHAT_IDS
+    config = get_config()
+    return str(chat_id) in config.CHAT_IDS
 
 def start_command(update, context):
     """Обработчик команды /start с отладочной информацией"""

@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.8.3
+Server Monitoring System v3.9.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Ядро системы
@@ -28,16 +28,7 @@ last_report_date = None
 def lazy_import(module_name, attribute_name=None):
     """Ленивая загрузка модулей"""
     def import_func():
-        try:
-            # Пробуем импортировать как есть
-            module = __import__(module_name, fromlist=[attribute_name] if attribute_name else [])
-        except ModuleNotFoundError:
-            # Если не получилось, пробуем разбить на части
-            parts = module_name.split('.')
-            module = __import__(parts[0])
-            for part in parts[1:]:
-                module = getattr(module, part)
-        
+        module = __import__(module_name, fromlist=[attribute_name] if attribute_name else [])
         return getattr(module, attribute_name) if attribute_name else module
     return import_func
 
@@ -47,12 +38,12 @@ get_debug_log = lazy_import('core_utils', 'debug_log')
 get_progress_bar = lazy_import('core_utils', 'progress_bar')
 
 # Ленивые импорты конфига
-get_config = lazy_import('app.config.config')
-get_check_interval = lazy_import('app.config.config', 'CHECK_INTERVAL')
-get_silent_times = lazy_import('app.config.config', 'SILENT_START')
-get_data_collection_time = lazy_import('app.config.config', 'DATA_COLLECTION_TIME')
-get_max_fail_time = lazy_import('app.config.config', 'MAX_FAIL_TIME')
-get_resource_config = lazy_import('app.config.config', 'RESOURCE_CHECK_INTERVAL')
+get_config = lazy_import('config')
+get_check_interval = lazy_import('config', 'CHECK_INTERVAL')
+get_silent_times = lazy_import('config', 'SILENT_START')
+get_data_collection_time = lazy_import('config', 'DATA_COLLECTION_TIME')
+get_max_fail_time = lazy_import('config', 'MAX_FAIL_TIME')
+get_resource_config = lazy_import('config', 'RESOURCE_CHECK_INTERVAL')
 
 def is_proxmox_server(server):
     """Проверяет, является ли сервер Proxmox"""
@@ -1504,10 +1495,8 @@ def start_monitoring():
 
     # Ленивая инициализация бота
     from telegram import Bot
-#    config = get_config()
-#    bot = Bot(token=config.TELEGRAM_TOKEN)
-    config_module = get_config()
-    bot = Bot(token=config_module.TELEGRAM_TOKEN)
+    config = get_config()
+    bot = Bot(token=config.TELEGRAM_TOKEN)
 
     # Инициализация server_status (только для оставшихся серверов)
     for server in servers:
@@ -1717,7 +1706,7 @@ def check_resources_automatically():
 
 def check_resource_alerts(ip, current_resource):
     """Проверяет условия для отправки алертов по ресурсам"""
-    from app.config.config import RESOURCE_ALERT_THRESHOLDS, RESOURCE_ALERT_INTERVAL
+    from config import RESOURCE_ALERT_THRESHOLDS, RESOURCE_ALERT_INTERVAL
     
     alerts = []
     server_name = current_resource["server_name"]
@@ -2021,7 +2010,7 @@ def get_backup_summary_for_report(period_hours=16):
             debug_log(f"  - {host_name}: {status}, последний: {last_backup}")
         
         # Получаем все хосты из конфигурации
-        from app.config.config import PROXMOX_HOSTS
+        from config import PROXMOX_HOSTS
         
         debug_log("📊 ДИАГНОСТИКА - Хосты из конфигурации PROXMOX_HOSTS:")
         for host in PROXMOX_HOSTS.keys():
@@ -2069,7 +2058,7 @@ def get_backup_summary_for_report(period_hours=16):
         db_results = cursor.fetchall()
         
         # Получаем конфигурацию
-        from app.config.config import DATABASE_BACKUP_CONFIG
+        from config import DATABASE_BACKUP_CONFIG
         
         config_databases = {
             'company_database': DATABASE_BACKUP_CONFIG.get("company_databases", {}),
@@ -2297,7 +2286,7 @@ def debug_proxmox_config():
     """Временная функция для диагностики конфигурации Proxmox"""
     debug_log = get_debug_log()
     try:
-        from app.config.config import PROXMOX_HOSTS
+        from config import PROXMOX_HOSTS
         debug_log("=== ДИАГНОСТИКА KONФИГУРАЦИИ PROXMOX ===")
         debug_log(f"Всего хостов в PROXMOX_HOSTS: {len(PROXMOX_HOSTS)}")
         for i, host in enumerate(PROXMOX_HOSTS.keys(), 1):
