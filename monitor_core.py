@@ -1,9 +1,9 @@
 """
-Server Monitoring System v4.0.3
+Server Monitoring System v4.0.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Ядро системы
-Версия: 4.0.3
+Версия: 4.0.4
 """
 
 import os
@@ -12,7 +12,7 @@ import time
 from datetime import datetime, timedelta
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from app import server_checker, logger
-from app.utils.common import debug_log, progress_bar, format_duration, safe_import, DEBUG_MODE
+from app.utils import debug_log, progress_bar, format_duration, safe_import, DEBUG_MODE
 
 # Глобальные переменные
 bot = None
@@ -34,11 +34,6 @@ def lazy_import(module_name, attribute_name=None):
         module = __import__(module_name, fromlist=[attribute_name] if attribute_name else [])
         return getattr(module, attribute_name) if attribute_name else module
     return import_func
-
-# Ленивые импорты утилит
-get_server_checker = lambda: server_checker
-get_debug_log = lambda: debug_log
-get_progress_bar = lambda: progress_bar
 
 # Ленивые импорты конфига
 get_config = lazy_import('config')

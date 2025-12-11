@@ -1,9 +1,9 @@
 """
-Server Monitoring System v4.0.3
+Server Monitoring System v4.0.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчики для управления настройками через бота
-Версия: 4.0.3
+Версия: 4.0.4
 """
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -14,7 +14,7 @@ import json
 def get_debug_log():
     """Безопасная функция для логирования"""
     try:
-        from app.utils.common import debug_log
+        from app.utils import debug_log
         return debug_log
     except ImportError:
         # Заглушка если модуль не доступен

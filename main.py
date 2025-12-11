@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Server Monitoring System v4.0.3
+Server Monitoring System v4.0.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Основной модуль запуска
-Версия: 4.0.3
+Версия: 4.0.4
 """
 
 import os
@@ -13,7 +13,7 @@ import time
 import logging
 from datetime import datetime
 from app import server_checker, logger
-from app.utils.common import debug_log, progress_bar, format_duration, safe_import, DEBUG_MODE
+from app.utils import debug_log, progress_bar, format_duration, safe_import, DEBUG_MODE
 
 # Добавляем путь для импортов
 sys.path.insert(0, '/opt/monitoring')
