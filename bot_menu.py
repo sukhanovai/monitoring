@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.8.1
+Server Monitoring System v3.8.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Меню бота
@@ -34,9 +34,9 @@ def lazy_import(module_name, attribute_name=None):
 settings_callback_handler = lazy_import_settings_handler()
 
 # Ленивые импорты конфига
-get_config = lazy_import('config')
-get_chat_ids = lazy_import('config', 'CHAT_IDS')
-get_telegram_token = lazy_import('config', 'TELEGRAM_TOKEN')
+get_config = lazy_import('app.config.config')
+get_chat_ids = lazy_import('app.config.config', 'CHAT_IDS')
+get_telegram_token = lazy_import('app.config.config', 'TELEGRAM_TOKEN')
 
 # Ленивые импорты утилит
 get_debug_log = lazy_import('core_utils', 'debug_log')

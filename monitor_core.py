@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.8.1
+Server Monitoring System v3.8.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Ядро системы
@@ -38,12 +38,12 @@ get_debug_log = lazy_import('core_utils', 'debug_log')
 get_progress_bar = lazy_import('core_utils', 'progress_bar')
 
 # Ленивые импорты конфига
-get_config = lazy_import('config')
-get_check_interval = lazy_import('config', 'CHECK_INTERVAL')
-get_silent_times = lazy_import('config', 'SILENT_START')
-get_data_collection_time = lazy_import('config', 'DATA_COLLECTION_TIME')
-get_max_fail_time = lazy_import('config', 'MAX_FAIL_TIME')
-get_resource_config = lazy_import('config', 'RESOURCE_CHECK_INTERVAL')
+get_config = lazy_import('app.config.config')
+get_check_interval = lazy_import('app.config.config', 'CHECK_INTERVAL')
+get_silent_times = lazy_import('app.config.config', 'SILENT_START')
+get_data_collection_time = lazy_import('app.config.config', 'DATA_COLLECTION_TIME')
+get_max_fail_time = lazy_import('app.config.config', 'MAX_FAIL_TIME')
+get_resource_config = lazy_import('app.config.config', 'RESOURCE_CHECK_INTERVAL')
 
 def is_proxmox_server(server):
     """Проверяет, является ли сервер Proxmox"""

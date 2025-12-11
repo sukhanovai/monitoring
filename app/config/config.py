@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.8.1
+Server Monitoring System v3.8.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Конфигурация настроек обмена с БД мониторинга
