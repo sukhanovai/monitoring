@@ -70,7 +70,7 @@ class ServerChecker:
         try:
             # Ленивая загрузка конфига
             if username is None or key_path is None:
-                from app.config.config import SSH_USERNAME, SSH_KEY_PATH
+                from config import SSH_USERNAME, SSH_KEY_PATH
                 username = SSH_USERNAME
                 key_path = SSH_KEY_PATH
 

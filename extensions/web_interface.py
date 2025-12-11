@@ -6,12 +6,12 @@ License: MIT
 """
 
 from flask import Flask, jsonify, render_template_string, request
-from app.config.config import WEB_PORT, WEB_HOST
+from config import WEB_PORT, WEB_HOST
 import threading
 from datetime import datetime
 import json
 import os
-from app.config.config import STATS_FILE, DATA_DIR
+from config import STATS_FILE, DATA_DIR
 import subprocess
 import sys
 
@@ -806,7 +806,7 @@ def get_monitoring_stats():
         availability_percentage = round((servers_up / total_servers) * 100, 1) if total_servers > 0 else 0
         
         # Получаем настройки из конфига
-        from app.config.config import CHECK_INTERVAL, RESOURCE_CHECK_INTERVAL
+        from config import CHECK_INTERVAL, RESOURCE_CHECK_INTERVAL
         resource_check_minutes = RESOURCE_CHECK_INTERVAL // 60
         
         # Считаем проблемы с ресурсами

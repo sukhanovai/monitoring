@@ -9,7 +9,7 @@ import json
 import os
 import time
 from datetime import datetime, timedelta
-from app.config.config import STATS_FILE, DATA_DIR
+from config import STATS_FILE, DATA_DIR
 
 # === ДИАГНОСТИКА SSH (из single_check.py) ===
 

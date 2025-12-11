@@ -13,7 +13,7 @@ import sys
 import os
 sys.path.insert(0, '/opt/monitoring')
 
-from app.config.config import (RDP_SERVERS, SSH_SERVERS, PING_SERVERS, SSH_KEY_PATH, SSH_USERNAME, 
+from config import (RDP_SERVERS, SSH_SERVERS, PING_SERVERS, SSH_KEY_PATH, SSH_USERNAME, 
                    RESOURCE_THRESHOLDS, WINDOWS_SERVER_CREDENTIALS, WINRM_CONFIGS,
                    SERVER_CONFIG)
 

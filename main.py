@@ -39,7 +39,7 @@ def main():
         logger.info("🚀 Запуск оптимизированной версии мониторинга...")
         
         # Ленивая загрузка конфигурации
-        from app.config.config import TELEGRAM_TOKEN
+        from config import TELEGRAM_TOKEN
         
         # Инициализация бота
         from telegram.ext import Updater
