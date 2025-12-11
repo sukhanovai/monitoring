@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.8.2
+Server Monitoring System v3.8.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Ядро системы
@@ -28,7 +28,16 @@ last_report_date = None
 def lazy_import(module_name, attribute_name=None):
     """Ленивая загрузка модулей"""
     def import_func():
-        module = __import__(module_name, fromlist=[attribute_name] if attribute_name else [])
+        try:
+            # Пробуем импортировать как есть
+            module = __import__(module_name, fromlist=[attribute_name] if attribute_name else [])
+        except ModuleNotFoundError:
+            # Если не получилось, пробуем разбить на части
+            parts = module_name.split('.')
+            module = __import__(parts[0])
+            for part in parts[1:]:
+                module = getattr(module, part)
+        
         return getattr(module, attribute_name) if attribute_name else module
     return import_func
 
