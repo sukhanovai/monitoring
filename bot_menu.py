@@ -84,8 +84,10 @@ def setup_menu(bot):
 
 def check_access(chat_id):
     """Проверка доступа к боту"""
-    config = get_config_value()
-    return str(chat_id) in config.CHAT_IDS
+    config_module = get_config()
+    return str(chat_id) in config_module.CHAT_IDS
+#    config = get_config_value()
+#    return str(chat_id) in config.CHAT_IDS
 
 def start_command(update, context):
     """Обработчик команды /start с отладочной информацией"""
