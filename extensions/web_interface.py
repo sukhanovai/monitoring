@@ -1,19 +1,17 @@
 """
-Server Monitoring System v3.7.1
+Server Monitoring System v3.8.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Веб-интерфейс
 """
 
 from flask import Flask, jsonify, render_template_string, request
-from app.config.settings import WEB_PORT, WEB_HOST
-from app.config.settings import WEB_PORT, WEB_HOST
+from config import WEB_PORT, WEB_HOST
 import threading
 from datetime import datetime
 import json
 import os
-from app.config.settings import STATS_FILE, DATA_DIR
-from app.config.settings import STATS_FILE, DATA_DIR
+from config import STATS_FILE, DATA_DIR
 import subprocess
 import sys
 
@@ -741,8 +739,8 @@ def get_monitoring_stats():
                 stats_data = json.load(f)
         
         # Получаем текущий статус серверов
-        from app.core.monitoring import get_current_server_status, monitoring_active, last_check_time
-        from app.core.monitoring import is_silent_time, resource_history
+        from monitor_core import get_current_server_status, monitoring_active, last_check_time
+        from monitor_core import is_silent_time, resource_history
         from extensions.server_list import initialize_servers
         
         current_status = get_current_server_status()
@@ -808,8 +806,7 @@ def get_monitoring_stats():
         availability_percentage = round((servers_up / total_servers) * 100, 1) if total_servers > 0 else 0
         
         # Получаем настройки из конфига
-        from app.config.settings import CHECK_INTERVAL, RESOURCE_CHECK_INTERVAL
-        from app.config.settings import CHECK_INTERVAL, RESOURCE_CHECK_INTERVAL
+        from config import CHECK_INTERVAL, RESOURCE_CHECK_INTERVAL
         resource_check_minutes = RESOURCE_CHECK_INTERVAL // 60
         
         # Считаем проблемы с ресурсами
@@ -880,22 +877,19 @@ def api_run_check():
     try:
         if check_type == 'quick':
             # Запуск быстрой проверки доступности
-            from app.core.monitoring import get_current_server_status
-            from app.core.monitoring import get_current_server_status
+            from monitor_core import get_current_server_status
             status = get_current_server_status()
             message = f"✅ Быстрая проверка выполнена: {len(status['ok'])} доступно, {len(status['failed'])} недоступно"
             
         elif check_type == 'resources':
             # Запуск проверки ресурсов
-            from app.core.monitoring import check_resources_automatically
-            from app.core.monitoring import check_resources_automatically
+            from monitor_core import check_resources_automatically
             check_resources_automatically()
             message = "✅ Проверка ресурсов выполнена. Данные обновятся через 1-2 минуты."
             
         elif check_type == 'report':
             # Формирование отчета
-            from app.core.monitoring import send_morning_report
-            from app.core.monitoring import send_morning_report
+            from monitor_core import send_morning_report
             send_morning_report()
             message = "✅ Отчет сформирован и отправлен в Telegram"
             
@@ -914,20 +908,17 @@ def api_run_action():
     
     try:
         if action == 'check_all':
-            from app.core.monitoring import get_current_server_status
-            from app.core.monitoring import get_current_server_status
+            from monitor_core import get_current_server_status
             status = get_current_server_status()
             message = f"✅ Проверка всех серверов выполнена: {len(status['ok'])} доступно, {len(status['failed'])} недоступно"
             
         elif action == 'check_resources':
-            from app.core.monitoring import check_resources_automatically
-            from app.core.monitoring import check_resources_automatically
+            from monitor_core import check_resources_automatically
             check_resources_automatically()
             message = "✅ Проверка ресурсов запущена. Данные обновятся через 1-2 минуты."
             
         elif action == 'morning_report':
-            from app.core.monitoring import send_morning_report
-            from app.core.monitoring import send_morning_report
+            from monitor_core import send_morning_report
             send_morning_report()
             message = "✅ Утренний отчет отправлен в Telegram"
             
@@ -999,7 +990,7 @@ def api_manage_servers():
     """API для управления списком серверов"""
     if request.method == 'GET':
         # Получить список серверов
-        from app.extensions.server_list import initialize_servers
+        from extensions.server_list import initialize_servers
         servers = initialize_servers()
         return jsonify({"servers": servers})
     

@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.7.1
+Server Monitoring System v3.8.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Конфигурация отладки системы мониторинга

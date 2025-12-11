@@ -1,5 +1,5 @@
 """
-Server Monitoring System v3.7.1
+Server Monitoring System v3.8.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Конфигурация настроек обмена с БД мониторинга
@@ -11,8 +11,7 @@ from datetime import time as dt_time
 
 # Импортируем менеджер настроек
 try:
-    from app.config.settings_manager import settings_manager
-    from app.config.settings_manager import settings_manager
+    from settings_manager import settings_manager
     USE_DB = True
 except ImportError:
     USE_DB = False
@@ -80,7 +79,7 @@ def get_windows_credentials_db():
         return {'default': []}
 
     try:
-        return app.config.settings_manager.get_windows_credentials_db()
+        return settings_manager.get_windows_credentials_db()
     except Exception as e:
         print(f"❌ Ошибка получения учетных данных из БД: {e}")
         return {'default': []}
@@ -97,7 +96,7 @@ def get_windows_server_configs():
 
     try:
         configs = {}
-        servers = app.config.settings_manager.get_all_servers()
+        servers = settings_manager.get_all_servers()
 
         # Группируем серверы по типам
         windows_servers = [s for s in servers if s['type'] == 'rdp']
@@ -148,7 +147,7 @@ def get_servers_config():
         return {"windows_servers": {}, "linux_servers": {}, "ping_servers": {}}
 
     try:
-        servers = app.config.settings_manager.get_all_servers()
+        servers = settings_manager.get_all_servers()
 
         config = {
             "windows_servers": {},
