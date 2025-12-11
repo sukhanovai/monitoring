@@ -1,9 +1,9 @@
 """
-Server Monitoring System v4.0.2
+Server Monitoring System v4.0.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Утилиты для работы с бэкапами
-Версия: 4.0.2
+Версия: 4.0.3
 """
 
 import sqlite3
