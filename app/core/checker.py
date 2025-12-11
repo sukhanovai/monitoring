@@ -2,43 +2,29 @@
 Server Monitoring System v4.0.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
-Утилиты ядра мониторинга
+Модуль проверки серверов
 Версия: 4.0.0
 """
 
 import os
 import time
-import logging
 import subprocess
 import socket
 import paramiko
+import logging
 from datetime import datetime
 
-# Глобальные настройки отладки
-DEBUG_MODE = False
-DEBUG_LOG_FILE = '/opt/monitoring/logs/debug.log'
-
-def setup_logging():
-    """Настройка централизованного логирования"""
-    logging.basicConfig(
-        level=logging.DEBUG if DEBUG_MODE else logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler(DEBUG_LOG_FILE),
-            logging.StreamHandler()
-        ]
-    )
-    return logging.getLogger(__name__)
-
-logger = setup_logging()
+# Импортируем из утилит
+from ..utils.common import debug_log, safe_import
 
 class ServerChecker:
     """Единый класс для проверки серверов - устранение дублирования"""
     
-    def __init__(self):
-        self.ssh_timeout = 15
-        self.ping_timeout = 10
-        self.port_timeout = 5
+    def __init__(self, ssh_timeout=15, ping_timeout=10, port_timeout=5):
+        self.ssh_timeout = ssh_timeout
+        self.ping_timeout = ping_timeout
+        self.port_timeout = port_timeout
+        self.logger = logging.getLogger(__name__)
 
     def check_ping(self, ip):
         """Универсальная проверка ping"""
@@ -51,7 +37,7 @@ class ServerChecker:
             )
             return result.returncode == 0
         except Exception as e:
-            logger.debug(f"Ping error for {ip}: {e}")
+            debug_log(f"Ping error for {ip}: {e}")
             return False
 
     def check_port(self, ip, port=3389):
@@ -63,7 +49,7 @@ class ServerChecker:
             sock.close()
             return result == 0
         except Exception as e:
-            logger.debug(f"Port check error for {ip}:{port}: {e}")
+            debug_log(f"Port check error for {ip}:{port}: {e}")
             return False
 
     def check_ssh_universal(self, ip, username=None, key_path=None):
@@ -71,9 +57,14 @@ class ServerChecker:
         try:
             # Ленивая загрузка конфига
             if username is None or key_path is None:
-                from config import SSH_USERNAME, SSH_KEY_PATH
-                username = SSH_USERNAME
-                key_path = SSH_KEY_PATH
+                # Используем safe_import для избежания циклических импортов
+                config = safe_import('config')
+                if config:
+                    username = getattr(config, 'SSH_USERNAME', 'root')
+                    key_path = getattr(config, 'SSH_KEY_PATH', '/root/.ssh/id_rsa')
+                else:
+                    username = 'root'
+                    key_path = '/root/.ssh/id_rsa'
 
             client = paramiko.SSHClient()
             client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -97,16 +88,16 @@ class ServerChecker:
             return exit_code == 0
 
         except paramiko.ssh_exception.AuthenticationException as e:
-            logger.warning(f"SSH auth failed for {ip}: {e}")
+            debug_log(f"SSH auth failed for {ip}: {e}")
             return False
         except paramiko.ssh_exception.SSHException as e:
-            logger.warning(f"SSH error for {ip}: {e}")
+            debug_log(f"SSH error for {ip}: {e}")
             return False
         except socket.timeout:
-            logger.warning(f"SSH timeout for {ip}")
+            debug_log(f"SSH timeout for {ip}")
             return False
         except Exception as e:
-            logger.debug(f"SSH general error for {ip}: {e}")
+            debug_log(f"SSH general error for {ip}: {e}")
             return False
 
     def check_server(self, server):
@@ -121,40 +112,14 @@ class ServerChecker:
         else:  # ssh и другие
             return self.check_ssh_universal(ip)
 
-# Глобальный экземпляр для использования во всем проекте
-server_checker = ServerChecker()
-
-def debug_log(message, force=False):
-    """Централизованное логирование отладки"""
-    if DEBUG_MODE or force:
-        logger.debug(message)
-
-def safe_import(module_name, class_name=None):
-    """Безопасный импорт с обработкой ошибок"""
-    try:
-        module = __import__(module_name, fromlist=[class_name] if class_name else [])
-        return getattr(module, class_name) if class_name else module
-    except ImportError as e:
-        logger.error(f"Import error: {e}")
-        return None
-    except AttributeError as e:
-        logger.error(f"Attribute error: {e}")
-        return None
-
-def format_duration(seconds):
-    """Форматирование длительности в читаемый вид"""
-    hours = seconds // 3600
-    minutes = (seconds % 3600) // 60
-    seconds = seconds % 60
+    def get_timeout_for_type(self, server_type):
+        """Получить таймаут для типа сервера"""
+        try:
+            config = safe_import('config')
+            if config:
+                timeouts = getattr(config, 'SERVER_TIMEOUTS', {})
+                return timeouts.get(server_type, 15)
+        except:
+            pass
+        return 15
     
-    if hours > 0:
-        return f"{hours}h {minutes:02d}m {seconds:02d}s"
-    elif minutes > 0:
-        return f"{minutes}m {seconds:02d}s"
-    else:
-        return f"{seconds}s"
-
-def progress_bar(percentage, width=20):
-    """Универсальный прогресс-бар"""
-    filled = int(round(width * percentage / 100))
-    return f"[{'█' * filled}{'░' * (width - filled)}] {percentage:.1f}%"
