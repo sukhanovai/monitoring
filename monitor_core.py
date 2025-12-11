@@ -80,10 +80,8 @@ def send_alert(message, force=False):
     global bot
     if bot is None:
         from telegram import Bot
-#        config = get_config()
-#        bot = Bot(token=config.TELEGRAM_TOKEN)
-        config_module = get_config()
-        bot = Bot(token=config_module.TELEGRAM_TOKEN)
+        config = get_config()
+        bot = Bot(token=config.TELEGRAM_TOKEN)
 
     # Логируем для диагностики
     debug_log = get_debug_log()
@@ -1506,8 +1504,10 @@ def start_monitoring():
 
     # Ленивая инициализация бота
     from telegram import Bot
-    config = get_config()
-    bot = Bot(token=config.TELEGRAM_TOKEN)
+#    config = get_config()
+#    bot = Bot(token=config.TELEGRAM_TOKEN)
+    config_module = get_config()
+    bot = Bot(token=config_module.TELEGRAM_TOKEN)
 
     # Инициализация server_status (только для оставшихся серверов)
     for server in servers:
