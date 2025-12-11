@@ -1,9 +1,9 @@
 """
-Server Monitoring System v4.0.1
+Server Monitoring System v4.0.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Меню бота
-Версия: 4.0.1
+Версия: 4.0.2
 """
 
 from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup
@@ -24,6 +24,9 @@ def lazy_import_settings_handler():
             query = update.callback_query
             query.answer("⚙️ Модуль настроек временно недоступен")
         return fallback_handler
+
+# Получаем обработчик настроек
+settings_callback_handler = lazy_import_settings_handler()
 
 # Ленивая загрузка модулей
 def lazy_import(module_name, attribute_name=None):
