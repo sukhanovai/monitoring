@@ -14,7 +14,7 @@ import json
 def get_debug_log():
     """Безопасная функция для логирования"""
     try:
-        from core_utils import debug_log
+        from app.utils.common import debug_log
         return debug_log
     except ImportError:
         # Заглушка если модуль не доступен

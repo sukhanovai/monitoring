@@ -11,6 +11,8 @@ import threading
 import time
 from datetime import datetime, timedelta
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from app import server_checker, logger
+from app.utils.common import debug_log, progress_bar, format_duration, safe_import, DEBUG_MODE
 
 # Глобальные переменные
 bot = None
@@ -25,7 +27,7 @@ last_resource_check = datetime.now()
 resource_alerts_sent = {}
 last_report_date = None
 
-# Ленивые импорты из core_utils
+# Ленивая загрузка модулей
 def lazy_import(module_name, attribute_name=None):
     """Ленивая загрузка модулей"""
     def import_func():
@@ -34,9 +36,9 @@ def lazy_import(module_name, attribute_name=None):
     return import_func
 
 # Ленивые импорты утилит
-get_server_checker = lazy_import('core_utils', 'server_checker')
-get_debug_log = lazy_import('core_utils', 'debug_log')
-get_progress_bar = lazy_import('core_utils', 'progress_bar')
+get_server_checker = lambda: server_checker
+get_debug_log = lambda: debug_log
+get_progress_bar = lambda: progress_bar
 
 # Ленивые импорты конфига
 get_config = lazy_import('config')
@@ -76,7 +78,6 @@ def send_alert(message, force=False):
         bot = Bot(token=config.TELEGRAM_TOKEN)
 
     # Логируем для диагностики
-    debug_log = get_debug_log()
     debug_log(f"📨 Отправка: '{message[:50]}...'")
 
     try:
@@ -92,9 +93,7 @@ def send_alert(message, force=False):
 
 def check_server_availability(server):
     """Универсальная проверка доступности сервера"""
-    server_checker = get_server_checker()
-    debug_log = get_debug_log()
-    
+   
     try:
         if is_proxmox_server(server):
             return server_checker.check_ssh_universal(server["ip"])
@@ -120,9 +119,6 @@ def perform_manual_check(context, chat_id, progress_message_id):
     
     total_servers = len(servers)
     results = {"failed": [], "ok": []}
-
-    progress_bar = get_progress_bar()
-    debug_log = get_debug_log()
 
     for i, server in enumerate(servers):
         try:
@@ -192,7 +188,6 @@ def manual_check_handler(update, context):
             update.message.reply_text("⛔ У вас нет прав для выполнения этой команды")
         return
 
-    progress_bar = get_progress_bar()
     progress_message = context.bot.send_message(
         chat_id=chat_id,
         text="🔍 Начинаю проверку серверов...\n" + progress_bar(0)
@@ -207,7 +202,6 @@ def manual_check_handler(update, context):
 def get_current_server_status():
     """Выполняет быструю проверку статуса серверов"""
     global servers
-    debug_log = get_debug_log()
     
     # Переинициализируем серверы если список пустой
     if not servers:
@@ -327,7 +321,6 @@ def monitor_status(update, context):
             update.message.reply_text(message, parse_mode='Markdown')
 
     except Exception as e:
-        debug_log = get_debug_log()
         debug_log(f"Ошибка в monitor_status: {e}")
         error_msg = "⚠️ Произошла ошибка при получении статуса"
         if query:
@@ -658,7 +651,6 @@ def check_disk_resources_handler(update, context):
 
 def perform_cpu_check(context, chat_id, progress_message_id):
     """Выполняет проверку только CPU с детальным прогрессом"""
-    progress_bar = get_progress_bar()
     
     def update_progress(progress, status):
         progress_text = f"💻 Проверка CPU...\n{progress_bar(progress)}\n\n{status}"
@@ -790,7 +782,6 @@ def perform_cpu_check(context, chat_id, progress_message_id):
         )
 
     except Exception as e:
-        debug_log = get_debug_log()
         error_msg = f"❌ Ошибка при проверке CPU: {e}"
         debug_log(error_msg)
         context.bot.edit_message_text(
@@ -801,7 +792,6 @@ def perform_cpu_check(context, chat_id, progress_message_id):
 
 def perform_ram_check(context, chat_id, progress_message_id):
     """Выполняет проверку только RAM с детальным прогрессом"""
-    progress_bar = get_progress_bar()
 
     def update_progress(progress, status):
         progress_text = f"🧠 Проверка RAM...\n{progress_bar(progress)}\n\n{status}"
@@ -933,7 +923,6 @@ def perform_ram_check(context, chat_id, progress_message_id):
         )
 
     except Exception as e:
-        debug_log = get_debug_log()
         error_msg = f"❌ Ошибка при проверке RAM: {e}"
         debug_log(error_msg)
         context.bot.edit_message_text(
@@ -944,7 +933,6 @@ def perform_ram_check(context, chat_id, progress_message_id):
 
 def perform_disk_check(context, chat_id, progress_message_id):
     """Выполняет проверку только Disk с детальным прогрессом"""
-    progress_bar = get_progress_bar()
 
     def update_progress(progress, status):
         progress_text = f"💾 Проверка Disk...\n{progress_bar(progress)}\n\n{status}"
@@ -1076,7 +1064,6 @@ def perform_disk_check(context, chat_id, progress_message_id):
         )
 
     except Exception as e:
-        debug_log = get_debug_log()
         error_msg = f"❌ Ошибка при проверке Disk: {e}"
         debug_log(error_msg)
         context.bot.edit_message_text(
@@ -1116,7 +1103,6 @@ def check_linux_resources_handler(update, context):
 
 def perform_linux_check(context, chat_id, progress_message_id):
     """Выполняет проверку Linux серверов с прогрессом"""
-    progress_bar = get_progress_bar()
 
     def update_progress(progress, status):
         progress_text = f"🐧 Проверка Linux серверов...\n{progress_bar(progress)}\n\n{status}"
@@ -1162,7 +1148,6 @@ def perform_linux_check(context, chat_id, progress_message_id):
         )
 
     except Exception as e:
-        debug_log = get_debug_log()
         error_msg = f"❌ Ошибка при проверке Linux серверов: {e}"
         debug_log(error_msg)
         context.bot.edit_message_text(
@@ -1202,7 +1187,6 @@ def check_windows_resources_handler(update, context):
 
 def perform_windows_check(context, chat_id, progress_message_id):
     """Выполняет проверку Windows серверов с прогрессом"""
-    progress_bar = get_progress_bar()
 
     def update_progress(progress, status):
         progress_text = f"🪟 Проверка Windows серверов...\n{progress_bar(progress)}\n\n{status}"
@@ -1316,7 +1300,6 @@ def perform_windows_check(context, chat_id, progress_message_id):
         )
     
     except Exception as e:
-        debug_log = get_debug_log()
         error_msg = f"❌ Ошибка при проверке Windows серверов: {e}"
         debug_log(error_msg)
         import traceback
@@ -1390,7 +1373,6 @@ def perform_other_check(context, chat_id, progress_message_id):
         )
 
     except Exception as e:
-        debug_log = get_debug_log()
         error_msg = f"❌ Ошибка при проверке других серверов: {e}"
         debug_log(error_msg)
         context.bot.edit_message_text(
@@ -1430,7 +1412,6 @@ def check_all_resources_handler(update, context):
 
 def perform_full_check(context, chat_id, progress_message_id):
     """Выполняет полную проверку всех серверов"""
-    progress_bar = get_progress_bar()
     
     def update_progress(progress, status):
         progress_text = f"🔍 Полная проверка всех серверов...\n{progress_bar(progress)}\n\n{status}"
@@ -1470,7 +1451,6 @@ def perform_full_check(context, chat_id, progress_message_id):
         )
 
     except Exception as e:
-        debug_log = get_debug_log()
         error_msg = f"❌ Ошибка при полной проверке: {e}"
         debug_log(error_msg)
         context.bot.edit_message_text(
@@ -1482,8 +1462,6 @@ def perform_full_check(context, chat_id, progress_message_id):
 def start_monitoring():
     """Запускает основной цикл мониторинга"""
     global servers, bot, monitoring_active, last_report_date, morning_data
-
-    debug_log = get_debug_log()
 
     # Ленивая инициализация серверов
     from extensions.server_checks import initialize_servers
@@ -1638,7 +1616,6 @@ def check_resources_automatically():
     """Автоматическая проверка ресурсов с умными предупреждениями"""
     global resource_history, last_resource_check, resource_alerts_sent
 
-    debug_log = get_debug_log()
     debug_log("🔍 Автоматическая проверка ресурсов серверов...")
 
     if not monitoring_active or is_silent_time():
@@ -1796,7 +1773,6 @@ def send_resource_alerts(alerts):
     message += f"⏰ Время проверки: {datetime.now().strftime('%H:%M:%S')}"
 
     send_alert(message)
-    debug_log = get_debug_log()
     debug_log(f"✅ Отправлены алерты по ресурсам: {len(alerts)} проблем")
 
 def close_menu(update, context):
@@ -1854,7 +1830,6 @@ def send_morning_report(manual_call=False):
     global morning_data
     
     current_time = datetime.now()
-    debug_log = get_debug_log()
     
     if manual_call:
         debug_log(f"[{current_time}] 📊 Ручной вызов отчета")
@@ -1959,7 +1934,6 @@ def get_backup_summary_for_report(period_hours=16):
         period_hours (int): Количество часов для периода (16 для авто-отчета, 24 для ручного)
     """
     try:
-        debug_log = get_debug_log()
         debug_log(f"🔄 Сбор данных о бэкапах за {period_hours} часов...")
         
         # ДИАГНОСТИКА КОНФИГУРАЦИИ
@@ -2163,7 +2137,6 @@ def get_backup_summary_for_report(period_hours=16):
         return message
         
     except Exception as e:
-        debug_log = get_debug_log()
         debug_log(f"💥 Критическая ошибка в get_backup_summary_for_report: {e}")
         import traceback
         debug_log(f"💥 Traceback: {traceback.format_exc()}")
@@ -2177,7 +2150,6 @@ def debug_backup_data():
         from datetime import datetime, timedelta
         
         db_path = "/opt/monitoring/data/backups.db"
-        debug_log = get_debug_log()
         
         if not os.path.exists(db_path):
             debug_log("❌ База данных backups.db не существует!")
@@ -2214,7 +2186,6 @@ def debug_backup_data():
         conn.close()
         
     except Exception as e:
-        debug_log = get_debug_log()
         debug_log(f"❌ Ошибка диагностики: {e}")
 
 def debug_morning_report(update, context):
@@ -2222,7 +2193,6 @@ def debug_morning_report(update, context):
     query = update.callback_query
     query.answer()
     
-    debug_log = get_debug_log()
     debug_log("🔧 Запущена отладочная функция утреннего отчета")
     
     # Собираем текущий статус
@@ -2285,7 +2255,6 @@ def close_resources_handler(update, context):
 
 def debug_proxmox_config():
     """Временная функция для диагностики конфигурации Proxmox"""
-    debug_log = get_debug_log()
     try:
         from config import PROXMOX_HOSTS
         debug_log("=== ДИАГНОСТИКА KONФИГУРАЦИИ PROXMOX ===")

@@ -12,15 +12,16 @@ import sys
 import time
 import logging
 from datetime import datetime
+from app import server_checker, logger
+from app.utils.common import debug_log, progress_bar, format_duration, safe_import, DEBUG_MODE
 
 # Добавляем путь для импортов
 sys.path.insert(0, '/opt/monitoring')
 
 def setup_logging():
     """Настройка логирования с учетом отладки"""
-    from core_utils import DEBUG_MODE
-    
     log_level = logging.DEBUG if DEBUG_MODE else logging.INFO
+
     
     logging.basicConfig(
         level=log_level,

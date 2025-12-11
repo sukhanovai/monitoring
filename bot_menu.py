@@ -8,6 +8,8 @@ License: MIT
 
 from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CommandHandler, CallbackQueryHandler, MessageHandler, Filters
+from app import server_checker, logger
+from app.utils.common import debug_log, progress_bar, format_duration, safe_import, DEBUG_MODE
 
 # Ленивые импорты для настроек
 def lazy_import_settings_handler():
@@ -23,7 +25,7 @@ def lazy_import_settings_handler():
             query.answer("⚙️ Модуль настроек временно недоступен")
         return fallback_handler
 
-# Ленивые импорты
+# Ленивая загрузка модулей
 def lazy_import(module_name, attribute_name=None):
     """Ленивая загрузка модулей"""
     def import_func():
@@ -31,16 +33,14 @@ def lazy_import(module_name, attribute_name=None):
         return getattr(module, attribute_name) if attribute_name else module
     return import_func
 
-# Получаем обработчик настроек
-settings_callback_handler = lazy_import_settings_handler()
-
 # Ленивые импорты конфига
 get_config = lazy_import('config')
 get_chat_ids = lazy_import('config', 'CHAT_IDS')
 get_telegram_token = lazy_import('config', 'TELEGRAM_TOKEN')
 
 # Ленивые импорты утилит
-get_debug_log = lazy_import('core_utils', 'debug_log')
+get_debug_log = lambda: debug_log
+get_progress_bar = lambda: progress_bar
 get_extension_manager = lazy_import('extensions.extension_manager', 'extension_manager')
 
 def setup_menu(bot):
@@ -75,11 +75,9 @@ def setup_menu(bot):
             commands.append(BotCommand("db_backups", "🗃️ Бэкапы БД"))
         
         bot.set_my_commands(commands)
-        debug_log = get_debug_log()
         debug_log("✅ Меню настроено успешно")
         return True
     except Exception as e:
-        debug_log = get_debug_log()
         debug_log(f"❌ Ошибка настройки меню: {e}")
         return False
 
@@ -126,7 +124,6 @@ def start_command(update, context):
     
     # Информация о отладке
     try:
-        from core_utils import DEBUG_MODE
         welcome_text += f"🐛 *Режим отладки:* {'🟢 ВКЛ' if DEBUG_MODE else '🔴 ВЫКЛ'}\n"
     except ImportError:
         welcome_text += "🐛 *Режим отладки:* 🔴 Недоступен\n"
@@ -303,7 +300,6 @@ def fix_monitor_command(update, context):
 
     except Exception as e:
         update.message.reply_text(f"❌ Ошибка при исправлении статуса: {e}")
-        debug_log = get_debug_log()
         debug_log(f"Ошибка в fix_monitor_command: {e}")
 
 def extensions_command(update, context):
@@ -398,7 +394,6 @@ def extensions_callback_handler(update, context):
             from monitor_core import monitor_status
             monitor_status(update, context)
         except Exception as e:
-            debug_log = get_debug_log()
             debug_log(f"Ошибка при переходе к статусу мониторинга: {e}")
             query.edit_message_text("❌ Ошибка при загрузке статуса мониторинга")
     
@@ -472,7 +467,6 @@ def show_debug_menu(update, context):
     # Получаем статус отладки
     debug_status = "🔴 ВЫКЛЮЧЕНА"
     try:
-        from core_utils import DEBUG_MODE
         debug_status = "🟢 ВКЛЮЧЕНА" if DEBUG_MODE else "🔴 ВЫКЛЮЧЕНА"
     except ImportError:
         debug_status = "🔴 НЕДОСТУПНА"
@@ -534,9 +528,6 @@ def debug_callback_handler(update, context):
 def enable_debug_mode(query):
     """Включает режим отладки"""
     try:
-        # Импортируем и обновляем глобальную переменную
-        import core_utils
-        core_utils.DEBUG_MODE = True
         
         # Обновляем настройки логирования
         import logging
@@ -549,7 +540,6 @@ def enable_debug_mode(query):
         except ImportError:
             pass
         
-        debug_log = get_debug_log()
         debug_log("🟢 Отладка включена через меню бота")
         
         query.edit_message_text(
@@ -573,10 +563,6 @@ def enable_debug_mode(query):
 def disable_debug_mode(query):
     """Выключает режим отладки"""
     try:
-        # Импортируем и обновляем глобальную переменную
-        import core_utils
-        core_utils.DEBUG_MODE = False
-        
         # Обновляем настройки логирования
         import logging
         logging.getLogger().setLevel(logging.INFO)
@@ -588,7 +574,6 @@ def disable_debug_mode(query):
         except ImportError:
             pass
         
-        debug_log = get_debug_log()
         debug_log("🔴 Отладка выключена через меню бота")
         
         query.edit_message_text(
@@ -621,7 +606,6 @@ def show_debug_status(query):
         
         # Статус отладки
         try:
-            from core_utils import DEBUG_MODE
             debug_status = "🟢 ВКЛ" if DEBUG_MODE else "🔴 ВЫКЛ"
         except ImportError:
             debug_status = "🔴 НЕДОСТУПЕН"
@@ -736,7 +720,6 @@ def clear_debug_logs(query):
         if errors:
             message += f"\n\n*Ошибки:*\n" + "\n".join(errors[:3])
         
-        debug_log = get_debug_log()
         debug_log("🗑️ Логи очищены через меню бота")
         
         query.edit_message_text(
