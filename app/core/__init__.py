@@ -1,11 +1,20 @@
 """
-Server Monitoring System v4.0.0
+Server Monitoring System v4.0.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Ядро системы мониторинга
-Версия: 4.0.0
+Версия: 4.0.1
 """
 
-from .checker import ServerChecker
+import sys
+import os
 
-__all__ = ['ServerChecker']
+# Добавляем путь для импортов
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+
+try:
+    from .checker import ServerChecker
+    __all__ = ['ServerChecker']
+except ImportError as e:
+    print(f"❌ Ошибка импорта в app/core/__init__.py: {e}")
+    __all__ = []

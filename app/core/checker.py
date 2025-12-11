@@ -1,9 +1,9 @@
 """
-Server Monitoring System v4.0.0
+Server Monitoring System v4.0.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Модуль проверки серверов
-Версия: 4.0.0
+Версия: 4.0.1
 """
 
 import os
@@ -14,8 +14,28 @@ import paramiko
 import logging
 from datetime import datetime
 
-# Импортируем из утилит
-from ..utils.common import debug_log, safe_import
+# Вместо относительных импортов используем абсолютные
+# НЕ ИСПОЛЬЗУЕМ: from ..utils.common import debug_log, safe_import
+# ВМЕСТО ЭТОГО:
+
+def debug_log(message, force=False):
+    """Временная функция, пока не настроены импорты"""
+    import logging
+    logger = logging.getLogger(__name__)
+    if force or os.environ.get('DEBUG_MODE', 'False') == 'True':
+        logger.debug(message)
+
+def safe_import(module_name, class_name=None):
+    """Безопасный импорт"""
+    try:
+        import importlib
+        module = importlib.import_module(module_name)
+        if class_name:
+            return getattr(module, class_name)
+        return module
+    except Exception as e:
+        debug_log(f"Import error: {e}")
+        return None
 
 class ServerChecker:
     """Единый класс для проверки серверов - устранение дублирования"""
@@ -57,7 +77,6 @@ class ServerChecker:
         try:
             # Ленивая загрузка конфига
             if username is None or key_path is None:
-                # Используем safe_import для избежания циклических импортов
                 config = safe_import('config')
                 if config:
                     username = getattr(config, 'SSH_USERNAME', 'root')

@@ -1,9 +1,9 @@
 """
-Server Monitoring System v4.0.0
+Server Monitoring System v4.0.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Временный адаптер для замены core_utils.py
-Версия: 4.0.0
+Версия: 4.0.1
 Будет удален после полного перехода
 """
 
