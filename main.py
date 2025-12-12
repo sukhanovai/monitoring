@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Server Monitoring System v4.4.1
+Server Monitoring System v4.4.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Основной модуль запуска
-Версия: 4.4.1
+Версия: 4.4.2
 """
 
 import os
@@ -94,27 +94,21 @@ def main():
         import threading
         from app.core.monitoring import start_monitoring
         
+        # Импортируем extension_manager здесь
+        from extensions.extension_manager import extension_manager
+        
         # Инициализация бота
         updater = Updater(token=settings.TELEGRAM_TOKEN, use_context=True)
         dispatcher = updater.dispatcher
 
         # Настройка меню
         from app.bot.menus import setup_menu_commands
-        from app.bot.callbacks import callback_router
-        def get_handlers():
-            """Получить обработчики команд"""
-            from telegram.ext import CommandHandler
-            from app.bot.menus import setup_menu_commands, start_command, help_command
-            from app.bot.handlers import get_handlers
-            from app.bot.callbacks import callback_router
-            handlers = [
-                CommandHandler("start", start_command),
-                CommandHandler("help", help_command),
-            ]
-            
-            return handlers        
         setup_menu_commands(updater.bot, extension_manager)
 
+        # Получаем обработчики
+        from app.bot.handlers import get_handlers
+        from app.bot.callbacks import callback_router
+        
         # Добавляем обработчики
         for handler in get_handlers():
             dispatcher.add_handler(handler)
@@ -132,8 +126,6 @@ def main():
             logger.warning(f"⚠️ Обработчики настроек недоступны: {e}")
 
         # Расширения
-        from extensions.extension_manager import extension_manager
-        
         if extension_manager.is_extension_enabled('backup_monitor'):
             from extensions.backup_monitor.bot_handler import setup_backup_handlers
             setup_backup_handlers(dispatcher)

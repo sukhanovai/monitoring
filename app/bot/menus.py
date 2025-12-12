@@ -1,9 +1,9 @@
 """
-Server Monitoring System v4.4.1 - Обработчики бота
+Server Monitoring System v4.4.2 - Обработчики бота
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Модуль для настройки команд и главного меню
-Версия: 4.4.1
+Версия: 4.4.2
 """
 
 from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup
