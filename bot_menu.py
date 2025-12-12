@@ -1,9 +1,9 @@
 """
-Server Monitoring System v4.3.6
+Server Monitoring System v4.3.7
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Меню бота
-Версия: 4.3.6
+Версия: 4.3.7
 """
 
 from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup
@@ -209,19 +209,19 @@ def monitor_main_handler(update, context):
 
 # Заглушки для команд (импорты внутри функций чтобы избежать циклических импортов)
 def check_command(update, context):
-    from monitor_core import manual_check_handler
+    from app.bot.handlers import manual_check_handler
     return manual_check_handler(update, context)
 
 def status_command(update, context):
-    from monitor_core import monitor_status
+    from app.bot.handlers import monitor_status
     return monitor_status(update, context)
 
 def silent_command(update, context):
-    from monitor_core import silent_command as silent_cmd
+    from app.bot.handlers import silent_command as silent_cmd
     return silent_cmd(update, context)
 
 def control_command(update, context):
-    from monitor_core import control_command as control_cmd
+    from app.bot.handlers import control_command as control_cmd
     return control_cmd(update, context)
 
 def servers_command(update, context):
@@ -230,7 +230,7 @@ def servers_command(update, context):
 
 def report_command(update, context):
     """Команда для принудительной отправки утреннего отчета"""
-    from monitor_core import send_morning_report_handler
+    from app.bot.handlers import send_morning_report_handler
     return send_morning_report_handler(update, context)
 
 def stats_command(update, context):
@@ -291,7 +291,7 @@ def fix_monitor_command(update, context):
 
     try:
         # Динамический импорт чтобы избежать циклических зависимостей
-        from monitor_core import server_status
+        from app.bot.handlers import server_status
         from datetime import datetime
 
         config = get_config()
@@ -404,7 +404,7 @@ def extensions_callback_handler(update, context):
     elif data == 'monitor_status':
         # ОПТИМИЗАЦИЯ: используем ленивую загрузку чтобы избежать циклических импортов
         try:
-            from monitor_core import monitor_status
+            from app.bot.handlers import monitor_status
             monitor_status(update, context)
         except Exception as e:
             debug_log(f"Ошибка при переходе к статусу мониторинга: {e}")

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Server Monitoring System v4.3.6
+Server Monitoring System v4.3.7
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Основной модуль запуска
-Версия: 4.2.2
+Версия: 4.3.7
 """
 
 import os
@@ -18,28 +18,24 @@ print("🚀 Начало запуска мониторинга...")
 # Добавляем путь для импортов
 sys.path.insert(0, '/opt/monitoring')
 
-# Функции-заглушки на случай ошибок импорта
-def fallback_debug_log(message, force=False):
-    print(f"[DEBUG] {message}")
-
-def fallback_add_python_path(path):
-    if path not in sys.path:
-        sys.path.insert(0, path)
-
-def fallback_ensure_directory(path):
-    if not os.path.exists(path):
-        os.makedirs(path, exist_ok=True)
-
-# Пытаемся импортировать из новой структуры
+# Импортируем из новой структуры
 try:
     from app import debug_log, DEBUG_MODE  # Импортируем из app
     from app.utils.common import add_python_path, ensure_directory
     print(f"✅ Утилиты загружены (DEBUG_MODE={DEBUG_MODE})")
 except ImportError as e:
     print(f"⚠️ Используем fallback функции: {e}")
-    debug_log = fallback_debug_log
-    add_python_path = fallback_add_python_path
-    ensure_directory = fallback_ensure_directory
+    def debug_log(message, force=False):
+        print(f"[DEBUG] {message}")
+    
+    def add_python_path(path):
+        if path not in sys.path:
+            sys.path.insert(0, path)
+    
+    def ensure_directory(path):
+        if not os.path.exists(path):
+            os.makedirs(path, exist_ok=True)
+    
     DEBUG_MODE = False
 
 # Настраиваем логирование
@@ -64,6 +60,7 @@ def test_imports():
         ("app.config.settings", "TELEGRAM_TOKEN"),
         ("app.core.monitoring", "start_monitoring"),
         ("app.core.checker", "server_checker"),
+        ("app.bot.handlers", "manual_check_handler"),  # Проверяем новый путь
         ("bot_menu", "setup_menu"),
         ("extensions.extension_manager", "extension_manager"),
     ]
@@ -158,3 +155,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    

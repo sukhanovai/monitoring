@@ -1,9 +1,9 @@
 """
-Server Monitoring System v4.3.6 - Совместимый модуль ядра
+Server Monitoring System v4.3.7 - Совместимый модуль ядра
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Совместимый модуль для постепенного перехода
-Версия: 4.2.2
+Версия: 4.3.7
 """
 
 import os
