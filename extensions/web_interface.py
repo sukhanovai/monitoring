@@ -1,9 +1,9 @@
 """
-Server Monitoring System v4.3.5
+Server Monitoring System v4.3.6
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Веб-интерфейс
-Версия: 4.3.5
+Версия: 4.3.6
 """
 
 from flask import Flask, jsonify, render_template_string, request

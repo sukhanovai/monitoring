@@ -1,15 +1,15 @@
 """
-Server Monitoring System v4.3.5
+Server Monitoring System v4.3.6
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Мониторинг серверов - основной пакет
-Версия: 4.3.5
+Версия: 4.3.6
 """
 
 import os
 import sys
 
-__version__ = "4.3.5"
+__version__ = "4.3.6"
 __author__ = "Aleksandr Sukhanov"
 
 # Добавляем текущий каталог в путь для импортов
