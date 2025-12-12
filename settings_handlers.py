@@ -1,9 +1,9 @@
 """
-Server Monitoring System v4.1.3
+Server Monitoring System v4.2.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчики для управления настройками через бота
-Версия: 4.1.3
+Версия: 4.2.0
 """
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
