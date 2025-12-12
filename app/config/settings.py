@@ -1,9 +1,9 @@
 """
-Server Monitoring System v4.3.2
+Server Monitoring System v4.3.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Конфигурация настроек обмена с БД мониторинга
-Версия: 4.3.2
+Версия: 4.3.3
 """
 
 import os

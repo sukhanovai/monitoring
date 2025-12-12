@@ -1,15 +1,15 @@
 """
-Server Monitoring System v4.3.2
+Server Monitoring System v4.3.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Меню бота
-Версия: 4.3.2
+Версия: 4.3.3
 """
 
 from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CommandHandler, CallbackQueryHandler, MessageHandler, Filters
 from app import server_checker, logger
-from app.utils import debug_log, progress_bar, format_duration, safe_import, DEBUG_MODE
+from app import debug_log, progress_bar, format_duration, safe_import, DEBUG_MODE
 
 # Ленивые импорты для настроек
 def lazy_import_settings_handler():
