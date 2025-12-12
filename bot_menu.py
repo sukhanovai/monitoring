@@ -1,9 +1,9 @@
 """
-Server Monitoring System v4.3.4
+Server Monitoring System v4.3.5
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Меню бота
-Версия: 4.3.4
+Версия: 4.3.5
 """
 
 from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup
@@ -1115,72 +1115,63 @@ def lazy_handler(pattern):
             from bot_menu import start_command
             return start_command(update, context)
         elif pattern == 'manual_check':
-            from monitor_core import manual_check_handler as handler
+            from app.bot.handlers import manual_check_handler as handler
         elif pattern == 'monitor_status':
-            from monitor_core import monitor_status as handler
+            from app.bot.handlers import monitor_status as handler
         elif pattern == 'silent_status':
-            from monitor_core import silent_status_handler as handler
+            from app.bot.handlers import silent_status_handler as handler
         elif pattern == 'pause_monitoring':
-            from monitor_core import pause_monitoring_handler as handler
+            from app.bot.handlers import pause_monitoring_handler as handler
         elif pattern == 'resume_monitoring':
-            from monitor_core import resume_monitoring_handler as handler
+            from app.bot.handlers import resume_monitoring_handler as handler
         elif pattern == 'check_resources':
-            from monitor_core import check_resources_handler as handler
+            from app.bot.handlers import check_resources_handler as handler
         elif pattern == 'control_panel':
-            from monitor_core import control_panel_handler as handler
+            from app.bot.handlers import control_panel_handler as handler
         elif pattern == 'toggle_monitoring':
-            from monitor_core import toggle_monitoring_handler as handler
+            from app.bot.handlers import toggle_monitoring_handler as handler
         elif pattern == 'daily_report':
-            from monitor_core import send_morning_report_handler as handler
+            from app.bot.handlers import send_morning_report_handler as handler
         elif pattern == 'diagnose_menu':
-            from monitor_core import diagnose_menu_handler as handler
+            from app.bot.handlers import diagnose_menu_handler as handler
         elif pattern == 'close':
-            # Импортируем из нового места или используем заглушку
-            try:
-                from monitor_core import close_menu as handler
-            except ImportError:
-                # Создаем простую функцию-заглушку
-                def close_menu_handler(update, context):
-                    query = update.callback_query
-                    query.answer()
-                    query.delete_message()
-                handler = close_menu_handler
+            from app.bot.handlers import close_menu as handler
         elif pattern == 'force_silent':
-            from monitor_core import force_silent_handler as handler
+            from app.bot.handlers import force_silent_handler as handler
         elif pattern == 'force_loud':
-            from monitor_core import force_loud_handler as handler
+            from app.bot.handlers import force_loud_handler as handler
         elif pattern == 'auto_mode':
-            from monitor_core import auto_mode_handler as handler
+            from app.bot.handlers import auto_mode_handler as handler
         elif pattern == 'toggle_silent':
-            from monitor_core import toggle_silent_mode_handler as handler
+            from app.bot.handlers import toggle_silent_mode_handler as handler
         elif pattern == 'servers_list':
             from extensions.server_checks import servers_list_handler as handler
         elif pattern == 'full_report':
-            from monitor_core import send_morning_report_handler as handler
+            from app.bot.handlers import send_morning_report_handler as handler
         elif pattern == 'resource_page':
-            from monitor_core import resource_page_handler as handler
+            from app.bot.handlers import resource_page_handler as handler
         elif pattern == 'refresh_resources':
-            from monitor_core import refresh_resources_handler as handler
+            from app.bot.handlers import refresh_resources_handler as handler
         elif pattern == 'close_resources':
-            from monitor_core import close_resources_handler as handler
+            from app.bot.handlers import close_resources_handler as handler
         # Новые обработчики для раздельной проверки
         elif pattern == 'check_linux':
-            from monitor_core import check_linux_resources_handler as handler
+            from app.bot.handlers import check_linux_resources_handler as handler
         elif pattern == 'check_windows':
-            from monitor_core import check_windows_resources_handler as handler
+            from app.bot.handlers import check_windows_resources_handler as handler
         elif pattern == 'check_other':
-            from monitor_core import check_other_resources_handler as handler
+            from app.bot.handlers import check_other_resources_handler as handler
         # Обработчики для раздельной проверки ресурсов
         elif pattern == 'check_cpu':
-            from monitor_core import check_cpu_resources_handler as handler
+            from app.bot.handlers import check_cpu_resources_handler as handler
         elif pattern == 'check_ram':
-            from monitor_core import check_ram_resources_handler as handler
+            from app.bot.handlers import check_ram_resources_handler as handler
         elif pattern == 'check_disk':
-            from monitor_core import check_disk_resources_handler as handler
+            from app.bot.handlers import check_disk_resources_handler as handler
         elif pattern == 'resource_history':
-            from monitor_core import resource_history_command as handler
+            from app.bot.handlers import resource_history_command as handler
         elif pattern == 'debug_report':
-            from monitor_core import debug_morning_report as handler
+            from app.bot.handlers import debug_morning_report as handler
         elif pattern == 'backup_today':
             from extensions.backup_monitor.bot_handler import backup_callback as handler
             return handler(update, context)

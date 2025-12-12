@@ -1,9 +1,9 @@
 """
-Server Monitoring System v4.3.4 - Совместимый модуль ядра
+Server Monitoring System v4.3.5 - Совместимый модуль ядра
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Совместимый модуль для постепенного перехода
-Версия: 4.3.4
+Версия: 4.2.2
 """
 
 import os
@@ -18,6 +18,31 @@ from app.core.alerting import get_alerting_system
 from app.utils.common import debug_log, progress_bar, format_duration, safe_import
 from app.config import settings
 
+# Импортируем обработчики из нового места
+try:
+    from app.bot.handlers import (
+        close_menu,
+        force_silent_handler,
+        force_loud_handler,
+        auto_mode_handler,
+        toggle_silent_mode_handler,
+        send_morning_report_handler,
+        resource_page_handler,
+        refresh_resources_handler,
+        close_resources_handler,
+        resource_history_command,
+        debug_morning_report,
+        check_linux_resources_handler,
+        check_windows_resources_handler,
+        check_other_resources_handler,
+        check_cpu_resources_handler,
+        check_ram_resources_handler,
+        check_disk_resources_handler,
+    )
+    print("✅ Обработчики загружены из новой структуры")
+except ImportError as e:
+    print(f"⚠️ Ошибка импорта обработчиков: {e}")
+
 # Экспортируем для совместимости
 __all__ = [
     'monitoring_core',
@@ -27,7 +52,25 @@ __all__ = [
     'progress_bar',
     'format_duration',
     'safe_import',
-    'settings'
+    'settings',
+    # Обработчики
+    'close_menu',
+    'force_silent_handler',
+    'force_loud_handler',
+    'auto_mode_handler',
+    'toggle_silent_mode_handler',
+    'send_morning_report_handler',
+    'resource_page_handler',
+    'refresh_resources_handler',
+    'close_resources_handler',
+    'resource_history_command',
+    'debug_morning_report',
+    'check_linux_resources_handler',
+    'check_windows_resources_handler',
+    'check_other_resources_handler',
+    'check_cpu_resources_handler',
+    'check_ram_resources_handler',
+    'check_disk_resources_handler',
 ]
 
 # Глобальные переменные для совместимости со старым кодом
@@ -71,7 +114,5 @@ def silent_command(update, context):
     """Обработчик команды /silent"""
     from app.bot.handlers import silent_command as new_handler
     return new_handler(update, context)
-
-# ... остальные обработчики будут перенесены на следующем этапе
 
 print("✅ Используется новая структура ядра мониторинга")

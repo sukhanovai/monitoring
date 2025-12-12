@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Server Monitoring System v4.3.4
+Server Monitoring System v4.3.5
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Мониторинг почтового ящика
-Версия: 4.3.4
+Версия: 4.3.5
 """
 
 import os
