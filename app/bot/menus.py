@@ -1,5 +1,5 @@
 """
-Server Monitoring System v4.4.3 - Обработчики бота
+Server Monitoring System v4.4.4 - Обработчики бота
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Модуль для настройки команд и главного меню
@@ -288,3 +288,80 @@ def disable_all_extensions(update, context):
     
     query.answer(f"✅ Отключено {disabled_count}/{len(AVAILABLE_EXTENSIONS)} расширений")
     show_extensions_menu(update, context)
+
+def check_command(update, context):
+    """Обработчик команды /check"""
+    from app.bot.handlers import manual_check_handler
+    return manual_check_handler(update, context)
+
+def status_command(update, context):
+    """Обработчик команды /status"""
+    from app.bot.handlers import monitor_status
+    return monitor_status(update, context)
+
+def silent_command(update, context):
+    """Обработчик команды /silent"""
+    from app.bot.handlers import silent_command as silent_cmd
+    return silent_cmd(update, context)
+
+def control_command(update, context):
+    """Обработчик команды /control"""
+    from app.bot.handlers import control_command as control_cmd
+    return control_cmd(update, context)
+
+def servers_command(update, context):
+    """Обработчик команды /servers"""
+    from extensions.server_checks import servers_command as servers_cmd
+    return servers_cmd(update, context)
+
+def report_command(update, context):
+    """Обработчик команды /report"""
+    from app.bot.handlers import send_morning_report_handler
+    return send_morning_report_handler(update, context)
+
+def stats_command(update, context):
+    """Обработчик команды /stats"""
+    from extensions.utils import stats_command as stats_cmd
+    return stats_cmd(update, context)
+
+def diagnose_ssh_command(update, context):
+    """Обработчик команды /diagnose_ssh"""
+    from extensions.utils import diagnose_ssh_command as diagnose_cmd
+    return diagnose_cmd(update, context)
+
+def extensions_command(update, context):
+    """Обработчик команды /extensions"""
+    from app.bot.menus import show_extensions_menu
+    return show_extensions_menu(update, context)
+
+def debug_command(update, context):
+    """Обработчик команды /debug"""
+    from app.bot.debug_menu import debug_menu
+    return debug_menu.show_menu(update, context)
+
+def backup_command(update, context):
+    """Обработчик команды /backup"""
+    from extensions.extension_manager import extension_manager
+    
+    if not extension_manager.is_extension_enabled('backup_monitor'):
+        update.message.reply_text(
+            "❌ Функционал мониторинга бэкапов отключен.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🛠️ Управление расширениями", callback_data='extensions_menu')]
+            ])
+        )
+        return
+    
+    try:
+        from extensions.backup_monitor.bot_handler import backup_command as backup_cmd
+        return backup_cmd(update, context)
+    except ImportError as e:
+        update.message.reply_text(f"⚠️ Модуль бэкапов временно недоступен: {e}")
+
+def backup_search_command(update, context):
+    """Обработчик команды /backup_search"""
+    update.message.reply_text("🔍 Поиск бэкапов временно недоступен (в процессе переноса)")
+
+def backup_help_command(update, context):
+    """Обработчик команды /backup_help"""
+    update.message.reply_text("❓ Помощь по бэкапам временно недоступна (в процессе переноса)")

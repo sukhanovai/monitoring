@@ -1,5 +1,5 @@
 """
-Server Monitoring System v4.4.3 - Обработчики бота
+Server Monitoring System v4.4.4 - Обработчики бота
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Основные обработчики команд бота
@@ -1404,36 +1404,57 @@ __all__ = [
 # ==================== ЭКСПОРТ И РЕГИСТРАЦИЯ ====================
 
 def get_handlers():
-    """Получить все обработчики команд для бота - УПРОЩЕННАЯ ВЕРСИЯ"""
+    """Получить все обработчики команд для бота"""
     from telegram.ext import CommandHandler
     
-    # Импортируем только базовые команды которые точно есть
-    from app.bot.menus import start_command, help_command
-    
-    # Создаем заглушки для остальных команд
-    def temp_command(name):
-        def handler(update, context):
-            update.message.reply_text(f"Команда /{name} временно недоступна (в процессе рефакторинга)")
-        return handler
+    # Импортируем все доступные команды
+    from app.bot.menus import (
+        start_command, help_command, check_command, status_command,
+        silent_command, control_command, servers_command, report_command,
+        stats_command, diagnose_ssh_command, extensions_command, debug_command,
+        backup_command, backup_search_command, backup_help_command
+    )
     
     handlers = [
         CommandHandler("start", start_command),
         CommandHandler("help", help_command),
-        CommandHandler("check", temp_command("check")),
-        CommandHandler("status", temp_command("status")),
-        CommandHandler("servers", temp_command("servers")),
-        CommandHandler("silent", temp_command("silent")),
-        CommandHandler("report", temp_command("report")),
-        CommandHandler("stats", temp_command("stats")),
-        CommandHandler("control", temp_command("control")),
-        CommandHandler("diagnose_ssh", temp_command("diagnose_ssh")),
-        CommandHandler("extensions", temp_command("extensions")),
-        CommandHandler("debug", temp_command("debug")),
-        CommandHandler("fix_monitor", temp_command("fix_monitor")),
-        CommandHandler("backup", temp_command("backup")),
-        CommandHandler("backup_search", temp_command("backup_search")),
-        CommandHandler("backup_help", temp_command("backup_help")),
-        CommandHandler("diagnose_windows", temp_command("diagnose_windows")),
+        CommandHandler("check", check_command),
+        CommandHandler("status", status_command),
+        CommandHandler("servers", servers_command),
+        CommandHandler("silent", silent_command),
+        CommandHandler("report", report_command),
+        CommandHandler("stats", stats_command),
+        CommandHandler("control", control_command),
+        CommandHandler("diagnose_ssh", diagnose_ssh_command),
+        CommandHandler("extensions", extensions_command),
+        CommandHandler("debug", debug_command),
+        CommandHandler("backup", backup_command),
+        CommandHandler("backup_search", backup_search_command),
+        CommandHandler("backup_help", backup_help_command),
+        CommandHandler("fix_monitor", fix_monitor_command),
+        CommandHandler("diagnose_windows", diagnose_windows_command),
     ]
     
     return handlers
+
+def fix_monitor_command(update, context):
+    """Команда для исправления статуса сервера мониторинга"""
+    from app.bot.menus import check_access
+    if not check_access(update.effective_chat.id):
+        update.message.reply_text("⛔ У вас нет прав для использования этой команды")
+        return
+    
+    update.message.reply_text("🔧 Команда /fix_monitor временно недоступна (в процессе переноса)")
+
+def diagnose_windows_command(update, context):
+    """Диагностика подключения к Windows серверам"""
+    from app.bot.menus import check_access
+    if not check_access(update.effective_chat.id):
+        update.message.reply_text("⛔ У вас нет прав для использования этой команды")
+        return
+    
+    if not context.args:
+        update.message.reply_text("❌ Укажите IP Windows сервера: /diagnose_windows <ip>")
+        return
+    
+    update.message.reply_text(f"🔧 Диагностика Windows сервера {context.args[0]} временно недоступна (в процессе переноса)")

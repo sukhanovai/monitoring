@@ -1,5 +1,5 @@
 """
-Server Monitoring System v4.4.3 - Обработчики бота
+Server Monitoring System v4.4.4 - Обработчики бота
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Централизованная маршрутизация callback-ов
