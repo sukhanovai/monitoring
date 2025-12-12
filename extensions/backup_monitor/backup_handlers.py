@@ -1,9 +1,9 @@
 """
-Server Monitoring System v4.4.2
+Server Monitoring System v4.4.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчики для бота бэкапов
-Версия: 4.4.2
+
 """
 
 import sys

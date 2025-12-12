@@ -1,9 +1,9 @@
 """
-Server Monitoring System v4.4.2
+Server Monitoring System v4.4.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчики и меню Telegram бота
-Версия: 4.4.2
+
 """
 
 from .handlers import *
@@ -14,6 +14,37 @@ from .menus import (
 )
 from .callbacks import callback_router
 from .debug_menu import debug_menu
+
+# Создаем временные заглушки для команд которые еще не реализованы
+def check_command(update, context):
+    update.message.reply_text("✅ Команда /check временно недоступна (рефакторинг)")
+
+def status_command(update, context):
+    update.message.reply_text("📊 Команда /status временно недоступна (рефакторинг)")
+
+def silent_command(update, context):
+    update.message.reply_text("🔇 Команда /silent временно недоступна (рефакторинг)")
+
+def control_command(update, context):
+    update.message.reply_text("🎛️ Команда /control временно недоступна (рефакторинг)")
+
+def servers_command(update, context):
+    update.message.reply_text("🖥️ Команда /servers временно недоступна (рефакторинг)")
+
+def report_command(update, context):
+    update.message.reply_text("📊 Команда /report временно недоступна (рефакторинг)")
+
+def stats_command(update, context):
+    update.message.reply_text("📈 Команда /stats временно недоступна (рефакторинг)")
+
+def diagnose_ssh_command(update, context):
+    update.message.reply_text("🔧 Команда /diagnose_ssh временно недоступна (рефакторинг)")
+
+def extensions_command(update, context):
+    update.message.reply_text("🛠️ Команда /extensions временно недоступна (рефакторинг)")
+
+def debug_command(update, context):
+    update.message.reply_text("🐛 Команда /debug временно недоступна (рефакторинг)")
 
 __all__ = [
     # Из handlers.py
@@ -34,6 +65,7 @@ __all__ = [
     'check_cpu_resources_handler',
     'check_ram_resources_handler',
     'check_disk_resources_handler',
+    'get_handlers',
     
     # Из menus.py
     'setup_menu_commands',
@@ -47,6 +79,18 @@ __all__ = [
     'toggle_extension',
     'enable_all_extensions',
     'disable_all_extensions',
+    
+    # Временные заглушки
+    'check_command',
+    'status_command',
+    'silent_command',
+    'control_command',
+    'servers_command',
+    'report_command',
+    'stats_command',
+    'diagnose_ssh_command',
+    'extensions_command',
+    'debug_command',
     
     # Из callbacks.py
     'callback_router',
