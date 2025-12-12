@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Server Monitoring System v4.0.4
+Server Monitoring System v4.1.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Мониторинг почтового ящика
-Версия: 4.0.4
+Версия: 4.1.0
 """
 
 import os
@@ -17,7 +17,7 @@ from email import message_from_bytes
 import email.policy
 from datetime import datetime
 from email.utils import parsedate_to_datetime
-from config import (
+from app.config.settings import (
     PROXMOX_HOSTS, BACKUP_STATUS_MAP, BACKUP_DATABASE_CONFIG,
     DATABASE_BACKUP_CONFIG, BACKUP_PATTERNS
 )

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Server Monitoring System v4.0.4
+Server Monitoring System v4.1.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Основной модуль запуска
-Версия: 4.0.4
+Версия: 4.1.0
 """
 
 import os
@@ -41,7 +41,7 @@ def main():
         logger.info("🚀 Запуск оптимизированной версии мониторинга...")
         
         # Ленивая загрузка конфигурации
-        from config import TELEGRAM_TOKEN
+        from app.config.settings import TELEGRAM_TOKEN
         
         # Инициализация бота
         from telegram.ext import Updater

@@ -1,14 +1,14 @@
 """
-Server Monitoring System v4.0.4
+Server Monitoring System v4.1.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчики для управления настройками через бота
-Версия: 4.0.4
+Версия: 4.1.0
 """
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CommandHandler, CallbackQueryHandler, MessageHandler, Filters
-from settings_manager import settings_manager
+from app.config.manager import settings_manager
 import json
 
 def get_debug_log():

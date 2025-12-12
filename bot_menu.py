@@ -1,9 +1,9 @@
 """
-Server Monitoring System v4.0.4
+Server Monitoring System v4.1.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Меню бота
-Версия: 4.0.4
+Версия: 4.1.0
 """
 
 from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup
@@ -538,7 +538,7 @@ def enable_debug_mode(query):
         
         # Обновляем конфигурацию отладки если доступна
         try:
-            from debug_config import debug_config
+            from app.config.debug import debug_config
             debug_config.enable_debug()
         except ImportError:
             pass
@@ -572,7 +572,7 @@ def disable_debug_mode(query):
         
         # Обновляем конфигурацию отладки если доступна
         try:
-            from debug_config import debug_config
+            from app.config.debug import debug_config
             debug_config.disable_debug()
         except ImportError:
             pass
@@ -835,7 +835,7 @@ def run_diagnostic(query):
 def show_advanced_debug(query):
     """Показывает расширенные настройки отладки - БЕЗ КНОПКИ ОСНОВНЫХ НАСТРОЕК"""
     try:
-        from debug_config import debug_config
+        from app.config.debug import debug_config
         debug_info = debug_config.get_debug_info()
         
         message = "🔧 *Расширенные настройки отладки*\n\n"

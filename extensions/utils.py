@@ -1,16 +1,16 @@
 """
-Server Monitoring System v4.0.4
+Server Monitoring System v4.1.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Утилиты: диагностика, отчеты, статистика
-Версия: 4.0.4
+Версия: 4.1.0
 """
 
 import json
 import os
 import time
 from datetime import datetime, timedelta
-from config import STATS_FILE, DATA_DIR
+from app.config.settings import STATS_FILE, DATA_DIR
 
 # === ДИАГНОСТИКА SSH (из single_check.py) ===
 
