@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Server Monitoring System v4.2.2
+Server Monitoring System v4.3.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Основной модуль запуска
-Версия: 4.2.2
+Версия: 4.3.0
 """
 
 import os
@@ -12,16 +12,21 @@ import sys
 import time
 import logging
 from datetime import datetime
-from app import server_checker, logger
-from app.utils import debug_log, progress_bar, format_duration, safe_import, DEBUG_MODE
 
 # Добавляем путь для импортов
 sys.path.insert(0, '/opt/monitoring')
 
+# Импортируем из новой структуры
+from app.utils.common import debug_log, add_python_path, ensure_directory
+from app.config import settings
+
+
 def setup_logging():
     """Настройка логирования с учетом отладки"""
-    log_level = logging.DEBUG if DEBUG_MODE else logging.INFO
+    log_level = logging.DEBUG if settings.DEBUG_MODE else logging.INFO
 
+    # Создаем директорию для логов если ее нет
+    ensure_directory('/opt/monitoring/logs')
     
     logging.basicConfig(
         level=log_level,
@@ -40,14 +45,11 @@ def main():
     try:
         logger.info("🚀 Запуск оптимизированной версии мониторинга...")
         
-        # Ленивая загрузка конфигурации
-        from app.config.settings import TELEGRAM_TOKEN
-        
         # Инициализация бота
         from telegram.ext import Updater
         import threading
 
-        updater = Updater(token=TELEGRAM_TOKEN, use_context=True)
+        updater = Updater(token=settings.TELEGRAM_TOKEN, use_context=True)
         dispatcher = updater.dispatcher
 
         # Настройка меню
@@ -91,8 +93,8 @@ def main():
         save_monitoring_stats()
         logger.info("✅ Сбор статистики запущен")
 
-        # Запускаем основной мониторинг
-        from monitor_core import start_monitoring
+        # Запускаем основной мониторинг (из новой структуры)
+        from app.core.monitoring import start_monitoring
         monitor_thread = threading.Thread(target=start_monitoring, daemon=True)
         monitor_thread.start()
         logger.info("✅ Основной мониторинг запущен")
@@ -117,3 +119,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
