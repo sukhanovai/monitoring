@@ -1,9 +1,9 @@
 """
-Server Monitoring System v4.1.0
+Server Monitoring System v4.1.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Утилиты: диагностика, отчеты, статистика
-Версия: 4.1.0
+Версия: 4.1.1
 """
 
 import json
