@@ -1,9 +1,9 @@
 """
-Server Monitoring System v4.3.7 - Обработчики бота
+Server Monitoring System v4.3.8 - Обработчики бота
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Основные обработчики команд бота
-Версия: 4.3.7
+Версия: 4.3.8
 """
 
 import threading
