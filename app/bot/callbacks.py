@@ -1,5 +1,5 @@
 """
-Server Monitoring System v4.4.7 - Обработчики бота
+Server Monitoring System v4.4.8 - Обработчики бота
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Централизованная маршрутизация callback-ов
@@ -15,9 +15,10 @@ class CallbackRouter:
     def __init__(self):
         self.handlers = {}
         self._load_handlers()
+        print(f"✅ CallbackRouter инициализирован, обработчиков: {len(self.handlers)}")
     
     def _load_handlers(self):
-        """Загрузка обработчиков по модулям - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
+        """Загрузка обработчиков по модулям"""
         # ========== ГЛАВНОЕ МЕНЮ ==========
         self._add_handler_pattern('^manual_check$', 'app.bot.handlers', 'manual_check_handler')
         self._add_handler_pattern('^monitor_status$', 'app.bot.handlers', 'monitor_status')
@@ -91,7 +92,7 @@ class CallbackRouter:
         self._add_handler_pattern('^debug_clear_logs$', 'app.bot.debug_menu', 'debug_menu.handle_callback')
         self._add_handler_pattern('^debug_diagnose$', 'app.bot.debug_menu', 'debug_menu.handle_callback')
         self._add_handler_pattern('^debug_advanced$', 'app.bot.debug_menu', 'debug_menu.handle_callback')
-
+    
     def _add_handler_pattern(self, pattern, module_path, function_name):
         """Добавить обработчик по шаблону"""
         self.handlers[pattern] = {
@@ -99,47 +100,47 @@ class CallbackRouter:
             'function': function_name
         }
     
-def route_callback(self, update, context):
-    """Маршрутизация callback-запроса - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
-    query = update.callback_query
-    data = query.data
-    
-    print(f"🔔 Callback получен: {data}")  # Для отладки
-    
-    # Сначала проверяем точные совпадения (паттерны с $)
-    for pattern, handler_info in self.handlers.items():
-        if pattern.endswith('$'):
-            # Убираем $ для сравнения
-            if data == pattern[:-1]:
-                print(f"✅ Найден точный обработчик для: {data}")
+    def route_callback(self, update, context):
+        """Маршрутизация callback-запроса"""
+        query = update.callback_query
+        data = query.data
+        
+        print(f"🔔 Callback получен: {data}")
+        
+        # Сначала проверяем точные совпадения (паттерны с $)
+        for pattern, handler_info in self.handlers.items():
+            if pattern.endswith('$'):
+                # Убираем $ для сравнения
+                if data == pattern[:-1]:
+                    print(f"✅ Найден точный обработчик для: {data}")
+                    return self._execute_handler(handler_info, update, context)
+        
+        # Затем проверяем частичные совпадения (паттерны без $ в конце)
+        for pattern, handler_info in self.handlers.items():
+            if not pattern.endswith('$') and pattern.endswith('_'):
+                # Для паттернов типа ^settings_ или ^backup_
+                if data.startswith(pattern[1:-1]):  # Убираем ^ и _
+                    print(f"✅ Найден частичный обработчик для: {data}")
+                    return self._execute_handler(handler_info, update, context)
+        
+        # Если не нашли, ищем любой частичный match
+        for pattern, handler_info in self.handlers.items():
+            pattern_clean = pattern.replace('^', '').replace('$', '')
+            if data.startswith(pattern_clean):
+                print(f"⚠️ Найден приблизительный обработчик для: {data}")
                 return self._execute_handler(handler_info, update, context)
+        
+        # Обработчик не найден
+        query.answer(f"❌ Команда '{data}' не распознана")
+        print(f"❌ Необработанный callback: {data}")
+        
+        # Покажем меню снова как fallback
+        try:
+            from app.bot.menus import start_command
+            return start_command(update, context)
+        except:
+            query.edit_message_text("❌ Ошибка обработки команды. Попробуйте /start")
     
-    # Затем проверяем частичные совпадения (паттерны без $ в конце)
-    for pattern, handler_info in self.handlers.items():
-        if not pattern.endswith('$') and pattern.endswith('_'):
-            # Для паттернов типа ^settings_ или ^backup_
-            if data.startswith(pattern[1:-1]):  # Убираем ^ и _
-                print(f"✅ Найден частичный обработчик для: {data}")
-                return self._execute_handler(handler_info, update, context)
-    
-    # Если не нашли, ищем любой частичный match
-    for pattern, handler_info in self.handlers.items():
-        pattern_clean = pattern.replace('^', '').replace('$', '')
-        if data.startswith(pattern_clean):
-            print(f"⚠️ Найден приблизительный обработчик для: {data}")
-            return self._execute_handler(handler_info, update, context)
-    
-    # Обработчик не найден
-    query.answer(f"❌ Команда '{data}' не распознана")
-    print(f"❌ Необработанный callback: {data}")
-    
-    # Покажем меню снова как fallback
-    try:
-        from app.bot.menus import start_command
-        return start_command(update, context)
-    except:
-        query.edit_message_text("❌ Ошибка обработки команды. Попробуйте /start")
-            
     def _execute_handler(self, handler_info, update, context):
         """Выполнить обработчик"""
         try:
@@ -153,12 +154,14 @@ def route_callback(self, update, context):
     def get_handlers(self):
         """Получить все обработчики для регистрации"""
         from telegram.ext import CallbackQueryHandler
-    
+        
         handlers_list = []
         for pattern in self.handlers.keys():
             handlers_list.append(
                 CallbackQueryHandler(self.route_callback, pattern=pattern)
             )
+        
+        print(f"📋 CallbackRouter.get_handlers() вернул {len(handlers_list)} обработчиков")
         return handlers_list
 
 # Глобальный экземпляр маршрутизатора
