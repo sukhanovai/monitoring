@@ -1,9 +1,9 @@
 """
-Server Monitoring System v4.2.0
+Server Monitoring System v4.2.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Конфигурация отладки системы мониторинга
-Версия: 4.2.0
+Версия: 4.2.1
 """
 
 import os

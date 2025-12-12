@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Server Monitoring System v4.2.0
+Server Monitoring System v4.2.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Мониторинг почтового ящика
-Версия: 4.2.0
+Версия: 4.2.1
 """
 
 import os
@@ -42,12 +42,36 @@ def get_database_patterns_from_config():
         # Получаем всю структуру паттернов
         all_patterns = BACKUP_PATTERNS
         
+        # ДОБАВЛЯЕМ ОТЛАДКУ
+        temp_logger.info(f"🔍 DEBUG: Тип BACKUP_PATTERNS: {type(all_patterns)}")
+        
+        # Если это строка, пытаемся загрузить как JSON
+        if isinstance(all_patterns, str):
+            try:
+                temp_logger.info("🔍 DEBUG: BACKUP_PATTERNS - строка, пытаемся распарсить JSON")
+                import json
+                all_patterns = json.loads(all_patterns)
+                temp_logger.info(f"🔍 DEBUG: JSON распарсен, теперь тип: {type(all_patterns)}")
+            except json.JSONDecodeError as e:
+                temp_logger.error(f"❌ Не удалось распарсить BACKUP_PATTERNS как JSON: {e}")
+                return {"company": [], "barnaul": [], "client": [], "yandex": []}
+        
+        # Проверяем, что это словарь
+        if not isinstance(all_patterns, dict):
+            temp_logger.error(f"❌ BACKUP_PATTERNS не является словарем: {type(all_patterns)}")
+            return {"company": [], "barnaul": [], "client": [], "yandex": []}
+        
         temp_logger.info(f"🔍 DEBUG: Полная структура BACKUP_PATTERNS ключи: {list(all_patterns.keys())}")
         
         # Ищем паттерны баз данных
         if 'database' in all_patterns:
             db_patterns = all_patterns['database']
-            temp_logger.info(f"🔍 DEBUG: Найден раздел 'database': {list(db_patterns.keys())}")
+            temp_logger.info(f"🔍 DEBUG: Найден раздел 'database': {list(db_patterns.keys()) if isinstance(db_patterns, dict) else db_patterns}")
+            
+            # Проверяем тип db_patterns
+            if not isinstance(db_patterns, dict):
+                temp_logger.error(f"❌ Раздел 'database' не является словарем: {type(db_patterns)}")
+                return {"company": [], "barnaul": [], "client": [], "yandex": []}
             
             result = {
                 "company": db_patterns.get("company", []),
@@ -68,7 +92,7 @@ def get_database_patterns_from_config():
         import traceback
         temp_logger.error(f"❌ Traceback: {traceback.format_exc()}")
         return {"company": [], "barnaul": [], "client": [], "yandex": []}
-
+    
 DATABASE_BACKUP_PATTERNS = get_database_patterns_from_config()
 
 # Логируем для отладки
