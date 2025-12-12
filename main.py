@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Server Monitoring System v4.4.6
+Server Monitoring System v4.4.7
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Основной модуль запуска
@@ -61,8 +61,8 @@ def test_imports():
         ("app.config.settings", "TELEGRAM_TOKEN"),
         ("app.core.monitoring", "start_monitoring"),
         ("app.core.checker", "server_checker"),
-        ("app.bot.handlers", "manual_check_handler"),  # Проверяем новый путь
-        ("bot_menu", "setup_menu"),
+        ("app.bot.handlers", "manual_check_handler"),
+        ("app.bot.menus", "setup_menu_commands"),
         ("extensions.extension_manager", "extension_manager"),
     ]
     

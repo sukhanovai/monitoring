@@ -1,5 +1,5 @@
 """
-Server Monitoring System v4.4.6 - Обработчики бота
+Server Monitoring System v4.4.7 - Обработчики бота
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Централизованная маршрутизация callback-ов
@@ -152,6 +152,8 @@ def route_callback(self, update, context):
     
     def get_handlers(self):
         """Получить все обработчики для регистрации"""
+        from telegram.ext import CallbackQueryHandler
+    
         handlers_list = []
         for pattern in self.handlers.keys():
             handlers_list.append(
