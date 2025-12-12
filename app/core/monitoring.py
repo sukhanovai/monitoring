@@ -1,5 +1,5 @@
 """
-Server Monitoring System v4.4.4 - Ядро мониторинга
+Server Monitoring System v4.4.5 - Ядро мониторинга
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Основной цикл мониторинга

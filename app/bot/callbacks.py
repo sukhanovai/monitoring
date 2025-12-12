@@ -1,5 +1,5 @@
 """
-Server Monitoring System v4.4.4 - Обработчики бота
+Server Monitoring System v4.4.5 - Обработчики бота
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Централизованная маршрутизация callback-ов
@@ -25,20 +25,24 @@ class CallbackRouter:
         self._add_handler_pattern('^check_resources$', 'app.bot.handlers', 'check_resources_handler')
         self._add_handler_pattern('^control_panel$', 'app.bot.handlers', 'control_panel_handler')
         self._add_handler_pattern('^close$', 'app.bot.handlers', 'close_menu')
-        self._add_handler_pattern('^daily_report$', 'app.bot.handlers', 'send_morning_report_handler')
-        self._add_handler_pattern('^full_report$', 'app.bot.handlers', 'send_morning_report_handler')
-        self._add_handler_pattern('^debug_report$', 'app.bot.handlers', 'debug_morning_report')
-        self._add_handler_pattern('^toggle_monitoring$', 'app.bot.handlers', 'toggle_monitoring_handler')
+        
+        # Тихий режим
         self._add_handler_pattern('^force_silent$', 'app.bot.handlers', 'force_silent_handler')
         self._add_handler_pattern('^force_loud$', 'app.bot.handlers', 'force_loud_handler')
         self._add_handler_pattern('^auto_mode$', 'app.bot.handlers', 'auto_mode_handler')
         self._add_handler_pattern('^toggle_silent$', 'app.bot.handlers', 'toggle_silent_mode_handler')
         
+        # Управление мониторингом
+        self._add_handler_pattern('^toggle_monitoring$', 'app.bot.handlers', 'toggle_monitoring_handler')
+        self._add_handler_pattern('^daily_report$', 'app.bot.handlers', 'send_morning_report_handler')
+        self._add_handler_pattern('^full_report$', 'app.bot.handlers', 'send_morning_report_handler')
+        self._add_handler_pattern('^debug_report$', 'app.bot.handlers', 'debug_morning_report')
+        
         # Ресурсы
+        self._add_handler_pattern('^resource_history$', 'app.bot.handlers', 'resource_history_command')
         self._add_handler_pattern('^resource_page_', 'app.bot.handlers', 'resource_page_handler')
         self._add_handler_pattern('^refresh_resources$', 'app.bot.handlers', 'refresh_resources_handler')
         self._add_handler_pattern('^close_resources$', 'app.bot.handlers', 'close_resources_handler')
-        self._add_handler_pattern('^resource_history$', 'app.bot.handlers', 'resource_history_command')
         
         # Проверка по типам
         self._add_handler_pattern('^check_linux$', 'app.bot.handlers', 'check_linux_resources_handler')
@@ -55,11 +59,10 @@ class CallbackRouter:
         self._add_handler_pattern('^main_menu$', 'app.bot.menus', 'start_command')
         self._add_handler_pattern('^monitor_main$', 'app.bot.menus', 'start_command')
         
-        # Обработчики настроек
+        # Обработчики настроек (должны быть выше бэкапов)
         self._add_handler_pattern('^settings_', 'settings_handlers', 'settings_callback_handler')
         self._add_handler_pattern('^set_', 'settings_handlers', 'settings_callback_handler')
         self._add_handler_pattern('^manage_', 'settings_handlers', 'settings_callback_handler')
-        self._add_handler_pattern('^backup_', 'settings_handlers', 'settings_callback_handler')
         self._add_handler_pattern('^ssh_auth_settings$', 'settings_handlers', 'settings_callback_handler')
         self._add_handler_pattern('^windows_auth_', 'settings_handlers', 'settings_callback_handler')
         self._add_handler_pattern('^cred_type_', 'settings_handlers', 'settings_callback_handler')
@@ -67,15 +70,9 @@ class CallbackRouter:
         self._add_handler_pattern('^server_type_', 'settings_handlers', 'settings_callback_handler')
         
         # Бэкапы
+        self._add_handler_pattern('^backup_', 'extensions.backup_monitor.bot_handler', 'backup_callback')
         self._add_handler_pattern('^db_backups_', 'extensions.backup_monitor.bot_handler', 'backup_callback')
-        self._add_handler_pattern('^backup_hosts$', 'extensions.backup_monitor.bot_handler', 'backup_callback')
-        self._add_handler_pattern('^backup_refresh$', 'extensions.backup_monitor.bot_handler', 'backup_callback')
-        self._add_handler_pattern('^backup_host_', 'extensions.backup_monitor.bot_handler', 'backup_callback')
-        self._add_handler_pattern('^backup_main$', 'extensions.backup_monitor.bot_handler', 'backup_callback')
-        self._add_handler_pattern('^backup_proxmox$', 'extensions.backup_monitor.bot_handler', 'backup_callback')
-        self._add_handler_pattern('^backup_databases$', 'extensions.backup_monitor.bot_handler', 'backup_callback')
         self._add_handler_pattern('^db_detail_', 'extensions.backup_monitor.bot_handler', 'backup_callback')
-        self._add_handler_pattern('^backup_stale_hosts$', 'extensions.backup_monitor.bot_handler', 'show_stale_hosts')
         
         # Расширения
         self._add_handler_pattern('^extensions_menu$', 'app.bot.menus', 'show_extensions_menu')
@@ -85,13 +82,13 @@ class CallbackRouter:
         self._add_handler_pattern('^ext_toggle_', 'app.bot.menus', 'extensions_callback_handler')
         
         # Отладка
+        self._add_handler_pattern('^debug_menu$', 'app.bot.debug_menu', 'debug_menu.show_menu')
         self._add_handler_pattern('^debug_enable$', 'app.bot.debug_menu', 'debug_menu.handle_callback')
         self._add_handler_pattern('^debug_disable$', 'app.bot.debug_menu', 'debug_menu.handle_callback')
         self._add_handler_pattern('^debug_status$', 'app.bot.debug_menu', 'debug_menu.handle_callback')
         self._add_handler_pattern('^debug_clear_logs$', 'app.bot.debug_menu', 'debug_menu.handle_callback')
         self._add_handler_pattern('^debug_diagnose$', 'app.bot.debug_menu', 'debug_menu.handle_callback')
         self._add_handler_pattern('^debug_advanced$', 'app.bot.debug_menu', 'debug_menu.handle_callback')
-        self._add_handler_pattern('^debug_menu$', 'app.bot.debug_menu', 'debug_menu.show_menu')
 
     def _add_handler_pattern(self, pattern, module_path, function_name):
         """Добавить обработчик по шаблону"""
