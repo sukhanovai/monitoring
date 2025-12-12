@@ -1,9 +1,9 @@
 """
-Server Monitoring System v4.1.1
+Server Monitoring System v4.1.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Ядро системы
-Версия: 4.1.1
+Версия: 4.1.2
 """
 
 import os
@@ -27,21 +27,31 @@ last_resource_check = datetime.now()
 resource_alerts_sent = {}
 last_report_date = None
 
-# Ленивая загрузка модулей
 def lazy_import(module_name, attribute_name=None):
-    """Ленивая загрузка модулей"""
+    """Ленивая загрузка модулей с поддержкой составных путей"""
     def import_func():
-        module = __import__(module_name, fromlist=[attribute_name] if attribute_name else [])
+        # Для составных путей типа 'app.config.settings'
+        if '.' in module_name:
+            parts = module_name.split('.')
+            # Импортируем корневой модуль
+            module = __import__(parts[0])
+            # Проходим по вложенным модулям
+            for part in parts[1:]:
+                module = getattr(module, part)
+        else:
+            # Обычный импорт
+            module = __import__(module_name, fromlist=[attribute_name] if attribute_name else [])
+        
         return getattr(module, attribute_name) if attribute_name else module
     return import_func
 
 # Ленивые импорты конфига
-get_config = lazy_import('config')
-get_check_interval = lazy_import('config', 'CHECK_INTERVAL')
-get_silent_times = lazy_import('config', 'SILENT_START')
-get_data_collection_time = lazy_import('config', 'DATA_COLLECTION_TIME')
-get_max_fail_time = lazy_import('config', 'MAX_FAIL_TIME')
-get_resource_config = lazy_import('config', 'RESOURCE_CHECK_INTERVAL')
+get_config = lazy_import('app.config.settings')
+get_check_interval = lazy_import('app.config.settings', 'CHECK_INTERVAL')
+get_silent_times = lazy_import('app.config.settings', 'SILENT_START')
+get_data_collection_time = lazy_import('app.config.settings', 'DATA_COLLECTION_TIME')
+get_max_fail_time = lazy_import('app.config.settings', 'MAX_FAIL_TIME')
+get_resource_config = lazy_import('app.config.settings', 'RESOURCE_CHECK_INTERVAL')
 
 def is_proxmox_server(server):
     """Проверяет, является ли сервер Proxmox"""
