@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Server Monitoring System v4.2.1
+Server Monitoring System v4.2.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Мониторинг почтового ящика
-Версия: 4.2.1
+Версия: 4.2.2
 """
 
 import os
@@ -35,64 +35,53 @@ logger = logging.getLogger(__name__)
 
 def get_database_patterns_from_config():
     """Правильно извлекает паттерны из конфигурации"""
-    temp_logger = logging.getLogger(__name__)
-    temp_logger.setLevel(logging.INFO)
-    
     try:
         # Получаем всю структуру паттернов
         all_patterns = BACKUP_PATTERNS
         
-        # ДОБАВЛЯЕМ ОТЛАДКУ
-        temp_logger.info(f"🔍 DEBUG: Тип BACKUP_PATTERNS: {type(all_patterns)}")
-        
         # Если это строка, пытаемся загрузить как JSON
         if isinstance(all_patterns, str):
             try:
-                temp_logger.info("🔍 DEBUG: BACKUP_PATTERNS - строка, пытаемся распарсить JSON")
                 import json
                 all_patterns = json.loads(all_patterns)
-                temp_logger.info(f"🔍 DEBUG: JSON распарсен, теперь тип: {type(all_patterns)}")
-            except json.JSONDecodeError as e:
-                temp_logger.error(f"❌ Не удалось распарсить BACKUP_PATTERNS как JSON: {e}")
+            except:
+                logger.error("❌ Не удалось распарсить BACKUP_PATTERNS как JSON")
                 return {"company": [], "barnaul": [], "client": [], "yandex": []}
         
-        # Проверяем, что это словарь
+        # Если это не словарь, возвращаем пустые паттерны
         if not isinstance(all_patterns, dict):
-            temp_logger.error(f"❌ BACKUP_PATTERNS не является словарем: {type(all_patterns)}")
+            logger.error(f"❌ BACKUP_PATTERNS не словарь: {type(all_patterns)}")
             return {"company": [], "barnaul": [], "client": [], "yandex": []}
         
-        temp_logger.info(f"🔍 DEBUG: Полная структура BACKUP_PATTERNS ключи: {list(all_patterns.keys())}")
-        
         # Ищем паттерны баз данных
-        if 'database' in all_patterns:
-            db_patterns = all_patterns['database']
-            temp_logger.info(f"🔍 DEBUG: Найден раздел 'database': {list(db_patterns.keys()) if isinstance(db_patterns, dict) else db_patterns}")
-            
-            # Проверяем тип db_patterns
-            if not isinstance(db_patterns, dict):
-                temp_logger.error(f"❌ Раздел 'database' не является словарем: {type(db_patterns)}")
-                return {"company": [], "barnaul": [], "client": [], "yandex": []}
-            
-            result = {
-                "company": db_patterns.get("company", []),
-                "barnaul": db_patterns.get("barnaul", []),
-                "client": db_patterns.get("client", []),
-                "yandex": db_patterns.get("yandex", [])
-            }
-            
-        else:
-            temp_logger.info("🔍 DEBUG: Раздел 'database' не найден, используем пустые паттерны")
-            result = {"company": [], "barnaul": [], "client": [], "yandex": []}
+        db_patterns = all_patterns.get('database', {})
         
-        temp_logger.info(f"🔍 DEBUG: Извлеченные паттерны: {result}")
-        return result
+        # Проверяем тип db_patterns
+        if isinstance(db_patterns, list):
+            # Если это список (старый формат), конвертируем в словарь
+            result = {}
+            for item in db_patterns:
+                if isinstance(item, dict):
+                    for key, value in item.items():
+                        result[key] = value
+                else:
+                    logger.warning(f"⚠️ Неверный формат элемента в database паттернах: {item}")
+        elif isinstance(db_patterns, dict):
+            result = db_patterns
+        else:
+            result = {}
+        
+        return {
+            "company": result.get("company", []),
+            "barnaul": result.get("barnaul", []),
+            "client": result.get("client", []),
+            "yandex": result.get("yandex", [])
+        }
         
     except Exception as e:
-        temp_logger.error(f"❌ Ошибка извлечения паттернов: {e}")
-        import traceback
-        temp_logger.error(f"❌ Traceback: {traceback.format_exc()}")
+        logger.error(f"❌ Ошибка извлечения паттернов: {e}")
         return {"company": [], "barnaul": [], "client": [], "yandex": []}
-    
+        
 DATABASE_BACKUP_PATTERNS = get_database_patterns_from_config()
 
 # Логируем для отладки
@@ -186,19 +175,22 @@ class BackupProcessor:
         return processed_count
     
     def parse_database_backup(self, subject, body):
-        """Парсит бэкапы баз данных из темы письма - РАСШИРЕННАЯ ВЕРСИЯ"""
+        """Парсит бэкапы баз данных из темы письма - ОБНОВЛЕННАЯ ВЕРСИЯ С РЕГУЛЯРНЫМИ ВЫРАЖЕНИЯМИ"""
         try:
             logger.info(f"🎯 Парсим бэкап БД: '{subject}'")
             backup_info = {}
 
             subject_lower = subject.lower()
             
-            # 1. Проверяем письма sr-bup (company databases)
-            if 'sr-bup' in subject_lower and 'dump complete' in subject_lower:
-                match = re.search(r'sr-bup (.+?) dump complete', subject_lower)
+            # Получаем паттерны из конфигурации
+            patterns = get_database_patterns_from_config()
+            
+            # 1. Проверяем company паттерны
+            for pattern in patterns.get("company", []):
+                match = re.search(pattern, subject_lower, re.IGNORECASE)
                 if match:
-                    db_name = match.group(1).strip()
-                    logger.info(f"✅ Найден бэкап company_database: '{db_name}'")
+                    db_name = match.group(1).strip() if match.groups() else "unknown"
+                    logger.info(f"✅ Найден бэкап company_database: '{db_name}' по паттерну: {pattern}")
                     
                     company_dbs = DATABASE_BACKUP_CONFIG.get("company_databases", {})
                     display_name = company_dbs.get(db_name, db_name)
@@ -213,18 +205,18 @@ class BackupProcessor:
                     }
                     return backup_info
 
-            # 2. Проверяем письма kc-1c (client databases)
-            elif 'kc-1c' in subject_lower and 'dump complete' in subject_lower:
-                match = re.search(r'kc-1c (.+?) dump complete', subject_lower)
+            # 2. Проверяем client паттерны
+            for pattern in patterns.get("client", []):
+                match = re.search(pattern, subject_lower, re.IGNORECASE)
                 if match:
-                    db_name = match.group(1).strip()
-                    logger.info(f"✅ Найден бэкап client: '{db_name}'")
+                    db_name = match.group(1).strip() if match.groups() else "unknown"
+                    logger.info(f"✅ Найден бэкап client: '{db_name}' по паттерну: {pattern}")
                     
                     client_dbs = DATABASE_BACKUP_CONFIG.get("client_databases", {})
                     display_name = client_dbs.get(db_name, db_name)
                     
                     backup_info = {
-                        'host_name': 'kc-1c',
+                        'host_name': 'kc-1c' if 'kc-1c' in subject_lower else 'rubicon-1c',
                         'backup_status': 'success',
                         'task_type': 'client_database_dump',
                         'database_name': db_name,
@@ -233,32 +225,34 @@ class BackupProcessor:
                     }
                     return backup_info
 
-            # 3. Проверяем письма rubicon-1c (client databases rubicon)
-            elif 'rubicon-1c' in subject_lower and 'dump complete' in subject_lower:
-                match = re.search(r'rubicon-1c (.+?) dump complete', subject_lower)
+            # 3. Проверяем barnaul паттерны
+            for pattern in patterns.get("barnaul", []):
+                match = re.search(pattern, subject_lower, re.IGNORECASE)
                 if match:
-                    db_name = match.group(1).strip()
-                    logger.info(f"✅ Найден бэкап client rubicon: '{db_name}'")
+                    db_name = match.group(1).strip() if match.groups() else "unknown"
+                    error_count = int(match.group(2)) if match.groups() and len(match.groups()) > 1 else 0
+                    logger.info(f"✅ Найден бэкап barnaul: '{db_name}' по паттерну: {pattern}")
                     
-                    client_dbs = DATABASE_BACKUP_CONFIG.get("client_databases", {})
-                    display_name = client_dbs.get(db_name, db_name)
+                    barnaul_dbs = DATABASE_BACKUP_CONFIG.get("barnaul_backups", {})
+                    display_name = barnaul_dbs.get(db_name, db_name)
                     
                     backup_info = {
-                        'host_name': 'rubicon-1c',
-                        'backup_status': 'success',
-                        'task_type': 'client_database_dump',
+                        'host_name': 'brn-backup',
+                        'backup_status': 'success' if error_count == 0 else 'failed',
+                        'task_type': 'cobian_backup',
                         'database_name': db_name,
                         'database_display_name': display_name,
-                        'backup_type': 'client'
+                        'error_count': error_count,
+                        'backup_type': 'barnaul'
                     }
                     return backup_info
 
-            # 4. Проверяем письма yandex backup
-            elif 'yandex' in subject_lower and 'backup' in subject_lower:
-                match = re.search(r'yandex (.+?) backup', subject_lower)
+            # 4. Проверяем yandex паттерны
+            for pattern in patterns.get("yandex", []):
+                match = re.search(pattern, subject_lower, re.IGNORECASE)
                 if match:
-                    db_name = match.group(1).strip().upper()
-                    logger.info(f"✅ Найден бэкап yandex: '{db_name}'")
+                    db_name = match.group(1).strip().upper() if match.groups() else "UNKNOWN"
+                    logger.info(f"✅ Найден бэкап yandex: '{db_name}' по паттерну: {pattern}")
                     
                     yandex_dbs = DATABASE_BACKUP_CONFIG.get("yandex_backups", {})
                     display_name = yandex_dbs.get(db_name, db_name)
@@ -273,78 +267,6 @@ class BackupProcessor:
                     }
                     return backup_info
 
-            # 5. Проверяем письма cobian BRN (barnaul backups) - разные форматы
-            elif 'cobian brn backup' in subject_lower:
-                # Формат 1: cobian BRN backup 1c_smb, errors:0
-                match = re.search(r'cobian brn backup (.+?), errors:(\d+)', subject_lower)
-                if match:
-                    db_name = match.group(1).strip()
-                    error_count = int(match.group(2))
-                    logger.info(f"✅ Найден бэкап barnaul: '{db_name}' с ошибками: {error_count}")
-                    
-                    barnaul_dbs = DATABASE_BACKUP_CONFIG.get("barnaul_backups", {})
-                    display_name = barnaul_dbs.get(db_name, db_name)
-                    
-                    backup_info = {
-                        'host_name': 'brn-backup',
-                        'backup_status': 'success' if error_count == 0 else 'failed',
-                        'task_type': 'cobian_backup',
-                        'database_name': db_name,
-                        'database_display_name': display_name,
-                        'error_count': error_count,
-                        'backup_type': 'barnaul'
-                    }
-                    return backup_info
-                
-                # Формат 2: cobian BRN backup 1c_smb, errors:е (кириллическая 'е')
-                match = re.search(r'cobian brn backup (.+?), errors:([еe])', subject_lower)
-                if match:
-                    db_name = match.group(1).strip()
-                    error_char = match.group(2)
-                    error_count = 0 if error_char in ['е', 'e'] else 1  # 'е' или 'e' = 0 ошибок
-                    logger.info(f"✅ Найден бэкап barnaul: '{db_name}' с ошибками: {error_count}")
-                    
-                    barnaul_dbs = DATABASE_BACKUP_CONFIG.get("barnaul_backups", {})
-                    display_name = barnaul_dbs.get(db_name, db_name)
-                    
-                    backup_info = {
-                        'host_name': 'brn-backup',
-                        'backup_status': 'success' if error_count == 0 else 'failed',
-                        'task_type': 'cobian_backup',
-                        'database_name': db_name,
-                        'database_display_name': display_name,
-                        'error_count': error_count,
-                        'backup_type': 'barnaul'
-                    }
-                    return backup_info
-
-            # 6. Проверяем письма Backup 1C7.7 TRADE OK
-            elif 'backup 1c7.7' in subject_lower or 'backup 1c' in subject_lower:
-                # Ищем название базы после "Backup 1C7.7"
-                match = re.search(r'backup 1c7\.7 (.+?) (ok|success|complete)', subject_lower, re.IGNORECASE)
-                if not match:
-                    # Альтернативный формат: Backup 1C7.7 TRADE OK
-                    match = re.search(r'backup 1c7?\.?7? (.+?) (ok|success|complete)', subject_lower, re.IGNORECASE)
-                
-                if match:
-                    db_name = match.group(1).strip().lower()
-                    status = match.group(2).lower()
-                    logger.info(f"✅ Найден бэкап 1C7.7: '{db_name}' статус: {status}")
-                    
-                    # Ищем в company databases
-                    company_dbs = DATABASE_BACKUP_CONFIG.get("company_databases", {})
-                    display_name = company_dbs.get(db_name, db_name)
-                    
-                    backup_info = {
-                        'host_name': '1c7-backup',
-                        'backup_status': 'success' if status in ['ok', 'success'] else 'failed',
-                        'task_type': '1c7_backup',
-                        'database_name': db_name,
-                        'database_display_name': display_name,
-                        'backup_type': 'company_database'
-                    }
-                    return backup_info
-
             logger.info(f"❌ Ни один паттерн не подошел для темы: '{subject}'")
             return None
 
@@ -353,7 +275,7 @@ class BackupProcessor:
             import traceback
             logger.error(traceback.format_exc())
             return None
-                        
+                            
     def save_database_backup(self, backup_info, subject, email_date=None):
         """Сохраняет информацию о бэкапе базы данных, игнорируя дубликаты"""
         try:
@@ -583,6 +505,7 @@ class BackupProcessor:
         
         try:
             lines = body.split('\n')
+            in_details_section = False  # ДОБАВЛЯЕМ ИНИЦИАЛИЗАЦИЮ
             
             for line in lines:
                 line = line.strip()
@@ -603,7 +526,6 @@ class BackupProcessor:
                             size_value = size_match.group(1).replace(',', '')
                             size_unit = size_match.group(2).upper()
                             info['total_size'] = f"{size_value} {size_unit}"
-                            logger.info(f"✅ Найден размер бэкапа: {info['total_size']}")
                             break
                 
                 # Ищем общее время выполнения
