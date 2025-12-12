@@ -1,9 +1,9 @@
 """
-Server Monitoring System v4.1.2
+Server Monitoring System v4.1.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Меню бота
-Версия: 4.1.2
+Версия: 4.1.3
 """
 
 from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup
@@ -28,18 +28,28 @@ def lazy_import_settings_handler():
 # Получаем обработчик настроек
 settings_callback_handler = lazy_import_settings_handler()
 
-# Ленивая загрузка модулей
 def lazy_import(module_name, attribute_name=None):
-    """Ленивая загрузка модулей"""
+    """Ленивая загрузка модулей с поддержкой составных путей"""
     def import_func():
-        module = __import__(module_name, fromlist=[attribute_name] if attribute_name else [])
+        # Для составных путей типа 'app.config.settings'
+        if '.' in module_name:
+            parts = module_name.split('.')
+            # Импортируем корневой модуль
+            module = __import__(parts[0])
+            # Проходим по вложенным модулям
+            for part in parts[1:]:
+                module = getattr(module, part)
+        else:
+            # Обычный импорт
+            module = __import__(module_name, fromlist=[attribute_name] if attribute_name else [])
+        
         return getattr(module, attribute_name) if attribute_name else module
     return import_func
 
 # Ленивые импорты конфига
-get_config = lazy_import('config')
-get_chat_ids = lazy_import('config', 'CHAT_IDS')
-get_telegram_token = lazy_import('config', 'TELEGRAM_TOKEN')
+get_config = lazy_import('app.config.settings')
+get_chat_ids = lazy_import('app.config.settings', 'CHAT_IDS')
+get_telegram_token = lazy_import('app.config.settings', 'TELEGRAM_TOKEN')
 
 # Ленивые импорты утилит
 get_debug_log = lambda: debug_log

@@ -1,9 +1,9 @@
 """
-Server Monitoring System v4.1.2
+Server Monitoring System v4.1.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Утилиты системы мониторинга
-Версия: 4.1.2
+Версия: 4.1.3
 """
 
 from .common import (
