@@ -1,5 +1,5 @@
 """
-Server Monitoring System v4.4.5 - Система оповещений
+Server Monitoring System v4.4.6 - Система оповещений
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Модуль управления оповещениями
