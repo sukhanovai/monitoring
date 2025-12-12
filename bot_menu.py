@@ -1,9 +1,9 @@
 """
-Server Monitoring System v4.3.3
+Server Monitoring System v4.3.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Меню бота
-Версия: 4.3.3
+Версия: 4.3.4
 """
 
 from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup
@@ -1135,7 +1135,16 @@ def lazy_handler(pattern):
         elif pattern == 'diagnose_menu':
             from monitor_core import diagnose_menu_handler as handler
         elif pattern == 'close':
-            from monitor_core import close_menu as handler
+            # Импортируем из нового места или используем заглушку
+            try:
+                from monitor_core import close_menu as handler
+            except ImportError:
+                # Создаем простую функцию-заглушку
+                def close_menu_handler(update, context):
+                    query = update.callback_query
+                    query.answer()
+                    query.delete_message()
+                handler = close_menu_handler
         elif pattern == 'force_silent':
             from monitor_core import force_silent_handler as handler
         elif pattern == 'force_loud':
