@@ -1,9 +1,9 @@
 """
-Server Monitoring System v4.4.0 - Обработчики бота
+Server Monitoring System v4.4.1 - Обработчики бота
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Основные обработчики команд бота
-Версия: 4.4.0
+Версия: 4.4.1
 """
 
 import threading
@@ -1400,3 +1400,65 @@ __all__ = [
     'perform_windows_check',
     'perform_other_check',
 ]
+
+# ==================== ЭКСПОРТ И РЕГИСТРАЦИЯ ====================
+
+def get_handlers():
+    """Получить все обработчики команд для бота"""
+    from telegram.ext import CommandHandler, MessageHandler, Filters
+    
+    # Эти функции должны быть доступны из других модулей
+    # Если их нет, нужно их импортировать или создать
+    try:
+        from bot_menu import (
+            start_command, help_command, check_command, status_command,
+            silent_command, control_command, servers_command, report_command,
+            stats_command, diagnose_ssh_command, backup_command,
+            backup_search_command, backup_help_command, fix_monitor_command,
+            extensions_command, debug_command, diagnose_windows_command
+        )
+    except ImportError:
+        # Если bot_menu не доступен, используем локальные обработчики
+        from .menus import start_command, help_command
+        from . import (
+            check_command, status_command, silent_command, control_command,
+            servers_command, report_command, stats_command, diagnose_ssh_command,
+            extensions_command, debug_command
+        )
+        # Для остальных команд создаем заглушки
+        def backup_command(update, context):
+            update.message.reply_text("Функция бэкапов временно недоступна")
+        
+        def backup_search_command(update, context):
+            update.message.reply_text("Поиск бэкапов временно недоступен")
+        
+        def backup_help_command(update, context):
+            update.message.reply_text("Помощь по бэкапам временно недоступна")
+        
+        def fix_monitor_command(update, context):
+            update.message.reply_text("Исправление мониторинга временно недоступно")
+        
+        def diagnose_windows_command(update, context):
+            update.message.reply_text("Диагностика Windows временно недоступна")
+    
+    handlers = [
+        CommandHandler("start", start_command),
+        CommandHandler("help", help_command),
+        CommandHandler("check", check_command),
+        CommandHandler("status", status_command),
+        CommandHandler("servers", servers_command),
+        CommandHandler("silent", silent_command),
+        CommandHandler("report", report_command),
+        CommandHandler("stats", stats_command),
+        CommandHandler("control", control_command),
+        CommandHandler("diagnose_ssh", diagnose_ssh_command),
+        CommandHandler("extensions", extensions_command),
+        CommandHandler("fix_monitor", fix_monitor_command),
+        CommandHandler("backup", backup_command),
+        CommandHandler("backup_search", backup_search_command),
+        CommandHandler("backup_help", backup_help_command),
+        CommandHandler("debug", debug_command),
+        CommandHandler("diagnose_windows", diagnose_windows_command),
+    ]
+    
+    return handlers

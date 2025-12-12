@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Server Monitoring System v4.4.0
+Server Monitoring System v4.4.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Основной модуль запуска
-Версия: 4.4.0
+Версия: 4.4.1
 """
 
 import os
@@ -101,7 +101,18 @@ def main():
         # Настройка меню
         from app.bot.menus import setup_menu_commands
         from app.bot.callbacks import callback_router
-        from app.bot.handlers import get_handlers
+        def get_handlers():
+            """Получить обработчики команд"""
+            from telegram.ext import CommandHandler
+            from app.bot.menus import setup_menu_commands, start_command, help_command
+            from app.bot.handlers import get_handlers
+            from app.bot.callbacks import callback_router
+            handlers = [
+                CommandHandler("start", start_command),
+                CommandHandler("help", help_command),
+            ]
+            
+            return handlers        
         setup_menu_commands(updater.bot, extension_manager)
 
         # Добавляем обработчики

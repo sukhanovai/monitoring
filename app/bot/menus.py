@@ -1,9 +1,9 @@
 """
-Server Monitoring System v4.4.0 - Обработчики бота
+Server Monitoring System v4.4.1 - Обработчики бота
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Модуль для настройки команд и главного меню
-Версия: 4.4.0
+Версия: 4.4.1
 """
 
 from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup
@@ -113,3 +113,178 @@ def get_help_message(extension_manager):
     help_text += "*Используйте кнопки меню для удобного управления*"
     
     return help_text
+
+# ==================== ОБРАБОТЧИКИ КОМАНД ====================
+
+def start_command(update, context):
+    """Обработчик команды /start"""
+    from extensions.extension_manager import extension_manager
+    
+    if not check_access(update.effective_chat.id):
+        update.message.reply_text("⛔ У вас нет прав для использования этого бота")
+        return
+    
+    try:
+        from app.config.debug import DEBUG_MODE
+        debug_mode = DEBUG_MODE
+    except ImportError:
+        debug_mode = False
+    
+    welcome_text = get_start_message(extension_manager, debug_mode)
+    reply_markup = create_main_menu(extension_manager)
+    
+    update.message.reply_text(welcome_text, parse_mode='Markdown', reply_markup=reply_markup)
+
+def help_command(update, context):
+    """Обработчик команды /help"""
+    from extensions.extension_manager import extension_manager
+    
+    if not check_access(update.effective_chat.id):
+        update.message.reply_text("⛔ У вас нет прав для использования этого бота")
+        return
+    
+    help_text = get_help_message(extension_manager)
+    update.message.reply_text(help_text, parse_mode='Markdown')
+
+def check_access(chat_id):
+    """Проверка доступа к боту"""
+    from app.config import settings
+    return str(chat_id) in settings.CHAT_IDS
+
+def show_extensions_menu(update, context):
+    """Показывает меню управления расширениями"""
+    from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+    from extensions.extension_manager import extension_manager
+    
+    query = update.callback_query
+    chat_id = query.message.chat_id if query else update.message.chat_id
+    
+    extensions_status = extension_manager.get_extensions_status()
+    
+    message = "🛠️ *Управление расширениями*\n\n"
+    message += "📊 *Статус расширений:*\n\n"
+    
+    # Создаем клавиатуру
+    keyboard = []
+    
+    for ext_id, status_info in extensions_status.items():
+        enabled = status_info['enabled']
+        ext_info = status_info['info']
+        
+        status_icon = "🟢" if enabled else "🔴"
+        toggle_text = "🔴 Выключить" if enabled else "🟢 Включить"
+        
+        message += f"{status_icon} *{ext_info['name']}*\n"
+        message += f"   {ext_info['description']}\n"
+        message += f"   Статус: {'Включено' if enabled else 'Отключено'}\n\n"
+        
+        # Добавляем кнопку переключения для каждого расширения
+        keyboard.append([
+            InlineKeyboardButton(
+                f"{toggle_text} {ext_info['name']}", 
+                callback_data=f'ext_toggle_{ext_id}'
+            )
+        ])
+    
+    # Добавляем кнопки управления
+    keyboard.extend([
+        [InlineKeyboardButton("📊 Включить все", callback_data='ext_enable_all')],
+        [InlineKeyboardButton("📋 Отключить все", callback_data='ext_disable_all')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='monitor_status'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ])
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    if query:
+        query.edit_message_text(
+            text=message,
+            parse_mode='Markdown',
+            reply_markup=reply_markup
+        )
+    else:
+        update.message.reply_text(
+            text=message,
+            parse_mode='Markdown',
+            reply_markup=reply_markup
+        )
+
+def extensions_callback_handler(update, context):
+    """Обработчик callback'ов для управления расширениями"""
+    from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+    from extensions.extension_manager import extension_manager
+    
+    query = update.callback_query
+    query.answer()
+    
+    data = query.data
+    
+    if data == 'extensions_refresh':
+        show_extensions_menu(update, context)
+    
+    elif data == 'ext_enable_all':
+        enable_all_extensions(update, context)
+    
+    elif data == 'ext_disable_all':
+        disable_all_extensions(update, context)
+    
+    elif data.startswith('ext_toggle_'):
+        extension_id = data.replace('ext_toggle_', '')
+        toggle_extension(update, context, extension_id)
+    
+    elif data == 'monitor_status':
+        try:
+            from app.bot.handlers import monitor_status
+            monitor_status(update, context)
+        except Exception as e:
+            print(f"Ошибка при переходе к статусу мониторинга: {e}")
+            query.edit_message_text("❌ Ошибка при загрузке статуса мониторинга")
+    
+    elif data == 'close':
+        try:
+            query.delete_message()
+        except:
+            query.edit_message_text("✅ Меню закрыто")
+
+def toggle_extension(update, context, extension_id):
+    """Переключает расширение"""
+    from extensions.extension_manager import extension_manager
+    
+    query = update.callback_query
+    success, message = extension_manager.toggle_extension(extension_id)
+    
+    if success:
+        query.answer(message)
+        show_extensions_menu(update, context)
+    else:
+        query.answer(message, show_alert=True)
+
+def enable_all_extensions(update, context):
+    """Включает все расширения"""
+    from extensions.extension_manager import extension_manager, AVAILABLE_EXTENSIONS
+    
+    query = update.callback_query
+    
+    enabled_count = 0
+    for ext_id in AVAILABLE_EXTENSIONS:
+        success, _ = extension_manager.enable_extension(ext_id)
+        if success:
+            enabled_count += 1
+    
+    query.answer(f"✅ Включено {enabled_count}/{len(AVAILABLE_EXTENSIONS)} расширений")
+    show_extensions_menu(update, context)
+
+def disable_all_extensions(update, context):
+    """Отключает все расширения"""
+    from extensions.extension_manager import extension_manager, AVAILABLE_EXTENSIONS
+    
+    query = update.callback_query
+    
+    disabled_count = 0
+    for ext_id in AVAILABLE_EXTENSIONS:
+        success, _ = extension_manager.disable_extension(ext_id)
+        if success:
+            disabled_count += 1
+    
+    query.answer(f"✅ Отключено {disabled_count}/{len(AVAILABLE_EXTENSIONS)} расширений")
+    show_extensions_menu(update, context)

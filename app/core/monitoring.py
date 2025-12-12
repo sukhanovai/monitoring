@@ -1,9 +1,9 @@
 """
-Server Monitoring System v4.4.0 - Ядро мониторинга
+Server Monitoring System v4.4.1 - Ядро мониторинга
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Основной цикл мониторинга
-Версия: 4.4.0
+Версия: 4.4.1
 """
 
 import threading

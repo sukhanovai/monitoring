@@ -1,15 +1,19 @@
 """
-Server Monitoring System v4.4.0
+Server Monitoring System v4.4.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчики и меню Telegram бота
-Версия: 4.4.0
+Версия: 4.4.1
 """
 
 from .handlers import *
-from .menus import setup_menu_commands, create_main_menu, get_start_message, get_help_message
+from .menus import (
+    setup_menu_commands, create_main_menu, get_start_message, get_help_message,
+    start_command, help_command, show_extensions_menu, extensions_callback_handler,
+    toggle_extension, enable_all_extensions, disable_all_extensions
+)
 from .callbacks import callback_router
-# Добавьте другие модули по мере создания
+from .debug_menu import debug_menu
 
 __all__ = [
     # Из handlers.py
@@ -36,7 +40,17 @@ __all__ = [
     'create_main_menu', 
     'get_start_message',
     'get_help_message',
+    'start_command',
+    'help_command',
+    'show_extensions_menu',
+    'extensions_callback_handler',
+    'toggle_extension',
+    'enable_all_extensions',
+    'disable_all_extensions',
     
     # Из callbacks.py
     'callback_router',
+    
+    # Из debug_menu.py
+    'debug_menu',
 ]
