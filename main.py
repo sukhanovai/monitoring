@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Server Monitoring System v4.3.8
+Server Monitoring System v4.4.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Основной модуль запуска
-Версия: 4.3.8
+Версия: 4.4.0
 """
 
 import os
@@ -12,6 +12,7 @@ import sys
 import time
 import logging
 from datetime import datetime
+from app.bot.callbacks import callback_router
 
 print("🚀 Начало запуска мониторинга...")
 
@@ -20,7 +21,7 @@ sys.path.insert(0, '/opt/monitoring')
 
 # Импортируем из новой структуры
 try:
-    from app import debug_log, DEBUG_MODE  # Импортируем из app
+    from app import debug_log, DEBUG_MODE
     from app.utils.common import add_python_path, ensure_directory
     print(f"✅ Утилиты загружены (DEBUG_MODE={DEBUG_MODE})")
 except ImportError as e:
@@ -98,14 +99,16 @@ def main():
         dispatcher = updater.dispatcher
 
         # Настройка меню
-        from bot_menu import setup_menu, get_handlers, get_callback_handlers
-        setup_menu(updater.bot)
+        from app.bot.menus import setup_menu_commands
+        from app.bot.callbacks import callback_router
+        from app.bot.handlers import get_handlers
+        setup_menu_commands(updater.bot, extension_manager)
 
         # Добавляем обработчики
         for handler in get_handlers():
             dispatcher.add_handler(handler)
 
-        for handler in get_callback_handlers():
+        for handler in callback_router.get_handlers():
             dispatcher.add_handler(handler)
 
         # Добавляем обработчики настроек

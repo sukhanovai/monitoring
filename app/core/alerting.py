@@ -1,9 +1,9 @@
 """
-Server Monitoring System v4.3.8 - Система оповещений
+Server Monitoring System v4.4.0 - Система оповещений
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Модуль управления оповещениями
-Версия: 4.3.8
+Версия: 4.4.0
 """
 
 import threading

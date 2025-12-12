@@ -1,14 +1,18 @@
 """
-Server Monitoring System v4.3.8
+Server Monitoring System v4.4.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Обработчики и меню Telegram бота
-Версия: 4.3.8
+Версия: 4.4.0
 """
 
 from .handlers import *
+from .menus import setup_menu_commands, create_main_menu, get_start_message, get_help_message
+from .callbacks import callback_router
+# Добавьте другие модули по мере создания
 
 __all__ = [
+    # Из handlers.py
     'close_menu',
     'force_silent_handler',
     'force_loud_handler',
@@ -26,4 +30,13 @@ __all__ = [
     'check_cpu_resources_handler',
     'check_ram_resources_handler',
     'check_disk_resources_handler',
+    
+    # Из menus.py
+    'setup_menu_commands',
+    'create_main_menu', 
+    'get_start_message',
+    'get_help_message',
+    
+    # Из callbacks.py
+    'callback_router',
 ]
