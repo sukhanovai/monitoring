@@ -1,9 +1,9 @@
 """
-Server Monitoring System v4.3.0
+Server Monitoring System v4.3.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Мониторинг бэкапов Proxmox
-Версия: 4.3.0
+Версия: 4.3.1
 """
 
 import logging

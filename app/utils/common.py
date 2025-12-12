@@ -1,9 +1,9 @@
 """
-Server Monitoring System v4.3.0
+Server Monitoring System v4.3.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Общие утилиты системы
-Версия: 4.3.0
+Версия: 4.3.1
 """
 
 import os
@@ -73,3 +73,16 @@ def is_proxmox_server(ip):
     """Проверяет, является ли сервер Proxmox"""
     return (ip.startswith("192.168.30.") or
            ip in ["192.168.20.30", "192.168.20.32", "192.168.20.59"])
+
+def add_python_path(path: str) -> None:
+    """Добавляет путь в sys.path если его там нет"""
+    if path not in sys.path:
+        sys.path.insert(0, path)
+        debug_log(f"Added to Python path: {path}")
+
+def ensure_directory(path: str) -> None:
+    """Создает директорию если она не существует"""
+    if not os.path.exists(path):
+        os.makedirs(path, exist_ok=True)
+        debug_log(f"Created directory: {path}")
+        

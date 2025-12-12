@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Server Monitoring System v4.3.0
+Server Monitoring System v4.2.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Основной модуль запуска
-Версия: 4.3.0
+Версия: 4.2.2
 """
 
 import os
@@ -16,14 +16,37 @@ from datetime import datetime
 # Добавляем путь для импортов
 sys.path.insert(0, '/opt/monitoring')
 
+print(f"DEBUG_MODE из common.py: {app.utils.common.DEBUG_MODE}")
+
 # Импортируем из новой структуры
-from app.utils.common import debug_log, add_python_path, ensure_directory
-from app.config import settings
+try:
+    from app.utils.common import debug_log, add_python_path, ensure_directory
+    print("✅ Утилиты загружены из новой структуры")
+except ImportError as e:
+    print(f"❌ Ошибка импорта утилит: {e}")
+    # Используем локальные функции как запасной вариант
+    def debug_log(message, force=False):
+        print(f"[DEBUG] {message}")
+    
+    def add_python_path(path):
+        if path not in sys.path:
+            sys.path.insert(0, path)
+    
+    def ensure_directory(path):
+        if not os.path.exists(path):
+            os.makedirs(path, exist_ok=True)
 
 
 def setup_logging():
     """Настройка логирования с учетом отладки"""
-    log_level = logging.DEBUG if settings.DEBUG_MODE else logging.INFO
+    try:
+        from app.config import settings
+        log_level = logging.DEBUG if settings.DEBUG_MODE else logging.INFO
+        print(f"✅ Настройки загружены, DEBUG_MODE={settings.DEBUG_MODE}")
+    except ImportError as e:
+        print(f"⚠️ Не удалось импортировать настройки: {e}")
+        # Используем переменную окружения как запасной вариант
+        log_level = logging.DEBUG if os.environ.get('DEBUG_MODE') == 'True' else logging.INFO
 
     # Создаем директорию для логов если ее нет
     ensure_directory('/opt/monitoring/logs')
@@ -44,6 +67,30 @@ def main():
     """Основная функция запуска"""
     try:
         logger.info("🚀 Запуск оптимизированной версии мониторинга...")
+        
+        # Тестируем основные импорты
+        logger.info("🧪 Тестируем основные импорты...")
+        
+        try:
+            from app.config import settings
+            logger.info(f"✅ Конфигурация загружена: TELEGRAM_TOKEN={'установлен' if settings.TELEGRAM_TOKEN else 'нет'}")
+        except Exception as e:
+            logger.error(f"❌ Ошибка загрузки конфигурации: {e}")
+            return
+        
+        try:
+            from app.core.monitoring import start_monitoring
+            logger.info("✅ Ядро мониторинга загружено")
+        except Exception as e:
+            logger.error(f"❌ Ошибка загрузки ядра мониторинга: {e}")
+            return
+        
+        try:
+            from app.core.checker import server_checker
+            logger.info("✅ Checker загружен")
+        except Exception as e:
+            logger.error(f"❌ Ошибка загрузки checker: {e}")
+            return
         
         # Инициализация бота
         from telegram.ext import Updater
@@ -94,6 +141,7 @@ def main():
         logger.info("✅ Сбор статистики запущен")
 
         # Запускаем основной мониторинг (из новой структуры)
+        logger.info("🔄 Запуск основного цикла мониторинга...")
         from app.core.monitoring import start_monitoring
         monitor_thread = threading.Thread(target=start_monitoring, daemon=True)
         monitor_thread.start()
@@ -119,4 +167,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
