@@ -1,5 +1,5 @@
 """
-Server Monitoring System v4.4.8 - Обработчики бота
+Server Monitoring System v4.4.9 - Обработчики бота
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Централизованная маршрутизация callback-ов
@@ -103,7 +103,11 @@ class CallbackRouter:
     def route_callback(self, update, context):
         """Маршрутизация callback-запроса"""
         query = update.callback_query
-        data = query.data
+        data = query.data if query else None
+        
+        if not data:
+            print("❌ Callback без данных")
+            return
         
         print(f"🔔 Callback получен: {data}")
         
@@ -131,26 +135,52 @@ class CallbackRouter:
                 return self._execute_handler(handler_info, update, context)
         
         # Обработчик не найден
-        query.answer(f"❌ Команда '{data}' не распознана")
+        if query:
+            try:
+                query.answer(f"❌ Команда '{data}' не распознана")
+            except:
+                pass
+        
         print(f"❌ Необработанный callback: {data}")
         
-        # Покажем меню снова как fallback
+        # Покажем главное меню как fallback
         try:
             from app.bot.menus import start_command
             return start_command(update, context)
-        except:
-            query.edit_message_text("❌ Ошибка обработки команды. Попробуйте /start")
-    
+        except Exception as e:
+            print(f"❌ Ошибка в fallback: {e}")
+            if query:
+                try:
+                    query.edit_message_text("❌ Ошибка. Используйте /start")
+                except:
+                    # Если не удалось отредактировать, пробуем отправить новое сообщение
+                    if update.effective_chat:
+                        context.bot.send_message(
+                            chat_id=update.effective_chat.id,
+                            text="❌ Ошибка обработки. Используйте /start"
+                        )
+                            
     def _execute_handler(self, handler_info, update, context):
-        """Выполнить обработчик"""
+        """Выполнить обработчик с обработкой ошибок"""
         try:
             module = importlib.import_module(handler_info['module'])
             handler = getattr(module, handler_info['function'])
             return handler(update, context)
         except (ImportError, AttributeError) as e:
-            print(f"❌ Ошибка загрузки обработчика: {e}")
-            update.callback_query.answer("❌ Ошибка выполнения команды")
-    
+            print(f"❌ Ошибка загрузки обработчика {handler_info['module']}.{handler_info['function']}: {e}")
+            
+            # Безопасная обработка callback_query
+            query = getattr(update, 'callback_query', None)
+            if query:
+                try:
+                    query.answer("❌ Ошибка выполнения команды")
+                except:
+                    pass
+            else:
+                # Если нет callback_query, возможно это обычное сообщение
+                if update.message:
+                    update.message.reply_text("❌ Ошибка выполнения команды")
+
     def get_handlers(self):
         """Получить все обработчики для регистрации"""
         from telegram.ext import CallbackQueryHandler
