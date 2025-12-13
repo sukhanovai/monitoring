@@ -1,5 +1,5 @@
 """
-Server Monitoring System v4.4.9 - Обработчики бота
+Server Monitoring System v4.4.10 - Обработчики бота
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Централизованная маршрутизация callback-ов
@@ -85,13 +85,13 @@ class CallbackRouter:
         self._add_handler_pattern('^ext_toggle_', 'app.bot.menus', 'extensions_callback_handler')
         
         # ========== ОТЛАДКА ==========
-        self._add_handler_pattern('^debug_menu$', 'app.bot.debug_menu', 'debug_menu.show_menu')
-        self._add_handler_pattern('^debug_enable$', 'app.bot.debug_menu', 'debug_menu.handle_callback')
-        self._add_handler_pattern('^debug_disable$', 'app.bot.debug_menu', 'debug_menu.handle_callback')
-        self._add_handler_pattern('^debug_status$', 'app.bot.debug_menu', 'debug_menu.handle_callback')
-        self._add_handler_pattern('^debug_clear_logs$', 'app.bot.debug_menu', 'debug_menu.handle_callback')
-        self._add_handler_pattern('^debug_diagnose$', 'app.bot.debug_menu', 'debug_menu.handle_callback')
-        self._add_handler_pattern('^debug_advanced$', 'app.bot.debug_menu', 'debug_menu.handle_callback')
+        self._add_handler_pattern('^debug_menu$', 'app.bot.debug_menu', 'debug_menu')
+        self._add_handler_pattern('^debug_enable$', 'app.bot.debug_menu', 'debug_menu')
+        self._add_handler_pattern('^debug_disable$', 'app.bot.debug_menu', 'debug_menu')
+        self._add_handler_pattern('^debug_status$', 'app.bot.debug_menu', 'debug_menu')
+        self._add_handler_pattern('^debug_clear_logs$', 'app.bot.debug_menu', 'debug_menu')
+        self._add_handler_pattern('^debug_diagnose$', 'app.bot.debug_menu', 'debug_menu')
+        self._add_handler_pattern('^debug_advanced$', 'app.bot.debug_menu', 'debug_menu')
     
     def _add_handler_pattern(self, pattern, module_path, function_name):
         """Добавить обработчик по шаблону"""
@@ -111,28 +111,41 @@ class CallbackRouter:
         
         print(f"🔔 Callback получен: {data}")
         
-        # Сначала проверяем точные совпадения (паттерны с $)
-        for pattern, handler_info in self.handlers.items():
-            if pattern.endswith('$'):
-                # Убираем $ для сравнения
-                if data == pattern[:-1]:
-                    print(f"✅ Найден точный обработчик для: {data}")
-                    return self._execute_handler(handler_info, update, context)
+        # Точные совпадения (без ^ и $)
+        exact_patterns = {
+            'main_menu': ('app.bot.menus', 'start_command'),
+            'close': ('app.bot.handlers', 'close_menu'),
+            'debug_menu': ('app.bot.debug_menu', 'debug_menu'),
+            'extensions_menu': ('app.bot.menus', 'show_extensions_menu'),
+            'monitor_status': ('app.bot.handlers', 'monitor_status'),
+            'control_panel': ('app.bot.handlers', 'control_panel_handler'),
+            'manual_check': ('app.bot.handlers', 'manual_check_handler'),
+            'check_resources': ('app.bot.handlers', 'check_resources_handler'),
+            'silent_status': ('app.bot.handlers', 'silent_status_handler'),
+            'backup_main': ('extensions.backup_monitor.bot_handler', 'backup_callback'),
+        }
         
-        # Затем проверяем частичные совпадения (паттерны без $ в конце)
-        for pattern, handler_info in self.handlers.items():
-            if not pattern.endswith('$') and pattern.endswith('_'):
-                # Для паттернов типа ^settings_ или ^backup_
-                if data.startswith(pattern[1:-1]):  # Убираем ^ и _
-                    print(f"✅ Найден частичный обработчик для: {data}")
-                    return self._execute_handler(handler_info, update, context)
+        # Проверяем точные совпадения
+        if data in exact_patterns:
+            print(f"✅ Найден точный обработчик для: {data}")
+            module_path, function_name = exact_patterns[data]
+            return self._execute_handler({'module': module_path, 'function': function_name}, update, context)
         
-        # Если не нашли, ищем любой частичный match
-        for pattern, handler_info in self.handlers.items():
-            pattern_clean = pattern.replace('^', '').replace('$', '')
-            if data.startswith(pattern_clean):
-                print(f"⚠️ Найден приблизительный обработчик для: {data}")
-                return self._execute_handler(handler_info, update, context)
+        # Частичные совпадения
+        if data.startswith('ext_toggle_'):
+            return self._execute_handler({'module': 'app.bot.menus', 'function': 'extensions_callback_handler'}, update, context)
+        elif data.startswith('debug_'):
+            return self._execute_handler({'module': 'app.bot.debug_menu', 'function': 'debug_menu'}, update, context)
+        elif data.startswith('check_'):
+            return self._execute_handler({'module': 'app.bot.handlers', 'function': 'check_resources_handler'}, update, context)
+        elif data in ['force_silent', 'force_loud', 'auto_mode']:
+            return self._execute_handler({'module': 'app.bot.handlers', 'function': data + '_handler'}, update, context)
+        elif data.startswith('settings_'):
+            try:
+                from settings_handlers import settings_callback_handler
+                return settings_callback_handler(update, context)
+            except:
+                pass
         
         # Обработчик не найден
         if query:
@@ -142,24 +155,7 @@ class CallbackRouter:
                 pass
         
         print(f"❌ Необработанный callback: {data}")
-        
-        # Покажем главное меню как fallback
-        try:
-            from app.bot.menus import start_command
-            return start_command(update, context)
-        except Exception as e:
-            print(f"❌ Ошибка в fallback: {e}")
-            if query:
-                try:
-                    query.edit_message_text("❌ Ошибка. Используйте /start")
-                except:
-                    # Если не удалось отредактировать, пробуем отправить новое сообщение
-                    if update.effective_chat:
-                        context.bot.send_message(
-                            chat_id=update.effective_chat.id,
-                            text="❌ Ошибка обработки. Используйте /start"
-                        )
-                            
+
     def _execute_handler(self, handler_info, update, context):
         """Выполнить обработчик с обработкой ошибок"""
         try:

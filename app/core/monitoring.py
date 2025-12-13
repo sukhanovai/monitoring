@@ -1,5 +1,5 @@
 """
-Server Monitoring System v4.4.9 - Ядро мониторинга
+Server Monitoring System v4.4.10 - Ядро мониторинга
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Основной цикл мониторинга
@@ -66,19 +66,35 @@ class MonitoringCore:
     def check_server_availability(self, server: Dict[str, Any]) -> bool:
         """Универсальная проверка доступности сервера"""
         try:
-            # Определяем тип проверки в зависимости от сервера
-            if self._is_proxmox_server(server):
-                return checker.check_ssh_universal(server["ip"])
-            elif server["type"] == "rdp":
-                return checker.check_port(server["ip"], 3389)
-            elif server["type"] == "ping":
-                return checker.check_ping(server["ip"])
+            server_type = server.get("type", "ssh").lower()
+            ip = server["ip"]
+            
+            debug_log(f"🔍 Проверяем {server['name']} ({ip}) как {server_type}")
+            
+            if server_type == "rdp":
+                # Для Windows серверов проверяем порт RDP (3389)
+                result = checker.check_port(ip, 3389)
+                debug_log(f"  RDP проверка {ip}:3389 -> {'🟢' if result else '🔴'}")
+                return result
+            elif server_type == "ping":
+                result = checker.check_ping(ip)
+                debug_log(f"  Ping проверка {ip} -> {'🟢' if result else '🔴'}")
+                return result
+            elif server_type == "ssh":
+                # Для SSH серверов (включая Proxmox)
+                result = checker.check_ssh_universal(ip)
+                debug_log(f"  SSH проверка {ip} -> {'🟢' if result else '🔴'}")
+                return result
             else:
-                return checker.check_ssh_universal(server["ip"])
+                # По умолчанию пытаемся SSH
+                result = checker.check_ssh_universal(ip)
+                debug_log(f"  Общая проверка {ip} -> {'🟢' if result else '🔴'}")
+                return result
+                
         except Exception as e:
-            debug_log(f"❌ Ошибка проверки {server['name']}: {e}")
+            debug_log(f"❌ Критическая ошибка проверки {server['name']}: {e}")
             return False
-    
+        
     def _is_proxmox_server(self, server: Dict[str, Any]) -> bool:
         """Проверяет, является ли сервер Proxmox"""
         ip = server["ip"]
