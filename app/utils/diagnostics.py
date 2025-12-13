@@ -1,5 +1,5 @@
 """
-Server Monitoring System v4.4.11 - Обработчики бота
+Server Monitoring System v4.4.12 - Обработчики бота
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Диагностика мониторинга

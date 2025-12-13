@@ -1,5 +1,5 @@
 """
-Server Monitoring System v4.4.11 - Обработчики бота
+Server Monitoring System v4.4.12 - Обработчики бота
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Основные обработчики команд бота
@@ -411,12 +411,20 @@ def send_morning_report_handler(update, context):
     # Вызываем отчет с флагом manual_call=True
     try:
         from app.core.monitoring import monitoring_core
+        # ИСПРАВЛЕНО: правильное имя метода - send_morning_report
         monitoring_core._send_morning_report(manual_call=True)
         print(f"  Отчет отправлен успешно")
     except Exception as e:
         print(f"❌ Ошибка при отправке отчета: {e}")
         import traceback
         print(f"❌ Traceback: {traceback.format_exc()}")
+        response = f"❌ Ошибка при отправке отчета: {e}"
+        if query:
+            query.edit_message_text(response)
+            query.answer("❌ Ошибка")
+        else:
+            update.message.reply_text(response)
+        return
 
     response = "📊 Отчет отправлен (данные актуальны на момент запроса)"
     if query:

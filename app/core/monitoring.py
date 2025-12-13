@@ -1,5 +1,5 @@
 """
-Server Monitoring System v4.4.11 - Ядро мониторинга
+Server Monitoring System v4.4.12 - Ядро мониторинга
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Основной цикл мониторинга
@@ -64,12 +64,13 @@ class MonitoringCore:
             debug_log(f"    ❌ Ошибка отправки: {e}")
     
     def check_server_availability(self, server: Dict[str, Any]) -> bool:
-        """Универсальная проверка доступности сервера"""
+        """Универсальная проверка доступности сервера с детальной диагностикой"""
         try:
             server_type = server.get("type", "ssh").lower()
             ip = server["ip"]
+            name = server.get("name", ip)
             
-            debug_log(f"🔍 Проверяем {server['name']} ({ip}) как {server_type}")
+            debug_log(f"🔍 Проверяем {name} ({ip}) как {server_type}")
             
             if server_type == "rdp":
                 # Для Windows серверов проверяем порт RDP (3389)
@@ -92,9 +93,9 @@ class MonitoringCore:
                 return result
                 
         except Exception as e:
-            debug_log(f"❌ Критическая ошибка проверки {server['name']}: {e}")
+            debug_log(f"❌ Критическая ошибка проверки {server.get('name', 'unknown')}: {e}")
             return False
-        
+            
     def _is_proxmox_server(self, server: Dict[str, Any]) -> bool:
         """Проверяет, является ли сервер Proxmox"""
         ip = server["ip"]
@@ -462,55 +463,96 @@ class MonitoringCore:
         self.send_alert(message)
         debug_log(f"✅ Отправлены алерты по ресурсам: {len(alerts)} проблем")
     
-# В классе MonitoringCore, добавьте диагностический метод:
-def debug_server_check(self):
-    """Диагностика проверки серверов"""
-    from extensions.server_checks import initialize_servers
-    from app.core.checker import server_checker
-    
-    debug_log("🔍 ДИАГНОСТИКА: Начинаем проверку серверов...")
-    
-    # Получаем свежий список серверов
-    servers = initialize_servers()
-    debug_log(f"📊 Получено серверов из initialize_servers(): {len(servers)}")
-    
-    # Покажем первые 5 серверов для диагностики
-    for i, server in enumerate(servers[:5]):
-        debug_log(f"  {i+1}. {server['name']} ({server['ip']}) тип: {server.get('type', 'ssh')}")
-    
-    # Проверяем доступность
-    results = {"failed": [], "ok": []}
-    for server in servers:
-        ip = server["ip"]
-        name = server["name"]
-        server_type = server.get("type", "ssh")
+    def debug_server_check(self):
+        """Диагностика проверки серверов"""
+        from extensions.server_checks import initialize_servers
+        from app.core.checker import server_checker
         
-        try:
-            # Проверяем доступность в зависимости от типа
-            if server_type == "rdp":
-                is_up = server_checker.check_port(ip, 3389)
-                debug_log(f"🔍 {name} ({ip}): RDP порт 3389 - {'🟢' if is_up else '🔴'}")
-            elif server_type == "ssh":
-                is_up = server_checker.check_ssh_universal(ip)
-                debug_log(f"🔍 {name} ({ip}): SSH - {'🟢' if is_up else '🔴'}")
-            elif server_type == "ping":
-                is_up = server_checker.check_ping(ip)
-                debug_log(f"🔍 {name} ({ip}): Ping - {'🟢' if is_up else '🔴'}")
-            else:
-                is_up = False
-                debug_log(f"🔍 {name} ({ip}): Неизвестный тип {server_type}")
+        debug_log("🔍 ДИАГНОСТИКА: Начинаем проверку серверов...")
+        
+        # Получаем свежий список серверов
+        servers = initialize_servers()
+        debug_log(f"📊 Получено серверов из initialize_servers(): {len(servers)}")
+        
+        # Покажем первые 5 серверов для диагностики
+        for i, server in enumerate(servers[:5]):
+            debug_log(f"  {i+1}. {server['name']} ({server['ip']}) тип: {server.get('type', 'ssh')}")
+        
+        # Проверяем доступность
+        results = {"failed": [], "ok": []}
+        for server in servers:
+            ip = server["ip"]
+            name = server["name"]
+            server_type = server.get("type", "ssh")
             
-            if is_up:
-                results["ok"].append(server)
-            else:
-                results["failed"].append(server)
+            try:
+                # Проверяем доступность в зависимости от типа
+                if server_type == "rdp":
+                    is_up = server_checker.check_port(ip, 3389)
+                    debug_log(f"🔍 {name} ({ip}): RDP порт 3389 - {'🟢' if is_up else '🔴'}")
+                elif server_type == "ssh":
+                    is_up = server_checker.check_ssh_universal(ip)
+                    debug_log(f"🔍 {name} ({ip}): SSH - {'🟢' if is_up else '🔴'}")
+                elif server_type == "ping":
+                    is_up = server_checker.check_ping(ip)
+                    debug_log(f"🔍 {name} ({ip}): Ping - {'🟢' if is_up else '🔴'}")
+                else:
+                    is_up = False
+                    debug_log(f"🔍 {name} ({ip}): Неизвестный тип {server_type}")
                 
-        except Exception as e:
-            debug_log(f"❌ Ошибка проверки {name}: {e}")
-            results["failed"].append(server)
-    
-    debug_log(f"📊 ДИАГНОСТИКА ИТОГ: {len(results['ok'])} доступно, {len(results['failed'])} недоступно")
-    return results
+                if is_up:
+                    results["ok"].append(server)
+                else:
+                    results["failed"].append(server)
+                    
+            except Exception as e:
+                debug_log(f"❌ Ошибка проверки {name}: {e}")
+                results["failed"].append(server)
+        
+        debug_log(f"📊 ДИАГНОСТИКА ИТОГ: {len(results['ok'])} доступно, {len(results['failed'])} недоступно")
+        return results
+
+    def diagnose_all_servers(self):
+        """Диагностическая проверка всех серверов"""
+        debug_log("🔍 ДИАГНОСТИКА: Начинаем полную проверку серверов...")
+        
+        if not self.servers:
+            debug_log("⚠️ Список серверов пуст!")
+            return
+        
+        from app.core.checker import server_checker
+        
+        for i, server in enumerate(self.servers):
+            ip = server["ip"]
+            name = server["name"]
+            server_type = server.get("type", "ssh")
+            
+            debug_log(f"{i+1}. {name} ({ip}) тип: {server_type}")
+            
+            try:
+                # Тест 1: Ping
+                ping_result = server_checker.check_ping(ip)
+                debug_log(f"   Ping: {'🟢' if ping_result else '🔴'}")
+                
+                # Тест в зависимости от типа
+                if server_type == "rdp":
+                    rdp_result = server_checker.check_port(ip, 3389)
+                    debug_log(f"   RDP порт 3389: {'🟢' if rdp_result else '🔴'}")
+                    
+                    # Дополнительные порты
+                    for port in [445, 135, 139]:
+                        try:
+                            port_result = server_checker.check_port(ip, port, timeout=2)
+                            debug_log(f"   Порт {port}: {'🟢' if port_result else '🔴'}")
+                        except:
+                            pass
+                            
+                elif server_type == "ssh":
+                    ssh_result = server_checker.check_ssh_universal(ip)
+                    debug_log(f"   SSH: {'🟢' if ssh_result else '🔴'}")
+                    
+            except Exception as e:
+                debug_log(f"   ❌ Ошибка: {e}")
 
     def _send_morning_report(self, manual_call: bool = False) -> None:
         """Отправляет утренний отчет о доступности серверов и бэкапах"""
