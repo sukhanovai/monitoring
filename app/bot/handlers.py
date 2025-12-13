@@ -1,5 +1,5 @@
 """
-Server Monitoring System v4.4.10 - Обработчики бота
+Server Monitoring System v4.4.11 - Обработчики бота
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Основные обработчики команд бота
@@ -389,8 +389,15 @@ def toggle_silent_mode_handler(update, context):
 
 def send_morning_report_handler(update, context):
     """Обработчик для принудительной отправки утреннего отчета"""
+    print(f"🔔 DEBUG: send_morning_report_handler вызван")
+    
     query = update.callback_query if hasattr(update, 'callback_query') else None
-    chat_id = query.message.chat_id if query else update.message.chat_id
+    if query:
+        chat_id = query.message.chat_id
+        print(f"  через callback_query, chat_id: {chat_id}")
+    else:
+        chat_id = update.message.chat_id
+        print(f"  через message, chat_id: {chat_id}")
 
     if not check_access(chat_id):
         if query:
@@ -399,15 +406,26 @@ def send_morning_report_handler(update, context):
             update.message.reply_text("⛔ У вас нет прав для выполнения этой команды")
         return
 
+    print(f"  Вызываем мониторинг...")
+    
     # Вызываем отчет с флагом manual_call=True
-    monitoring_core._send_morning_report(manual_call=True)
+    try:
+        from app.core.monitoring import monitoring_core
+        monitoring_core._send_morning_report(manual_call=True)
+        print(f"  Отчет отправлен успешно")
+    except Exception as e:
+        print(f"❌ Ошибка при отправке отчета: {e}")
+        import traceback
+        print(f"❌ Traceback: {traceback.format_exc()}")
 
     response = "📊 Отчет отправлен (данные актуальны на момент запроса)"
     if query:
         query.edit_message_text(response)
+        query.answer("📊 Отчет отправлен")
     else:
         update.message.reply_text(response)
-
+    
+    print(f"  Ответ отправлен пользователю")
 
 def debug_morning_report(update, context):
     """Отладочная функция для проверки утреннего отчета"""

@@ -1,5 +1,5 @@
 """
-Server Monitoring System v4.4.10 - Обработчики бота
+Server Monitoring System v4.4.11 - Обработчики бота
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Централизованная маршрутизация callback-ов
@@ -111,6 +111,17 @@ class CallbackRouter:
         
         print(f"🔔 Callback получен: {data}")
         
+        # ПРОСТОЙ И ЭФФЕКТИВНЫЙ МЕТОД - сначала проверяем частные случаи
+        if data == 'full_report':
+            print("✅ Обрабатываем full_report напрямую...")
+            try:
+                from app.bot.handlers import send_morning_report_handler
+                return send_morning_report_handler(update, context)
+            except Exception as e:
+                print(f"❌ Ошибка в обработке full_report: {e}")
+                query.answer(f"Ошибка: {e}")
+                return
+       
         # Точные совпадения (без ^ и $)
         exact_patterns = {
             'main_menu': ('app.bot.menus', 'start_command'),

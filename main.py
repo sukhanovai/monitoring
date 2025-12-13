@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Server Monitoring System v4.4.10
+Server Monitoring System v4.4.11
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Основной модуль запуска
@@ -92,7 +92,18 @@ def main():
         from app.config import settings
         from telegram.ext import Updater
         import threading
-        from app.core.monitoring import start_monitoring
+        from app.core.monitoring import monitoring_core, start_monitoring
+        
+        # ТЕСТИРУЕМ ИНИЦИАЛИЗАЦИЮ СЕРВЕРОВ ПРИ ЗАПУСКЕ
+        logger.info("🔍 Тестируем инициализацию серверов...")
+        try:
+            from extensions.server_checks import initialize_servers
+            servers = initialize_servers()
+            logger.info(f"✅ Получено серверов: {len(servers)}")
+            for i, server in enumerate(servers[:3]):  # Покажем первые 3
+                logger.info(f"  {i+1}. {server['name']} ({server['ip']}) тип: {server.get('type', 'ssh')}")
+        except Exception as e:
+            logger.error(f"❌ Ошибка инициализации серверов: {e}")
         
         # Импортируем extension_manager здесь
         from extensions.extension_manager import extension_manager

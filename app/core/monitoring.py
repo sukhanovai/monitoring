@@ -1,5 +1,5 @@
 """
-Server Monitoring System v4.4.10 - Ядро мониторинга
+Server Monitoring System v4.4.11 - Ядро мониторинга
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Основной цикл мониторинга
@@ -104,28 +104,54 @@ class MonitoringCore:
     def get_current_server_status(self) -> Dict[str, List]:
         """Выполняет быструю проверку статуса серверов"""
         results = {"failed": [], "ok": []}
-
-        # Переинициализируем серверы если список пустой
-        if not self.servers:
-            from extensions.server_checks import initialize_servers
-            self.servers = initialize_servers()
-            debug_log(f"🔄 Переинициализирован список серверов: {len(self.servers)} серверов")
         
-        for server in self.servers:
-            try:
-                is_up = self.check_server_availability(server)
-
-                if is_up:
-                    results["ok"].append(server)
-                else:
+        try:
+            # Импортируем тут чтобы избежать циклических импортов
+            from extensions.server_checks import initialize_servers
+            
+            # Получаем свежий список серверов
+            if not self.servers:
+                self.servers = initialize_servers()
+                debug_log(f"🔄 Инициализирован список серверов: {len(self.servers)}")
+            
+            # Если все равно пусто, пробуем еще раз
+            if not self.servers:
+                debug_log("⚠️ Список серверов пуст, пытаемся получить напрямую...")
+                self.servers = initialize_servers()
+            
+            debug_log(f"📊 Проверяем {len(self.servers)} серверов...")
+            
+            for i, server in enumerate(self.servers):
+                try:
+                    ip = server["ip"]
+                    name = server["name"]
+                    server_type = server.get("type", "ssh")
+                    
+                    # Базовые проверки
+                    if not ip or not name:
+                        debug_log(f"⚠️ Пропускаем сервер с некорректными данными: {server}")
+                        results["failed"].append(server)
+                        continue
+                    
+                    # Проверяем доступность
+                    is_up = self.check_server_availability(server)
+                    
+                    if is_up:
+                        results["ok"].append(server)
+                        debug_log(f"✅ {name} ({ip}) - доступен")
+                    else:
+                        results["failed"].append(server)
+                        debug_log(f"❌ {name} ({ip}) - недоступен")
+                        
+                except Exception as e:
+                    debug_log(f"💥 Критическая ошибка проверки сервера {server.get('name', 'unknown')}: {e}")
                     results["failed"].append(server)
                     
-                debug_log(f"🔍 {server['name']} ({server['ip']}) - {'🟢' if is_up else '🔴'}")
-                    
-            except Exception as e:
-                debug_log(f"❌ Ошибка проверки {server['name']}: {e}")
-                results["failed"].append(server)
-
+        except Exception as e:
+            debug_log(f"💥 Фатальная ошибка в get_current_server_status: {e}")
+            import traceback
+            debug_log(f"💥 Traceback: {traceback.format_exc()}")
+        
         debug_log(f"📊 Итог проверки: {len(results['ok'])} доступно, {len(results['failed'])} недоступно")
         return results
     
@@ -436,26 +462,97 @@ class MonitoringCore:
         self.send_alert(message)
         debug_log(f"✅ Отправлены алерты по ресурсам: {len(alerts)} проблем")
     
+# В классе MonitoringCore, добавьте диагностический метод:
+def debug_server_check(self):
+    """Диагностика проверки серверов"""
+    from extensions.server_checks import initialize_servers
+    from app.core.checker import server_checker
+    
+    debug_log("🔍 ДИАГНОСТИКА: Начинаем проверку серверов...")
+    
+    # Получаем свежий список серверов
+    servers = initialize_servers()
+    debug_log(f"📊 Получено серверов из initialize_servers(): {len(servers)}")
+    
+    # Покажем первые 5 серверов для диагностики
+    for i, server in enumerate(servers[:5]):
+        debug_log(f"  {i+1}. {server['name']} ({server['ip']}) тип: {server.get('type', 'ssh')}")
+    
+    # Проверяем доступность
+    results = {"failed": [], "ok": []}
+    for server in servers:
+        ip = server["ip"]
+        name = server["name"]
+        server_type = server.get("type", "ssh")
+        
+        try:
+            # Проверяем доступность в зависимости от типа
+            if server_type == "rdp":
+                is_up = server_checker.check_port(ip, 3389)
+                debug_log(f"🔍 {name} ({ip}): RDP порт 3389 - {'🟢' if is_up else '🔴'}")
+            elif server_type == "ssh":
+                is_up = server_checker.check_ssh_universal(ip)
+                debug_log(f"🔍 {name} ({ip}): SSH - {'🟢' if is_up else '🔴'}")
+            elif server_type == "ping":
+                is_up = server_checker.check_ping(ip)
+                debug_log(f"🔍 {name} ({ip}): Ping - {'🟢' if is_up else '🔴'}")
+            else:
+                is_up = False
+                debug_log(f"🔍 {name} ({ip}): Неизвестный тип {server_type}")
+            
+            if is_up:
+                results["ok"].append(server)
+            else:
+                results["failed"].append(server)
+                
+        except Exception as e:
+            debug_log(f"❌ Ошибка проверки {name}: {e}")
+            results["failed"].append(server)
+    
+    debug_log(f"📊 ДИАГНОСТИКА ИТОГ: {len(results['ok'])} доступно, {len(results['failed'])} недоступно")
+    return results
+
     def _send_morning_report(self, manual_call: bool = False) -> None:
-        """Отправляет утренний отчет о доступности серверов и бэкапах
-        
-        Args:
-            manual_call (bool): Если True - отчет вызван вручную, если False - по расписанию
-        """
+        """Отправляет утренний отчет о доступности серверов и бэкапах"""
         current_time = datetime.now()
+        debug_log(f"📊 _send_morning_report вызван (manual_call={manual_call})")
         
+        # ПРОВЕРКА ИНИЦИАЛИЗАЦИИ
+        debug_log(f"📊 Серверов в self.servers: {len(self.servers)}")
+        if not self.servers:
+            debug_log("⚠️ Список серверов пуст, переинициализируем...")
+            try:
+                from extensions.server_checks import initialize_servers
+                self.servers = initialize_servers()
+                debug_log(f"✅ Переинициализировано: {len(self.servers)} серверов")
+                
+                # Покажем первые 5 для диагностики
+                for i, server in enumerate(self.servers[:5]):
+                    debug_log(f"  {i+1}. {server['name']} ({server['ip']}) тип: {server.get('type', 'unknown')}")
+            except Exception as e:
+                debug_log(f"❌ Ошибка инициализации серверов: {e}")
+                self.send_alert(f"❌ Ошибка при подготовке отчета: не удалось загрузить список серверов", force=True)
+                return
+                
         if manual_call:
             debug_log(f"[{current_time}] 📊 Ручной вызов отчета")
-            # Для ручного вызова собираем СВЕЖИЕ данные
+            # ДЛЯ ДИАГНОСТИКИ: сначала запустим отладочную проверку
+            diagnostic_results = self.debug_server_check()
+            
+            # Для ручного вызова собираем СВЕЖИЕ данные через get_current_server_status
+            debug_log("🔍 Собираем текущий статус через get_current_server_status...")
             current_status = self.get_current_server_status()
+            
+            debug_log(f"📊 Результат get_current_server_status: {len(current_status['ok'])} доступно, {len(current_status['failed'])} недоступно")
+            
             self.morning_data = {
                 "status": current_status,
                 "collection_time": current_time,
-                "manual_call": True  # Помечаем как ручной вызов
+                "manual_call": True
             }
         else:
             debug_log(f"[{current_time}] 📊 Автоматический утренний отчет")
-            # Для автоматического отчета используем данные собранные в DATA_COLLECTION_TIME
+            # Используем данные собранные в DATA_COLLECTION_TIME
             if not self.morning_data or "status" not in self.morning_data:
                 debug_log("❌ Нет данных для утреннего отчета, собираем текущий статус...")
                 current_status = self.get_current_server_status()
@@ -464,6 +561,7 @@ class MonitoringCore:
                     "collection_time": current_time,
                     "manual_call": False
                 }
+        
         
         status = self.morning_data["status"]
         collection_time = self.morning_data.get("collection_time", datetime.now())
@@ -760,6 +858,56 @@ class MonitoringCore:
             debug_log("=======================================")
         except Exception as e:
             debug_log(f"❌ Ошибка диагностики конфигурации: {e}")
+    
+    def debug_server_check(self):
+        """Диагностика проверки серверов"""
+        from extensions.server_checks import initialize_servers
+        from app.core.checker import server_checker
+        
+        debug_log("🔍 ДИАГНОСТИКА: Начинаем проверку серверов...")
+        
+        # Получаем свежий список серверов
+        servers = initialize_servers()
+        debug_log(f"📊 Получено серверов из initialize_servers(): {len(servers)}")
+        
+        # Покажем первые 5 серверов для диагностики
+        for i, server in enumerate(servers[:5]):
+            debug_log(f"  {i+1}. {server['name']} ({server['ip']}) тип: {server.get('type', 'ssh')}")
+        
+        # Проверяем доступность
+        results = {"failed": [], "ok": []}
+        for server in servers:
+            ip = server["ip"]
+            name = server["name"]
+            server_type = server.get("type", "ssh")
+            
+            try:
+                # Проверяем доступность в зависимости от типа
+                if server_type == "rdp":
+                    is_up = server_checker.check_port(ip, 3389)
+                    debug_log(f"🔍 {name} ({ip}): RDP порт 3389 - {'🟢' if is_up else '🔴'}")
+                elif server_type == "ssh":
+                    is_up = server_checker.check_ssh_universal(ip)
+                    debug_log(f"🔍 {name} ({ip}): SSH - {'🟢' if is_up else '🔴'}")
+                elif server_type == "ping":
+                    is_up = server_checker.check_ping(ip)
+                    debug_log(f"🔍 {name} ({ip}): Ping - {'🟢' if is_up else '🔴'}")
+                else:
+                    is_up = False
+                    debug_log(f"🔍 {name} ({ip}): Неизвестный тип {server_type}")
+                
+                if is_up:
+                    results["ok"].append(server)
+                else:
+                    results["failed"].append(server)
+                    
+            except Exception as e:
+                debug_log(f"❌ Ошибка проверки {name}: {e}")
+                results["failed"].append(server)
+        
+        debug_log(f"📊 ДИАГНОСТИКА ИТОГ: {len(results['ok'])} доступно, {len(results['failed'])} недоступно")
+        return results
+
 
 
 # Глобальный экземпляр мониторинга
