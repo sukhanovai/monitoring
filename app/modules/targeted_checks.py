@@ -1,17 +1,18 @@
 """
-Server Monitoring System v4.8.0
+Server Monitoring System v4.8.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Server Spot Check Module
 Система мониторинга серверов
-Версия: 4.8.0
+Версия: 4.8.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль точечных проверок серверов
 """
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from app.utils.common import debug_log, progress_bar
+from app.utils.common import debug_log
+from app.utils.helpers import progress_bar
 
 class TargetedChecks:
     """Класс для точечных проверок серверов"""

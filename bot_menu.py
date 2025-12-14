@@ -1,10 +1,10 @@
 """
-Server Monitoring System v4.8.0
+Server Monitoring System v4.8.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Bot menu
 Система мониторинга серверов
-Версия: 4.8.0
+Версия: 4.8.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Меню бота
@@ -124,8 +124,10 @@ def start_command(update, context):
         return
 
     keyboard = [
-        [InlineKeyboardButton("🔄 Проверить серверы", callback_data='manual_check')],
-        [InlineKeyboardButton("📊 Проверить ресурсы", callback_data='check_resources')],
+        [InlineKeyboardButton("🔄 Проверить все серверы", callback_data='manual_check')],
+        [InlineKeyboardButton("📊 Проверить все ресурсы", callback_data='check_resources')],
+        [InlineKeyboardButton("🔍 Проверить один сервер", callback_data='show_availability_menu')],
+        [InlineKeyboardButton("📈 Ресурсы одного сервера", callback_data='show_resources_menu')],
         [InlineKeyboardButton("⚙️ Управление настройками", callback_data='settings_main')],
         [InlineKeyboardButton("🐛 Отладка", callback_data='debug_menu')],
     ]
@@ -1305,17 +1307,32 @@ def show_server_selection_menu(update, context, action="check_availability"):
     """Показывает меню выбора сервера"""
     query = update.callback_query if hasattr(update, 'callback_query') else None
     
-    if action == "check_availability":
-        title = "📡 *Выберите сервер для проверки доступности:*"
-    else:
-        title = "📊 *Выберите сервер для проверки ресурсов:*"
+    # Определяем заголовок
+    titles = {
+        "check_availability": "📡 *Выберите сервер для проверки доступности:*",
+        "check_resources": "📊 *Выберите сервер для проверки ресурсов:*"
+    }
     
+    title = titles.get(action, "🔍 *Выберите сервер:*")
+    
+    # Получаем клавиатуру
     keyboard = targeted_checks.create_server_selection_menu(action)
     
+    # Если вызвано из callback (кнопка)
     if query:
+        query.answer()
         query.edit_message_text(text=title, parse_mode='Markdown', reply_markup=keyboard)
-    else:
+    # Если вызвано командой
+    elif update.message:
         update.message.reply_text(text=title, parse_mode='Markdown', reply_markup=keyboard)
+    # Если вызвано из другого обработчика
+    else:
+        context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=title,
+            parse_mode='Markdown',
+            reply_markup=keyboard
+        )
 
 def handle_single_check(update, context, server_id):
     """Обработка проверки одного сервера"""
@@ -1370,6 +1387,34 @@ def handle_single_resources(update, context, server_id):
         query.edit_message_text(text=message, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
     else:
         update.message.reply_text(text=message, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+
+def add_quick_check_buttons(keyboard, server_ip=None):
+    """Добавляет кнопки быстрой проверки в клавиатуру"""
+    if server_ip:
+        keyboard.append([
+            InlineKeyboardButton("🔍 Проверить доступность", callback_data=f'check_availability_{server_ip}'),
+            InlineKeyboardButton("📊 Проверить ресурсы", callback_data=f'check_resources_{server_ip}')
+        ])
+    
+    keyboard.append([
+        InlineKeyboardButton("🎛️ Главное меню", callback_data='main_menu'),
+        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+    ])
+    
+    return keyboard
+
+def create_quick_actions_menu(server_ip):
+    """Создает меню быстрых действий для сервера"""
+    keyboard = [
+        [InlineKeyboardButton("🔍 Проверить доступность", callback_data=f'check_availability_{server_ip}')],
+        [InlineKeyboardButton("📊 Проверить ресурсы", callback_data=f'check_resources_{server_ip}')],
+        [InlineKeyboardButton("📋 Информация о сервере", callback_data=f'server_info_{server_ip}')],
+        [InlineKeyboardButton("🔄 Проверить снова", callback_data=f'check_availability_{server_ip}')],
+        [InlineKeyboardButton("🎛️ Главное меню", callback_data='main_menu'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ]
+    
+    return InlineKeyboardMarkup(keyboard)
 
 def refresh_server_menu(update, context):
     """Обновление меню выбора сервера"""
