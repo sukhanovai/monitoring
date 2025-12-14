@@ -1,10 +1,10 @@
 """
-Server Monitoring System v4.7.4
+Server Monitoring System v4.8.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 4.7.4
+Версия: 4.8.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов

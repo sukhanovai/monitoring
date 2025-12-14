@@ -1,10 +1,10 @@
 """
-Server Monitoring System v4.7.4
+Server Monitoring System v4.8.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Bot menu
 Система мониторинга серверов
-Версия: 4.7.4
+Версия: 4.8.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Меню бота
@@ -20,6 +20,7 @@ from app.handlers.callbacks import (
     handle_check_resources_callback,
     handle_server_selection_menu
 )
+from app.modules.targeted_checks import targeted_checks
 
 # Ленивые импорты для настроек
 def lazy_import_settings_handler():
@@ -76,13 +77,15 @@ def setup_menu(bot):
             BotCommand("servers", "Список серверов"),
             BotCommand("report", "Ежедневный отчет"),
             BotCommand("stats", "Статистика"),
-            BotCommand("control", "Управление"),  # Объединенное управление
+            BotCommand("control", "Управление"),
             BotCommand("diagnose_ssh", "Диагностика SSH"),
             BotCommand("silent", "Тихий режим"),
             BotCommand("extensions", "🛠️ Управление расширениями"),
             BotCommand("settings", "⚙️ Управление настройками"),
             BotCommand("debug", "🐛 Управление отладкой"),
             BotCommand("help", "Помощь"),
+            BotCommand("check_server", "🔍 Проверить один сервер"),
+            BotCommand("check_res", "📊 Ресурсы одного сервера"),
         ]
         
         # Динамическое добавление команд расширений
@@ -988,6 +991,8 @@ def get_handlers():
         CommandHandler("diagnose_windows", diagnose_windows_command),
         CommandHandler("check_single", lambda u,c: handle_server_selection_menu(u,c, "check_single")),
         CommandHandler("check_resources_single", lambda u,c: handle_server_selection_menu(u,c, "check_resources")),
+        CommandHandler("check_server", check_single_server_command),
+        CommandHandler("check_res", check_single_resources_command),
         
         # Обработчик сообщений с ленивой загрузкой
         MessageHandler(Filters.text & ~Filters.command, lazy_message_handler()),
@@ -1122,6 +1127,12 @@ def get_callback_handlers():
         CallbackQueryHandler(lambda u,c: handle_server_selection_menu(u,c, "check_resources"), pattern='^check_resources_menu$'),
         CallbackQueryHandler(lambda u,c: handle_check_single_callback(u,c, u.callback_query.data.replace('check_single_', '')), pattern='^check_single_'),
         CallbackQueryHandler(lambda u,c: handle_check_resources_callback(u,c, u.callback_query.data.replace('check_resources_', '')), pattern='^check_resources_'),
+
+        CallbackQueryHandler(lambda u,c: show_server_selection_menu(u,c, "check_availability"), pattern='^show_availability_menu$'),
+        CallbackQueryHandler(lambda u,c: show_server_selection_menu(u,c, "check_resources"), pattern='^show_resources_menu$'),
+        CallbackQueryHandler(lambda u,c: handle_single_check(u,c, u.callback_query.data.replace('check_availability_', '')), pattern='^check_availability_'),
+        CallbackQueryHandler(lambda u,c: handle_single_resources(u,c, u.callback_query.data.replace('check_resources_', '')), pattern='^check_resources_'),
+        CallbackQueryHandler(lambda u,c: refresh_server_menu(u,c), pattern='^refresh_'),
     ]
 
 def lazy_handler(pattern):
@@ -1269,3 +1280,114 @@ def lazy_message_handler():
             # Если не удалось импортировать, просто игнорируем сообщение
             return
     return handler
+
+def check_single_server_command(update, context):
+    """Команда /check_server - проверка доступности одного сервера"""
+    if not context.args:
+        # Показываем меню выбора
+        return show_server_selection_menu(update, context, "check_availability")
+    else:
+        # Проверяем указанный сервер
+        server_id = context.args[0]
+        return handle_single_check(update, context, server_id)
+
+def check_single_resources_command(update, context):
+    """Команда /check_res - проверка ресурсов одного сервера"""
+    if not context.args:
+        # Показываем меню выбора
+        return show_server_selection_menu(update, context, "check_resources")
+    else:
+        # Проверяем указанный сервер
+        server_id = context.args[0]
+        return handle_single_resources(update, context, server_id)
+
+def show_server_selection_menu(update, context, action="check_availability"):
+    """Показывает меню выбора сервера"""
+    query = update.callback_query if hasattr(update, 'callback_query') else None
+    
+    if action == "check_availability":
+        title = "📡 *Выберите сервер для проверки доступности:*"
+    else:
+        title = "📊 *Выберите сервер для проверки ресурсов:*"
+    
+    keyboard = targeted_checks.create_server_selection_menu(action)
+    
+    if query:
+        query.edit_message_text(text=title, parse_mode='Markdown', reply_markup=keyboard)
+    else:
+        update.message.reply_text(text=title, parse_mode='Markdown', reply_markup=keyboard)
+
+def handle_single_check(update, context, server_id):
+    """Обработка проверки одного сервера"""
+    query = update.callback_query
+    if query:
+        query.answer("🔍 Проверяем сервер...")
+    
+    # Выполняем проверку
+    success, server, message = targeted_checks.check_single_server_availability(server_id)
+    
+    # Создаем клавиатуру для действий
+    keyboard = []
+    if server:
+        keyboard.append([
+            InlineKeyboardButton("📊 Проверить ресурсы", callback_data=f"check_resources_{server['ip']}"),
+            InlineKeyboardButton("🔄 Проверить снова", callback_data=f"check_availability_{server['ip']}")
+        ])
+    
+    keyboard.append([
+        InlineKeyboardButton("🔍 Выбрать другой", callback_data="show_availability_menu"),
+        InlineKeyboardButton("✖️ Закрыть", callback_data="close")
+    ])
+    
+    if query:
+        query.edit_message_text(text=message, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+    else:
+        update.message.reply_text(text=message, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+
+def handle_single_resources(update, context, server_id):
+    """Обработка проверки ресурсов одного сервера"""
+    query = update.callback_query
+    if query:
+        query.answer("📊 Проверяем ресурсы...")
+    
+    # Выполняем проверку
+    success, server, message = targeted_checks.check_single_server_resources(server_id)
+    
+    # Создаем клавиатуру для действий
+    keyboard = []
+    if server:
+        keyboard.append([
+            InlineKeyboardButton("📡 Проверить доступность", callback_data=f"check_availability_{server['ip']}"),
+            InlineKeyboardButton("🔄 Обновить ресурсы", callback_data=f"check_resources_{server['ip']}")
+        ])
+    
+    keyboard.append([
+        InlineKeyboardButton("🔍 Выбрать другой", callback_data="show_resources_menu"),
+        InlineKeyboardButton("✖️ Закрыть", callback_data="close")
+    ])
+    
+    if query:
+        query.edit_message_text(text=message, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+    else:
+        update.message.reply_text(text=message, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+
+def refresh_server_menu(update, context):
+    """Обновление меню выбора сервера"""
+    query = update.callback_query
+    if not query:
+        return
+    
+    query.answer("🔄 Обновляем список...")
+    
+    # Определяем тип действия из callback_data
+    data = query.data
+    if "availability" in data:
+        action = "check_availability"
+    else:
+        action = "check_resources"
+    
+    # Обновляем кэш
+    targeted_checks.server_cache = None
+    
+    # Показываем обновленное меню
+    show_server_selection_menu(update, context, action)

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Server Monitoring System v4.7.4
+Server Monitoring System v4.8.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Main launch module
 Система мониторинга серверов
-Версия: 4.7.4
+Версия: 4.8.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль запуска
@@ -16,6 +16,7 @@ import sys
 import time
 import logging
 from datetime import datetime
+from app.modules.targeted_checks import targeted_checks
 
 # Добавляем путь для импортов
 sys.path.insert(0, '/opt/monitoring')
@@ -43,6 +44,10 @@ def main():
     """Основная функция запуска"""
     try:
         logger.info("🚀 Запуск мониторинга...")
+        
+        # Инициализируем модули
+        targeted_checks.get_all_servers()  # Предзагрузка кэша
+        logger.info("✅ Модуль точечных проверок инициализирован")
         
         # Ленивая загрузка конфигурации
         from app.config.settings import TELEGRAM_TOKEN
