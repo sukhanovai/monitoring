@@ -1,9 +1,9 @@
 """
-Server Monitoring System v4.4.12 - Обработчики бота
+Server Monitoring System v4.5.0 - Обработчики бота
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Основные обработчики команд бота
-
+Версия: 4.5.0
 """
 
 import threading
@@ -389,15 +389,8 @@ def toggle_silent_mode_handler(update, context):
 
 def send_morning_report_handler(update, context):
     """Обработчик для принудительной отправки утреннего отчета"""
-    print(f"🔔 DEBUG: send_morning_report_handler вызван")
-    
     query = update.callback_query if hasattr(update, 'callback_query') else None
-    if query:
-        chat_id = query.message.chat_id
-        print(f"  через callback_query, chat_id: {chat_id}")
-    else:
-        chat_id = update.message.chat_id
-        print(f"  через message, chat_id: {chat_id}")
+    chat_id = query.message.chat_id if query else update.message.chat_id
 
     if not check_access(chat_id):
         if query:
@@ -406,34 +399,15 @@ def send_morning_report_handler(update, context):
             update.message.reply_text("⛔ У вас нет прав для выполнения этой команды")
         return
 
-    print(f"  Вызываем мониторинг...")
-    
     # Вызываем отчет с флагом manual_call=True
-    try:
-        from app.core.monitoring import monitoring_core
-        # ИСПРАВЛЕНО: правильное имя метода - send_morning_report
-        monitoring_core._send_morning_report(manual_call=True)
-        print(f"  Отчет отправлен успешно")
-    except Exception as e:
-        print(f"❌ Ошибка при отправке отчета: {e}")
-        import traceback
-        print(f"❌ Traceback: {traceback.format_exc()}")
-        response = f"❌ Ошибка при отправке отчета: {e}"
-        if query:
-            query.edit_message_text(response)
-            query.answer("❌ Ошибка")
-        else:
-            update.message.reply_text(response)
-        return
+    monitoring_core._send_morning_report(manual_call=True)
 
     response = "📊 Отчет отправлен (данные актуальны на момент запроса)"
     if query:
         query.edit_message_text(response)
-        query.answer("📊 Отчет отправлен")
     else:
         update.message.reply_text(response)
-    
-    print(f"  Ответ отправлен пользователю")
+
 
 def debug_morning_report(update, context):
     """Отладочная функция для проверки утреннего отчета"""
@@ -1426,61 +1400,3 @@ __all__ = [
     'perform_windows_check',
     'perform_other_check',
 ]
-
-# ==================== ЭКСПОРТ И РЕГИСТРАЦИЯ ====================
-
-def get_handlers():
-    """Получить все обработчики команд для бота"""
-    from telegram.ext import CommandHandler
-    
-    # Импортируем все доступные команды
-    from app.bot.menus import (
-        start_command, help_command, check_command, status_command,
-        silent_command, control_command, servers_command, report_command,
-        stats_command, diagnose_ssh_command, extensions_command, debug_command,
-        backup_command, backup_search_command, backup_help_command
-    )
-    
-    handlers = [
-        CommandHandler("start", start_command),
-        CommandHandler("help", help_command),
-        CommandHandler("check", check_command),
-        CommandHandler("status", status_command),
-        CommandHandler("servers", servers_command),
-        CommandHandler("silent", silent_command),
-        CommandHandler("report", report_command),
-        CommandHandler("stats", stats_command),
-        CommandHandler("control", control_command),
-        CommandHandler("diagnose_ssh", diagnose_ssh_command),
-        CommandHandler("extensions", extensions_command),
-        CommandHandler("debug", debug_command),
-        CommandHandler("backup", backup_command),
-        CommandHandler("backup_search", backup_search_command),
-        CommandHandler("backup_help", backup_help_command),
-        CommandHandler("fix_monitor", fix_monitor_command),
-        CommandHandler("diagnose_windows", diagnose_windows_command),
-    ]
-    
-    return handlers
-
-def fix_monitor_command(update, context):
-    """Команда для исправления статуса сервера мониторинга"""
-    from app.bot.menus import check_access
-    if not check_access(update.effective_chat.id):
-        update.message.reply_text("⛔ У вас нет прав для использования этой команды")
-        return
-    
-    update.message.reply_text("🔧 Команда /fix_monitor временно недоступна (в процессе переноса)")
-
-def diagnose_windows_command(update, context):
-    """Диагностика подключения к Windows серверам"""
-    from app.bot.menus import check_access
-    if not check_access(update.effective_chat.id):
-        update.message.reply_text("⛔ У вас нет прав для использования этой команды")
-        return
-    
-    if not context.args:
-        update.message.reply_text("❌ Укажите IP Windows сервера: /diagnose_windows <ip>")
-        return
-    
-    update.message.reply_text(f"🔧 Диагностика Windows сервера {context.args[0]} временно недоступна (в процессе переноса)")

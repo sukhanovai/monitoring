@@ -1,9 +1,9 @@
 """
-Server Monitoring System v4.4.12
+Server Monitoring System v4.5.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Менеджер настроек БД
-
+Версия: 4.5.0
 """
 
 import sqlite3

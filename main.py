@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Server Monitoring System v4.4.12
+Server Monitoring System v4.5.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Основной модуль запуска
-
+Версия: 4.5.0
 """
 
 import os
@@ -12,7 +12,6 @@ import sys
 import time
 import logging
 from datetime import datetime
-from app.bot.callbacks import callback_router
 
 print("🚀 Начало запуска мониторинга...")
 
@@ -21,7 +20,7 @@ sys.path.insert(0, '/opt/monitoring')
 
 # Импортируем из новой структуры
 try:
-    from app import debug_log, DEBUG_MODE
+    from app import debug_log, DEBUG_MODE  # Импортируем из app
     from app.utils.common import add_python_path, ensure_directory
     print(f"✅ Утилиты загружены (DEBUG_MODE={DEBUG_MODE})")
 except ImportError as e:
@@ -61,8 +60,8 @@ def test_imports():
         ("app.config.settings", "TELEGRAM_TOKEN"),
         ("app.core.monitoring", "start_monitoring"),
         ("app.core.checker", "server_checker"),
-        ("app.bot.handlers", "manual_check_handler"),
-        ("app.bot.menus", "setup_menu_commands"),
+        ("app.bot.handlers", "manual_check_handler"),  # Проверяем новый путь
+        ("bot_menu", "setup_menu"),
         ("extensions.extension_manager", "extension_manager"),
     ]
     
@@ -92,39 +91,21 @@ def main():
         from app.config import settings
         from telegram.ext import Updater
         import threading
-        from app.core.monitoring import monitoring_core, start_monitoring
-        
-        # ТЕСТИРУЕМ ИНИЦИАЛИЗАЦИЮ СЕРВЕРОВ ПРИ ЗАПУСКЕ
-        logger.info("🔍 Тестируем инициализацию серверов...")
-        try:
-            from extensions.server_checks import initialize_servers
-            servers = initialize_servers()
-            logger.info(f"✅ Получено серверов: {len(servers)}")
-            for i, server in enumerate(servers[:3]):  # Покажем первые 3
-                logger.info(f"  {i+1}. {server['name']} ({server['ip']}) тип: {server.get('type', 'ssh')}")
-        except Exception as e:
-            logger.error(f"❌ Ошибка инициализации серверов: {e}")
-        
-        # Импортируем extension_manager здесь
-        from extensions.extension_manager import extension_manager
+        from app.core.monitoring import start_monitoring
         
         # Инициализация бота
         updater = Updater(token=settings.TELEGRAM_TOKEN, use_context=True)
         dispatcher = updater.dispatcher
 
         # Настройка меню
-        from app.bot.menus import setup_menu_commands
-        setup_menu_commands(updater.bot, extension_manager)
+        from bot_menu import setup_menu, get_handlers, get_callback_handlers
+        setup_menu(updater.bot)
 
-        # Получаем обработчики
-        from app.bot.handlers import get_handlers
-        from app.bot.callbacks import callback_router
-        
         # Добавляем обработчики
         for handler in get_handlers():
             dispatcher.add_handler(handler)
 
-        for handler in callback_router.get_handlers():
+        for handler in get_callback_handlers():
             dispatcher.add_handler(handler)
 
         # Добавляем обработчики настроек
@@ -137,6 +118,8 @@ def main():
             logger.warning(f"⚠️ Обработчики настроек недоступны: {e}")
 
         # Расширения
+        from extensions.extension_manager import extension_manager
+        
         if extension_manager.is_extension_enabled('backup_monitor'):
             from extensions.backup_monitor.bot_handler import setup_backup_handlers
             setup_backup_handlers(dispatcher)
