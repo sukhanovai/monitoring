@@ -1,13 +1,12 @@
 """
-Server Monitoring System v4.7.2
+Server Monitoring System v4.7.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Unified server checks: resources, availability, list
 Система мониторинга серверов
-Версия: 4.7.2
+Версия: 4.7.3
 Автор: Александр Суханов (c)
 Лицензия: MIT
-Основной модуль запуска
 Унифицированные проверки серверов: ресурсы, доступность, список
 """
 
@@ -641,3 +640,8 @@ def check_resource_thresholds(ip, resources, server_name):
         alerts.append(f"⚠️ Disk: {disk}% (мало места)")
 
     return alerts
+
+def check_server_availability(server):
+    """Универсальная проверка доступности сервера"""
+    from monitor_core import check_server_availability as core_check
+    return core_check(server)

@@ -1,10 +1,10 @@
 """
-Server Monitoring System v4.7.2
+Server Monitoring System v4.7.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Configuring exchange settings with the monitoring database
 Система мониторинга серверов
-Версия: 4.7.2
+Версия: 4.7.3
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Конфигурация настроек обмена с БД мониторинга
@@ -266,3 +266,7 @@ if USE_DB:
     print("✅ Config загружает настройки из базы данных")
 else:
     print("⚠️ Config использует значения по умолчанию (база данных недоступна)")
+
+# Отладка
+DEBUG_MODE = False
+DEBUG_LOG_FILE = '/opt/monitoring/logs/debug.log'

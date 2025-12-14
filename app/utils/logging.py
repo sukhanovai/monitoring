@@ -1,10 +1,10 @@
 """
-Server Monitoring System v4.7.2
+Server Monitoring System v4.7.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Main launch module
 Logging module
-Версия: 4.7.2
+Версия: 4.7.3
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль запуска
@@ -15,7 +15,11 @@ import os
 import logging
 import logging.handlers
 from datetime import datetime
-from app.utils.common import DEBUG_MODE
+
+try:
+    from app.config.settings import DEBUG_MODE
+except ImportError:
+    DEBUG_MODE = False
 
 def setup_logging():
     """Настройка централизованного логирования"""

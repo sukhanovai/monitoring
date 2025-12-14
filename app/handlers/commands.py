@@ -1,17 +1,17 @@
 """
-Server Monitoring System v4.7.2
+Server Monitoring System v4.7.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Telegram bot command handlers
 Система мониторинга серверов
-Версия: 4.7.2
+Версия: 4.7.3
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики команд Telegram бота
 """
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from app.utils.logging import debug_log
+from app.utils.common import debug_log
 
 def send_alert(message, force=False):
     """Отправляет сообщение в Telegram"""
