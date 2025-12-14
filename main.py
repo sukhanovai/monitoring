@@ -1,119 +1,99 @@
 #!/usr/bin/env python3
 """
-Server Monitoring System v4.6.0
+Server Monitoring System v4.7.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
+Main launch module
+Система мониторинга серверов
+Версия: 4.7.0
+Автор: Александр Суханов (c)
+Лицензия: MIT
 Основной модуль запуска
-Версия: 4.6.0
 """
 
 import os
 import sys
-import time
-import logging
-from datetime import datetime
-from app import server_checker, logger
-from app.utils import debug_log, progress_bar, format_duration, safe_import, DEBUG_MODE
+import threading
+from app.utils.logging import setup_logging
 
 # Добавляем путь для импортов
 sys.path.insert(0, '/opt/monitoring')
 
-def setup_logging():
-    """Настройка логирования с учетом отладки"""
-    log_level = logging.DEBUG if DEBUG_MODE else logging.INFO
-
-    
-    logging.basicConfig(
-        level=log_level,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler('/opt/monitoring/bot_debug.log'),
-            logging.StreamHandler()
-        ]
-    )
-    return logging.getLogger(__name__)
-
-logger = setup_logging()
-
 def main():
-    """Основная функция запуска"""
+    """Основная функция запуска с новой структурой"""
+    logger = setup_logging()
+    
     try:
-        logger.info("🚀 Запуск оптимизированной версии мониторинга...")
+        logger.info("🚀 Запуск мониторинга v4.7.0...")
         
-        # Ленивая загрузка конфигурации
+        # Инициализация Telegram бота
         from app.config.settings import TELEGRAM_TOKEN
-        
-        # Инициализация бота
         from telegram.ext import Updater
-        import threading
-
+        
         updater = Updater(token=TELEGRAM_TOKEN, use_context=True)
         dispatcher = updater.dispatcher
-
-        # Настройка меню
+        
+        # Настройка меню бота
         from bot_menu import setup_menu, get_handlers, get_callback_handlers
         setup_menu(updater.bot)
-
-        # Добавляем обработчики
+        
+        # Добавление обработчиков
         for handler in get_handlers():
             dispatcher.add_handler(handler)
-
+        
         for handler in get_callback_handlers():
             dispatcher.add_handler(handler)
-
-        # Добавляем обработчики настроек
-        try:
-            from settings_handlers import get_settings_handlers
-            for handler in get_settings_handlers():
-                dispatcher.add_handler(handler)
-            logger.info("✅ Обработчики настроек добавлены")
-        except ImportError as e:
-            logger.warning(f"⚠️ Обработчики настроек недоступны: {e}")
-
-        # Ленивая загрузка расширений
+        
+        # Запуск модулей мониторинга
+        logger.info("🔄 Запуск модулей мониторинга...")
+        
+        # Модуль доступности
+        from app.modules.availability import availability_monitor
+        availability_thread = threading.Thread(
+            target=availability_monitor.start_monitoring,
+            daemon=True
+        )
+        availability_thread.start()
+        logger.info("✅ Модуль доступности запущен")
+        
+        # Модуль утреннего отчета
+        from app.modules.morning_report import morning_report
+        report_thread = threading.Thread(
+            target=morning_report.start_scheduler,
+            daemon=True
+        )
+        report_thread.start()
+        logger.info("✅ Модуль утреннего отчета запущен")
+        
+        # Модуль ресурсов
+        from app.modules.resources import resource_monitor
+        resource_thread = threading.Thread(
+            target=resource_monitor.start_automatic_checks,
+            daemon=True
+        )
+        resource_thread.start()
+        logger.info("✅ Модуль ресурсов запущен")
+        
+        # Запуск расширений
         from extensions.extension_manager import extension_manager
         
-        # Настраиваем обработчики бэкапов если расширение включено
-        if extension_manager.is_extension_enabled('backup_monitor'):
-            from extensions.backup_monitor.bot_handler import setup_backup_handlers
-            setup_backup_handlers(dispatcher)
-            logger.info("✅ Обработчики бэкапов настроены")
-
-        # Запускаем веб-сервер если расширение включено
         if extension_manager.is_extension_enabled('web_interface'):
             from extensions.web_interface import start_web_server
             web_thread = threading.Thread(target=start_web_server, daemon=True)
             web_thread.start()
             logger.info("✅ Веб-сервер запущен")
-
-        # Запускаем сбор статистики
-        from extensions.utils import save_monitoring_stats
-        save_monitoring_stats()
-        logger.info("✅ Сбор статистики запущен")
-
-        # Запускаем основной мониторинг
-        from monitor_core import start_monitoring
-        monitor_thread = threading.Thread(target=start_monitoring, daemon=True)
-        monitor_thread.start()
-        logger.info("✅ Основной мониторинг запущен")
-
-        # Запускаем бота
+        
+        # Запуск бота
         updater.start_polling()
         logger.info("✅ Бот запущен и работает")
-
+        
         # Блокируем основной поток
         updater.idle()
-
+        
     except Exception as e:
         logger.error(f"💥 Критическая ошибка: {e}")
         import traceback
         traceback.print_exc()
-        
-        # Попытка graceful shutdown
-        try:
-            updater.stop()
-        except:
-            pass
 
 if __name__ == "__main__":
     main()

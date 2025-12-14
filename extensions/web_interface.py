@@ -1,9 +1,13 @@
 """
-Server Monitoring System v4.6.0
+Server Monitoring System v4.7.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
+Web interface
+Система мониторинга серверов
+Версия: 4.7.0
+Автор: Александр Суханов (c)
+Лицензия: MIT
 Веб-интерфейс
-Версия: 4.6.0
 """
 
 from flask import Flask, jsonify, render_template_string, request

@@ -1,15 +1,19 @@
 """
-Server Monitoring System v4.6.0
+Server Monitoring System v4.7.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
+Server Monitoring - Basic Package
+Система мониторинга серверов
+Версия: 4.7.0
+Автор: Александр Суханов (c)
+Лицензия: MIT
 Мониторинг серверов - основной пакет
-Версия: 4.6.0
 """
 
 import os
 import sys
 
-__version__ = "4.6.0"
+__version__ = "4.7.0"
 __author__ = "Aleksandr Sukhanov"
 
 # Добавляем текущий каталог в путь для импортов
@@ -25,8 +29,8 @@ try:
     from .core.checker import ServerChecker
     
     # Создаем глобальные экземпляры
-    logger = setup_logging()
-    server_checker = ServerChecker()
+    logger = None
+    server_checker = None
     
     __all__ = [
         # Классы

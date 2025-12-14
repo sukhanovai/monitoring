@@ -1,9 +1,13 @@
 """
-Server Monitoring System v4.6.0
+Server Monitoring System v4.7.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
+Monitoring Proxmox backups
+Система мониторинга серверов
+Версия: 4.7.0
+Автор: Александр Суханов (c)
+Лицензия: MIT
 Мониторинг бэкапов Proxmox
-Версия: 4.6.0
 """
 
 import logging

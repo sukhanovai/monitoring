@@ -1,9 +1,13 @@
 """
-Server Monitoring System v4.6.0
+Server Monitoring System v4.7.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
+Extension Manager for Monitoring
+Система мониторинга серверов
+Версия: 4.7.0
+Автор: Александр Суханов (c)
+Лицензия: MIT
 Менеджер расширений для мониторинга
-Версия: 4.6.0
 """
 
 import json

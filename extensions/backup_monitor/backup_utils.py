@@ -1,9 +1,13 @@
 """
-Server Monitoring System v4.6.0
+Server Monitoring System v4.7.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
+Utilities for working with backups
+Система мониторинга серверов
+Версия: 4.7.0
+Автор: Александр Суханов (c)
+Лицензия: MIT
 Утилиты для работы с бэкапами
-Версия: 4.6.0
 """
 
 import sqlite3

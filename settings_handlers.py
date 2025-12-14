@@ -1,9 +1,14 @@
 """
-Server Monitoring System v4.6.0
+Server Monitoring System v4.7.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
+Handlers for managing settings via a bot
+Система мониторинга серверов
+Версия: 4.7.0
+Автор: Александр Суханов (c)
+Лицензия: MIT
+Основной модуль запуска
 Обработчики для управления настройками через бота
-Версия: 4.6.0
 """
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup

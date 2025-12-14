@@ -1,15 +1,25 @@
 """
-Server Monitoring System v4.6.0
+Server Monitoring System v4.7.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
+Bot menu
+Система мониторинга серверов
+Версия: 4.7.0
+Автор: Александр Суханов (c)
+Лицензия: MIT
 Меню бота
-Версия: 4.6.0
 """
 
 from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CommandHandler, CallbackQueryHandler, MessageHandler, Filters
 from app import server_checker, logger
 from app.utils import debug_log, progress_bar, format_duration, safe_import, DEBUG_MODE
+from app.handlers.commands import handle_check_single_server, handle_check_server_resources
+from app.handlers.callbacks import (
+    handle_check_single_callback, 
+    handle_check_resources_callback,
+    handle_server_selection_menu
+)
 
 # Ленивые импорты для настроек
 def lazy_import_settings_handler():
@@ -976,6 +986,8 @@ def get_handlers():
         CommandHandler("backup_help", backup_help_command),
         CommandHandler("debug", debug_command),
         CommandHandler("diagnose_windows", diagnose_windows_command),
+        CommandHandler("check_single", lambda u,c: handle_server_selection_menu(u,c, "check_single")),
+        CommandHandler("check_resources_single", lambda u,c: handle_server_selection_menu(u,c, "check_resources")),
         
         # Обработчик сообщений с ленивой загрузкой
         MessageHandler(Filters.text & ~Filters.command, lazy_message_handler()),
@@ -1105,6 +1117,11 @@ def get_callback_handlers():
         CallbackQueryHandler(debug_callback_handler, pattern='^debug_diagnose$'),
         CallbackQueryHandler(debug_callback_handler, pattern='^debug_advanced$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('debug_menu')(u, c), pattern='^debug_menu$'),
+
+        CallbackQueryHandler(lambda u,c: handle_server_selection_menu(u,c, "check_single"), pattern='^check_single_menu$'),
+        CallbackQueryHandler(lambda u,c: handle_server_selection_menu(u,c, "check_resources"), pattern='^check_resources_menu$'),
+        CallbackQueryHandler(lambda u,c: handle_check_single_callback(u,c, u.callback_query.data.replace('check_single_', '')), pattern='^check_single_'),
+        CallbackQueryHandler(lambda u,c: handle_check_resources_callback(u,c, u.callback_query.data.replace('check_resources_', '')), pattern='^check_resources_'),
     ]
 
 def lazy_handler(pattern):
