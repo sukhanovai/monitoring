@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Server Monitoring System v4.5.0
+Server Monitoring System v4.6.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Основной модуль запуска
-Версия: 4.5.0
+Версия: 4.6.0
 """
 
 import os
@@ -12,89 +12,42 @@ import sys
 import time
 import logging
 from datetime import datetime
-
-print("🚀 Начало запуска мониторинга...")
+from app import server_checker, logger
+from app.utils import debug_log, progress_bar, format_duration, safe_import, DEBUG_MODE
 
 # Добавляем путь для импортов
 sys.path.insert(0, '/opt/monitoring')
 
-# Импортируем из новой структуры
-try:
-    from app import debug_log, DEBUG_MODE  # Импортируем из app
-    from app.utils.common import add_python_path, ensure_directory
-    print(f"✅ Утилиты загружены (DEBUG_MODE={DEBUG_MODE})")
-except ImportError as e:
-    print(f"⚠️ Используем fallback функции: {e}")
-    def debug_log(message, force=False):
-        print(f"[DEBUG] {message}")
-    
-    def add_python_path(path):
-        if path not in sys.path:
-            sys.path.insert(0, path)
-    
-    def ensure_directory(path):
-        if not os.path.exists(path):
-            os.makedirs(path, exist_ok=True)
-    
-    DEBUG_MODE = False
+def setup_logging():
+    """Настройка логирования с учетом отладки"""
+    log_level = logging.DEBUG if DEBUG_MODE else logging.INFO
 
-# Настраиваем логирование
-log_level = logging.DEBUG if DEBUG_MODE else logging.INFO
-ensure_directory('/opt/monitoring/logs')
+    
+    logging.basicConfig(
+        level=log_level,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler('/opt/monitoring/bot_debug.log'),
+            logging.StreamHandler()
+        ]
+    )
+    return logging.getLogger(__name__)
 
-logging.basicConfig(
-    level=log_level,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('/opt/monitoring/bot_debug.log'),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger(__name__)
-
-def test_imports():
-    """Тестируем все необходимые импорты"""
-    logger.info("🧪 Тестируем импорты...")
-    
-    imports_to_test = [
-        ("app.config.settings", "TELEGRAM_TOKEN"),
-        ("app.core.monitoring", "start_monitoring"),
-        ("app.core.checker", "server_checker"),
-        ("app.bot.handlers", "manual_check_handler"),  # Проверяем новый путь
-        ("bot_menu", "setup_menu"),
-        ("extensions.extension_manager", "extension_manager"),
-    ]
-    
-    for module, attr in imports_to_test:
-        try:
-            if attr:
-                exec(f"from {module} import {attr}")
-                logger.info(f"✅ {module}.{attr}")
-            else:
-                exec(f"import {module}")
-                logger.info(f"✅ {module}")
-        except Exception as e:
-            logger.error(f"❌ {module}.{attr}: {e}")
-            return False
-    
-    return True
+logger = setup_logging()
 
 def main():
     """Основная функция запуска"""
-    logger.info("🚀 Запуск оптимизированной версии мониторинга...")
-    
-    if not test_imports():
-        logger.error("❌ Критические ошибки импорта. Завершаем работу.")
-        return
-    
     try:
-        from app.config import settings
-        from telegram.ext import Updater
-        import threading
-        from app.core.monitoring import start_monitoring
+        logger.info("🚀 Запуск оптимизированной версии мониторинга...")
+        
+        # Ленивая загрузка конфигурации
+        from app.config.settings import TELEGRAM_TOKEN
         
         # Инициализация бота
-        updater = Updater(token=settings.TELEGRAM_TOKEN, use_context=True)
+        from telegram.ext import Updater
+        import threading
+
+        updater = Updater(token=TELEGRAM_TOKEN, use_context=True)
         dispatcher = updater.dispatcher
 
         # Настройка меню
@@ -117,21 +70,29 @@ def main():
         except ImportError as e:
             logger.warning(f"⚠️ Обработчики настроек недоступны: {e}")
 
-        # Расширения
+        # Ленивая загрузка расширений
         from extensions.extension_manager import extension_manager
         
+        # Настраиваем обработчики бэкапов если расширение включено
         if extension_manager.is_extension_enabled('backup_monitor'):
             from extensions.backup_monitor.bot_handler import setup_backup_handlers
             setup_backup_handlers(dispatcher)
             logger.info("✅ Обработчики бэкапов настроены")
 
+        # Запускаем веб-сервер если расширение включено
         if extension_manager.is_extension_enabled('web_interface'):
             from extensions.web_interface import start_web_server
             web_thread = threading.Thread(target=start_web_server, daemon=True)
             web_thread.start()
             logger.info("✅ Веб-сервер запущен")
 
-        # Запускаем мониторинг
+        # Запускаем сбор статистики
+        from extensions.utils import save_monitoring_stats
+        save_monitoring_stats()
+        logger.info("✅ Сбор статистики запущен")
+
+        # Запускаем основной мониторинг
+        from monitor_core import start_monitoring
         monitor_thread = threading.Thread(target=start_monitoring, daemon=True)
         monitor_thread.start()
         logger.info("✅ Основной мониторинг запущен")
@@ -139,7 +100,7 @@ def main():
         # Запускаем бота
         updater.start_polling()
         logger.info("✅ Бот запущен и работает")
-        
+
         # Блокируем основной поток
         updater.idle()
 
@@ -148,6 +109,7 @@ def main():
         import traceback
         traceback.print_exc()
         
+        # Попытка graceful shutdown
         try:
             updater.stop()
         except:
@@ -155,4 +117,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    

@@ -1,9 +1,9 @@
 """
-Server Monitoring System v4.5.0
+Server Monitoring System v4.6.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Веб-интерфейс
-Версия: 4.5.0
+Версия: 4.6.0
 """
 
 from flask import Flask, jsonify, render_template_string, request
@@ -740,8 +740,8 @@ def get_monitoring_stats():
                 stats_data = json.load(f)
         
         # Получаем текущий статус серверов
-        from app.bot.handlers import get_current_server_status, monitoring_active, last_check_time
-        from app.bot.handlers import is_silent_time, resource_history
+        from monitor_core import get_current_server_status, monitoring_active, last_check_time
+        from monitor_core import is_silent_time, resource_history
         from extensions.server_list import initialize_servers
         
         current_status = get_current_server_status()
@@ -878,19 +878,19 @@ def api_run_check():
     try:
         if check_type == 'quick':
             # Запуск быстрой проверки доступности
-            from app.bot.handlers import get_current_server_status
+            from monitor_core import get_current_server_status
             status = get_current_server_status()
             message = f"✅ Быстрая проверка выполнена: {len(status['ok'])} доступно, {len(status['failed'])} недоступно"
             
         elif check_type == 'resources':
             # Запуск проверки ресурсов
-            from app.bot.handlers import check_resources_automatically
+            from monitor_core import check_resources_automatically
             check_resources_automatically()
             message = "✅ Проверка ресурсов выполнена. Данные обновятся через 1-2 минуты."
             
         elif check_type == 'report':
             # Формирование отчета
-            from app.bot.handlers import send_morning_report
+            from monitor_core import send_morning_report
             send_morning_report()
             message = "✅ Отчет сформирован и отправлен в Telegram"
             
@@ -909,17 +909,17 @@ def api_run_action():
     
     try:
         if action == 'check_all':
-            from app.bot.handlers import get_current_server_status
+            from monitor_core import get_current_server_status
             status = get_current_server_status()
             message = f"✅ Проверка всех серверов выполнена: {len(status['ok'])} доступно, {len(status['failed'])} недоступно"
             
         elif action == 'check_resources':
-            from app.bot.handlers import check_resources_automatically
+            from monitor_core import check_resources_automatically
             check_resources_automatically()
             message = "✅ Проверка ресурсов запущена. Данные обновятся через 1-2 минуты."
             
         elif action == 'morning_report':
-            from app.bot.handlers import send_morning_report
+            from monitor_core import send_morning_report
             send_morning_report()
             message = "✅ Утренний отчет отправлен в Telegram"
             
