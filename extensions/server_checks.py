@@ -1,10 +1,10 @@
 """
-Server Monitoring System v4.7.0
+Server Monitoring System v4.7.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Unified server checks: resources, availability, list
 Система мониторинга серверов
-Версия: 4.7.0
+Версия: 4.7.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль запуска
