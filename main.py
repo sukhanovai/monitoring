@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Server Monitoring System v4.7.3
+Server Monitoring System v4.7.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Main launch module
 Система мониторинга серверов
-Версия: 4.7.3
+Версия: 4.7.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль запуска

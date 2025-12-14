@@ -1,10 +1,10 @@
 """
-Server Monitoring System v4.7.3
+Server Monitoring System v4.7.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core system
 Система мониторинга серверов
-Версия: 4.7.3
+Версия: 4.7.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Ядро системы
@@ -17,6 +17,7 @@ from datetime import datetime, timedelta
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from app import server_checker, logger
 from app.utils import debug_log, progress_bar, format_duration, safe_import, DEBUG_MODE
+from extensions.server_checks import check_server_availability
 
 # Глобальные переменные
 bot = None
@@ -99,22 +100,6 @@ def send_alert(message, force=False):
             debug_log("    ⏸️ Сообщение не отправлено (тихий режим)")
     except Exception as e:
         debug_log(f"    ❌ Ошибка отправки: {e}")
-
-def check_server_availability(server):
-    """Универсальная проверка доступности сервера"""
-   
-    try:
-        if is_proxmox_server(server):
-            return server_checker.check_ssh_universal(server["ip"])
-        elif server["type"] == "rdp":
-            return server_checker.check_port(server["ip"], 3389)
-        elif server["type"] == "ping":
-            return server_checker.check_ping(server["ip"])
-        else:
-            return server_checker.check_ssh_universal(server["ip"])
-    except Exception as e:
-        debug_log(f"❌ Ошибка проверки {server['name']}: {e}")
-        return False
 
 def perform_manual_check(context, chat_id, progress_message_id):
     """Выполняет проверку серверов с обновлением прогресса"""

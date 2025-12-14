@@ -1,10 +1,10 @@
 """
-Server Monitoring System v4.7.3
+Server Monitoring System v4.7.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 General system utilities
 Система мониторинга серверов
-Версия: 4.7.3
+Версия: 4.7.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Общие утилиты системы

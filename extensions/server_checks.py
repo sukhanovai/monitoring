@@ -1,10 +1,10 @@
 """
-Server Monitoring System v4.7.3
+Server Monitoring System v4.7.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Unified server checks: resources, availability, list
 Система мониторинга серверов
-Версия: 4.7.3
+Версия: 4.7.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Унифицированные проверки серверов: ресурсы, доступность, список
@@ -642,6 +642,28 @@ def check_resource_thresholds(ip, resources, server_name):
     return alerts
 
 def check_server_availability(server):
-    """Универсальная проверка доступности сервера"""
-    from monitor_core import check_server_availability as core_check
-    return core_check(server)
+    """Универсальная проверка доступности сервера - РАБОЧАЯ ВЕРСИЯ"""
+    try:
+        server_type = server.get("type", "ssh")
+        ip = server["ip"]
+        
+        if server_type == "rdp":
+            return check_port(ip, 3389)
+        elif server_type == "ping":
+            return check_ping(ip)
+        else:  # ssh и другие
+            # Используем checker из app
+            import app
+            if app.server_checker is None:
+                from app.core.checker import ServerChecker
+                app.server_checker = ServerChecker()
+            return app.server_checker.check_ssh_universal(ip)
+    except Exception as e:
+        # Используем debug_log если доступен
+        try:
+            from app.utils.common import debug_log
+            debug_log(f"❌ Ошибка проверки {server.get('name', 'unknown')}: {e}")
+        except:
+            print(f"❌ Ошибка проверки {server.get('name', 'unknown')}: {e}")
+        return False
+    
