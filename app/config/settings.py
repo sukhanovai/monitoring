@@ -1,10 +1,10 @@
 """
-Server Monitoring System v4.8.1
+Server Monitoring System v4.9.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Configuring exchange settings with the monitoring database
 Система мониторинга серверов
-Версия: 4.8.1
+Версия: 4.9.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Конфигурация настроек обмена с БД мониторинга

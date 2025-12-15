@@ -1,0 +1,21 @@
+"""
+Server Monitoring System v4.9.0
+Copyright (c) 2025 Aleksandr Sukhanov
+License: MIT
+Telegram bot module
+Система мониторинга серверов
+Версия: 4.9.0
+Автор: Александр Суханов (c)
+Лицензия: MIT
+Модуль Telegram-бота
+"""
+
+from .handlers import get_handlers, get_callback_handlers
+from .menu import setup_menu, get_menu_commands
+
+__all__ = [
+    'get_handlers',
+    'get_callback_handlers', 
+    'setup_menu',
+    'get_menu_commands'
+]
