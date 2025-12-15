@@ -1,10 +1,10 @@
 """
-Server Monitoring System v4.9.1
+Server Monitoring System v4.9.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Bot menu
 Система мониторинга серверов
-Версия: 4.9.1
+Версия: 4.9.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Меню бота
