@@ -1,10 +1,10 @@
 """
-Server Monitoring System v4.11.1
+Server Monitoring System v4.11.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Bot command handlers
 Система мониторинга серверов
-Версия: 4.11.1
+Версия: 4.11.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики команд бота
@@ -22,6 +22,7 @@ def setup_command_handlers():
     return [
         CommandHandler("start", lazy_start_command),
         CommandHandler("help", lazy_help_command),
+        CommandHandler("check_settings", check_settings_command),
         CommandHandler("check", lambda u,c: lazy_handler('manual_check')(u,c)),
         CommandHandler("status", lambda u,c: lazy_handler('monitor_status')(u,c)),
         CommandHandler("servers", lambda u,c: lazy_handler('servers_list')(u,c)),
@@ -275,3 +276,22 @@ def check_single_resources_command(update, context):
         server_id = context.args[0]
         from modules.targeted_checks import handle_single_resources
         return handle_single_resources(update, context, server_id)
+
+def check_settings_command(update, context):
+    """Команда для проверки настроек"""
+    from config.settings import CHAT_IDS, TELEGRAM_TOKEN, USE_DB
+    
+    chat_id = update.effective_chat.id
+    chat_id_str = str(chat_id)
+    
+    message = (
+        f"🔧 *Проверка настроек*\n\n"
+        f"🆔 *Ваш Chat ID:* `{chat_id_str}`\n"
+        f"🔑 *Токен:* {'Есть' if TELEGRAM_TOKEN else 'Нет'}\n"
+        f"🗄️ *Используется БД:* {'Да' if USE_DB else 'Нет'}\n"
+        f"📋 *CHAT_IDS из настроек:* {CHAT_IDS}\n\n"
+        f"🔍 *Проверка доступа:* {'✅ Доступ есть' if chat_id_str in CHAT_IDS else '❌ Доступа нет'}"
+    )
+    
+    update.message.reply_text(message, parse_mode='Markdown')
+    debug_log(f"🔍 Проверка настроек: chat_id={chat_id_str}, CHAT_IDS={CHAT_IDS}, доступ={'есть' if chat_id_str in CHAT_IDS else 'нет'}")
