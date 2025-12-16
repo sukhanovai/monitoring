@@ -1,10 +1,10 @@
 """
-Server Monitoring System v4.10.4
+Server Monitoring System v4.10.5
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Application settings - default values
 Система мониторинга серверов
-Версия: 4.10.4
+Версия: 4.10.5
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Настройки приложения - значения по умолчанию
@@ -13,6 +13,9 @@ Application settings - default values
 import os
 from datetime import time as dt_time
 from typing import Dict, List, Any
+
+# Режим отладки
+DEBUG_MODE = False
 
 # === БАЗОВЫЕ ПУТИ ===
 BASE_DIR = "/opt/monitoring"

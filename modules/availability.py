@@ -1,10 +1,10 @@
 """
-Server Monitoring System v4.10.4
+Server Monitoring System v4.10.5
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Server availability check module
 Система мониторинга серверов
-Версия: 4.10.4
+Версия: 4.10.5
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль проверки доступности серверов
