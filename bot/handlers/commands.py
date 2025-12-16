@@ -12,7 +12,8 @@ Bot command handlers
 
 from telegram.ext import CommandHandler
 from lib.logging import debug_log
-from bot.handlers.base import check_access, get_access_denied_response, lazy_handler
+from bot.utils import check_access, get_access_denied_response  # Импортируем из общего модуля
+from bot.handlers.base import lazy_handler
 
 # Удаляем импорты из menu.handlers и делаем их ленивыми
 

@@ -14,19 +14,7 @@ from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CommandHandler, CallbackQueryHandler, MessageHandler, Filters
 from lib.logging import debug_log
 from config.settings import DEBUG_MODE
-
-def check_access(chat_id):
-    """Проверка доступа к боту"""
-    from config.settings import CHAT_IDS
-    return str(chat_id) in CHAT_IDS
-
-def get_access_denied_response(update):
-    """Возвращает ответ при отсутствии доступа"""
-    if update.message:
-        update.message.reply_text("⛔ У вас нет прав для использования этого бота")
-    elif update.callback_query:
-        update.callback_query.answer("⛔ У вас нет прав")
-        update.callback_query.edit_message_text("⛔ У вас нет прав для использования этого бота")
+from bot.utils import check_access, get_access_denied_response
 
 def lazy_handler(handler_name):
     """Ленивая загрузка обработчиков"""

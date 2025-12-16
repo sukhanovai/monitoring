@@ -10,9 +10,10 @@ Bot handlers package
 Пакет обработчиков бота
 """
 
-from .base import check_access, get_access_denied_response, lazy_handler, lazy_message_handler
+from .base import lazy_handler, lazy_message_handler
 from .commands import setup_command_handlers
 from .callbacks import setup_callback_handlers
+from bot.utils import check_access, get_access_denied_response
 
 __all__ = [
     'check_access',

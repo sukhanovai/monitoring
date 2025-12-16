@@ -18,11 +18,10 @@ from bot.menu.builder import (
     build_extensions_menu,
     build_debug_menu
 )
+from bot.utils import check_access, get_access_denied_response  # Импортируем из общего модуля
 
 def start_command(update, context):
     """Обработчик команды /start с отладочной информацией"""
-    from bot.handlers.base import check_access, get_access_denied_response
-    
     if not check_access(update.effective_chat.id):
         get_access_denied_response(update)
         return
@@ -58,8 +57,6 @@ def start_command(update, context):
 
 def help_command(update, context):
     """Обработчик команды /help"""
-    from bot.handlers.base import check_access
-    
     if not check_access(update.effective_chat.id):
         if update.message:
             update.message.reply_text("⛔ У вас нет прав для использования этого бота")
@@ -137,7 +134,7 @@ def show_extensions_menu(update, context):
             parse_mode='Markdown',
             reply_markup=build_extensions_menu(extensions_status)
         )
-        
+
 def extensions_callback_handler(update, context):
     """Обработчик callback'ов для управления расширениями"""
     query = update.callback_query

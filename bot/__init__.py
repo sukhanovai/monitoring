@@ -16,6 +16,7 @@ from .handlers import (
     setup_callback_handlers,
     lazy_message_handler
 )
+from .utils import check_access, get_access_denied_response
 
 def get_bot_handlers():
     """Возвращает все обработчики для бота"""
@@ -32,5 +33,7 @@ def get_bot_message_handler():
 __all__ = [
     'setup_menu',
     'get_bot_handlers',
-    'get_bot_message_handler'
+    'get_bot_message_handler',
+    'check_access',
+    'get_access_denied_response'
 ]
