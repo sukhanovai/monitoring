@@ -1,10 +1,10 @@
 """
-Server Monitoring System v4.10.2
+Server Monitoring System v4.10.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 4.10.2
+Версия: 4.10.3
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс

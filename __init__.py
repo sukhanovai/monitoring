@@ -1,16 +1,16 @@
 """
-Server Monitoring System v4.10.2
+Server Monitoring System v4.10.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Package exports
 Система мониторинга серверов
-Версия: 4.10.2
+Версия: 4.10.3
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Экспорт пакетов
 """
 
-__version__ = "4.10.2"
+__version__ = "4.10.3"
 __author__ = "Александр Суханов"
 
 # Re-exports from lib

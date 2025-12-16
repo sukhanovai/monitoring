@@ -1,10 +1,10 @@
 """
-Server Monitoring System v4.10.2
+Server Monitoring System v4.10.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Server Monitoring - Basic Package
 Система мониторинга серверов
-Версия: 4.10.2
+Версия: 4.10.3
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг серверов - основной пакет
@@ -13,7 +13,7 @@ Server Monitoring - Basic Package
 import os
 import sys
 
-__version__ = "4.10.2"
+__version__ = "4.10.3"
 __author__ = "Aleksandr Sukhanov"
 
 # Добавляем текущий каталог в путь для импортов
