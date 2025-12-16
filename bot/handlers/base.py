@@ -1,11 +1,11 @@
 """
 /bot/handlers/base.py
-Server Monitoring System v4.14.1
+Server Monitoring System v4.14.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Basic functions: access, universal responses, general checks
 Система мониторинга серверов
-Версия: 4.14.1
+Версия: 4.14.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Базовые функции: доступ, универсальные ответы, общие проверки
@@ -26,8 +26,7 @@ def check_access(update):
     allowed_ids = DB_CHAT_IDS if DB_CHAT_IDS else DEFAULT_CHAT_IDS
 
     debug_log(
-        f"Access check | chat_id={chat_id} | allowed={allowed_ids}",
-        level="debug"
+        f"Access check | chat_id={chat_id} | allowed={allowed_ids}"
     )
 
     return chat_id in allowed_ids
