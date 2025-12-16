@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Server Monitoring System v4.10.0
+Server Monitoring System v4.10.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Main launch module
 Система мониторинга серверов
-Версия: 4.10.0
+Версия: 4.10.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль запуска
@@ -43,7 +43,7 @@ def main():
     logger = setup_environment()
     
     try:
-        logger.info("🚀 Запуск системы мониторинга v4.10.0...")
+        logger.info("🚀 Запуск системы мониторинга v4.10.1...")
         
         # Инициализация модулей
         from modules.targeted_checks import targeted_checks
