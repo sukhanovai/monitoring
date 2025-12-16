@@ -1,11 +1,11 @@
 """
 /core/monitor.py
-Server Monitoring System v4.13.3
+Server Monitoring System v4.13.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core monitoring module
 Система мониторинга серверов
-Версия: 4.13.3
+Версия: 4.13.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль мониторинга
@@ -419,6 +419,47 @@ class Monitor:
             "last_check_time": self.last_check_time,
             "last_resource_check": self.last_resource_check
         }
+
+def start_monitoring():
+    """Точка входа для запуска мониторинга"""
+    debug_log("🚀 Запуск основного мониторинга...")
+    
+    try:
+        # Инициализируем серверы
+        from extensions.server_checks import initialize_servers
+        global servers
+        servers = initialize_servers()
+        
+        # Исключаем сервер мониторинга
+        monitor_server_ip = "192.168.20.2"
+        servers = [s for s in servers if s["ip"] != monitor_server_ip]
+        debug_log(f"✅ Мониторинг запущен для {len(servers)} серверов")
+        
+        # Запускаем основной цикл
+        main_loop()
+        
+    except Exception as e:
+        debug_log(f"💥 Ошибка запуска мониторинга: {e}")
+        import traceback
+        debug_log(f"💥 Traceback: {traceback.format_exc()}")
+
+def main_loop():
+    """Основной цикл мониторинга"""
+    import time
+    from config import CHECK_INTERVAL
+    
+    debug_log("🔄 Основной цикл мониторинга запущен")
+    
+    try:
+        while True:
+            # Здесь будет основной код мониторинга
+            # Временная заглушка
+            time.sleep(CHECK_INTERVAL)
+            
+    except KeyboardInterrupt:
+        debug_log("🛑 Мониторинг остановлен")
+    except Exception as e:
+        debug_log(f"💥 Ошибка в основном цикле: {e}")
 
 # Глобальный экземпляр для импорта
 monitor = Monitor()

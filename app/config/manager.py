@@ -1,11 +1,11 @@
 """
 /app/config/manager.py
-Server Monitoring System v4.13.3
+Server Monitoring System v4.13.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Database Settings Manager
 Система мониторинга серверов
-Версия: 4.13.3
+Версия: 4.13.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Менеджер настроек БД

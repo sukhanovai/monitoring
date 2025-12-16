@@ -1,11 +1,11 @@
 """
 /config/__init__.py
-Server Monitoring System v4.13.3
+Server Monitoring System v4.13.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Configuration package
 Система мониторинга серверов
-Версия: 4.13.3
+Версия: 4.13.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Пакет конфигурации
@@ -43,8 +43,7 @@ from .db_settings import (
     get_servers_config, load_all_settings,
     USE_DB,
     TELEGRAM_TOKEN as DB_TELEGRAM_TOKEN,
-    CHAT_IDS as DB_CHAT_IDS,
-    DEBUG_MODE as DB_DEBUG_MODE
+    CHAT_IDS as DB_CHAT_IDS
 )
 
 # Определяем какие значения использовать
@@ -53,7 +52,11 @@ from .db_settings import (
 
 TELEGRAM_TOKEN = DB_TELEGRAM_TOKEN if USE_DB and DB_TELEGRAM_TOKEN else SETTINGS_TOKEN
 CHAT_IDS = DB_CHAT_IDS if USE_DB and DB_CHAT_IDS else SETTINGS_CHAT_IDS
-DEBUG_MODE = DB_DEBUG_MODE if USE_DB else SETTINGS_DEBUG_MODE
+try:
+    from .db_settings import DEBUG_MODE as DB_DEBUG_MODE
+    DEBUG_MODE = DB_DEBUG_MODE if USE_DB else SETTINGS_DEBUG_MODE
+except ImportError:
+    DEBUG_MODE = SETTINGS_DEBUG_MODE
 
 __all__ = [
     # Пути
