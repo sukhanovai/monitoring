@@ -1,11 +1,11 @@
 """
 /main.py
-Server Monitoring System v4.13.1
+Server Monitoring System v4.13.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Main entry point
 Система мониторинга серверов
-Версия: 4.13.1
+Версия: 4.13.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Главная точка входа
@@ -22,7 +22,7 @@ def main():
     # Настраиваем логирование
     setup_logging()
     
-    debug_log("🚀 Запуск Server Monitoring System v4.13.1")
+    debug_log("🚀 Запуск Server Monitoring System v4.13.2")
     debug_log("📅 " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     
     try:

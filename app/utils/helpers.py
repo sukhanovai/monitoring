@@ -1,11 +1,11 @@
 """
 /app/utils/helpers.py
-Server Monitoring System v4.13.1
+Server Monitoring System v4.13.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Auxiliary utilities
 Система мониторинга серверов
-Версия: 4.13.1
+Версия: 4.13.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Вспомогательные утилиты

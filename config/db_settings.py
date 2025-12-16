@@ -1,11 +1,11 @@
 """
 /config/db_settings.py
-Server Monitoring System v4.13.1
+Server Monitoring System v4.13.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Database-backed settings loader
 Система мониторинга серверов
-Версия: 4.13.1
+Версия: 4.13.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Загрузчик настроек из базы данных
@@ -25,8 +25,51 @@ USE_DB = True
 
 # Импортируем базовые настройки для значений по умолчанию
 try:
-    from config.settings import *
-except ImportError:
+    # ВАЖНО: импортируем звездочкой только если не используем БД
+    # Или переходим на явные импорты
+    from config.settings import (
+        BASE_DIR, DATA_DIR, LOG_DIR,
+        TELEGRAM_TOKEN as DEFAULT_TELEGRAM_TOKEN,
+        CHAT_IDS as DEFAULT_CHAT_IDS,
+        CHECK_INTERVAL as DEFAULT_CHECK_INTERVAL,
+        MAX_FAIL_TIME as DEFAULT_MAX_FAIL_TIME,
+        SILENT_START as DEFAULT_SILENT_START,
+        SILENT_END as DEFAULT_SILENT_END,
+        DATA_COLLECTION_TIME as DEFAULT_DATA_COLLECTION_TIME,
+        RESOURCE_CHECK_INTERVAL as DEFAULT_RESOURCE_CHECK_INTERVAL,
+        RESOURCE_ALERT_INTERVAL as DEFAULT_RESOURCE_ALERT_INTERVAL,
+        RESOURCE_THRESHOLDS as DEFAULT_RESOURCE_THRESHOLDS,
+        RESOURCE_ALERT_THRESHOLDS as DEFAULT_RESOURCE_ALERT_THRESHOLDS,
+        SSH_KEY_PATH as DEFAULT_SSH_KEY_PATH,
+        SSH_USERNAME as DEFAULT_SSH_USERNAME,
+        SERVER_CONFIG as DEFAULT_SERVER_CONFIG,
+        WINDOWS_SERVER_CONFIGS as DEFAULT_WINDOWS_SERVER_CONFIGS,
+        WINDOWS_SERVER_CREDENTIALS as DEFAULT_WINDOWS_SERVER_CREDENTIALS,
+        WINRM_CONFIGS as DEFAULT_WINRM_CONFIGS,
+        SERVER_TIMEOUTS as DEFAULT_SERVER_TIMEOUTS,
+        WEB_PORT as DEFAULT_WEB_PORT,
+        WEB_HOST as DEFAULT_WEB_HOST,
+        RDP_SERVERS as DEFAULT_RDP_SERVERS,
+        SSH_SERVERS as DEFAULT_SSH_SERVERS,
+        PING_SERVERS as DEFAULT_PING_SERVERS,
+        PROXMOX_HOSTS as DEFAULT_PROXMOX_HOSTS,
+        DUPLICATE_IP_HOSTS as DEFAULT_DUPLICATE_IP_HOSTS,
+        HOSTNAME_ALIASES as DEFAULT_HOSTNAME_ALIASES,
+        BACKUP_PATTERNS as DEFAULT_BACKUP_PATTERNS,
+        BACKUP_STATUS_MAP as DEFAULT_BACKUP_STATUS_MAP,
+        DATABASE_CONFIG as DEFAULT_DATABASE_CONFIG,
+        BACKUP_DATABASE_CONFIG as DEFAULT_BACKUP_DATABASE_CONFIG,
+        DATABASE_BACKUP_CONFIG as DEFAULT_DATABASE_BACKUP_CONFIG
+    )
+    
+    # Добавим DEBUG_MODE если есть
+    try:
+        from config.settings import DEBUG_MODE as DEFAULT_DEBUG_MODE
+    except ImportError:
+        DEFAULT_DEBUG_MODE = False
+        
+except ImportError as e:
+    debug_log(f"⚠️ Ошибка импорта из config.settings: {e}")
     # Если файл с базовыми настройками не найден, используем значения по умолчанию
     debug_log("⚠️ Файл config.settings не найден, используем значения по умолчанию")
     
