@@ -1,36 +1,30 @@
 """
-Server Monitoring System v4.11.4
+/core/monitor.py
+Server Monitoring System v4.12.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core monitoring module
 Система мониторинга серверов
-Версия: 4.11.4
+Версия: 4.12.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль мониторинга
 """
 
-import os
-import sys
 import time
 import threading
 from datetime import datetime
 from typing import Dict, List
 
-sys.path.insert(0, '/opt/monitoring')
-
 from lib.logging import debug_log
 from lib.alerts import send_alert
 from config.settings import (
-    DEBUG_MODE,
     CHECK_INTERVAL,
     MAX_FAIL_TIME,
     RESOURCE_CHECK_INTERVAL,
     DATA_COLLECTION_TIME,
     SILENT_START,
-    SILENT_END,
-    CHAT_IDS, 
-    TELEGRAM_TOKEN
+    SILENT_END
 )
 from modules.availability import availability_checker
 from modules.resources import resources_checker

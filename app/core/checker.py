@@ -1,5 +1,5 @@
 """
-/core/checker.py
+/app/core/checker.py
 Server Monitoring System v4.12.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
@@ -16,19 +16,42 @@ import time
 import subprocess
 import socket
 import paramiko
-from typing import Dict, List, Optional, Tuple
-from lib.logging import debug_log, error_log, setup_logging
+import logging
+from datetime import datetime
+
+# Вместо относительных импортов используем абсолютные
+# НЕ ИСПОЛЬЗУЕМ: from ..utils.common import debug_log, safe_import
+# ВМЕСТО ЭТОГО:
+
+def debug_log(message, force=False):
+    """Временная функция, пока не настроены импорты"""
+    import logging
+    logger = logging.getLogger(__name__)
+    if force or os.environ.get('DEBUG_MODE', 'False') == 'True':
+        logger.debug(message)
+
+def safe_import(module_name, class_name=None):
+    """Безопасный импорт"""
+    try:
+        import importlib
+        module = importlib.import_module(module_name)
+        if class_name:
+            return getattr(module, class_name)
+        return module
+    except Exception as e:
+        debug_log(f"Import error: {e}")
+        return None
 
 class ServerChecker:
-    """Единый класс для проверки серверов - базовая версия"""
+    """Единый класс для проверки серверов - устранение дублирования"""
     
-    def __init__(self, ssh_timeout: int = 15, ping_timeout: int = 10, port_timeout: int = 5):
+    def __init__(self, ssh_timeout=15, ping_timeout=10, port_timeout=5):
         self.ssh_timeout = ssh_timeout
         self.ping_timeout = ping_timeout
         self.port_timeout = port_timeout
-        self.logger = setup_logging("checker")
-        
-    def check_ping(self, ip: str) -> bool:
+        self.logger = logging.getLogger(__name__)
+
+    def check_ping(self, ip):
         """Универсальная проверка ping"""
         try:
             result = subprocess.run(
@@ -42,7 +65,7 @@ class ServerChecker:
             debug_log(f"Ping error for {ip}: {e}")
             return False
 
-    def check_port(self, ip: str, port: int = 3389) -> bool:
+    def check_port(self, ip, port=3389):
         """Универсальная проверка порта"""
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -54,14 +77,18 @@ class ServerChecker:
             debug_log(f"Port check error for {ip}:{port}: {e}")
             return False
 
-    def check_ssh_universal(self, ip: str, username: Optional[str] = None, key_path: Optional[str] = None) -> bool:
+    def check_ssh_universal(self, ip, username=None, key_path=None):
         """Универсальная проверка SSH с обработкой ошибок"""
         try:
             # Ленивая загрузка конфига
             if username is None or key_path is None:
-                from config.db_settings import SSH_USERNAME, SSH_KEY_PATH
-                username = SSH_USERNAME
-                key_path = SSH_KEY_PATH
+                config = safe_import('config')
+                if config:
+                    username = getattr(config, 'SSH_USERNAME', 'root')
+                    key_path = getattr(config, 'SSH_KEY_PATH', '/root/.ssh/id_rsa')
+                else:
+                    username = 'root'
+                    key_path = '/root/.ssh/id_rsa'
 
             client = paramiko.SSHClient()
             client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -97,7 +124,7 @@ class ServerChecker:
             debug_log(f"SSH general error for {ip}: {e}")
             return False
 
-    def check_server(self, server: Dict) -> bool:
+    def check_server(self, server):
         """Универсальная проверка сервера по типу"""
         server_type = server.get("type", "ssh")
         ip = server["ip"]
@@ -109,10 +136,14 @@ class ServerChecker:
         else:  # ssh и другие
             return self.check_ssh_universal(ip)
 
-    def get_timeout_for_type(self, server_type: str) -> int:
+    def get_timeout_for_type(self, server_type):
         """Получить таймаут для типа сервера"""
         try:
-            from config.db_settings import SERVER_TIMEOUTS
-            return SERVER_TIMEOUTS.get(server_type, 15)
+            config = safe_import('config')
+            if config:
+                timeouts = getattr(config, 'SERVER_TIMEOUTS', {})
+                return timeouts.get(server_type, 15)
         except:
-            return 15
+            pass
+        return 15
+    

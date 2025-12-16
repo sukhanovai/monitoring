@@ -1,10 +1,11 @@
 """
-Server Monitoring System v4.11.4
+/extensions/server_checks.py
+Server Monitoring System v4.12.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Unified server checks: resources, availability, list
 Система мониторинга серверов
-Версия: 4.11.4
+Версия: 4.12.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Унифицированные проверки серверов: ресурсы, доступность, список
@@ -18,24 +19,9 @@ import sys
 import os
 sys.path.insert(0, '/opt/monitoring')
 
-try:
-    from app.config.settings import (
-        RDP_SERVERS, SSH_SERVERS, PING_SERVERS, SSH_KEY_PATH, SSH_USERNAME, 
-        RESOURCE_THRESHOLDS, WINDOWS_SERVER_CREDENTIALS, WINRM_CONFIGS, SERVER_TIMEOUTS,
-        SERVER_CONFIG
-    )
-    from config.db_settings import get_windows_credentials_db, get_servers_config
-except ImportError as e:
-    debug_log(f"❌ Ошибка импорта из config.settings: {e}")
-    # Значения по умолчанию
-    SSH_USERNAME = "root"
-    SSH_KEY_PATH = "/root/.ssh/id_rsa"
-    WINDOWS_SERVER_CREDENTIALS = {}
-    SERVER_TIMEOUTS = {}
-    RDP_SERVERS = []
-    SSH_SERVERS = []
-    PING_SERVERS = []
-    SERVER_CONFIG = {}
+from app.config.settings import (RDP_SERVERS, SSH_SERVERS, PING_SERVERS, SSH_KEY_PATH, SSH_USERNAME, 
+                   RESOURCE_THRESHOLDS, WINDOWS_SERVER_CREDENTIALS, WINRM_CONFIGS,
+                   SERVER_CONFIG)
 
 # === СПИСОК СЕРВЕРОВ ===
 
