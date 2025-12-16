@@ -9,7 +9,7 @@ Telegram bot module
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль Telegram-бота
-"""
+
 
 from .handlers import get_handlers, get_callback_handlers
 from .menu import setup_menu, get_menu_commands
@@ -20,3 +20,4 @@ __all__ = [
     'setup_menu',
     'get_menu_commands'
 ]
+"""
