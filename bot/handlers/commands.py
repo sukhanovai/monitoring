@@ -1,10 +1,10 @@
 """
-Server Monitoring System v4.11.2
+Server Monitoring System v4.11.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Bot command handlers
 Система мониторинга серверов
-Версия: 4.11.2
+Версия: 4.11.3
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики команд бота
@@ -19,10 +19,9 @@ from bot.handlers.base import lazy_handler
 
 def setup_command_handlers():
     """Настройка обработчиков команд"""
-    return [
+    handlers = [
         CommandHandler("start", lazy_start_command),
         CommandHandler("help", lazy_help_command),
-        CommandHandler("check_settings", check_settings_command),
         CommandHandler("check", lambda u,c: lazy_handler('manual_check')(u,c)),
         CommandHandler("status", lambda u,c: lazy_handler('monitor_status')(u,c)),
         CommandHandler("servers", lambda u,c: lazy_handler('servers_list')(u,c)),
@@ -43,6 +42,13 @@ def setup_command_handlers():
         CommandHandler("check_server", lambda u,c: check_single_server_command(u,c)),
         CommandHandler("check_res", lambda u,c: check_single_resources_command(u,c)),
     ]
+    
+    # Добавляем команду проверки настроек только в режиме отладки
+    from config.settings import DEBUG_MODE
+    if DEBUG_MODE:
+        handlers.append(CommandHandler("check_settings", check_settings_command))
+    
+    return handlers
 
 def lazy_start_command(update, context):
     """Ленивая загрузка команды /start"""
@@ -278,14 +284,14 @@ def check_single_resources_command(update, context):
         return handle_single_resources(update, context, server_id)
 
 def check_settings_command(update, context):
-    """Команда для проверки настроек"""
+    """Команда для проверки настроек (только в режиме отладки)"""
     from config.settings import CHAT_IDS, TELEGRAM_TOKEN, USE_DB
     
     chat_id = update.effective_chat.id
     chat_id_str = str(chat_id)
     
     message = (
-        f"🔧 *Проверка настроек*\n\n"
+        f"🔧 *Проверка настроек (режим отладки)*\n\n"
         f"🆔 *Ваш Chat ID:* `{chat_id_str}`\n"
         f"🔑 *Токен:* {'Есть' if TELEGRAM_TOKEN else 'Нет'}\n"
         f"🗄️ *Используется БД:* {'Да' if USE_DB else 'Нет'}\n"
@@ -294,4 +300,5 @@ def check_settings_command(update, context):
     )
     
     update.message.reply_text(message, parse_mode='Markdown')
-    debug_log(f"🔍 Проверка настроек: chat_id={chat_id_str}, CHAT_IDS={CHAT_IDS}, доступ={'есть' if chat_id_str in CHAT_IDS else 'нет'}")
+    from lib.logging import debug_log
+    debug_log(f"🔍 Проверка настроек: chat_id={chat_id_str}, CHAT_IDS={CHAT_IDS}")

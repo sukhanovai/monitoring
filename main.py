@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Server Monitoring System v4.11.2
+Server Monitoring System v4.11.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Main launch module
 Система мониторинга серверов
-Версия: 4.11.2
+Версия: 4.11.3
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль запуска
@@ -38,7 +38,7 @@ def main():
     )
     
     logger = logging.getLogger(__name__)
-    logger.info("🚀 Запуск системы мониторинга v4.11.2...")
+    logger.info("🚀 Запуск системы мониторинга v4.10.5...")
     
     # 3. Проверяем токен
     if not TELEGRAM_TOKEN or len(TELEGRAM_TOKEN) < 10:
