@@ -1,11 +1,11 @@
 """
 /config/db_settings.py
-Server Monitoring System v4.13.2
+Server Monitoring System v4.13.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Database-backed settings loader
 Система мониторинга серверов
-Версия: 4.13.2
+Версия: 4.13.3
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Загрузчик настроек из базы данных
@@ -405,5 +405,28 @@ if USE_DB:
 else:
     debug_log("⚠️ config.db_settings использует значения по умолчанию (база данных недоступна)")
 
-# Удаляем ошибочную строку с __all__.append('monitor')
-# Вместо этого определим __all__ вверху файла
+# === ЭКСТРЕННЫЕ ИСПРАВЛЕНИЯ ИМПОРТА ===
+
+# Добавляем DEBUG_MODE если его нет
+if 'DEBUG_MODE' not in locals():
+    DEBUG_MODE = False
+
+# Добавляем BACKUP_DB_FILE если его нет  
+if 'BACKUP_DB_FILE' not in locals():
+    BACKUP_DB_FILE = '/opt/monitoring/data/backups.db'
+
+# Убедимся что все необходимые переменные экспортируются
+__all__ = [
+    'TELEGRAM_TOKEN', 'CHAT_IDS', 'CHECK_INTERVAL', 'MAX_FAIL_TIME',
+    'SILENT_START', 'SILENT_END', 'DATA_COLLECTION_TIME',
+    'RESOURCE_CHECK_INTERVAL', 'RESOURCE_ALERT_INTERVAL',
+    'RESOURCE_THRESHOLDS', 'RESOURCE_ALERT_THRESHOLDS',
+    'SSH_KEY_PATH', 'SSH_USERNAME', 'SERVER_CONFIG',
+    'WINDOWS_SERVER_CONFIGS', 'WINDOWS_SERVER_CREDENTIALS', 'WINRM_CONFIGS',
+    'SERVER_TIMEOUTS', 'WEB_PORT', 'WEB_HOST',
+    'RDP_SERVERS', 'SSH_SERVERS', 'PING_SERVERS',
+    'PROXMOX_HOSTS', 'DUPLICATE_IP_HOSTS', 'HOSTNAME_ALIASES',
+    'BACKUP_PATTERNS', 'BACKUP_STATUS_MAP', 'DATABASE_CONFIG',
+    'BACKUP_DATABASE_CONFIG', 'DATABASE_BACKUP_CONFIG', 'DEBUG_MODE',
+    'BACKUP_DB_FILE'
+]
