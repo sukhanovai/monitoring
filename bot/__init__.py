@@ -3,20 +3,24 @@
 Server Monitoring System v4.12.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
-Telegram bot module
+Telegram bot package
 Система мониторинга серверов
 Версия: 4.12.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
-Модуль Telegram-бота
+Пакет Telegram бота
 """
 
-from .handlers import get_handlers, get_callback_handlers
-from .menu import setup_menu, get_menu_commands
+from .handlers.base import BaseHandlers
+from .handlers.commands import CommandHandlers
+from .handlers.callbacks import CallbackHandlers
+from .menu.builder import MenuBuilder
+from .menu.handlers import MenuHandlers
 
 __all__ = [
-    'get_handlers',
-    'get_callback_handlers', 
-    'setup_menu',
-    'get_menu_commands'
+    'BaseHandlers',
+    'CommandHandlers', 
+    'CallbackHandlers',
+    'MenuBuilder',
+    'MenuHandlers'
 ]

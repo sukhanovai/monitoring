@@ -39,7 +39,7 @@ def main():
     )
     
     logger = logging.getLogger(__name__)
-    logger.info("🚀 Запуск системы мониторинга v4.9.2...")
+    logger.info("🚀 Запуск системы мониторинга v4.12.0...")
     
     # 3. Проверяем токен
     if not TELEGRAM_TOKEN or len(TELEGRAM_TOKEN) < 10:
@@ -55,21 +55,38 @@ def main():
         updater = Updater(token=TELEGRAM_TOKEN, use_context=True)
         logger.info("✅ Telegram бот инициализирован")
         
-        # 5. Настройка меню
-        from bot_menu import setup_menu, get_handlers, get_callback_handlers
+        # 5. Настройка меню с использованием новой структуры
+        from bot.menu.builder import MenuBuilder
+        from bot.handlers.commands import CommandHandlers
+        from bot.handlers.callbacks import CallbackHandlers
         
-        setup_menu(updater.bot)
-        logger.info("✅ Меню настроено")
+        # Создаем менеджер конфигурации для обработчиков
+        from core.config_manager import config_manager
         
-        for handler in get_handlers():
+        # Настройка команд бота
+        menu_builder = MenuBuilder(config_manager)
+        menu_builder.setup_bot_commands(updater.bot)
+        logger.info("✅ Команды бота настроены")
+        
+        # Создаем обработчики
+        command_handlers = CommandHandlers(config_manager)
+        callback_handlers = CallbackHandlers(config_manager)
+        
+        # Добавляем обработчики команд
+        for handler in command_handlers.get_command_handlers():
             updater.dispatcher.add_handler(handler)
         logger.info("✅ Обработчики команд добавлены")
         
-        for handler in get_callback_handlers():
+        # Добавляем обработчики callback
+        for handler in callback_handlers.get_callback_handlers():
             updater.dispatcher.add_handler(handler)
         logger.info("✅ Callback обработчики добавлены")
         
-        # 6. Обработчики настроек
+        # 6. Обработчик ошибок
+        updater.dispatcher.add_error_handler(command_handlers.error_handler)
+        logger.info("✅ Обработчик ошибок добавлен")
+        
+        # 7. Обработчики настроек (старый код для совместимости)
         try:
             from settings_handlers import get_settings_handlers
             for handler in get_settings_handlers():
@@ -78,7 +95,7 @@ def main():
         except ImportError as e:
             logger.warning(f"⚠️ Обработчики настроек недоступны: {e}")
         
-        # 7. Расширения
+        # 8. Расширения
         try:
             from extensions.extension_manager import extension_manager
             
@@ -99,7 +116,7 @@ def main():
         except ImportError as e:
             logger.warning(f"⚠️ Расширения недоступны: {e}")
         
-        # 8. Сбор статистики
+        # 9. Сбор статистики
         try:
             from extensions.utils import save_monitoring_stats
             save_monitoring_stats()
@@ -107,7 +124,7 @@ def main():
         except ImportError:
             logger.warning("⚠️ Модуль статистики недоступен")
         
-        # 9. Основной мониторинг
+        # 10. Основной мониторинг
         try:
             from core.monitor import monitor
             import threading
@@ -118,14 +135,14 @@ def main():
             logger.error(f"❌ Ошибка запуска мониторинга: {e}")
             # Продолжаем без мониторинга
         
-        # 10. Стартовое сообщение
+        # 11. Стартовое сообщение
         try:
             from lib.alerts import send_alert
             send_alert("🟢 *Мониторинг серверов запущен*\n\n✅ Система работает корректно", force=True)
         except Exception as e:
             logger.warning(f"⚠️ Не удалось отправить стартовое сообщение: {e}")
         
-        # 11. Запуск бота
+        # 12. Запуск бота
         updater.start_polling()
         logger.info("✅ Бот запущен и работает")
         
