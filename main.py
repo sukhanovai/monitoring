@@ -1,11 +1,11 @@
 """
 /main.py
-Server Monitoring System v4.13.4
+Server Monitoring System v4.13.5
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Main entry point
 Система мониторинга серверов
-Версия: 4.13.4
+Версия: 4.13.5
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Главная точка входа
@@ -17,7 +17,7 @@ from datetime import datetime
 
 def main():
     """Упрощенная главная функция"""
-    print(f"🚀 Запуск Server Monitoring System v4.13.4")
+    print(f"🚀 Запуск Server Monitoring System v4.13.5")
     print(f"📅 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
     try:
