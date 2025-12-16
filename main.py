@@ -1,69 +1,148 @@
+#!/usr/bin/env python3
 """
 /main.py
-Server Monitoring System v4.13.5
+Server Monitoring System v4.14.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
-Main entry point
+Main launch module
 Система мониторинга серверов
-Версия: 4.13.5
+Версия: 4.14.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
-Главная точка входа
+Основной модуль запуска
 """
 
-import threading
-import time
-from datetime import datetime
+import os
+import sys
+import logging
+
+# Добавляем путь для импортов
+sys.path.insert(0, '/opt/monitoring')
 
 def main():
-    """Упрощенная главная функция"""
-    print(f"🚀 Запуск Server Monitoring System v4.13.5")
-    print(f"📅 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    """Основная функция запуска"""
+    # 1. Сначала загружаем настройки из db_settings
+    try:
+        from config.db_settings import TELEGRAM_TOKEN, DEBUG_MODE
+        print(f"✅ Настройки загружены из db_settings")
+        print(f"   Токен: {'Есть' if TELEGRAM_TOKEN else 'Нет'} ({len(TELEGRAM_TOKEN) if TELEGRAM_TOKEN else 0} символов)")
+        print(f"   DEBUG_MODE: {DEBUG_MODE}")
+    except ImportError as e:
+        print(f"❌ Ошибка загрузки db_settings: {e}")
+        sys.exit(1)
+    
+    # 2. Настраиваем логирование
+    log_level = logging.DEBUG if DEBUG_MODE else logging.INFO
+    logging.basicConfig(
+        level=log_level,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    
+    logger = logging.getLogger(__name__)
+    logger.info("🚀 Запуск системы мониторинга v4.9.2...")
+    
+    # 3. Проверяем токен
+    if not TELEGRAM_TOKEN or len(TELEGRAM_TOKEN) < 10:
+        logger.error("❌ Telegram токен не найден или слишком короткий!")
+        logger.error(f"Токен: '{TELEGRAM_TOKEN}' ({len(TELEGRAM_TOKEN) if TELEGRAM_TOKEN else 0} символов)")
+        sys.exit(1)
+    
+    logger.info(f"✅ Telegram токен получен ({len(TELEGRAM_TOKEN)} символов)")
     
     try:
-        # Инициализируем бота
-        print("🤖 Инициализация Telegram бота...")
-        from bot import initialize_bot
-        updater = initialize_bot()
+        # 4. Инициализация бота
+        from telegram.ext import Updater
+        updater = Updater(token=TELEGRAM_TOKEN, use_context=True)
+        logger.info("✅ Telegram бот инициализирован")
         
-        if updater:
-            # Запускаем бота в отдельном потоке
-            bot_thread = threading.Thread(target=updater.start_polling)
-            bot_thread.daemon = True
-            bot_thread.start()
-            print("✅ Telegram бот запущен")
+        # 5. Настройка меню
+        from bot_menu import setup_menu, get_handlers, get_callback_handlers
+        
+        setup_menu(updater.bot)
+        logger.info("✅ Меню настроено")
+        
+        for handler in get_handlers():
+            updater.dispatcher.add_handler(handler)
+        logger.info("✅ Обработчики команд добавлены")
+        
+        for handler in get_callback_handlers():
+            updater.dispatcher.add_handler(handler)
+        logger.info("✅ Callback обработчики добавлены")
+        
+        # 6. Обработчики настроек
+        try:
+            from settings_handlers import get_settings_handlers
+            for handler in get_settings_handlers():
+                updater.dispatcher.add_handler(handler)
+            logger.info("✅ Обработчики настроек добавлены")
+        except ImportError as e:
+            logger.warning(f"⚠️ Обработчики настроек недоступны: {e}")
+        
+        # 7. Расширения
+        try:
+            from extensions.extension_manager import extension_manager
             
-            # Отправляем тестовое сообщение
-            from config import CHAT_IDS, TELEGRAM_TOKEN
-            if TELEGRAM_TOKEN and CHAT_IDS:
-                from telegram import Bot
-                bot = Bot(token=TELEGRAM_TOKEN)
-                for chat_id in CHAT_IDS:
-                    try:
-                        bot.send_message(
-                            chat_id=chat_id,
-                            text="✅ Система мониторинга запущена в тестовом режиме"
-                        )
-                        print(f"✅ Тестовое сообщение отправлено в чат {chat_id}")
-                    except Exception as e:
-                        print(f"❌ Ошибка отправки сообщения: {e}")
+            # Бэкапы
+            if extension_manager.is_extension_enabled('backup_monitor'):
+                from extensions.backup_monitor.bot_handler import setup_backup_handlers
+                setup_backup_handlers(updater.dispatcher)
+                logger.info("✅ Обработчики бэкапов настроены")
             
-            # Держим программу активной
-            print("📊 Система работает в тестовом режиме")
-            print("📝 Используйте /start для проверки бота")
-            
-            while True:
-                time.sleep(60)
+            # Веб-интерфейс
+            if extension_manager.is_extension_enabled('web_interface'):
+                from extensions.web_interface import start_web_server
+                import threading
+                web_thread = threading.Thread(target=start_web_server, daemon=True)
+                web_thread.start()
+                logger.info("✅ Веб-сервер запущен")
                 
-        else:
-            print("❌ Бот не инициализирован")
-            
-    except KeyboardInterrupt:
-        print("🛑 Получен сигнал прерывания")
-    except Exception as e:
-        print(f"💥 Критическая ошибка: {e}")
+        except ImportError as e:
+            logger.warning(f"⚠️ Расширения недоступны: {e}")
+        
+        # 8. Сбор статистики
+        try:
+            from extensions.utils import save_monitoring_stats
+            save_monitoring_stats()
+            logger.info("✅ Сбор статистики запущен")
+        except ImportError:
+            logger.warning("⚠️ Модуль статистики недоступен")
+        
+        # 9. Основной мониторинг
+        try:
+            from core.monitor import monitor
+            import threading
+            monitor_thread = threading.Thread(target=monitor.start, daemon=True)
+            monitor_thread.start()
+            logger.info("✅ Основной мониторинг запущен")
+        except Exception as e:
+            logger.error(f"❌ Ошибка запуска мониторинга: {e}")
+            # Продолжаем без мониторинга
+        
+        # 10. Стартовое сообщение
+        try:
+            from lib.alerts import send_alert
+            send_alert("🟢 *Мониторинг серверов запущен*\n\n✅ Система работает корректно", force=True)
+        except Exception as e:
+            logger.warning(f"⚠️ Не удалось отправить стартовое сообщение: {e}")
+        
+        # 11. Запуск бота
+        updater.start_polling()
+        logger.info("✅ Бот запущен и работает")
+        
+        # Блокируем основной поток
+        logger.info("✅ Система полностью запущена и готова к работе")
+        updater.idle()
+        
+    except ImportError as e:
+        logger.error(f"❌ Критическая ошибка импорта: {e}")
         import traceback
         traceback.print_exc()
+        sys.exit(1)
+    except Exception as e:
+        logger.error(f"💥 Критическая ошибка: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
