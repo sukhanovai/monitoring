@@ -1,11 +1,11 @@
 """
 /bot/handlers/callbacks.py
-Server Monitoring System v4.14.2
+Server Monitoring System v4.14.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 A single router for callbacks.
 Система мониторинга серверов
-Версия: 4.14.2
+Версия: 4.14.3
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единый router callback’ов.
@@ -22,40 +22,104 @@ from monitor_core import (
 )
 
 
+from bot.handlers.base import check_access, deny_access
+from modules.targeted_checks import targeted_checks
+from extensions.extension_manager import extension_manager
+
+
 def callback_router(update, context):
     query = update.callback_query
     data = query.data
 
-    # Меню
+    if not check_access(update):
+        deny_access(update)
+        return
+
+    query.answer()
+
+    # ------------------------------------------------
+    # Главное меню
+    # ------------------------------------------------
     if data == 'main_menu':
+        from bot.menu.handlers import show_main_menu
         show_main_menu(update, context)
 
-    # Мониторинг
-    elif data == 'manual_check':
-        manual_check_handler(update, context)
+    # ------------------------------------------------
+    # ОДИН СЕРВЕР (доступность)
+    # ------------------------------------------------
+    elif data == 'show_availability_menu':
+        query.edit_message_text(
+            "📡 *Выберите сервер для проверки доступности:*",
+            parse_mode='Markdown',
+            reply_markup=targeted_checks.create_server_selection_menu(
+                action="check_availability"
+            )
+        )
 
-    elif data == 'monitor_status':
-        monitor_status(update, context)
+    elif data.startswith('check_availability_'):
+        server_id = data.replace('check_availability_', '')
+        success, server, message = targeted_checks.check_single_server_availability(
+            server_id
+        )
+        query.edit_message_text(
+            message,
+            parse_mode='Markdown',
+            reply_markup=targeted_checks.create_server_selection_menu(
+                action="check_availability"
+            )
+        )
 
-    elif data == 'silent_status':
-        silent_status_handler(update, context)
+    # ------------------------------------------------
+    # РЕСУРСЫ СЕРВЕРА
+    # ------------------------------------------------
+    elif data == 'show_resources_menu':
+        query.edit_message_text(
+            "📊 *Выберите сервер для проверки ресурсов:*",
+            parse_mode='Markdown',
+            reply_markup=targeted_checks.create_server_selection_menu(
+                action="check_resources"
+            )
+        )
 
-    elif data == 'control_panel':
-        control_panel_handler(update, context)
+    elif data.startswith('check_resources_'):
+        server_id = data.replace('check_resources_', '')
+        success, server, message = targeted_checks.check_single_server_resources(
+            server_id
+        )
+        query.edit_message_text(
+            message,
+            parse_mode='Markdown',
+            reply_markup=targeted_checks.create_server_selection_menu(
+                action="check_resources"
+            )
+        )
 
-    elif data == 'toggle_monitoring':
-        toggle_monitoring_handler(update, context)
+    # ------------------------------------------------
+    # ПРОВЕРКА РЕСУРСОВ ВСЕХ СЕРВЕРОВ
+    # ------------------------------------------------
+    elif data == 'check_resources':
+        from modules.resources import check_resources
+        check_resources(update, context)
 
-    # Настройки
-    elif data.startswith('settings_'):
-        settings_callback_handler(update, context)
+    # ------------------------------------------------
+    # БЭКАПЫ
+    # ------------------------------------------------
+    elif data.startswith('backup_'):
+        if extension_manager.is_extension_enabled('backup_monitor'):
+            from extensions.backup_monitor.bot_handler import handle_backup_callback
+            handle_backup_callback(update, context)
+        else:
+            query.edit_message_text("💾 Модуль бэкапов отключён")
 
+    # ------------------------------------------------
+    # РАСШИРЕНИЯ
+    # ------------------------------------------------
+    elif data == 'extensions_menu':
+        from extensions.extension_manager import show_extensions_menu
+        show_extensions_menu(update, context)
+
+    # ------------------------------------------------
     # Закрытие
+    # ------------------------------------------------
     elif data == 'close':
-        try:
-            query.delete_message()
-        except:
-            query.edit_message_text("✅ Закрыто")
-
-    else:
-        query.answer("⚠️ Неизвестное действие")
+        query.delete_message()
