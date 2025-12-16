@@ -1,10 +1,10 @@
 """
-Server Monitoring System v4.9.2
+Server Monitoring System v4.10.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Utilities for working with backups
 Система мониторинга серверов
-Версия: 4.9.2
+Версия: 4.10.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Утилиты для работы с бэкапами

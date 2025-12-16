@@ -1,10 +1,10 @@
 """
-Server Monitoring System v4.9.2
+Server Monitoring System v4.10.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Database-backed settings loader
 Система мониторинга серверов
-Версия: 4.9.2
+Версия: 4.10.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Загрузчик настроек из базы данных
@@ -360,3 +360,10 @@ if USE_DB:
     debug_log("✅ config.db_settings загружает настройки из базы данных")
 else:
     debug_log("⚠️ config.db_settings использует значения по умолчанию (база данных недоступна)")
+
+# Экспортируем монитор для обратной совместимости
+try:
+    from core.monitor import monitor
+    __all__.append('monitor')
+except ImportError:
+    debug_log("⚠️ Модуль monitor не найден")
