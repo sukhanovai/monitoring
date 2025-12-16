@@ -10,13 +10,27 @@ Core system
 Ядро системы
 """
 
+# Новые импорты из модульной структуры
+from lib.logging import debug_log
+from lib.alerts import send_alert
+from lib.utils import progress_bar, format_duration
+from config.settings import DEBUG_MODE
+from core.monitor import monitor
+from modules.availability import availability_checker
+from modules.resources import resources_checker
+from modules.morning_report import morning_report
+from modules.targeted_checks import targeted_checks
+
+# Старые импорты для совместимости
 import os
 import threading
 import time
 from datetime import datetime, timedelta
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from app import server_checker, logger
-from app.utils import debug_log, progress_bar, format_duration, safe_import, DEBUG_MODE
+from lib.logging import debug_log
+from lib.utils import progress_bar, format_duration, safe_import
+from config.settings import DEBUG_MODE
 from extensions.server_checks import check_server_availability
 
 # Глобальные переменные
@@ -46,7 +60,7 @@ def lazy_import(module_name, attribute_name=None):
         else:
             # Обычный импорт
             module = __import__(module_name, fromlist=[attribute_name] if attribute_name else [])
-        
+
         return getattr(module, attribute_name) if attribute_name else module
     return import_func
 
@@ -104,13 +118,13 @@ def send_alert(message, force=False):
 def perform_manual_check(context, chat_id, progress_message_id):
     """Выполняет проверку серверов с обновлением прогресса"""
     global last_check_time
-    
+
     # Ленивая загрузка серверов
     global servers
     if not servers:
         from extensions.server_checks import initialize_servers
         servers = initialize_servers()
-    
+
     total_servers = len(servers)
     results = {"failed": [], "ok": []}
 
@@ -120,8 +134,8 @@ def perform_manual_check(context, chat_id, progress_message_id):
             progress_text = f"🔍 Проверяю серверы...\n{progress_bar(progress)}\n\n⏳ Проверяю {server['name']} ({server['ip']})..."
 
             context.bot.edit_message_text(
-                chat_id=chat_id, 
-                message_id=progress_message_id, 
+                chat_id=chat_id,
+                message_id=progress_message_id,
                 text=progress_text
             )
 
@@ -150,7 +164,7 @@ def send_check_results(context, chat_id, progress_message_id, results):
         message = "✅ Все серверы доступны!"
     else:
         message = "⚠️ Проблемные серверы:\n"
-        
+
         # Группируем по типу для удобства чтения
         by_type = {}
         for server in results["failed"]:
@@ -164,7 +178,7 @@ def send_check_results(context, chat_id, progress_message_id, results):
                 message += f"- {s['name']} ({s['ip']})\n"
 
     context.bot.edit_message_text(
-        chat_id=chat_id, 
+        chat_id=chat_id,
         message_id=progress_message_id,
         text=f"🔍 Проверка завершена!\n\n{message}\n\n⏰ Время проверки: {last_check_time.strftime('%H:%M:%S')}"
     )
@@ -196,13 +210,13 @@ def manual_check_handler(update, context):
 def get_current_server_status():
     """Выполняет быструю проверку статуса серверов"""
     global servers
-    
+
     # Переинициализируем серверы если список пустой
     if not servers:
         from extensions.server_checks import initialize_servers
         servers = initialize_servers()
         debug_log(f"🔄 Переинициализирован список серверов: {len(servers)} серверов")
-    
+
     results = {"failed": [], "ok": []}
 
     for server in servers:
@@ -213,9 +227,9 @@ def get_current_server_status():
                 results["ok"].append(server)
             else:
                 results["failed"].append(server)
-                
+
             debug_log(f"🔍 {server['name']} ({server['ip']}) - {'🟢' if is_up else '🔴'}")
-                
+
         except Exception as e:
             debug_log(f"❌ Ошибка проверки {server['name']}: {e}")
             results["failed"].append(server)
@@ -421,7 +435,7 @@ def auto_mode_handler(update, context):
 
     # Возвращаемся в управление тихим режимом
     silent_status_handler(update, context)
-    
+
 def control_command(update, context):
     """Обработчик команды /control"""
     keyboard = [
@@ -458,7 +472,7 @@ def control_panel_handler(update, context):
         [InlineKeyboardButton("↩️ Назад", callback_data='main_menu'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
-    
+
     status_text = "🟢 Мониторинг активен" if monitoring_active else "🔴 Мониторинг приостановлен"
 
     query.edit_message_text(
@@ -475,7 +489,7 @@ def toggle_monitoring_handler(update, context):
     query.answer()
 
     status_text = "▶️ Мониторинг возобновлен" if monitoring_active else "⏸️ Мониторинг приостановлен"
-    
+
     # Отправляем уведомление о изменении статуса
     if monitoring_active:
         send_alert("🟢 *Мониторинг возобновлен*\nРегулярные проверки серверов активированы.", force=True)
@@ -645,7 +659,7 @@ def check_disk_resources_handler(update, context):
 
 def perform_cpu_check(context, chat_id, progress_message_id):
     """Выполняет проверку только CPU с детальным прогрессом"""
-    
+
     def update_progress(progress, status):
         progress_text = f"💻 Проверка CPU...\n{progress_bar(progress)}\n\n{status}"
         context.bot.edit_message_text(
@@ -656,24 +670,24 @@ def perform_cpu_check(context, chat_id, progress_message_id):
 
     try:
         update_progress(10, "⏳ Получаем список серверов...")
-        
+
         # Получаем все серверы для проверки
         from extensions.server_checks import initialize_servers
         all_servers = initialize_servers()
         ssh_servers = [s for s in all_servers if s["type"] == "ssh"]
         rdp_servers = [s for s in all_servers if s["type"] == "rdp"]
         servers = ssh_servers + rdp_servers
-        
+
         total_servers = len(servers)
         cpu_results = []
-        
+
         update_progress(15, f"⏳ Начинаем проверку {total_servers} серверов...")
-        
+
         for i, server in enumerate(servers):
             current_progress = 15 + (i / total_servers * 75)  # 15-90%
             server_info = f"{server['name']} ({server['ip']})"
             update_progress(current_progress, f"🔍 Проверяем {server_info}...")
-            
+
             try:
                 resources = None
                 if server["type"] == "ssh":
@@ -682,15 +696,15 @@ def perform_cpu_check(context, chat_id, progress_message_id):
                 elif server["type"] == "rdp":
                     from extensions.server_checks import get_windows_resources_improved
                     resources = get_windows_resources_improved(server["ip"])
-                
+
                 cpu_value = resources.get('cpu', 0) if resources else 0
-                
+
                 cpu_results.append({
                     "server": server,
                     "cpu": cpu_value,
                     "success": resources is not None
                 })
-                
+
             except Exception as e:
                 cpu_results.append({
                     "server": server,
@@ -699,7 +713,7 @@ def perform_cpu_check(context, chat_id, progress_message_id):
                 })
 
         update_progress(95, "⏳ Формируем отчет...")
-        
+
         # Сортируем по убыванию CPU
         cpu_results.sort(key=lambda x: x["cpu"], reverse=True)
 
@@ -797,24 +811,24 @@ def perform_ram_check(context, chat_id, progress_message_id):
 
     try:
         update_progress(10, "⏳ Получаем список серверов...")
-        
+
         # Получаем все серверы для проверки
         from extensions.server_checks import initialize_servers
         all_servers = initialize_servers()
         ssh_servers = [s for s in all_servers if s["type"] == "ssh"]
         rdp_servers = [s for s in all_servers if s["type"] == "rdp"]
         servers = ssh_servers + rdp_servers
-        
+
         total_servers = len(servers)
         ram_results = []
-        
+
         update_progress(15, f"⏳ Начинаем проверку {total_servers} серверов...")
-        
+
         for i, server in enumerate(servers):
             current_progress = 15 + (i / total_servers * 75)  # 15-90%
             server_info = f"{server['name']} ({server['ip']})"
             update_progress(current_progress, f"🔍 Проверяем {server_info}...")
-            
+
             try:
                 resources = None
                 if server["type"] == "ssh":
@@ -823,15 +837,15 @@ def perform_ram_check(context, chat_id, progress_message_id):
                 elif server["type"] == "rdp":
                     from extensions.server_checks import get_windows_resources_improved
                     resources = get_windows_resources_improved(server["ip"])
-                
+
                 ram_value = resources.get('ram', 0) if resources else 0
-                
+
                 ram_results.append({
                     "server": server,
                     "ram": ram_value,
                     "success": resources is not None
                 })
-                
+
             except Exception as e:
                 ram_results.append({
                     "server": server,
@@ -840,7 +854,7 @@ def perform_ram_check(context, chat_id, progress_message_id):
                 })
 
         update_progress(95, "⏳ Формируем отчет...")
-        
+
         # Сортируем по убыванию RAM
         ram_results.sort(key=lambda x: x["ram"], reverse=True)
 
@@ -938,24 +952,24 @@ def perform_disk_check(context, chat_id, progress_message_id):
 
     try:
         update_progress(10, "⏳ Получаем список серверов...")
-        
+
         # Получаем все серверы для проверки
         from extensions.server_checks import initialize_servers
         all_servers = initialize_servers()
         ssh_servers = [s for s in all_servers if s["type"] == "ssh"]
         rdp_servers = [s for s in all_servers if s["type"] == "rdp"]
         servers = ssh_servers + rdp_servers
-        
+
         total_servers = len(servers)
         disk_results = []
-        
+
         update_progress(15, f"⏳ Начинаем проверку {total_servers} серверов...")
-        
+
         for i, server in enumerate(servers):
             current_progress = 15 + (i / total_servers * 75)  # 15-90%
             server_info = f"{server['name']} ({server['ip']})"
             update_progress(current_progress, f"🔍 Проверяем {server_info}...")
-            
+
             try:
                 resources = None
                 if server["type"] == "ssh":
@@ -964,15 +978,15 @@ def perform_disk_check(context, chat_id, progress_message_id):
                 elif server["type"] == "rdp":
                     from extensions.server_checks import get_windows_resources_improved
                     resources = get_windows_resources_improved(server["ip"])
-                
+
                 disk_value = resources.get('disk', 0) if resources else 0
-                
+
                 disk_results.append({
                     "server": server,
                     "disk": disk_value,
                     "success": resources is not None
                 })
-                
+
             except Exception as e:
                 disk_results.append({
                     "server": server,
@@ -981,7 +995,7 @@ def perform_disk_check(context, chat_id, progress_message_id):
                 })
 
         update_progress(95, "⏳ Формируем отчет...")
-        
+
         # Сортируем по убыванию Disk
         disk_results.sort(key=lambda x: x["disk"], reverse=True)
 
@@ -1065,7 +1079,7 @@ def perform_disk_check(context, chat_id, progress_message_id):
             message_id=progress_message_id,
             text=error_msg
         )
-        
+
 def check_linux_resources_handler(update, context):
     """Обработчик проверки Linux серверов"""
     query = update.callback_query
@@ -1201,7 +1215,7 @@ def perform_windows_check(context, chat_id, progress_message_id):
         from extensions.server_checks import (
             check_windows_2025_servers,
             check_domain_windows_servers,
-            check_admin_windows_servers, 
+            check_admin_windows_servers,
             check_standard_windows_servers
         )
 
@@ -1212,7 +1226,7 @@ def perform_windows_check(context, chat_id, progress_message_id):
         domain_results, domain_total = check_domain_windows_servers(update_progress)
         admin_results, admin_total = check_admin_windows_servers(update_progress)
         win_std_results, win_std_total = check_standard_windows_servers(update_progress)
-        
+
         message = f"🪟 **Проверка Windows серверов**\n\n"
 
         # Windows 2025
@@ -1292,7 +1306,7 @@ def perform_windows_check(context, chat_id, progress_message_id):
                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
         )
-    
+
     except Exception as e:
         error_msg = f"❌ Ошибка при проверке Windows серверов: {e}"
         debug_log(error_msg)
@@ -1406,7 +1420,7 @@ def check_all_resources_handler(update, context):
 
 def perform_full_check(context, chat_id, progress_message_id):
     """Выполняет полную проверку всех серверов"""
-    
+
     def update_progress(progress, status):
         progress_text = f"🔍 Полная проверка всех серверов...\n{progress_bar(progress)}\n\n{status}"
         context.bot.edit_message_text(
@@ -1460,7 +1474,7 @@ def start_monitoring():
     # Ленивая инициализация серверов
     from extensions.server_checks import initialize_servers
     servers = initialize_servers()
-    
+
     # Исключаем сервер мониторинга из списка
     monitor_server_ip = "192.168.20.2"
     servers = [s for s in servers if s["ip"] != monitor_server_ip]
@@ -1491,7 +1505,7 @@ def start_monitoring():
         f"• Проверка ресурсов: каждые {config.RESOURCE_CHECK_INTERVAL // 60} минут\n"
         f"• Утренний отчет: {config.DATA_COLLECTION_TIME.strftime('%H:%M')}\n\n"
     )
-    
+
     # Информация о веб-интерфейсе
     from extensions.extension_manager import extension_manager
     if extension_manager.is_extension_enabled('web_interface'):
@@ -1504,7 +1518,7 @@ def start_monitoring():
 
     last_resource_check = datetime.now()
     last_data_collection = None
-    
+
     # Инициализируем morning_data если она пустая
     if not morning_data:
         morning_data = {}
@@ -1549,7 +1563,7 @@ def start_monitoring():
                 send_morning_report(manual_call=False)  # Автоматический вызов
                 last_report_date = today
                 debug_log("✅ Утренний отчет отправлен")
-                
+
                 # Добавляем задержку чтобы не запускать повторно в ту же минуту
                 time.sleep(65)  # Спим 65 секунд чтобы выйти за пределы минуты сбора
             else:
@@ -1576,7 +1590,7 @@ def start_monitoring():
                         handle_server_up(ip, status, current_time)
                     else:
                         handle_server_down(ip, status, current_time)
-                        
+
                 except Exception as e:
                     debug_log(f"❌ Ошибка мониторинга {server['name']}: {e}")
 
@@ -1601,7 +1615,7 @@ def handle_server_down(ip, status, current_time):
     """Обработка недоступного сервера"""
     config = get_config()
     downtime = (current_time - status["last_up"]).total_seconds()
-    
+
     if downtime >= config.MAX_FAIL_TIME and not status["alert_sent"]:
         send_alert(f"🚨 {status['name']} ({ip}) не отвечает (проверка: {status['type'].upper()})")
         server_status[ip]["alert_sent"] = True
@@ -1679,7 +1693,7 @@ def check_resources_automatically():
 def check_resource_alerts(ip, current_resource):
     """Проверяет условия для отправки алертов по ресурсам"""
     from app.config.settings import RESOURCE_ALERT_THRESHOLDS, RESOURCE_ALERT_INTERVAL
-    
+
     alerts = []
     server_name = current_resource["server_name"]
 
@@ -1817,14 +1831,14 @@ def send_morning_report_handler(update, context):
 
 def send_morning_report(manual_call=False):
     """Отправляет утренний отчет о доступности серверов и бэкапах
-    
+
     Args:
         manual_call (bool): Если True - отчет вызван вручную, если False - по расписанию
     """
     global morning_data
-    
+
     current_time = datetime.now()
-    
+
     if manual_call:
         debug_log(f"[{current_time}] 📊 Ручной вызов отчета")
         # Для ручного вызова собираем СВЕЖИЕ данные
@@ -1845,7 +1859,7 @@ def send_morning_report(manual_call=False):
                 "collection_time": current_time,
                 "manual_call": False
             }
-    
+
     status = morning_data["status"]
     collection_time = morning_data.get("collection_time", datetime.now())
     is_manual = morning_data.get("manual_call", False)
@@ -1920,129 +1934,129 @@ def send_morning_report(manual_call=False):
     # Отправляем отчет принудительно, даже в тихом режиме
     send_alert(message, force=True)
     debug_log(f"✅ {report_type} отправлен: {up_count}/{total_servers} доступно")
-    
+
 def get_backup_summary_for_report(period_hours=16):
     """Получает сводку по бэкапам за указанный период
-    
+
     Args:
         period_hours (int): Количество часов для периода (16 для авто-отчета, 24 для ручного)
     """
     try:
         debug_log(f"🔄 Сбор данных о бэкапах за {period_hours} часов...")
-        
+
         # ДИАГНОСТИКА КОНФИГУРАЦИИ
         debug_proxmox_config()
-        
+
         import sqlite3
         import os
         from datetime import datetime, timedelta
-        
+
         db_path = "/opt/monitoring/data/backups.db"
-        
+
         if not os.path.exists(db_path):
             debug_log(f"❌ База данных не найдена: {db_path}")
             return "❌ База данных бэкапов недоступна\n"
-        
+
         since_time = (datetime.now() - timedelta(hours=period_hours)).strftime('%Y-%m-%d %H:%M:%S')
-        
+
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        
+
         # ДЕТАЛЬНАЯ ДИАГНОСТИКА: какие хосты есть в базе
         cursor.execute('''
-            SELECT DISTINCT host_name, COUNT(*) as backup_count, 
+            SELECT DISTINCT host_name, COUNT(*) as backup_count,
                    MAX(received_at) as last_backup,
                    SUM(CASE WHEN backup_status = 'success' THEN 1 ELSE 0 END) as success_count
-            FROM proxmox_backups 
+            FROM proxmox_backups
             WHERE received_at >= datetime('now', '-7 days')
             GROUP BY host_name
             ORDER BY last_backup DESC
         ''')
         all_hosts_from_db = cursor.fetchall()
-        
+
         debug_log("📊 ДИАГНОСТИКА - Все хосты из БД за 7 дней:")
         for host_name, count, last_backup, success_count in all_hosts_from_db:
             debug_log(f"  - {host_name}: {success_count}/{count} успешно, последний: {last_backup}")
-        
+
         # 1. Proxmox бэкапы - считаем ПОСЛЕДНИЕ бэкапы для каждого хоста
         cursor.execute('''
             SELECT host_name, backup_status, MAX(received_at) as last_backup
-            FROM proxmox_backups 
+            FROM proxmox_backups
             WHERE received_at >= ?
             GROUP BY host_name
         ''', (since_time,))
-        
+
         proxmox_results = cursor.fetchall()
-        
+
         debug_log("📊 ДИАГНОСТИКА - Хосты с бэкапами за указанный период:")
         for host_name, status, last_backup in proxmox_results:
             debug_log(f"  - {host_name}: {status}, последний: {last_backup}")
-        
+
         # Получаем все хосты из конфигурации
         from app.config.settings import PROXMOX_HOSTS
-        
+
         debug_log("📊 ДИАГНОСТИКА - Хосты из конфигурации PROXMOX_HOSTS:")
         for host in PROXMOX_HOSTS.keys():
             debug_log(f"  - {host}")
-        
+
         # Определяем активные хосты
         active_host_names = [row[0] for row in all_hosts_from_db]
         all_hosts = [host for host in PROXMOX_HOSTS.keys() if host in active_host_names]
-        
+
         # Если все еще не 15, используем альтернативный метод
         if len(all_hosts) != 15:
             debug_log(f"⚠️  Найдено {len(all_hosts)} активных хостов, ожидалось 15")
             debug_log("🔍 Пробуем альтернативный метод подсчета...")
-            
+
             # Метод 2: берем все уникальные хосты из БД за 30 дней
             cursor.execute('''
-                SELECT DISTINCT host_name 
-                FROM proxmox_backups 
+                SELECT DISTINCT host_name
+                FROM proxmox_backups
                 WHERE received_at >= datetime('now', '-30 days')
                 ORDER BY host_name
             ''')
             all_unique_hosts = [row[0] for row in cursor.fetchall()]
-            
+
             debug_log("📊 ДИАГНОСТИКА - Все уникальные хосты за 30 дней:")
             for host in all_unique_hosts:
                 debug_log(f"  - {host}")
-            
+
             all_hosts = all_unique_hosts
-        
+
         debug_log(f"✅ Итоговый список хостов: {len(all_hosts)} - {all_hosts}")
-        
+
         # Считаем успешные - ВСЕ хосты у которых последний бэкап успешный
         hosts_with_success = len([r for r in proxmox_results if r[1] == 'success'])
-        
+
         debug_log(f"📊 Proxmox итог: {hosts_with_success}/{len(all_hosts)} успешно")
-        
+
         # 2. Базы данных - ИСПРАВЛЕННАЯ ЛОГИКА: ищем ПОСЛЕДНИЙ бэкап для каждой базы
         cursor.execute('''
             SELECT backup_type, database_name, backup_status, MAX(received_at) as last_backup
-            FROM database_backups 
+            FROM database_backups
             WHERE received_at >= ?
             GROUP BY backup_type, database_name
         ''', (since_time,))
-        
+
         db_results = cursor.fetchall()
-        
+
         # Получаем конфигурацию
         from app.config.settings import DATABASE_BACKUP_CONFIG
-        
+
         config_databases = {
             'company_database': DATABASE_BACKUP_CONFIG.get("company_databases", {}),
             'barnaul': DATABASE_BACKUP_CONFIG.get("barnaul_backups", {}),
             'client': DATABASE_BACKUP_CONFIG.get("client_databases", {}),
             'yandex': DATABASE_BACKUP_CONFIG.get("yandex_backups", {})
         }
-        
+
         # Считаем статистику - КАЖДАЯ база считается успешной если у нее есть успешный бэкап за период
         db_stats = {}
         for category, databases in config_databases.items():
             total_in_config = len(databases)
             if total_in_config > 0:
                 successful_count = 0
-                
+
                 # Для каждой базы в категории проверяем есть ли успешный бэкап
                 for db_key in databases.keys():
                     found_success = False
@@ -2050,75 +2064,75 @@ def get_backup_summary_for_report(period_hours=16):
                         if backup_type == category and db_name == db_key and status == 'success':
                             found_success = True
                             break
-                    
+
                     if found_success:
                         successful_count += 1
-                
+
                 db_stats[category] = {
                     'total': total_in_config,
                     'successful': successful_count
                 }
                 debug_log(f"📊 {category}: {successful_count}/{total_in_config} успешно")
-        
+
         # 3. Устаревшие бэкапы (более 24 часов) - ПРАВИЛЬНЫЙ подсчет
         stale_threshold = (datetime.now() - timedelta(hours=24)).strftime('%Y-%m-%d %H:%M:%S')
-        
+
         # Устаревшие хосты - те у которых последний бэкап старше 24 часов
         cursor.execute('''
             SELECT host_name, MAX(received_at) as last_backup
-            FROM proxmox_backups 
+            FROM proxmox_backups
             GROUP BY host_name
             HAVING last_backup < ?
         ''', (stale_threshold,))
         stale_hosts = cursor.fetchall()
-        
+
         # Устаревшие БД - те у которых последний бэкап старше 24 часов
         cursor.execute('''
             SELECT backup_type, database_name, MAX(received_at) as last_backup
-            FROM database_backups 
+            FROM database_backups
             GROUP BY backup_type, database_name
             HAVING last_backup < ?
         ''', (stale_threshold,))
         stale_databases = cursor.fetchall()
-        
+
         conn.close()
-        
+
         # Формируем сообщение
         message = ""
-        
+
         # Proxmox бэкапы
         if len(all_hosts) > 0:
             success_rate = (hosts_with_success / len(all_hosts)) * 100
             message += f"• Proxmox: {hosts_with_success}/{len(all_hosts)} успешно ({success_rate:.1f}%)"
-            
+
             if stale_hosts:
                 message += f" ⚠️ {len(stale_hosts)} хостов без бэкапов >24ч"
             message += "\n"
-        
+
         # Базы данных
         message += "• Базы данных:\n"
-        
+
         category_names = {
             'company_database': 'Основные',
-            'barnaul': 'Барнаул', 
+            'barnaul': 'Барнаул',
             'client': 'Клиенты',
             'yandex': 'Yandex'
         }
-        
+
         for category in ['company_database', 'barnaul', 'client', 'yandex']:
             if category in db_stats and db_stats[category]['total'] > 0:
                 stats = db_stats[category]
                 type_name = category_names[category]
-                
+
                 success_rate = (stats['successful'] / stats['total']) * 100
                 message += f"  - {type_name}: {stats['successful']}/{stats['total']} успешно ({success_rate:.1f}%)"
-                
+
                 # Устаревшие для этого типа
                 stale_count = len([db for db in stale_databases if db[0] == category])
                 if stale_count > 0:
                     message += f" ⚠️ {stale_count} БД без бэкапов >24ч"
                 message += "\n"
-        
+
         # Общие проблемы
         total_stale = len(stale_hosts) + len(stale_databases)
         if total_stale > 0:
@@ -2127,58 +2141,58 @@ def get_backup_summary_for_report(period_hours=16):
                 message += f"• {len(stale_hosts)} хостов без бэкапов >24ч\n"
             if stale_databases:
                 message += f"• {len(stale_databases)} БД без бэкапов >24ч\n"
-        
+
         return message
-        
+
     except Exception as e:
         debug_log(f"💥 Критическая ошибка в get_backup_summary_for_report: {e}")
         import traceback
         debug_log(f"💥 Traceback: {traceback.format_exc()}")
         return "❌ Ошибка формирования отчета о бэкапах\n"
-                                    
+
 def debug_backup_data():
     """Временная функция для отладки данных бэкапов"""
     try:
         import sqlite3
         import os
         from datetime import datetime, timedelta
-        
+
         db_path = "/opt/monitoring/data/backups.db"
-        
+
         if not os.path.exists(db_path):
             debug_log("❌ База данных backups.db не существует!")
             return
-        
+
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        
+
         # Проверяем таблицы
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
         tables = cursor.fetchall()
         debug_log(f"📋 Таблицы в базе: {[t[0] for t in tables]}")
-        
+
         # Данные из proxmox_backups
         cursor.execute("SELECT COUNT(*) as count, COUNT(DISTINCT host_name) as hosts FROM proxmox_backups WHERE received_at >= datetime('now', '-16 hours')")
         proxmox_stats = cursor.fetchone()
         debug_log(f"📊 Proxmox записи: {proxmox_stats[0]}, хостов: {proxmox_stats[1]}")
-        
+
         # Данные из database_backups
         cursor.execute("SELECT COUNT(*) as count, COUNT(DISTINCT database_name) as dbs FROM database_backups WHERE received_at >= datetime('now', '-16 hours')")
         db_stats = cursor.fetchone()
         debug_log(f"📊 DB записи: {db_stats[0]}, баз: {db_stats[1]}")
-        
+
         # Конкретные данные по типам БД
         cursor.execute('''
-            SELECT backup_type, COUNT(DISTINCT database_name) as dbs_count 
-            FROM database_backups 
+            SELECT backup_type, COUNT(DISTINCT database_name) as dbs_count
+            FROM database_backups
             WHERE received_at >= datetime('now', '-16 hours')
             GROUP BY backup_type
         ''')
         db_by_type = cursor.fetchall()
         debug_log(f"📊 БД по типам: {dict(db_by_type)}")
-        
+
         conn.close()
-        
+
     except Exception as e:
         debug_log(f"❌ Ошибка диагностики: {e}")
 
@@ -2186,17 +2200,17 @@ def debug_morning_report(update, context):
     """Отладочная функция для проверки утреннего отчета"""
     query = update.callback_query
     query.answer()
-    
+
     debug_log("🔧 Запущена отладочная функция утреннего отчета")
-    
+
     # Собираем текущий статус
     current_status = get_current_server_status()
-    
+
     message = f"🔧 *Отладочная информация утреннего отчета*\n\n"
     message += f"🟢 Доступно: {len(current_status['ok'])}\n"
     message += f"🔴 Недоступно: {len(current_status['failed'])}\n"
     message += f"⏰ Время: {datetime.now().strftime('%H:%M:%S')}\n\n"
-    
+
     # Проверяем данные для отчета
     if morning_data and "status" in morning_data:
         morning_status = morning_data["status"]
@@ -2206,27 +2220,27 @@ def debug_morning_report(update, context):
         message += f"• Недоступно: {len(morning_status['failed'])}\n"
     else:
         message += f"❌ *Данные утреннего отчета отсутствуют*\n"
-    
+
     query.edit_message_text(message, parse_mode='Markdown')
 
 def resource_history_command(update, context):
     """Показывает историю ресурсов"""
     query = update.callback_query
     query.answer()
-    
+
     message = "📈 *История ресурсов*\n\n"
-    
+
     if not resource_history:
         message += "История ресурсов пуста\n"
     else:
         for ip, history in list(resource_history.items())[:5]:  # Показываем первые 5 серверов
             server_name = history[0]["server_name"] if history else "Неизвестно"
             message += f"**{server_name}** ({ip}):\n"
-            
+
             for entry in history[-3:]:  # Последние 3 записи
                 message += f"• {entry['timestamp'].strftime('%H:%M')}: CPU {entry['cpu']}%, RAM {entry['ram']}%, Disk {entry['disk']}%\n"
             message += "\n"
-    
+
     query.edit_message_text(message, parse_mode='Markdown')
 
 def resource_page_handler(update, context):
