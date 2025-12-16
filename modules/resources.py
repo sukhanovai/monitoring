@@ -1,10 +1,10 @@
 """
-Server Monitoring System v4.10.1
+Server Monitoring System v4.10.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Server resource monitoring module
 Система мониторинга серверов
-Версия: 4.10.1
+Версия: 4.10.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль проверки ресурсов серверов

@@ -29,8 +29,8 @@ def update_monitor_core():
         ("from lib.alerts import send_alert", ""),  # Удаляем, т.к. будет импортирован из monitor_core
         
         # Добавляем новые импорты в начало файла
-        ("\"\"\"\nServer Monitoring System v4.10.1",
-         "\"\"\"\nServer Monitoring System v4.10.1 (Updated)\n\nNote: This file uses new modular structure\nПримечание: Этот файл использует новую модульную структуру\n\"\"\"\n\n# Новые импорты из модульной структуры\nfrom lib.logging import debug_log\nfrom lib.alerts import send_alert\nfrom lib.utils import progress_bar, format_duration\nfrom config.settings import DEBUG_MODE\nfrom core.monitor import monitor\nfrom modules.availability import availability_checker\nfrom modules.resources import resources_checker\nfrom modules.morning_report import morning_report\nfrom modules.targeted_checks import targeted_checks\n\n# Старые импорты для совместимости"),
+        ("\"\"\"\nServer Monitoring System v4.10.2",
+         "\"\"\"\nServer Monitoring System v4.10.2 (Updated)\n\nNote: This file uses new modular structure\nПримечание: Этот файл использует новую модульную структуру\n\"\"\"\n\n# Новые импорты из модульной структуры\nfrom lib.logging import debug_log\nfrom lib.alerts import send_alert\nfrom lib.utils import progress_bar, format_duration\nfrom config.settings import DEBUG_MODE\nfrom core.monitor import monitor\nfrom modules.availability import availability_checker\nfrom modules.resources import resources_checker\nfrom modules.morning_report import morning_report\nfrom modules.targeted_checks import targeted_checks\n\n# Старые импорты для совместимости"),
     ]
     
     for old, new in replacements:

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Server Monitoring System v4.10.1
+Server Monitoring System v4.10.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Main launch module
 Система мониторинга серверов
-Версия: 4.10.1
+Версия: 4.10.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль запуска
@@ -23,10 +23,20 @@ sys.path.insert(0, '/opt/monitoring')
 
 # Импортируем новое логирование
 from lib.logging import debug_log, setup_logging, set_debug_mode
-from config.settings import DEBUG_MODE
 
 def setup_environment():
     """Настройка окружения и логирования"""
+    # Проверяем наличие DEBUG_MODE
+    try:
+        from config.settings import DEBUG_MODE
+    except ImportError:
+        # Если DEBUG_MODE нет в settings, ищем в других местах
+        try:
+            from config.db_settings import DEBUG_MODE
+        except ImportError:
+            # Используем значение по умолчанию
+            DEBUG_MODE = False
+    
     # Устанавливаем режим отладки
     set_debug_mode(DEBUG_MODE)
     
@@ -43,7 +53,7 @@ def main():
     logger = setup_environment()
     
     try:
-        logger.info("🚀 Запуск системы мониторинга v4.10.1...")
+        logger.info("🚀 Запуск системы мониторинга v4.9.2...")
         
         # Инициализация модулей
         from modules.targeted_checks import targeted_checks
@@ -56,7 +66,12 @@ def main():
         
         # Инициализация бота
         from telegram.ext import Updater
-        from config.settings import TELEGRAM_TOKEN
+        
+        # Получаем токен из настроек
+        try:
+            from config.settings import TELEGRAM_TOKEN
+        except ImportError:
+            from config.db_settings import TELEGRAM_TOKEN
         
         updater = Updater(token=TELEGRAM_TOKEN, use_context=True)
         dispatcher = updater.dispatcher
@@ -86,15 +101,19 @@ def main():
             logger.info("🔄 Пробуем использовать старые обработчики...")
             
             # Запасной вариант: старые обработчики
-            from bot_menu import setup_menu, get_handlers, get_callback_handlers
-            
-            setup_menu(updater.bot)
-            for handler in get_handlers():
-                dispatcher.add_handler(handler)
-            for handler in get_callback_handlers():
-                dispatcher.add_handler(handler)
-            
-            logger.info("✅ Используются старые обработчики для совместимости")
+            try:
+                from bot_menu import setup_menu, get_handlers, get_callback_handlers
+                
+                setup_menu(updater.bot)
+                for handler in get_handlers():
+                    dispatcher.add_handler(handler)
+                for handler in get_callback_handlers():
+                    dispatcher.add_handler(handler)
+                
+                logger.info("✅ Используются старые обработчики для совместимости")
+            except ImportError as e2:
+                logger.error(f"❌ Ошибка импорта старых обработчиков: {e2}")
+                raise
         
         # Добавляем обработчики настроек
         try:
