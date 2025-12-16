@@ -1,0 +1,24 @@
+"""
+Server Monitoring System v4.11.0
+Copyright (c) 2025 Aleksandr Sukhanov
+License: MIT
+Bot handlers package
+Система мониторинга серверов
+Версия: 4.11.0
+Автор: Александр Суханов (c)
+Лицензия: MIT
+Пакет обработчиков бота
+"""
+
+from .base import check_access, get_access_denied_response, lazy_handler, lazy_message_handler
+from .commands import setup_command_handlers
+from .callbacks import setup_callback_handlers
+
+__all__ = [
+    'check_access',
+    'get_access_denied_response',
+    'lazy_handler',
+    'lazy_message_handler',
+    'setup_command_handlers',
+    'setup_callback_handlers'
+]
