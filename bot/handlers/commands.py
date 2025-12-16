@@ -1,10 +1,10 @@
 """
-Server Monitoring System v4.11.3
+Server Monitoring System v4.11.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Bot command handlers
 Система мониторинга серверов
-Версия: 4.11.3
+Версия: 4.11.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики команд бота
@@ -12,7 +12,7 @@ Bot command handlers
 
 from telegram.ext import CommandHandler
 from lib.logging import debug_log
-from bot.utils import check_access, get_access_denied_response  # Импортируем из общего модуля
+from bot.utils import check_access, get_access_denied_response
 from bot.handlers.base import lazy_handler
 
 # Удаляем импорты из menu.handlers и делаем их ленивыми
@@ -22,6 +22,7 @@ def setup_command_handlers():
     handlers = [
         CommandHandler("start", lazy_start_command),
         CommandHandler("help", lazy_help_command),
+        CommandHandler("debug_info", debug_info_command),
         CommandHandler("check", lambda u,c: lazy_handler('manual_check')(u,c)),
         CommandHandler("status", lambda u,c: lazy_handler('monitor_status')(u,c)),
         CommandHandler("servers", lambda u,c: lazy_handler('servers_list')(u,c)),
@@ -50,6 +51,45 @@ def setup_command_handlers():
     
     return handlers
 
+def debug_info_command(update, context):
+    """Диагностическая команда"""
+    import sqlite3
+    import json
+    
+    chat_id = update.effective_chat.id
+    chat_id_str = str(chat_id)
+    
+    message = f"🔧 *Диагностическая информация*\n\n"
+    message += f"🆔 *Ваш Chat ID:* `{chat_id_str}`\n\n"
+    
+    try:
+        # Читаем напрямую из БД
+        conn = sqlite3.connect('/opt/monitoring/data/settings.db')
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT key, value FROM settings WHERE key IN ('CHAT_IDS', 'TELEGRAM_TOKEN', 'DEBUG_MODE')")
+        settings = cursor.fetchall()
+        conn.close()
+        
+        message += "*Настройки из БД:*\n"
+        for key, value in settings:
+            if key == 'CHAT_IDS':
+                try:
+                    chat_ids = json.loads(value)
+                    message += f"• {key}: {chat_ids}\n"
+                    message += f"  Доступ: {'✅ Есть' if chat_id_str in chat_ids else '❌ Нет'}\n"
+                except:
+                    message += f"• {key}: ошибка парсинга\n"
+            elif key == 'TELEGRAM_TOKEN':
+                message += f"• {key}: {'✅ Есть' if value and len(value) > 10 else '❌ Нет'}\n"
+            else:
+                message += f"• {key}: {value}\n"
+    
+    except Exception as e:
+        message += f"❌ Ошибка чтения БД: {e}\n"
+    
+    update.message.reply_text(message, parse_mode='Markdown')
+    
 def lazy_start_command(update, context):
     """Ленивая загрузка команды /start"""
     if not check_access(update.effective_chat.id):

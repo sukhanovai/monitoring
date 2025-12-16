@@ -1,10 +1,10 @@
 """
-Server Monitoring System v4.11.3
+Server Monitoring System v4.11.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Database-backed settings loader
 Система мониторинга серверов
-Версия: 4.11.3
+Версия: 4.11.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Загрузчик настроек из базы данных
@@ -246,6 +246,7 @@ def load_all_settings() -> None:
     global PROXMOX_HOSTS, DUPLICATE_IP_HOSTS, HOSTNAME_ALIASES
     global BACKUP_PATTERNS, BACKUP_STATUS_MAP, DATABASE_CONFIG
     global BACKUP_DATABASE_CONFIG, DATABASE_BACKUP_CONFIG
+    global DEBUG_MODE
     
     if not USE_DB:
         debug_log("⚠️ Используются настройки по умолчанию (БД недоступна)")
@@ -255,6 +256,11 @@ def load_all_settings() -> None:
         # === БАЗОВЫЕ НАСТРОЙКИ ===
         TELEGRAM_TOKEN = get_setting('TELEGRAM_TOKEN', "")
         CHAT_IDS = get_setting('CHAT_IDS', [])
+        DEBUG_MODE = True
+
+        debug_log(f"🔍 ДИАГНОСТИКА: TELEGRAM_TOKEN из БД: {TELEGRAM_TOKEN[:10]}...")
+        debug_log(f"🔍 ДИАГНОСТИКА: CHAT_IDS из БД: {CHAT_IDS}")
+        debug_log(f"🔍 ДИАГНОСТИКА: DEBUG_MODE: {DEBUG_MODE}")        
 
         # === ИНТЕРВАЛЫ ПРОВЕРОК ===
         CHECK_INTERVAL = get_setting('CHECK_INTERVAL', 60)

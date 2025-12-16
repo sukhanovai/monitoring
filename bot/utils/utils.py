@@ -1,10 +1,10 @@
 """
-Server Monitoring System v4.11.3
+Server Monitoring System v4.11.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Bot utilities
 Система мониторинга серверов
-Версия: 4.11.3
+Версия: 4.11.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Утилиты бота
@@ -15,31 +15,34 @@ from lib.logging import debug_log
 def check_access(chat_id):
     """Проверка доступа к боту"""
     try:
-        # Импортируем CHAT_IDS из config.settings, который использует приоритет БД
-        from config.settings import CHAT_IDS
+        # ВРЕМЕННО: прямое чтение из БД
+        import sqlite3
+        import json
         
+        conn = sqlite3.connect('/opt/monitoring/data/settings.db')
+        cursor = conn.cursor()
+        cursor.execute("SELECT value FROM settings WHERE key = 'CHAT_IDS'")
+        result = cursor.fetchone()
+        conn.close()
+        
+        if not result:
+            debug_log("❌ Настройка CHAT_IDS не найдена в БД")
+            return False
+            
+        chat_ids_from_db = json.loads(result[0])
         chat_id_str = str(chat_id)
         
-        # Диагностика только в режиме отладки
-        from config.settings import DEBUG_MODE
-        if DEBUG_MODE:
-            debug_log(f"🔍 Проверка доступа для chat_id: {chat_id_str}")
-            debug_log(f"📋 CHAT_IDS из настроек: {CHAT_IDS}")
+        debug_log(f"🔍 Прямой запрос к БД:")
+        debug_log(f"  Chat ID: {chat_id_str}")
+        debug_log(f"  CHAT_IDS из БД: {chat_ids_from_db}")
         
-        # Проверяем что CHAT_IDS это список
-        if not isinstance(CHAT_IDS, list):
-            debug_log(f"⚠️ ОШИБКА: CHAT_IDS не является списком: {type(CHAT_IDS)}")
-            return False
+        access_granted = chat_id_str in chat_ids_from_db
+        debug_log(f"  Результат: {'✅ Доступ разрешен' if access_granted else '❌ Доступ запрещен'}")
         
-        result = chat_id_str in CHAT_IDS
-        
-        if DEBUG_MODE:
-            debug_log(f"✅ Результат проверки доступа: {'Разрешено' if result else 'Запрещено'}")
-        
-        return result
+        return access_granted
         
     except Exception as e:
-        debug_log(f"💥 Ошибка в check_access: {e}")
+        debug_log(f"💥 Ошибка при проверке доступа: {e}")
         import traceback
         debug_log(f"💥 Traceback: {traceback.format_exc()}")
         return False
