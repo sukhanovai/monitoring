@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Server Monitoring System v4.10.3
+Server Monitoring System v4.10.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Main launch module
 Система мониторинга серверов
-Версия: 4.10.3
+Версия: 4.10.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль запуска
@@ -21,61 +21,76 @@ from datetime import datetime
 # Добавляем путь для импортов
 sys.path.insert(0, '/opt/monitoring')
 
-def get_telegram_token():
-    """Получает токен Telegram из различных источников"""
-    token_sources = [
-        # 1. Прямой импорт из settings
-        lambda: __import__('config.settings').TELEGRAM_TOKEN,
-        # 2. Через db_settings
-        lambda: __import__('config.db_settings').TELEGRAM_TOKEN,
-        # 3. Из базы данных через config_manager
-        lambda: __import__('core.config_manager').config_manager.get_setting('TELEGRAM_TOKEN', ''),
-        # 4. Из переменной окружения
-        lambda: os.environ.get('TELEGRAM_TOKEN', ''),
-    ]
+# Импортируем модуль логирования ДО всех других импортов
+from lib.logging import debug_log, setup_logging, set_debug_mode
+
+def setup_environment():
+    """Настройка окружения и логирования"""
+    # Получаем DEBUG_MODE из db_settings
+    try:
+        from config.db_settings import DEBUG_MODE
+        debug_mode = DEBUG_MODE
+    except ImportError:
+        debug_mode = False
     
-    for source in token_sources:
-        try:
-            token = source()
-            if token and isinstance(token, str) and len(token) > 10:
-                print(f"✅ Токен найден из источника {source.__name__ if hasattr(source, '__name__') else source}")
-                return token
-        except Exception:
-            continue
+    # Устанавливаем режим отладки
+    set_debug_mode(debug_mode)
+    
+    # Настраиваем логирование
+    setup_logging()
+    
+    logger = logging.getLogger(__name__)
+    logger.info("🚀 Настройка окружения...")
+    
+    return logger, debug_mode
+
+def get_telegram_token():
+    """Получает токен Telegram из правильного источника"""
+    # Сначала пробуем получить из db_settings (самый надежный способ)
+    try:
+        from config.db_settings import TELEGRAM_TOKEN
+        if TELEGRAM_TOKEN and len(TELEGRAM_TOKEN) > 10:
+            debug_log(f"✅ Токен загружен из db_settings ({len(TELEGRAM_TOKEN)} символов)")
+            return TELEGRAM_TOKEN
+    except ImportError as e:
+        debug_log(f"⚠️ Не удалось загрузить токен из db_settings: {e}")
+    
+    # Затем пробуем через config_manager
+    try:
+        from core.config_manager import config_manager
+        token = config_manager.get_setting('TELEGRAM_TOKEN', '')
+        if token and len(token) > 10:
+            debug_log(f"✅ Токен загружен из config_manager ({len(token)} символов)")
+            return token
+    except Exception as e:
+        debug_log(f"⚠️ Не удалось загрузить токен из config_manager: {e}")
+    
+    # Проверяем переменную окружения
+    token = os.environ.get('TELEGRAM_TOKEN', '')
+    if token and len(token) > 10:
+        debug_log(f"✅ Токен загружен из переменной окружения ({len(token)} символов)")
+        return token
+    
+    # Пробуем напрямую из базы данных
+    try:
+        import sqlite3
+        conn = sqlite3.connect('/opt/monitoring/data/settings.db')
+        cursor = conn.cursor()
+        cursor.execute("SELECT value FROM settings WHERE key = 'TELEGRAM_TOKEN'")
+        result = cursor.fetchone()
+        conn.close()
+        
+        if result and result[0] and len(result[0]) > 10:
+            debug_log(f"✅ Токен загружен напрямую из БД ({len(result[0])} символов)")
+            return result[0]
+    except Exception as e:
+        debug_log(f"⚠️ Не удалось загрузить токен из БД: {e}")
     
     return ''
 
-def setup_logging():
-    """Настройка логирования"""
-    # Проверяем наличие DEBUG_MODE
-    debug_mode = False
-    try:
-        from config.settings import DEBUG_MODE
-        debug_mode = DEBUG_MODE
-    except ImportError:
-        try:
-            from config.db_settings import DEBUG_MODE
-            debug_mode = DEBUG_MODE
-        except ImportError:
-            pass
-    
-    # Настраиваем логирование
-    log_level = logging.DEBUG if debug_mode else logging.INFO
-    
-    logging.basicConfig(
-        level=log_level,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler('/opt/monitoring/logs/bot.log'),
-            logging.StreamHandler()
-        ]
-    )
-    
-    return logging.getLogger(__name__)
-
 def main():
     """Основная функция запуска"""
-    logger = setup_logging()
+    logger, debug_mode = setup_environment()
     
     try:
         logger.info("🚀 Запуск системы мониторинга v4.9.2...")
@@ -85,10 +100,9 @@ def main():
         
         if not TELEGRAM_TOKEN:
             logger.error("❌ Telegram токен не найден!")
-            logger.error("Пожалуйста, установите токен одним из способов:")
-            logger.error("1. В базе данных: INSERT INTO settings (key, value) VALUES ('TELEGRAM_TOKEN', 'ваш_токен')")
-            logger.error("2. В config/settings.py: TELEGRAM_TOKEN = 'ваш_токен'")
-            logger.error("3. В переменной окружения: export TELEGRAM_TOKEN='ваш_токен'")
+            logger.error("Токен должен быть установлен в базе данных:")
+            logger.error("sqlite3 /opt/monitoring/data/settings.db \\")
+            logger.error("  \"INSERT OR REPLACE INTO settings (key, value) VALUES ('TELEGRAM_TOKEN', 'ваш_токен');\"")
             sys.exit(1)
         
         logger.info(f"✅ Telegram токен получен ({len(TELEGRAM_TOKEN)} символов)")
@@ -96,12 +110,19 @@ def main():
         # Инициализация модулей
         logger.info("🔄 Инициализация модулей...")
         
-        from modules.targeted_checks import targeted_checks
-        targeted_checks.get_all_servers()
-        logger.info("✅ Модуль точечных проверок инициализирован")
+        try:
+            from modules.targeted_checks import targeted_checks
+            targeted_checks.get_all_servers()
+            logger.info("✅ Модуль точечных проверок инициализирован")
+        except Exception as e:
+            logger.warning(f"⚠️ Ошибка инициализации targeted_checks: {e}")
         
-        from core.monitor import monitor
-        logger.info("✅ Основной мониторинг инициализирован")
+        try:
+            from core.monitor import monitor
+            logger.info("✅ Основной мониторинг инициализирован")
+        except Exception as e:
+            logger.error(f"❌ Ошибка инициализации монитора: {e}")
+            raise
         
         # Инициализация бота
         logger.info("🔄 Инициализация Telegram бота...")
@@ -129,7 +150,8 @@ def main():
             
         except ImportError as e:
             logger.error(f"❌ Ошибка импорта обработчиков: {e}")
-            raise
+            logger.error("Файлы bot_menu.py не найдены!")
+            sys.exit(1)
         
         # Добавляем обработчики настроек
         try:
@@ -169,9 +191,12 @@ def main():
             logger.warning("⚠️ Модуль статистики недоступен")
         
         # Запускаем основной мониторинг в отдельном потоке
-        monitor_thread = threading.Thread(target=monitor.start, daemon=True)
-        monitor_thread.start()
-        logger.info("✅ Основной мониторинг запущен")
+        try:
+            monitor_thread = threading.Thread(target=monitor.start, daemon=True)
+            monitor_thread.start()
+            logger.info("✅ Основной мониторинг запущен")
+        except Exception as e:
+            logger.error(f"❌ Ошибка запуска мониторинга: {e}")
         
         # Запускаем бота
         updater.start_polling()
@@ -180,11 +205,12 @@ def main():
         # Отправляем стартовое сообщение
         try:
             from lib.alerts import send_alert
-            send_alert("🟢 *Мониторинг серверов запущен*\n\nИспользуется новая модульная структура v4.9.2", force=True)
+            send_alert("🟢 *Мониторинг серверов запущен*\n\n✅ Новая модульная структура v4.9.2 активна", force=True)
         except Exception as e:
             logger.warning(f"⚠️ Не удалось отправить стартовое сообщение: {e}")
         
         # Блокируем основной поток
+        logger.info("✅ Система полностью запущена и готова к работе")
         updater.idle()
         
     except Exception as e:
@@ -197,6 +223,8 @@ def main():
             updater.stop()
         except:
             pass
+        
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
