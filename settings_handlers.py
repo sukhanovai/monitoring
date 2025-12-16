@@ -1,5 +1,5 @@
 """
-Server Monitoring System v4.11.0
+Server Monitoring System v4.11.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot

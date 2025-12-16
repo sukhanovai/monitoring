@@ -1,10 +1,10 @@
 """
-Server Monitoring System v4.11.0
+Server Monitoring System v4.11.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Menu handlers
 Система мониторинга серверов
-Версия: 4.11.0
+Версия: 4.11.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики меню бота
@@ -13,7 +13,6 @@ Menu handlers
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 from lib.logging import debug_log
 from config.settings import DEBUG_MODE
-from bot.handlers.base import check_access, get_access_denied_response
 from bot.menu.builder import (
     build_main_menu_keyboard, 
     build_extensions_menu,
@@ -22,6 +21,8 @@ from bot.menu.builder import (
 
 def start_command(update, context):
     """Обработчик команды /start с отладочной информацией"""
+    from bot.handlers.base import check_access, get_access_denied_response
+    
     if not check_access(update.effective_chat.id):
         get_access_denied_response(update)
         return
@@ -57,7 +58,11 @@ def start_command(update, context):
 
 def help_command(update, context):
     """Обработчик команды /help"""
+    from bot.handlers.base import check_access
+    
     if not check_access(update.effective_chat.id):
+        if update.message:
+            update.message.reply_text("⛔ У вас нет прав для использования этого бота")
         return
 
     help_text = (

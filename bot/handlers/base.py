@@ -1,10 +1,10 @@
 """
-Server Monitoring System v4.11.0
+Server Monitoring System v4.11.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Base bot handlers
 Система мониторинга серверов
-Версия: 4.11.0
+Версия: 4.11.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Базовые обработчики бота
@@ -95,6 +95,21 @@ def lazy_handler(handler_name):
         elif handler_name == 'check_disk':
             from core.monitor import check_disk_resources_handler
             return check_disk_resources_handler(update, context)
+        elif handler_name == 'extensions_menu':
+            from bot.menu.handlers import show_extensions_menu
+            return show_extensions_menu(update, context)
+        elif handler_name == 'extensions_refresh':
+            from bot.menu.handlers import show_extensions_menu
+            return show_extensions_menu(update, context)
+        elif handler_name == 'ext_enable_all':
+            from bot.menu.handlers import enable_all_extensions
+            return enable_all_extensions(update, context)
+        elif handler_name == 'ext_disable_all':
+            from bot.menu.handlers import disable_all_extensions
+            return disable_all_extensions(update, context)
+        elif handler_name == 'debug_menu':
+            from bot.menu.handlers import show_debug_menu
+            return show_debug_menu(update, context)
         else:
             def default_handler(update, context):
                 query = update.callback_query

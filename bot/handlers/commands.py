@@ -1,10 +1,10 @@
 """
-Server Monitoring System v4.11.0
+Server Monitoring System v4.11.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Bot command handlers
 Система мониторинга серверов
-Версия: 4.11.0
+Версия: 4.11.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики команд бота
@@ -12,35 +12,62 @@ Bot command handlers
 
 from telegram.ext import CommandHandler
 from lib.logging import debug_log
-from bot.handlers.base import check_access, get_access_denied_response
-from bot.menu.handlers import start_command, help_command, debug_command
-from modules.targeted_checks import show_server_selection_menu
+from bot.handlers.base import check_access, get_access_denied_response, lazy_handler
+
+# Удаляем импорты из menu.handlers и делаем их ленивыми
 
 def setup_command_handlers():
     """Настройка обработчиков команд"""
     return [
-        CommandHandler("start", start_command),
-        CommandHandler("help", help_command),
-        CommandHandler("check", lambda u,c: lazy_check_handler('manual_check')(u,c)),
-        CommandHandler("status", lambda u,c: lazy_check_handler('monitor_status')(u,c)),
-        CommandHandler("servers", lambda u,c: lazy_check_handler('servers_list')(u,c)),
-        CommandHandler("silent", lambda u,c: lazy_check_handler('silent_status')(u,c)),
-        CommandHandler("report", lambda u,c: lazy_check_handler('daily_report')(u,c)),
+        CommandHandler("start", lazy_start_command),
+        CommandHandler("help", lazy_help_command),
+        CommandHandler("check", lambda u,c: lazy_handler('manual_check')(u,c)),
+        CommandHandler("status", lambda u,c: lazy_handler('monitor_status')(u,c)),
+        CommandHandler("servers", lambda u,c: lazy_handler('servers_list')(u,c)),
+        CommandHandler("silent", lambda u,c: lazy_handler('silent_status')(u,c)),
+        CommandHandler("report", lambda u,c: lazy_handler('daily_report')(u,c)),
         CommandHandler("stats", lambda u,c: lazy_stats_handler(u,c)),
-        CommandHandler("control", lambda u,c: lazy_check_handler('control_panel')(u,c)),
+        CommandHandler("control", lambda u,c: lazy_handler('control_panel')(u,c)),
         CommandHandler("diagnose_ssh", lambda u,c: lazy_diagnose_handler(u,c)),
         CommandHandler("extensions", lambda u,c: lazy_extensions_handler(u,c)),
         CommandHandler("fix_monitor", lambda u,c: lazy_fix_monitor_handler(u,c)),
         CommandHandler("backup", lambda u,c: lazy_backup_handler(u,c)),
         CommandHandler("backup_search", lambda u,c: lazy_backup_search_handler(u,c)),
         CommandHandler("backup_help", lambda u,c: lazy_backup_help_handler(u,c)),
-        CommandHandler("debug", debug_command),
+        CommandHandler("debug", lazy_debug_command),
         CommandHandler("diagnose_windows", lambda u,c: lazy_diagnose_windows_handler(u,c)),
         CommandHandler("check_single", lambda u,c: handle_server_selection_menu(u,c, "check_single")),
         CommandHandler("check_resources_single", lambda u,c: handle_server_selection_menu(u,c, "check_resources")),
         CommandHandler("check_server", lambda u,c: check_single_server_command(u,c)),
         CommandHandler("check_res", lambda u,c: check_single_resources_command(u,c)),
     ]
+
+def lazy_start_command(update, context):
+    """Ленивая загрузка команды /start"""
+    if not check_access(update.effective_chat.id):
+        get_access_denied_response(update)
+        return
+    
+    from bot.menu.handlers import start_command
+    return start_command(update, context)
+
+def lazy_help_command(update, context):
+    """Ленивая загрузка команды /help"""
+    if not check_access(update.effective_chat.id):
+        get_access_denied_response(update)
+        return
+    
+    from bot.menu.handlers import help_command
+    return help_command(update, context)
+
+def lazy_debug_command(update, context):
+    """Ленивая загрузка команды /debug"""
+    if not check_access(update.effective_chat.id):
+        get_access_denied_response(update)
+        return
+    
+    from bot.menu.handlers import debug_command
+    return debug_command(update, context)
 
 def lazy_check_handler(handler_name):
     """Ленивая загрузка обработчиков проверок"""
