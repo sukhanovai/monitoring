@@ -1,11 +1,11 @@
 """
 /bot/handlers/callbacks.py
-Server Monitoring System v4.12.0
+Server Monitoring System v4.12.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Callback handlers for Telegram bot
 Система мониторинга серверов
-Версия: 4.12.0
+Версия: 4.12.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Callback-обработчики для Telegram бота
@@ -25,13 +25,13 @@ class CallbackHandlers(BaseHandlers):
     def handle_main_menu(self, update: Update, context: CallbackContext):
         """Обработчик главного меню"""
         query = update.callback_query
-        query.answer()
+        if query:
+            query.answer()
         
         from bot.menu.handlers import MenuHandlers
         menu_handlers = MenuHandlers(self.config_manager)
         
-        if query.data == 'main_menu':
-            return menu_handlers.show_main_menu(update, context)
+        return menu_handlers.show_main_menu(update, context)
     
     def handle_check_actions(self, update: Update, context: CallbackContext):
         """Обработчик действий проверки"""

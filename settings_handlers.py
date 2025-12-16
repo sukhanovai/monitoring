@@ -1,11 +1,11 @@
 """
 /settings_handlers.py
-Server Monitoring System v4.12.0
+Server Monitoring System v4.12.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 4.12.0
+Версия: 4.12.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота

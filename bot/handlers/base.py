@@ -1,11 +1,11 @@
 """
 /bot/handlers/base.py
-Server Monitoring System v4.12.0
+Server Monitoring System v4.12.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Base handlers for Telegram bot
 Система мониторинга серверов
-Версия: 4.12.0
+Версия: 4.12.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Базовые обработчики для Telegram бота
@@ -43,7 +43,8 @@ class BaseHandlers:
                 update.message.reply_text("⛔ У вас нет прав для использования этого бота")
             elif update.callback_query:
                 update.callback_query.answer("⛔ У вас нет прав")
-                update.callback_query.edit_message_text("⛔ У вас нет прав для использования этого бота")
+                if update.callback_query.message:
+                    update.callback_query.edit_message_text("⛔ У вас нет прав для использования этого бота")
             return
         
         # Заглушка - реализация будет в menu/handlers.py

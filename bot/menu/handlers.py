@@ -1,11 +1,11 @@
 """
 /bot/menu/handlers.py
-Server Monitoring System v4.12.0
+Server Monitoring System v4.12.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Menu handlers for Telegram bot
 Система мониторинга серверов
-Версия: 4.12.0
+Версия: 4.12.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики меню для Telegram бота
@@ -60,22 +60,33 @@ class MenuHandlers(BaseHandlers):
         
         keyboard = self.menu_builder.build_main_menu(update, context)
         
-        if hasattr(update, 'callback_query'):
+        # Проверяем тип обновления
+        if hasattr(update, 'callback_query') and update.callback_query:
+            # Это callback из кнопки
+            update.callback_query.answer()
             update.callback_query.edit_message_text(
                 welcome_text, 
                 parse_mode='Markdown', 
                 reply_markup=keyboard
             )
-        else:
+        elif update.message:
+            # Это текстовое сообщение (команда /start)
             update.message.reply_text(
                 welcome_text,
                 parse_mode='Markdown',
                 reply_markup=keyboard
             )
-    
+        elif update.effective_message:
+            # Альтернативный способ
+            update.effective_message.reply_text(
+                welcome_text,
+                parse_mode='Markdown',
+                reply_markup=keyboard
+            )
+
     def show_check_menu(self, update: Update, context: CallbackContext):
         """Показывает меню проверки"""
-        query = update.callback_query
+        query = update.callback_query if hasattr(update, 'callback_query') and update.callback_query else None
         if query:
             query.answer()
             chat_id = query.message.chat_id
@@ -92,15 +103,16 @@ class MenuHandlers(BaseHandlers):
                 reply_markup=keyboard
             )
         else:
-            update.message.reply_text(
+            context.bot.send_message(
+                chat_id=chat_id,
                 text=message,
                 parse_mode='Markdown',
                 reply_markup=keyboard
             )
-    
+
     def show_resources_menu(self, update: Update, context: CallbackContext):
         """Показывает меню проверки ресурсов"""
-        query = update.callback_query
+        query = update.callback_query if hasattr(update, 'callback_query') and update.callback_query else None
         if query:
             query.answer()
             chat_id = query.message.chat_id
@@ -117,15 +129,16 @@ class MenuHandlers(BaseHandlers):
                 reply_markup=keyboard
             )
         else:
-            update.message.reply_text(
+            context.bot.send_message(
+                chat_id=chat_id,
                 text=message,
                 parse_mode='Markdown',
                 reply_markup=keyboard
             )
-    
+
     def perform_manual_check(self, update: Update, context: CallbackContext):
         """Выполняет ручную проверку серверов"""
-        query = update.callback_query
+        query = update.callback_query if hasattr(update, 'callback_query') and update.callback_query else None
         if query:
             query.answer()
             chat_id = query.message.chat_id
@@ -134,7 +147,8 @@ class MenuHandlers(BaseHandlers):
         
         if not self.check_access(chat_id):
             if query:
-                query.edit_message_text("⛔ У вас нет прав для выполнения этой команды")
+                if query.message:
+                    query.edit_message_text("⛔ У вас нет прав для выполнения этой команды")
             else:
                 update.message.reply_text("⛔ У вас нет прав для выполнения этой команды")
             return
@@ -149,7 +163,7 @@ class MenuHandlers(BaseHandlers):
             args=(context, chat_id, progress_message.message_id)
         )
         thread.start()
-    
+
     def _perform_check_thread(self, context, chat_id, progress_message_id):
         """Поток для выполнения проверки"""
         def update_progress(progress, status):
