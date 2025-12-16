@@ -1,22 +1,45 @@
 """
-/bot/__init__.py
-Server Monitoring System v4.13.0
+/bot/menu/__init__.py
+Server Monitoring System v4.13.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
-Telegram bot module
+Telegram bot package
 Система мониторинга серверов
-Версия: 4.13.0
+Версия: 4.13.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
-Модуль Telegram-бота
+Пакет Telegram бота
 """
 
-from .handlers import get_handlers, get_callback_handlers
-from .menu import setup_menu, get_menu_commands
+from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, MessageHandler, Filters
 
-__all__ = [
-    'get_handlers',
-    'get_callback_handlers', 
-    'setup_menu',
-    'get_menu_commands'
-]
+def initialize_bot():
+    """Инициализирует бота"""
+    from bot.handlers.commands import get_command_handlers
+    from bot.handlers.callbacks import get_callback_handlers
+    from bot.menu.builder import menu_builder
+    from config.settings import TELEGRAM_TOKEN
+    from lib.logging import debug_log
+    
+    try:
+        # Создаем Updater и Dispatcher
+        updater = Updater(token=TELEGRAM_TOKEN, use_context=True)
+        dispatcher = updater.dispatcher
+        
+        # Регистрируем обработчики команд
+        for handler in get_command_handlers():
+            dispatcher.add_handler(handler)
+        
+        # Регистрируем обработчики callback-запросов
+        for handler in get_callback_handlers():
+            dispatcher.add_handler(handler)
+        
+        # Настраиваем меню
+        menu_builder.setup_menu(updater.bot)
+        
+        debug_log("✅ Бот инициализирован успешно")
+        return updater
+        
+    except Exception as e:
+        debug_log(f"❌ Ошибка инициализации бота: {e}")
+        raise

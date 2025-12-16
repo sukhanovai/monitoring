@@ -36,6 +36,7 @@ env/
 *.log
 logs/*.log
 bot_debug.log
+mail_monitor.log
 
 # Database
 *.db
@@ -49,8 +50,7 @@ backups/
 *.bak
 
 # Data files (но оставляем структуру)
-data/*.db
-data/*.json
+data/cache/
 !data/.gitkeep
 
 # OS
@@ -88,3 +88,27 @@ settings.db
 backups.db
 debug_config.json
 extensions_config.json
+
+# Coverage reports
+.coverage
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
