@@ -1,11 +1,11 @@
 """
 /modules/resources.py
-Server Monitoring System v4.14.4
+Server Monitoring System v4.14.5
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Server resource monitoring module
 Система мониторинга серверов
-Версия: 4.14.4
+Версия: 4.14.5
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль проверки ресурсов серверов
@@ -291,23 +291,20 @@ class ResourcesChecker:
 # Глобальный экземпляр для импорта
 resources_checker = ResourcesChecker()
 
-def check_resources(context):
+def check_resources(update, context):
     """
-    Ручной запуск проверки ресурсов всех серверов (через Telegram).
-    Использует существующий глобальный ResourcesChecker.
+    Ручной запуск проверки ресурсов всех серверов (через Telegram)
     """
     try:
-        # Ленивый импорт, чтобы избежать циклов
         from core.config_manager import config_manager
 
         servers = config_manager.get_servers()
         if not servers:
-            debug_log("⚠️ Нет серверов для проверки ресурсов")
             return
 
-        debug_log("▶️ Ручной запуск проверки ресурсов серверов")
-
         resources_checker.check_multiple_resources(servers)
+
+        update.callback_query.answer("Проверка ресурсов запущена")
 
     except Exception as e:
         debug_log(f"💥 Ошибка ручного запуска проверки ресурсов: {e}")

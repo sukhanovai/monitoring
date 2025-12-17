@@ -1,11 +1,11 @@
 """
 /bot/handlers/callbacks.py
-Server Monitoring System v4.14.4
+Server Monitoring System v4.14.5
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 A single router for callbacks.
 Система мониторинга серверов
-Версия: 4.14.4
+Версия: 4.14.5
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единый router callback’ов.
@@ -24,6 +24,10 @@ from monitor_core import (
 from bot.handlers.base import check_access, deny_access
 from modules.targeted_checks import targeted_checks
 from extensions.extension_manager import extension_manager
+from bot.handlers.extensions import (
+    show_extensions_menu,
+    extensions_callback_handler
+)
 
 def callback_router(update, context):
     query = update.callback_query
@@ -113,8 +117,10 @@ def callback_router(update, context):
     # РАСШИРЕНИЯ
     # ------------------------------------------------
     elif data == 'extensions_menu':
-        from extensions.extension_manager import show_extensions_menu
         show_extensions_menu(update, context)
+
+    elif data.startswith('ext_'):
+        extensions_callback_handler(update, context)
 
     # ------------------------------------------------
     # Закрытие
