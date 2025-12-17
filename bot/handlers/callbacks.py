@@ -1,11 +1,11 @@
 """
 /bot/handlers/callbacks.py
-Server Monitoring System v4.14.5
+Server Monitoring System v4.14.6
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 A single router for callbacks.
 Система мониторинга серверов
-Версия: 4.14.5
+Версия: 4.14.6
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единый router callback’ов.
@@ -99,9 +99,9 @@ def callback_router(update, context):
     # ------------------------------------------------
     # ПРОВЕРКА РЕСУРСОВ ВСЕХ СЕРВЕРОВ
     # ------------------------------------------------
-    elif data == 'check_resources':
-        from modules.resources import check_resources
-        check_resources(update, context)
+#    elif data == 'check_resources':
+#        from modules.resources import check_resources
+#        check_resources(update, context)
 
     # ------------------------------------------------
     # БЭКАПЫ
