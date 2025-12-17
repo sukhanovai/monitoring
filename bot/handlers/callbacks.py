@@ -1,11 +1,11 @@
 """
 /bot/handlers/callbacks.py
-Server Monitoring System v4.14.3
+Server Monitoring System v4.14.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 A single router for callbacks.
 Система мониторинга серверов
-Версия: 4.14.3
+Версия: 4.14.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единый router callback’ов.
@@ -21,11 +21,9 @@ from monitor_core import (
     toggle_monitoring_handler,
 )
 
-
 from bot.handlers.base import check_access, deny_access
 from modules.targeted_checks import targeted_checks
 from extensions.extension_manager import extension_manager
-
 
 def callback_router(update, context):
     query = update.callback_query
@@ -106,8 +104,8 @@ def callback_router(update, context):
     # ------------------------------------------------
     elif data.startswith('backup_'):
         if extension_manager.is_extension_enabled('backup_monitor'):
-            from extensions.backup_monitor.bot_handler import handle_backup_callback
-            handle_backup_callback(update, context)
+            from extensions.backup_monitor.bot_handler import backup_callback
+            backup_callback(update, context)
         else:
             query.edit_message_text("💾 Модуль бэкапов отключён")
 
