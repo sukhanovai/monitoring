@@ -1,11 +1,11 @@
 """
 /core/config_manager.py
-Server Monitoring System v4.14.16
+Server Monitoring System v4.14.17
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Configuration Manager
 Система мониторинга серверов
-Версия: 4.14.16
+Версия: 4.14.17
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Менеджер конфигурации
@@ -435,7 +435,17 @@ class ConfigManager:
             WHERE enabled = 1
             ORDER BY type, name
         ''')
-        
+
+    # ------------------------------------------------------------
+    # Backward-compatible API (тонкий адаптер)
+    # ------------------------------------------------------------
+    def get_servers(self) -> List[Dict[str, Any]]:
+        """
+        Backward-compatible alias.
+        Старый код ожидает ConfigManager.get_servers(), поэтому оставляем.
+        """
+        return self.get_all_servers()
+
         servers = []
         for row in cursor.fetchall():
             servers.append({

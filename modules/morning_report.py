@@ -1,11 +1,11 @@
 """
 /modules/morning_report.py
-Server Monitoring System v4.14.16
+Server Monitoring System v4.14.17
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Morning report module
 Система мониторинга серверов
-Версия: 4.14.16
+Версия: 4.14.17
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль утреннего отчета
@@ -18,6 +18,26 @@ from typing import Dict, List, Optional, Tuple
 
 from lib.logging import debug_log
 from config.settings import DATA_COLLECTION_TIME
+
+def _normalize_status(status: Dict) -> Dict:
+    """
+    Приводит статус к единому формату:
+    ok/failed (старый) или up/down (новый).
+    """
+    if not isinstance(status, dict):
+        return {"ok": [], "failed": []}
+
+    if "ok" in status or "failed" in status:
+        return {
+            "ok": status.get("ok", []) or [],
+            "failed": status.get("failed", []) or [],
+        }
+
+    # Новый формат availability_checker
+    return {
+        "ok": status.get("up", []) or [],
+        "failed": status.get("down", []) or [],
+    }
 
 class MorningReport:
     """Класс для генерации утреннего отчета"""
@@ -79,11 +99,11 @@ class MorningReport:
         if not self.morning_data or "status" not in self.morning_data:
             debug_log("⚠️ Нет данных для отчета, собираем текущие")
             from modules.availability import availability_checker
-            from extensions.server_checks import initialize_servers
-            
-            servers = initialize_servers()
+            from core.config_manager import config_manager
+
+            servers = config_manager.get_servers()  # через адаптер
             current_status = availability_checker.check_multiple_servers(servers)
-            self.collect_morning_data(current_status)
+            self.collect_morning_data(_normalize_status(current_status))
         
         status = self._normalize_status(self.morning_data["status"])
         collection_time = self.morning_data.get("collection_time", datetime.now())
@@ -374,12 +394,10 @@ class MorningReport:
         from modules.availability import availability_checker
         from core.config_manager import config_manager
 
-        servers = config_manager.get_servers()
-        monitor_server_ip = "192.168.20.2"
-        servers = [s for s in servers if s.get("ip") != monitor_server_ip]
-
+        servers = config_manager.get_servers()  # через адаптер
         current_status = availability_checker.check_multiple_servers(servers)
-        
+        current_status = _normalize_status(current_status)
+
         self.morning_data = {
             "status": self._normalize_status(current_status),
             "collection_time": datetime.now(),
