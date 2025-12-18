@@ -1,11 +1,11 @@
 """
 /bot/handlers/callbacks.py
-Server Monitoring System v4.14.10
+Server Monitoring System v4.14.11
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 A single router for callbacks.
 Система мониторинга серверов
-Версия: 4.14.10
+Версия: 4.14.11
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единый router callback’ов.
@@ -64,15 +64,15 @@ def callback_router(update, context):
 
     elif data.startswith('check_availability_'):
         server_id = data.replace('check_availability_', '')
+
         success, server, message = targeted_checks.check_single_server_availability(
             server_id
         )
-        query.edit_message_text(
-            message,
-            parse_mode='Markdown',
-            reply_markup=targeted_checks.create_server_selection_menu(
-                action="check_availability"
-            )
+
+        context.bot.send_message(
+            chat_id=query.message.chat_id,
+            text=message,
+            parse_mode='Markdown'
         )
 
     # ------------------------------------------------
