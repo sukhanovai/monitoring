@@ -1,11 +1,11 @@
 """
 /modules/targeted_checks.py
-Server Monitoring System v4.14.8
+Server Monitoring System v4.14.9
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Spot check module
 Система мониторинга серверов
-Версия: 4.14.8
+Версия: 4.14.9
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль точечных проверок
@@ -196,59 +196,57 @@ class TargetedChecks:
             debug_log(error_msg)
             return False, server, f"❌ Ошибка проверки ресурсов {name}: {str(e)[:50]}"
     
-    def create_server_selection_menu(self, action: str = "check_single") -> InlineKeyboardMarkup:
+    def create_server_selection_menu(self, action: str) -> InlineKeyboardMarkup:
         """
-        Создает меню выбора сервера
-        
+        Упрощённое меню выбора сервера (вариант А)
+
         Args:
-            action: Действие (check_single, check_resources)
-            
-        Returns:
-            InlineKeyboardMarkup: Клавиатура с серверами
+            action: check_availability | check_resources
         """
         servers = self.get_all_servers()
-        
+
         if not servers:
             return InlineKeyboardMarkup([
-                [InlineKeyboardButton("🔄 Обновить список", callback_data="refresh_server_menu")]
+                [InlineKeyboardButton("❌ Серверы не найдены", callback_data="main_menu")]
             ])
-        
-        # Сортируем серверы по типу
-        servers_by_type = {}
-        for server in servers:
-            server_type = server.get("type", "other")
-            if server_type not in servers_by_type:
-                servers_by_type[server_type] = []
-            servers_by_type[server_type].append(server)
-        
+
+        # сортируем по типу, затем по имени
+        servers.sort(key=lambda s: (s.get("type", ""), s.get("name", "")))
+
         keyboard = []
-        
-        # Создаем кнопки по типам
-        type_names = {
-            "rdp": "🪟 Windows",
-            "ssh": "🐧 Linux",
-            "ping": "📡 Другие"
-        }
-        
-        for server_type, type_servers in servers_by_type.items():
-            type_name = type_names.get(server_type, server_type.upper())
-            keyboard.append([InlineKeyboardButton(
-                f"{type_name} ({len(type_servers)})",
-                callback_data=f"server_group_{server_type}_{action}"
-            )])
-        
-        # Кнопки управления
-        keyboard.extend([
-            [InlineKeyboardButton("🔍 Быстрый поиск", callback_data=f"quick_search_{action}")],
-            [InlineKeyboardButton("🔄 Обновить список", callback_data=f"refresh_{action}")],
-            [InlineKeyboardButton("↩️ Назад", callback_data="main_menu"),
-             InlineKeyboardButton("✖️ Закрыть", callback_data="close")]
+        row = []
+
+        for i, server in enumerate(servers):
+            ip = server.get("ip")
+            name = server.get("name", ip)
+
+            # короткое имя
+            label = name if len(name) <= 18 else name[:15] + "..."
+
+            row.append(
+                InlineKeyboardButton(
+                    label,
+                    callback_data=f"{action}_{ip}"
+                )
+            )
+
+            # по 2 кнопки в ряд
+            if len(row) == 2 or i == len(servers) - 1:
+                keyboard.append(row)
+                row = []
+
+        # навигация
+        keyboard.append([
+            InlineKeyboardButton("↩️ Назад", callback_data="main_menu"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close")
         ])
-        
+
         return InlineKeyboardMarkup(keyboard)
     
+"""
     def create_server_group_menu(self, server_type: str, action: str) -> InlineKeyboardMarkup:
-        """
+"""
+"""
         Создает меню для группы серверов
         
         Args:
@@ -257,7 +255,8 @@ class TargetedChecks:
             
         Returns:
             InlineKeyboardMarkup: Клавиатура с серверами группы
-        """
+"""
+"""
         servers = self.get_all_servers()
         group_servers = [s for s in servers if s.get("type") == server_type]
         
@@ -297,9 +296,12 @@ class TargetedChecks:
         ])
         
         return InlineKeyboardMarkup(keyboard)
-    
+"""
+            
+"""
     def create_quick_actions_menu(self, server_ip: str) -> InlineKeyboardMarkup:
-        """
+"""
+"""
         Создает меню быстрых действий для сервера
         
         Args:
@@ -307,7 +309,8 @@ class TargetedChecks:
             
         Returns:
             InlineKeyboardMarkup: Меню действий
-        """
+"""
+"""
         server = self.get_server_by_id(server_ip)
         
         if not server:
@@ -324,10 +327,13 @@ class TargetedChecks:
         ]
         
         return InlineKeyboardMarkup(keyboard)
-    
+"""
+            
+"""
     def perform_async_check(self, context: CallbackContext, chat_id: int, 
                           server_id: str, check_type: str = "availability") -> None:
-        """
+"""
+"""
         Выполняет асинхронную проверку сервера
         
         Args:
@@ -335,7 +341,8 @@ class TargetedChecks:
             chat_id: ID чата
             server_id: ID сервера
             check_type: Тип проверки (availability/resources)
-        """
+"""
+"""
         def check_thread():
             try:
                 if check_type == "availability":
@@ -372,6 +379,7 @@ class TargetedChecks:
         # Запускаем проверку в отдельном потоке
         thread = threading.Thread(target=check_thread)
         thread.start()
-
+"""
+        
 # Глобальный экземпляр для импорта
 targeted_checks = TargetedChecks()
