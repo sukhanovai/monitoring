@@ -1,11 +1,11 @@
 """
 /monitor_core.py
-Server Monitoring System v4.14.14
+Server Monitoring System v4.14.15
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core system
 Система мониторинга серверов
-Версия: 4.14.14
+Версия: 4.14.15
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Ядро системы
@@ -1809,8 +1809,8 @@ def toggle_silent_mode_handler(update, context):
     query.edit_message_text("🔇 Переключение тихого режима")
 
 def send_morning_report_handler(update, context):
-    """Обработчик для принудительной отправки утреннего отчета"""
-    query = update.callback_query if hasattr(update, 'callback_query') else None
+    """Обработчик для принудительной отправки утреннего отчета (через новый modules.morning_report)"""
+    query = update.callback_query if hasattr(update, "callback_query") else None
     chat_id = query.message.chat_id if query else update.message.chat_id
 
     config = get_config()
@@ -1821,14 +1821,31 @@ def send_morning_report_handler(update, context):
             update.message.reply_text("⛔ У вас нет прав для выполнения этой команды")
         return
 
-    # Вызываем отчет с флагом manual_call=True
-    send_morning_report(manual_call=True)
+    try:
+        from modules.morning_report import morning_report
 
-    response = "📊 Отчет отправлен (данные актуальны на момент запроса)"
-    if query:
-        query.edit_message_text(response)
-    else:
-        update.message.reply_text(response)
+        # Генерируем отчёт (ручной запуск)
+        report_text = morning_report.force_report()
+
+        # Отправляем в текущий чат (как отдельное сообщение — надёжнее, чем edit)
+        context.bot.send_message(
+            chat_id=chat_id,
+            text=report_text,
+            parse_mode="Markdown"
+        )
+
+        # Небольшое подтверждение на кнопке
+        if query:
+            query.answer("📊 Отчет отправлен")
+        else:
+            update.message.reply_text("📊 Отчет отправлен")
+
+    except Exception as e:
+        debug_log(f"❌ Ошибка формирования/отправки утреннего отчёта: {e}")
+        if query:
+            query.edit_message_text("❌ Ошибка формирования отчёта")
+        else:
+            update.message.reply_text("❌ Ошибка формирования отчёта")
 
 def send_morning_report(manual_call=False):
     """Отправляет утренний отчет о доступности серверов и бэкапах
