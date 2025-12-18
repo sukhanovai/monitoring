@@ -1,11 +1,11 @@
 """
 /app/__init__.py
-Server Monitoring System v4.14.9
+Server Monitoring System v4.14.10
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Server Monitoring - Basic Package
 Система мониторинга серверов
-Версия: 4.14.9
+Версия: 4.14.10
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг серверов - основной пакет
@@ -14,7 +14,7 @@ Server Monitoring - Basic Package
 import os
 import sys
 
-__version__ = "4.14.9"
+__version__ = "4.14.10"
 __author__ = "Aleksandr Sukhanov"
 
 # Добавляем текущий каталог в путь для импортов
