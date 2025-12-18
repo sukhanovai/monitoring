@@ -1,11 +1,11 @@
 """
 /bot/handlers/callbacks.py
-Server Monitoring System v4.14.12
+Server Monitoring System v4.14.13
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 A single router for callbacks.
 Система мониторинга серверов
-Версия: 4.14.12
+Версия: 4.14.13
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единый router callback’ов.
@@ -21,6 +21,7 @@ from monitor_core import (
     toggle_monitoring_handler,
 )
 
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from bot.handlers.base import check_access, deny_access
 from modules.targeted_checks import targeted_checks
 from extensions.extension_manager import extension_manager
@@ -30,6 +31,22 @@ from bot.handlers.extensions import (
 )
 
 from lib.logging import debug_log
+
+def _server_result_keyboard(server_ip: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("📡 Доступность", callback_data=f"check_availability_{server_ip}"),
+            InlineKeyboardButton("📊 Ресурсы", callback_data=f"check_resources_{server_ip}"),
+        ],
+        [
+            InlineKeyboardButton("🖥 Доступность сервера", callback_data="show_availability_menu"),
+            InlineKeyboardButton("💻 Ресурсы сервера", callback_data="show_resources_menu"),
+        ],
+        [
+            InlineKeyboardButton("🏠 Главное меню", callback_data="main_menu"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
+        ],
+    ])
 
 def callback_router(update, context):
     query = update.callback_query
@@ -71,14 +88,13 @@ def callback_router(update, context):
     elif data.startswith('check_availability_'):
         server_id = data.replace('check_availability_', '')
 
-        success, server, message = targeted_checks.check_single_server_availability(
-            server_id
-        )
+        success, server, message = targeted_checks.check_single_server_availability(server_id)
 
         context.bot.send_message(
             chat_id=query.message.chat_id,
             text=message,
-            parse_mode='Markdown'
+            parse_mode='Markdown',
+            reply_markup=_server_result_keyboard(server_id)
         )
 
     # ------------------------------------------------
@@ -96,15 +112,13 @@ def callback_router(update, context):
     elif data.startswith('check_resources_'):
         server_id = data.replace('check_resources_', '')
 
-        success, server, message = targeted_checks.check_single_server_resources(
-            server_id
-        )
+        success, server, message = targeted_checks.check_single_server_resources(server_id)
 
-        # отправляем результат отдельным сообщением
         context.bot.send_message(
             chat_id=query.message.chat_id,
             text=message,
-            parse_mode='Markdown'
+            parse_mode='Markdown',
+            reply_markup=_server_result_keyboard(server_id)
         )
 
     # ------------------------------------------------
