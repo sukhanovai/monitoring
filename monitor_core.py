@@ -1,11 +1,11 @@
 """
 /monitor_core.py
-Server Monitoring System v4.14.15
+Server Monitoring System v4.14.16
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core system
 Система мониторинга серверов
-Версия: 4.14.15
+Версия: 4.14.16
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Ядро системы
@@ -1599,25 +1599,42 @@ def start_monitoring():
 
 def handle_server_up(ip, status, current_time):
     """Обработка доступного сервера"""
-    if status["alert_sent"]:
-        downtime = (current_time - status["last_up"]).total_seconds()
-        send_alert(f"✅ {status['name']} ({ip}) доступен (простой: {int(downtime//60)} мин)")
+    last_up = status.get("last_up")
+
+    # если по какой-то причине last_up = None — не падаем
+    if status.get("alert_sent"):
+        if last_up:
+            downtime = (current_time - last_up).total_seconds()
+            send_alert(
+                f"✅ {status['name']} ({ip}) доступен (простой: {int(downtime // 60)} мин)"
+            )
+        else:
+            send_alert(f"✅ {status['name']} ({ip}) доступен")
 
     server_status[ip] = {
         "last_up": current_time,
         "alert_sent": False,
-        "name": status["name"],
-        "type": status["type"],
-        "resources": server_status[ip].get("resources"),
-        "last_alert": server_status[ip].get("last_alert", {})
+        "name": status.get("name"),
+        "type": status.get("type"),
+        "resources": server_status.get(ip, {}).get("resources"),
+        "last_alert": server_status.get(ip, {}).get("last_alert", {}),
     }
+
 
 def handle_server_down(ip, status, current_time):
     """Обработка недоступного сервера"""
     config = get_config()
-    downtime = (current_time - status["last_up"]).total_seconds()
 
-    if downtime >= config.MAX_FAIL_TIME and not status["alert_sent"]:
+    last_up = status.get("last_up")
+    if not last_up:
+        # Самое важное: не даём упасть на None, иначе алерт никогда не уйдёт
+        server_status[ip]["last_up"] = current_time
+        status["last_up"] = current_time
+        last_up = current_time
+
+    downtime = (current_time - last_up).total_seconds()
+
+    if downtime >= config.MAX_FAIL_TIME and not status.get("alert_sent"):
         send_alert(f"🚨 {status['name']} ({ip}) не отвечает (проверка: {status['type'].upper()})")
         server_status[ip]["alert_sent"] = True
 

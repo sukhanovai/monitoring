@@ -1,11 +1,11 @@
 """
 /modules/morning_report.py
-Server Monitoring System v4.14.15
+Server Monitoring System v4.14.16
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Morning report module
 Система мониторинга серверов
-Версия: 4.14.15
+Версия: 4.14.16
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль утреннего отчета
@@ -51,6 +51,21 @@ class MorningReport:
         
         return report_data
     
+    def _normalize_status(self, status: Dict) -> Dict:
+        """
+        Приводит статус к единому формату:
+        ok/failed (поддерживаем входные up/down).
+        """
+        if not isinstance(status, dict):
+            return {"ok": [], "failed": []}
+
+        if "ok" in status or "failed" in status:
+            return {"ok": status.get("ok", []), "failed": status.get("failed", [])}
+
+        # формат availability_checker: up/down
+        return {"ok": status.get("up", []), "failed": status.get("down", [])}
+
+
     def generate_report(self, manual_call: bool = False) -> str:
         """
         Генерирует текст отчета
@@ -70,7 +85,7 @@ class MorningReport:
             current_status = availability_checker.check_multiple_servers(servers)
             self.collect_morning_data(current_status)
         
-        status = self.morning_data["status"]
+        status = self._normalize_status(self.morning_data["status"])
         collection_time = self.morning_data.get("collection_time", datetime.now())
         backup_summary = self.morning_data.get("backup_summary", "")
         is_manual = self.morning_data.get("manual_call", False)
@@ -357,13 +372,16 @@ class MorningReport:
         debug_log("📊 Ручной вызов отчета")
         
         from modules.availability import availability_checker
-        from extensions.server_checks import initialize_servers
-        
-        servers = initialize_servers()
+        from core.config_manager import config_manager
+
+        servers = config_manager.get_servers()
+        monitor_server_ip = "192.168.20.2"
+        servers = [s for s in servers if s.get("ip") != monitor_server_ip]
+
         current_status = availability_checker.check_multiple_servers(servers)
         
         self.morning_data = {
-            "status": current_status,
+            "status": self._normalize_status(current_status),
             "collection_time": datetime.now(),
             "manual_call": True,
             "backup_summary": self._get_backup_summary(period_hours=24)
