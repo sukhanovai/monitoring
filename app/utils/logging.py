@@ -1,11 +1,11 @@
 """
 /app/utils/logging.py
-Server Monitoring System v4.14.13
+Server Monitoring System v4.14.14
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Main launch module
 Logging module
-Версия: 4.14.13
+Версия: 4.14.14
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль логирования

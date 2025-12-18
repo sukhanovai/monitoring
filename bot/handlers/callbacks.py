@@ -1,11 +1,11 @@
 """
 /bot/handlers/callbacks.py
-Server Monitoring System v4.14.13
+Server Monitoring System v4.14.14
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 A single router for callbacks.
 Система мониторинга серверов
-Версия: 4.14.13
+Версия: 4.14.14
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единый router callback’ов.
@@ -132,6 +132,71 @@ def callback_router(update, context):
                 action="check_resources"
             )
         )
+
+    # ------------------------------------------------
+    # СТАТУС / ПРОВЕРКА / УПРАВЛЕНИЕ (monitor_core)
+    # ------------------------------------------------
+    elif data == 'monitor_status':
+        monitor_status(update, context)
+
+    elif data == 'manual_check':
+        manual_check_handler(update, context)
+
+    elif data == 'silent_status':
+        silent_status_handler(update, context)
+
+    elif data == 'control_panel':
+        control_panel_handler(update, context)
+
+    elif data == 'toggle_monitoring':
+        toggle_monitoring_handler(update, context)
+
+    elif data == 'pause_monitoring':
+        from monitor_core import pause_monitoring_handler
+        pause_monitoring_handler(update, context)
+
+    elif data == 'resume_monitoring':
+        from monitor_core import resume_monitoring_handler
+        resume_monitoring_handler(update, context)
+
+    elif data == 'servers_list':
+        from extensions.server_checks import servers_list_handler
+        servers_list_handler(update, context)
+
+    elif data in ('full_report', 'daily_report'):
+        # в monitor_core это один и тот же handler в старом меню
+        from monitor_core import send_morning_report_handler
+        send_morning_report_handler(update, context)
+
+    # ------------------------------------------------
+    # НАСТРОЙКИ (settings_handlers)
+    # ------------------------------------------------
+    elif data.startswith(('settings_', 'set_', 'manage_', 'ssh_', 'windows_', 'backup_')):
+        # settings_handlers сам разбирает все эти ветки
+        settings_callback_handler(update, context)
+
+    # ------------------------------------------------
+    # РЕСУРСЫ: группы/списки (TargetedChecks)
+    # ------------------------------------------------
+    elif data.startswith('server_group_'):
+        # формат: server_group_<type>_<action>
+        # пример: server_group_ssh_check_resources
+        parts = data.split('_', 3)
+        # parts = ['server', 'group', '<type>', '<action>']
+        if len(parts) == 4:
+            server_type = parts[2]
+            action = parts[3]
+            query.edit_message_text(
+                f"📋 *Выберите сервер:*",
+                parse_mode='Markdown',
+                reply_markup=targeted_checks.create_server_group_menu(server_type, action)
+            )
+        else:
+            query.edit_message_text("❌ Некорректные данные меню группы серверов")
+
+    # (по желанию) QUICK SEARCH / REFRESH можно просто гасить
+    elif data.startswith(('quick_search_', 'refresh_')):
+        query.answer("Функция отключена", show_alert=False)
 
     # ------------------------------------------------
     # БЭКАПЫ
