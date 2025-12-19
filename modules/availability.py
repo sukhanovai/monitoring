@@ -1,11 +1,11 @@
 """
 /modules/availability.py
-Server Monitoring System v4.14.23
+Server Monitoring System v4.14.24
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Server availability check module
 Система мониторинга серверов
-Версия: 4.14.23
+Версия: 4.14.24
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль проверки доступности серверов
@@ -211,24 +211,27 @@ class AvailabilityChecker:
         else:
             # Сервер недоступен
             if ip not in global_status:
-                # Первый раз недоступен
+                # Первый раз недоступен — фиксируем начало простоя
                 global_status[ip] = {
-                    "last_up": current_time,
+                    "last_up": current_time,       # можно оставить, но смысл спорный
                     "alert_sent": False,
                     "name": name,
                     "type": server.get("type"),
                     "downtime_start": current_time
                 }
             else:
-                # Уже был недоступен
-                downtime_start = global_status[ip].get("downtime_start", current_time)
+                # Уже был в статусах — гарантируем downtime_start
+                if global_status[ip].get("downtime_start") is None:
+                    global_status[ip]["downtime_start"] = current_time
+
+                downtime_start = global_status[ip]["downtime_start"]
                 downtime = (current_time - downtime_start).total_seconds()
-                
+
                 # Проверяем нужно ли отправлять алерт
                 if downtime >= MAX_FAIL_TIME and not global_status[ip].get("alert_sent"):
                     global_status[ip]["alert_sent"] = True
                     return True  # Нужно отправить алерт
-        
+
         return False  # Алерт не нужен
 
 # Глобальный экземпляр для импорта

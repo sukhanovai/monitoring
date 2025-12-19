@@ -1,11 +1,11 @@
 """
 /core/monitor.py
-Server Monitoring System v4.14.23
+Server Monitoring System v4.14.24
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core monitoring module
 Система мониторинга серверов
-Версия: 4.14.23
+Версия: 4.14.24
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль мониторинга
@@ -155,34 +155,27 @@ class Monitor:
     def handle_server_down(self, ip: str, status: Dict, current_time: datetime) -> bool:
         """
         Обрабатывает недоступный сервер
-        
-        Args:
-            ip: IP сервера
-            status: Текущий статус
-            current_time: Текущее время
-            
-        Returns:
-            bool: True если нужно отправить алерт
         """
-        downtime_start = status.get("downtime_start", current_time)
-        downtime = (current_time - downtime_start).total_seconds()
-        
-        # Устанавливаем время начала простоя если еще не установлено
-        if not status.get("downtime_start"):
+        # ВАЖНО: ключ downtime_start может существовать, но быть None
+        downtime_start = status.get("downtime_start")
+
+        # Первый раз увидели "down" — фиксируем начало простоя и выходим
+        if not downtime_start:
             self.server_status[ip]["downtime_start"] = current_time
-            downtime_start = current_time
-            downtime = 0
-        
+            return False
+
+        # Теперь downtime_start гарантированно datetime
+        downtime = (current_time - downtime_start).total_seconds()
+
         # Проверяем нужно ли отправлять алерт
         if downtime >= MAX_FAIL_TIME and not status.get("alert_sent"):
             message = f"🚨 {status.get('name')} ({ip}) не отвежает"
-            if downtime > 0:
-                message += f" ({int(downtime // 60)} мин {int(downtime % 60)} сек)"
-            
+            message += f" ({int(downtime // 60)} мин {int(downtime % 60)} сек)"
+
             send_alert(message)
             self.server_status[ip]["alert_sent"] = True
             return True
-        
+
         return False
     
     def check_resources_automatically(self) -> None:

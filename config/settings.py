@@ -1,11 +1,11 @@
 """
 /config/settings.py
-Server Monitoring System v4.14.23
+Server Monitoring System v4.14.24
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Application settings - default values
 Система мониторинга серверов
-Версия: 4.14.23
+Версия: 4.14.24
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Настройки приложения - значения по умолчанию
