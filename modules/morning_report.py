@@ -1,11 +1,11 @@
 """
 /modules/morning_report.py
-Server Monitoring System v4.14.18
+Server Monitoring System v4.14.19
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Morning report module
 Система мониторинга серверов
-Версия: 4.14.18
+Версия: 4.14.19
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль утреннего отчета
@@ -19,29 +19,33 @@ from typing import Dict, List, Optional, Tuple
 from lib.logging import debug_log
 from config.settings import DATA_COLLECTION_TIME
 
-def _normalize_status(status: Dict) -> Dict:
-    """
-    Приводит статус к единому формату:
-    ok/failed (старый) или up/down (новый).
-    """
-    if not isinstance(status, dict):
-        return {"ok": [], "failed": []}
-
-    if "ok" in status or "failed" in status:
-        return {
-            "ok": status.get("ok", []) or [],
-            "failed": status.get("failed", []) or [],
-        }
-
-    # Новый формат availability_checker
-    return {
-        "ok": status.get("up", []) or [],
-        "failed": status.get("down", []) or [],
-    }
-
 class MorningReport:
     """Класс для генерации утреннего отчета"""
     
+    def _normalize_status(status: Dict) -> Dict:
+        """
+        Всегда возвращает dict с ключами ok/failed, где значения — списки.
+        Поддерживает старый формат ok/failed и новый up/down.
+        """
+        if not isinstance(status, dict):
+            return {"ok": [], "failed": []}
+
+        if "ok" in status or "failed" in status:
+            ok = status.get("ok") or []
+            failed = status.get("failed") or []
+            return {
+                "ok": ok if isinstance(ok, list) else [],
+                "failed": failed if isinstance(failed, list) else [],
+            }
+
+        # формат availability_checker: up/down
+        up = status.get("up") or []
+        down = status.get("down") or []
+        return {
+            "ok": up if isinstance(up, list) else [],
+            "failed": down if isinstance(down, list) else [],
+        }
+
     def __init__(self):
         """Инициализация модуля отчета"""
         self.morning_data = {}
@@ -57,6 +61,7 @@ class MorningReport:
         Returns:
             Dict: Данные для отчета
         """
+        servers_status = _normalize_status(servers_status or {})
         current_time = datetime.now()
         
         report_data = {
@@ -66,7 +71,9 @@ class MorningReport:
             "backup_summary": self._get_backup_summary(period_hours=16)
         }
         
+        report_data["status"] = self._normalize_status(report_data.get("status") or {})
         self.morning_data = report_data
+
         debug_log(f"📊 Данные для утреннего отчета собраны: {len(servers_status.get('ok', []))} доступно")
         
         return report_data
@@ -105,7 +112,7 @@ class MorningReport:
             current_status = availability_checker.check_multiple_servers(servers)
             self.collect_morning_data(_normalize_status(current_status))
         
-        status = self._normalize_status(self.morning_data["status"])
+        status = self._normalize_status(self.morning_data.get("status") or {})
         collection_time = self.morning_data.get("collection_time", datetime.now())
         backup_summary = self.morning_data.get("backup_summary", "")
         is_manual = self.morning_data.get("manual_call", False)
