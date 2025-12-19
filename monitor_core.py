@@ -1,11 +1,11 @@
 """
 /monitor_core.py
-Server Monitoring System v4.14.19
+Server Monitoring System v4.14.20
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core system
 Система мониторинга серверов
-Версия: 4.14.19
+Версия: 4.14.20
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Ядро системы
@@ -1859,6 +1859,8 @@ def send_morning_report_handler(update, context):
 
     except Exception as e:
         debug_log(f"❌ Ошибка формирования/отправки утреннего отчёта: {e}")
+        import traceback
+        debug_log(f"💥 Traceback:\n{traceback.format_exc()}")
         if query:
             query.edit_message_text("❌ Ошибка формирования отчёта")
         else:

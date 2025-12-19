@@ -1,11 +1,11 @@
 """
 /modules/morning_report.py
-Server Monitoring System v4.14.19
+Server Monitoring System v4.14.20
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Morning report module
 Система мониторинга серверов
-Версия: 4.14.19
+Версия: 4.14.20
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль утреннего отчета
@@ -51,6 +51,39 @@ class MorningReport:
         self.morning_data = {}
         self.last_report_date = None
         
+    @staticmethod
+    def _normalize_status(raw_status) -> Dict[str, List]:
+        """
+        Приводит статус к единому формату:
+        {"ok": [...], "failed": [...]}
+
+        Поддерживает входные варианты:
+        - {"ok": [...], "failed": [...]}
+        - {"up": [...], "down": [...]}
+        - значения None вместо списков
+        - пустые/битые структуры
+        """
+        if not isinstance(raw_status, dict):
+            return {"ok": [], "failed": []}
+
+        # Поддержка двух вариантов ключей
+        ok = raw_status.get("ok", raw_status.get("up", []))
+        failed = raw_status.get("failed", raw_status.get("down", []))
+
+        # Защита от None
+        if ok is None:
+            ok = []
+        if failed is None:
+            failed = []
+
+        # Защита от неожиданных типов
+        if not isinstance(ok, list):
+            ok = list(ok) if ok else []
+        if not isinstance(failed, list):
+            failed = list(failed) if failed else []
+
+        return {"ok": ok, "failed": failed}
+
     def collect_morning_data(self, servers_status: Dict) -> Dict:
         """
         Собирает данные для утреннего отчета
