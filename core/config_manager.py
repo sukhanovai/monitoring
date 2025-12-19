@@ -1,11 +1,11 @@
 """
 /core/config_manager.py
-Server Monitoring System v4.14.17
+Server Monitoring System v4.14.18
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Configuration Manager
 Система мониторинга серверов
-Версия: 4.14.17
+Версия: 4.14.18
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Менеджер конфигурации
@@ -14,6 +14,7 @@ Configuration Manager
 import sqlite3
 import json
 import os
+import threading
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 from lib.logging import debug_log, error_log, setup_logging
@@ -33,23 +34,27 @@ class ConfigManager:
         """
         self.db_path = db_path
         self._cache = {}
+        self._local = threading.local()
         self._connection = None
         self.init_database()
         debug_log(f"Менеджер конфигурации инициализирован: {db_path}")
     
     def get_connection(self) -> sqlite3.Connection:
-        """Получить соединение с БД"""
-        if self._connection is None:
-            self._connection = sqlite3.connect(self.db_path)
-            self._connection.row_factory = sqlite3.Row
-        return self._connection
-    
+        """Получить соединение с БД (отдельное соединение на поток)"""
+        conn = getattr(self._local, "connection", None)
+        if conn is None:
+            conn = sqlite3.connect(self.db_path, timeout=30)
+            conn.row_factory = sqlite3.Row
+            self._local.connection = conn
+        return conn
+
     def close_connection(self) -> None:
-        """Закрыть соединение с БД"""
-        if self._connection:
-            self._connection.close()
-            self._connection = None
-    
+        """Закрыть соединение с БД (для текущего потока)"""
+        conn = getattr(self._local, "connection", None)
+        if conn:
+            conn.close()
+            self._local.connection = None
+
     def init_database(self) -> None:
         """Инициализация базы данных настроек"""
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
