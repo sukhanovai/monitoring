@@ -1,11 +1,11 @@
 """
 /core/config_manager.py
-Server Monitoring System v4.14.22
+Server Monitoring System v4.14.23
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Configuration Manager
 Система мониторинга серверов
-Версия: 4.14.22
+Версия: 4.14.23
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Менеджер конфигурации
@@ -427,19 +427,31 @@ class ConfigManager:
     def get_all_servers(self) -> List[Dict[str, Any]]:
         """
         Получить все серверы
-        
         Returns:
             Список всех серверов
         """
         conn = self.get_connection()
         cursor = conn.cursor()
-        
+
         cursor.execute('''
-            SELECT ip, name, type, credentials, timeout 
-            FROM servers 
+            SELECT ip, name, type, credentials, timeout
+            FROM servers
             WHERE enabled = 1
             ORDER BY type, name
         ''')
+
+        servers: List[Dict[str, Any]] = []
+        for row in cursor.fetchall():
+            servers.append({
+                'ip': row[0],
+                'name': row[1],
+                'type': row[2],
+                'credentials': json.loads(row[3]) if row[3] else [],
+                'timeout': row[4]
+            })
+
+        return servers
+
 
     # ------------------------------------------------------------
     # Backward-compatible API (тонкий адаптер)
@@ -450,6 +462,7 @@ class ConfigManager:
         Старый код ожидает ConfigManager.get_servers(), поэтому оставляем.
         """
         return self.get_all_servers()
+
 
         servers = []
         for row in cursor.fetchall():
