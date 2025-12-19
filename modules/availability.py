@@ -1,11 +1,11 @@
 """
 /modules/availability.py
-Server Monitoring System v4.14.20
+Server Monitoring System v4.14.21
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Server availability check module
 Система мониторинга серверов
-Версия: 4.14.20
+Версия: 4.14.21
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль проверки доступности серверов
@@ -75,6 +75,10 @@ class AvailabilityChecker:
         Returns:
             Dict: {'up': [...], 'down': [...]}
         """
+        if not servers:
+            debug_log("⚠️ check_multiple_servers: список серверов пуст/None")
+            return {"up": [], "down": []}
+    
         results = {"up": [], "down": []}
         
         debug_log(f"🔍 Начинаю проверку {len(servers)} серверов...")

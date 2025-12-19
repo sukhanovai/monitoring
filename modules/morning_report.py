@@ -1,11 +1,11 @@
 """
 /modules/morning_report.py
-Server Monitoring System v4.14.20
+Server Monitoring System v4.14.21
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Morning report module
 Система мониторинга серверов
-Версия: 4.14.20
+Версия: 4.14.21
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль утреннего отчета
@@ -434,7 +434,10 @@ class MorningReport:
         from modules.availability import availability_checker
         from core.config_manager import config_manager
 
-        servers = config_manager.get_servers()  # через адаптер
+        servers = config_manager.get_all_servers()
+        if not servers:
+            debug_log("⚠️ Утренний отчет: список серверов пуст или не загружен")
+            servers = []
         current_status = availability_checker.check_multiple_servers(servers)
         current_status = _normalize_status(current_status)
 

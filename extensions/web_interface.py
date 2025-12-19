@@ -1,11 +1,11 @@
 """
 /extensions/web_interface.py
-Server Monitoring System v4.14.20
+Server Monitoring System v4.14.21
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 4.14.20
+Версия: 4.14.21
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
