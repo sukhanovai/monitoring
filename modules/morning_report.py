@@ -1,11 +1,11 @@
 """
 /modules/morning_report.py
-Server Monitoring System v4.14.21
+Server Monitoring System v4.14.22
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Morning report module
 Система мониторинга серверов
-Версия: 4.14.21
+Версия: 4.14.22
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль утреннего отчета
@@ -52,31 +52,16 @@ class MorningReport:
         self.last_report_date = None
         
     @staticmethod
-    def _normalize_status(raw_status) -> Dict[str, List]:
-        """
-        Приводит статус к единому формату:
-        {"ok": [...], "failed": [...]}
-
-        Поддерживает входные варианты:
-        - {"ok": [...], "failed": [...]}
-        - {"up": [...], "down": [...]}
-        - значения None вместо списков
-        - пустые/битые структуры
-        """
+    def _normalize_status(raw_status):
         if not isinstance(raw_status, dict):
             return {"ok": [], "failed": []}
 
-        # Поддержка двух вариантов ключей
         ok = raw_status.get("ok", raw_status.get("up", []))
         failed = raw_status.get("failed", raw_status.get("down", []))
 
-        # Защита от None
-        if ok is None:
-            ok = []
-        if failed is None:
-            failed = []
+        ok = ok or []
+        failed = failed or []
 
-        # Защита от неожиданных типов
         if not isinstance(ok, list):
             ok = list(ok) if ok else []
         if not isinstance(failed, list):
@@ -439,7 +424,7 @@ class MorningReport:
             debug_log("⚠️ Утренний отчет: список серверов пуст или не загружен")
             servers = []
         current_status = availability_checker.check_multiple_servers(servers)
-        current_status = _normalize_status(current_status)
+        current_status = self._normalize_status(current_status)
 
         self.morning_data = {
             "status": self._normalize_status(current_status),
