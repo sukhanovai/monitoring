@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/bot_handler.py
-Server Monitoring System v4.14.30
+Server Monitoring System v4.14.31
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring Proxmox backups
 Система мониторинга серверов
-Версия: 4.14.30
+Версия: 4.14.31
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг бэкапов Proxmox
@@ -372,6 +372,9 @@ def backup_help_command(update, context):
 
 def backup_callback(update, context):
     """Обработчик callback'ов для бэкапов"""
+    query = update.callback_query
+    data = getattr(query, "data", None)
+    debug_log(f"📌 backup_callback ENTER: data={data}")
     from lib.logging import debug_log
     debug_log(f"🧩 backup_callback: START | file={__file__}")
     debug_log(f"🧩 backup_callback: data={update.callback_query.data}")
@@ -447,7 +450,7 @@ def backup_callback(update, context):
 
     except Exception as e:
         import traceback
-
+        debug_log(f"💥 backup_callback ERROR: {e}\n{traceback.format_exc()}")
         # 1) Логируем в вашу систему логирования (journalctl это увидит)
         try:
             from lib.logging import debug_log
