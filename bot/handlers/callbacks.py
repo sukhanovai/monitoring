@@ -1,11 +1,11 @@
 """
 /bot/handlers/callbacks.py
-Server Monitoring System v4.14.31
+Server Monitoring System v4.14.32
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 A single router for callbacks.
 Система мониторинга серверов
-Версия: 4.14.31
+Версия: 4.14.32
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единый router callback’ов.
@@ -49,6 +49,24 @@ def _server_result_keyboard(server_ip: str) -> InlineKeyboardMarkup:
     ])
 
 def callback_router(update, context):
+    debug_log("🧭 ROUTER MARKER v1: entered callback_router()")
+    try:
+        query = update.callback_query
+        data = query.data
+
+        debug_log(f"📥 CALLBACK DATA: {data}")
+
+        # дальше ваш существующий код router...
+
+    except Exception as e:
+        debug_log(f"💥 callback_router crashed: {e}\n{traceback.format_exc()}")
+        # Фоллбек пользователю (чтобы видеть проблему в Telegram)
+        try:
+            if update.callback_query:
+                update.callback_query.answer("❌ Ошибка обработчика. Подробности в логах.", show_alert=True)
+        except Exception:
+            pass
+        
     query = update.callback_query
     data = query.data
 
