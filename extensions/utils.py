@@ -1,11 +1,11 @@
 """
 /extensions/utils.py
-Server Monitoring System v4.14.27
+Server Monitoring System v4.14.28
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Utilities: diagnostics, reports, statistics
 Система мониторинга серверов
-Версия: 4.14.27
+Версия: 4.14.28
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль запуска

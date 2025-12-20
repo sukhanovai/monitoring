@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/bot_handler.py
-Server Monitoring System v4.14.27
+Server Monitoring System v4.14.28
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring Proxmox backups
 Система мониторинга серверов
-Версия: 4.14.27
+Версия: 4.14.28
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг бэкапов Proxmox
@@ -19,6 +19,20 @@ from telegram.ext import CommandHandler, CallbackQueryHandler
 
 from telegram.ext import CommandHandler, CallbackQueryHandler
 from lib.logging import debug_log
+
+from extensions.backup_monitor.backup_handlers import (
+    show_main_menu,
+    show_today_status,
+    show_recent_backups,
+    show_failed_backups,
+    show_hosts_menu,
+    show_host_status,
+    show_stale_hosts,
+    show_database_backups_menu,
+    show_database_backups_summary,
+    show_database_details,
+    show_stale_databases,
+)
 
 def register_handlers(dispatcher):
     """
@@ -426,22 +440,30 @@ def backup_callback(update, context):
             show_database_backups_menu(query, backup_bot)
         elif data == 'db_stale_list':
             show_stale_databases(query, backup_bot)
-        elif data == 'backup_main':
-            show_main_menu(query, backup_bot)
 
-    except Exception:
-        logger.exception("Ошибка в backup_callback")
+    except Exception as e:
+        import traceback
+
+        # 1) Логируем в вашу систему логирования (journalctl это увидит)
         try:
-            query.edit_message_text("❌ Ошибка при обработке запроса")
+            from lib.logging import debug_log
+            debug_log(f"❌ backup_callback: ошибка обработки '{data if 'data' in locals() else 'unknown'}': {e}")
+            debug_log(f"💥 Traceback:\n{traceback.format_exc()}")
         except Exception:
-            # если edit_message_text не сработал (например, сообщение нельзя редактировать)
+            # Если даже debug_log упал — ничего, не ломаем обработчик
+            pass
+
+        # 2) Пытаемся ответить пользователю в Telegram
+        try:
+            query.edit_message_text("❌ Ошибка в модуле бэкапов. Подробности в логах.")
+        except Exception:
             try:
                 context.bot.send_message(
                     chat_id=update.effective_chat.id,
-                    text="❌ Ошибка при обработке запроса (не удалось обновить меню)."
+                    text="❌ Ошибка в модуле бэкапов (не удалось обновить меню). Подробности в логах."
                 )
             except Exception:
-                logger.exception("Не удалось отправить fallback-сообщение об ошибке")
+                pass
 
 def get_database_config(self):
     """Получает полную конфигурацию баз данных"""
