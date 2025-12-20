@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/bot_handler.py
-Server Monitoring System v4.14.26
+Server Monitoring System v4.14.27
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring Proxmox backups
 Система мониторинга серверов
-Версия: 4.14.26
+Версия: 4.14.27
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг бэкапов Proxmox
@@ -378,18 +378,18 @@ def backup_callback(update, context):
         elif data == 'backup_hosts':
             show_hosts_menu(query, backup_bot)
         elif data == 'backup_refresh':
-            show_main_menu(query)
+            show_main_menu(query, backup_bot)
         elif data == 'backup_databases':
             show_database_backups_menu(query, backup_bot)
         elif data == 'backup_proxmox':
-            show_main_menu(query)
+            show_main_menu(query, backup_bot)
         elif data == 'backup_stale_hosts':
             show_stale_hosts(query, backup_bot)
         elif data.startswith('backup_host_'):
             host_name = data.replace('backup_host_', '')
             show_host_status(query, backup_bot, host_name)
         elif data == 'backup_main':
-            show_main_menu(query)
+            show_main_menu(query, backup_bot)
             
         # Обработчики для баз данных
         elif data.startswith('db_detail_'):
@@ -427,14 +427,21 @@ def backup_callback(update, context):
         elif data == 'db_stale_list':
             show_stale_databases(query, backup_bot)
         elif data == 'backup_main':
-            show_main_menu(query)
+            show_main_menu(query, backup_bot)
 
-    except Exception as e:
-        logger.error(f"Ошибка в backup_callback: {e}")
+    except Exception:
+        logger.exception("Ошибка в backup_callback")
         try:
             query.edit_message_text("❌ Ошибка при обработке запроса")
-        except:
-            pass
+        except Exception:
+            # если edit_message_text не сработал (например, сообщение нельзя редактировать)
+            try:
+                context.bot.send_message(
+                    chat_id=update.effective_chat.id,
+                    text="❌ Ошибка при обработке запроса (не удалось обновить меню)."
+                )
+            except Exception:
+                logger.exception("Не удалось отправить fallback-сообщение об ошибке")
 
 def get_database_config(self):
     """Получает полную конфигурацию баз данных"""
