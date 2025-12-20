@@ -1,11 +1,11 @@
 """
 /bot/handlers/callbacks.py
-Server Monitoring System v4.14.29
+Server Monitoring System v4.14.30
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 A single router for callbacks.
 Система мониторинга серверов
-Версия: 4.14.29
+Версия: 4.14.30
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единый router callback’ов.
@@ -202,7 +202,6 @@ def callback_router(update, context):
     # БЭКАПЫ
     # ------------------------------------------------
     elif data.startswith('backup_'):
-        from lib.logging import debug_log
 
         debug_log(f"🧩 BACKUP ROUTE: вошли в ветку backup_ | data={data}")
 
