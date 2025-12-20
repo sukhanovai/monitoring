@@ -1,11 +1,11 @@
 """
 /core/monitor.py
-Server Monitoring System v4.14.24
+Server Monitoring System v4.14.25
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core monitoring module
 Система мониторинга серверов
-Версия: 4.14.24
+Версия: 4.14.25
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль мониторинга
@@ -157,7 +157,7 @@ class Monitor:
         Обрабатывает недоступный сервер
         """
         # ВАЖНО: ключ downtime_start может существовать, но быть None
-        downtime_start = status.get("downtime_start")
+        downtime_start = status.get("downtime_start") or current_time
 
         # Первый раз увидели "down" — фиксируем начало простоя и выходим
         if not downtime_start:
