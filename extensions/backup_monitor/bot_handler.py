@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/bot_handler.py
-Server Monitoring System v4.14.28
+Server Monitoring System v4.14.29
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring Proxmox backups
 Система мониторинга серверов
-Версия: 4.14.28
+Версия: 4.14.29
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг бэкапов Proxmox
@@ -372,6 +372,10 @@ def backup_help_command(update, context):
 
 def backup_callback(update, context):
     """Обработчик callback'ов для бэкапов"""
+    from lib.logging import debug_log
+    debug_log(f"🧩 backup_callback: START | file={__file__}")
+    debug_log(f"🧩 backup_callback: data={update.callback_query.data}")
+
     try:
         query = update.callback_query
         query.answer()

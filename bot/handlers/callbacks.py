@@ -1,11 +1,11 @@
 """
 /bot/handlers/callbacks.py
-Server Monitoring System v4.14.28
+Server Monitoring System v4.14.29
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 A single router for callbacks.
 Система мониторинга серверов
-Версия: 4.14.28
+Версия: 4.14.29
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единый router callback’ов.
@@ -202,9 +202,24 @@ def callback_router(update, context):
     # БЭКАПЫ
     # ------------------------------------------------
     elif data.startswith('backup_'):
+        from lib.logging import debug_log
+
+        debug_log(f"🧩 BACKUP ROUTE: вошли в ветку backup_ | data={data}")
+
         if extension_manager.is_extension_enabled('backup_monitor'):
-            from extensions.backup_monitor.bot_handler import backup_callback
-            backup_callback(update, context)
+            try:
+                import extensions.backup_monitor.bot_handler as bm
+                debug_log(f"🧩 BACKUP MODULE FILE: {bm.__file__}")
+
+                # важно: вызываем через bm, чтобы гарантировать, что это тот модуль
+                bm.backup_callback(update, context)
+
+                debug_log("🧩 BACKUP ROUTE: backup_callback выполнен")
+            except Exception as e:
+                import traceback
+                debug_log(f"❌ BACKUP ROUTE: ошибка импорта/вызова backup_callback: {e}")
+                debug_log(f"💥 Traceback:\n{traceback.format_exc()}")
+                query.edit_message_text("❌ Ошибка модуля бэкапов (см. логи).")
         else:
             query.edit_message_text("💾 Модуль бэкапов отключён")
 
