@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/bot_handler.py
-Server Monitoring System v4.14.25
+Server Monitoring System v4.14.26
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring Proxmox backups
 Система мониторинга серверов
-Версия: 4.14.25
+Версия: 4.14.26
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг бэкапов Proxmox
@@ -16,6 +16,27 @@ import sys
 from datetime import datetime, timedelta
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CommandHandler, CallbackQueryHandler
+
+from telegram.ext import CommandHandler, CallbackQueryHandler
+from lib.logging import debug_log
+
+def register_handlers(dispatcher):
+    """
+    Регистрирует handlers расширения backup_monitor.
+    Если команды уже где-то регистрируются — можно оставить пустым.
+    """
+    try:
+        # если у расширения есть команды вида /backup
+        # dispatcher.add_handler(CommandHandler("backup", backup_command))
+        # dispatcher.add_handler(CommandHandler("backup_search", backup_search_command))
+        # dispatcher.add_handler(CommandHandler("backup_help", backup_help_command))
+
+        # Если хочешь, чтобы расширение само ловило свои callback_data:
+        # dispatcher.add_handler(CallbackQueryHandler(backup_callback, pattern=r"^backup_"))
+
+        debug_log("✅ backup_monitor: handlers зарегистрированы")
+    except Exception as e:
+        debug_log(f"❌ backup_monitor: ошибка регистрации handlers: {e}")
 
 # Настройка логирования
 logging.basicConfig(
@@ -47,8 +68,8 @@ except ImportError as e:
         import os
         import sys
         sys.path.append('/opt/monitoring/extensions/backup_monitor')
-        from backup_utils import BackupBase, StatusCalculator, DisplayFormatters
-        from backup_handlers import (
+        from .backup_utils import BackupBase, StatusCalculator, DisplayFormatters
+        from .backup_handlers import (
             create_main_menu, create_navigation_buttons,
             show_main_menu, show_today_status, show_recent_backups, show_failed_backups,
             show_hosts_menu, show_stale_hosts, show_host_status,
@@ -65,7 +86,7 @@ class BackupMonitorBot(BackupBase):
     """Оптимизированный класс для мониторинга бэкапов"""
     
     def __init__(self):
-        from app.config.settings import BACKUP_DATABASE_CONFIG
+        from config.settings import BACKUP_DATABASE_CONFIG
         super().__init__(BACKUP_DATABASE_CONFIG['backups_db'])
         self.status_calc = StatusCalculator()
         self.formatters = DisplayFormatters()
@@ -74,7 +95,7 @@ class BackupMonitorBot(BackupBase):
     
     def get_database_display_names(self):
         """Получает отображаемые имена баз данных из конфигурации"""
-        from app.config.settings import DATABASE_BACKUP_CONFIG
+        from config.settings import DATABASE_BACKUP_CONFIG
         
         display_names = {}
         
@@ -241,7 +262,7 @@ class BackupMonitorBot(BackupBase):
         stale_databases = self.get_stale_database_backups(hours_threshold)
         
         # Получаем все известные хосты и БД из конфигурации
-        from app.config.settings import PROXMOX_HOSTS, DATABASE_BACKUP_CONFIG
+        from config.settings import PROXMOX_HOSTS, DATABASE_BACKUP_CONFIG
         
         all_configured_hosts = list(PROXMOX_HOSTS.keys())
         all_configured_databases = []
@@ -417,7 +438,7 @@ def backup_callback(update, context):
 
 def get_database_config(self):
     """Получает полную конфигурацию баз данных"""
-    from app.config.settings import DATABASE_BACKUP_CONFIG
+    from config.settings import DATABASE_BACKUP_CONFIG
     
     return {
         "company_databases": DATABASE_BACKUP_CONFIG.get("company_databases", {}),
@@ -428,7 +449,7 @@ def get_database_config(self):
 
 def get_database_config_for_report(self):
     """Получает конфигурацию баз данных для отчета"""
-    from app.config.settings import DATABASE_BACKUP_CONFIG
+    from config.settings import DATABASE_BACKUP_CONFIG
     
     # Собираем все базы из конфигурации
     all_databases = {}

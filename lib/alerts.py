@@ -1,11 +1,11 @@
 """
 /lib/alerts.py
-Server Monitoring System v4.14.25
+Server Monitoring System v4.14.26
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Unified alert system
 Система мониторинга серверов
-Версия: 4.14.25
+Версия: 4.14.26
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единая система оповещений
@@ -102,7 +102,7 @@ def is_silent_time() -> bool:
     # Период в пределах одних суток
     return _config.silent_start <= current_hour < _config.silent_end
 
-def should_send_alert(alert_type: str = "info", force: bool = False) -> bool:
+def should_send_alert(alert_type: str, force: bool) -> bool:
     """
     Проверяет, нужно ли отправлять алерт
     
@@ -119,6 +119,9 @@ def should_send_alert(alert_type: str = "info", force: bool = False) -> bool:
     
     if force:
         return True
+    
+    if is_silent_time():
+        return False
     
     if alert_type in _config.thresholds:
         threshold_config = _config.thresholds[alert_type]

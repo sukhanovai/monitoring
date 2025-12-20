@@ -1,11 +1,11 @@
 """
 /extensions/extension_manager.py
-Server Monitoring System v4.14.25
+Server Monitoring System v4.14.26
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Extension Manager for Monitoring
 Система мониторинга серверов
-Версия: 4.14.25
+Версия: 4.14.26
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Менеджер расширений для мониторинга
@@ -204,3 +204,32 @@ class ExtensionManager:
 
 # Глобальный экземпляр менеджера расширений
 extension_manager = ExtensionManager()
+
+from typing import Any, List
+
+def get_enabled_extensions() -> List[str]:
+    return extension_manager.get_enabled_extensions()
+
+def register_enabled_extensions(dispatcher: Any) -> None:
+    """
+    Регистрирует обработчики всех включенных расширений.
+    dispatcher — это application.dispatcher / updater.dispatcher (в зависимости от PTB версии).
+    """
+    enabled = extension_manager.get_enabled_extensions()
+
+    for ext_id in enabled:
+        try:
+            if ext_id == "backup_monitor":
+                from extensions.backup_monitor.bot_handler import register_handlers as reg
+                reg(dispatcher)
+
+            # На будущее:
+            # elif ext_id == "web_interface":
+            #     from extensions.web_interface.bot_handler import register_handlers as reg
+            #     reg(dispatcher)
+
+        except Exception as e:
+            # не валим весь бот из-за одного расширения
+            from lib.logging import debug_log
+            debug_log(f"❌ Ошибка регистрации расширения {ext_id}: {e}")
+

@@ -1,35 +1,17 @@
 """
 /extensions/__init__.py
-Server Monitoring System v4.14.25
+Server Monitoring System v4.14.26
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Extensions interface
 Система мониторинга серверов
-Версия: 4.14.25
+Версия: 4.14.26
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Интерфейс расширений
 """
 
-from abc import ABC, abstractmethod
+from .base import Extension
 
-class Extension(ABC):
-    @abstractmethod
-    def enable(self):
-        """Enable the extension"""
-        pass
-    
-    @abstractmethod
-    def disable(self):
-        """Disable the extension"""
-        pass
-    
-    @abstractmethod
-    def get_handlers(self):
-        """Get bot handlers for this extension"""
-        pass
-    
-    @abstractmethod
-    def get_menu_commands(self):
-        """Get menu commands for this extension"""
-        pass
+__all__ = ["Extension"]
+
