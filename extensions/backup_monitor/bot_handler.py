@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/bot_handler.py
-Server Monitoring System v4.14.37
+Server Monitoring System v4.14.38
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring Proxmox backups
 Система мониторинга серверов
-Версия: 4.14.37
+Версия: 4.14.38
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг бэкапов Proxmox
@@ -371,6 +371,10 @@ def backup_help_command(update, context):
 
 def backup_callback(update, context):
     """Обработчик callback'ов для бэкапов"""
+    logger.info(
+        f"🧩 backup_callback: START | file={__file__} | data={data}"
+    )
+
     query = update.callback_query
     data = getattr(query, "data", None)
 
@@ -403,13 +407,14 @@ def backup_callback(update, context):
             show_hosts_menu(query, backup_bot)
 
         elif data == 'backup_refresh':
-            show_main_menu(query, backup_bot)
+            show_main_menu(query)
 
         elif data == 'backup_databases':
+            logger.info("🧪 BACKUP DB: entering show_database_backups_menu")
             show_database_backups_menu(query, backup_bot)
 
         elif data == 'backup_proxmox':
-            show_main_menu(query, backup_bot)
+            show_main_menu(query)
 
         elif data == 'backup_stale_hosts':
             show_stale_hosts(query, backup_bot)
@@ -419,13 +424,14 @@ def backup_callback(update, context):
             show_host_status(query, backup_bot, host_name)
 
         elif data == 'backup_main':
-            show_main_menu(query, backup_bot)
+            show_main_menu(query)
 
         # --- DB handlers ---
         elif data.startswith('db_detail_'):
             remaining = data.replace('db_detail_', '')
             if '__' in remaining:
                 backup_type, db_name = remaining.split('__', 1)
+                logger.info("🧪 DB detail")
                 show_database_details(query, backup_bot, backup_type, db_name)
             else:
                 last_underscore = remaining.rfind('_')
@@ -437,18 +443,23 @@ def backup_callback(update, context):
                     query.edit_message_text("❌ Ошибка: неверный формат запроса")
 
         elif data == 'db_backups_24h':
+            logger.info("🧪 db backups 24h")
             show_database_backups_summary(query, backup_bot, 24)
 
         elif data == 'db_backups_48h':
+            logger.info("🧪 db backups 48h")
             show_database_backups_summary(query, backup_bot, 48)
 
         elif data in ('db_backups_today', 'db_backups_summary'):
+            logger.info("🧪 db backups today")
             show_database_backups_summary(query, backup_bot, 24)
 
         elif data == 'db_backups_list':
+            logger.info("🧪 db backups list")
             show_database_backups_menu(query, backup_bot)
 
         elif data == 'db_stale_list':
+            logger.info("🧪 db state list")
             show_stale_databases(query, backup_bot)
 
         else:
