@@ -1,11 +1,11 @@
 """
 /bot/handlers/callbacks.py
-Server Monitoring System v4.14.32
+Server Monitoring System v4.14.33
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 A single router for callbacks.
 Система мониторинга серверов
-Версия: 4.14.32
+Версия: 4.14.33
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единый router callback’ов.
@@ -219,8 +219,19 @@ def callback_router(update, context):
     # ------------------------------------------------
     # БЭКАПЫ
     # ------------------------------------------------
-    elif data.startswith('backup_'):
+    elif data and data.startswith('backup_'):
+        query = update.callback_query  # локально фиксируем, чтобы точно был в области видимости
         debug_log(f"➡️ BACKUP ROUTE: entering branch, data={data}")
+
+        if not query:
+            debug_log("❌ BACKUP ROUTE: callback_query is None")
+            return
+
+        # Можно ответить здесь, чтобы Telegram не ругался на долгий обработчик
+        try:
+            query.answer()
+        except Exception:
+            pass
 
         if not extension_manager.is_extension_enabled('backup_monitor'):
             debug_log("⛔ BACKUP ROUTE: backup_monitor extension is disabled")

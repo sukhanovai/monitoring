@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/bot_handler.py
-Server Monitoring System v4.14.32
+Server Monitoring System v4.14.33
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring Proxmox backups
 Система мониторинга серверов
-Версия: 4.14.32
+Версия: 4.14.33
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг бэкапов Proxmox
@@ -16,8 +16,7 @@ import sys
 from datetime import datetime, timedelta
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CommandHandler, CallbackQueryHandler
-
-from telegram.ext import CommandHandler, CallbackQueryHandler
+import traceback
 from lib.logging import debug_log
 
 from extensions.backup_monitor.backup_handlers import (
@@ -374,93 +373,90 @@ def backup_callback(update, context):
     """Обработчик callback'ов для бэкапов"""
     query = update.callback_query
     data = getattr(query, "data", None)
-    debug_log(f"📌 backup_callback ENTER: data={data}")
-    from lib.logging import debug_log
-    debug_log(f"🧩 backup_callback: START | file={__file__}")
-    debug_log(f"🧩 backup_callback: data={update.callback_query.data}")
 
     try:
-        query = update.callback_query
+        # ВАЖНО: все логи — внутри try
+        debug_log(f"🧩 backup_callback: START | file={__file__} | data={data}")
+
+        if not query:
+            debug_log("❌ backup_callback: update.callback_query is None")
+            return
+
         query.answer()
-        
+
         data = query.data
         backup_bot = BackupMonitorBot()
 
         if data == 'no_action':
-            # Заглушка для заголовков секций - ничего не делаем
             return
-            
+
         if data == 'backup_today':
             show_today_status(query, backup_bot)
+
         elif data == 'backup_24h':
             show_recent_backups(query, backup_bot)
+
         elif data == 'backup_failed':
             show_failed_backups(query, backup_bot)
+
         elif data == 'backup_hosts':
             show_hosts_menu(query, backup_bot)
+
         elif data == 'backup_refresh':
             show_main_menu(query, backup_bot)
+
         elif data == 'backup_databases':
             show_database_backups_menu(query, backup_bot)
+
         elif data == 'backup_proxmox':
             show_main_menu(query, backup_bot)
+
         elif data == 'backup_stale_hosts':
             show_stale_hosts(query, backup_bot)
+
         elif data.startswith('backup_host_'):
             host_name = data.replace('backup_host_', '')
             show_host_status(query, backup_bot, host_name)
+
         elif data == 'backup_main':
             show_main_menu(query, backup_bot)
-            
-        # Обработчики для баз данных
+
+        # --- DB handlers ---
         elif data.startswith('db_detail_'):
-            # Обработка деталей БД
-            try:
-                remaining = data.replace('db_detail_', '')
-                if '__' in remaining:
-                    parts = remaining.split('__', 1)
-                    backup_type = parts[0]
-                    db_name = parts[1]
+            remaining = data.replace('db_detail_', '')
+            if '__' in remaining:
+                backup_type, db_name = remaining.split('__', 1)
+                show_database_details(query, backup_bot, backup_type, db_name)
+            else:
+                last_underscore = remaining.rfind('_')
+                if last_underscore != -1:
+                    backup_type = remaining[:last_underscore]
+                    db_name = remaining[last_underscore + 1:]
                     show_database_details(query, backup_bot, backup_type, db_name)
                 else:
-                    last_underscore = remaining.rfind('_')
-                    if last_underscore != -1:
-                        backup_type = remaining[:last_underscore]
-                        db_name = remaining[last_underscore + 1:]
-                        show_database_details(query, backup_bot, backup_type, db_name)
-                    else:
-                        query.edit_message_text("❌ Ошибка: неверный формат запроса")
-                    
-            except Exception as e:
-                logger.error(f"Ошибка при разборе db_detail: {e}")
-                query.edit_message_text("❌ Ошибка при обработке запроса")
-                
+                    query.edit_message_text("❌ Ошибка: неверный формат запроса")
+
         elif data == 'db_backups_24h':
             show_database_backups_summary(query, backup_bot, 24)
+
         elif data == 'db_backups_48h':
             show_database_backups_summary(query, backup_bot, 48)
-        elif data == 'db_backups_today':
+
+        elif data in ('db_backups_today', 'db_backups_summary'):
             show_database_backups_summary(query, backup_bot, 24)
-        elif data == 'db_backups_summary':
-            show_database_backups_summary(query, backup_bot, 24)
+
         elif data == 'db_backups_list':
             show_database_backups_menu(query, backup_bot)
+
         elif data == 'db_stale_list':
             show_stale_databases(query, backup_bot)
 
-    except Exception as e:
-        import traceback
-        debug_log(f"💥 backup_callback ERROR: {e}\n{traceback.format_exc()}")
-        # 1) Логируем в вашу систему логирования (journalctl это увидит)
-        try:
-            from lib.logging import debug_log
-            debug_log(f"❌ backup_callback: ошибка обработки '{data if 'data' in locals() else 'unknown'}': {e}")
-            debug_log(f"💥 Traceback:\n{traceback.format_exc()}")
-        except Exception:
-            # Если даже debug_log упал — ничего, не ломаем обработчик
-            pass
+        else:
+            debug_log(f"⚠️ backup_callback: unknown callback data={data}")
+            query.answer("Неизвестная команда", show_alert=True)
 
-        # 2) Пытаемся ответить пользователю в Telegram
+    except Exception as e:
+        debug_log(f"💥 backup_callback ERROR: {e}\n{traceback.format_exc()}")
         try:
             query.edit_message_text("❌ Ошибка в модуле бэкапов. Подробности в логах.")
         except Exception:
