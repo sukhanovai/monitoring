@@ -1,11 +1,11 @@
 """
 /app/utils/__init__.py
-Server Monitoring System v4.14.40
+Server Monitoring System v4.14.41
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring system utilities
 Система мониторинга серверов
-Версия: 4.14.40
+Версия: 4.14.41
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Утилиты системы мониторинга
