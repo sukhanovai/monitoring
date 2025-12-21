@@ -1,11 +1,11 @@
 """
 /app/config/settings.py
-Server Monitoring System v4.14.34
+Server Monitoring System v4.14.35
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Configuring exchange settings with the monitoring database
 Система мониторинга серверов
-Версия: 4.14.34
+Версия: 4.14.35
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Конфигурация настроек обмена с БД мониторинга

@@ -1,17 +1,17 @@
 """
 /__init__.py
-Server Monitoring System v4.14.34
+Server Monitoring System v4.14.35
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Package exports
 Система мониторинга серверов
-Версия: 4.14.34
+Версия: 4.14.35
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Экспорт пакетов
 """
 
-__version__ = "4.14.34"
+__version__ = "4.14.35"
 __author__ = "Александр Суханов"
 
 # Re-exports from lib

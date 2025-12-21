@@ -1,18 +1,18 @@
 """
 /bot/handlers/callbacks.py
-Server Monitoring System v4.14.34
+Server Monitoring System v4.14.35
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 A single router for callbacks.
 Система мониторинга серверов
-Версия: 4.14.34
+Версия: 4.14.35
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единый router callback’ов.
 """
 
 from bot.menu.handlers import show_main_menu
-from settings_handlers import settings_callback_handler
+from settings_handlers import settings_callback_handler, BACKUP_SETTINGS_CALLBACKS
 from monitor_core import (
     manual_check_handler,
     monitor_status,
@@ -189,8 +189,14 @@ def callback_router(update, context):
     # ------------------------------------------------
     # НАСТРОЙКИ (settings_handlers)
     # ------------------------------------------------
-    elif data.startswith(('settings_', 'set_', 'manage_', 'ssh_', 'windows_', 'backup_')):
+    elif data.startswith(('settings_', 'set_', 'manage_', 'ssh_', 'windows_')):
         # settings_handlers сам разбирает все эти ветки
+        settings_callback_handler(update, context)
+
+    # ------------------------------------------------
+    # НАСТРОЙКИ БЭКАПОВ (settings_handlers)
+    # ------------------------------------------------
+    elif data in BACKUP_SETTINGS_CALLBACKS:
         settings_callback_handler(update, context)
 
     # ------------------------------------------------

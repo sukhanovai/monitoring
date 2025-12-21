@@ -1,11 +1,11 @@
 """
 /settings_handlers.py
-Server Monitoring System v4.14.34
+Server Monitoring System v4.14.35
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 4.14.34
+Версия: 4.14.35
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -15,6 +15,13 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CommandHandler, CallbackQueryHandler, MessageHandler, Filters
 from app.config.manager import settings_manager
 import json
+
+BACKUP_SETTINGS_CALLBACKS = {
+    'backup_times',
+    'backup_patterns',
+    'backup_databases',
+    'backup_db_add_category'
+}
 
 def get_debug_log():
     """Безопасная функция для логирования"""
@@ -318,7 +325,7 @@ def settings_callback_handler(update, context):
     data = query.data
     
     # если это callback от бэкапов, НЕ обрабатываем здесь
-    if data.startswith('db_') or data.startswith('backup_'):
+    if data.startswith('db_') or (data.startswith('backup_') and data not in BACKUP_SETTINGS_CALLBACKS):
         query.answer("⚙️ Перенаправление к модулю бэкапов...")
         # Передаем обработку дальше по цепочке
         return
