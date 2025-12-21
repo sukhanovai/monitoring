@@ -1,11 +1,11 @@
 """
 /bot/handlers/callbacks.py
-Server Monitoring System v4.14.36
+Server Monitoring System v4.14.37
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 A single router for callbacks.
 Система мониторинга серверов
-Версия: 4.14.36
+Версия: 4.14.37
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единый router callback’ов.
@@ -282,6 +282,54 @@ def callback_router(update, context):
                     debug_log("💥 BACKUP ROUTE: failed to notify user about error")
             return
 
+    # ------------------------------------------------
+    # БЭКАПЫ БАЗ ДАННЫХ
+    # ------------------------------------------------
+    elif data and data.startswith('db_'):
+        query = update.callback_query
+        debug_log(f"➡️ DB BACKUP ROUTE: entering branch, data={data}")
+
+        if not query:
+            debug_log("❌ DB BACKUP ROUTE: callback_query is None")
+            return
+
+        try:
+            query.answer()
+        except Exception:
+            pass
+
+        if not extension_manager.is_extension_enabled('database_backup_monitor'):
+            debug_log("⛔ DB BACKUP ROUTE: database_backup_monitor extension is disabled")
+            query.edit_message_text("🗃️ Модуль бэкапов БД отключён")
+            return
+
+        try:
+            debug_log("📦 DB BACKUP ROUTE: importing backup_callback...")
+            from extensions.backup_monitor.bot_handler import backup_callback
+            debug_log("✅ DB BACKUP ROUTE: import OK, calling backup_callback()")
+
+            backup_callback(update, context)
+
+            debug_log("✅ DB BACKUP ROUTE: backup_callback() returned successfully")
+            return
+
+        except Exception as e:
+            import traceback
+            tb = traceback.format_exc()
+            debug_log(f"💥 DB BACKUP ROUTE: exception: {e}\n{tb}")
+
+            try:
+                query.edit_message_text("❌ Ошибка в модуле бэкапов БД. Подробности в логах.")
+            except Exception:
+                try:
+                    context.bot.send_message(
+                        chat_id=update.effective_chat.id,
+                        text="❌ Ошибка в модуле бэкапов БД. Подробности в логах."
+                    )
+                except Exception:
+                    debug_log("💥 DB BACKUP ROUTE: failed to notify user about error")
+            return
+        
     # ------------------------------------------------
     # РАСШИРЕНИЯ
     # ------------------------------------------------
