@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v4.14.35
+Server Monitoring System v4.14.36
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 4.14.35
+Версия: 4.14.36
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов
@@ -143,7 +143,7 @@ def create_databases_keyboard(databases_by_type, problem_db_count=0):
 
 # === ОСНОВНЫЕ ОБРАБОТЧИКИ ===
 
-def show_main_menu(query):
+def show_main_menu(query, backup_bot):
     """Показывает главное меню бэкапов"""
     query.edit_message_text(
         "💾 *Мониторинг бэкапов Proxmox*\n\nВыберите опцию:",
