@@ -1,11 +1,11 @@
 """
 /modules/morning_report.py
-Server Monitoring System v4.15.4
+Server Monitoring System v4.15.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Morning report module
 Система мониторинга серверов
-Версия: 4.15.4
+Версия: 4.15.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль утреннего отчета
@@ -14,37 +14,60 @@ Morning report module
 import sqlite3
 import os
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from lib.logging import debug_log
 from config.settings import DATA_COLLECTION_TIME, DATA_DIR
 
 class MorningReport:
     """Класс для генерации утреннего отчета"""
-
-    @staticmethod
-    def _normalize_status(status: Optional[Dict]) -> Dict[str, List]:
+    
+    def _normalize_status(status: Dict) -> Dict:
         """
-        Приводит статус к формату ok/failed, преобразуя up/down и гарантируя,
-        что значения представлены списками.
+        Всегда возвращает dict с ключами ok/failed, где значения — списки.
+        Поддерживает старый формат ok/failed и новый up/down.
         """
         if not isinstance(status, dict):
             return {"ok": [], "failed": []}
 
-        ok = status.get("ok", status.get("up", [])) or []
-        failed = status.get("failed", status.get("down", [])) or []
-        # Приводим к списку даже если пришла иная коллекция
-        if not isinstance(ok, list):
-            ok = list(ok) if hasattr(ok, "__iter__") and not isinstance(ok, str) else [ok]
-        if not isinstance(failed, list):
-            failed = list(failed) if hasattr(failed, "__iter__") and not isinstance(failed, str) else [failed]
+        if "ok" in status or "failed" in status:
+            ok = status.get("ok") or []
+            failed = status.get("failed") or []
+            return {
+                "ok": ok if isinstance(ok, list) else [],
+                "failed": failed if isinstance(failed, list) else [],
+            }
 
-        return {"ok": ok, "failed": failed}
-    
+        # формат availability_checker: up/down
+        up = status.get("up") or []
+        down = status.get("down") or []
+        return {
+            "ok": up if isinstance(up, list) else [],
+            "failed": down if isinstance(down, list) else [],
+        }
+
     def __init__(self):
         """Инициализация модуля отчета"""
         self.morning_data = {}
         self.last_report_date = None
+        
+    @staticmethod
+    def _normalize_status(raw_status):
+        if not isinstance(raw_status, dict):
+            return {"ok": [], "failed": []}
+
+        ok = raw_status.get("ok", raw_status.get("up", []))
+        failed = raw_status.get("failed", raw_status.get("down", []))
+
+        ok = ok or []
+        failed = failed or []
+
+        if not isinstance(ok, list):
+            ok = list(ok) if ok else []
+        if not isinstance(failed, list):
+            failed = list(failed) if failed else []
+
+        return {"ok": ok, "failed": failed}
 
     def collect_morning_data(self, servers_status: Dict) -> Dict:
         """
@@ -56,7 +79,7 @@ class MorningReport:
         Returns:
             Dict: Данные для отчета
         """
-        servers_status = self._normalize_status(servers_status or {})
+        servers_status = _normalize_status(servers_status or {})
         current_time = datetime.now()
         
         report_data = {
@@ -73,6 +96,21 @@ class MorningReport:
         
         return report_data
     
+    def _normalize_status(self, status: Dict) -> Dict:
+        """
+        Приводит статус к единому формату:
+        ok/failed (поддерживаем входные up/down).
+        """
+        if not isinstance(status, dict):
+            return {"ok": [], "failed": []}
+
+        if "ok" in status or "failed" in status:
+            return {"ok": status.get("ok", []), "failed": status.get("failed", [])}
+
+        # формат availability_checker: up/down
+        return {"ok": status.get("up", []), "failed": status.get("down", [])}
+
+
     def generate_report(self, manual_call: bool = False) -> str:
         """
         Генерирует текст отчета
@@ -90,7 +128,7 @@ class MorningReport:
 
             servers = config_manager.get_servers()  # через адаптер
             current_status = availability_checker.check_multiple_servers(servers)
-            self.collect_morning_data(self._normalize_status(current_status))
+            self.collect_morning_data(_normalize_status(current_status))
         
         status = self._normalize_status(self.morning_data.get("status") or {})
         collection_time = self.morning_data.get("collection_time", datetime.now())

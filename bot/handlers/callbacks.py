@@ -1,11 +1,11 @@
 """
 /bot/handlers/callbacks.py
-Server Monitoring System v4.15.4
+Server Monitoring System v4.15.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 A single router for callbacks.
 Система мониторинга серверов
-Версия: 4.15.4
+Версия: 4.15.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единый router callback’ов.
@@ -21,7 +21,6 @@ from monitor_core import (
     toggle_monitoring_handler,
 )
 
-import traceback
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from bot.handlers.base import check_access, deny_access
 from modules.targeted_checks import targeted_checks

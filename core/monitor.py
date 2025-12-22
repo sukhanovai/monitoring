@@ -1,11 +1,11 @@
 """
 /core/monitor.py
-Server Monitoring System v4.15.4
+Server Monitoring System v4.15.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core monitoring module
 Система мониторинга серверов
-Версия: 4.15.4
+Версия: 4.15.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль мониторинга
@@ -18,8 +18,7 @@ from typing import Dict, List
 
 from lib.logging import debug_log
 from lib.alerts import send_alert
-# Используем настройки из БД, чтобы мониторинг реагировал на актуальные значения
-from config.db_settings import (
+from config.settings import (
     CHECK_INTERVAL,
     MAX_FAIL_TIME,
     RESOURCE_CHECK_INTERVAL,
@@ -158,18 +157,19 @@ class Monitor:
         Обрабатывает недоступный сервер
         """
         # ВАЖНО: ключ downtime_start может существовать, но быть None
-        downtime_start = status.get("downtime_start")
-        
-        # Первый раз увидели «down» — фиксируем начало простоя и выходим
-        if downtime_start is None:
+        downtime_start = status.get("downtime_start") or current_time
+
+        # Первый раз увидели "down" — фиксируем начало простоя и выходим
+        if not downtime_start:
             self.server_status[ip]["downtime_start"] = current_time
             return False
 
+        # Теперь downtime_start гарантированно datetime
         downtime = (current_time - downtime_start).total_seconds()
 
         # Проверяем нужно ли отправлять алерт
         if downtime >= MAX_FAIL_TIME and not status.get("alert_sent"):
-            message = f"🚨 {status.get('name')} ({ip}) не отвечает"
+            message = f"🚨 {status.get('name')} ({ip}) не отвежает"
             message += f" ({int(downtime // 60)} мин {int(downtime % 60)} сек)"
 
             send_alert(message)
