@@ -1,11 +1,11 @@
 """
 /app/core/__init__.py
-Server Monitoring System v4.14.43
+Server Monitoring System v4.14.44
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core system
 Система мониторинга серверов
-Версия: 4.14.43
+Версия: 4.14.44
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Ядро системы мониторинга

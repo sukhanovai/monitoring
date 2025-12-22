@@ -1,6 +1,6 @@
 """
 /app/config/debug.py
-Server Monitoring System v4.14.43
+Server Monitoring System v4.14.44
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring system debug configuration
