@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v4.14.44
+Server Monitoring System v4.14.45
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 4.14.44
+Версия: 4.14.45
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов
@@ -16,14 +16,14 @@ import os
 import logging
 from datetime import datetime, timedelta
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from .backup_utils import DisplayFormatters as formatters
+from .backup_utils import DisplayFormatters
+formatters = DisplayFormatters()
 from telegram.utils.helpers import escape_markdown
 
 def _md(s) -> str:
     return escape_markdown(str(s or ""), version=1)
 
 logger = logging.getLogger(__name__)
-formatters = DisplayFormatters()
 
 # === УТИЛИТЫ ДЛЯ СОЗДАНИЯ КЛАВИАТУР ===
 
