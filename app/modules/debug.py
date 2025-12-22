@@ -1,11 +1,11 @@
 """
 /app/modules/debug.py
-Server Monitoring System v4.14.46
+Server Monitoring System v4.15.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Debugging and diagnostics module
 Система мониторинга серверов
-Версия: 4.14.46
+Версия: 4.15.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль отладки и диагностики
@@ -17,6 +17,7 @@ import socket
 import logging
 from datetime import datetime
 from app.utils.logging import debug_log
+from app.config.settings import DATA_DIR, LOG_DIR
 
 class DebugManager:
     """Класс управления отладкой и диагностикой"""
@@ -61,7 +62,7 @@ class DebugManager:
                     status["services"][name] = "🟢" if result == 0 else "🔴"
                 else:
                     # Проверка файла базы
-                    db_path = '/opt/monitoring/data/backups.db'
+                    db_path = os.path.join(DATA_DIR, 'backups.db')
                     status["services"][name] = "🟢" if os.path.exists(db_path) else "🔴"
             except Exception as e:
                 status["services"][name] = f"🔴 ({str(e)[:30]})"
@@ -82,8 +83,8 @@ class DebugManager:
         
         # Проверка логов
         log_files = {
-            'debug.log': '/opt/monitoring/logs/debug.log',
-            'bot_debug.log': '/opt/monitoring/bot_debug.log'
+            'debug.log': os.path.join(LOG_DIR, 'debug.log'),
+            'bot_debug.log': os.path.join(LOG_DIR, 'bot_debug.log')
         }
         
         for name, path in log_files.items():
@@ -144,9 +145,9 @@ class DebugManager:
     def clear_logs(self):
         """Очистка логов"""
         log_files = [
-            '/opt/monitoring/logs/debug.log',
-            '/opt/monitoring/bot_debug.log',
-            '/opt/monitoring/logs/mail_monitor.log'
+            os.path.join(LOG_DIR, 'debug.log'),
+            os.path.join(LOG_DIR, 'bot_debug.log'),
+            os.path.join(LOG_DIR, 'mail_monitor.log')
         ]
         
         cleared = 0

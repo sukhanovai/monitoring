@@ -1,11 +1,11 @@
 """
 /lib/logging.py
-Server Monitoring System v4.14.46
+Server Monitoring System v4.15.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Unified logging system
 Система мониторинга серверов
-Версия: 4.14.46
+Версия: 4.15.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единая система логирования
@@ -17,14 +17,17 @@ import logging.handlers
 from datetime import datetime
 from typing import Optional
 
-# Пути к логам
-LOG_DIR = "/opt/monitoring/logs"
+try:
+    from config.settings import LOG_DIR, DEBUG_MODE  # type: ignore
+except Exception:
+    LOG_DIR = os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")), "logs")
+    DEBUG_MODE = False
+
 DEBUG_LOG_FILE = os.path.join(LOG_DIR, "debug.log")
 BOT_LOG_FILE = os.path.join(LOG_DIR, "bot.log")
 MONITOR_LOG_FILE = os.path.join(LOG_DIR, "monitor.log")
 
 # Глобальные переменные
-DEBUG_MODE = False
 _loggers = {}
 
 def setup_logging(

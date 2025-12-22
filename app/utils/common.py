@@ -1,11 +1,11 @@
 """
 /app/utils/common.py
-Server Monitoring System v4.14.46
+Server Monitoring System v4.15.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 General system utilities
 Система мониторинга серверов
-Версия: 4.14.46
+Версия: 4.15.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Общие утилиты системы
@@ -17,14 +17,19 @@ import logging
 import importlib
 from datetime import datetime
 
-# Глобальные настройки отладки
-DEBUG_MODE = False
-DEBUG_LOG_FILE = '/opt/monitoring/logs/debug.log'
+try:
+    from app.config.settings import DEBUG_MODE, LOG_DIR  # type: ignore
+except ImportError:
+    DEBUG_MODE = False
+    LOG_DIR = os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")), "logs")
+
+DEBUG_LOG_FILE = os.path.join(LOG_DIR, 'debug.log')
 
 def setup_logging():
     """Настройка централизованного логирования"""
     log_level = logging.DEBUG if DEBUG_MODE else logging.INFO
     
+    os.makedirs(LOG_DIR, exist_ok=True)    
     logging.basicConfig(
         level=log_level,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',

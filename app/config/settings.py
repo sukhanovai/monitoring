@@ -1,11 +1,11 @@
 """
 /app/config/settings.py
-Server Monitoring System v4.14.46
+Server Monitoring System v4.15.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Configuring exchange settings with the monitoring database
 Система мониторинга серверов
-Версия: 4.14.46
+Версия: 4.15.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Конфигурация настроек обмена с БД мониторинга
@@ -14,6 +14,7 @@ Configuring exchange settings with the monitoring database
 import os
 import json
 from datetime import time as dt_time
+from pathlib import Path
 
 # Импортируем менеджер настроек
 try:
@@ -34,6 +35,11 @@ def get_json_setting(key, default):
     if USE_DB:
         return settings_manager.get_setting(key, default)
     return default
+
+# === БАЗОВЫЕ ПУТИ ===
+BASE_DIR = str(Path(os.environ.get("MONITORING_BASE_DIR", Path(__file__).resolve().parents[2])).resolve())
+DATA_DIR = os.path.join(BASE_DIR, "data")
+LOG_DIR = os.path.join(BASE_DIR, "logs")
 
 # === БАЗОВЫЕ НАСТРОЙКИ ===
 TELEGRAM_TOKEN = get_setting('TELEGRAM_TOKEN', "")
@@ -202,7 +208,6 @@ WEB_PORT = get_setting('WEB_PORT', 5000)
 WEB_HOST = get_setting('WEB_HOST', '0.0.0.0')
 
 # === ФАЙЛЫ ДАННЫХ ===
-DATA_DIR = "/opt/monitoring/data"
 STATS_FILE = os.path.join(DATA_DIR, "monitoring_stats.json")
 BACKUP_DB_FILE = os.path.join(DATA_DIR, "backups.db")
 
@@ -224,6 +229,7 @@ DATABASE_BACKUP_CONFIG = DATABASE_CONFIG
 
 # Создаем директорию для данных
 os.makedirs(DATA_DIR, exist_ok=True)
+os.makedirs(LOG_DIR, exist_ok=True)
 
 # === УТИЛИТЫ КОНФИГУРАЦИИ ===
 
@@ -270,4 +276,4 @@ else:
 
 # Отладка
 DEBUG_MODE = False
-DEBUG_LOG_FILE = '/opt/monitoring/logs/debug.log'
+DEBUG_LOG_FILE = os.path.join(LOG_DIR, 'debug.log')

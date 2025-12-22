@@ -1,16 +1,17 @@
 """
 /bot_menu.py
-Server Monitoring System v4.14.46
+Server Monitoring System v4.15.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Bot menu
 Система мониторинга серверов
-Версия: 4.14.46
+Версия: 4.15.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Меню бота
 """
 
+import os
 from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CommandHandler, CallbackQueryHandler, MessageHandler, Filters
 from app import server_checker, logger
@@ -22,6 +23,7 @@ from app.handlers.callbacks import (
     handle_server_selection_menu
 )
 from app.modules.targeted_checks import targeted_checks
+from app.config.settings import LOG_DIR, DATA_DIR
 
 # Ленивые импорты для настроек
 def lazy_import_settings_handler():
@@ -574,7 +576,7 @@ def enable_debug_mode(query):
         query.edit_message_text(
             "🟢 *Отладка включена*\n\n"
             "Теперь все операции будут детально логироваться.\n"
-            "Логи сохраняются в /opt/monitoring/logs/debug.log\n\n"
+            f"Логи сохраняются в {os.path.join(LOG_DIR, 'debug.log')}\n\n"
             "*Включены функции:*\n"
             "• Детальное логирование операций\n"
             "• Отладочные сообщения в консоли\n"
@@ -660,9 +662,9 @@ def show_debug_status(query):
         # Информация о логах
         message += "*Логи:*\n"
         log_files = {
-            'debug.log': '/opt/monitoring/logs/debug.log',
-            'bot_debug.log': '/opt/monitoring/bot_debug.log', 
-            'mail_monitor.log': '/opt/monitoring/logs/mail_monitor.log'
+            'debug.log': os.path.join(LOG_DIR, 'debug.log'),
+            'bot_debug.log': os.path.join(LOG_DIR, 'bot_debug.log'), 
+            'mail_monitor.log': os.path.join(LOG_DIR, 'mail_monitor.log')
         }
         
         for log_name, log_path in log_files.items():
@@ -717,9 +719,9 @@ def clear_debug_logs(query):
     
     try:
         log_files = [
-            '/opt/monitoring/logs/debug.log',
-            '/opt/monitoring/bot_debug.log',
-            '/opt/monitoring/logs/mail_monitor.log'
+            os.path.join(LOG_DIR, 'debug.log'),
+            os.path.join(LOG_DIR, 'bot_debug.log'),
+            os.path.join(LOG_DIR, 'mail_monitor.log')
         ]
         
         cleared = 0
@@ -793,7 +795,7 @@ def run_diagnostic(query):
                     message += f"{status} {service}: {'доступен' if result == 0 else 'недоступен'}\n"
                 else:
                     # Проверка файла базы данных
-                    db_path = '/opt/monitoring/data/backups.db'
+                    db_path = os.path.join(DATA_DIR, 'backups.db')
                     if os.path.exists(db_path):
                         status = "🟢"
                         message += f"{status} {service}: файл существует\n"
@@ -880,9 +882,9 @@ def show_advanced_debug(query):
         
         # Добавляем информацию о размерах логов
         log_files = {
-            'debug.log': '/opt/monitoring/logs/debug.log',
-            'bot_debug.log': '/opt/monitoring/bot_debug.log',
-            'mail_monitor.log': '/opt/monitoring/logs/mail_monitor.log'
+            'debug.log': os.path.join(LOG_DIR, 'debug.log'),
+            'bot_debug.log': os.path.join(LOG_DIR, 'bot_debug.log'),
+            'mail_monitor.log': os.path.join(LOG_DIR, 'mail_monitor.log')
         }
         
         for log_name, log_path in log_files.items():

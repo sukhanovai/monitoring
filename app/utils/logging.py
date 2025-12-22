@@ -1,11 +1,11 @@
 """
 /app/utils/logging.py
-Server Monitoring System v4.14.46
+Server Monitoring System v4.15.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Main launch module
 Logging module
-Версия: 4.14.46
+Версия: 4.15.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль логирования
@@ -17,17 +17,17 @@ import logging.handlers
 from datetime import datetime
 
 try:
-    from app.config.settings import DEBUG_MODE
+    from app.config.settings import DEBUG_MODE, LOG_DIR
 except ImportError:
     DEBUG_MODE = False
+    LOG_DIR = os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")), "logs")
 
 def setup_logging():
     """Настройка централизованного логирования"""
     log_level = logging.DEBUG if DEBUG_MODE else logging.INFO
     
     # Создаем директорию для логов если не существует
-    log_dir = '/opt/monitoring/logs'
-    os.makedirs(log_dir, exist_ok=True)
+    os.makedirs(LOG_DIR, exist_ok=True)
     
     # Формат логов
     log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -42,7 +42,7 @@ def setup_logging():
     
     # Файловый обработчик (ротация по размеру)
     file_handler = logging.handlers.RotatingFileHandler(
-        filename=os.path.join(log_dir, 'debug.log'),
+        filename=os.path.join(LOG_DIR, 'debug.log'),
         maxBytes=10*1024*1024,  # 10 MB
         backupCount=5,
         encoding='utf-8'

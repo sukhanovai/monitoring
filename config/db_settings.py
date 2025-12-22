@@ -1,11 +1,11 @@
 """
 /config/db_settings.py
-Server Monitoring System v4.14.46
+Server Monitoring System v4.15.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Database-backed settings loader
 Система мониторинга серверов
-Версия: 4.14.46
+Версия: 4.15.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Загрузчик настроек из базы данных
@@ -31,7 +31,7 @@ except ImportError:
     debug_log("⚠️ Файл config.settings не найден, используем значения по умолчанию")
     
     # Базовые пути
-    BASE_DIR = "/opt/monitoring"
+    BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     DATA_DIR = os.path.join(BASE_DIR, "data")
     LOG_DIR = os.path.join(BASE_DIR, "logs")
     

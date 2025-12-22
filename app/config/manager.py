@@ -1,11 +1,11 @@
 """
 /app/config/manager.py
-Server Monitoring System v4.14.46
+Server Monitoring System v4.15.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Database Settings Manager
 Система мониторинга серверов
-Версия: 4.14.46
+Версия: 4.15.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Менеджер настроек БД
@@ -15,10 +15,14 @@ import sqlite3
 import json
 import os
 from datetime import datetime
+try:
+    from config.settings import DATA_DIR  # type: ignore
+except Exception:
+    DATA_DIR = os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")), "data")
 
 class SettingsManager:
-    def __init__(self, db_path='/opt/monitoring/data/settings.db'):
-        self.db_path = db_path
+    def __init__(self, db_path=None):
+        self.db_path = db_path or os.path.join(DATA_DIR, "settings.db")
         self.init_database()
     
     def get_connection(self):

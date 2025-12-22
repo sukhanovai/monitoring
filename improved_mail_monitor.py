@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
 /improved_mail_monitor.py
-Server Monitoring System v4.14.46
+Server Monitoring System v4.15.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Mailbox monitoring
 Система мониторинга серверов
-Версия: 4.14.46
+Версия: 4.15.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг почтового ящика
@@ -22,17 +22,19 @@ from email import message_from_bytes
 import email.policy
 from datetime import datetime
 from email.utils import parsedate_to_datetime
-from app.config.settings import (
+from config.settings import (
     PROXMOX_HOSTS, BACKUP_STATUS_MAP, BACKUP_DATABASE_CONFIG,
-    DATABASE_BACKUP_CONFIG, BACKUP_PATTERNS
+    DATABASE_BACKUP_CONFIG, BACKUP_PATTERNS, LOG_DIR
 )
+
+os.makedirs(LOG_DIR, exist_ok=True)
 
 # Настройка логирования
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('/opt/monitoring/logs/mail_monitor.log'),
+        logging.FileHandler(os.path.join(LOG_DIR, 'mail_monitor.log')),
         logging.StreamHandler()
     ]
 )

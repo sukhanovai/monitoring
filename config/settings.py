@@ -1,11 +1,11 @@
 """
 /config/settings.py
-Server Monitoring System v4.14.46
+Server Monitoring System v4.15.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Application settings - default values
 Система мониторинга серверов
-Версия: 4.14.46
+Версия: 4.15.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Настройки приложения - значения по умолчанию
@@ -13,15 +13,20 @@ Application settings - default values
 
 import os
 from datetime import time as dt_time
+from pathlib import Path
 from typing import Dict, List, Any
 
 # Режим отладки
 DEBUG_MODE = False
 
 # === БАЗОВЫЕ ПУТИ ===
-BASE_DIR = "/opt/monitoring"
+_DEFAULT_BASE = Path(__file__).resolve().parents[1]
+BASE_DIR = str(Path(os.environ.get("MONITORING_BASE_DIR", _DEFAULT_BASE)).resolve())
 DATA_DIR = os.path.join(BASE_DIR, "data")
 LOG_DIR = os.path.join(BASE_DIR, "logs")
+
+os.makedirs(DATA_DIR, exist_ok=True)
+os.makedirs(LOG_DIR, exist_ok=True)
 
 # === БАЗОВЫЕ НАСТРОЙКИ ===
 TELEGRAM_TOKEN = ""

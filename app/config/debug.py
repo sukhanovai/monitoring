@@ -1,6 +1,6 @@
 """
 /app/config/debug.py
-Server Monitoring System v4.14.46
+Server Monitoring System v4.15.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring system debug configuration
@@ -15,8 +15,13 @@ import os
 import json
 from datetime import datetime
 
+try:
+    from config.settings import DATA_DIR  # type: ignore
+except Exception:
+    DATA_DIR = os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")), "data")
+
 # Путь к файлу конфигурации отладки
-DEBUG_CONFIG_FILE = '/opt/monitoring/data/debug_config.json'
+DEBUG_CONFIG_FILE = os.path.join(DATA_DIR, 'debug_config.json')
 
 class DebugConfig:
     """Класс для управления настройками отладки"""

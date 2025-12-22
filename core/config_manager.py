@@ -1,11 +1,11 @@
 """
 /core/config_manager.py
-Server Monitoring System v4.14.46
+Server Monitoring System v4.15.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Configuration Manager
 Система мониторинга серверов
-Версия: 4.14.46
+Версия: 4.15.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Менеджер конфигурации
@@ -19,20 +19,25 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 from lib.logging import debug_log, error_log, setup_logging
 
+try:
+    from config.settings import DATA_DIR  # type: ignore
+except Exception:
+    DATA_DIR = os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")), "data")
+
 # Логгер для этого модуля
 _logger = setup_logging("config")
 
 class ConfigManager:
     """Менеджер конфигурации с поддержкой базы данных"""
     
-    def __init__(self, db_path: str = '/opt/monitoring/data/settings.db'):
+    def __init__(self, db_path: Optional[str] = None):
         """
         Инициализация менеджера конфигурации
         
         Args:
             db_path: Путь к файлу базы данных
         """
-        self.db_path = db_path
+        self.db_path = db_path or os.path.join(DATA_DIR, "settings.db")
         self._cache = {}
         self._local = threading.local()
         self._connection = None

@@ -1,24 +1,27 @@
 #!/usr/bin/env python3
 """
 /main.py
-Server Monitoring System v4.14.46
+Server Monitoring System v4.15.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Main launch module
 Система мониторинга серверов
-Версия: 4.14.46
+Версия: 4.15.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль запуска
 """
 
+import os
 import sys
 import logging
 import threading
+from pathlib import Path
 
-# Явно фиксируем корень проекта
-sys.path.insert(0, '/opt/monitoring')
-
+PROJECT_ROOT = Path(__file__).resolve().parent
+BASE_DIR = Path(os.environ.get("MONITORING_BASE_DIR", PROJECT_ROOT / "opt" / "monitoring")).resolve()
+BASE_DIR.mkdir(parents=True, exist_ok=True)
+sys.path.insert(0, str(BASE_DIR))
 
 def main():
     # ------------------------------------------------------------------

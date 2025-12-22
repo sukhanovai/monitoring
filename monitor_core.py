@@ -1,11 +1,11 @@
 """
 /monitor_core.py
-Server Monitoring System v4.14.46
+Server Monitoring System v4.15.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core system
 Система мониторинга серверов
-Версия: 4.14.46
+Версия: 4.15.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Ядро системы
@@ -15,7 +15,7 @@ Core system
 from lib.logging import debug_log
 from lib.alerts import send_alert
 from lib.utils import progress_bar, format_duration
-from config.settings import DEBUG_MODE
+from config.settings import DEBUG_MODE, DATA_DIR
 from core.monitor import monitor
 from modules.availability import availability_checker
 from modules.resources import resources_checker
@@ -31,7 +31,6 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from app import server_checker, logger
 from lib.logging import debug_log
 from lib.utils import progress_bar, format_duration, safe_import
-from config.settings import DEBUG_MODE
 from extensions.server_checks import check_server_availability
 
 # Глобальные переменные
@@ -1988,7 +1987,7 @@ def get_backup_summary_for_report(period_hours=16):
         import os
         from datetime import datetime, timedelta
 
-        db_path = "/opt/monitoring/data/backups.db"
+        db_path = os.path.join(DATA_DIR, "backups.db")
 
         if not os.path.exists(db_path):
             debug_log(f"❌ База данных не найдена: {db_path}")
@@ -2194,7 +2193,7 @@ def debug_backup_data():
         import os
         from datetime import datetime, timedelta
 
-        db_path = "/opt/monitoring/data/backups.db"
+        db_path = os.path.join(DATA_DIR, "backups.db")
 
         if not os.path.exists(db_path):
             debug_log("❌ База данных backups.db не существует!")

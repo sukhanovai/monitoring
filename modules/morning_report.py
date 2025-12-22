@@ -1,11 +1,11 @@
 """
 /modules/morning_report.py
-Server Monitoring System v4.14.46
+Server Monitoring System v4.15.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Morning report module
 Система мониторинга серверов
-Версия: 4.14.46
+Версия: 4.15.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль утреннего отчета
@@ -17,7 +17,7 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 
 from lib.logging import debug_log
-from config.settings import DATA_COLLECTION_TIME
+from config.settings import DATA_COLLECTION_TIME, DATA_DIR
 
 class MorningReport:
     """Класс для генерации утреннего отчета"""
@@ -220,7 +220,7 @@ class MorningReport:
         try:
             debug_log(f"🔄 Сбор данных о бэкапах за {period_hours} часов...")
             
-            db_path = "/opt/monitoring/data/backups.db"
+            db_path = os.path.join(DATA_DIR, "backups.db")
             
             if not os.path.exists(db_path):
                 debug_log(f"❌ База данных не найдена: {db_path}")

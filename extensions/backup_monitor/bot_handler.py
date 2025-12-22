@@ -1,22 +1,24 @@
 """
 /extensions/backup_monitor/bot_handler.py
-Server Monitoring System v4.14.46
+Server Monitoring System v4.15.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring Proxmox backups
 Система мониторинга серверов
-Версия: 4.14.46
+Версия: 4.15.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг бэкапов Proxmox
 """
 
 import logging
+import os
 import sys
 from datetime import datetime, timedelta
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CommandHandler, CallbackQueryHandler
 import traceback
+from config.settings import BASE_DIR, DATA_DIR, LOG_DIR
 from lib.logging import debug_log
 from extensions.backup_monitor.backup_handlers import (
     show_main_menu,
@@ -55,7 +57,7 @@ logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('/opt/monitoring/bot_debug.log'),
+        logging.FileHandler(os.path.join(LOG_DIR, 'bot_debug.log')),
         logging.StreamHandler(sys.stdout)
     ]
 )
@@ -77,9 +79,8 @@ except ImportError as e:
     logger.error(f"❌ Ошибка импорта модулей: {e}")
     # Альтернативный импорт для случаев, когда относительные импорты не работают
     try:
-        import os
         import sys
-        sys.path.append('/opt/monitoring/extensions/backup_monitor')
+        sys.path.append(os.path.join(BASE_DIR, 'extensions', 'backup_monitor'))
         from .backup_utils import BackupBase, StatusCalculator, DisplayFormatters
         from .backup_handlers import (
             create_main_menu, create_navigation_buttons,
@@ -115,7 +116,7 @@ class BackupMonitorBot(BackupBase):
             import json
             import sqlite3
 
-            db_path = "/opt/monitoring/data/settings.db"
+            db_path = os.path.join(DATA_DIR, "settings.db")
             conn = sqlite3.connect(db_path)
             cur = conn.cursor()
             cur.execute("SELECT value FROM settings WHERE key='DATABASE_CONFIG' LIMIT 1")
