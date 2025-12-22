@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v4.14.45
+Server Monitoring System v4.14.46
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 4.14.45
+Версия: 4.14.46
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов
@@ -654,112 +654,75 @@ def show_database_backups_summary(query, backup_bot, hours):
         logger.error(f"Ошибка в show_database_backups_summary: {e}")
         query.edit_message_text("❌ Ошибка при получении данных")
 
-def format_database_details(backup_bot, backup_type, db_name, hours=168):
-    """Форматирует детальную информацию по БД"""
-    # Вспомогательная функция: безопасная строка для Markdown (version=1)
-    def _md(val) -> str:
-        return escape_markdown(str(val or ""), version=1)
+def _esc_md(text: str) -> str:
+    """Экранирует спецсимволы Markdown (parse_mode='Markdown')."""
+    if text is None:
+        return ""
+    s = str(text)
+    # для Markdown v1 достаточно экранировать базовые символы
+    return (s.replace("\\", "\\\\")
+             .replace("_", "\\_")
+             .replace("*", "\\*")
+             .replace("[", "\\[")
+             .replace("`", "\\`"))
 
+def format_database_details(backup_bot, backup_type, db_name, hours=168):
+    """Форматирует детальную информацию по БД."""
     try:
-        # Отображаемое имя БД
         display_names = backup_bot.get_database_display_names() or {}
         display_name = display_names.get(db_name, db_name)
 
-        # Данные из БД
         details = backup_bot.get_database_details(backup_type, db_name, hours)
-
-        # Приводим к безопасному виду для Markdown
-        display_name_md = _md(display_name)
-        type_display_md = _md(formatters.get_type_display(backup_type))
-        hours_md = _md(hours)
-
         if not details:
-            return (
-                f"📋 *Детали по {display_name_md}*\n\n"
-                f"Нет данных за последние {hours_md} часов"
-            )
+            return f"📋 Детали по {_esc_md(display_name)}\n\nНет данных за последние {hours} часов"
 
-        # message
-        message = (
-            f"📋 *Детали по {display_name_md}*\n"
-            f"*Тип:* {type_display_md}\n"
-            f"*Период:* {hours_md} часов\n\n"
-        )
+        type_display = formatters.get_type_display(backup_type)
 
-        # Статистика (детали: (status, task_type, error_count, subject, received_at))
-        success_count = 0
-        failed_count = 0
-        total_count = 0
+        message = f"📋 *Детали по {_esc_md(display_name)}*\n"
+        message += f"*Тип:* {_esc_md(type_display)}\n"
+        message += f"*Период:* {hours} часов\n\n"
 
-        for row in details:
-            if not row:
-                continue
-            status = row[0] if len(row) > 0 else None
-            total_count += 1
-            if status == "success":
-                success_count += 1
-            elif status == "failed":
-                failed_count += 1
+        # expected tuple: (status, task_type, error_count, subject, received_at)
+        success_count = sum(1 for d in details if d and d[0] == 'success')
+        failed_count = sum(1 for d in details if d and d[0] == 'failed')
+        total_count = len(details)
 
-        message += (
-            "📊 *Статистика:*\n"
-            f"✅ Успешных: {_md(success_count)}\n"
-            f"❌ Ошибок: {_md(failed_count)}\n"
-            f"📈 Всего: {_md(total_count)}\n\n"
-        )
+        message += "📊 *Статистика:*\n"
+        message += f"✅ Успешных: {success_count}\n"
+        message += f"❌ Ошибок: {failed_count}\n"
+        message += f"📈 Всего: {total_count}\n\n"
 
-        # Последние бэкапы
         message += "⏰ *Последние бэкапы:*\n"
 
         task_type_names = {
-            "database_dump": "Дамп БД",
-            "client_database_dump": "Дамп клиентской БД",
-            "cobian_backup": "Резервное копирование",
-            "yandex_backup": "Yandex Backup",
+            'database_dump': 'Дамп БД',
+            'client_database_dump': 'Дамп клиентской БД',
+            'cobian_backup': 'Резервное копирование',
+            'yandex_backup': 'Yandex Backup'
         }
 
-        for row in (details[:5] if isinstance(details, list) else list(details)[:5]):
-            status = row[0] if len(row) > 0 else ""
-            task_type = row[1] if len(row) > 1 else ""
-            error_count = row[2] if len(row) > 2 else 0
-            # subject = row[3] if len(row) > 3 else ""  # пока не выводим, но если будете — обязательно через _md()
-            received_at = row[4] if len(row) > 4 else ""
-
-            status_icon = "✅" if status == "success" else "❌"
-
-            # Время
-            time_str = ""
+        for status, task_type, error_count, subject, received_at in details[:5]:
+            status_icon = "✅" if status == 'success' else "❌"
             try:
-                backup_time = datetime.strptime(str(received_at), "%Y-%m-%d %H:%M:%S")
-                time_str = backup_time.strftime("%d.%m %H:%M")
+                backup_time = datetime.strptime(received_at, '%Y-%m-%d %H:%M:%S')
+                time_str = backup_time.strftime('%d.%m %H:%M')
             except Exception:
-                time_str = str(received_at)[:16] if received_at else "N/A"
+                time_str = (received_at or "")[:16]
 
-            task_display = task_type_names.get(task_type, task_type or "Резервное копирование")
+            task_display = task_type_names.get(task_type, task_type or 'Резервное копирование')
 
-            # Экранируем динамические части
-            time_str_md = _md(time_str)
-            status_md = _md(status)
-            task_display_md = _md(task_display)
-
-            line = f"{status_icon} *{time_str_md}* - {status_md} - {task_display_md}"
-
-            try:
-                if error_count and int(error_count) > 0:
-                    line += f" (ошибок: {_md(int(error_count))})"
-            except Exception:
-                # если error_count не число — просто игнорируем
-                pass
-
+            line = f"{status_icon} *{_esc_md(time_str)}* - {_esc_md(status)} - {_esc_md(task_display)}"
+            if error_count and int(error_count) > 0:
+                line += f" (ошибок: {int(error_count)})"
             message += line + "\n"
 
-        message += f"\n🕒 *Обновлено:* {_md(datetime.now().strftime('%H:%M:%S'))}"
+        message += f"\n🕒 *Обновлено:* {datetime.now().strftime('%H:%M:%S')}"
         return message
 
     except Exception as e:
-        logger.error(f"Ошибка в format_database_details: {e}", exc_info=True)
+        logger.exception(f"Ошибка в format_database_details: {e}")
         return f"❌ Ошибка при получении деталей БД: {e}"
-
+    
 def show_database_details(query, backup_bot, backup_type, db_name):
     """Показывает детальную информацию по БД"""
     try:

@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/bot_handler.py
-Server Monitoring System v4.14.45
+Server Monitoring System v4.14.46
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring Proxmox backups
 Система мониторинга серверов
-Версия: 4.14.45
+Версия: 4.14.46
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг бэкапов Proxmox
@@ -105,24 +105,45 @@ class BackupMonitorBot(BackupBase):
 
     # === БАЗОВЫЕ МЕТОДЫ ===
     
-    def get_database_display_names(self):
-        """Получает отображаемые имена баз данных из конфигурации"""
-        from config.settings import DATABASE_BACKUP_CONFIG
-        
-        display_names = {}
-        
-        # Объединяем все базы из конфигурации
-        config_sections = [
-            DATABASE_BACKUP_CONFIG["company_databases"],
-            DATABASE_BACKUP_CONFIG["barnaul_backups"], 
-            DATABASE_BACKUP_CONFIG["client_databases"],
-            DATABASE_BACKUP_CONFIG["yandex_backups"]
-        ]
-        
-        for section in config_sections:
-            display_names.update(section)
-        
-        return display_names
+    def get_database_display_names(self) -> dict:
+        """
+        Возвращает отображаемые имена БД (ключ -> display name),
+        берём из SETTINGS.DB: settings.key='DATABASE_CONFIG'
+        Формат DATABASE_CONFIG: {category: {db_key: db_display_name, ...}, ...}
+        """
+        try:
+            import json
+            import sqlite3
+
+            db_path = "/opt/monitoring/data/settings.db"
+            conn = sqlite3.connect(db_path)
+            cur = conn.cursor()
+            cur.execute("SELECT value FROM settings WHERE key='DATABASE_CONFIG' LIMIT 1")
+            row = cur.fetchone()
+            conn.close()
+
+            if not row or not row[0]:
+                return {}
+
+            raw = row[0]
+            cfg = json.loads(raw) if isinstance(raw, str) else (raw or {})
+            if not isinstance(cfg, dict):
+                return {}
+
+            # Собираем в плоский словарь: db_key -> display_name
+            names = {}
+            for _category, db_map in cfg.items():
+                if not isinstance(db_map, dict):
+                    continue
+                for db_key, display_name in db_map.items():
+                    # display_name может быть None/"" — подстрахуемся
+                    names[str(db_key)] = str(display_name) if display_name else str(db_key)
+
+            return names
+
+        except Exception as e:
+            logger.exception(f"get_database_display_names: failed: {e}")
+            return {}
 
     # === МЕТОДЫ ДЛЯ ХОСТОВ ===
     
