@@ -1,11 +1,11 @@
 """
 /bot/handlers/callbacks.py
-Server Monitoring System v4.14.41
+Server Monitoring System v4.14.42
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 A single router for callbacks.
 Система мониторинга серверов
-Версия: 4.14.41
+Версия: 4.14.42
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единый router callback’ов.
@@ -225,8 +225,7 @@ def callback_router(update, context):
     # ------------------------------------------------
     # БЭКАПЫ
     # ------------------------------------------------
-    elif data == "backup_main":
-        debug_log("🧪 BACKUP MAIN: explicit branch hit")
+    elif data.startswith("backup_") or data.startswith("db_"):
         if not extension_manager.is_extension_enabled("backup_monitor"):
             query.edit_message_text("💾 Модуль бэкапов отключён")
             return
@@ -234,53 +233,6 @@ def callback_router(update, context):
         from extensions.backup_monitor.bot_handler import backup_callback
         backup_callback(update, context)
         return
-
-    elif data and data.startswith('backup_'):
-        query = update.callback_query  # локально фиксируем, чтобы точно был в области видимости
-        debug_log(f"➡️ BACKUP ROUTE: entering branch, data={data}")
-
-        if not query:
-            debug_log("❌ BACKUP ROUTE: callback_query is None")
-            return
-
-        # Можно ответить здесь, чтобы Telegram не ругался на долгий обработчик
-        try:
-            query.answer()
-        except Exception:
-            pass
-
-        if not extension_manager.is_extension_enabled('backup_monitor'):
-            debug_log("⛔ BACKUP ROUTE: backup_monitor extension is disabled")
-            query.edit_message_text("💾 Модуль бэкапов отключён")
-            return
-
-        try:
-            debug_log("📦 BACKUP ROUTE: importing backup_callback...")
-            from extensions.backup_monitor.bot_handler import backup_callback
-            debug_log("✅ BACKUP ROUTE: import OK, calling backup_callback()")
-
-            backup_callback(update, context)
-
-            debug_log("✅ BACKUP ROUTE: backup_callback() returned successfully")
-            return
-
-        except Exception as e:
-            import traceback
-            tb = traceback.format_exc()
-            debug_log(f"💥 BACKUP ROUTE: exception: {e}\n{tb}")
-
-            # Пытаемся показать ошибку пользователю
-            try:
-                query.edit_message_text("❌ Ошибка в модуле бэкапов. Подробности в логах.")
-            except Exception:
-                try:
-                    context.bot.send_message(
-                        chat_id=update.effective_chat.id,
-                        text="❌ Ошибка в модуле бэкапов. Подробности в логах."
-                    )
-                except Exception:
-                    debug_log("💥 BACKUP ROUTE: failed to notify user about error")
-            return
 
     # ------------------------------------------------
     # РАСШИРЕНИЯ

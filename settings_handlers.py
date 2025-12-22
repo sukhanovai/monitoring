@@ -1,11 +1,11 @@
 """
 /settings_handlers.py
-Server Monitoring System v4.14.41
+Server Monitoring System v4.14.42
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 4.14.41
+Версия: 4.14.42
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -19,7 +19,7 @@ import json
 BACKUP_SETTINGS_CALLBACKS = {
     'backup_times',
     'backup_patterns',
-    'backup_databases',
+    'settings_backup_databases',
     'backup_db_add_category'
 }
 
@@ -937,7 +937,7 @@ def add_database_category_handler(update, context):
         "Скоро здесь можно будет добавлять новые категории БД для мониторинга.",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')]
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_databases')]
         ])
     )
 
@@ -955,7 +955,7 @@ def edit_database_category_handler(update, context):
         for category in db_config.keys():
             keyboard.append([InlineKeyboardButton(f"✏️ {category}", callback_data=f'edit_category_{category}')])
     
-    keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')])
+    keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_databases')])
     
     query.edit_message_text(
         "✏️ *Редактирование категорий баз данных*\n\n"
@@ -978,7 +978,7 @@ def delete_database_category_handler(update, context):
         for category in db_config.keys():
             keyboard.append([InlineKeyboardButton(f"🗑️ {category}", callback_data=f'delete_category_{category}')])
     
-    keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')])
+    keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_databases')])
     
     query.edit_message_text(
         "🗑️ *Удаление категории баз данных*\n\n"
@@ -1014,7 +1014,7 @@ def view_all_databases_handler(update, context):
         message,
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')]
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_databases')]
         ])
     )
 
