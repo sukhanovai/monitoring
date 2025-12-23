@@ -1,11 +1,11 @@
 """
 /modules/availability.py
-Server Monitoring System v4.15.3
+Server Monitoring System v4.15.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Server availability check module
 Система мониторинга серверов
-Версия: 4.15.3
+Версия: 4.15.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль проверки доступности серверов
@@ -16,7 +16,7 @@ from datetime import datetime
 from typing import Dict, List, Tuple, Any
 
 from lib.logging import debug_log
-from config.settings import MAX_FAIL_TIME
+from config import MAX_FAIL_TIME
 from core.checker import ServerChecker
 
 class AvailabilityChecker:

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
 /main.py
-Server Monitoring System v4.15.3
+Server Monitoring System v4.15.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Main launch module
 Система мониторинга серверов
-Версия: 4.15.3
+Версия: 4.15.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль запуска
@@ -14,6 +14,7 @@ Main launch module
 
 import os
 import sys
+import argparse
 import logging
 import threading
 from pathlib import Path
@@ -22,6 +23,108 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 BASE_DIR = Path(os.environ.get("MONITORING_BASE_DIR", PROJECT_ROOT / "opt" / "monitoring")).resolve()
 BASE_DIR.mkdir(parents=True, exist_ok=True)
 sys.path.insert(0, str(BASE_DIR))
+
+
+def build_arg_parser() -> argparse.ArgumentParser:
+    """Создаёт парсер аргументов для CLI."""
+    parser = argparse.ArgumentParser(description="Server Monitoring System")
+    try:
+        from core.task_router import TASK_ROUTES
+        parser.add_argument(
+            "--check",
+            choices=list(TASK_ROUTES.keys()),
+            help="Выполнить задачу проверки и завершиться",
+        )
+    except Exception:
+        parser.add_argument(
+            "--check",
+            help="Выполнить задачу проверки и завершиться",
+        )
+
+    parser.add_argument(
+        "--server",
+        help="IP или имя сервера для точечной проверки",
+    )
+    parser.add_argument(
+        "--mode",
+        choices=["availability", "resources"],
+        default="availability",
+        help="Тип точечной проверки (для targeted_checks)",
+    )
+    parser.add_argument(
+        "--reload-servers",
+        action="store_true",
+        help="Принудительно перечитать список серверов перед проверкой",
+    )
+    return parser
+
+
+def run_cli_checks(args: argparse.Namespace) -> tuple[bool, int]:
+    """
+    Обрабатывает CLI-команды без запуска Telegram-бота.
+
+    Returns:
+        handled: Был ли обработан CLI-режим
+        exit_code: Код завершения для sys.exit
+    """
+    if not args.check:
+        return False, 0
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    )
+
+    from core.task_router import run_task
+
+    success, payload = run_task(
+        args.check,
+        server_id=args.server,
+        mode=args.mode,
+        force_reload=args.reload_servers,
+    )
+
+    if not success:
+        print(payload)
+        return True, 1
+
+    if args.check == "availability":
+        up = len(payload.get("up", []))
+        down = payload.get("down", [])
+        print(f"📡 Доступность: {up} доступно, {len(down)} недоступно")
+        if down:
+            print("⚠️ Недоступные серверы:")
+            for server in down:
+                name = server.get("name", server.get("ip", ""))
+                method = server.get("check_method", "неизвестно")
+                print(f" - {name} ({server.get('ip', '')}): {method}")
+    elif args.check == "resources":
+        results = payload.get("results", [])
+        stats = payload.get("stats", {})
+        print(
+            "📊 Ресурсы: "
+            f"{stats.get('success', 0)}/{stats.get('total', 0)} успешно, "
+            f"{stats.get('failed', 0)} ошибок"
+        )
+        for item in results:
+            server = item.get("server", {})
+            name = server.get("name", server.get("ip", ""))
+            resources = item.get("resources") or {}
+            if item.get("success"):
+                print(
+                    f" - {name}: CPU {resources.get('cpu', '?')}%, "
+                    f"RAM {resources.get('ram', '?')}%, "
+                    f"Disk {resources.get('disk', '?')}%"
+                )
+            else:
+                print(f" - {name}: ресурсы недоступны")
+    elif args.check == "targeted_checks":
+        message = payload.get("message", "")
+        print("🎯 Целевая проверка:")
+        print(message)
+
+    return True, 0 if success else 1
+
 
 def main():
     # ------------------------------------------------------------------
@@ -182,4 +285,11 @@ def main():
 
 
 if __name__ == "__main__":
+    parser = build_arg_parser()
+    cli_args = parser.parse_args()
+
+    handled, exit_code = run_cli_checks(cli_args)
+    if handled:
+        sys.exit(exit_code)
+        
     main()

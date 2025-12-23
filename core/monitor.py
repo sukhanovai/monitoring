@@ -1,11 +1,11 @@
 """
 /core/monitor.py
-Server Monitoring System v4.15.3
+Server Monitoring System v4.15.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core monitoring module
 Система мониторинга серверов
-Версия: 4.15.3
+Версия: 4.15.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль мониторинга
@@ -18,13 +18,13 @@ from typing import Dict, List
 
 from lib.logging import debug_log
 from lib.alerts import send_alert
-from config.settings import (
+from config import (
     CHECK_INTERVAL,
     MAX_FAIL_TIME,
     RESOURCE_CHECK_INTERVAL,
     DATA_COLLECTION_TIME,
     SILENT_START,
-    SILENT_END
+    SILENT_END,
 )
 from modules.availability import availability_checker
 from modules.resources import resources_checker

@@ -1,11 +1,11 @@
 """
 /modules/resources.py
-Server Monitoring System v4.15.3
+Server Monitoring System v4.15.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Server resource monitoring module
 Система мониторинга серверов
-Версия: 4.15.3
+Версия: 4.15.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль проверки ресурсов серверов
@@ -18,11 +18,11 @@ from typing import Dict, List, Optional, Tuple, Any
 
 from lib.logging import debug_log
 from lib.utils import progress_bar
-from config.settings import (
-    RESOURCE_CHECK_INTERVAL, 
+from config import (
+    RESOURCE_CHECK_INTERVAL,
     RESOURCE_ALERT_INTERVAL,
     RESOURCE_THRESHOLDS,
-    RESOURCE_ALERT_THRESHOLDS
+    RESOURCE_ALERT_THRESHOLDS,
 )
 
 class ResourcesChecker:

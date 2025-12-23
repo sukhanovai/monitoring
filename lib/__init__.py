@@ -1,11 +1,11 @@
 """
 /lib/__init__.py
-Server Monitoring System v4.15.3
+Server Monitoring System v4.15.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Utility library package
 Система мониторинга серверов
-Версия: 4.15.3
+Версия: 4.15.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Пакет библиотеки утилит
@@ -23,4 +23,7 @@ __all__ = [
     'send_alert', 'init_telegram_bot', 'set_silent_override', 'get_silent_override',
     'is_silent_time', 'get_alert_history', 'clear_alert_history', 'get_alert_stats',
     'configure_alerts',
+    'safe_import', 'format_duration', 'progress_bar', 'is_proxmox_server',
+    'parse_time_string', 'get_size_string',
+    'check_ping', 'check_port',
 ]
