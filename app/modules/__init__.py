@@ -1,11 +1,11 @@
 """
 /app/modules/__init__.py
-Server Monitoring System v4.15.5
+Server Monitoring System v4.15.6
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring system modules
 Система мониторинга серверов
-Версия: 4.15.5
+Версия: 4.15.6
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модули системы мониторинга

@@ -1,11 +1,11 @@
 """
 /bot/menu/handlers.py
-Server Monitoring System v4.15.5
+Server Monitoring System v4.15.6
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Displaying the menu (without any logic)
 Система мониторинга серверов
-Версия: 4.15.5
+Версия: 4.15.6
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Отображение меню (без логики)
