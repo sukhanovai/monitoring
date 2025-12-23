@@ -1,20 +1,18 @@
 #!/usr/bin/env python3
 """
 /improved_mail_monitor.py
-Server Monitoring System v4.15.7
+Server Monitoring System v4.15.8
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Mailbox monitoring
 Система мониторинга серверов
-Версия: 4.15.7
+Версия: 4.15.8
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг почтового ящика
 """
 
-import os
 import time
-import logging
 import sqlite3
 import re
 import shutil
@@ -22,23 +20,18 @@ from email import message_from_bytes
 import email.policy
 from datetime import datetime
 from email.utils import parsedate_to_datetime
+from pathlib import Path
 from config.settings import (
     PROXMOX_HOSTS, BACKUP_STATUS_MAP, BACKUP_DATABASE_CONFIG,
-    DATABASE_BACKUP_CONFIG, BACKUP_PATTERNS, LOG_DIR
+    DATABASE_BACKUP_CONFIG, BACKUP_PATTERNS, LOG_DIR,
+    MAILDIR_NEW, MAILDIR_CUR, MAIL_MONITOR_LOG_FILE,
 )
+from lib.logging import setup_logging
 
-os.makedirs(LOG_DIR, exist_ok=True)
+LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 # Настройка логирования
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(os.path.join(LOG_DIR, 'mail_monitor.log')),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger(__name__)
+logger = setup_logging("mail_monitor", log_file=MAIL_MONITOR_LOG_FILE)
 
 def get_database_patterns_from_config():
     """Правильно извлекает паттерны из конфигурации"""
@@ -108,7 +101,7 @@ class BackupProcessor:
     def init_database(self):
         """Инициализация базы данных"""
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = sqlite3.connect(str(self.db_path))
             cursor = conn.cursor()
             
             cursor.execute('''
@@ -140,19 +133,18 @@ class BackupProcessor:
     
     def process_new_emails(self):
         """Обрабатывает новые письма из директории new"""
-        maildir_new = '/root/Maildir/new'
-        maildir_cur = '/root/Maildir/cur'
-        
-        if not os.path.exists(maildir_new):
+        maildir_new = MAILDIR_NEW
+        maildir_cur = MAILDIR_CUR
+
+        if not maildir_new.exists():
             logger.error(f"Директория не существует: {maildir_new}")
             return 0
         
         processed_count = 0
-        for filename in os.listdir(maildir_new):
-            file_path = os.path.join(maildir_new, filename)
+        for file_path in maildir_new.iterdir():
             
-            if os.path.isfile(file_path):
-                logger.info(f"🔍 Обнаружено новое письмо: {filename}")
+            if file_path.is_file():
+                logger.info(f"🔍 Обнаружено новое письмо: {file_path.name}")
                 
                 # Обрабатываем письмо
                 result = self.parse_email_file(file_path)
@@ -160,22 +152,22 @@ class BackupProcessor:
                 if result:
                     # Перемещаем обработанное письмо в cur
                     try:
-                        new_path = os.path.join(maildir_cur, filename)
-                        shutil.move(file_path, new_path)
-                        logger.info(f"✅ Письмо перемещено в cur: {filename}")
-                        self.processed_files.add(new_path)
+                        new_path = maildir_cur / file_path.name
+                        shutil.move(str(file_path), str(new_path))
+                        logger.info(f"✅ Письмо перемещено в cur: {file_path.name}")
+                        self.processed_files.add(str(new_path))
                     except Exception as e:
                         logger.error(f"❌ Ошибка перемещения письма: {e}")
-                        self.processed_files.add(file_path)
+                        self.processed_files.add(str(file_path))
                     
                     processed_count += 1
                 else:
-                    logger.warning(f"⚠️ Не удалось обработать письмо: {filename}")
+                    logger.warning(f"⚠️ Не удалось обработать письмо: {file_path.name}")
                     # Все равно перемещаем, чтобы не зацикливаться
                     try:
-                        new_path = os.path.join(maildir_cur, filename)
-                        shutil.move(file_path, new_path)
-                        self.processed_files.add(new_path)
+                        new_path = maildir_cur / file_path.name
+                        shutil.move(str(file_path), str(new_path))
+                        self.processed_files.add(str(new_path))
                     except Exception as e:
                         logger.error(f"❌ Ошибка перемещения непрочитанного письма: {e}")
     
@@ -343,8 +335,10 @@ class BackupProcessor:
         try:
             logger.info(f"Обработка файла: {file_path}")
             
-            with open(file_path, 'rb') as f:
-                msg = message_from_bytes(f.read(), policy=email.policy.default)
+            msg = message_from_bytes(
+                Path(file_path).read_bytes(),
+                policy=email.policy.default,
+            )
             
             subject = msg.get('subject', '')
             email_date_str = msg.get('date', '')

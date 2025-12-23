@@ -1,19 +1,19 @@
 """
 /config/db_settings.py
-Server Monitoring System v4.15.7
+Server Monitoring System v4.15.8
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Database-backed settings loader
 Система мониторинга серверов
-Версия: 4.15.7
+Версия: 4.15.8
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Загрузчик настроек из базы данных
 """
 
-import os
 from datetime import time as dt_time
 from typing import Dict, List, Any, Optional
+from pathlib import Path
 from lib.logging import debug_log, error_log, setup_logging
 from core.config_manager import config_manager
 
@@ -31,9 +31,9 @@ except ImportError:
     debug_log("⚠️ Файл config.settings не найден, используем значения по умолчанию")
     
     # Базовые пути
-    BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    DATA_DIR = os.path.join(BASE_DIR, "data")
-    LOG_DIR = os.path.join(BASE_DIR, "logs")
+    BASE_DIR = Path(__file__).resolve().parents[1]
+    DATA_DIR = BASE_DIR / "data"
+    LOG_DIR = BASE_DIR / "logs"
     
     # Базовые настройки
     TELEGRAM_TOKEN = ""

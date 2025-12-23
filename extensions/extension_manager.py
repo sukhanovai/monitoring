@@ -1,28 +1,28 @@
 """
 /extensions/extension_manager.py
-Server Monitoring System v4.15.7
+Server Monitoring System v4.15.8
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Extension Manager for Monitoring
 Система мониторинга серверов
-Версия: 4.15.7
+Версия: 4.15.8
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Менеджер расширений для мониторинга
 """
 
 import json
-import os
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from extensions.settings_extension_manager import DATA_DIR
 
 # Путь к каталогу конфигурации расширений
-EXTENSIONS_CONFIG_DIR = os.path.join(DATA_DIR, "extensions")
+EXTENSIONS_CONFIG_DIR = Path(DATA_DIR) / "extensions"
 
 # Путь к файлу конфигурации расширений
-EXTENSIONS_CONFIG_FILE = os.path.join(EXTENSIONS_CONFIG_DIR, "extensions_config.json")
-LEGACY_EXTENSIONS_CONFIG_FILE = os.path.join(DATA_DIR, "extensions_config.json")
+EXTENSIONS_CONFIG_FILE = EXTENSIONS_CONFIG_DIR / "extensions_config.json"
+LEGACY_EXTENSIONS_CONFIG_FILE = Path(DATA_DIR) / "extensions_config.json"
 
 # Список всех доступных расширений
 AVAILABLE_EXTENSIONS = {
@@ -88,7 +88,7 @@ class ExtensionManager:
 
     def _ensure_config_dir(self) -> None:
         """Создает каталог для конфигов расширений при необходимости"""
-        os.makedirs(self.config_dir, exist_ok=True)
+        Path(self.config_dir).mkdir(parents=True, exist_ok=True)
 
     def _build_default_config(self) -> Dict[str, Dict[str, Any]]:
         """Формирует конфигурацию по умолчанию для всех доступных расширений"""
@@ -108,12 +108,10 @@ class ExtensionManager:
             config: Dict[str, Dict[str, Any]] = {}
             loaded_from_legacy = False
 
-            if os.path.exists(self.config_file):
-                with open(self.config_file, 'r', encoding='utf-8') as f:
-                    config = json.load(f)
-            elif os.path.exists(LEGACY_EXTENSIONS_CONFIG_FILE):
-                with open(LEGACY_EXTENSIONS_CONFIG_FILE, 'r', encoding='utf-8') as f:
-                    config = json.load(f)
+            if self.config_file.exists():
+                config = json.loads(self.config_file.read_text(encoding="utf-8"))
+            elif LEGACY_EXTENSIONS_CONFIG_FILE.exists():
+                config = json.loads(LEGACY_EXTENSIONS_CONFIG_FILE.read_text(encoding="utf-8"))
                 loaded_from_legacy = True
 
             changed = loaded_from_legacy
@@ -150,16 +148,18 @@ class ExtensionManager:
                 config = self.extensions_config
             
             self._ensure_config_dir()
-            with open(self.config_file, 'w', encoding='utf-8') as f:
-                json.dump(config, f, ensure_ascii=False, indent=2)
+            self.config_file.write_text(
+                json.dumps(config, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
             return True
         except Exception as e:
             print(f"❌ Ошибка сохранения конфигурации расширений: {e}")
             return False
     
-    def get_extension_config_path(self, extension_id: str) -> str:
+    def get_extension_config_path(self, extension_id: str) -> Path:
         """Возвращает путь к файлу конфига конкретного расширения"""
-        return os.path.join(self.config_dir, f"{extension_id}.json")
+        return Path(self.config_dir) / f"{extension_id}.json"
 
     def load_extension_config(self, extension_id: str) -> Dict[str, Any]:
         """Загружает конфиг конкретного расширения из его файла"""
@@ -167,11 +167,10 @@ class ExtensionManager:
         path = self.get_extension_config_path(extension_id)
 
         try:
-            if not os.path.exists(path):
+            if not path.exists():
                 return default_config
 
-            with open(path, 'r', encoding='utf-8') as f:
-                return json.load(f)
+            return json.loads(path.read_text(encoding="utf-8"))
         except Exception as e:
             print(f"❌ Ошибка загрузки конфига для {extension_id}: {e}")
             return default_config
@@ -181,8 +180,10 @@ class ExtensionManager:
         path = self.get_extension_config_path(extension_id)
         try:
             self._ensure_config_dir()
-            with open(path, 'w', encoding='utf-8') as f:
-                json.dump(config, f, ensure_ascii=False, indent=2)
+            path.write_text(
+                json.dumps(config, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
             return True, f"✅ Конфиг {extension_id} сохранен"
         except Exception as e:
             return False, f"❌ Ошибка сохранения конфига {extension_id}: {e}"
@@ -307,4 +308,3 @@ def register_enabled_extensions(dispatcher: Any) -> None:
             # не валим весь бот из-за одного расширения
             from lib.logging import debug_log
             debug_log(f"❌ Ошибка регистрации расширения {ext_id}: {e}")
-

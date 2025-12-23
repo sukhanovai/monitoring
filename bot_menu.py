@@ -1,22 +1,29 @@
 """
 /bot_menu.py
-Server Monitoring System v4.15.7
+Server Monitoring System v4.15.8
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Bot menu
 Система мониторинга серверов
-Версия: 4.15.7
+Версия: 4.15.8
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Меню бота
 """
 
-import os
+from pathlib import Path
 from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CommandHandler, CallbackQueryHandler, MessageHandler, Filters
 from lib.logging import debug_log
 from lib.utils import progress_bar, format_duration
-from config.db_settings import DEBUG_MODE, LOG_DIR, DATA_DIR
+from config.db_settings import (
+    DEBUG_MODE,
+    LOG_DIR,
+    DATA_DIR,
+    DEBUG_LOG_FILE,
+    BOT_DEBUG_LOG_FILE,
+    MAIL_MONITOR_LOG_FILE,
+)
 from modules.targeted_checks import targeted_checks
 
 # Ленивые импорты для настроек
@@ -570,7 +577,7 @@ def enable_debug_mode(query):
         query.edit_message_text(
             "🟢 *Отладка включена*\n\n"
             "Теперь все операции будут детально логироваться.\n"
-            f"Логи сохраняются в {os.path.join(LOG_DIR, 'debug.log')}\n\n"
+            f"Логи сохраняются в {DEBUG_LOG_FILE}\n\n"
             "*Включены функции:*\n"
             "• Детальное логирование операций\n"
             "• Отладочные сообщения в консоли\n"
@@ -656,15 +663,16 @@ def show_debug_status(query):
         # Информация о логах
         message += "*Логи:*\n"
         log_files = {
-            'debug.log': os.path.join(LOG_DIR, 'debug.log'),
-            'bot_debug.log': os.path.join(LOG_DIR, 'bot_debug.log'), 
-            'mail_monitor.log': os.path.join(LOG_DIR, 'mail_monitor.log')
+            'debug.log': DEBUG_LOG_FILE,
+            'bot_debug.log': BOT_DEBUG_LOG_FILE,
+            'mail_monitor.log': MAIL_MONITOR_LOG_FILE,
         }
         
         for log_name, log_path in log_files.items():
             try:
-                if os.path.exists(log_path):
-                    log_size = os.path.getsize(log_path)
+                log_path = Path(log_path)
+                if log_path.exists():
+                    log_size = log_path.stat().st_size
                     message += f"• {log_name}: {log_size / 1024 / 1024:.2f} MB\n"
                 else:
                     message += f"• {log_name}: файл не существует\n"
@@ -708,14 +716,13 @@ def show_debug_status(query):
 
 def clear_debug_logs(query):
     """Очищает файлы логов - БЕЗ КНОПКИ ДИАГНОСТИКИ"""
-    import os
     import logging
     
     try:
         log_files = [
-            os.path.join(LOG_DIR, 'debug.log'),
-            os.path.join(LOG_DIR, 'bot_debug.log'),
-            os.path.join(LOG_DIR, 'mail_monitor.log')
+            DEBUG_LOG_FILE,
+            BOT_DEBUG_LOG_FILE,
+            MAIL_MONITOR_LOG_FILE,
         ]
         
         cleared = 0
@@ -723,19 +730,18 @@ def clear_debug_logs(query):
         
         for log_file in log_files:
             try:
-                if os.path.exists(log_file):
-                    with open(log_file, 'w') as f:
-                        f.write('')
+                log_file = Path(log_file)
+                if log_file.exists():
+                    log_file.write_text("", encoding="utf-8")
                     cleared += 1
                     
                     # Переконфигурируем логгер если это debug.log
-                    if log_file.endswith('debug.log'):
+                    if log_file.name == 'debug.log':
                         logging.getLogger().handlers[0].flush()
                 else:
                     # Создаем пустой файл если не существует
-                    os.makedirs(os.path.dirname(log_file), exist_ok=True)
-                    with open(log_file, 'w') as f:
-                        f.write('')
+                    log_file.parent.mkdir(parents=True, exist_ok=True)
+                    log_file.write_text("", encoding="utf-8")
                     cleared += 1
             except Exception as e:
                 errors.append(f"Ошибка очистки {log_file}: {e}")
@@ -789,8 +795,8 @@ def run_diagnostic(query):
                     message += f"{status} {service}: {'доступен' if result == 0 else 'недоступен'}\n"
                 else:
                     # Проверка файла базы данных
-                    db_path = os.path.join(DATA_DIR, 'backups.db')
-                    if os.path.exists(db_path):
+                    db_path = DATA_DIR / 'backups.db'
+                    if db_path.exists():
                         status = "🟢"
                         message += f"{status} {service}: файл существует\n"
                     else:
@@ -876,15 +882,16 @@ def show_advanced_debug(query):
         
         # Добавляем информацию о размерах логов
         log_files = {
-            'debug.log': os.path.join(LOG_DIR, 'debug.log'),
-            'bot_debug.log': os.path.join(LOG_DIR, 'bot_debug.log'),
-            'mail_monitor.log': os.path.join(LOG_DIR, 'mail_monitor.log')
+            'debug.log': DEBUG_LOG_FILE,
+            'bot_debug.log': BOT_DEBUG_LOG_FILE,
+            'mail_monitor.log': MAIL_MONITOR_LOG_FILE,
         }
         
         for log_name, log_path in log_files.items():
             try:
-                if os.path.exists(log_path):
-                    size = os.path.getsize(log_path) / 1024 / 1024
+                log_path = Path(log_path)
+                if log_path.exists():
+                    size = log_path.stat().st_size / 1024 / 1024
                     message += f"• {log_name}: {size:.2f} MB\n"
                 else:
                     message += f"• {log_name}: файл не существует\n"

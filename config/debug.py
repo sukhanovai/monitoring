@@ -1,30 +1,28 @@
 """
 /config/debug.py
-Server Monitoring System v4.15.7
+Server Monitoring System v4.15.8
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring system debug configuration
 Система мониторинга серверов
-Версия: 4.15.7
+Версия: 4.15.8
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Конфигурация отладки системы мониторинга
 """
 
-import os
 import json
 from datetime import datetime
+from pathlib import Path
 
 try:
-    from config.settings import DATA_DIR  # type: ignore
+    from config.settings import DATA_DIR, DEBUG_CONFIG_FILE
 except Exception:
-    DATA_DIR = os.path.join(
-        os.path.abspath(os.path.join(os.path.dirname(__file__), "..")),
-        "data"
-    )
+    DATA_DIR = Path(__file__).resolve().parents[1] / "data"
+    DEBUG_CONFIG_FILE = DATA_DIR / "debug_config.json"
 
 # Путь к файлу конфигурации отладки
-DEBUG_CONFIG_FILE = os.path.join(DATA_DIR, 'debug_config.json')
+DEBUG_CONFIG_FILE = Path(DEBUG_CONFIG_FILE)
 
 
 class DebugConfig:
@@ -37,9 +35,8 @@ class DebugConfig:
     def load_config(self):
         """Загружает конфигурацию отладки"""
         try:
-            if os.path.exists(self.config_file):
-                with open(self.config_file, 'r') as f:
-                    return json.load(f)
+            if self.config_file.exists():
+                return json.loads(self.config_file.read_text(encoding="utf-8"))
             default_config = self.get_default_config()
             self.save_config(default_config)
             return default_config
@@ -53,11 +50,10 @@ class DebugConfig:
             if config is None:
                 config = self.config
 
-            os.makedirs(os.path.dirname(self.config_file), exist_ok=True)
+            self.config_file.parent.mkdir(parents=True, exist_ok=True)
             config['last_modified'] = datetime.now().isoformat()
 
-            with open(self.config_file, 'w') as f:
-                json.dump(config, f, indent=2)
+            self.config_file.write_text(json.dumps(config, indent=2), encoding="utf-8")
             return True
         except Exception as e:
             print(f"❌ Ошибка сохранения конфигурации отладки: {e}")

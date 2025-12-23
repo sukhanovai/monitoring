@@ -1,23 +1,28 @@
 """
 /app/modules/debug.py
-Server Monitoring System v4.15.7
+Server Monitoring System v4.15.8
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Debugging and diagnostics module
 Система мониторинга серверов
-Версия: 4.15.7
+Версия: 4.15.8
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль отладки и диагностики
 """
 
-import os
 import subprocess
 import socket
 import logging
 from datetime import datetime
+from pathlib import Path
 from app.utils.logging import debug_log
-from config.settings_app import DATA_DIR, LOG_DIR
+from config.settings_app import (
+    DATA_DIR,
+    DEBUG_LOG_FILE,
+    BOT_DEBUG_LOG_FILE,
+    MAIL_MONITOR_LOG_FILE,
+)
 
 class DebugManager:
     """Класс управления отладкой и диагностикой"""
@@ -62,8 +67,8 @@ class DebugManager:
                     status["services"][name] = "🟢" if result == 0 else "🔴"
                 else:
                     # Проверка файла базы
-                    db_path = os.path.join(DATA_DIR, 'backups.db')
-                    status["services"][name] = "🟢" if os.path.exists(db_path) else "🔴"
+                    db_path = DATA_DIR / 'backups.db'
+                    status["services"][name] = "🟢" if db_path.exists() else "🔴"
             except Exception as e:
                 status["services"][name] = f"🔴 ({str(e)[:30]})"
         
@@ -83,14 +88,15 @@ class DebugManager:
         
         # Проверка логов
         log_files = {
-            'debug.log': os.path.join(LOG_DIR, 'debug.log'),
-            'bot_debug.log': os.path.join(LOG_DIR, 'bot_debug.log')
+            'debug.log': DEBUG_LOG_FILE,
+            'bot_debug.log': BOT_DEBUG_LOG_FILE,
         }
         
         for name, path in log_files.items():
             try:
-                if os.path.exists(path):
-                    size = os.path.getsize(path) / 1024 / 1024
+                log_path = Path(path)
+                if log_path.exists():
+                    size = log_path.stat().st_size / 1024 / 1024
                     status["logs"][name] = f"{size:.2f} MB"
                 else:
                     status["logs"][name] = "файл не существует"
@@ -145,9 +151,9 @@ class DebugManager:
     def clear_logs(self):
         """Очистка логов"""
         log_files = [
-            os.path.join(LOG_DIR, 'debug.log'),
-            os.path.join(LOG_DIR, 'bot_debug.log'),
-            os.path.join(LOG_DIR, 'mail_monitor.log')
+            DEBUG_LOG_FILE,
+            BOT_DEBUG_LOG_FILE,
+            MAIL_MONITOR_LOG_FILE,
         ]
         
         cleared = 0
@@ -155,18 +161,17 @@ class DebugManager:
         
         for log_file in log_files:
             try:
-                if os.path.exists(log_file):
-                    with open(log_file, 'w') as f:
-                        f.write('')
+                log_file = Path(log_file)
+                if log_file.exists():
+                    log_file.write_text("", encoding="utf-8")
                     cleared += 1
                 else:
                     # Создаем пустой файл если не существует
-                    os.makedirs(os.path.dirname(log_file), exist_ok=True)
-                    with open(log_file, 'w') as f:
-                        f.write('')
+                    log_file.parent.mkdir(parents=True, exist_ok=True)
+                    log_file.write_text("", encoding="utf-8")
                     cleared += 1
             except Exception as e:
-                errors.append(f"{os.path.basename(log_file)}: {str(e)[:50]}")
+                errors.append(f"{Path(log_file).name}: {str(e)[:50]}")
         
         return cleared, errors
     

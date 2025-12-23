@@ -1,51 +1,38 @@
 """
 /app/utils/common.py
-Server Monitoring System v4.15.7
+Server Monitoring System v4.15.8
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 General system utilities
 Система мониторинга серверов
-Версия: 4.15.7
+Версия: 4.15.8
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Общие утилиты системы
 """
 
-import os
 import time
-import logging
 import importlib
 from datetime import datetime
 
 try:
-    from config.settings_app import DEBUG_MODE, LOG_DIR  # type: ignore
+    from config.settings_app import DEBUG_MODE
 except ImportError:
     DEBUG_MODE = False
-    LOG_DIR = os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")), "logs")
-
-DEBUG_LOG_FILE = os.path.join(LOG_DIR, 'debug.log')
+from app.utils.logging import setup_logging as _setup_logging, get_logger
 
 def setup_logging():
     """Настройка централизованного логирования"""
-    log_level = logging.DEBUG if DEBUG_MODE else logging.INFO
-    
-    os.makedirs(LOG_DIR, exist_ok=True)    
-    logging.basicConfig(
-        level=log_level,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler(DEBUG_LOG_FILE),
-            logging.StreamHandler()
-        ]
-    )
-    return logging.getLogger(__name__)
+    return _setup_logging()
 
 def debug_log(message, force=False):
     """Централизованное логирование отладки"""
+    logger = get_logger(__name__)
     if DEBUG_MODE or force:
-        logger = logging.getLogger(__name__)
         logger.debug(message)
-
+    else:
+        logger.info(message)
+        
 def safe_import(module_name, class_name=None):
     """Безопасный импорт с обработкой ошибок"""
     try:

@@ -1,31 +1,47 @@
 """
 /lib/logging.py
-Server Monitoring System v4.15.7
+Server Monitoring System v4.15.8
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Unified logging system
 Система мониторинга серверов
-Версия: 4.15.7
+Версия: 4.15.8
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единая система логирования
 """
 
-import os
 import logging
 import logging.handlers
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
 
 try:
-    from config.settings import LOG_DIR, DEBUG_MODE  # type: ignore
+    from config.settings import (
+        LOG_DIR,
+        DEBUG_MODE,
+        DEBUG_LOG_FILE,
+        BOT_LOG_FILE,
+        MONITOR_LOG_FILE,
+        LOG_FORMAT,
+        LOG_DATE_FORMAT,
+        LOG_MAX_BYTES,
+        LOG_BACKUP_COUNT,
+    )
 except Exception:
-    LOG_DIR = os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")), "logs")
+    LOG_DIR = Path(__file__).resolve().parents[1] / "logs"
     DEBUG_MODE = False
+    LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+    LOG_MAX_BYTES = 10 * 1024 * 1024
+    LOG_BACKUP_COUNT = 5    
 
-DEBUG_LOG_FILE = os.path.join(LOG_DIR, "debug.log")
-BOT_LOG_FILE = os.path.join(LOG_DIR, "bot.log")
-MONITOR_LOG_FILE = os.path.join(LOG_DIR, "monitor.log")
+DEBUG_LOG_FILE = Path(DEBUG_LOG_FILE) if "DEBUG_LOG_FILE" in globals() else LOG_DIR / "debug.log"
+BOT_LOG_FILE = Path(BOT_LOG_FILE) if "BOT_LOG_FILE" in globals() else LOG_DIR / "bot.log"
+MONITOR_LOG_FILE = (
+    Path(MONITOR_LOG_FILE) if "MONITOR_LOG_FILE" in globals() else LOG_DIR / "monitor.log"
+)
 
 # Глобальные переменные
 _loggers = {}
@@ -34,7 +50,8 @@ def setup_logging(
     name: str = "monitoring",
     level: Optional[str] = None,
     log_to_file: bool = True,
-    log_to_console: bool = True
+    log_to_console: bool = True,
+    log_file: Optional[Path] = None,
 ) -> logging.Logger:
     """
     Настройка логирования для модуля
@@ -64,8 +81,8 @@ def setup_logging(
     
     # Форматтер
     formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
+        LOG_FORMAT,
+        datefmt=LOG_DATE_FORMAT,
     )
     
     # Обработчики
@@ -73,13 +90,14 @@ def setup_logging(
     
     if log_to_file:
         # Создаем директорию для логов если нет
-        os.makedirs(LOG_DIR, exist_ok=True)
+        LOG_DIR.mkdir(parents=True, exist_ok=True)
+        target_file = log_file or DEBUG_LOG_FILE
         
         # Файловый обработчик с ротацией
         file_handler = logging.handlers.RotatingFileHandler(
-            DEBUG_LOG_FILE,
-            maxBytes=10*1024*1024,  # 10 MB
-            backupCount=5,
+            target_file,
+            maxBytes=LOG_MAX_BYTES,
+            backupCount=LOG_BACKUP_COUNT,
             encoding='utf-8'
         )
         file_handler.setFormatter(formatter)
@@ -186,16 +204,17 @@ def get_log_file_stats() -> dict:
     for log_file, desc in [
         (DEBUG_LOG_FILE, "Основной лог"),
         (BOT_LOG_FILE, "Лог бота"),
-        (MONITOR_LOG_FILE, "Лог мониторинга")
+        (MONITOR_LOG_FILE, "Лог мониторинга"),
     ]:
         try:
-            if os.path.exists(log_file):
-                size = os.path.getsize(log_file)
-                mtime = datetime.fromtimestamp(os.path.getmtime(log_file))
+            log_path = Path(log_file)
+            if log_path.exists():
+                size = log_path.stat().st_size
+                mtime = datetime.fromtimestamp(log_path.stat().st_mtime)
                 stats[desc] = {
                     "size_mb": size / (1024 * 1024),
                     "modified": mtime.strftime("%Y-%m-%d %H:%M:%S"),
-                    "path": log_file
+                    "path": str(log_path),
                 }
             else:
                 stats[desc] = {"error": "Файл не существует"}
@@ -226,18 +245,17 @@ def clear_logs(log_type: str = "all") -> dict:
     results = {}
     for file_path in files_to_clear:
         try:
-            if os.path.exists(file_path):
-                with open(file_path, 'w') as f:
-                    f.write('')
-                results[os.path.basename(file_path)] = "✅ Очищен"
+            file_path = Path(file_path)
+            if file_path.exists():
+                file_path.write_text("", encoding="utf-8")
+                results[file_path.name] = "✅ Очищен"
             else:
                 # Создаем пустой файл
-                os.makedirs(os.path.dirname(file_path), exist_ok=True)
-                with open(file_path, 'w') as f:
-                    f.write('')
-                results[os.path.basename(file_path)] = "✅ Создан пустой файл"
+                file_path.parent.mkdir(parents=True, exist_ok=True)
+                file_path.write_text("", encoding="utf-8")
+                results[file_path.name] = "✅ Создан пустой файл"
         except Exception as e:
-            results[os.path.basename(file_path)] = f"❌ Ошибка: {str(e)}"
+            results[Path(file_path).name] = f"❌ Ошибка: {str(e)}"
     
     return results
 

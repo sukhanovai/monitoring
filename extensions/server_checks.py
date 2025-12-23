@@ -1,11 +1,11 @@
 """
 /extensions/server_checks.py
-Server Monitoring System v4.15.7
+Server Monitoring System v4.15.8
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Unified server checks: resources, availability, list
 Система мониторинга серверов
-Версия: 4.15.7
+Версия: 4.15.8
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Унифицированные проверки серверов: ресурсы, доступность, список
@@ -32,7 +32,7 @@ from extensions.db_settings_server_checks import (
 )
 from core.checker import ServerChecker
 from lib.logging import debug_log
-sys.path.insert(0, BASE_DIR)
+sys.path.insert(0, str(BASE_DIR))
 
 # Локальный экземпляр проверяющего
 _server_checker = ServerChecker()

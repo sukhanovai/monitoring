@@ -1,25 +1,25 @@
 """
 /extensions/backup_monitor/bot_handler.py
-Server Monitoring System v4.15.7
+Server Monitoring System v4.15.8
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring Proxmox backups
 Система мониторинга серверов
-Версия: 4.15.7
+Версия: 4.15.8
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг бэкапов Proxmox
 """
 
-import logging
-import os
 import sys
 from datetime import datetime, timedelta
+from pathlib import Path
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CommandHandler, CallbackQueryHandler
 import traceback
-from .settings_backup_monitor import BASE_DIR, DATA_DIR, LOG_DIR
-from lib.logging import debug_log
+from .settings_backup_monitor import BASE_DIR, DATA_DIR
+from config.settings import BOT_DEBUG_LOG_FILE
+from lib.logging import debug_log, setup_logging
 from extensions.backup_monitor.backup_handlers import (
     show_main_menu,
     show_today_status,
@@ -53,15 +53,7 @@ def register_handlers(dispatcher):
         debug_log(f"❌ backup_monitor: ошибка регистрации handlers: {e}")
 
 # Настройка логирования
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(os.path.join(LOG_DIR, 'bot_debug.log')),
-        logging.StreamHandler(sys.stdout)
-    ]
-)
-logger = logging.getLogger(__name__)
+logger = setup_logging("backup_monitor_bot", level="DEBUG", log_file=BOT_DEBUG_LOG_FILE)
 
 # Импортируем наши утилиты и обработчики
 try:
@@ -80,7 +72,7 @@ except ImportError as e:
     # Альтернативный импорт для случаев, когда относительные импорты не работают
     try:
         import sys
-        sys.path.append(os.path.join(BASE_DIR, 'extensions', 'backup_monitor'))
+        sys.path.append(str(Path(BASE_DIR) / 'extensions' / 'backup_monitor'))
         from .backup_utils import BackupBase, StatusCalculator, DisplayFormatters
         from .backup_handlers import (
             create_main_menu, create_navigation_buttons,
@@ -116,8 +108,8 @@ class BackupMonitorBot(BackupBase):
             import json
             import sqlite3
 
-            db_path = os.path.join(DATA_DIR, "settings.db")
-            conn = sqlite3.connect(db_path)
+            db_path = Path(DATA_DIR) / "settings.db"
+            conn = sqlite3.connect(str(db_path))
             cur = conn.cursor()
             cur.execute("SELECT value FROM settings WHERE key='DATABASE_CONFIG' LIMIT 1")
             row = cur.fetchone()

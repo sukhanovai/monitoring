@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v4.15.7
+Server Monitoring System v4.15.8
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 4.15.7
+Версия: 4.15.8
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -13,11 +13,10 @@ Web interface
 
 from flask import Flask, jsonify, render_template_string, request
 from .db_settings import WEB_PORT, WEB_HOST
-from .settings import STATS_FILE, DATA_DIR
+from .settings import STATS_FILE
 import threading
 from datetime import datetime
 import json
-import os
 import subprocess
 import sys
 
@@ -740,9 +739,8 @@ def get_monitoring_stats():
     try:
         # Пробуем получить данные из файла статистики
         stats_data = {}
-        if os.path.exists(STATS_FILE):
-            with open(STATS_FILE, 'r') as f:
-                stats_data = json.load(f)
+        if STATS_FILE.exists():
+            stats_data = json.loads(STATS_FILE.read_text(encoding="utf-8"))
         
         # Получаем текущий статус серверов
         from monitor_core import get_current_server_status, monitoring_active, last_check_time

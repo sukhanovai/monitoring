@@ -1,18 +1,17 @@
 """
 /modules/morning_report.py
-Server Monitoring System v4.15.7
+Server Monitoring System v4.15.8
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Morning report module
 Система мониторинга серверов
-Версия: 4.15.7
+Версия: 4.15.8
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль утреннего отчета
 """
 
 import sqlite3
-import os
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 
@@ -220,15 +219,15 @@ class MorningReport:
         try:
             debug_log(f"🔄 Сбор данных о бэкапах за {period_hours} часов...")
             
-            db_path = os.path.join(DATA_DIR, "backups.db")
+            db_path = DATA_DIR / "backups.db"
             
-            if not os.path.exists(db_path):
+            if not db_path.exists():
                 debug_log(f"❌ База данных не найдена: {db_path}")
                 return "❌ База данных бэкапов недоступна\n"
             
             since_time = (datetime.now() - timedelta(hours=period_hours)).strftime('%Y-%m-%d %H:%M:%S')
             
-            conn = sqlite3.connect(db_path)
+            conn = sqlite3.connect(str(db_path))
             cursor = conn.cursor()
             
             # Получаем все хосты за 7 дней

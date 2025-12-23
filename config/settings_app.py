@@ -1,11 +1,11 @@
 """
 /config/settings_app.py
-Server Monitoring System v4.15.7
+Server Monitoring System v4.15.8
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Configuring exchange settings with the monitoring database
 Система мониторинга серверов
-Версия: 4.15.7
+Версия: 4.15.8
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Конфигурация настроек обмена с БД мониторинга
@@ -38,9 +38,24 @@ def get_json_setting(key, default):
 
 # === БАЗОВЫЕ ПУТИ ===
 _DEFAULT_BASE = Path(__file__).resolve().parents[1]
-BASE_DIR = str(Path(os.environ.get("MONITORING_BASE_DIR", _DEFAULT_BASE)).resolve())
-DATA_DIR = os.path.join(BASE_DIR, "data")
-LOG_DIR = os.path.join(BASE_DIR, "logs")
+BASE_DIR = Path(
+    os.environ.get("MONITORING_BASE_DIR", _DEFAULT_BASE)
+).resolve()
+DATA_DIR = BASE_DIR / "data"
+LOG_DIR = BASE_DIR / "logs"
+
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+# === НАСТРОЙКИ ЛОГИРОВАНИЯ ===
+LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+LOG_MAX_BYTES = 10 * 1024 * 1024  # 10 MB
+LOG_BACKUP_COUNT = 5
+
+DEBUG_LOG_FILE = LOG_DIR / "debug.log"
+BOT_DEBUG_LOG_FILE = LOG_DIR / "bot_debug.log"
+MAIL_MONITOR_LOG_FILE = LOG_DIR / "mail_monitor.log"
 
 # === БАЗОВЫЕ НАСТРОЙКИ ===
 TELEGRAM_TOKEN = get_setting('TELEGRAM_TOKEN', "")
@@ -209,8 +224,8 @@ WEB_PORT = get_setting('WEB_PORT', 5000)
 WEB_HOST = get_setting('WEB_HOST', '0.0.0.0')
 
 # === ФАЙЛЫ ДАННЫХ ===
-STATS_FILE = os.path.join(DATA_DIR, "monitoring_stats.json")
-BACKUP_DB_FILE = os.path.join(DATA_DIR, "backups.db")
+STATS_FILE = DATA_DIR / "monitoring_stats.json"
+BACKUP_DB_FILE = DATA_DIR / "backups.db"
 
 # === КОНФИГУРАЦИЯ БЭКАПОВ ===
 PROXMOX_HOSTS = get_json_setting('PROXMOX_HOSTS', {})
@@ -227,10 +242,6 @@ BACKUP_DATABASE_CONFIG = {
 }
 
 DATABASE_BACKUP_CONFIG = DATABASE_CONFIG
-
-# Создаем директорию для данных
-os.makedirs(DATA_DIR, exist_ok=True)
-os.makedirs(LOG_DIR, exist_ok=True)
 
 # === УТИЛИТЫ КОНФИГУРАЦИИ ===
 
@@ -277,4 +288,3 @@ else:
 
 # Отладка
 DEBUG_MODE = False
-DEBUG_LOG_FILE = os.path.join(LOG_DIR, 'debug.log')

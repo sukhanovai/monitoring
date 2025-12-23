@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
 /main.py
-Server Monitoring System v4.15.7
+Server Monitoring System v4.15.8
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Main launch module
 Система мониторинга серверов
-Версия: 4.15.7
+Версия: 4.15.8
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль запуска
@@ -15,10 +15,10 @@ Main launch module
 import os
 import sys
 import argparse
-import logging
 import threading
 from pathlib import Path
 
+from lib.logging import setup_logging
 PROJECT_ROOT = Path(__file__).resolve().parent
 BASE_DIR = Path(os.environ.get("MONITORING_BASE_DIR", PROJECT_ROOT / "opt" / "monitoring")).resolve()
 BASE_DIR.mkdir(parents=True, exist_ok=True)
@@ -80,10 +80,7 @@ def run_cli_checks(args: argparse.Namespace) -> tuple[bool, int]:
     if not args.check:
         return False, 0
 
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-    )
+    setup_logging("cli", level="INFO")
 
     from core.task_router import run_task
 
@@ -146,13 +143,8 @@ def main(args: argparse.Namespace):
         print(f"❌ Не удалось загрузить db_settings: {e}")
         sys.exit(1)
 
-    log_level = logging.DEBUG if DEBUG_MODE else logging.INFO
-    logging.basicConfig(
-        level=log_level,
-        format='%(asctime)s | %(levelname)s | %(name)s | %(message)s'
-    )
-
-    logger = logging.getLogger("main")
+    log_level = "DEBUG" if DEBUG_MODE else "INFO"
+    logger = setup_logging("main", level=log_level)
     logger.info("🚀 Запуск системы мониторинга")
 
     bot_token = TELEGRAM_TOKEN

@@ -1,11 +1,11 @@
 """
 /config/db_settings_app.py
-Server Monitoring System v4.15.7
+Server Monitoring System v4.15.8
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Database Settings Manager
 Система мониторинга серверов
-Версия: 4.15.7
+Версия: 4.15.8
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Менеджер настроек БД
@@ -13,25 +13,25 @@ Database Settings Manager
 
 import sqlite3
 import json
-import os
 from datetime import datetime
+from pathlib import Path
 try:
     from config.settings import DATA_DIR  # type: ignore
 except Exception:
-    DATA_DIR = os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")), "data")
+    DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 
 class SettingsManager:
     def __init__(self, db_path=None):
-        self.db_path = db_path or os.path.join(DATA_DIR, "settings.db")
+        self.db_path = Path(db_path) if db_path else DATA_DIR / "settings.db"
         self.init_database()
     
     def get_connection(self):
         """Получить соединение с БД"""
-        return sqlite3.connect(self.db_path)
+        return sqlite3.connect(str(self.db_path))
     
     def init_database(self):
         """Инициализация базы данных настроек"""
-        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
         
         conn = self.get_connection()
         cursor = conn.cursor()

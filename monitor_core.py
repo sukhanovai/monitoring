@@ -1,11 +1,11 @@
 """
 /monitor_core.py
-Server Monitoring System v4.15.7
+Server Monitoring System v4.15.8
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core system
 Система мониторинга серверов
-Версия: 4.15.7
+Версия: 4.15.8
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Ядро системы
@@ -1988,18 +1988,17 @@ def get_backup_summary_for_report(period_hours=16):
         debug_proxmox_config()
 
         import sqlite3
-        import os
         from datetime import datetime, timedelta
 
-        db_path = os.path.join(DATA_DIR, "backups.db")
+        db_path = DATA_DIR / "backups.db"
 
-        if not os.path.exists(db_path):
+        if not db_path.exists():
             debug_log(f"❌ База данных не найдена: {db_path}")
             return "❌ База данных бэкапов недоступна\n"
 
         since_time = (datetime.now() - timedelta(hours=period_hours)).strftime('%Y-%m-%d %H:%M:%S')
 
-        conn = sqlite3.connect(db_path)
+        conn = sqlite3.connect(str(db_path))
         cursor = conn.cursor()
 
         # ДЕТАЛЬНАЯ ДИАГНОСТИКА: какие хосты есть в базе
@@ -2194,16 +2193,15 @@ def debug_backup_data():
     """Временная функция для отладки данных бэкапов"""
     try:
         import sqlite3
-        import os
         from datetime import datetime, timedelta
 
-        db_path = os.path.join(DATA_DIR, "backups.db")
+        db_path = DATA_DIR / "backups.db"
 
-        if not os.path.exists(db_path):
+        if not db_path.exists():
             debug_log("❌ База данных backups.db не существует!")
             return
 
-        conn = sqlite3.connect(db_path)
+        conn = sqlite3.connect(str(db_path))
         cursor = conn.cursor()
 
         # Проверяем таблицы

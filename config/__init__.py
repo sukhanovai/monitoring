@@ -1,11 +1,11 @@
 """
 /config/__init__.py
-Server Monitoring System v4.15.7
+Server Monitoring System v4.15.8
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Configuration package
 Система мониторинга серверов
-Версия: 4.15.7
+Версия: 4.15.8
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Пакет конфигурации
@@ -14,6 +14,10 @@ Configuration package
 # Сначала импортируем настройки по умолчанию из settings.py
 from .settings import (
     BASE_DIR, DATA_DIR, LOG_DIR,
+    LOG_FORMAT, LOG_DATE_FORMAT, LOG_MAX_BYTES, LOG_BACKUP_COUNT,
+    DEBUG_LOG_FILE, BOT_LOG_FILE, MONITOR_LOG_FILE, BOT_DEBUG_LOG_FILE, MAIL_MONITOR_LOG_FILE,
+    MAILDIR_BASE, MAILDIR_NEW, MAILDIR_CUR,
+    PROC_UPTIME_FILE,    
     TELEGRAM_TOKEN as SETTINGS_TOKEN,
     CHAT_IDS as SETTINGS_CHAT_IDS,
     CHECK_INTERVAL, MAX_FAIL_TIME,
@@ -58,7 +62,12 @@ DEBUG_MODE = DB_DEBUG_MODE if USE_DB else SETTINGS_DEBUG_MODE
 __all__ = [
     # Пути
     'BASE_DIR', 'DATA_DIR', 'LOG_DIR',
-    
+    'LOG_FORMAT', 'LOG_DATE_FORMAT', 'LOG_MAX_BYTES', 'LOG_BACKUP_COUNT',
+    'DEBUG_LOG_FILE', 'BOT_LOG_FILE', 'MONITOR_LOG_FILE', 'BOT_DEBUG_LOG_FILE',
+    'MAIL_MONITOR_LOG_FILE',
+    'MAILDIR_BASE', 'MAILDIR_NEW', 'MAILDIR_CUR',
+    'PROC_UPTIME_FILE',
+        
     # Основные настройки (с приоритетом БД)
     'TELEGRAM_TOKEN', 'CHAT_IDS', 'DEBUG_MODE',
     

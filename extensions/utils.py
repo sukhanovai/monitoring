@@ -1,11 +1,11 @@
 """
 /extensions/utils.py
-Server Monitoring System v4.15.7
+Server Monitoring System v4.15.8
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Utilities: diagnostics, reports, statistics
 Система мониторинга серверов
-Версия: 4.15.7
+Версия: 4.15.8
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль запуска
@@ -13,10 +13,9 @@ Utilities: diagnostics, reports, statistics
 """
 
 import json
-import os
-import time
 from datetime import datetime, timedelta
 from extensions.settings_utils import STATS_FILE, DATA_DIR
+from config.settings import PROC_UPTIME_FILE
 
 # === ДИАГНОСТИКА SSH (из single_check.py) ===
 
@@ -100,10 +99,11 @@ def save_monitoring_stats():
         }
         
         # Создаем директорию если не существует
-        os.makedirs(DATA_DIR, exist_ok=True)
-        
-        with open(STATS_FILE, 'w') as f:
-            json.dump(stats_data, f, indent=2)
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        STATS_FILE.write_text(
+            json.dumps(stats_data, indent=2),
+            encoding="utf-8",
+        )
             
     except Exception as e:
         print(f"❌ Ошибка сохранения статистики: {e}")
@@ -112,8 +112,7 @@ def get_system_uptime():
     """Получает время работы системы"""
     try:
         # Для Linux систем
-        with open('/proc/uptime', 'r') as f:
-            uptime_seconds = float(f.readline().split()[0])
+        uptime_seconds = float(PROC_UPTIME_FILE.read_text(encoding="utf-8").split()[0])
             
         days = int(uptime_seconds // 86400)
         hours = int((uptime_seconds % 86400) // 3600)

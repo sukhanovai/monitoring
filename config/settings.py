@@ -1,11 +1,11 @@
 """
 /config/settings.py
-Server Monitoring System v4.15.7
+Server Monitoring System v4.15.8
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Application settings - default values
 Система мониторинга серверов
-Версия: 4.15.7
+Версия: 4.15.8
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Настройки приложения - значения по умолчанию
@@ -21,12 +21,35 @@ DEBUG_MODE = False
 
 # === БАЗОВЫЕ ПУТИ ===
 _DEFAULT_BASE = Path(__file__).resolve().parents[1]
-BASE_DIR = str(Path(os.environ.get("MONITORING_BASE_DIR", _DEFAULT_BASE)).resolve())
-DATA_DIR = os.path.join(BASE_DIR, "data")
-LOG_DIR = os.path.join(BASE_DIR, "logs")
+BASE_DIR = Path(
+    os.environ.get("MONITORING_BASE_DIR", _DEFAULT_BASE)
+).resolve()
+DATA_DIR = BASE_DIR / "data"
+LOG_DIR = BASE_DIR / "logs"
 
-os.makedirs(DATA_DIR, exist_ok=True)
-os.makedirs(LOG_DIR, exist_ok=True)
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+# === НАСТРОЙКИ ЛОГИРОВАНИЯ ===
+LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+LOG_MAX_BYTES = 10 * 1024 * 1024  # 10 MB
+LOG_BACKUP_COUNT = 5
+
+# Файлы логов
+DEBUG_LOG_FILE = LOG_DIR / "debug.log"
+BOT_LOG_FILE = LOG_DIR / "bot.log"
+MONITOR_LOG_FILE = LOG_DIR / "monitor.log"
+BOT_DEBUG_LOG_FILE = LOG_DIR / "bot_debug.log"
+MAIL_MONITOR_LOG_FILE = LOG_DIR / "mail_monitor.log"
+
+# Пути почтового мониторинга
+MAILDIR_BASE = Path(os.environ.get("MONITORING_MAILDIR_BASE", "/root/Maildir")).resolve()
+MAILDIR_NEW = MAILDIR_BASE / "new"
+MAILDIR_CUR = MAILDIR_BASE / "cur"
+
+# Системные файлы
+PROC_UPTIME_FILE = Path("/proc/uptime")
 
 # === БАЗОВЫЕ НАСТРОЙКИ ===
 TELEGRAM_TOKEN = ""
@@ -117,11 +140,11 @@ WEB_PORT = 5000
 WEB_HOST = '0.0.0.0'
 
 # === ФАЙЛЫ ДАННЫХ ===
-STATS_FILE = os.path.join(DATA_DIR, "monitoring_stats.json")
-BACKUP_DB_FILE = os.path.join(DATA_DIR, "backups.db")
-SETTINGS_DB_FILE = os.path.join(DATA_DIR, "settings.db")
-DEBUG_CONFIG_FILE = os.path.join(DATA_DIR, "debug_config.json")
-EXTENSIONS_CONFIG_FILE = os.path.join(DATA_DIR, "extensions", "extensions_config.json")
+STATS_FILE = DATA_DIR / "monitoring_stats.json"
+BACKUP_DB_FILE = DATA_DIR / "backups.db"
+SETTINGS_DB_FILE = DATA_DIR / "settings.db"
+DEBUG_CONFIG_FILE = DATA_DIR / "debug_config.json"
+EXTENSIONS_CONFIG_FILE = DATA_DIR / "extensions" / "extensions_config.json"
 
 # === КОНФИГУРАЦИЯ БЭКАПОВ ===
 PROXMOX_HOSTS: Dict[str, Any] = {}
