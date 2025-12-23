@@ -1,11 +1,11 @@
 """
 /monitor_core.py
-Server Monitoring System v4.15.0
+Server Monitoring System v4.15.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core system
 Система мониторинга серверов
-Версия: 4.15.0
+Версия: 4.15.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Ядро системы
@@ -15,7 +15,7 @@ Core system
 from lib.logging import debug_log
 from lib.alerts import send_alert
 from lib.utils import progress_bar, format_duration
-from config.settings import DEBUG_MODE, DATA_DIR
+from config.db_settings import DEBUG_MODE, DATA_DIR
 from core.monitor import monitor
 from modules.availability import availability_checker
 from modules.resources import resources_checker
@@ -28,9 +28,7 @@ import threading
 import time
 from datetime import datetime, timedelta
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from app import server_checker, logger
-from lib.logging import debug_log
-from lib.utils import progress_bar, format_duration, safe_import
+from lib.utils import safe_import
 from extensions.server_checks import check_server_availability
 
 # Глобальные переменные
@@ -49,7 +47,7 @@ last_report_date = None
 def lazy_import(module_name, attribute_name=None):
     """Ленивая загрузка модулей с поддержкой составных путей"""
     def import_func():
-        # Для составных путей типа 'app.config.settings'
+        # Для составных путей типа 'config.db_settings'
         if '.' in module_name:
             parts = module_name.split('.')
             # Импортируем корневой модуль
@@ -65,12 +63,12 @@ def lazy_import(module_name, attribute_name=None):
     return import_func
 
 # Ленивые импорты конфига
-get_config = lazy_import('app.config.settings')
-get_check_interval = lazy_import('app.config.settings', 'CHECK_INTERVAL')
-get_silent_times = lazy_import('app.config.settings', 'SILENT_START')
-get_data_collection_time = lazy_import('app.config.settings', 'DATA_COLLECTION_TIME')
-get_max_fail_time = lazy_import('app.config.settings', 'MAX_FAIL_TIME')
-get_resource_config = lazy_import('app.config.settings', 'RESOURCE_CHECK_INTERVAL')
+get_config = lazy_import('config.db_settings')
+get_check_interval = lazy_import('config.db_settings', 'CHECK_INTERVAL')
+get_silent_times = lazy_import('config.db_settings', 'SILENT_START')
+get_data_collection_time = lazy_import('config.db_settings', 'DATA_COLLECTION_TIME')
+get_max_fail_time = lazy_import('config.db_settings', 'MAX_FAIL_TIME')
+get_resource_config = lazy_import('config.db_settings', 'RESOURCE_CHECK_INTERVAL')
 
 def is_proxmox_server(server):
     """Проверяет, является ли сервер Proxmox"""
@@ -1709,7 +1707,7 @@ def check_resources_automatically():
 
 def check_resource_alerts(ip, current_resource):
     """Проверяет условия для отправки алертов по ресурсам"""
-    from app.config.settings import RESOURCE_ALERT_THRESHOLDS, RESOURCE_ALERT_INTERVAL
+    from config.db_settings import RESOURCE_ALERT_THRESHOLDS, RESOURCE_ALERT_INTERVAL
 
     alerts = []
     server_name = current_resource["server_name"]
@@ -2029,7 +2027,7 @@ def get_backup_summary_for_report(period_hours=16):
             debug_log(f"  - {host_name}: {status}, последний: {last_backup}")
 
         # Получаем все хосты из конфигурации
-        from app.config.settings import PROXMOX_HOSTS
+        from config.db_settings import PROXMOX_HOSTS
 
         debug_log("📊 ДИАГНОСТИКА - Хосты из конфигурации PROXMOX_HOSTS:")
         for host in PROXMOX_HOSTS.keys():
@@ -2077,7 +2075,7 @@ def get_backup_summary_for_report(period_hours=16):
         db_results = cursor.fetchall()
 
         # Получаем конфигурацию
-        from app.config.settings import DATABASE_BACKUP_CONFIG
+        from config.db_settings import DATABASE_BACKUP_CONFIG
 
         config_databases = {
             'company_database': DATABASE_BACKUP_CONFIG.get("company_databases", {}),
@@ -2300,7 +2298,7 @@ def close_resources_handler(update, context):
 def debug_proxmox_config():
     """Временная функция для диагностики конфигурации Proxmox"""
     try:
-        from app.config.settings import PROXMOX_HOSTS
+        from config.db_settings import PROXMOX_HOSTS
         debug_log("=== ДИАГНОСТИКА KONФИГУРАЦИИ PROXMOX ===")
         debug_log(f"Всего хостов в PROXMOX_HOSTS: {len(PROXMOX_HOSTS)}")
         for i, host in enumerate(PROXMOX_HOSTS.keys(), 1):

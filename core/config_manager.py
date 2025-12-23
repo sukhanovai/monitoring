@@ -1,11 +1,11 @@
 """
 /core/config_manager.py
-Server Monitoring System v4.15.0
+Server Monitoring System v4.15.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Configuration Manager
 Система мониторинга серверов
-Версия: 4.15.0
+Версия: 4.15.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Менеджер конфигурации
@@ -620,7 +620,26 @@ class ConfigManager:
             })
         
         return credentials
-    
+
+    def get_windows_server_types(self) -> List[str]:
+        """
+        Получить список типов Windows-серверов из базы
+
+        Returns:
+            Список уникальных типов серверов
+        """
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT DISTINCT server_type
+            FROM windows_credentials
+            WHERE enabled = 1
+            ORDER BY server_type
+        ''')
+
+        return [row[0] for row in cursor.fetchall()]
+        
     def add_windows_credential(
         self, 
         username: str, 

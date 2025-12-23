@@ -1,23 +1,22 @@
 """
 /extensions/web_interface.py
-Server Monitoring System v4.15.0
+Server Monitoring System v4.15.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 4.15.0
+Версия: 4.15.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
 """
 
 from flask import Flask, jsonify, render_template_string, request
-from app.config.settings import WEB_PORT, WEB_HOST
+from config.db_settings import WEB_PORT, WEB_HOST, STATS_FILE, DATA_DIR
 import threading
 from datetime import datetime
 import json
 import os
-from app.config.settings import STATS_FILE, DATA_DIR
 import subprocess
 import sys
 
@@ -812,7 +811,7 @@ def get_monitoring_stats():
         availability_percentage = round((servers_up / total_servers) * 100, 1) if total_servers > 0 else 0
         
         # Получаем настройки из конфига
-        from app.config.settings import CHECK_INTERVAL, RESOURCE_CHECK_INTERVAL
+        from config.db_settings import CHECK_INTERVAL, RESOURCE_CHECK_INTERVAL
         resource_check_minutes = RESOURCE_CHECK_INTERVAL // 60
         
         # Считаем проблемы с ресурсами

@@ -1,11 +1,11 @@
 """
 /extensions/server_checks.py
-Server Monitoring System v4.15.0
+Server Monitoring System v4.15.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Unified server checks: resources, availability, list
 Система мониторинга серверов
-Версия: 4.15.0
+Версия: 4.15.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Унифицированные проверки серверов: ресурсы, доступность, список
@@ -18,11 +18,23 @@ from datetime import datetime
 import sys
 import os
 from config.settings import BASE_DIR
+from config.db_settings import (
+    RDP_SERVERS,
+    SSH_SERVERS,
+    PING_SERVERS,
+    SSH_KEY_PATH,
+    SSH_USERNAME,
+    RESOURCE_THRESHOLDS,
+    WINDOWS_SERVER_CREDENTIALS,
+    WINRM_CONFIGS,
+    SERVER_CONFIG,
+)
+from core.checker import ServerChecker
+from lib.logging import debug_log
 sys.path.insert(0, BASE_DIR)
 
-from app.config.settings import (RDP_SERVERS, SSH_SERVERS, PING_SERVERS, SSH_KEY_PATH, SSH_USERNAME, 
-                   RESOURCE_THRESHOLDS, WINDOWS_SERVER_CREDENTIALS, WINRM_CONFIGS,
-                   SERVER_CONFIG)
+# Локальный экземпляр проверяющего
+_server_checker = ServerChecker()
 
 # === СПИСОК СЕРВЕРОВ ===
 
@@ -653,19 +665,9 @@ def check_server_availability(server):
             return check_port(ip, 3389)
         elif server_type == "ping":
             return check_ping(ip)
-        else:  # ssh и другие
-            # Используем checker из app
-            import app
-            if app.server_checker is None:
-                from app.core.checker import ServerChecker
-                app.server_checker = ServerChecker()
-            return app.server_checker.check_ssh_universal(ip)
+        else:
+            return _server_checker.check_ssh_universal(ip)
     except Exception as e:
-        # Используем debug_log если доступен
-        try:
-            from app.utils.common import debug_log
-            debug_log(f"❌ Ошибка проверки {server.get('name', 'unknown')}: {e}")
-        except:
-            print(f"❌ Ошибка проверки {server.get('name', 'unknown')}: {e}")
+        debug_log(f"❌ Ошибка проверки {server.get('name', 'unknown')}: {e}")
         return False
     

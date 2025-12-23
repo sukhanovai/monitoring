@@ -455,11 +455,11 @@ sudo systemctl start server-monitor
 /opt/monitoring/
 ├── main.py                      # Основной процесс мониторинга
 ├── improved_mail_monitor.py     # Обработчик почты для бэкапов
-├── config.py                    # Конфигурация системы
-├── app.core.monitoring.py              # Ядро мониторинга
-├── app.bot.menus.py                  # Telegram бот и меню
-├── app.utils.common.py                # Общие утилиты
-├── debug_config.py              # Настройки отладки
+├── config/                      # Конфигурация системы
+├── core/monitor.py              # Ядро мониторинга
+├── bot_menu.py                  # Telegram бот и меню
+├── lib/utils.py                 # Общие утилиты
+├── config/debug.py              # Настройки отладки
 ├── extensions/
 │   ├── extension_manager.py     # Менеджер расширений
 │   ├── server_checks.py         # Проверки серверов

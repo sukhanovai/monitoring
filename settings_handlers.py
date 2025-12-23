@@ -1,11 +1,11 @@
 """
 /settings_handlers.py
-Server Monitoring System v4.15.0
+Server Monitoring System v4.15.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 4.15.0
+Версия: 4.15.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -13,7 +13,8 @@ Handlers for managing settings via a bot
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CommandHandler, CallbackQueryHandler, MessageHandler, Filters
-from app.config.manager import settings_manager
+from core.config_manager import config_manager as settings_manager
+from lib.logging import debug_log
 import json
 
 BACKUP_SETTINGS_CALLBACKS = {
@@ -23,18 +24,7 @@ BACKUP_SETTINGS_CALLBACKS = {
     'backup_db_add_category'
 }
 
-def get_debug_log():
-    """Безопасная функция для логирования"""
-    try:
-        from app.utils import debug_log
-        return debug_log
-    except ImportError:
-        # Заглушка если модуль не доступен
-        def fallback_log(message):
-            print(f"DEBUG: {message}")
-        return fallback_log
-
-debug_logger = get_debug_log()
+debug_logger = debug_log
 
 def settings_command(update, context):
     """Команда управления настройками"""
