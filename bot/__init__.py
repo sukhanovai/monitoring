@@ -1,23 +1,27 @@
 """
 /bot/__init__.py
-Server Monitoring System v4.15.4
+Server Monitoring System v4.15.5
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Telegram bot module
 Система мониторинга серверов
-Версия: 4.15.4
+Версия: 4.15.5
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль Telegram-бота
+"""
 
-
-from .handlers import get_handlers, get_callback_handlers
-from .menu import setup_menu, get_menu_commands
+from bot.handlers import (
+    get_callback_handlers,
+    get_command_handlers,
+    get_message_handlers,
+)
+from bot.menu import main_menu, show_main_menu
 
 __all__ = [
-    'get_handlers',
-    'get_callback_handlers', 
-    'setup_menu',
-    'get_menu_commands'
+    "get_command_handlers",
+    "get_callback_handlers",
+    "get_message_handlers",
+    "main_menu",
+    "show_main_menu",
 ]
-"""
