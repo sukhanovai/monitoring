@@ -1,11 +1,11 @@
 """
 /extensions/extension_manager.py
-Server Monitoring System v4.15.1
+Server Monitoring System v4.15.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Extension Manager for Monitoring
 Система мониторинга серверов
-Версия: 4.15.1
+Версия: 4.15.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Менеджер расширений для мониторинга
@@ -14,7 +14,7 @@ Extension Manager for Monitoring
 import json
 import os
 from datetime import datetime
-from config.settings import DATA_DIR
+from extensions.settings_extension_manager import DATA_DIR
 
 # Путь к файлу конфигурации расширений
 EXTENSIONS_CONFIG_FILE = os.path.join(DATA_DIR, 'extensions_config.json')

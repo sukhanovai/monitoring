@@ -1,11 +1,11 @@
 """
 /core/config_manager.py
-Server Monitoring System v4.15.1
+Server Monitoring System v4.15.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Configuration Manager
 Система мониторинга серверов
-Версия: 4.15.1
+Версия: 4.15.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Менеджер конфигурации
@@ -22,7 +22,10 @@ from lib.logging import debug_log, error_log, setup_logging
 try:
     from config.settings import DATA_DIR  # type: ignore
 except Exception:
-    DATA_DIR = os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")), "data")
+    try:
+        from config.settings_app import DATA_DIR  # type: ignore
+    except Exception:
+        DATA_DIR = os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")), "data")
 
 # Логгер для этого модуля
 _logger = setup_logging("config")
@@ -231,13 +234,17 @@ class ConfigManager:
         """
         if use_cache and key in self._cache:
             return self._cache[key]
-        
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute('SELECT value, data_type FROM settings WHERE key = ?', (key,))
-        result = cursor.fetchone()
-        
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute('SELECT value, data_type FROM settings WHERE key = ?', (key,))
+            result = cursor.fetchone()
+        except Exception as e:
+            error_log(f"Ошибка чтения настройки {key}: {e}")
+            self._cache[key] = default
+            return default
+                
         if not result:
             self._cache[key] = default
             return default

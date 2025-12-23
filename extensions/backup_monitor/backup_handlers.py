@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v4.15.1
+Server Monitoring System v4.15.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 4.15.1
+Версия: 4.15.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов
@@ -514,7 +514,7 @@ def show_database_backups_menu(query, backup_bot):
 def show_stale_databases(query, backup_bot):
     """Показывает только проблемные базы данных"""
     try:
-        from config.settings import DATABASE_BACKUP_CONFIG
+        from .db_settings_backup_monitor import DATABASE_BACKUP_CONFIG
         
         problem_databases = []
         

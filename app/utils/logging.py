@@ -1,11 +1,11 @@
 """
 /app/utils/logging.py
-Server Monitoring System v4.15.1
+Server Monitoring System v4.15.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Main launch module
 Logging module
-Версия: 4.15.1
+Версия: 4.15.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль логирования
@@ -17,7 +17,7 @@ import logging.handlers
 from datetime import datetime
 
 try:
-    from app.config.settings import DEBUG_MODE, LOG_DIR
+    from config.settings_app import DEBUG_MODE, LOG_DIR
 except ImportError:
     DEBUG_MODE = False
     LOG_DIR = os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")), "logs")

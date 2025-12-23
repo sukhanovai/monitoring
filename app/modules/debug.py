@@ -1,11 +1,11 @@
 """
 /app/modules/debug.py
-Server Monitoring System v4.15.1
+Server Monitoring System v4.15.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Debugging and diagnostics module
 Система мониторинга серверов
-Версия: 4.15.1
+Версия: 4.15.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль отладки и диагностики
@@ -17,7 +17,7 @@ import socket
 import logging
 from datetime import datetime
 from app.utils.logging import debug_log
-from app.config.settings import DATA_DIR, LOG_DIR
+from config.settings_app import DATA_DIR, LOG_DIR
 
 class DebugManager:
     """Класс управления отладкой и диагностикой"""
@@ -29,7 +29,7 @@ class DebugManager:
     def load_debug_config(self):
         """Загрузка конфигурации отладки"""
         try:
-            from app.config.debug import debug_config
+            from config.debug_app import debug_config
             self.debug_config = debug_config
         except ImportError:
             debug_log("⚠️ Конфигурация отладки недоступна", force=True)

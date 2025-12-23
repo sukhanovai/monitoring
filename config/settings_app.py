@@ -1,5 +1,5 @@
 """
-/app/config/settings.py
+/config/settings_app.py
 Server Monitoring System v4.15.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
@@ -18,7 +18,7 @@ from pathlib import Path
 
 # Импортируем менеджер настроек
 try:
-    from app.config.manager import settings_manager
+    from config.db_settings_app import settings_manager
     USE_DB = True
 except ImportError:
     USE_DB = False
@@ -37,7 +37,8 @@ def get_json_setting(key, default):
     return default
 
 # === БАЗОВЫЕ ПУТИ ===
-BASE_DIR = str(Path(os.environ.get("MONITORING_BASE_DIR", Path(__file__).resolve().parents[2])).resolve())
+_DEFAULT_BASE = Path(__file__).resolve().parents[1]
+BASE_DIR = str(Path(os.environ.get("MONITORING_BASE_DIR", _DEFAULT_BASE)).resolve())
 DATA_DIR = os.path.join(BASE_DIR, "data")
 LOG_DIR = os.path.join(BASE_DIR, "logs")
 

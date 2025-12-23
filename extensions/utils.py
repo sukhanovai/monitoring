@@ -1,11 +1,11 @@
 """
 /extensions/utils.py
-Server Monitoring System v4.15.1
+Server Monitoring System v4.15.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Utilities: diagnostics, reports, statistics
 Система мониторинга серверов
-Версия: 4.15.1
+Версия: 4.15.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль запуска
@@ -16,7 +16,7 @@ import json
 import os
 import time
 from datetime import datetime, timedelta
-from config.settings import STATS_FILE, DATA_DIR
+from extensions.settings_utils import STATS_FILE, DATA_DIR
 
 # === ДИАГНОСТИКА SSH (из single_check.py) ===
 

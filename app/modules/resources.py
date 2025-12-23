@@ -1,11 +1,11 @@
 """
 /app/modules/resources.py
-Server Monitoring System v4.15.1
+Server Monitoring System v4.15.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Server resource checking module
 Система мониторинга серверов
-Версия: 4.15.1
+Версия: 4.15.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль проверки ресурсов серверов
@@ -13,7 +13,7 @@ Server resource checking module
 
 import threading
 from datetime import datetime, timedelta
-from app.config.settings import RESOURCE_CHECK_INTERVAL, RESOURCE_ALERT_THRESHOLDS, RESOURCE_ALERT_INTERVAL
+from config.settings_app import RESOURCE_CHECK_INTERVAL, RESOURCE_ALERT_THRESHOLDS, RESOURCE_ALERT_INTERVAL
 from app.utils.logging import debug_log
 from app.utils.helpers import progress_bar
 

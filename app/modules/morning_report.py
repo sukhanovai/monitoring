@@ -1,11 +1,11 @@
 """
 /app/modules/morning_report.py
-Server Monitoring System v4.15.1
+Server Monitoring System v4.15.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Morning Report Module
 Система мониторинга серверов
-Версия: 4.15.1
+Версия: 4.15.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль утреннего отчета
@@ -14,7 +14,7 @@ Morning Report Module
 import threading
 import time
 from datetime import datetime, timedelta
-from app.config.settings import DATA_COLLECTION_TIME
+from config.settings_app import DATA_COLLECTION_TIME
 from app.utils.logging import debug_log
 
 class MorningReport:

@@ -1,11 +1,11 @@
 """
 /app/modules/targeted_checks.py
-Server Monitoring System v4.15.1
+Server Monitoring System v4.15.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Server Spot Check Module
 Система мониторинга серверов
-Версия: 4.15.1
+Версия: 4.15.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль точечных проверок серверов
@@ -89,7 +89,7 @@ class TargetedChecks:
                 message += f"• Время проверки: {resources.get('timestamp', 'N/A')}\n"
                 
                 # Проверка порогов
-                from app.config.settings import RESOURCE_THRESHOLDS
+                from config.settings_app import RESOURCE_THRESHOLDS
                 alerts = []
                 
                 cpu = resources.get('cpu', 0)

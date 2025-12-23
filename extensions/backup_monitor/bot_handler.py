@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/bot_handler.py
-Server Monitoring System v4.15.1
+Server Monitoring System v4.15.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring Proxmox backups
 Система мониторинга серверов
-Версия: 4.15.1
+Версия: 4.15.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг бэкапов Proxmox
@@ -18,7 +18,7 @@ from datetime import datetime, timedelta
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CommandHandler, CallbackQueryHandler
 import traceback
-from config.settings import BASE_DIR, DATA_DIR, LOG_DIR
+from .settings_backup_monitor import BASE_DIR, DATA_DIR, LOG_DIR
 from lib.logging import debug_log
 from extensions.backup_monitor.backup_handlers import (
     show_main_menu,
@@ -99,7 +99,7 @@ class BackupMonitorBot(BackupBase):
     """Оптимизированный класс для мониторинга бэкапов"""
     
     def __init__(self):
-        from config.settings import BACKUP_DATABASE_CONFIG
+        from .db_settings_backup_monitor import BACKUP_DATABASE_CONFIG
         super().__init__(BACKUP_DATABASE_CONFIG['backups_db'])
         self.status_calc = StatusCalculator()
         self.formatters = DisplayFormatters()
@@ -296,7 +296,7 @@ class BackupMonitorBot(BackupBase):
         stale_databases = self.get_stale_database_backups(hours_threshold)
         
         # Получаем все известные хосты и БД из конфигурации
-        from config.settings import PROXMOX_HOSTS, DATABASE_BACKUP_CONFIG
+        from .db_settings_backup_monitor import PROXMOX_HOSTS, DATABASE_BACKUP_CONFIG
         
         all_configured_hosts = list(PROXMOX_HOSTS.keys())
         all_configured_databases = []
@@ -501,7 +501,7 @@ def backup_callback(update, context):
 
 def get_database_config(self):
     """Получает полную конфигурацию баз данных"""
-    from config.settings import DATABASE_BACKUP_CONFIG
+    from .db_settings_backup_monitor import DATABASE_BACKUP_CONFIG
     
     return {
         "company_databases": DATABASE_BACKUP_CONFIG.get("company_databases", {}),
@@ -512,7 +512,7 @@ def get_database_config(self):
 
 def get_database_config_for_report(self):
     """Получает конфигурацию баз данных для отчета"""
-    from config.settings import DATABASE_BACKUP_CONFIG
+    from .db_settings_backup_monitor import DATABASE_BACKUP_CONFIG
     
     # Собираем все базы из конфигурации
     all_databases = {}

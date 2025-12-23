@@ -1,5 +1,5 @@
 """
-/app/config/debug.py
+/config/debug_app.py
 Server Monitoring System v4.15.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
@@ -18,7 +18,7 @@ from datetime import datetime
 try:
     from config.settings import DATA_DIR  # type: ignore
 except Exception:
-    DATA_DIR = os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")), "data")
+    DATA_DIR = os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")), "data")
 
 # Путь к файлу конфигурации отладки
 DEBUG_CONFIG_FILE = os.path.join(DATA_DIR, 'debug_config.json')

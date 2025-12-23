@@ -1,11 +1,11 @@
 """
 /app/handlers/commands.py
-Server Monitoring System v4.15.1
+Server Monitoring System v4.15.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Telegram bot command handlers
 Система мониторинга серверов
-Версия: 4.15.1
+Версия: 4.15.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики команд Telegram бота
@@ -18,12 +18,12 @@ def send_alert(message, force=False):
     """Отправляет сообщение в Telegram"""
     try:
         from app.modules.availability import availability_monitor
-        from app.config.settings import is_silent_time
+        from config.settings_app import is_silent_time
         
         if force or not is_silent_time():
             from monitor_core import bot
             if bot:
-                from app.config.settings import CHAT_IDS
+                from config.settings_app import CHAT_IDS
                 for chat_id in CHAT_IDS:
                     bot.send_message(chat_id=chat_id, text=message)
                 debug_log("✅ Сообщение отправлено")
@@ -77,7 +77,7 @@ def handle_check_server_resources(update, context, server_ip):
         message += f"• Время проверки: {resources.get('timestamp', 'N/A')}\n"
         
         # Проверка порогов
-        from app.config.settings import RESOURCE_THRESHOLDS
+        from config.settings_app import RESOURCE_THRESHOLDS
         alerts = []
         
         cpu = resources.get('cpu', 0)
