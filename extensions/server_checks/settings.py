@@ -1,5 +1,5 @@
 """
-/extensions/settings_server_checks.py
+/extensions/server_checks/settings.py
 Server Monitoring System v4.15.7
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
@@ -16,6 +16,6 @@ import os
 try:
     from config.settings import BASE_DIR  # type: ignore
 except Exception:
-    BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 __all__ = ["BASE_DIR"]

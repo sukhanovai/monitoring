@@ -1,11 +1,11 @@
 """
 /config/settings.py
-Server Monitoring System v4.15.6
+Server Monitoring System v4.15.7
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Application settings - default values
 Система мониторинга серверов
-Версия: 4.15.6
+Версия: 4.15.7
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Настройки приложения - значения по умолчанию
@@ -121,7 +121,7 @@ STATS_FILE = os.path.join(DATA_DIR, "monitoring_stats.json")
 BACKUP_DB_FILE = os.path.join(DATA_DIR, "backups.db")
 SETTINGS_DB_FILE = os.path.join(DATA_DIR, "settings.db")
 DEBUG_CONFIG_FILE = os.path.join(DATA_DIR, "debug_config.json")
-EXTENSIONS_CONFIG_FILE = os.path.join(DATA_DIR, "extensions_config.json")
+EXTENSIONS_CONFIG_FILE = os.path.join(DATA_DIR, "extensions", "extensions_config.json")
 
 # === КОНФИГУРАЦИЯ БЭКАПОВ ===
 PROXMOX_HOSTS: Dict[str, Any] = {}

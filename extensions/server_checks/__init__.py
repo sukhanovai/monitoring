@@ -1,5 +1,5 @@
 """
-/extensions/server_checks.py
+/extensions/server_checks/__init__.py
 Server Monitoring System v4.15.7
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
@@ -18,8 +18,8 @@ from datetime import datetime
 import sys
 import os
 from lib.network import check_port as net_check_port, check_ping as net_check_ping
-from extensions.settings_server_checks import BASE_DIR
-from extensions.db_settings_server_checks import (
+from .settings import BASE_DIR
+from .db_settings import (
     RDP_SERVERS,
     SSH_SERVERS,
     PING_SERVERS,

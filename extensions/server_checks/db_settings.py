@@ -1,5 +1,5 @@
 """
-/extensions/db_settings_server_checks.py
+/extensions/server_checks/db_settings.py
 Server Monitoring System v4.15.7
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT

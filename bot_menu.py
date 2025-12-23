@@ -1,11 +1,11 @@
 """
 /bot_menu.py
-Server Monitoring System v4.15.6
+Server Monitoring System v4.15.7
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Bot menu
 Система мониторинга серверов
-Версия: 4.15.6
+Версия: 4.15.7
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Меню бота

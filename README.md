@@ -462,9 +462,15 @@ sudo systemctl start server-monitor
 ├── config/debug.py              # Настройки отладки
 ├── extensions/
 │   ├── extension_manager.py     # Менеджер расширений
-│   ├── server_checks.py         # Проверки серверов
+│   ├── server_checks/           # Проверки серверов
+│   │   ├── __init__.py          # Логика проверок
+│   │   ├── settings.py          # Статические настройки
+│   │   └── db_settings.py       # Параметры БД/конфига
 │   ├── utils.py                 # Дополнительные утилиты
-│   ├── web_interface.py         # Веб-интерфейс
+│   ├── web_interface/           # Веб-интерфейс
+│   │   ├── __init__.py          # Flask-приложение
+│   │   ├── settings.py          # Статические настройки
+│   │   └── db_settings.py       # Параметры БД/конфига
 │   └── backup_monitor/
 │       ├── backup_handlers.py   # Обработчики бэкапов
 │       ├── backup_utils.py      # Утилиты бэкапов

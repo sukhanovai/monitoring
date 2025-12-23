@@ -1,5 +1,5 @@
 """
-/extensions/db_settings_web_interface.py
+/extensions/web_interface/db_settings.py
 Server Monitoring System v4.15.7
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT

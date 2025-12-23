@@ -88,6 +88,8 @@ settings.db
 backups.db
 debug_config.json
 extensions_config.json
+data/extensions/*
+!data/extensions/.gitkeep
 
 # Coverage reports
 .coverage

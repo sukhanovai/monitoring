@@ -1,11 +1,11 @@
 """
 /extensions/extension_manager.py
-Server Monitoring System v4.15.6
+Server Monitoring System v4.15.7
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Extension Manager for Monitoring
 Система мониторинга серверов
-Версия: 4.15.6
+Версия: 4.15.7
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Менеджер расширений для мониторинга
@@ -14,10 +14,15 @@ Extension Manager for Monitoring
 import json
 import os
 from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
 from extensions.settings_extension_manager import DATA_DIR
 
+# Путь к каталогу конфигурации расширений
+EXTENSIONS_CONFIG_DIR = os.path.join(DATA_DIR, "extensions")
+
 # Путь к файлу конфигурации расширений
-EXTENSIONS_CONFIG_FILE = os.path.join(DATA_DIR, 'extensions_config.json')
+EXTENSIONS_CONFIG_FILE = os.path.join(EXTENSIONS_CONFIG_DIR, "extensions_config.json")
+LEGACY_EXTENSIONS_CONFIG_FILE = os.path.join(DATA_DIR, "extensions_config.json")
 
 # Список всех доступных расширений
 AVAILABLE_EXTENSIONS = {
@@ -26,21 +31,24 @@ AVAILABLE_EXTENSIONS = {
         'description': 'Отслеживание статуса бэкапов Proxmox из почтовых уведомлений',
         'commands': ['/backup', '/backup_search', '/backup_help'],
         'handlers': ['backup_'],
-        'enabled_by_default': True
+        'enabled_by_default': True,
+        'package': 'extensions.backup_monitor'
     },
     'database_backup_monitor': {
         'name': '🗃️ Мониторинг бэкапов БД',
         'description': 'Отслеживание статуса бэкапов баз данных',
         'commands': ['/db_backups'],
         'handlers': ['db_backups_'],
-        'enabled_by_default': True
+        'enabled_by_default': True,
+        'package': 'extensions.server_checks'
     },
     'resource_monitor': {
         'name': '💻 Мониторинг ресурсов',
         'description': 'Проверка загрузки CPU, RAM и дискового пространства',
         'commands': ['check_resources', 'check_cpu', 'check_ram', 'check_disk'],
         'handlers': ['check_'],
-        'enabled_by_default': True
+        'enabled_by_default': True,
+        'package': 'extensions.web_interface'
     },
     'web_interface': {
         'name': '🌐 Веб-интерфейс',
@@ -74,36 +82,74 @@ AVAILABLE_EXTENSIONS = {
 
 class ExtensionManager:
     def __init__(self):
+        self.config_dir = EXTENSIONS_CONFIG_DIR
         self.config_file = EXTENSIONS_CONFIG_FILE
-        self.extensions_config = self.load_config()
+        self.extensions_config: Dict[str, Dict[str, Any]] = self.load_config()
+
+    def _ensure_config_dir(self) -> None:
+        """Создает каталог для конфигов расширений при необходимости"""
+        os.makedirs(self.config_dir, exist_ok=True)
+
+    def _build_default_config(self) -> Dict[str, Dict[str, Any]]:
+        """Формирует конфигурацию по умолчанию для всех доступных расширений"""
+        return {
+            ext_id: {
+                'enabled': ext_info.get('enabled_by_default', False),
+                'last_modified': datetime.now().isoformat()
+            }
+            for ext_id, ext_info in AVAILABLE_EXTENSIONS.items()
+        }
     
-    def load_config(self):
+    def load_config(self) -> Dict[str, Dict[str, Any]]:
         """Загружает конфигурацию расширений из файла"""
+        self._ensure_config_dir()
+
         try:
+            config: Dict[str, Dict[str, Any]] = {}
+            loaded_from_legacy = False
+
             if os.path.exists(self.config_file):
                 with open(self.config_file, 'r', encoding='utf-8') as f:
-                    return json.load(f)
+                    config = json.load(f)
+            elif os.path.exists(LEGACY_EXTENSIONS_CONFIG_FILE):
+                with open(LEGACY_EXTENSIONS_CONFIG_FILE, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                loaded_from_legacy = True
+
+            changed = loaded_from_legacy
+
+            if not config:
+                config = self._build_default_config()
+                changed = True
             else:
-                # Создаем конфиг по умолчанию
-                default_config = {}
                 for ext_id, ext_info in AVAILABLE_EXTENSIONS.items():
-                    default_config[ext_id] = {
-                        'enabled': ext_info['enabled_by_default'],
-                        'last_modified': datetime.now().isoformat()
-                    }
-                self.save_config(default_config)
-                return default_config
+                    if ext_id not in config:
+                        config[ext_id] = {
+                            'enabled': ext_info.get('enabled_by_default', False),
+                            'last_modified': datetime.now().isoformat()
+                        }
+                        changed = True
+
+                unknown = [ext_id for ext_id in config if ext_id not in AVAILABLE_EXTENSIONS]
+                for ext_id in unknown:
+                    config.pop(ext_id, None)
+                    changed = True
+
+            if changed:
+                self.save_config(config)
+
+            return config
         except Exception as e:
             print(f"❌ Ошибка загрузки конфигурации расширений: {e}")
             return {}
     
-    def save_config(self, config=None):
+    def save_config(self, config: Optional[Dict[str, Dict[str, Any]]] = None) -> bool:
         """Сохраняет конфигурацию расширений в файл"""
         try:
             if config is None:
                 config = self.extensions_config
             
-            os.makedirs(os.path.dirname(self.config_file), exist_ok=True)
+            self._ensure_config_dir()
             with open(self.config_file, 'w', encoding='utf-8') as f:
                 json.dump(config, f, ensure_ascii=False, indent=2)
             return True
@@ -111,7 +157,37 @@ class ExtensionManager:
             print(f"❌ Ошибка сохранения конфигурации расширений: {e}")
             return False
     
-    def is_extension_enabled(self, extension_id):
+    def get_extension_config_path(self, extension_id: str) -> str:
+        """Возвращает путь к файлу конфига конкретного расширения"""
+        return os.path.join(self.config_dir, f"{extension_id}.json")
+
+    def load_extension_config(self, extension_id: str) -> Dict[str, Any]:
+        """Загружает конфиг конкретного расширения из его файла"""
+        default_config = AVAILABLE_EXTENSIONS.get(extension_id, {}).get('default_config', {})
+        path = self.get_extension_config_path(extension_id)
+
+        try:
+            if not os.path.exists(path):
+                return default_config
+
+            with open(path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"❌ Ошибка загрузки конфига для {extension_id}: {e}")
+            return default_config
+
+    def save_extension_config(self, extension_id: str, config: Dict[str, Any]) -> Tuple[bool, str]:
+        """Сохраняет конфиг конкретного расширения в его файл"""
+        path = self.get_extension_config_path(extension_id)
+        try:
+            self._ensure_config_dir()
+            with open(path, 'w', encoding='utf-8') as f:
+                json.dump(config, f, ensure_ascii=False, indent=2)
+            return True, f"✅ Конфиг {extension_id} сохранен"
+        except Exception as e:
+            return False, f"❌ Ошибка сохранения конфига {extension_id}: {e}"
+    
+    def is_extension_enabled(self, extension_id: str) -> bool:
         """Проверяет, включено ли расширение"""
         if extension_id not in self.extensions_config:
             # Если расширения нет в конфиге, используем значение по умолчанию
@@ -119,7 +195,7 @@ class ExtensionManager:
         
         return self.extensions_config[extension_id].get('enabled', False)
     
-    def enable_extension(self, extension_id):
+    def enable_extension(self, extension_id: str) -> Tuple[bool, str]:
         """Включает расширение"""
         if extension_id not in AVAILABLE_EXTENSIONS:
             return False, f"❌ Расширение '{extension_id}' не найдено"
@@ -135,7 +211,7 @@ class ExtensionManager:
         else:
             return False, f"❌ Ошибка сохранения конфигурации"
     
-    def disable_extension(self, extension_id):
+    def disable_extension(self, extension_id: str) -> Tuple[bool, str]:
         """Отключает расширение"""
         if extension_id not in AVAILABLE_EXTENSIONS:
             return False, f"❌ Расширение '{extension_id}' не найдено"
@@ -151,14 +227,14 @@ class ExtensionManager:
         else:
             return False, f"❌ Ошибка сохранения конфигурации"
     
-    def toggle_extension(self, extension_id):
+    def toggle_extension(self, extension_id: str) -> Tuple[bool, str]:
         """Переключает состояние расширения"""
         if self.is_extension_enabled(extension_id):
             return self.disable_extension(extension_id)
         else:
             return self.enable_extension(extension_id)
     
-    def get_extensions_status(self):
+    def get_extensions_status(self) -> Dict[str, Dict[str, Any]]:
         """Возвращает статус всех расширений"""
         status = {}
         for ext_id in AVAILABLE_EXTENSIONS:
@@ -168,22 +244,22 @@ class ExtensionManager:
             }
         return status
     
-    def get_enabled_extensions(self):
+    def get_enabled_extensions(self) -> List[str]:
         """Возвращает список включенных расширений"""
         return [ext_id for ext_id in AVAILABLE_EXTENSIONS if self.is_extension_enabled(ext_id)]
     
-    def get_disabled_extensions(self):
+    def get_disabled_extensions(self) -> List[str]:
         """Возвращает список отключенных расширений"""
         return [ext_id for ext_id in AVAILABLE_EXTENSIONS if not self.is_extension_enabled(ext_id)]
 
-    def is_command_available(self, command):
+    def is_command_available(self, command: str) -> bool:
         """Проверяет, доступна ли команда с учетом включенных расширений"""
         for ext_id, ext_info in AVAILABLE_EXTENSIONS.items():
             if command in ext_info.get('commands', []) and not self.is_extension_enabled(ext_id):
                 return False
         return True
 
-    def is_handler_available(self, handler_pattern):
+    def is_handler_available(self, handler_pattern: str) -> bool:
         """Проверяет, доступен ли обработчик с учетом включенных расширений"""
         for ext_id, ext_info in AVAILABLE_EXTENSIONS.items():
             for pattern in ext_info.get('handlers', []):
@@ -191,7 +267,7 @@ class ExtensionManager:
                     return False
         return True
 
-    def filter_available_commands(self, commands_list):
+    def filter_available_commands(self, commands_list: List[str]) -> List[str]:
         """Фильтрует список команд, оставляя только доступные"""
         return [cmd for cmd in commands_list if self.is_command_available(cmd)]
 
@@ -205,8 +281,6 @@ class ExtensionManager:
 
 # Глобальный экземпляр менеджера расширений
 extension_manager = ExtensionManager()
-
-from typing import Any, List
 
 def get_enabled_extensions() -> List[str]:
     return extension_manager.get_enabled_extensions()
