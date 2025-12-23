@@ -1,23 +1,23 @@
 """
 /core/checker.py
-Server Monitoring System v4.15.2
+Server Monitoring System v4.15.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Server Checker Module
 Система мониторинга серверов
-Версия: 4.15.2
+Версия: 4.15.3
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль проверки серверов
 """
 
-import os
 import time
 import subprocess
 import socket
 import paramiko
 from typing import Dict, List, Optional, Tuple
 from lib.logging import debug_log, error_log, setup_logging
+from lib.network import check_ping as net_check_ping, check_port as net_check_port
 
 class ServerChecker:
     """Единый класс для проверки серверов - базовая версия"""
@@ -30,30 +30,12 @@ class ServerChecker:
         
     def check_ping(self, ip: str) -> bool:
         """Универсальная проверка ping"""
-        try:
-            result = subprocess.run(
-                ['ping', '-c', '2', '-W', '2', ip],
-                stdout=subprocess.PIPE, 
-                stderr=subprocess.PIPE, 
-                timeout=self.ping_timeout
-            )
-            return result.returncode == 0
-        except Exception as e:
-            debug_log(f"Ping error for {ip}: {e}")
-            return False
-
+        return net_check_ping(ip, timeout=self.ping_timeout)
+    
     def check_port(self, ip: str, port: int = 3389) -> bool:
         """Универсальная проверка порта"""
-        try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(self.port_timeout)
-            result = sock.connect_ex((ip, port))
-            sock.close()
-            return result == 0
-        except Exception as e:
-            debug_log(f"Port check error for {ip}:{port}: {e}")
-            return False
-
+        return net_check_port(ip, port, timeout=self.port_timeout)
+    
     def check_ssh_universal(self, ip: str, username: Optional[str] = None, key_path: Optional[str] = None) -> bool:
         """Универсальная проверка SSH с обработкой ошибок"""
         try:

@@ -1,11 +1,11 @@
 """
 /modules/mail_monitor.py
-Server Monitoring System v4.15.2
+Server Monitoring System v4.15.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 A wrapper around the backup email handler.
 Система мониторинга серверов
-Версия: 4.15.2
+Версия: 4.15.3
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обёртка над обработчиком почты бэкапов.

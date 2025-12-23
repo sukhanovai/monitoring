@@ -1,11 +1,11 @@
 """
 /extensions/server_checks.py
-Server Monitoring System v4.15.2
+Server Monitoring System v4.15.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Unified server checks: resources, availability, list
 Система мониторинга серверов
-Версия: 4.15.2
+Версия: 4.15.3
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Унифицированные проверки серверов: ресурсы, доступность, список
@@ -17,6 +17,7 @@ import socket
 from datetime import datetime
 import sys
 import os
+from lib.network import check_port as net_check_port, check_ping as net_check_ping
 from extensions.settings_server_checks import BASE_DIR
 from extensions.db_settings_server_checks import (
     RDP_SERVERS,
@@ -150,23 +151,11 @@ def servers_list_handler(update, context):
 
 def check_port(ip, port, timeout=5):
     """Проверка доступности порта"""
-    try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(timeout)
-        result = sock.connect_ex((ip, port))
-        sock.close()
-        return result == 0
-    except:
-        return False
+    return net_check_port(ip, port, timeout=timeout)
 
 def check_ping(ip):
     """Проверка доступности через ping"""
-    try:
-        result = subprocess.run(['ping', '-c', '2', '-W', '2', ip], 
-                              capture_output=True, text=True, timeout=10)
-        return result.returncode == 0
-    except:
-        return False
+    return net_check_ping(ip, timeout=10)
 
 def run_ssh_command(ip, command, timeout=10):
     """Выполняет команду через SSH с обработкой ошибок"""

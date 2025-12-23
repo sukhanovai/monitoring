@@ -1,11 +1,11 @@
 """
 /lib/alerts.py
-Server Monitoring System v4.15.2
+Server Monitoring System v4.15.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Unified alert system
 Система мониторинга серверов
-Версия: 4.15.2
+Версия: 4.15.3
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единая система оповещений
@@ -25,6 +25,34 @@ _chat_ids = []
 _silent_override: Optional[bool] = None
 _alert_history: List[Dict[str, Any]] = []
 _max_history_size = 1000
+
+def configure_alerts(
+    silent_start: Optional[int] = None,
+    silent_end: Optional[int] = None,
+    enabled: Optional[bool] = None,
+    cooldown_seconds: Optional[int] = None,
+    thresholds: Optional[Dict[str, Dict[str, Any]]] = None,
+) -> None:
+    """
+    Настраивает базовые параметры алертов из внешних настроек.
+
+    Args:
+        silent_start: Час начала тихого режима
+        silent_end: Час окончания тихого режима
+        enabled: Включены ли алерты
+        cooldown_seconds: Минимальный интервал между одинаковыми алертами
+        thresholds: Переопределение порогов для типов алертов
+    """
+    if silent_start is not None:
+        _config.silent_start = silent_start
+    if silent_end is not None:
+        _config.silent_end = silent_end
+    if enabled is not None:
+        _config.enabled = enabled
+    if cooldown_seconds is not None:
+        _config.cooldown_seconds = cooldown_seconds
+    if thresholds:
+        _config.thresholds.update(thresholds)
 
 class AlertConfig:
     """Конфигурация алертов"""
@@ -78,6 +106,12 @@ def set_silent_override(enabled: Optional[bool]) -> None:
     }
     
     debug_log(f"Переопределение тихого режима изменено: {status_map.get(old_value, 'неизвестно')} → {status_map.get(enabled, 'неизвестно')}")
+
+def get_silent_override() -> Optional[bool]:
+    """
+    Возвращает текущий принудительный режим тихих уведомлений.
+    """
+    return _silent_override
 
 def is_silent_time() -> bool:
     """

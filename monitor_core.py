@@ -1,11 +1,11 @@
 """
 /monitor_core.py
-Server Monitoring System v4.15.2
+Server Monitoring System v4.15.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core system
 Система мониторинга серверов
-Версия: 4.15.2
+Версия: 4.15.3
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Ядро системы
@@ -13,7 +13,14 @@ Core system
 
 # Новые импорты из модульной структуры
 from lib.logging import debug_log
-from lib.alerts import send_alert
+from lib.alerts import (
+    send_alert as base_send_alert,
+    configure_alerts,
+    init_telegram_bot,
+    set_silent_override,
+    is_silent_time as alerts_is_silent_time,
+    get_silent_override,
+)
 from lib.utils import progress_bar, format_duration
 from config.db_settings import DEBUG_MODE, DATA_DIR
 from core.monitor import monitor
@@ -38,11 +45,46 @@ morning_data = {}
 monitoring_active = True
 last_check_time = datetime.now()
 servers = []
-silent_override = None
 resource_history = {}
 last_resource_check = datetime.now()
 resource_alerts_sent = {}
 last_report_date = None
+
+_alerts_configured = False
+
+def ensure_alerts_config():
+    """Гарантирует применение настроек алертов из конфигурации."""
+    global _alerts_configured
+    if _alerts_configured:
+        return
+
+    config = get_config()
+    configure_alerts(
+        silent_start=getattr(config, "SILENT_START", None),
+        silent_end=getattr(config, "SILENT_END", None),
+    )
+    _alerts_configured = True
+
+def ensure_alert_bot():
+    """Инициализирует Telegram-бот для lib.alerts при наличии глобального бота."""
+    if bot is None:
+        return
+    try:
+        config = get_config()
+        init_telegram_bot(bot, config.CHAT_IDS)
+    except Exception as e:
+        debug_log(f"Не удалось инициализировать бот алертов: {e}")
+
+def send_alert(message, force=False):
+    """Обертка над lib.alerts.send_alert с применением настроек и инициализацией бота."""
+    ensure_alerts_config()
+    ensure_alert_bot()
+    return base_send_alert(message, force=force)
+
+def is_silent_time():
+    """Использует единый механизм тихого режима из lib.alerts."""
+    ensure_alerts_config()
+    return alerts_is_silent_time()
 
 def lazy_import(module_name, attribute_name=None):
     """Ленивая загрузка модулей с поддержкой составных путей"""
@@ -75,43 +117,6 @@ def is_proxmox_server(server):
     ip = server["ip"]
     return (ip.startswith("192.168.30.") or
            ip in ["192.168.20.30", "192.168.20.32", "192.168.20.59"])
-
-def is_silent_time():
-    """Проверяет, находится ли текущее время в 'тихом' периоде с учетом переопределения"""
-    global silent_override
-
-    # Если есть принудительное переопределение
-    if silent_override is not None:
-        return silent_override  # True - тихий, False - громкий
-
-    # Стандартная проверка по времени
-    config = get_config()
-    current_hour = datetime.now().hour
-    if config.SILENT_START > config.SILENT_END:  # Если период переходит через полночь
-        return current_hour >= config.SILENT_START or current_hour < config.SILENT_END
-    return config.SILENT_START <= current_hour < config.SILENT_END
-
-def send_alert(message, force=False):
-    """Отправляет сообщение без блокировок"""
-    global bot
-    if bot is None:
-        from telegram import Bot
-        config = get_config()
-        bot = Bot(token=config.TELEGRAM_TOKEN)
-
-    # Логируем для диагностики
-    debug_log(f"📨 Отправка: '{message[:50]}...'")
-
-    try:
-        if force or not is_silent_time():
-            config = get_config()
-            for chat_id in config.CHAT_IDS:
-                bot.send_message(chat_id=chat_id, text=message)
-            debug_log("    ✅ Сообщение отправлено")
-        else:
-            debug_log("    ⏸️ Сообщение не отправлено (тихий режим)")
-    except Exception as e:
-        debug_log(f"    ❌ Ошибка отправки: {e}")
 
 def perform_manual_check(context, chat_id, progress_message_id):
     """Выполняет проверку серверов с обновлением прогресса"""
@@ -262,6 +267,7 @@ def monitor_status(update, context):
 
         # Определяем статус тихого режима
         silent_status_text = "🔇 Тихий режим" if is_silent_time() else "🔊 Обычный режим"
+        silent_override = get_silent_override()
         if silent_override is not None:
             if silent_override:
                 silent_status_text += " (🔇 Принудительно)"
@@ -356,6 +362,7 @@ def silent_status_handler(update, context):
     query.answer()
 
     # Определяем текущий режим
+    silent_override = get_silent_override()
     if silent_override is None:
         mode_text = "🔄 Автоматический"
         mode_desc = "Работает по расписанию"
@@ -399,8 +406,7 @@ def silent_status_handler(update, context):
 
 def force_silent_handler(update, context):
     """Включает принудительный тихий режим"""
-    global silent_override
-    silent_override = True
+    set_silent_override(True)
     query = update.callback_query
     query.answer()
 
@@ -411,8 +417,7 @@ def force_silent_handler(update, context):
 
 def force_loud_handler(update, context):
     """Включает принудительный громкий режим"""
-    global silent_override
-    silent_override = False
+    set_silent_override(True)
     query = update.callback_query
     query.answer()
 
@@ -423,8 +428,7 @@ def force_loud_handler(update, context):
 
 def auto_mode_handler(update, context):
     """Включает автоматический режим"""
-    global silent_override
-    silent_override = None
+    set_silent_override(True)
     query = update.callback_query
     query.answer()
 
@@ -1482,7 +1486,9 @@ def start_monitoring():
     from telegram import Bot
     config = get_config()
     bot = Bot(token=config.TELEGRAM_TOKEN)
-
+    ensure_alerts_config()
+    init_telegram_bot(bot, config.CHAT_IDS)
+    
     # Инициализация server_status (только для оставшихся серверов)
     for server in servers:
         server_status[server["ip"]] = {

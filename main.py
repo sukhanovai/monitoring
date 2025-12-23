@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
 /main.py
-Server Monitoring System v4.15.2
+Server Monitoring System v4.15.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Main launch module
 Система мониторинга серверов
-Версия: 4.15.2
+Версия: 4.15.3
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль запуска
@@ -28,7 +28,7 @@ def main():
     # 1. Загрузка конфигурации
     # ------------------------------------------------------------------
     try:
-        from config.db_settings import TELEGRAM_TOKEN, DEBUG_MODE
+        from config.db_settings import TELEGRAM_TOKEN, DEBUG_MODE, CHAT_IDS, SILENT_START, SILENT_END
     except ImportError as e:
         print(f"❌ Не удалось загрузить db_settings: {e}")
         sys.exit(1)
@@ -49,6 +49,17 @@ def main():
     logger = logging.getLogger("main")
     logger.info("🚀 Запуск системы мониторинга")
 
+    # Применяем настройки алертов заранее
+    try:
+        from lib.alerts import configure_alerts
+
+        configure_alerts(
+            silent_start=SILENT_START,
+            silent_end=SILENT_END,
+        )
+    except Exception as e:
+        logger.warning(f"⚠️ Не удалось применить настройки алертов: {e}")
+
     # ------------------------------------------------------------------
     # 3. Инициализация Telegram-бота
     # ------------------------------------------------------------------
@@ -62,6 +73,12 @@ def main():
 
     updater = Updater(token=TELEGRAM_TOKEN, use_context=True)
     dispatcher = updater.dispatcher
+    try:
+        from lib.alerts import init_telegram_bot
+
+        init_telegram_bot(updater.bot, CHAT_IDS)
+    except Exception as e:
+        logger.warning(f"⚠️ Не удалось инициализировать алерты: {e}")
 
     logger.info("✅ Telegram бот инициализирован")
 
