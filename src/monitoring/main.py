@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
 /src/monitoring/main.py
-Server Monitoring System v4.16.4
+Server Monitoring System v4.16.5
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Main launch module
 Система мониторинга серверов
-Версия: 4.16.4
+Версия: 4.16.5
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль запуска
@@ -148,7 +148,8 @@ def main(args: argparse.Namespace):
     logger.info("🚀 Запуск системы мониторинга")
 
     bot_token = TELEGRAM_TOKEN
-    bot_enabled = True    
+    bot_enabled = True
+    dispatcher = None
     if not bot_token or len(bot_token) < 10:
         bot_enabled = False        
         if args.dry_run:
@@ -233,8 +234,11 @@ def main(args: argparse.Namespace):
 
             if extension_manager.is_extension_enabled('backup_monitor'):
                 from monitoring.extensions.backup_monitor.bot_handler import setup_backup_handlers
-                setup_backup_handlers(dispatcher)
-                logger.info("✅ Расширение backup_monitor подключено")
+                if dispatcher is None:
+                    logger.warning("⚠️ Расширение backup_monitor требует Telegram, бот отключён")
+                else:
+                    setup_backup_handlers(dispatcher)
+                    logger.info("✅ Расширение backup_monitor подключено")
 
             if extension_manager.is_extension_enabled('web_interface'):
                 from monitoring.extensions.web_interface import start_web_server
