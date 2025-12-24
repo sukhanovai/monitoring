@@ -1,11 +1,11 @@
 """
 /src/monitoring/core/config_manager.py
-Server Monitoring System v4.16.2
+Server Monitoring System v4.16.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Configuration Manager
 Система мониторинга серверов
-Версия: 4.16.2
+Версия: 4.16.3
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Менеджер конфигурации
@@ -789,3 +789,5 @@ class ConfigManager:
 
 # Глобальный экземпляр менеджера конфигурации
 config_manager = ConfigManager()
+# Совместимость с импортами, ожидающими settings_manager
+settings_manager = config_manager
