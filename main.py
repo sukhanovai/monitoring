@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
 """
 /main.py
-Server Monitoring System v4.16.0
+Server Monitoring System v4.16.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Entry point for backward compatibility
 Система мониторинга серверов
-Версия: 4.16.0
+Версия: 4.16.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Точка входа для обратной совместимости
 """
 
 import sys
+from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))

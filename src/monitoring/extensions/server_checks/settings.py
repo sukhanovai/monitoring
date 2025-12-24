@@ -1,11 +1,11 @@
 """
 /src/monitoring/extensions/server_checks/settings.py
-Server Monitoring System v4.16.0
+Server Monitoring System v4.16.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Auxiliary settings for server_checks
 Система мониторинга серверов
-Версия: 4.16.0
+Версия: 4.16.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Вспомогательные настройки для server_checks

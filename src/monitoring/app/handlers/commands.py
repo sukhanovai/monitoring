@@ -1,11 +1,11 @@
 """
 /src/monitoring/app/handlers/commands.py
-Server Monitoring System v4.16.0
+Server Monitoring System v4.16.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Telegram bot command handlers
 Система мониторинга серверов
-Версия: 4.16.0
+Версия: 4.16.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики команд Telegram бота
