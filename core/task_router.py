@@ -1,11 +1,11 @@
 """
 /core/task_router.py
-Server Monitoring System v4.15.8
+Server Monitoring System v4.15.9
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Task router helpers
 Система мониторинга серверов
-Версия: 4.15.8
+Версия: 4.15.9
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Хелперы маршрутизации задач
@@ -15,6 +15,7 @@ from typing import Any, Dict, Optional, Tuple
 
 from lib.logging import debug_log, setup_logging
 from modules.availability import availability_checker
+from modules.mail_monitor import run_mail_monitor
 from modules.resources import resources_checker
 from modules.targeted_checks import targeted_checks
 from core.monitor import monitor
@@ -75,6 +76,12 @@ def run_targeted_task(
     return success, {"server": server, "message": message}
 
 
+def run_mail_monitor_task(**_: Any) -> TaskResult:
+    """Обработка новых писем о бэкапах."""
+    processed = run_mail_monitor()
+    return True, {"processed": processed}
+
+
 # Соответствие задач файлам и обработчикам
 TASK_ROUTES: Dict[str, Dict[str, Any]] = {
     "availability": {
@@ -91,6 +98,11 @@ TASK_ROUTES: Dict[str, Dict[str, Any]] = {
         "module": "modules.targeted_checks.py",
         "runner": run_targeted_task,
         "description": "Адресные проверки отдельного сервера",
+    },
+    "mail_monitor": {
+        "module": "modules.mail_monitor.py",
+        "runner": run_mail_monitor_task,
+        "description": "Обработка новых писем с отчётами о бэкапах",
     },
 }
 
@@ -118,4 +130,5 @@ __all__ = [
     "run_availability_task",
     "run_resources_task",
     "run_targeted_task",
+    "run_mail_monitor_task",
 ]
