@@ -1,33 +1,29 @@
 """
 /__init__.py
-Server Monitoring System v4.15.10
+Server Monitoring System v4.16.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
-Package exports
+Proxy package for backward compatibility.
 Система мониторинга серверов
-Версия: 4.15.10
+Версия: 4.16.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
-Экспорт пакетов
+Прокси-пакет для обратной совместимости.
 """
 
-__version__ = "4.15.10"
-__author__ = "Александр Суханов"
+from pathlib import Path
+import sys
+from importlib import import_module
 
-# Re-exports from lib
-from lib.logging import debug_log, setup_logging
-from lib.alerts import send_alert
-from lib.utils import progress_bar, format_duration, safe_import
+PROJECT_ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-# Re-exports from core
-from core.config_manager import settings_manager
-from core.checker import ServerChecker
+_monitoring = import_module("monitoring")
 
-# Re-exports from config
-from config.settings import (
-    TELEGRAM_TOKEN, CHAT_IDS, CHECK_INTERVAL,
-    MAX_FAIL_TIME, SILENT_START, SILENT_END,
-    RESOURCE_CHECK_INTERVAL, RESOURCE_ALERT_INTERVAL,
-    RESOURCE_THRESHOLDS, RESOURCE_ALERT_THRESHOLDS,
-    SSH_USERNAME, SSH_KEY_PATH
-)
+for _name in dir(_monitoring):
+    if _name.startswith("_"):
+        continue
+    globals()[_name] = getattr(_monitoring, _name)
+
+del _monitoring
+__all__ = [name for name in globals() if not name.startswith("_")]

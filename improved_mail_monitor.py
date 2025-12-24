@@ -1,20 +1,19 @@
-#!/usr/bin/env python3
 """
-/improved_mail_monitor.py
-Server Monitoring System v4.15.10
+/bot_menu.py
+Server Monitoring System v4.16.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
-Mailbox monitoring
+Proxy module for backward compatibility
 Система мониторинга серверов
-Версия: 4.15.10
+Версия: 4.16.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
-Мониторинг почтового ящика
+Прокси-модуль для обратной совместимости
 """
 
-from modules.mail_monitor import main
+import sys
 
+PROJECT_ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-if __name__ == "__main__":
-    main()
-    
+from monitoring.improved_mail_monitor import *

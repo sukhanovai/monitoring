@@ -1,28 +1,20 @@
 """
-/modules/__init__.py
-Server Monitoring System v4.15.10
+/bot/__init__.py
+Server Monitoring System v4.16.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
-Monitoring modules package
+Proxy package for backward compatibility.
 Система мониторинга серверов
-Версия: 4.15.10
+Версия: 4.16.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
-Пакет модулей мониторинга
+Прокси-пакет для обратной совместимости.
 """
 
-from .availability import availability_checker, AvailabilityChecker
-from .resources import resources_checker, ResourcesChecker
-from .morning_report import morning_report, MorningReport
-from .targeted_checks import targeted_checks, TargetedChecks
+from pathlib import Path
+from pkgutil import extend_path
 
-__all__ = [
-    'availability_checker',
-    'AvailabilityChecker',
-    'resources_checker', 
-    'ResourcesChecker',
-    'morning_report',
-    'MorningReport',
-    'targeted_checks',
-    'TargetedChecks'
-]
+__path__ = extend_path(__path__, __name__)
+_monitoring_path = Path(__file__).resolve().parent.parent / "src" / "monitoring" / __name__
+if _monitoring_path.exists():
+    __path__.append(str(_monitoring_path))
