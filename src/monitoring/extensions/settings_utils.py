@@ -1,11 +1,11 @@
 """
 /src/monitoring/extensions/settings_utils.py
-Server Monitoring System v4.16.5
+Server Monitoring System v4.16.6
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Settings for utils extensions
 Система мониторинга серверов
-Версия: 4.16.5
+Версия: 4.16.6
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Настройки для utils расширений

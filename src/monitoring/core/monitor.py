@@ -1,11 +1,11 @@
 """
 /src/monitoring/core/monitor.py
-Server Monitoring System v4.16.5
+Server Monitoring System v4.16.6
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core monitoring module
 Система мониторинга серверов
-Версия: 4.16.5
+Версия: 4.16.6
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль мониторинга
@@ -309,20 +309,9 @@ class Monitor:
                 
                 # Добавляем задержку чтобы не запускать повторно
                 time.sleep(65)
-    
-    def start(self) -> None:
-        """Запускает основной цикл мониторинга"""
-        # Загружаем серверы
-        self.servers = self.load_servers()
-        
-        if not self.servers:
-            debug_log("❌ Нет серверов для мониторинга")
-            return
-        
-        # Инициализируем статусы
-        self.initialize_server_status()
-        
-        # Отправляем стартовое сообщение
+
+    def build_start_message(self) -> str:
+        """Формирует стартовое сообщение для запуска мониторинга"""
         start_message = (
             "🟢 *Мониторинг серверов запущен*\n\n"
             f"• Серверов в мониторинге: {len(self.servers)}\n"
@@ -341,14 +330,39 @@ class Monitor:
                 start_message += "🌐 *Веб-интерфейс:* 🔴 отключен\n"
         except ImportError:
             start_message += "🌐 *Веб-интерфейс:* 🔴 модуль не загружен\n"
-        
-        send_alert(start_message)
-        debug_log(f"✅ Мониторинг запущен для {len(self.servers)} серверов")
-        
+
+        return start_message
+    
+    def start(self) -> None:
+        """Запускает основной цикл мониторинга"""
+        # Загружаем серверы
+        self.servers = self.load_servers()
+
+        if not self.servers:
+            debug_log("⚠️ Нет серверов для мониторинга — ожидание появления")
+        else:
+            # Инициализируем статусы
+            self.initialize_server_status()
+
+            # Отправляем стартовое сообщение
+            start_message = self.build_start_message()
+            send_alert(start_message)
+            debug_log(f"✅ Мониторинг запущен для {len(self.servers)} серверов")
+
         # Основной цикл мониторинга
         while True:
             current_time = datetime.now()
-            
+
+            if not self.servers:
+                time.sleep(CHECK_INTERVAL)
+                self.servers = self.load_servers()
+                if self.servers:
+                    self.initialize_server_status()
+                    start_message = self.build_start_message()
+                    send_alert(start_message)
+                    debug_log(f"✅ Мониторинг запущен для {len(self.servers)} серверов")
+                continue
+                        
             # Проверяем утренний отчет
             self.check_morning_report()
             
