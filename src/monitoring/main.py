@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
 /src/monitoring/main.py
-Server Monitoring System v4.16.3
+Server Monitoring System v4.16.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Main launch module
 Система мониторинга серверов
-Версия: 4.16.3
+Версия: 4.16.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль запуска
@@ -148,13 +148,13 @@ def main(args: argparse.Namespace):
     logger.info("🚀 Запуск системы мониторинга")
 
     bot_token = TELEGRAM_TOKEN
+    bot_enabled = True    
     if not bot_token or len(bot_token) < 10:
+        bot_enabled = False        
         if args.dry_run:
-            bot_token = "000000:TESTTOKEN"
-            logger.warning("⚠️ Telegram токен отсутствует, используем тестовую заглушку (dry-run)")
+            logger.warning("⚠️ Telegram токен отсутствует, dry-run будет без Telegram")
         else:
-            print("❌ Telegram токен отсутствует или некорректен")
-            sys.exit(1)
+            logger.warning("⚠️ Telegram токен отсутствует или некорректен, бот отключён")            
 
     # Применяем настройки алертов заранее
     if not args.dry_run:
@@ -173,52 +173,56 @@ def main(args: argparse.Namespace):
     # ------------------------------------------------------------------
     # 3. Инициализация Telegram-бота
     # ------------------------------------------------------------------
-    from telegram.ext import (
-        Updater,
-    )
+    if bot_enabled:
+        from telegram.ext import (
+            Updater,
+        )
 
-    updater = Updater(token=bot_token, use_context=True)
-    dispatcher = updater.dispatcher
-    try:
-        from monitoring.lib.alerts import init_telegram_bot
+        updater = Updater(token=bot_token, use_context=True)
+        dispatcher = updater.dispatcher
+        try:
+            from monitoring.lib.alerts import init_telegram_bot
 
-        init_telegram_bot(updater.bot, CHAT_IDS)
-    except Exception as e:
-        logger.warning(f"⚠️ Не удалось инициализировать алерты: {e}")
+            init_telegram_bot(updater.bot, CHAT_IDS)
+        except Exception as e:
+            logger.warning(f"⚠️ Не удалось инициализировать алерты: {e}")
 
-    logger.info("✅ Telegram бот инициализирован")
+        logger.info("✅ Telegram бот инициализирован")
 
-    # ------------------------------------------------------------------
-    # 4. Команды бота
-    # ------------------------------------------------------------------
-    from monitoring.bot.handlers import (
-        get_callback_handlers,
-        get_command_handlers,
-        get_message_handlers,
-    )
+        # ------------------------------------------------------------------
+        # 4. Команды бота
+        # ------------------------------------------------------------------
+        from monitoring.bot.handlers import (
+            get_callback_handlers,
+            get_command_handlers,
+            get_message_handlers,
+        )
 
-    for handler in get_command_handlers():
-        dispatcher.add_handler(handler)
-
-    logger.info("✅ Команды зарегистрированы")
-
-    # ------------------------------------------------------------------
-    # 5. Callback router (ЕДИНАЯ точка)
-    # ------------------------------------------------------------------
-    for handler in get_callback_handlers():
-        dispatcher.add_handler(handler)
-    logger.info("✅ Callback router подключён")
-
-    # ------------------------------------------------------------------
-    # 6. Обработчик текстового ввода (настройки)
-    # ------------------------------------------------------------------
-    message_handlers = get_message_handlers()
-    if message_handlers:
-        for handler in message_handlers:
+        for handler in get_command_handlers():
             dispatcher.add_handler(handler)
-        logger.info("✅ Обработчик ввода настроек подключён")
+
+        logger.info("✅ Команды зарегистрированы")
+
+        # ------------------------------------------------------------------
+        # 5. Callback router (ЕДИНАЯ точка)
+        # ------------------------------------------------------------------
+        for handler in get_callback_handlers():
+            dispatcher.add_handler(handler)
+        logger.info("✅ Callback router подключён")
+
+        # ------------------------------------------------------------------
+        # 6. Обработчик текстового ввода (настройки)
+        # ------------------------------------------------------------------
+        message_handlers = get_message_handlers()
+        if message_handlers:
+            for handler in message_handlers:
+                dispatcher.add_handler(handler)
+            logger.info("✅ Обработчик ввода настроек подключён")
+        else:
+            logger.info("ℹ️ Обработчик ввода настроек недоступен")
     else:
-        logger.info("ℹ️ Обработчик ввода настроек недоступен")
+        updater = None
+        logger.info("ℹ️ Telegram бот отключён: команды не инициализируются")
 
     # ------------------------------------------------------------------
     # 7. Расширения
@@ -251,11 +255,18 @@ def main(args: argparse.Namespace):
     if not args.dry_run:
         try:
             from monitoring.core.monitor import monitor
-            threading.Thread(
-                target=monitor.start,
-                daemon=True
-            ).start()
-            logger.info("✅ Основной мониторинг запущен")
+            if bot_enabled:
+                threading.Thread(
+                    target=monitor.start,
+                    daemon=True
+                ).start()
+                logger.info("✅ Основной мониторинг запущен")
+            else:
+                monitor_thread = threading.Thread(target=monitor.start)
+                monitor_thread.start()
+                logger.info("✅ Основной мониторинг запущен без Telegram")
+                monitor_thread.join()
+                return
         except Exception as e:
             logger.error(f"❌ Ошибка запуска мониторинга: {e}")
     else:
@@ -264,7 +275,7 @@ def main(args: argparse.Namespace):
     # ------------------------------------------------------------------
     # 9. Стартовое уведомление
     # ------------------------------------------------------------------
-    if not args.dry_run:
+    if not args.dry_run and bot_enabled:
         try:
             from monitoring.lib.alerts import send_alert
             send_alert(
@@ -283,10 +294,11 @@ def main(args: argparse.Namespace):
     if args.dry_run:
         logger.info("🧪 Dry-run завершён: опрос Telegram не запускался")
         return
-    
-    updater.start_polling()
-    logger.info("✅ Бот запущен и готов к работе")
-    updater.idle()
+
+    if bot_enabled:
+        updater.start_polling()
+        logger.info("✅ Бот запущен и готов к работе")
+        updater.idle()
 
 
 if __name__ == "__main__":

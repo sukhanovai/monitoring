@@ -1,11 +1,11 @@
 """
 /src/monitoring/extensions/web_interface/db_settings.py
-Server Monitoring System v4.16.3
+Server Monitoring System v4.16.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Database settings for the web interface
 Система мониторинга серверов
-Версия: 4.16.3
+Версия: 4.16.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Настройки БД для веб-интерфейса

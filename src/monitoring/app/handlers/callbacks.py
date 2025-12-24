@@ -1,11 +1,11 @@
 """
 /src/monitoring/app/handlers/callbacks.py
-Server Monitoring System v4.16.3
+Server Monitoring System v4.16.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Telegram bot callback handlers
 Система мониторинга серверов
-Версия: 4.16.3
+Версия: 4.16.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Callback-обработчики Telegram бота
