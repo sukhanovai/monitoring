@@ -89,7 +89,7 @@ class TargetedChecks:
                 message += f"• Время проверки: {resources.get('timestamp', 'N/A')}\n"
                 
                 # Проверка порогов
-                from config.settings_app import RESOURCE_THRESHOLDS
+                from config.db_settings import RESOURCE_THRESHOLDS
                 alerts = []
                 
                 cpu = resources.get('cpu', 0)

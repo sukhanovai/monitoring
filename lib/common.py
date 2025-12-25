@@ -14,7 +14,7 @@ General system utilities
 import importlib
 
 try:
-    from config.settings_app import DEBUG_MODE
+    from config.db_settings import DEBUG_MODE
 except ImportError:
     DEBUG_MODE = False
 from lib.logging import setup_logging as _setup_logging, get_logger

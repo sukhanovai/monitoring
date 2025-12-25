@@ -14,7 +14,7 @@ Morning Report Module
 import threading
 import time
 from datetime import datetime, timedelta
-from config.settings_app import DATA_COLLECTION_TIME
+from config.db_settings import DATA_COLLECTION_TIME
 from lib.logging import debug_log
 
 class MorningReport:

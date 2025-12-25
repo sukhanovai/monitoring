@@ -13,7 +13,7 @@ Server resource checking module
 
 import threading
 from datetime import datetime, timedelta
-from config.settings_app import RESOURCE_CHECK_INTERVAL, RESOURCE_ALERT_THRESHOLDS, RESOURCE_ALERT_INTERVAL
+from config.db_settings import RESOURCE_CHECK_INTERVAL, RESOURCE_ALERT_THRESHOLDS, RESOURCE_ALERT_INTERVAL
 from lib.logging import debug_log
 from lib.helpers import progress_bar
 
