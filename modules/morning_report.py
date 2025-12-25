@@ -97,6 +97,14 @@ class MorningReport:
             
         message += f"\n⏰ *Отчет сформирован:* {datetime.now().strftime('%H:%M:%S')}"
         return message
+
+    def force_report(self):
+        """Формирует отчет для ручного запроса и возвращает текст"""
+        data_collected = self.collect_morning_data(manual_call=True)
+        if not data_collected:
+            return "❌ Ошибка сбора данных для отчета"
+
+        return self.generate_report_message()
     
     def get_backup_summary_for_report(self, period_hours=16):
         """Получает сводку по бэкапам"""
