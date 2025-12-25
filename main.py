@@ -20,9 +20,10 @@ from pathlib import Path
 
 from lib.logging import setup_logging
 PROJECT_ROOT = Path(__file__).resolve().parent
-BASE_DIR = Path(os.environ.get("MONITORING_BASE_DIR", PROJECT_ROOT / "opt" / "monitoring")).resolve()
+BASE_DIR = Path(os.environ.get("MONITORING_BASE_DIR", PROJECT_ROOT)).resolve()
 BASE_DIR.mkdir(parents=True, exist_ok=True)
-sys.path.insert(0, str(BASE_DIR))
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
 
 
 def build_arg_parser() -> argparse.ArgumentParser:

@@ -743,8 +743,8 @@ def get_monitoring_stats():
             stats_data = json.loads(STATS_FILE.read_text(encoding="utf-8"))
         
         # Получаем текущий статус серверов
-        from monitor_core import get_current_server_status, monitoring_active, last_check_time
-        from monitor_core import is_silent_time, resource_history
+        from core.monitor_core import get_current_server_status, monitoring_active, last_check_time
+        from core.monitor_core import is_silent_time, resource_history
         from extensions.server_list import initialize_servers
         
         current_status = get_current_server_status()
@@ -881,19 +881,19 @@ def api_run_check():
     try:
         if check_type == 'quick':
             # Запуск быстрой проверки доступности
-            from monitor_core import get_current_server_status
+            from core.monitor_core import get_current_server_status
             status = get_current_server_status()
             message = f"✅ Быстрая проверка выполнена: {len(status['ok'])} доступно, {len(status['failed'])} недоступно"
             
         elif check_type == 'resources':
             # Запуск проверки ресурсов
-            from monitor_core import check_resources_automatically
+            from core.monitor_core import check_resources_automatically
             check_resources_automatically()
             message = "✅ Проверка ресурсов выполнена. Данные обновятся через 1-2 минуты."
             
         elif check_type == 'report':
             # Формирование отчета
-            from monitor_core import send_morning_report
+            from core.monitor_core import send_morning_report
             send_morning_report()
             message = "✅ Отчет сформирован и отправлен в Telegram"
             
@@ -912,17 +912,17 @@ def api_run_action():
     
     try:
         if action == 'check_all':
-            from monitor_core import get_current_server_status
+            from core.monitor_core import get_current_server_status
             status = get_current_server_status()
             message = f"✅ Проверка всех серверов выполнена: {len(status['ok'])} доступно, {len(status['failed'])} недоступно"
             
         elif action == 'check_resources':
-            from monitor_core import check_resources_automatically
+            from core.monitor_core import check_resources_automatically
             check_resources_automatically()
             message = "✅ Проверка ресурсов запущена. Данные обновятся через 1-2 минуты."
             
         elif action == 'morning_report':
-            from monitor_core import send_morning_report
+            from core.monitor_core import send_morning_report
             send_morning_report()
             message = "✅ Утренний отчет отправлен в Telegram"
             
