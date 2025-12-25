@@ -121,6 +121,21 @@ def setup_logging(
     _loggers[name] = logger
     return logger
 
+def get_logger(name: Optional[str] = None, base_name: str = "monitoring") -> logging.Logger:
+    """
+    Получить именованный логгер
+    
+    Args:
+        name: Имя вложенного логгера (опционально)
+        base_name: Базовое имя логгера
+        
+    Returns:
+        Экземпляр логгера
+    """
+    if name:
+        return logging.getLogger(f"{base_name}.{name}")
+    return logging.getLogger(base_name)
+
 def debug_log(message: str, force: bool = False, logger_name: str = "monitoring") -> None:
     """
     Централизованное логирование отладки

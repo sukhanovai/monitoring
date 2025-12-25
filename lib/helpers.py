@@ -1,5 +1,5 @@
 """
-/app/utils/helpers.py
+/lib/helpers.py
 Server Monitoring System v4.17.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT

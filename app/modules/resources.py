@@ -14,8 +14,8 @@ Server resource checking module
 import threading
 from datetime import datetime, timedelta
 from config.settings_app import RESOURCE_CHECK_INTERVAL, RESOURCE_ALERT_THRESHOLDS, RESOURCE_ALERT_INTERVAL
-from app.utils.logging import debug_log
-from app.utils.helpers import progress_bar
+from lib.logging import debug_log
+from lib.helpers import progress_bar
 
 class ResourceMonitor:
     """Класс мониторинга ресурсов серверов"""

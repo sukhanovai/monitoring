@@ -15,8 +15,8 @@ import threading
 import time
 from datetime import datetime, timedelta
 from config.settings_app import CHECK_INTERVAL, MAX_FAIL_TIME
-from app.utils.logging import debug_log
-from app.utils.helpers import is_proxmox_server
+from lib.logging import debug_log
+from lib.helpers import is_proxmox_server
 
 # Импортируем проверки серверов
 try:

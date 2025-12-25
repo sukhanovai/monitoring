@@ -12,7 +12,7 @@ Telegram bot command handlers
 """
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from app.utils.common import debug_log
+from lib.common import debug_log
 
 def send_alert(message, force=False):
     """Отправляет сообщение в Telegram"""

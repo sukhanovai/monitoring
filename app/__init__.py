@@ -22,8 +22,8 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 # Теперь можем импортировать
 try:
-    from .utils.common import (
-        setup_logging, format_duration, 
+    from lib.common import (
+        setup_logging, format_duration,
         progress_bar, safe_import, DEBUG_MODE,
         debug_log
     )
