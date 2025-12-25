@@ -1,11 +1,11 @@
 """
 /lib/monitoring_utils.py
-Server Monitoring System v4.19.3
+Server Monitoring System v4.19.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Utilities: diagnostics, reports, statistics
 Система мониторинга серверов
-Версия: 4.19.3
+Версия: 4.19.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Утилиты: диагностика, отчеты, статистика
