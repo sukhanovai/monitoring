@@ -18,8 +18,8 @@ import subprocess
 import sys
 from flask import Flask, jsonify, render_template_string, request
 from lib.logging import setup_logging
-from .db_settings import WEB_PORT, WEB_HOST
-from .settings import STATS_FILE
+from config.db_settings import WEB_PORT, WEB_HOST
+from config.settings import STATS_FILE
 
 app = Flask(__name__)
 logger = setup_logging("web_interface")
@@ -812,7 +812,7 @@ def get_monitoring_stats():
         availability_percentage = round((servers_up / total_servers) * 100, 1) if total_servers > 0 else 0
         
         # Получаем настройки из конфига
-        from .db_settings import CHECK_INTERVAL, RESOURCE_CHECK_INTERVAL
+        from config.db_settings import CHECK_INTERVAL, RESOURCE_CHECK_INTERVAL
         resource_check_minutes = RESOURCE_CHECK_INTERVAL // 60
         
         # Считаем проблемы с ресурсами
