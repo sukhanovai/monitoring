@@ -18,8 +18,8 @@ from datetime import datetime
 import sys
 import os
 from lib.network import check_port as net_check_port, check_ping as net_check_ping
-from .settings import BASE_DIR
-from .db_settings import (
+from config.settings import BASE_DIR
+from config.db_settings import (
     RDP_SERVERS,
     SSH_SERVERS,
     PING_SERVERS,

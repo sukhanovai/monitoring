@@ -14,8 +14,7 @@ Utilities: diagnostics, reports, statistics
 
 import json
 from datetime import datetime, timedelta
-from extensions.settings_utils import STATS_FILE, DATA_DIR
-from config.settings import PROC_UPTIME_FILE
+from config.settings import PROC_UPTIME_FILE, STATS_FILE, DATA_DIR
 
 # === ДИАГНОСТИКА SSH (из single_check.py) ===
 

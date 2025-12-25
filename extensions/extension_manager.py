@@ -15,7 +15,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
-from extensions.settings_extension_manager import DATA_DIR
+from config.settings import DATA_DIR
 
 # Путь к каталогу конфигурации расширений
 EXTENSIONS_CONFIG_DIR = Path(DATA_DIR) / "extensions"
