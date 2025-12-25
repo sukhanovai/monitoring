@@ -230,7 +230,7 @@ class ResourceMonitor:
         message += "\n".join(alerts)
         message += f"\n⏰ Время проверки: {datetime.now().strftime('%H:%M:%S')}"
         
-        from app.handlers.commands import send_alert
+        from bot.handlers.commands import send_alert
         send_alert(message)
 
 # Глобальный экземпляр мониторинга ресурсов

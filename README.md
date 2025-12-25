@@ -463,7 +463,7 @@ sudo systemctl start server-monitor
 ├── improved_mail_monitor.py     # Обработчик почты для бэкапов
 ├── config/                      # Конфигурация системы
 ├── core/monitor.py              # Ядро мониторинга
-├── bot_menu.py                  # Telegram бот и меню
+├── bot/menu/handlers.py         # Telegram бот и меню
 ├── lib/utils.py                 # Общие утилиты
 ├── config/debug.py              # Настройки отладки
 ├── extensions/
@@ -549,4 +549,3 @@ SSH подключения не работают - проверьте ключи
 
 📄 Лицензия
 MIT License - подробности в файле LICENSE
-

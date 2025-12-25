@@ -70,7 +70,7 @@ class AvailabilityMonitor:
         """Обработка доступного сервера"""
         if status["alert_sent"]:
             downtime = (current_time - status["last_up"]).total_seconds()
-            from app.handlers.commands import send_alert
+            from bot.handlers.commands import send_alert
             send_alert(f"✅ {status['name']} ({ip}) доступен (простой: {int(downtime//60)} мин)")
 
         self.server_status[ip] = {
@@ -85,7 +85,7 @@ class AvailabilityMonitor:
         downtime = (current_time - status["last_up"]).total_seconds()
         
         if downtime >= MAX_FAIL_TIME and not status["alert_sent"]:
-            from app.handlers.commands import send_alert
+            from bot.handlers.commands import send_alert
             send_alert(f"🚨 {status['name']} ({ip}) не отвечает (проверка: {status['type'].upper()})")
             self.server_status[ip]["alert_sent"] = True
     
