@@ -17,6 +17,144 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
+def get_backup_summary(period_hours=16):
+    """Возвращает текстовую сводку по бэкапам за период."""
+    try:
+        from config.db_settings import DATA_DIR, DATABASE_BACKUP_CONFIG, PROXMOX_HOSTS
+
+        db_path = DATA_DIR / "backups.db"
+        if not db_path.exists():
+            logger.error("База данных бэкапов недоступна: %s", db_path)
+            return "❌ База данных бэкапов недоступна\n"
+
+        since_time = (datetime.now() - timedelta(hours=period_hours)).strftime('%Y-%m-%d %H:%M:%S')
+        stale_threshold = (datetime.now() - timedelta(hours=24)).strftime('%Y-%m-%d %H:%M:%S')
+
+        conn = sqlite3.connect(str(db_path))
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT DISTINCT host_name
+            FROM proxmox_backups
+            WHERE received_at >= datetime('now', '-30 days')
+            ORDER BY host_name
+        ''')
+        all_hosts = [row[0] for row in cursor.fetchall()]
+        if PROXMOX_HOSTS:
+            configured_hosts = set(PROXMOX_HOSTS.keys())
+            all_hosts = [host for host in all_hosts if host in configured_hosts]
+
+        cursor.execute('''
+            SELECT host_name, backup_status, MAX(received_at) as last_backup
+            FROM proxmox_backups
+            WHERE received_at >= ?
+            GROUP BY host_name
+        ''', (since_time,))
+        proxmox_results = cursor.fetchall()
+
+        cursor.execute('''
+            SELECT host_name, MAX(received_at) as last_backup
+            FROM proxmox_backups
+            GROUP BY host_name
+            HAVING last_backup < ?
+        ''', (stale_threshold,))
+        stale_hosts = cursor.fetchall()
+
+        cursor.execute('''
+            SELECT backup_type, database_name, backup_status, MAX(received_at) as last_backup
+            FROM database_backups
+            WHERE received_at >= ?
+            GROUP BY backup_type, database_name
+        ''', (since_time,))
+        db_results = cursor.fetchall()
+
+        cursor.execute('''
+            SELECT backup_type, database_name, MAX(received_at) as last_backup
+            FROM database_backups
+            GROUP BY backup_type, database_name
+            HAVING last_backup < ?
+        ''', (stale_threshold,))
+        stale_databases = cursor.fetchall()
+
+        conn.close()
+
+        hosts_with_success = len([r for r in proxmox_results if r[1] == 'success'])
+
+        config_databases = {
+            'company_database': DATABASE_BACKUP_CONFIG.get("company_databases", {}),
+            'barnaul': DATABASE_BACKUP_CONFIG.get("barnaul_backups", {}),
+            'client': DATABASE_BACKUP_CONFIG.get("client_databases", {}),
+            'yandex': DATABASE_BACKUP_CONFIG.get("yandex_backups", {}),
+        }
+
+        db_stats = {}
+        for category, databases in config_databases.items():
+            total_in_config = len(databases)
+            if total_in_config == 0:
+                continue
+
+            successful_count = 0
+            for db_key in databases.keys():
+                if any(
+                    backup_type == category and db_name == db_key and status == 'success'
+                    for backup_type, db_name, status, _ in db_results
+                ):
+                    successful_count += 1
+
+            db_stats[category] = {
+                'total': total_in_config,
+                'successful': successful_count,
+            }
+
+        message = ""
+
+        if len(all_hosts) > 0:
+            success_rate = (hosts_with_success / len(all_hosts)) * 100
+            message += f"• Proxmox: {hosts_with_success}/{len(all_hosts)} успешно ({success_rate:.1f}%)"
+            if stale_hosts:
+                message += f" ⚠️ {len(stale_hosts)} хостов без бэкапов >24ч"
+            message += "\n"
+
+        message += "• Базы данных:\n"
+
+        category_names = {
+            'company_database': 'Основные',
+            'barnaul': 'Барнаул',
+            'client': 'Клиенты',
+            'yandex': 'Yandex',
+        }
+
+        for category in ['company_database', 'barnaul', 'client', 'yandex']:
+            if category not in db_stats:
+                continue
+            stats = db_stats[category]
+            if stats['total'] <= 0:
+                continue
+
+            type_name = category_names[category]
+            success_rate = (stats['successful'] / stats['total']) * 100
+            message += f"  - {type_name}: {stats['successful']}/{stats['total']} успешно ({success_rate:.1f}%)"
+
+            stale_count = len([db for db in stale_databases if db[0] == category])
+            if stale_count > 0:
+                message += f" ⚠️ {stale_count} БД без бэкапов >24ч"
+            message += "\n"
+
+        total_stale = len(stale_hosts) + len(stale_databases)
+        if total_stale > 0:
+            message += f"\n🚨 Внимание: {total_stale} проблем:\n"
+            if stale_hosts:
+                message += f"• {len(stale_hosts)} хостов без бэкапов >24ч\n"
+            if stale_databases:
+                message += f"• {len(stale_databases)} БД без бэкапов >24ч\n"
+
+        return message
+
+    except Exception as e:
+        logger.exception("Ошибка формирования отчета о бэкапах: %s", e)
+        return "❌ Ошибка формирования отчета о бэкапах\n"
+
 class BackupBase:
     """Базовый класс для работы с бэкапами"""
     
