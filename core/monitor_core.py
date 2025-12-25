@@ -1831,6 +1831,11 @@ def send_morning_report_handler(update, context):
     """Обработчик для принудительной отправки утреннего отчета (через новый modules.morning_report)"""
     query = update.callback_query if hasattr(update, "callback_query") else None
     chat_id = query.message.chat_id if query else update.message.chat_id
+    if query:
+        try:
+            query.answer("⏳ Формирую отчет...")
+        except Exception as e:
+            debug_log(f"⚠️ Не удалось ответить на callback: {e}")
 
     config = get_config()
     if str(chat_id) not in config.CHAT_IDS:
@@ -1853,10 +1858,7 @@ def send_morning_report_handler(update, context):
             parse_mode="Markdown"
         )
 
-        # Небольшое подтверждение на кнопке
-        if query:
-            query.answer("📊 Отчет отправлен")
-        else:
+        if not query:
             update.message.reply_text("📊 Отчет отправлен")
 
     except Exception as e:
