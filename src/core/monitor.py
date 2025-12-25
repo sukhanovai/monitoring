@@ -316,7 +316,11 @@ class Monitor:
         self.servers = self.load_servers()
         
         if not self.servers:
-            debug_log("❌ Нет серверов для мониторинга")
+            debug_log(
+                "❌ Нет серверов для мониторинга. "
+                "Добавьте их в разделе «Настройки → Серверы» "
+                "в веб-интерфейсе или задайте SERVER_CONFIG в config/settings.py."
+            )
             return
         
         # Инициализируем статусы
