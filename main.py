@@ -18,11 +18,11 @@ import argparse
 import threading
 from pathlib import Path
 
-from lib.logging import setup_logging
 PROJECT_ROOT = Path(__file__).resolve().parent
-BASE_DIR = Path(os.environ.get("MONITORING_BASE_DIR", PROJECT_ROOT / "opt" / "monitoring")).resolve()
-BASE_DIR.mkdir(parents=True, exist_ok=True)
-sys.path.insert(0, str(BASE_DIR))
+SOURCE_DIR = Path(os.environ.get("MONITORING_SOURCE_DIR", PROJECT_ROOT / "src")).resolve()
+sys.path.insert(0, str(SOURCE_DIR))
+
+from lib.logging import setup_logging
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
