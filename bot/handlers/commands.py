@@ -1,11 +1,11 @@
 """
 /bot/handlers/commands.py
-Server Monitoring System v4.18.2
+Server Monitoring System v4.18.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Only commands, no inline buttons.
 Система мониторинга серверов
-Версия: 4.18.2
+Версия: 4.18.3
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Только команды, никаких inline-кнопок
