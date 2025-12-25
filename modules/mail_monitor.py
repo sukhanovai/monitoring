@@ -23,7 +23,7 @@ from email import message_from_bytes
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 
-from config.settings import (
+from config.db_settings import (
     BACKUP_DATABASE_CONFIG,
     BACKUP_PATTERNS,
     DATABASE_BACKUP_CONFIG,
