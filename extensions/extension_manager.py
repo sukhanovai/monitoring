@@ -25,7 +25,7 @@ EXTENSIONS_CONFIG_FILE = EXTENSIONS_CONFIG_DIR / "extensions_config.json"
 LEGACY_EXTENSIONS_CONFIG_FILE = Path(DATA_DIR) / "extensions_config.json"
 
 # Список всех доступных расширений
-AVAILABLE_EXTENSIONS = {
+AVAILABLE_EXTENSIONS: Dict[str, Dict[str, Any]] = {
     'backup_monitor': {
         'name': '📊 Мониторинг бэкапов Proxmox',
         'description': 'Отслеживание статуса бэкапов Proxmox из почтовых уведомлений',
@@ -156,6 +156,17 @@ class ExtensionManager:
         except Exception as e:
             print(f"❌ Ошибка сохранения конфигурации расширений: {e}")
             return False
+
+    def register_extension(self, extension_id: str, extension_info: Dict[str, Any]) -> None:
+        """Регистрирует новое расширение и добавляет его в конфиг при необходимости"""
+        AVAILABLE_EXTENSIONS[extension_id] = extension_info
+
+        if extension_id not in self.extensions_config:
+            self.extensions_config[extension_id] = {
+                'enabled': extension_info.get('enabled_by_default', False),
+                'last_modified': datetime.now().isoformat()
+            }
+            self.save_config()
     
     def get_extension_config_path(self, extension_id: str) -> Path:
         """Возвращает путь к файлу конфига конкретного расширения"""
@@ -285,6 +296,10 @@ extension_manager = ExtensionManager()
 
 def get_enabled_extensions() -> List[str]:
     return extension_manager.get_enabled_extensions()
+
+def register_extension(extension_id: str, extension_info: Dict[str, Any]) -> None:
+    """Простейшая регистрация расширения в менеджере"""
+    extension_manager.register_extension(extension_id, extension_info)
 
 def register_enabled_extensions(dispatcher: Any) -> None:
     """
