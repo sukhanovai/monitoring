@@ -279,11 +279,11 @@ def report_command(update, context):
     return send_morning_report_handler(update, context)
 
 def stats_command(update, context):
-    from extensions.utils import stats_command as stats_cmd
+    from lib.monitoring_utils import stats_command as stats_cmd
     return stats_cmd(update, context)
 
 def diagnose_ssh_command(update, context):
-    from extensions.utils import diagnose_ssh_command as diagnose_cmd
+    from lib.monitoring_utils import diagnose_ssh_command as diagnose_cmd
     return diagnose_cmd(update, context)
 
 def backup_command(update, context):
