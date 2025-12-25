@@ -155,8 +155,10 @@ def main(args: argparse.Namespace):
             bot_token = "000000:TESTTOKEN"
             telegram_enabled = True
             logger.warning("⚠️ Telegram токен отсутствует, используем тестовую заглушку (dry-run)")
+        elif not bot_token:
+            logger.info("ℹ️ Telegram токен не задан, бот отключен")
         else:
-            logger.warning("⚠️ Telegram токен отсутствует или некорректен, бот отключен")
+            logger.warning("⚠️ Telegram токен задан, но некорректен, бот отключен")
 
     # Применяем настройки алертов заранее
     if not args.dry_run:
