@@ -235,3 +235,140 @@ class ResourceMonitor:
 
 # Глобальный экземпляр мониторинга ресурсов
 resource_monitor = ResourceMonitor()
+
+
+class ResourcesChecker:
+    """Утилиты для разовых проверок ресурсов серверов."""
+
+    def __init__(self):
+        self.resource_history = {}
+        self.resource_alerts_sent = {}
+
+    def check_server_resources(self, server):
+        """Проверка ресурсов одного сервера."""
+        try:
+            server_ip = server.get("ip")
+            server_name = server.get("name", server_ip)
+            server_type = server.get("type")
+
+            resources = None
+            if server_type == "ssh":
+                from extensions.server_checks import get_linux_resources_improved
+                resources = get_linux_resources_improved(server_ip)
+            elif server_type == "rdp":
+                from extensions.server_checks import get_windows_resources_improved
+                resources = get_windows_resources_improved(server_ip)
+
+            if resources is None:
+                return False, None
+
+            resources = dict(resources)
+            resources["server_name"] = server_name
+            return True, resources
+
+        except Exception as e:
+            debug_log(f"❌ Ошибка проверки ресурсов {server.get('name')}: {e}")
+            return False, None
+
+    def check_multiple_resources(self, servers, progress_callback=None):
+        """Проверка ресурсов нескольких серверов."""
+        results = []
+        total = len(servers)
+        success_count = 0
+
+        for index, server in enumerate(servers):
+            if progress_callback:
+                progress = (index + 1) / total * 100 if total else 100
+                progress_callback(progress, f"Проверяем {server.get('name', 'сервер')}...")
+
+            success, resources = self.check_server_resources(server)
+            results.append({
+                "server": server,
+                "resources": resources,
+                "success": success,
+            })
+
+            if success:
+                success_count += 1
+
+        stats = {
+            "total": total,
+            "success": success_count,
+            "failed": total - success_count,
+        }
+
+        return results, stats
+
+    def check_resource_alerts(self, ip, current_resources):
+        """Проверяет условия для отправки алертов по ресурсам."""
+        from config import RESOURCE_ALERT_THRESHOLDS, RESOURCE_ALERT_INTERVAL
+
+        if not current_resources:
+            return []
+
+        current_time = datetime.now()
+        server_name = current_resources.get("server_name", ip)
+
+        if ip not in self.resource_history:
+            self.resource_history[ip] = []
+
+        resource_entry = {
+            "timestamp": current_time,
+            "cpu": current_resources.get("cpu", 0),
+            "ram": current_resources.get("ram", 0),
+            "disk": current_resources.get("disk", 0),
+            "server_name": server_name,
+        }
+
+        self.resource_history[ip].append(resource_entry)
+        if len(self.resource_history[ip]) > 10:
+            self.resource_history[ip] = self.resource_history[ip][-10:]
+
+        history = self.resource_history.get(ip, [])[:-1]
+        alerts = []
+
+        disk_usage = resource_entry.get("disk", 0)
+        if disk_usage >= RESOURCE_ALERT_THRESHOLDS["disk_alert"]:
+            alert_key = f"{ip}_disk"
+            if alert_key not in self.resource_alerts_sent or (
+                current_time - self.resource_alerts_sent[alert_key]
+            ).total_seconds() > RESOURCE_ALERT_INTERVAL:
+                alerts.append(
+                    f"💾 **Дисковое пространство** на {server_name}: {disk_usage}% "
+                    f"(превышен порог {RESOURCE_ALERT_THRESHOLDS['disk_alert']}%)"
+                )
+                self.resource_alerts_sent[alert_key] = current_time
+
+        cpu_usage = resource_entry.get("cpu", 0)
+        if cpu_usage >= RESOURCE_ALERT_THRESHOLDS["cpu_alert"] and len(history) >= 1:
+            prev_cpu = history[-1].get("cpu", 0)
+            if prev_cpu >= RESOURCE_ALERT_THRESHOLDS["cpu_alert"]:
+                alert_key = f"{ip}_cpu"
+                if alert_key not in self.resource_alerts_sent or (
+                    current_time - self.resource_alerts_sent[alert_key]
+                ).total_seconds() > RESOURCE_ALERT_INTERVAL:
+                    alerts.append(
+                        f"💻 **Процессор** на {server_name}: {prev_cpu}% → {cpu_usage}% "
+                        f"(2 проверки подряд >= {RESOURCE_ALERT_THRESHOLDS['cpu_alert']}%)"
+                    )
+                    self.resource_alerts_sent[alert_key] = current_time
+
+        ram_usage = resource_entry.get("ram", 0)
+        if ram_usage >= RESOURCE_ALERT_THRESHOLDS["ram_alert"] and len(history) >= 1:
+            prev_ram = history[-1].get("ram", 0)
+            if prev_ram >= RESOURCE_ALERT_THRESHOLDS["ram_alert"]:
+                alert_key = f"{ip}_ram"
+                if alert_key not in self.resource_alerts_sent or (
+                    current_time - self.resource_alerts_sent[alert_key]
+                ).total_seconds() > RESOURCE_ALERT_INTERVAL:
+                    alerts.append(
+                        f"🧠 **Память** на {server_name}: {prev_ram}% → {ram_usage}% "
+                        f"(2 проверки подряд >= {RESOURCE_ALERT_THRESHOLDS['ram_alert']}%)"
+                    )
+                    self.resource_alerts_sent[alert_key] = current_time
+
+        return alerts
+
+
+# Глобальный экземпляр чекера ресурсов
+resources_checker = ResourcesChecker()

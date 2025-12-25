@@ -142,3 +142,47 @@ class AvailabilityMonitor:
 
 # Глобальный экземпляр мониторинга
 availability_monitor = AvailabilityMonitor()
+
+
+class AvailabilityChecker:
+    """Утилиты для разовых проверок доступности."""
+
+    def __init__(self):
+        self.last_check_time = None
+
+    def check_single_server(self, server):
+        """Проверяет доступность одного сервера."""
+        if not check_server_availability:
+            debug_log("❌ Модуль проверок недоступен", force=True)
+            return False
+
+        try:
+            return check_server_availability(server)
+        except Exception as e:
+            debug_log(f"❌ Ошибка проверки {server.get('name')}: {e}")
+            return False
+
+    def check_multiple_servers(self, servers, progress_callback=None):
+        """Проверяет доступность нескольких серверов."""
+        results = {"up": [], "down": [], "ok": [], "failed": []}
+        total = len(servers)
+
+        for index, server in enumerate(servers):
+            if progress_callback:
+                progress = (index + 1) / total * 100 if total else 100
+                progress_callback(progress, f"Проверяем {server.get('name', 'сервер')}...")
+
+            is_up = self.check_single_server(server)
+            if is_up:
+                results["up"].append(server)
+                results["ok"].append(server)
+            else:
+                results["down"].append(server)
+                results["failed"].append(server)
+
+        self.last_check_time = datetime.now()
+        return results
+
+
+# Глобальный экземпляр чекера доступности
+availability_checker = AvailabilityChecker()
