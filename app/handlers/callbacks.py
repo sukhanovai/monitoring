@@ -12,7 +12,7 @@ Callback-обработчики Telegram бота
 """
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from app.utils.logging import debug_log
+from lib.logging import debug_log
 
 def handle_check_single_callback(update, context, server_ip):
     """Обработка callback проверки одного сервера"""

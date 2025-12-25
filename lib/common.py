@@ -1,5 +1,5 @@
 """
-/app/utils/common.py
+/lib/common.py
 Server Monitoring System v4.17.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
@@ -11,15 +11,13 @@ General system utilities
 Общие утилиты системы
 """
 
-import time
 import importlib
-from datetime import datetime
 
 try:
     from config.settings_app import DEBUG_MODE
 except ImportError:
     DEBUG_MODE = False
-from app.utils.logging import setup_logging as _setup_logging, get_logger
+from lib.logging import setup_logging as _setup_logging, get_logger
 
 def setup_logging():
     """Настройка централизованного логирования"""

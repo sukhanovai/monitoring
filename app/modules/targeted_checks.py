@@ -12,8 +12,8 @@ Server Spot Check Module
 """
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from app.utils.common import debug_log
-from app.utils.helpers import progress_bar
+from lib.common import debug_log
+from lib.helpers import progress_bar
 
 class TargetedChecks:
     """Класс для точечных проверок серверов"""

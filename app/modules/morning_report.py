@@ -15,7 +15,7 @@ import threading
 import time
 from datetime import datetime, timedelta
 from config.settings_app import DATA_COLLECTION_TIME
-from app.utils.logging import debug_log
+from lib.logging import debug_log
 
 class MorningReport:
     """Класс управления утренними отчетами"""

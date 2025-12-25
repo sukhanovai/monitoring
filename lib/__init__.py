@@ -17,7 +17,7 @@ from .utils import *
 from .network import *
 
 __all__ = [
-    'setup_logging', 'debug_log', 'info_log', 'warning_log', 'error_log',
+    'setup_logging', 'get_logger', 'debug_log', 'info_log', 'warning_log', 'error_log',
     'critical_log', 'exception_log', 'set_debug_mode', 'get_log_file_stats',
     'clear_logs',
     'send_alert', 'init_telegram_bot', 'set_silent_override', 'get_silent_override',

@@ -16,7 +16,7 @@ import socket
 import logging
 from datetime import datetime
 from pathlib import Path
-from app.utils.logging import debug_log
+from lib.logging import debug_log
 from config.settings_app import (
     DATA_DIR,
     DEBUG_LOG_FILE,
