@@ -1,5 +1,5 @@
 """
-/app/modules/morning_report.py
+/src/modules/morning_report.py
 Server Monitoring System v4.17.5
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT

@@ -1,5 +1,5 @@
 """
-/app/modules/targeted_checks.py
+/src/modules/targeted_checks.py
 Server Monitoring System v4.17.5
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
