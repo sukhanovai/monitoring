@@ -29,6 +29,7 @@ from config.db_settings import (
     WINDOWS_SERVER_CREDENTIALS,
     WINRM_CONFIGS,
     SERVER_CONFIG,
+    get_servers_config,
 )
 from core.checker import ServerChecker
 from lib.logging import debug_log
@@ -42,9 +43,14 @@ _server_checker = ServerChecker()
 def initialize_servers():
     """Инициализация списка серверов из конфигурации"""
     servers = []
+    servers_config = get_servers_config()
+    if not any(servers_config.values()):
+        servers_config = SERVER_CONFIG
+        if not any(servers_config.values()):
+            debug_log("⚠️ Конфигурация серверов пуста")
     
     # Windows RDP серверы
-    for ip, name in SERVER_CONFIG["windows_servers"].items():
+    for ip, name in servers_config.get("windows_servers", {}).items():
         servers.append({
             "ip": ip,
             "name": name,
@@ -52,7 +58,7 @@ def initialize_servers():
         })
     
     # Linux SSH серверы
-    for ip, name in SERVER_CONFIG["linux_servers"].items():
+    for ip, name in servers_config.get("linux_servers", {}).items():
         servers.append({
             "ip": ip,
             "name": name,
@@ -60,7 +66,7 @@ def initialize_servers():
         })
     
     # Ping-only серверы
-    for ip, name in SERVER_CONFIG["ping_servers"].items():
+    for ip, name in servers_config.get("ping_servers", {}).items():
         servers.append({
             "ip": ip,
             "name": name,

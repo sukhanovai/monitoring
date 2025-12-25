@@ -214,11 +214,10 @@ def get_current_server_status():
     """Выполняет быструю проверку статуса серверов"""
     global servers
 
-    # Переинициализируем серверы если список пустой
-    if not servers:
-        from extensions.server_checks import initialize_servers
-        servers = initialize_servers()
-        debug_log(f"🔄 Переинициализирован список серверов: {len(servers)} серверов")
+    # Переинициализируем серверы при каждом запросе
+    from extensions.server_checks import initialize_servers
+    servers = initialize_servers()
+    debug_log(f"🔄 Обновлен список серверов: {len(servers)} серверов")
 
     results = {"failed": [], "ok": []}
 
