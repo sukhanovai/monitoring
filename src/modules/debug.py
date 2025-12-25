@@ -17,7 +17,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 from lib.logging import debug_log
-from config.settings_app import (
+from config.db_settings import (
     DATA_DIR,
     DEBUG_LOG_FILE,
     BOT_DEBUG_LOG_FILE,

@@ -14,7 +14,7 @@ Server Availability Monitoring Module
 import threading
 import time
 from datetime import datetime, timedelta
-from config.settings_app import CHECK_INTERVAL, MAX_FAIL_TIME
+from config.db_settings import CHECK_INTERVAL, MAX_FAIL_TIME
 from lib.logging import debug_log
 from lib.helpers import is_proxmox_server
 

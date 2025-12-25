@@ -13,64 +13,16 @@ Database-backed settings loader
 
 from datetime import time as dt_time
 from typing import Dict, List, Any, Optional
-from pathlib import Path
 from lib.logging import debug_log, error_log, setup_logging
 from core.config_manager import config_manager
+from config import settings as defaults
+from config.settings import *
 
 # Логгер для этого модуля
 _logger = setup_logging("db_settings")
 
 # Флаг использования БД
 USE_DB = True
-
-# Импортируем базовые настройки для значений по умолчанию
-try:
-    from config.settings import *
-except ImportError:
-    # Если файл с базовыми настройками не найден, используем значения по умолчанию
-    debug_log("⚠️ Файл config.settings не найден, используем значения по умолчанию")
-    
-    # Базовые пути
-    BASE_DIR = Path(__file__).resolve().parents[1]
-    DATA_DIR = BASE_DIR / "data"
-    LOG_DIR = BASE_DIR / "logs"
-    
-    # Базовые настройки
-    TELEGRAM_TOKEN = ""
-    CHAT_IDS = []
-    
-    # Интервалы проверок
-    CHECK_INTERVAL = 60
-    MAX_FAIL_TIME = 900
-    
-    # Временные настройки
-    SILENT_START = 20
-    SILENT_END = 9
-    DATA_COLLECTION_TIME = dt_time(8, 30)
-    
-    # Настройки ресурсов
-    RESOURCE_CHECK_INTERVAL = 1800
-    RESOURCE_ALERT_INTERVAL = 1800
-    
-    RESOURCE_THRESHOLDS = {
-        "cpu_warning": 80,
-        "cpu_critical": 90,
-        "ram_warning": 85,
-        "ram_critical": 95,
-        "disk_warning": 80,
-        "disk_critical": 90
-    }
-    
-    RESOURCE_ALERT_THRESHOLDS = {
-        "cpu_alert": 99,
-        "ram_alert": 99,
-        "disk_alert": 95,
-        "check_consecutive": 2
-    }
-    
-    # Аутентификация
-    SSH_KEY_PATH = "/root/.ssh/id_rsa"
-    SSH_USERNAME = "root"
 
 def get_setting(key: str, default: Any = None) -> Any:
     """
@@ -254,47 +206,74 @@ def load_all_settings() -> None:
     
     try:
         # === БАЗОВЫЕ НАСТРОЙКИ ===
-        TELEGRAM_TOKEN = get_setting('TELEGRAM_TOKEN', "")
-        CHAT_IDS = get_setting('CHAT_IDS', [])
+        TELEGRAM_TOKEN = get_setting('TELEGRAM_TOKEN', defaults.TELEGRAM_TOKEN)
+        CHAT_IDS = get_setting('CHAT_IDS', defaults.CHAT_IDS)
 
         # === ИНТЕРВАЛЫ ПРОВЕРОК ===
-        CHECK_INTERVAL = get_setting('CHECK_INTERVAL', 60)
-        MAX_FAIL_TIME = get_setting('MAX_FAIL_TIME', 900)
+        CHECK_INTERVAL = get_setting('CHECK_INTERVAL', defaults.CHECK_INTERVAL)
+        MAX_FAIL_TIME = get_setting('MAX_FAIL_TIME', defaults.MAX_FAIL_TIME)
 
         # === ВРЕМЕННЫЕ НАСТРОЙКИ ===
-        SILENT_START = get_setting('SILENT_START', 20)
-        SILENT_END = get_setting('SILENT_END', 9)
+        SILENT_START = get_setting('SILENT_START', defaults.SILENT_START)
+        SILENT_END = get_setting('SILENT_END', defaults.SILENT_END)
 
-        DATA_COLLECTION_TIME_STR = get_setting('DATA_COLLECTION_TIME', '08:30')
+        default_collection_time = defaults.DATA_COLLECTION_TIME
+        if isinstance(default_collection_time, dt_time):
+            default_time_str = default_collection_time.strftime('%H:%M')
+        else:
+            default_time_str = str(default_collection_time)
+        DATA_COLLECTION_TIME_STR = get_setting('DATA_COLLECTION_TIME', default_time_str)
         try:
             hours, minutes = map(int, DATA_COLLECTION_TIME_STR.split(':'))
             DATA_COLLECTION_TIME = dt_time(hours, minutes)
         except:
-            DATA_COLLECTION_TIME = dt_time(8, 30)
+            DATA_COLLECTION_TIME = defaults.DATA_COLLECTION_TIME
 
         # === НАСТРОЙКИ РЕСУРСОВ ===
-        RESOURCE_CHECK_INTERVAL = get_setting('RESOURCE_CHECK_INTERVAL', 1800)
-        RESOURCE_ALERT_INTERVAL = get_setting('RESOURCE_ALERT_INTERVAL', 1800)
+        RESOURCE_CHECK_INTERVAL = get_setting(
+            'RESOURCE_CHECK_INTERVAL',
+            defaults.RESOURCE_CHECK_INTERVAL,
+        )
+        RESOURCE_ALERT_INTERVAL = get_setting(
+            'RESOURCE_ALERT_INTERVAL',
+            defaults.RESOURCE_ALERT_INTERVAL,
+        )
 
         RESOURCE_THRESHOLDS = {
-            "cpu_warning": get_setting('CPU_WARNING', 80),
-            "cpu_critical": get_setting('CPU_CRITICAL', 90),
-            "ram_warning": get_setting('RAM_WARNING', 85),
-            "ram_critical": get_setting('RAM_CRITICAL', 95),
-            "disk_warning": get_setting('DISK_WARNING', 80),
-            "disk_critical": get_setting('DISK_CRITICAL', 90)
+            "cpu_warning": get_setting(
+                'CPU_WARNING',
+                defaults.RESOURCE_THRESHOLDS.get("cpu_warning", 80),
+            ),
+            "cpu_critical": get_setting(
+                'CPU_CRITICAL',
+                defaults.RESOURCE_THRESHOLDS.get("cpu_critical", 90),
+            ),
+            "ram_warning": get_setting(
+                'RAM_WARNING',
+                defaults.RESOURCE_THRESHOLDS.get("ram_warning", 85),
+            ),
+            "ram_critical": get_setting(
+                'RAM_CRITICAL',
+                defaults.RESOURCE_THRESHOLDS.get("ram_critical", 95),
+            ),
+            "disk_warning": get_setting(
+                'DISK_WARNING',
+                defaults.RESOURCE_THRESHOLDS.get("disk_warning", 80),
+            ),
+            "disk_critical": get_setting(
+                'DISK_CRITICAL',
+                defaults.RESOURCE_THRESHOLDS.get("disk_critical", 90),
+            ),
         }
 
-        RESOURCE_ALERT_THRESHOLDS = get_json_setting('RESOURCE_ALERT_THRESHOLDS', {
-            "cpu_alert": 99,
-            "ram_alert": 99,
-            "disk_alert": 95,
-            "check_consecutive": 2
-        })
+        RESOURCE_ALERT_THRESHOLDS = get_json_setting(
+            'RESOURCE_ALERT_THRESHOLDS',
+            defaults.RESOURCE_ALERT_THRESHOLDS,
+        )
 
         # === АУТЕНТИФИКАЦИЯ ===
-        SSH_KEY_PATH = get_setting('SSH_KEY_PATH', "/root/.ssh/id_rsa")
-        SSH_USERNAME = get_setting('SSH_USERNAME', "root")
+        SSH_KEY_PATH = get_setting('SSH_KEY_PATH', defaults.SSH_KEY_PATH)
+        SSH_USERNAME = get_setting('SSH_USERNAME', defaults.SSH_USERNAME)
 
         # === КОНФИГУРАЦИЯ WINDOWS СЕРВЕРОВ ===
         WINDOWS_SERVER_CONFIGS = get_windows_server_configs()
@@ -315,28 +294,31 @@ def load_all_settings() -> None:
         PING_SERVERS = list(SERVER_CONFIG["ping_servers"].keys())
 
         # === УНИФИЦИРОВАННЫЕ ТАЙМАУТЫ ===
-        SERVER_TIMEOUTS = get_json_setting('SERVER_TIMEOUTS', {
-            "windows_2025": 35,
-            "domain_servers": 20,
-            "admin_servers": 25,
-            "standard_windows": 30,
-            "linux": 15,
-            "ping": 10,
-            "port_check": 5,
-            "ssh": 15
-        })
+        SERVER_TIMEOUTS = get_json_setting(
+            'SERVER_TIMEOUTS',
+            defaults.SERVER_TIMEOUTS,
+        )
 
         # === ВЕБ-ИНТЕРФЕЙС ===
-        WEB_PORT = get_setting('WEB_PORT', 5000)
-        WEB_HOST = get_setting('WEB_HOST', '0.0.0.0')
+        WEB_PORT = get_setting('WEB_PORT', defaults.WEB_PORT)
+        WEB_HOST = get_setting('WEB_HOST', defaults.WEB_HOST)
 
         # === КОНФИГУРАЦИЯ БЭКАПОВ ===
-        PROXMOX_HOSTS = get_json_setting('PROXMOX_HOSTS', {})
-        DUPLICATE_IP_HOSTS = get_json_setting('DUPLICATE_IP_HOSTS', {})
-        HOSTNAME_ALIASES = get_json_setting('HOSTNAME_ALIASES', {})
-        BACKUP_PATTERNS = get_json_setting('BACKUP_PATTERNS', {})
-        BACKUP_STATUS_MAP = get_json_setting('BACKUP_STATUS_MAP', {})
-        DATABASE_CONFIG = get_json_setting('DATABASE_CONFIG', {})
+        PROXMOX_HOSTS = get_json_setting('PROXMOX_HOSTS', defaults.PROXMOX_HOSTS)
+        DUPLICATE_IP_HOSTS = get_json_setting(
+            'DUPLICATE_IP_HOSTS',
+            defaults.DUPLICATE_IP_HOSTS,
+        )
+        HOSTNAME_ALIASES = get_json_setting(
+            'HOSTNAME_ALIASES',
+            defaults.HOSTNAME_ALIASES,
+        )
+        BACKUP_PATTERNS = get_json_setting('BACKUP_PATTERNS', defaults.BACKUP_PATTERNS)
+        BACKUP_STATUS_MAP = get_json_setting(
+            'BACKUP_STATUS_MAP',
+            defaults.BACKUP_STATUS_MAP,
+        )
+        DATABASE_CONFIG = get_json_setting('DATABASE_CONFIG', defaults.DATABASE_CONFIG)
 
         # Обратная совместимость для старого кода
         BACKUP_DATABASE_CONFIG = {

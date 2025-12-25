@@ -22,8 +22,6 @@ from lib.logging import debug_log, error_log, setup_logging
 try:
     from config.settings import DATA_DIR  # type: ignore
 except Exception:
-    from config.settings_app import DATA_DIR  # type: ignore
-except Exception:
     DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 
 # Логгер для этого модуля
