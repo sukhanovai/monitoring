@@ -1,11 +1,11 @@
 """
 /extensions/settings_extension_manager.py
-Server Monitoring System v4.17.1
+Server Monitoring System v4.17.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Settings for extension_manager
 Система мониторинга серверов
-Версия: 4.17.1
+Версия: 4.17.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Настройки для extension_manager
