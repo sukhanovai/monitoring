@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/settings.py
-Server Monitoring System v4.18.4
+Server Monitoring System v4.18.5
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface settings (static values)
 Система мониторинга серверов
-Версия: 4.18.4
+Версия: 4.18.5
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Настройки веб-интерфейса (статические значения)

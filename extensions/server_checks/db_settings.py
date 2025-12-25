@@ -1,11 +1,11 @@
 """
 /extensions/server_checks/db_settings.py
-Server Monitoring System v4.18.4
+Server Monitoring System v4.18.5
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Database settings values ​​for server_checks
 Система мониторинга серверов
-Версия: 4.18.4
+Версия: 4.18.5
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Значения настроек БД для server_checks
