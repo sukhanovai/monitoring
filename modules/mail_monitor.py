@@ -764,3 +764,7 @@ def main() -> None:
 
 
 __all__ = ["BackupProcessor", "run_mail_monitor", "main"]
+
+
+if __name__ == "__main__":
+    main()
