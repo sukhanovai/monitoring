@@ -92,7 +92,11 @@ class AvailabilityMonitor:
     def get_current_status(self):
         """Получить текущий статус всех серверов"""
         results = {"failed": [], "ok": []}
-        
+        if not self.servers:
+            if not self.initialize():
+                debug_log("❌ Нет данных о серверах для проверки", force=True)
+                return results
+
         for server in self.servers:
             try:
                 is_up = self.check_server(server)
