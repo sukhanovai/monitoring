@@ -17,7 +17,7 @@ from lib.common import debug_log
 def send_alert(message, force=False):
     """Отправляет сообщение в Telegram"""
     try:
-        from app.modules.availability import availability_monitor
+        from modules.availability import availability_monitor
         from config.settings_app import is_silent_time
         
         if force or not is_silent_time():
@@ -59,7 +59,7 @@ def handle_check_single_server(update, context, server_ip):
 def handle_check_server_resources(update, context, server_ip):
     """Обработка проверки ресурсов одного сервера"""
     try:
-        from app.modules.resources import resource_monitor
+        from modules.resources import resource_monitor
         
         resources = resource_monitor.check_single_server(server_ip)
         
