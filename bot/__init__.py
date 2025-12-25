@@ -1,20 +1,27 @@
 """
 /bot/__init__.py
-Server Monitoring System v4.16.7
+Server Monitoring System v4.17.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
-Proxy package for backward compatibility.
+Telegram bot module
 Система мониторинга серверов
-Версия: 4.16.7
+Версия: 4.17.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
-Прокси-пакет для обратной совместимости.
+Модуль Telegram-бота
 """
 
-from pathlib import Path
-from pkgutil import extend_path
+from bot.handlers import (
+    get_callback_handlers,
+    get_command_handlers,
+    get_message_handlers,
+)
+from bot.menu import main_menu, show_main_menu
 
-__path__ = extend_path(__path__, __name__)
-_monitoring_path = Path(__file__).resolve().parent.parent / "src" / "monitoring" / __name__
-if _monitoring_path.exists():
-    __path__.append(str(_monitoring_path))
+__all__ = [
+    "get_command_handlers",
+    "get_callback_handlers",
+    "get_message_handlers",
+    "main_menu",
+    "show_main_menu",
+]

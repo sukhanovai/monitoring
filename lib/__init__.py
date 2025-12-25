@@ -1,20 +1,29 @@
 """
-/bot/__init__.py
-Server Monitoring System v4.16.7
+/lib/__init__.py
+Server Monitoring System v4.17.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
-Proxy package for backward compatibility.
+Utility library package
 Система мониторинга серверов
-Версия: 4.16.7
+Версия: 4.17.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
-Прокси-пакет для обратной совместимости.
+Пакет библиотеки утилит
 """
 
-from pathlib import Path
-from pkgutil import extend_path
+from .logging import *
+from .alerts import *
+from .utils import *
+from .network import *
 
-__path__ = extend_path(__path__, __name__)
-_monitoring_path = Path(__file__).resolve().parent.parent / "src" / "monitoring" / __name__
-if _monitoring_path.exists():
-    __path__.append(str(_monitoring_path))
+__all__ = [
+    'setup_logging', 'debug_log', 'info_log', 'warning_log', 'error_log',
+    'critical_log', 'exception_log', 'set_debug_mode', 'get_log_file_stats',
+    'clear_logs',
+    'send_alert', 'init_telegram_bot', 'set_silent_override', 'get_silent_override',
+    'is_silent_time', 'get_alert_history', 'clear_alert_history', 'get_alert_stats',
+    'configure_alerts',
+    'safe_import', 'format_duration', 'progress_bar', 'is_proxmox_server',
+    'parse_time_string', 'get_size_string',
+    'check_ping', 'check_port',
+]
