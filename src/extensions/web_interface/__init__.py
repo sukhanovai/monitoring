@@ -11,16 +11,18 @@ Web interface
 Веб-интерфейс
 """
 
-from flask import Flask, jsonify, render_template_string, request
-from .db_settings import WEB_PORT, WEB_HOST
-from .settings import STATS_FILE
 import threading
 from datetime import datetime
 import json
 import subprocess
 import sys
+from flask import Flask, jsonify, render_template_string, request
+from lib.logging import setup_logging
+from .db_settings import WEB_PORT, WEB_HOST
+from .settings import STATS_FILE
 
 app = Flask(__name__)
+logger = setup_logging("web_interface")
 
 # HTML шаблон с вкладками и темной темой (без вкладки Ресурсы)
 HTML_TEMPLATE = """
@@ -1018,11 +1020,11 @@ def api_manage_servers():
     
 def start_web_server():
     """Запускает веб-сервер"""
-    print(f"🌐 Запуск веб-интерфейса на http://{WEB_HOST}:{WEB_PORT}")
+    logger.info(f"🌐 Запуск веб-интерфейса на http://{WEB_HOST}:{WEB_PORT}")
     try:
         app.run(host=WEB_HOST, port=WEB_PORT, debug=False, use_reloader=False)
     except Exception as e:
-        print(f"❌ Ошибка запуска веб-сервера: {e}")
+        logger.error(f"❌ Ошибка запуска веб-сервера: {e}")
 
 if __name__ == "__main__":
     start_web_server()
