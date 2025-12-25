@@ -27,7 +27,7 @@ try:
         progress_bar, safe_import, DEBUG_MODE,
         debug_log
     )
-    from .core.checker import ServerChecker
+    from core.checker import ServerChecker
     
     # Создаем глобальные экземпляры
     logger = None
