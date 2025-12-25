@@ -118,7 +118,7 @@ class MorningReport:
             message = self.generate_report_message()
             
             # Отправляем через обработчик
-            from app.handlers.commands import send_alert
+            from bot.handlers.commands import send_alert
             send_alert(message, force=True)
             
             debug_log(f"✅ Отчет отправлен ({'ручной' if manual_call else 'автоматический'})")
