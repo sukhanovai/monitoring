@@ -1,17 +1,7 @@
 """
-/bot/menu/__init__.py
-Server Monitoring System v4.17.11
-Copyright (c) 2025 Aleksandr Sukhanov
-License: MIT
-Menu exports
-Система мониторинга серверов
-Версия: 4.17.11
-Автор: Александр Суханов (c)
-Лицензия: MIT
-Экспорт функций меню
+Shim-пакет для обратной совместимости.
+Перенаправляет импорты в bot.menu.
 """
 
-from bot.menu.builder import main_menu
-from bot.menu.handlers import show_main_menu
-
-__all__ = ["main_menu", "show_main_menu"]
+from bot.menu import *  # noqa: F401,F403
+from bot.menu import __all__  # noqa: F401
