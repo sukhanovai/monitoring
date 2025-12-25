@@ -1,11 +1,11 @@
 """
 /src/monitoring/core/config_manager.py
-Server Monitoring System v4.16.6
+Server Monitoring System v4.16.7
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Configuration Manager
 Система мониторинга серверов
-Версия: 4.16.6
+Версия: 4.16.7
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Менеджер конфигурации
@@ -22,9 +22,10 @@ from lib.logging import debug_log, error_log, setup_logging
 try:
     from config.settings import DATA_DIR  # type: ignore
 except Exception:
-    from config.settings_app import DATA_DIR  # type: ignore
-except Exception:
-    DATA_DIR = Path(__file__).resolve().parents[1] / "data"
+    try:
+        from config.settings_app import DATA_DIR  # type: ignore
+    except Exception:
+        DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 
 # Логгер для этого модуля
 _logger = setup_logging("config")

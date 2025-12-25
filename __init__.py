@@ -1,11 +1,11 @@
 """
 /__init__.py
-Server Monitoring System v4.16.6
+Server Monitoring System v4.16.7
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Proxy package for backward compatibility.
 Система мониторинга серверов
-Версия: 4.16.6
+Версия: 4.16.7
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Прокси-пакет для обратной совместимости.

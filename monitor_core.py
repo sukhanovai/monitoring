@@ -1,11 +1,11 @@
 """
 /monitor_core.py
-Server Monitoring System v4.16.6
+Server Monitoring System v4.16.7
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Proxy module for backward compatibility
 Система мониторинга серверов
-Версия: 4.16.6
+Версия: 4.16.7
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Прокси-модуль для обратной совместимости

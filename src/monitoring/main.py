@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
 /src/monitoring/main.py
-Server Monitoring System v4.16.6
+Server Monitoring System v4.16.7
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Main launch module
 Система мониторинга серверов
-Версия: 4.16.6
+Версия: 4.16.7
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль запуска
@@ -19,10 +19,12 @@ import threading
 from pathlib import Path
 
 from monitoring.lib.logging import setup_logging
+
 PROJECT_ROOT = Path(__file__).resolve().parent
-BASE_DIR = Path(os.environ.get("MONITORING_BASE_DIR", PROJECT_ROOT / "opt" / "monitoring")).resolve()
+BASE_DIR = Path(os.environ.get("MONITORING_BASE_DIR", PROJECT_ROOT.parent)).resolve()
 BASE_DIR.mkdir(parents=True, exist_ok=True)
-sys.path.insert(0, str(BASE_DIR))
+os.environ.setdefault("MONITORING_BASE_DIR", str(BASE_DIR))
+sys.path.insert(0, str(PROJECT_ROOT))
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
