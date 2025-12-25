@@ -15,7 +15,7 @@ from bot.menu.handlers import show_main_menu
 from bot.handlers.base import check_access, deny_access
 from lib.common import debug_log
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from monitor_core import (
+from core.monitor_core import (
     manual_check_handler,
     monitor_status,
     silent_command,
@@ -66,7 +66,7 @@ def send_alert(message, force=False):
         from lib.alerts import is_silent_time
 
         if force or not is_silent_time():
-            from monitor_core import bot
+            from core.monitor_core import bot
             if bot:
                 from config.db_settings import CHAT_IDS
                 for chat_id in CHAT_IDS:

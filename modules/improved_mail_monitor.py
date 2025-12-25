@@ -1,16 +1,22 @@
 #!/usr/bin/env python3
 """
-/improved_mail_monitor.py
-Server Monitoring System v4.17.11
+/modules/improved_mail_monitor.py
+Server Monitoring System v4.18.6
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Mailbox monitoring
 Система мониторинга серверов
-Версия: 4.17.11
+Версия: 4.18.6
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг почтового ящика
 """
+
+import sys
+from pathlib import Path
+
+if __package__ is None:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from modules.mail_monitor import main
 

@@ -14,8 +14,8 @@ A single router for callbacks.
 import traceback
 
 from bot.menu.handlers import show_main_menu
-from settings_handlers import settings_callback_handler, BACKUP_SETTINGS_CALLBACKS
-from monitor_core import (
+from bot.handlers.settings_handlers import settings_callback_handler, BACKUP_SETTINGS_CALLBACKS
+from core.monitor_core import (
     manual_check_handler,
     monitor_status,
     silent_status_handler,
@@ -235,11 +235,11 @@ def callback_router(update, context):
         toggle_monitoring_handler(update, context)
 
     elif data == 'pause_monitoring':
-        from monitor_core import pause_monitoring_handler
+        from core.monitor_core import pause_monitoring_handler
         pause_monitoring_handler(update, context)
 
     elif data == 'resume_monitoring':
-        from monitor_core import resume_monitoring_handler
+        from core.monitor_core import resume_monitoring_handler
         resume_monitoring_handler(update, context)
 
     elif data == 'servers_list':
@@ -248,7 +248,7 @@ def callback_router(update, context):
 
     elif data in ('full_report', 'daily_report'):
         # в monitor_core это один и тот же handler в старом меню
-        from monitor_core import send_morning_report_handler
+        from core.monitor_core import send_morning_report_handler
         send_morning_report_handler(update, context)
 
     # ------------------------------------------------

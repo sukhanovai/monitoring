@@ -51,10 +51,10 @@ def get_message_handlers():
 
     Импортируем лениво, чтобы не падать, если модуль настроек недоступен.
     """
-    if importlib.util.find_spec("settings_handlers") is None:
+    if importlib.util.find_spec("bot.handlers.settings_handlers") is None:
         return []
 
-    from settings_handlers import handle_setting_value
+    from bot.handlers.settings_handlers import handle_setting_value
 
     return [MessageHandler(Filters.text & ~Filters.command, handle_setting_value)]
 
@@ -64,4 +64,3 @@ __all__ = [
     "get_callback_handlers",
     "get_message_handlers",
 ]
-
