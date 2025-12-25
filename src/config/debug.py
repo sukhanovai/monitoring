@@ -12,6 +12,7 @@ Monitoring system debug configuration
 """
 
 import json
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -110,8 +111,29 @@ class DebugConfig:
             'resource_debug': self.config.get('enable_resource_debug', False),
             'backup_debug': self.config.get('enable_backup_debug', True),
             'max_log_size': self.config.get('max_log_size_mb', 100),
-            'last_modified': self.config.get('last_modified')
+            'last_modified': self._format_last_modified()
         }
+
+    def _format_last_modified(self) -> str:
+        """Форматирует поле last_modified и защищает от мусорных значений."""
+        raw_value = self.config.get('last_modified')
+        if isinstance(raw_value, str):
+            raw_value = raw_value.strip()
+            if raw_value:
+                first_line = raw_value.splitlines()[0].strip()
+                try:
+                    parsed = datetime.fromisoformat(first_line)
+                    return parsed.isoformat(sep=" ", timespec="seconds")
+                except ValueError:
+                    match = re.search(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}", first_line)
+                    if match:
+                        return match.group(0)
+
+        try:
+            mtime = datetime.fromtimestamp(self.config_file.stat().st_mtime)
+            return mtime.isoformat(sep=" ", timespec="seconds")
+        except FileNotFoundError:
+            return "N/A"
 
 
 # Глобальный экземпляр конфигурации отладки
