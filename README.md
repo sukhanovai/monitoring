@@ -78,6 +78,7 @@ nano config.py
 Укажите username бота (должен заканчиваться на bot, например: my_server_monitor_bot)
 
 Скопируйте токен который выдаст BotFather - он понадобится для config.py
+Никогда не публикуйте реальные токены — используйте плейсхолдеры в документации и примерах.
 
 Пример диалога:
 Вы: /newbot
@@ -85,7 +86,7 @@ BotFather: Choose a name for your bot.
 Вы: Server Monitor
 BotFather: Choose a username for your bot.
 Вы: my_server_monitor_bot
-BotFather: Done! Use this token to access the HTTP API: 7916988741:AAHEX68KdHrJpfAhXKenSJSqsmESdqWeTWM
+BotFather: Done! Use this token to access the HTTP API: YOUR_BOT_TOKEN
 Шаг 2: Получение Chat ID пользователей
 Метод 1: Через бота
 
@@ -102,7 +103,7 @@ https://api.telegram.org/botYOUR_BOT_TOKEN/getUpdates
 
 Метод 3: Через Python скрипт
 import requests
-token = "ВАШ_TELEGRAM_BOT_TOKEN"
+token = "YOUR_BOT_TOKEN"
 response = requests.get(f"https://api.telegram.org/bot{token}/getUpdates")
 print(response.json())
 
@@ -110,7 +111,7 @@ print(response.json())
 
 Шаг 3: Добавление Chat ID в конфигурацию
 В файле config.py укажите полученные значения:
-TELEGRAM_TOKEN = "7916988741:AAHEX68KdHrJpfAhXKenSJSqsmESdqWeTWM"
+TELEGRAM_TOKEN = "YOUR_BOT_TOKEN"
 CHAT_IDS = ["123456789", "987654321"]  # Можно несколько ID через запятую
 Шаг 4: Проверка работы бота
 Запустите систему мониторинга
@@ -188,8 +189,15 @@ curl -X POST "https://api.telegram.org/bot<ТОКЕН>/sendMessage" \
 
 Минимальная конфигурация:
 # 🔐 НАСТРОЙКИ TELEGRAM
-TELEGRAM_TOKEN = "ваш_telegram_bot_token"
+TELEGRAM_TOKEN = "YOUR_BOT_TOKEN"
 CHAT_IDS = ["ваш_chat_id"]
+
+🔐 Проверка токенов при коммите (опционально)
+В репозитории есть простой хук, который блокирует коммит строк, похожих на Telegram-токены.
+Включить:
+```bash
+git config core.hooksPath .githooks
+```
 
 # 📁 ПУТИ ДАННЫХ
 DATA_DIR = "/opt/monitoring/data"
@@ -293,7 +301,7 @@ AVAILABLE_EXTENSIONS = {
 
 Основные настройки:
 # === БАЗОВЫЕ НАСТРОЙКИ ===
-TELEGRAM_TOKEN = "7916988741:AAHEX68KdHrJpfAhXKenSJSqsmESdqWeTWM"
+TELEGRAM_TOKEN = "YOUR_BOT_TOKEN"
 CHAT_IDS = ["626635078", "5885310172", "8064420067"]
 
 # === ИНТЕРВАЛЫ ПРОВЕРОК ===

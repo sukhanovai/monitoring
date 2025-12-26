@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+exec ./scripts/check-telegram-tokens.sh --staged
