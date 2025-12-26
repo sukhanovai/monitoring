@@ -201,6 +201,21 @@ class BackupProcessor:
             subject_lower = subject.lower()
 
             patterns = get_database_patterns_from_config()
+            fallback_patterns = {
+                "barnaul": [
+                    r"cobian\s+brn\s+backup\s+([\w.-]+),\s*errors[:=]\s*([\w\d]+)?",
+                ],
+                "client": [
+                    r"rubicon-1c\s+([\w.-]+)\s+dump\s+complete",
+                    r"backup\s+1c7\.7\s+([\w.-]+)\s+ok",
+                ],
+            }
+
+            def parse_error_count(raw_value: str | None) -> int:
+                if not raw_value:
+                    return 0
+                digits = re.findall(r"\d+", raw_value)
+                return int(digits[0]) if digits else 0
 
             for pattern in patterns.get("company", []):
                 match = re.search(pattern, subject_lower, re.IGNORECASE)
@@ -225,7 +240,8 @@ class BackupProcessor:
                     }
                     return backup_info
 
-            for pattern in patterns.get("client", []):
+            client_patterns = patterns.get("client", []) + fallback_patterns["client"]
+            for pattern in client_patterns:
                 match = re.search(pattern, subject_lower, re.IGNORECASE)
                 if match:
                     db_name = match.group(1).strip() if match.groups() else "unknown"
@@ -248,13 +264,13 @@ class BackupProcessor:
                     }
                     return backup_info
 
-            for pattern in patterns.get("barnaul", []):
+            barnaul_patterns = patterns.get("barnaul", []) + fallback_patterns["barnaul"]
+            for pattern in barnaul_patterns:
                 match = re.search(pattern, subject_lower, re.IGNORECASE)
                 if match:
                     db_name = match.group(1).strip() if match.groups() else "unknown"
-                    error_count = (
-                        int(match.group(2)) if match.groups() and len(match.groups()) > 1 else 0
-                    )
+                    error_value = match.group(2) if match.groups() and len(match.groups()) > 1 else None
+                    error_count = parse_error_count(error_value)
                     logger.info(
                         "✅ Найден бэкап barnaul: '%s' по паттерну: %s",
                         db_name,
