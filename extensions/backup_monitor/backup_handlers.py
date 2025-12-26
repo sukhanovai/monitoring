@@ -426,6 +426,58 @@ def show_host_status(query, backup_bot, host_name):
         logger.error(f"Ошибка в show_host_status: {e}")
         query.edit_message_text("❌ Ошибка при получении данных")
 
+ALLOWED_DATABASES = {
+    "company_database": [
+        "acc30_ge",
+        "acc30_nanokon",
+        "acc30_np",
+        "acc30_ork",
+        "hrm31_ge",
+        "hrm31_nkon",
+        "hrm31_np",
+        "hrm_25_ge",
+        "hrm_25_np",
+        "torg_etim",
+        "torg_ge",
+        "torg_ge_all",
+        "torg_ge_iv",
+        "torg_ge_vn",
+        "torg_nanokon",
+        "torg_np",
+        "trade",
+        "unf",
+        "unf_dan1",
+        "wms",
+    ],
+    "barnaul": [
+        "1c_nas",
+        "1c_smb",
+        "1c_vad",
+        "doc_nas",
+        "doc_smb",
+    ],
+    "client": [
+        "bp",
+        "ic_rubicon",
+        "ooo_rubicon",
+        "unf",
+        "unf_rubicon",
+        "zup",
+        "zup_ic_rubicon",
+        "zup_rubicon",
+    ],
+}
+
+ALLOWED_DATABASES_NORMALIZED = {
+    backup_type: {name.replace("-", "_").lower(): name for name in names}
+    for backup_type, names in ALLOWED_DATABASES.items()
+}
+
+
+def _normalize_db_key(name: str) -> str:
+    return str(name or "").replace("-", "_").lower()
+
+
 def show_database_backups_menu(query, backup_bot):
     """Показывает меню с базами данных (список берём из backups.db, а не из конфигурации)"""
     try:
@@ -461,8 +513,31 @@ def show_database_backups_menu(query, backup_bot):
         for backup_type, db_name, display_name in rows:
             if not backup_type or not db_name:
                 continue
-            db_by_type.setdefault(backup_type, [])
-            db_by_type[backup_type].append((db_name, display_name.strip() or db_name))
+
+            normalized_key = _normalize_db_key(db_name)
+            allowed_map = ALLOWED_DATABASES_NORMALIZED.get(backup_type)
+            if allowed_map is not None and normalized_key not in allowed_map:
+                continue
+
+            label = display_name.strip() or db_name
+            if allowed_map is not None:
+                label = allowed_map[normalized_key]
+
+            db_by_type.setdefault(backup_type, {})
+            if normalized_key not in db_by_type[backup_type]:
+                db_by_type[backup_type][normalized_key] = {
+                    "db_name": db_name,
+                    "label": label,
+                    "prefer": db_name == label,
+                }
+            else:
+                existing = db_by_type[backup_type][normalized_key]
+                if db_name == label and not existing["prefer"]:
+                    db_by_type[backup_type][normalized_key] = {
+                        "db_name": db_name,
+                        "label": label,
+                        "prefer": True,
+                    }
 
         keyboard = []
         for backup_type in sorted(db_by_type.keys()):
@@ -473,7 +548,11 @@ def show_database_backups_menu(query, backup_bot):
             )])
 
             current_row = []
-            for db_name, display_name in sorted(db_by_type[backup_type], key=lambda x: x[1].lower()):
+            entries = list(db_by_type[backup_type].values())
+            entries.sort(key=lambda item: item["label"].lower())
+            for entry in entries:
+                db_name = entry["db_name"]
+                display_name = entry["label"]
                 try:
                     status = backup_bot.get_database_display_status(backup_type, db_name)
                     display_btn = formatters.get_db_display_name(display_name, status)
@@ -666,11 +745,53 @@ def _esc_md(text: str) -> str:
              .replace("[", "\\[")
              .replace("`", "\\`"))
 
+def _get_latest_database_display_name(backup_bot, backup_type, db_name):
+    try:
+        rows = backup_bot.execute_query(
+            """
+            SELECT database_display_name
+            FROM database_backups
+            WHERE backup_type = ? AND database_name = ?
+              AND database_display_name IS NOT NULL
+              AND TRIM(database_display_name) != ''
+            ORDER BY received_at DESC
+            LIMIT 1
+            """,
+            (backup_type, db_name),
+        )
+        if rows:
+            return rows[0][0]
+    except Exception as e:
+        logger.error(f"Ошибка получения display_name для {backup_type}/{db_name}: {e}")
+    return None
+
+
+def _get_client_suffix(display_name: str | None) -> str | None:
+    if not display_name:
+        return None
+    if "КС" in display_name.split():
+        return "КС"
+    if "Рубикон" in display_name:
+        return "Рубикон"
+    return None
+
+
+def _get_details_display_name(backup_bot, backup_type, db_name):
+    base_name = db_name
+    if backup_type == "barnaul":
+        return f"{base_name} Барнаул"
+    if backup_type == "client":
+        display_name = _get_latest_database_display_name(backup_bot, backup_type, db_name)
+        client_suffix = _get_client_suffix(display_name)
+        if client_suffix:
+            return f"{base_name} {client_suffix}"
+    return base_name
+
+
 def format_database_details(backup_bot, backup_type, db_name, hours=168):
     """Форматирует детальную информацию по БД."""
     try:
-        display_names = backup_bot.get_database_display_names() or {}
-        display_name = display_names.get(db_name, db_name)
+        display_name = _get_details_display_name(backup_bot, backup_type, db_name)
 
         details = backup_bot.get_database_details(backup_type, db_name, hours)
         if not details:
