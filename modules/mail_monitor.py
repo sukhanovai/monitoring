@@ -251,6 +251,19 @@ class BackupProcessor:
                         pattern,
                     )
 
+                    company_dbs = DATABASE_BACKUP_CONFIG.get("company_databases", {})
+                    if db_name in company_dbs:
+                        display_name = company_dbs.get(db_name, db_name)
+                        backup_info = {
+                            "host_name": "sr-bup",
+                            "backup_status": "success",
+                            "task_type": "database_dump",
+                            "database_name": db_name,
+                            "database_display_name": display_name,
+                            "backup_type": "company_database",
+                        }
+                        return backup_info
+
                     client_dbs = DATABASE_BACKUP_CONFIG.get("client_databases", {})
                     display_name = client_dbs.get(db_name, db_name)
 
