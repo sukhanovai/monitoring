@@ -1,26 +1,59 @@
 """
-Server Monitoring System v2.4.8
+/extensions/backup_monitor/bot_handler.py
+Server Monitoring System v4.20.7
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
+Monitoring Proxmox backups
+Система мониторинга серверов
+Версия: 4.20.7
+Автор: Александр Суханов (c)
+Лицензия: MIT
 Мониторинг бэкапов Proxmox
 """
 
-import logging
 import sys
 from datetime import datetime, timedelta
+from pathlib import Path
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CommandHandler, CallbackQueryHandler
+import traceback
+from .settings_backup_monitor import BASE_DIR, DATA_DIR
+from config.settings import BOT_DEBUG_LOG_FILE
+from lib.logging import debug_log, setup_logging
+from extensions.backup_monitor.backup_handlers import (
+    show_main_menu,
+    show_today_status,
+    show_recent_backups,
+    show_failed_backups,
+    show_hosts_menu,
+    show_host_status,
+    show_stale_hosts,
+    show_database_backups_menu,
+    show_database_backups_summary,
+    show_database_details,
+    show_stale_databases,
+)
+
+def register_handlers(dispatcher):
+    """
+    Регистрирует handlers расширения backup_monitor.
+    Если команды уже где-то регистрируются — можно оставить пустым.
+    """
+    try:
+        # если у расширения есть команды вида /backup
+        # dispatcher.add_handler(CommandHandler("backup", backup_command))
+        # dispatcher.add_handler(CommandHandler("backup_search", backup_search_command))
+        # dispatcher.add_handler(CommandHandler("backup_help", backup_help_command))
+
+        # Если хочешь, чтобы расширение само ловило свои callback_data:
+        # dispatcher.add_handler(CallbackQueryHandler(backup_callback, pattern=r"^backup_"))
+
+        debug_log("✅ backup_monitor: handlers зарегистрированы")
+    except Exception as e:
+        debug_log(f"❌ backup_monitor: ошибка регистрации handlers: {e}")
 
 # Настройка логирования
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('/opt/monitoring/bot_debug.log'),
-        logging.StreamHandler(sys.stdout)
-    ]
-)
-logger = logging.getLogger(__name__)
+logger = setup_logging("backup_monitor_bot", level="DEBUG", log_file=BOT_DEBUG_LOG_FILE)
 
 # Импортируем наши утилиты и обработчики
 try:
@@ -29,7 +62,7 @@ try:
         create_main_menu, create_navigation_buttons,
         show_main_menu, show_today_status, show_recent_backups, show_failed_backups,
         show_hosts_menu, show_stale_hosts, show_host_status,
-        show_database_backups_menu, show_database_backups_list, show_stale_databases,
+        show_database_backups_menu, show_stale_databases,
         show_database_backups_summary, show_database_details,
         format_database_details
     )
@@ -38,15 +71,14 @@ except ImportError as e:
     logger.error(f"❌ Ошибка импорта модулей: {e}")
     # Альтернативный импорт для случаев, когда относительные импорты не работают
     try:
-        import os
         import sys
-        sys.path.append('/opt/monitoring/extensions/backup_monitor')
-        from backup_utils import BackupBase, StatusCalculator, DisplayFormatters
-        from backup_handlers import (
+        sys.path.append(str(Path(BASE_DIR) / 'extensions' / 'backup_monitor'))
+        from .backup_utils import BackupBase, StatusCalculator, DisplayFormatters
+        from .backup_handlers import (
             create_main_menu, create_navigation_buttons,
             show_main_menu, show_today_status, show_recent_backups, show_failed_backups,
             show_hosts_menu, show_stale_hosts, show_host_status,
-            show_database_backups_menu, show_database_backups_list, show_stale_databases,
+            show_database_backups_menu, show_stale_databases,
             show_database_backups_summary, show_database_details,
             format_database_details
         )
@@ -59,31 +91,52 @@ class BackupMonitorBot(BackupBase):
     """Оптимизированный класс для мониторинга бэкапов"""
     
     def __init__(self):
-        from config import BACKUP_DATABASE_CONFIG
+        from .db_settings_backup_monitor import BACKUP_DATABASE_CONFIG
         super().__init__(BACKUP_DATABASE_CONFIG['backups_db'])
         self.status_calc = StatusCalculator()
         self.formatters = DisplayFormatters()
 
     # === БАЗОВЫЕ МЕТОДЫ ===
     
-    def get_database_display_names(self):
-        """Получает отображаемые имена баз данных из конфигурации"""
-        from config import DATABASE_BACKUP_CONFIG
-        
-        display_names = {}
-        
-        # Объединяем все базы из конфигурации
-        config_sections = [
-            DATABASE_BACKUP_CONFIG["company_databases"],
-            DATABASE_BACKUP_CONFIG["barnaul_backups"], 
-            DATABASE_BACKUP_CONFIG["client_databases"],
-            DATABASE_BACKUP_CONFIG["yandex_backups"]
-        ]
-        
-        for section in config_sections:
-            display_names.update(section)
-        
-        return display_names
+    def get_database_display_names(self) -> dict:
+        """
+        Возвращает отображаемые имена БД (ключ -> display name),
+        берём из SETTINGS.DB: settings.key='DATABASE_CONFIG'
+        Формат DATABASE_CONFIG: {category: {db_key: db_display_name, ...}, ...}
+        """
+        try:
+            import json
+            import sqlite3
+
+            db_path = Path(DATA_DIR) / "settings.db"
+            conn = sqlite3.connect(str(db_path))
+            cur = conn.cursor()
+            cur.execute("SELECT value FROM settings WHERE key='DATABASE_CONFIG' LIMIT 1")
+            row = cur.fetchone()
+            conn.close()
+
+            if not row or not row[0]:
+                return {}
+
+            raw = row[0]
+            cfg = json.loads(raw) if isinstance(raw, str) else (raw or {})
+            if not isinstance(cfg, dict):
+                return {}
+
+            # Собираем в плоский словарь: db_key -> display_name
+            names = {}
+            for _category, db_map in cfg.items():
+                if not isinstance(db_map, dict):
+                    continue
+                for db_key, display_name in db_map.items():
+                    # display_name может быть None/"" — подстрахуемся
+                    names[str(db_key)] = str(display_name) if display_name else str(db_key)
+
+            return names
+
+        except Exception as e:
+            logger.exception(f"get_database_display_names: failed: {e}")
+            return {}
 
     # === МЕТОДЫ ДЛЯ ХОСТОВ ===
     
@@ -235,7 +288,7 @@ class BackupMonitorBot(BackupBase):
         stale_databases = self.get_stale_database_backups(hours_threshold)
         
         # Получаем все известные хосты и БД из конфигурации
-        from config import PROXMOX_HOSTS, DATABASE_BACKUP_CONFIG
+        from .db_settings_backup_monitor import PROXMOX_HOSTS, DATABASE_BACKUP_CONFIG
         
         all_configured_hosts = list(PROXMOX_HOSTS.keys())
         all_configured_databases = []
@@ -331,81 +384,136 @@ def backup_help_command(update, context):
 
 def backup_callback(update, context):
     """Обработчик callback'ов для бэкапов"""
+    query = update.callback_query
+    data = query.data
+    logger.info(
+        f"🧩 backup_callback: START | file={__file__} | data={data}"
+    )
+
     try:
-        query = update.callback_query
+        # ВАЖНО: все логи — внутри try
+        debug_log(f"🧩 backup_callback: START | file={__file__} | data={data}")
+
+        if not query:
+            debug_log("❌ backup_callback: update.callback_query is None")
+            return
+
         query.answer()
-        
+
         data = query.data
         backup_bot = BackupMonitorBot()
 
         if data == 'no_action':
-            # Заглушка для заголовков секций - ничего не делаем
             return
-            
+
         if data == 'backup_today':
             show_today_status(query, backup_bot)
+
         elif data == 'backup_24h':
             show_recent_backups(query, backup_bot)
+
         elif data == 'backup_failed':
             show_failed_backups(query, backup_bot)
+
         elif data == 'backup_hosts':
             show_hosts_menu(query, backup_bot)
+
         elif data == 'backup_refresh':
-            show_main_menu(query)
+            show_main_menu(query, backup_bot)
+
         elif data == 'backup_databases':
+            logger.info("🧪 BACKUP DB: entering show_database_backups_menu")
             show_database_backups_menu(query, backup_bot)
+
         elif data == 'backup_proxmox':
-            show_main_menu(query)
+            show_main_menu(query, backup_bot)
+
         elif data == 'backup_stale_hosts':
             show_stale_hosts(query, backup_bot)
+
         elif data.startswith('backup_host_'):
             host_name = data.replace('backup_host_', '')
             show_host_status(query, backup_bot, host_name)
-            
-        # Обработчики для баз данных
+
+        elif data == 'backup_main':
+            show_main_menu(query, backup_bot)
+
+        # --- DB handlers ---
         elif data.startswith('db_detail_'):
-            # Обработка деталей БД
-            try:
-                remaining = data.replace('db_detail_', '')
-                if '__' in remaining:
-                    parts = remaining.split('__', 1)
-                    backup_type = parts[0]
-                    db_name = parts[1]
+            remaining = data.replace('db_detail_', '')
+            if '__' in remaining:
+                backup_type, db_name = remaining.split('__', 1)
+                logger.info("🧪 DB detail")
+                show_database_details(query, backup_bot, backup_type, db_name)
+            else:
+                last_underscore = remaining.rfind('_')
+                if last_underscore != -1:
+                    backup_type = remaining[:last_underscore]
+                    db_name = remaining[last_underscore + 1:]
                     show_database_details(query, backup_bot, backup_type, db_name)
                 else:
-                    last_underscore = remaining.rfind('_')
-                    if last_underscore != -1:
-                        backup_type = remaining[:last_underscore]
-                        db_name = remaining[last_underscore + 1:]
-                        show_database_details(query, backup_bot, backup_type, db_name)
-                    else:
-                        query.edit_message_text("❌ Ошибка: неверный формат запроса")
-                    
-            except Exception as e:
-                logger.error(f"Ошибка при разборе db_detail: {e}")
-                query.edit_message_text("❌ Ошибка при обработке запроса")
-                
+                    query.edit_message_text("❌ Ошибка: неверный формат запроса")
+
         elif data == 'db_backups_24h':
+            logger.info("🧪 db backups 24h")
             show_database_backups_summary(query, backup_bot, 24)
+
         elif data == 'db_backups_48h':
+            logger.info("🧪 db backups 48h")
             show_database_backups_summary(query, backup_bot, 48)
-        elif data == 'db_backups_today':
+
+        elif data in ('db_backups_today', 'db_backups_summary'):
+            logger.info("🧪 db backups today")
             show_database_backups_summary(query, backup_bot, 24)
-        elif data == 'db_backups_summary':
-            show_database_backups_summary(query, backup_bot, 24)
+
         elif data == 'db_backups_list':
-            show_database_backups_list(query, backup_bot)
+            logger.info("🧪 db backups list")
+            show_database_backups_menu(query, backup_bot)
+
         elif data == 'db_stale_list':
+            logger.info("🧪 db state list")
             show_stale_databases(query, backup_bot)
-        elif data == 'backup_main':
-            show_main_menu(query)
+
+        else:
+            debug_log(f"⚠️ backup_callback: unknown callback data={data}")
+            query.answer("Неизвестная команда", show_alert=True)
 
     except Exception as e:
-        logger.error(f"Ошибка в backup_callback: {e}")
+        debug_log(f"💥 backup_callback ERROR: {e}\n{traceback.format_exc()}")
         try:
-            query.edit_message_text("❌ Ошибка при обработке запроса")
-        except:
-            pass
+            query.edit_message_text("❌ Ошибка в модуле бэкапов. Подробности в логах.")
+        except Exception:
+            try:
+                context.bot.send_message(
+                    chat_id=update.effective_chat.id,
+                    text="❌ Ошибка в модуле бэкапов (не удалось обновить меню). Подробности в логах."
+                )
+            except Exception:
+                pass
+
+def get_database_config(self):
+    """Получает полную конфигурацию баз данных"""
+    from .db_settings_backup_monitor import DATABASE_BACKUP_CONFIG
+    
+    return {
+        "company_databases": DATABASE_BACKUP_CONFIG.get("company_databases", {}),
+        "barnaul_backups": DATABASE_BACKUP_CONFIG.get("barnaul_backups", {}),
+        "client_databases": DATABASE_BACKUP_CONFIG.get("client_databases", {}),
+        "yandex_backups": DATABASE_BACKUP_CONFIG.get("yandex_backups", {})
+    }
+
+def get_database_config_for_report(self):
+    """Получает конфигурацию баз данных для отчета"""
+    from .db_settings_backup_monitor import DATABASE_BACKUP_CONFIG
+    
+    # Собираем все базы из конфигурации
+    all_databases = {}
+    all_databases.update(DATABASE_BACKUP_CONFIG.get("company_databases", {}))
+    all_databases.update(DATABASE_BACKUP_CONFIG.get("barnaul_backups", {}))
+    all_databases.update(DATABASE_BACKUP_CONFIG.get("client_databases", {}))
+    all_databases.update(DATABASE_BACKUP_CONFIG.get("yandex_backups", {}))
+    
+    return all_databases
 
 # === НАСТРОЙКА ОБРАБОТЧИКОВ ===
 
