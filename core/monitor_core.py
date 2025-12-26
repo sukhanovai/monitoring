@@ -112,12 +112,6 @@ get_data_collection_time = lazy_import('config.db_settings', 'DATA_COLLECTION_TI
 get_max_fail_time = lazy_import('config.db_settings', 'MAX_FAIL_TIME')
 get_resource_config = lazy_import('config.db_settings', 'RESOURCE_CHECK_INTERVAL')
 
-def is_proxmox_server(server):
-    """Проверяет, является ли сервер Proxmox"""
-    ip = server["ip"]
-    return (ip.startswith("192.168.30.") or
-           ip in ["192.168.20.30", "192.168.20.32", "192.168.20.59"])
-
 def perform_manual_check(context, chat_id, progress_message_id):
     """Выполняет проверку серверов с обновлением прогресса"""
     global last_check_time

@@ -16,7 +16,6 @@ import time
 from datetime import datetime, timedelta
 from config.db_settings import CHECK_INTERVAL, MAX_FAIL_TIME
 from lib.logging import debug_log
-from lib.helpers import is_proxmox_server
 
 # Импортируем проверки серверов
 try:
