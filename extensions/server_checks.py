@@ -57,12 +57,6 @@ def resolve_hostname(ip):
     except:
         return ip
 
-def is_proxmox_server(server):
-    """Проверяет, является ли сервер Proxmox"""
-    ip = server["ip"]
-    return (ip.startswith("192.168.30.") or
-           ip in ["192.168.20.30", "192.168.20.32", "192.168.20.59"])
-
 def get_server_by_ip(ip):
     """Получить сервер по IP"""
     servers = initialize_servers()

@@ -10,6 +10,7 @@ import threading
 import time
 from datetime import datetime, timedelta
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from lib.utils import is_proxmox_server
 
 # Глобальные переменные
 bot = None
@@ -44,12 +45,6 @@ get_silent_times = lazy_import('config', 'SILENT_START')
 get_data_collection_time = lazy_import('config', 'DATA_COLLECTION_TIME')
 get_max_fail_time = lazy_import('config', 'MAX_FAIL_TIME')
 get_resource_config = lazy_import('config', 'RESOURCE_CHECK_INTERVAL')
-
-def is_proxmox_server(server):
-    """Проверяет, является ли сервер Proxmox"""
-    ip = server["ip"]
-    return (ip.startswith("192.168.30.") or
-           ip in ["192.168.20.30", "192.168.20.32", "192.168.20.59"])
 
 def is_silent_time():
     """Проверяет, находится ли текущее время в 'тихом' периоде с учетом переопределения"""
@@ -95,7 +90,7 @@ def check_server_availability(server):
     debug_log = get_debug_log()
     
     try:
-        if is_proxmox_server(server):
+        if is_proxmox_server(server["ip"]):
             return server_checker.check_ssh_universal(server["ip"])
         elif server["type"] == "rdp":
             return server_checker.check_port(server["ip"], 3389)

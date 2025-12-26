@@ -12,6 +12,7 @@ General system utilities
 """
 
 import importlib
+import warnings
 
 try:
     from config.db_settings import DEBUG_MODE
@@ -65,6 +66,11 @@ def progress_bar(percentage, width=20):
     return bar
 
 def is_proxmox_server(ip):
-    """Проверяет, является ли сервер Proxmox"""
-    return (ip.startswith("192.168.30.") or
-           ip in ["192.168.20.30", "192.168.20.32", "192.168.20.59"])
+    """Проверяет, является ли сервер Proxmox (устаревшая обертка)."""
+    warnings.warn(
+        "lib.common.is_proxmox_server устарела; используйте lib.utils.is_proxmox_server.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    from lib.utils import is_proxmox_server as _is_proxmox_server
+    return _is_proxmox_server(ip)

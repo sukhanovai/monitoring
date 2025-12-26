@@ -8,6 +8,8 @@ License: MIT
 import os
 from datetime import time as dt_time
 
+from lib.utils import is_proxmox_server
+
 # === БАЗОВЫЕ НАСТРОЙКИ ===
 # 🔐 НАСТРОЙКИ TELEGRAM (ОБЯЗАТЕЛЬНО)
 # Получите токен у @BotFather и Chat ID через /getUpdates
@@ -258,11 +260,6 @@ def get_all_windows_servers():
 def get_server_timeout(server_type, default=15):
     """Получить таймаут для типа сервера"""
     return SERVER_TIMEOUTS.get(server_type, default)
-
-def is_proxmox_server(ip):
-    """Проверяет, является ли сервер Proxmox"""
-    return (ip.startswith("192.168.30.") or
-           ip in ["192.168.20.30", "192.168.20.32", "192.168.20.59"])
 
 # === ОБРАТНАЯ СОВМЕСТИМОСТЬ ДЛЯ БЭКАПОВ ===
 

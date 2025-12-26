@@ -16,6 +16,8 @@ from datetime import time as dt_time
 from pathlib import Path
 from typing import Dict, List, Any
 
+from lib.utils import is_proxmox_server
+
 # Режим отладки
 DEBUG_MODE = False
 
@@ -176,19 +178,6 @@ BACKUP_DATABASE_CONFIG = {
 DATABASE_BACKUP_CONFIG = DATABASE_CONFIG
 
 # === УТИЛИТЫ КОНФИГУРАЦИИ ===
-
-def is_proxmox_server(ip: str) -> bool:
-    """
-    Проверяет, является ли сервер Proxmox
-    
-    Args:
-        ip: IP адрес
-        
-    Returns:
-        True если сервер Proxmox
-    """
-    return (ip.startswith("192.168.30.") or
-            ip in ["192.168.20.30", "192.168.20.32", "192.168.20.59"])
 
 def get_windows_servers_by_type(server_type: str) -> List[str]:
     """
