@@ -516,11 +516,8 @@ def show_database_backups_menu(query, backup_bot):
 
             normalized_key = _normalize_db_key(db_name)
             allowed_map = ALLOWED_DATABASES_NORMALIZED.get(backup_type)
-            if allowed_map is not None and normalized_key not in allowed_map:
-                continue
-
             label = display_name.strip() or db_name
-            if allowed_map is not None:
+            if allowed_map is not None and normalized_key in allowed_map:
                 label = allowed_map[normalized_key]
 
             db_by_type.setdefault(backup_type, {})
