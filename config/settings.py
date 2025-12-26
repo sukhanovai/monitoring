@@ -103,19 +103,19 @@ WINDOWS_CREDENTIALS = [
 # Конфигурация Windows серверов
 WINDOWS_SERVER_CREDENTIALS = {
     "windows_2025": {
-        "servers": ["192.168.20.6", "192.168.20.38", "192.168.20.47", "192.168.20.56", "192.168.20.57"],
+        "servers": ["192.0.2.10", "192.0.2.11"],
         "credentials": WINDOWS_CREDENTIALS
     },
     "domain_servers": {
-        "servers": ["192.168.20.3", "192.168.20.4"],
+        "servers": ["192.0.2.20"],
         "credentials": WINDOWS_CREDENTIALS
     },
     "admin_servers": {
-        "servers": ["192.168.21.133"],
+        "servers": ["192.0.2.30"],
         "credentials": WINDOWS_CREDENTIALS
     },
     "standard_windows": {
-        "servers": ["192.168.20.9", "192.168.20.26", "192.168.20.42"],
+        "servers": ["192.0.2.40", "192.0.2.41"],
         "credentials": WINDOWS_CREDENTIALS
     }
 }
@@ -138,6 +138,7 @@ SERVER_TIMEOUTS = {
 # === ВЕБ-ИНТЕРФЕЙС ===
 WEB_PORT = 5000
 WEB_HOST = '0.0.0.0'
+MONITOR_SERVER_IP = "192.0.2.1"
 
 # === ФАЙЛЫ ДАННЫХ ===
 STATS_FILE = DATA_DIR / "monitoring_stats.json"

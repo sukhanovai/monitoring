@@ -110,6 +110,17 @@ get_data_collection_time = lazy_import('config.db_settings', 'DATA_COLLECTION_TI
 get_max_fail_time = lazy_import('config.db_settings', 'MAX_FAIL_TIME')
 get_resource_config = lazy_import('config.db_settings', 'RESOURCE_CHECK_INTERVAL')
 
+def get_web_interface_url(config):
+    """Формирует URL веб-интерфейса из конфигурации."""
+    monitor_ip = getattr(config, "MONITOR_SERVER_IP", "") or ""
+    if not monitor_ip:
+        web_host = getattr(config, "WEB_HOST", "")
+        if web_host in ("0.0.0.0", "", None):
+            monitor_ip = "localhost"
+        else:
+            monitor_ip = web_host
+    return f"http://{monitor_ip}:{config.WEB_PORT}"
+
 def perform_manual_check(context, chat_id, progress_message_id):
     """Выполняет проверку серверов с обновлением прогресса"""
     global last_check_time
@@ -283,7 +294,7 @@ def monitor_status(update, context):
         # Информация о веб-интерфейсе
         from extensions.extension_manager import extension_manager
         if extension_manager.is_extension_enabled('web_interface'):
-            message += "🌐 *Веб-интерфейс:* http://192.168.20.2:5000\n"
+            message += f"🌐 *Веб-интерфейс:* {get_web_interface_url(config)}\n"
             message += "_*доступен только в локальной сети_\n"
         else:
             message += "🌐 *Веб-интерфейс:* 🔴 отключен\n"
@@ -1469,13 +1480,20 @@ def start_monitoring():
     servers = initialize_servers()
 
     # Исключаем сервер мониторинга из списка
-    monitor_server_ip = "192.168.20.2"
-    servers = [s for s in servers if s["ip"] != monitor_server_ip]
-    debug_log(f"✅ Сервер мониторинга {monitor_server_ip} принудительно исключен из списка. Осталось {len(servers)} серверов")
+    config = get_config()
+    monitor_server_ip = getattr(config, "MONITOR_SERVER_IP", "")
+    if monitor_server_ip:
+        servers = [s for s in servers if s["ip"] != monitor_server_ip]
+        debug_log(
+            "✅ Сервер мониторинга "
+            f"{monitor_server_ip} принудительно исключен из списка. "
+            f"Осталось {len(servers)} серверов"
+        )
+    else:
+        debug_log("⚠️ Сервер мониторинга не исключен: MONITOR_SERVER_IP не задан")
 
     # Ленивая инициализация бота
     from telegram import Bot
-    config = get_config()
     bot = Bot(token=config.TELEGRAM_TOKEN)
     ensure_alerts_config()
     init_telegram_bot(bot, config.CHAT_IDS)
@@ -1504,7 +1522,7 @@ def start_monitoring():
     # Информация о веб-интерфейсе
     from extensions.extension_manager import extension_manager
     if extension_manager.is_extension_enabled('web_interface'):
-        start_message += "🌐 *Веб-интерфейс:* http://192.168.20.2:5000\n"
+        start_message += f"🌐 *Веб-интерфейс:* {get_web_interface_url(config)}\n"
         start_message += "_*доступен только в локальной сети_\n"
     else:
         start_message += "🌐 *Веб-интерфейс:* 🔴 отключен\n"

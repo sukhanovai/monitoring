@@ -96,11 +96,16 @@ def get_windows_server_configs() -> Dict[str, Dict[str, Any]]:
         # Получаем учетные данные из БД
         credentials_db = get_windows_credentials_db()
         
+        default_groups = {
+            group: config.get("servers", [])
+            for group, config in defaults.WINDOWS_SERVER_CREDENTIALS.items()
+        }
+        server_groups = get_json_setting('WINDOWS_SERVER_GROUPS', default_groups)
+
         # windows_2025 серверы
         win2025_ips = [
-            s['ip'] for s in windows_servers 
-            if s['ip'] in ["192.168.20.6", "192.168.20.38", "192.168.20.47", 
-                          "192.168.20.56", "192.168.20.57"]
+            s['ip'] for s in windows_servers
+            if s['ip'] in server_groups.get("windows_2025", [])
         ]
         configs["windows_2025"] = {
             "servers": win2025_ips,
@@ -109,8 +114,8 @@ def get_windows_server_configs() -> Dict[str, Dict[str, Any]]:
 
         # domain серверы
         domain_ips = [
-            s['ip'] for s in windows_servers 
-            if s['ip'] in ["192.168.20.3", "192.168.20.4"]
+            s['ip'] for s in windows_servers
+            if s['ip'] in server_groups.get("domain_servers", [])
         ]
         configs["domain_servers"] = {
             "servers": domain_ips,
@@ -119,8 +124,8 @@ def get_windows_server_configs() -> Dict[str, Dict[str, Any]]:
 
         # admin серверы
         admin_ips = [
-            s['ip'] for s in windows_servers 
-            if s['ip'] in ["192.168.21.133"]
+            s['ip'] for s in windows_servers
+            if s['ip'] in server_groups.get("admin_servers", [])
         ]
         configs["admin_servers"] = {
             "servers": admin_ips,
@@ -129,8 +134,8 @@ def get_windows_server_configs() -> Dict[str, Dict[str, Any]]:
 
         # standard windows серверы
         standard_ips = [
-            s['ip'] for s in windows_servers 
-            if s['ip'] in ["192.168.20.9", "192.168.20.26", "192.168.20.42"]
+            s['ip'] for s in windows_servers
+            if s['ip'] in server_groups.get("standard_windows", [])
         ]
         configs["standard_windows"] = {
             "servers": standard_ips,
@@ -192,7 +197,7 @@ def load_all_settings() -> None:
     global RESOURCE_THRESHOLDS, RESOURCE_ALERT_THRESHOLDS
     global SSH_KEY_PATH, SSH_USERNAME, SERVER_CONFIG
     global WINDOWS_SERVER_CONFIGS, WINDOWS_SERVER_CREDENTIALS, WINRM_CONFIGS
-    global SERVER_TIMEOUTS, WEB_PORT, WEB_HOST
+    global SERVER_TIMEOUTS, WEB_PORT, WEB_HOST, MONITOR_SERVER_IP
     global RDP_SERVERS, SSH_SERVERS, PING_SERVERS
     global PROXMOX_HOSTS, DUPLICATE_IP_HOSTS, HOSTNAME_ALIASES
     global BACKUP_PATTERNS, BACKUP_STATUS_MAP, DATABASE_CONFIG
@@ -300,6 +305,10 @@ def load_all_settings() -> None:
         # === ВЕБ-ИНТЕРФЕЙС ===
         WEB_PORT = get_setting('WEB_PORT', defaults.WEB_PORT)
         WEB_HOST = get_setting('WEB_HOST', defaults.WEB_HOST)
+        MONITOR_SERVER_IP = get_setting(
+            'MONITOR_SERVER_IP',
+            defaults.MONITOR_SERVER_IP,
+        )
 
         # === КОНФИГУРАЦИЯ БЭКАПОВ ===
         PROXMOX_HOSTS = get_json_setting('PROXMOX_HOSTS', defaults.PROXMOX_HOSTS)
