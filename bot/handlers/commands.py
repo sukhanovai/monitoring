@@ -1,12 +1,10 @@
 """
 /bot/handlers/commands.py
-Server Monitoring System v5.0.0
-Copyright (c) 2025 Aleksandr Sukhanov
+Server Monitoring System v5.0.1Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Only commands, no inline buttons.
 Система мониторинга серверов
-Версия: 5.0.0
-Автор: Александр Суханов (c)
+Версия: 5.0.1Автор: Александр Суханов (c)
 Лицензия: MIT
 Только команды, никаких inline-кнопок
 """

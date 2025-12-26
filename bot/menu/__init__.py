@@ -1,12 +1,10 @@
 """
 /bot/menu/__init__.py
-Server Monitoring System v5.0.0
-Copyright (c) 2025 Aleksandr Sukhanov
+Server Monitoring System v5.0.1Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Menu exports
 Система мониторинга серверов
-Версия: 5.0.0
-Автор: Александр Суханов (c)
+Версия: 5.0.1Автор: Александр Суханов (c)
 Лицензия: MIT
 Экспорт функций меню
 """
