@@ -516,11 +516,8 @@ def show_database_backups_menu(query, backup_bot):
 
             normalized_key = _normalize_db_key(db_name)
             allowed_map = ALLOWED_DATABASES_NORMALIZED.get(backup_type)
-            if allowed_map is not None and normalized_key not in allowed_map:
-                continue
-
             label = display_name.strip() or db_name
-            if allowed_map is not None:
+            if allowed_map is not None and normalized_key in allowed_map:
                 label = allowed_map[normalized_key]
 
             db_by_type.setdefault(backup_type, {})
@@ -554,7 +551,8 @@ def show_database_backups_menu(query, backup_bot):
                 db_name = entry["db_name"]
                 display_name = entry["label"]
                 try:
-                    status = backup_bot.get_database_display_status(backup_type, db_name)
+                    effective_type = _get_latest_backup_type(backup_bot, db_name, hours=48) or backup_type
+                    status = backup_bot.get_database_display_status(effective_type, db_name)
                     display_btn = formatters.get_db_display_name(display_name, status)
 
                     current_row.append(InlineKeyboardButton(
@@ -577,7 +575,15 @@ def show_database_backups_menu(query, backup_bot):
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
 
-        message = "🗃️ *Бэкапы баз данных*\n\nВыберите базу данных для просмотра деталей:"
+        message = "🗃️ *Бэкапы баз данных*\n\n"
+        message += "*Легенда:*\n"
+        message += "✅ - все бэкапы успешны\n"
+        message += "🔴 - последний бэкап неудачен\n"
+        message += "🟠 - есть неудачные бэкапы в истории\n"
+        message += "🟡 - есть ошибки или последний бэкап старше 24ч\n"
+        message += "⚫ - нет бэкапов >48ч\n"
+        message += "⚪ - статус неизвестен\n\n"
+        message += "Выберите базу данных для просмотра деталей:"
         query.edit_message_text(
             message,
             parse_mode='Markdown',
@@ -766,6 +772,26 @@ def _get_latest_database_display_name(backup_bot, backup_type, db_name):
     return None
 
 
+def _get_latest_backup_type(backup_bot, db_name, hours=168):
+    try:
+        since_time = (datetime.now() - timedelta(hours=hours)).strftime('%Y-%m-%d %H:%M:%S')
+        rows = backup_bot.execute_query(
+            """
+            SELECT backup_type
+            FROM database_backups
+            WHERE database_name = ? AND received_at >= ?
+            ORDER BY received_at DESC
+            LIMIT 1
+            """,
+            (db_name, since_time),
+        )
+        if rows:
+            return rows[0][0]
+    except Exception as e:
+        logger.error(f"Ошибка получения backup_type для {db_name}: {e}")
+    return None
+
+
 def _get_client_suffix(display_name: str | None) -> str | None:
     if not display_name:
         return None
@@ -791,13 +817,18 @@ def _get_details_display_name(backup_bot, backup_type, db_name):
 def format_database_details(backup_bot, backup_type, db_name, hours=168):
     """Форматирует детальную информацию по БД."""
     try:
-        display_name = _get_details_display_name(backup_bot, backup_type, db_name)
+        requested_type = backup_type
+        display_name = _get_details_display_name(backup_bot, requested_type, db_name)
 
         details = backup_bot.get_database_details(backup_type, db_name, hours)
         if not details:
+            fallback_type = _get_latest_backup_type(backup_bot, db_name, hours)
+            if fallback_type and fallback_type != backup_type:
+                details = backup_bot.get_database_details(fallback_type, db_name, hours)
+        if not details:
             return f"📋 Детали по {_esc_md(display_name)}\n\nНет данных за последние {hours} часов"
 
-        type_display = formatters.get_type_display(backup_type)
+        type_display = formatters.get_type_display(requested_type)
 
         message = f"📋 *Детали по {_esc_md(display_name)}*\n"
         message += f"*Тип:* {_esc_md(type_display)}\n"
