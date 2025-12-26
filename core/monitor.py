@@ -26,7 +26,6 @@ from config import (
     SILENT_START,
     SILENT_END,
 )
-from modules.availability import availability_checker
 from modules.resources import resources_checker
 from modules.morning_report import morning_report
 
@@ -293,15 +292,15 @@ class Monitor:
             if self.last_report_date != today:
                 debug_log(f"[{current_time}] 🔍 Собираем данные для утреннего отчета...")
                 
-                # Собираем текущий статус серверов
-                current_status = availability_checker.check_multiple_servers(self.servers)
-                morning_report.collect_morning_data(current_status)
-                
-                debug_log(f"✅ Данные собраны: {len(current_status.get('up', []))} доступно")
-                
+                # Собираем данные утреннего отчета
+                morning_report.collect_morning_data(manual_call=False)
+
+                status = morning_report.morning_data.get("status", {})
+                debug_log(f"✅ Данные собраны: {len(status.get('ok', []))} доступно")
+
                 # Отправляем отчет
                 debug_log(f"[{current_time}] 📊 Отправка утреннего отчета...")
-                report_text = morning_report.generate_report(manual_call=False)
+                report_text = morning_report.generate_report_message()
                 send_alert(report_text, force=True)
                 
                 self.last_report_date = today
