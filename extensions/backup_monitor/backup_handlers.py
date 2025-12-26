@@ -516,11 +516,8 @@ def show_database_backups_menu(query, backup_bot):
 
             normalized_key = _normalize_db_key(db_name)
             allowed_map = ALLOWED_DATABASES_NORMALIZED.get(backup_type)
-            if allowed_map is not None and normalized_key not in allowed_map:
-                continue
-
             label = display_name.strip() or db_name
-            if allowed_map is not None:
+            if allowed_map is not None and normalized_key in allowed_map:
                 label = allowed_map[normalized_key]
 
             db_by_type.setdefault(backup_type, {})
@@ -766,6 +763,26 @@ def _get_latest_database_display_name(backup_bot, backup_type, db_name):
     return None
 
 
+def _get_latest_backup_type(backup_bot, db_name, hours=168):
+    try:
+        since_time = (datetime.now() - timedelta(hours=hours)).strftime('%Y-%m-%d %H:%M:%S')
+        rows = backup_bot.execute_query(
+            """
+            SELECT backup_type
+            FROM database_backups
+            WHERE database_name = ? AND received_at >= ?
+            ORDER BY received_at DESC
+            LIMIT 1
+            """,
+            (db_name, since_time),
+        )
+        if rows:
+            return rows[0][0]
+    except Exception as e:
+        logger.error(f"Ошибка получения backup_type для {db_name}: {e}")
+    return None
+
+
 def _get_client_suffix(display_name: str | None) -> str | None:
     if not display_name:
         return None
@@ -794,6 +811,13 @@ def format_database_details(backup_bot, backup_type, db_name, hours=168):
         display_name = _get_details_display_name(backup_bot, backup_type, db_name)
 
         details = backup_bot.get_database_details(backup_type, db_name, hours)
+        if not details:
+            fallback_type = _get_latest_backup_type(backup_bot, db_name, hours)
+            if fallback_type and fallback_type != backup_type:
+                details = backup_bot.get_database_details(fallback_type, db_name, hours)
+                if details:
+                    backup_type = fallback_type
+                    display_name = _get_details_display_name(backup_bot, backup_type, db_name)
         if not details:
             return f"📋 Детали по {_esc_md(display_name)}\n\nНет данных за последние {hours} часов"
 
