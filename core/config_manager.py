@@ -433,21 +433,32 @@ class ConfigManager:
         
         return servers
     
-    def get_all_servers(self) -> List[Dict[str, Any]]:
+    def get_all_servers(self, include_disabled: bool = False) -> List[Dict[str, Any]]:
         """
-        Получить все серверы
+        Получить список серверов
+
+        Args:
+            include_disabled: Включать выключенные серверы
+
         Returns:
-            Список всех серверов
+            Список серверов
         """
         conn = self.get_connection()
         cursor = conn.cursor()
 
-        cursor.execute('''
-            SELECT ip, name, type, credentials, timeout
-            FROM servers
-            WHERE enabled = 1
-            ORDER BY type, name
-        ''')
+        if include_disabled:
+            cursor.execute('''
+                SELECT ip, name, type, credentials, timeout, enabled
+                FROM servers
+                ORDER BY type, name
+            ''')
+        else:
+            cursor.execute('''
+                SELECT ip, name, type, credentials, timeout, enabled
+                FROM servers
+                WHERE enabled = 1
+                ORDER BY type, name
+            ''')
 
         servers: List[Dict[str, Any]] = []
         for row in cursor.fetchall():
@@ -456,10 +467,41 @@ class ConfigManager:
                 'name': row[1],
                 'type': row[2],
                 'credentials': json.loads(row[3]) if row[3] else [],
-                'timeout': row[4]
+                'timeout': row[4],
+                'enabled': bool(row[5])
             })
 
         return servers
+
+    def set_server_enabled(self, ip: str, enabled: bool) -> bool:
+        """
+        Включить или выключить мониторинг сервера
+
+        Args:
+            ip: IP адрес сервера
+            enabled: Новый статус
+
+        Returns:
+            True если успешно
+        """
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(
+                'UPDATE servers SET enabled = ?, updated_at = CURRENT_TIMESTAMP WHERE ip = ?',
+                (1 if enabled else 0, ip)
+            )
+            conn.commit()
+
+            self._cache = {}
+
+            debug_log(f"Сервер {ip} {'включен' if enabled else 'приостановлен'}")
+            return cursor.rowcount > 0
+
+        except Exception as e:
+            error_log(f"Ошибка изменения статуса сервера {ip}: {e}")
+            return False
 
 
     # ------------------------------------------------------------
@@ -486,12 +528,13 @@ class ConfigManager:
         return servers
     
     def add_server(
-        self, 
-        ip: str, 
-        name: str, 
-        server_type: str, 
-        credentials: Optional[List[Dict]] = None, 
-        timeout: int = 30
+        self,
+        ip: str,
+        name: str,
+        server_type: str,
+        credentials: Optional[List[Dict]] = None,
+        timeout: int = 30,
+        enabled: bool = True
     ) -> bool:
         """
         Добавить сервер
@@ -507,15 +550,16 @@ class ConfigManager:
             True если успешно
         """
         credentials_json = json.dumps(credentials) if credentials else '[]'
+        enabled_value = 1 if enabled else 0
         
         conn = self.get_connection()
         cursor = conn.cursor()
         
         try:
             cursor.execute('''
-                INSERT OR REPLACE INTO servers (ip, name, type, credentials, timeout)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (ip, name, server_type, credentials_json, timeout))
+                INSERT OR REPLACE INTO servers (ip, name, type, credentials, timeout, enabled)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (ip, name, server_type, credentials_json, timeout, enabled_value))
             
             conn.commit()
             
