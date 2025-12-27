@@ -228,6 +228,22 @@ def callback_router(update, context):
     elif data == 'silent_status':
         silent_status_handler(update, context)
 
+    elif data == 'force_silent':
+        from core.monitor_core import force_silent_handler
+        force_silent_handler(update, context)
+
+    elif data == 'force_loud':
+        from core.monitor_core import force_loud_handler
+        force_loud_handler(update, context)
+
+    elif data == 'auto_mode':
+        from core.monitor_core import auto_mode_handler
+        auto_mode_handler(update, context)
+
+    elif data == 'toggle_silent':
+        from core.monitor_core import toggle_silent_mode_handler
+        toggle_silent_mode_handler(update, context)
+
     elif data == 'control_panel':
         control_panel_handler(update, context)
 

@@ -380,10 +380,6 @@ def silent_status_handler(update, context):
     # Правильно определяем статус - инвертируем для понятности пользователю
     current_status = "🔴 неактивен" if is_silent_time() else "🟢 активен"
     status_description = "тихий режим" if is_silent_time() else "громкий режим"
-    auto_active = silent_override is None
-    force_silent_active = silent_override is True
-    force_loud_active = silent_override is False
-
     config = get_config()
     message = (
         f"🔇 *Управление тихим режимом*\n\n"
