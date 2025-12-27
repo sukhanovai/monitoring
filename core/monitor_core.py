@@ -380,7 +380,6 @@ def silent_status_handler(update, context):
     # Правильно определяем статус - инвертируем для понятности пользователю
     current_status = "🔴 неактивен" if is_silent_time() else "🟢 активен"
     status_description = "тихий режим" if is_silent_time() else "громкий режим"
-
     config = get_config()
     message = (
         f"🔇 *Управление тихим режимом*\n\n"
@@ -421,7 +420,7 @@ def force_silent_handler(update, context):
 
 def force_loud_handler(update, context):
     """Включает принудительный громкий режим"""
-    set_silent_override(True)
+    set_silent_override(False)
     query = update.callback_query
     query.answer()
 
@@ -432,7 +431,7 @@ def force_loud_handler(update, context):
 
 def auto_mode_handler(update, context):
     """Включает автоматический режим"""
-    set_silent_override(True)
+    set_silent_override(None)
     query = update.callback_query
     query.answer()
 
