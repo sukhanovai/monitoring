@@ -254,7 +254,7 @@ def callback_router(update, context):
     # ------------------------------------------------
     # НАСТРОЙКИ (settings_handlers)
     # ------------------------------------------------
-    elif data.startswith(('settings_', 'set_', 'manage_', 'ssh_', 'windows_')):
+    elif data.startswith(('settings_', 'set_', 'manage_', 'ssh_', 'windows_', 'server_type_')):
         # settings_handlers сам разбирает все эти ветки
         settings_callback_handler(update, context)
 
