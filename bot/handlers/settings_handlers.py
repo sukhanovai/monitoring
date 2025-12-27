@@ -413,6 +413,9 @@ def settings_callback_handler(update, context):
         elif data.startswith('settings_edit_server_'):
             ip = data.replace('settings_edit_server_', '')
             show_server_edit_menu(update, context, ip)
+        elif data.startswith('settings_toggle_server_'):
+            ip = data.replace('settings_toggle_server_', '')
+            toggle_server_monitoring(update, context, ip)
         
         # Обработчики для таймаутов серверов
         elif data == 'set_windows_2025_timeout':
@@ -736,7 +739,9 @@ def show_servers_settings(update, context):
     query = update.callback_query
     query.answer()
     
-    servers = settings_manager.get_all_servers()
+    servers = settings_manager.get_all_servers(include_disabled=True)
+    enabled_servers = [s for s in servers if s.get('enabled', True)]
+    paused_servers = [s for s in servers if not s.get('enabled', True)]
     windows_servers = [s for s in servers if s['type'] == 'rdp']
     linux_servers = [s for s in servers if s['type'] == 'ssh']
     ping_servers = [s for s in servers if s['type'] == 'ping']
@@ -754,7 +759,9 @@ def show_servers_settings(update, context):
         f"• Windows серверов: {len(windows_servers)}\n"
         f"• Linux серверов: {len(linux_servers)}\n"
         f"• Ping серверов: {len(ping_servers)}\n"
-        f"• Всего серверов: {len(servers)}\n\n"
+        f"• Всего серверов: {len(servers)}\n"
+        f"• Активных: {len(enabled_servers)}\n"
+        f"• Приостановлено: {len(paused_servers)}\n\n"
         "Выберите действие:"
     )
     
@@ -783,7 +790,7 @@ def show_servers_list(update, context):
     query = update.callback_query
     query.answer()
 
-    servers = settings_manager.get_all_servers()
+    servers = settings_manager.get_all_servers(include_disabled=True)
 
     # Сбрасываем состояния редактирования при показе списка
     context.user_data.pop('editing_server', None)
@@ -807,16 +814,28 @@ def show_servers_list(update, context):
 
     message_lines = ["📋 *Список серверов*\n"]
     for server in servers:
+        status_icon = "🟢" if server.get('enabled', True) else "⏸️"
+        status_text = "мониторинг" if server.get('enabled', True) else "пауза"
         message_lines.append(
-            f"• {server['name']} (`{server['ip']}`) — {server['type'].upper()}"
+            f"• {status_icon} {server['name']} (`{server['ip']}`) — {server['type'].upper()} — {status_text}"
         )
 
-    keyboard = []
+    keyboard = [
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data='settings_servers'),
+            InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+        ]
+    ]
     for server in servers:
+        toggle_text = "⏸️ Пауза" if server.get('enabled', True) else "▶️ Возобновить"
         keyboard.append([
             InlineKeyboardButton(
                 f"✏️ {server['name']}",
                 callback_data=f"settings_edit_server_{server['ip']}"
+            ),
+            InlineKeyboardButton(
+                toggle_text,
+                callback_data=f"settings_toggle_server_{server['ip']}"
             ),
             InlineKeyboardButton(
                 "🗑️",
@@ -827,11 +846,6 @@ def show_servers_list(update, context):
     keyboard.append([
         InlineKeyboardButton("➕ Добавить сервер", callback_data='settings_add_server')
     ])
-    keyboard.append([
-        InlineKeyboardButton("↩️ Назад", callback_data='settings_servers'),
-        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
-    ])
-
     query.edit_message_text(
         "\n".join(message_lines),
         parse_mode='Markdown',
@@ -843,7 +857,7 @@ def delete_server_confirmation(update, context, ip):
     query = update.callback_query
     query.answer()
 
-    servers = settings_manager.get_all_servers()
+    servers = settings_manager.get_all_servers(include_disabled=True)
     server = _get_server_by_ip(servers, ip)
     if not server:
         query.edit_message_text(
@@ -895,7 +909,7 @@ def show_server_edit_menu(update, context, ip):
     query = update.callback_query
     query.answer()
 
-    servers = settings_manager.get_all_servers()
+    servers = settings_manager.get_all_servers(include_disabled=True)
     server = _get_server_by_ip(servers, ip)
     if not server:
         query.edit_message_text(
@@ -906,17 +920,21 @@ def show_server_edit_menu(update, context, ip):
         )
         return
 
+    status_text = "🟢 Включен" if server.get('enabled', True) else "⏸️ Приостановлен"
     message = (
         "✏️ *Редактирование сервера*\n\n"
         f"• Имя: *{server['name']}*\n"
         f"• IP: `{server['ip']}`\n"
         f"• Тип: *{server['type'].upper()}*\n\n"
+        f"• Статус: *{status_text}*\n\n"
         "Выберите действие:"
     )
 
+    toggle_text = "⏸️ Приостановить мониторинг" if server.get('enabled', True) else "▶️ Возобновить мониторинг"
     keyboard = [
         [InlineKeyboardButton("📝 Изменить имя", callback_data=f"settings_edit_server_name_{ip}")],
         [InlineKeyboardButton("🔧 Изменить тип", callback_data=f"settings_edit_server_type_{ip}")],
+        [InlineKeyboardButton(toggle_text, callback_data=f"settings_toggle_server_{ip}")],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
     ]
 
@@ -926,12 +944,49 @@ def show_server_edit_menu(update, context, ip):
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
+def toggle_server_monitoring(update, context, ip):
+    """Переключить мониторинг сервера"""
+    query = update.callback_query
+    query.answer()
+
+    servers = settings_manager.get_all_servers(include_disabled=True)
+    server = _get_server_by_ip(servers, ip)
+    if not server:
+        query.edit_message_text(
+            "❌ Сервер не найден.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
+            ])
+        )
+        return
+
+    new_status = not server.get('enabled', True)
+    success = settings_manager.set_server_enabled(ip, new_status)
+
+    if success:
+        status_text = "🟢 Мониторинг включен" if new_status else "⏸️ Мониторинг приостановлен"
+        message = (
+            "✅ Статус мониторинга обновлен.\n\n"
+            f"• Сервер: *{server.get('name', ip)}*\n"
+            f"• Статус: *{status_text}*"
+        )
+    else:
+        message = "❌ Не удалось обновить статус мониторинга."
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад к списку", callback_data='settings_servers_list')]
+        ])
+    )
+
 def start_server_name_edit(update, context, ip):
     """Запуск редактирования имени сервера"""
     query = update.callback_query
     query.answer()
 
-    servers = settings_manager.get_all_servers()
+    servers = settings_manager.get_all_servers(include_disabled=True)
     server = _get_server_by_ip(servers, ip)
     if not server:
         query.edit_message_text(
@@ -959,7 +1014,7 @@ def start_server_type_edit(update, context, ip):
     query = update.callback_query
     query.answer()
 
-    servers = settings_manager.get_all_servers()
+    servers = settings_manager.get_all_servers(include_disabled=True)
     server = _get_server_by_ip(servers, ip)
     if not server:
         query.edit_message_text(
@@ -1010,7 +1065,7 @@ def handle_server_type_selection(update, context):
     ip = "_".join(parts[1:])
     server = context.user_data.get('edit_server_data') or {}
     if server.get('ip') != ip:
-        servers = settings_manager.get_all_servers()
+        servers = settings_manager.get_all_servers(include_disabled=True)
         server = _get_server_by_ip(servers, ip)
 
     if not server:
@@ -1027,7 +1082,8 @@ def handle_server_type_selection(update, context):
         server.get('name', ip),
         server_type,
         server.get('credentials'),
-        server.get('timeout', 30)
+        server.get('timeout', 30),
+        server.get('enabled', True)
     )
 
     context.user_data.pop('editing_server', None)
@@ -1077,7 +1133,8 @@ def handle_server_edit_input(update, context):
         new_name,
         server.get('type', 'ping'),
         server.get('credentials'),
-        server.get('timeout', 30)
+        server.get('timeout', 30),
+        server.get('enabled', True)
     )
 
     context.user_data.pop('editing_server', None)

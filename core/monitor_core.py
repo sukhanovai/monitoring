@@ -37,6 +37,7 @@ from datetime import datetime, timedelta
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from lib.utils import safe_import
 from extensions.server_checks import check_server_availability
+from core.config_manager import config_manager
 
 # Глобальные переменные
 bot = None
@@ -51,6 +52,51 @@ resource_alerts_sent = {}
 last_report_date = None
 
 _alerts_configured = False
+
+def is_server_monitoring_enabled(ip: str) -> bool:
+    """Проверяет, включен ли мониторинг для сервера."""
+    try:
+        return config_manager.get_server_enabled(ip)
+    except Exception as e:
+        debug_log(f"⚠️ Не удалось получить статус сервера {ip}: {e}")
+        return True
+
+def refresh_servers():
+    """Обновляет список серверов и их статусы."""
+    global servers, server_status
+
+    try:
+        updated_servers = config_manager.get_all_servers(include_disabled=True)
+        if not updated_servers:
+            from extensions.server_checks import initialize_servers
+            updated_servers = initialize_servers()
+            for server in updated_servers:
+                server.setdefault("enabled", True)
+
+        servers = updated_servers
+        current_ips = {server.get("ip") for server in servers if server.get("ip")}
+
+        for ip in list(server_status.keys()):
+            if ip not in current_ips:
+                server_status.pop(ip, None)
+
+        for server in servers:
+            ip = server.get("ip")
+            if not ip:
+                continue
+            if ip not in server_status:
+                server_status[ip] = {
+                    "last_up": datetime.now(),
+                    "alert_sent": False,
+                    "name": server.get("name", ip),
+                    "type": server.get("type"),
+                    "resources": None,
+                    "last_alert": {},
+                    "monitoring_enabled": server.get("enabled", True)
+                }
+
+    except Exception as e:
+        debug_log(f"⚠️ Не удалось обновить список серверов: {e}")
 
 def ensure_alerts_config():
     """Гарантирует применение настроек алертов из конфигурации."""
@@ -1508,7 +1554,8 @@ def start_monitoring():
             "name": server["name"],
             "type": server["type"],
             "resources": None,
-            "last_alert": {}
+            "last_alert": {},
+            "monitoring_enabled": server.get("enabled", True)
         }
 
     debug_log(f"✅ Мониторинг запущен для {len(servers)} серверов")
@@ -1588,6 +1635,8 @@ def start_monitoring():
         if monitoring_active:
             last_check_time = current_time
 
+            refresh_servers()
+
             for server in servers:
                 try:
                     ip = server["ip"]
@@ -1597,6 +1646,16 @@ def start_monitoring():
                     if ip == monitor_server_ip:
                         server_status[ip]["last_up"] = current_time
                         continue
+
+                    monitoring_enabled = is_server_monitoring_enabled(ip)
+                    if not monitoring_enabled:
+                        server_status[ip]["monitoring_enabled"] = False
+                        continue
+
+                    if not status.get("monitoring_enabled", True):
+                        server_status[ip]["monitoring_enabled"] = True
+                        server_status[ip]["alert_sent"] = False
+                        server_status[ip]["last_alert"] = {}
 
                     # Проверка доступности
                     is_up = check_server_availability(server)
@@ -1670,6 +1729,9 @@ def check_resources_automatically():
         try:
             ip = server["ip"]
             server_name = server["name"]
+
+            if not is_server_monitoring_enabled(ip):
+                continue
 
             debug_log(f"🔍 Проверяем ресурсы {server_name} ({ip})")
 

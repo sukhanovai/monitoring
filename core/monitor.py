@@ -28,6 +28,7 @@ from config import (
 )
 from modules.resources import resources_checker
 from modules.morning_report import morning_report
+from core.config_manager import config_manager
 
 class Monitor:
     """Основной класс мониторинга"""
@@ -65,8 +66,12 @@ class Monitor:
             List[Dict]: Список серверов
         """
         try:
-            from extensions.server_checks import initialize_servers
-            servers = initialize_servers()
+            servers = config_manager.get_all_servers(include_disabled=True)
+            if not servers:
+                from extensions.server_checks import initialize_servers
+                servers = initialize_servers()
+                for server in servers:
+                    server.setdefault("enabled", True)
             
             # Исключаем сервер мониторинга
             monitor_server_ip = "192.168.20.2"
@@ -78,6 +83,28 @@ class Monitor:
         except Exception as e:
             debug_log(f"❌ Ошибка загрузки серверов: {e}")
             return []
+
+    def refresh_servers(self) -> None:
+        """Обновляет список серверов и статусы."""
+        servers = self.load_servers()
+        if not servers:
+            return
+
+        self.servers = servers
+        current_ips = {server.get("ip") for server in servers if server.get("ip")}
+        stale_ips = [ip for ip in self.server_status if ip not in current_ips]
+        for ip in stale_ips:
+            self.server_status.pop(ip, None)
+
+        self.initialize_server_status()
+
+    def is_server_enabled(self, ip: str) -> bool:
+        """Проверяет, включен ли мониторинг для сервера."""
+        try:
+            return config_manager.get_server_enabled(ip)
+        except Exception as e:
+            debug_log(f"⚠️ Не удалось получить статус сервера {ip}: {e}")
+            return True
     
     def initialize_server_status(self) -> None:
         """Инициализирует статусы серверов"""
@@ -91,7 +118,8 @@ class Monitor:
                     "type": server.get("type", "unknown"),
                     "resources": None,
                     "last_alert": {},
-                    "downtime_start": None
+                    "downtime_start": None,
+                    "monitoring_enabled": server.get("enabled", True)
                 }
         
         debug_log(f"✅ Инициализированы статусы для {len(self.server_status)} серверов")
@@ -189,7 +217,14 @@ class Monitor:
                 ip = server.get("ip")
                 server_name = server.get("name", ip)
                 server_type = server.get("type")
-                
+
+                if not self.is_server_enabled(ip):
+                    if ip in self.server_status:
+                        self.server_status[ip]["last_up"] = current_time
+                        self.server_status[ip]["alert_sent"] = False
+                        self.server_status[ip]["last_alert"] = {}
+                    continue
+
                 # Получаем текущие ресурсы
                 success, resources = resources_checker.check_server_resources(server)
                 
@@ -347,6 +382,8 @@ class Monitor:
             # Основная проверка доступности
             if self.monitoring_active:
                 self.last_check_time = current_time
+
+                self.refresh_servers()
                 
                 for server in self.servers:
                     try:
@@ -360,6 +397,16 @@ class Monitor:
                         if ip == "192.168.20.2":
                             self.server_status[ip]["last_up"] = current_time
                             continue
+
+                        monitoring_enabled = self.is_server_enabled(ip)
+                        if not monitoring_enabled:
+                            self.server_status[ip]["monitoring_enabled"] = False
+                            continue
+
+                        if not self.server_status[ip].get("monitoring_enabled", True):
+                            self.server_status[ip]["monitoring_enabled"] = True
+                            self.server_status[ip]["alert_sent"] = False
+                            self.server_status[ip]["last_alert"] = {}
                         
                         # Проверка доступности
                         is_up = self.check_server_availability(server)
