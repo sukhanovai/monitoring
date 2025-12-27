@@ -380,7 +380,6 @@ def silent_status_handler(update, context):
     # Правильно определяем статус - инвертируем для понятности пользователю
     current_status = "🔴 неактивен" if is_silent_time() else "🟢 активен"
     status_description = "тихий режим" if is_silent_time() else "громкий режим"
-
     config = get_config()
     message = (
         f"🔇 *Управление тихим режимом*\n\n"
@@ -396,16 +395,17 @@ def silent_status_handler(update, context):
         f"- 🔇 тихий режим = только критические уведомления"
     )
 
+    keyboard = [
+        [InlineKeyboardButton("🔇 Включить принудительно тихий", callback_data='force_silent')],
+        [InlineKeyboardButton("🔊 Включить принудительно громкий", callback_data='force_loud')],
+        [InlineKeyboardButton("🔄 Вернуть автоматический режим", callback_data='auto_mode')],
+        [InlineKeyboardButton("↩️ Назад в управление", callback_data='control_panel'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ]
     query.edit_message_text(
         text=message,
         parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🔇 Включить принудительно тихий", callback_data='force_silent')],
-            [InlineKeyboardButton("🔊 Включить принудительно громкий", callback_data='force_loud')],
-            [InlineKeyboardButton("🔄 Вернуть автоматический режим", callback_data='auto_mode')],
-            [InlineKeyboardButton("↩️ Назад в управление", callback_data='control_panel'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
 def force_silent_handler(update, context):
@@ -421,7 +421,7 @@ def force_silent_handler(update, context):
 
 def force_loud_handler(update, context):
     """Включает принудительный громкий режим"""
-    set_silent_override(True)
+    set_silent_override(False)
     query = update.callback_query
     query.answer()
 
@@ -432,7 +432,7 @@ def force_loud_handler(update, context):
 
 def auto_mode_handler(update, context):
     """Включает автоматический режим"""
-    set_silent_override(True)
+    set_silent_override(None)
     query = update.callback_query
     query.answer()
 
