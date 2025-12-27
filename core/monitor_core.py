@@ -395,25 +395,17 @@ def silent_status_handler(update, context):
         f"- 🔇 тихий режим = только критические уведомления"
     )
 
+    keyboard = [
+        [InlineKeyboardButton("🔇 Включить принудительно тихий", callback_data='force_silent')],
+        [InlineKeyboardButton("🔊 Включить принудительно громкий", callback_data='force_loud')],
+        [InlineKeyboardButton("🔄 Вернуть автоматический режим", callback_data='auto_mode')],
+        [InlineKeyboardButton("↩️ Назад в управление", callback_data='control_panel'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ]
     query.edit_message_text(
         text=message,
         parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton(
-                f"{'🟢' if force_silent_active else '🔴'} 🔇 Принудительно тихий",
-                callback_data='force_silent'
-            )],
-            [InlineKeyboardButton(
-                f"{'🟢' if force_loud_active else '🔴'} 🔊 Принудительно громкий",
-                callback_data='force_loud'
-            )],
-            [InlineKeyboardButton(
-                f"{'🟢' if auto_active else '🔴'} 🔄 Авто по расписанию",
-                callback_data='auto_mode'
-            )],
-            [InlineKeyboardButton("↩️ Назад в управление", callback_data='control_panel'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
 def force_silent_handler(update, context):
