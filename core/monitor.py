@@ -66,8 +66,12 @@ class Monitor:
             List[Dict]: Список серверов
         """
         try:
-            from extensions.server_checks import initialize_servers
-            servers = initialize_servers()
+            servers = config_manager.get_all_servers(include_disabled=True)
+            if not servers:
+                from extensions.server_checks import initialize_servers
+                servers = initialize_servers()
+                for server in servers:
+                    server.setdefault("enabled", True)
             
             # Исключаем сервер мониторинга
             monitor_server_ip = "192.168.20.2"
@@ -79,6 +83,20 @@ class Monitor:
         except Exception as e:
             debug_log(f"❌ Ошибка загрузки серверов: {e}")
             return []
+
+    def refresh_servers(self) -> None:
+        """Обновляет список серверов и статусы."""
+        servers = self.load_servers()
+        if not servers:
+            return
+
+        self.servers = servers
+        current_ips = {server.get("ip") for server in servers if server.get("ip")}
+        stale_ips = [ip for ip in self.server_status if ip not in current_ips]
+        for ip in stale_ips:
+            self.server_status.pop(ip, None)
+
+        self.initialize_server_status()
 
     def is_server_enabled(self, ip: str) -> bool:
         """Проверяет, включен ли мониторинг для сервера."""
@@ -100,7 +118,8 @@ class Monitor:
                     "type": server.get("type", "unknown"),
                     "resources": None,
                     "last_alert": {},
-                    "downtime_start": None
+                    "downtime_start": None,
+                    "monitoring_enabled": server.get("enabled", True)
                 }
         
         debug_log(f"✅ Инициализированы статусы для {len(self.server_status)} серверов")
@@ -363,6 +382,8 @@ class Monitor:
             # Основная проверка доступности
             if self.monitoring_active:
                 self.last_check_time = current_time
+
+                self.refresh_servers()
                 
                 for server in self.servers:
                     try:

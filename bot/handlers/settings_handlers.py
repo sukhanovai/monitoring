@@ -820,7 +820,12 @@ def show_servers_list(update, context):
             f"• {status_icon} {server['name']} (`{server['ip']}`) — {server['type'].upper()} — {status_text}"
         )
 
-    keyboard = []
+    keyboard = [
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data='settings_servers'),
+            InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+        ]
+    ]
     for server in servers:
         toggle_text = "⏸️ Пауза" if server.get('enabled', True) else "▶️ Возобновить"
         keyboard.append([
@@ -841,11 +846,6 @@ def show_servers_list(update, context):
     keyboard.append([
         InlineKeyboardButton("➕ Добавить сервер", callback_data='settings_add_server')
     ])
-    keyboard.append([
-        InlineKeyboardButton("↩️ Назад", callback_data='settings_servers'),
-        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
-    ])
-
     query.edit_message_text(
         "\n".join(message_lines),
         parse_mode='Markdown',

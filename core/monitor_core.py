@@ -61,6 +61,43 @@ def is_server_monitoring_enabled(ip: str) -> bool:
         debug_log(f"⚠️ Не удалось получить статус сервера {ip}: {e}")
         return True
 
+def refresh_servers():
+    """Обновляет список серверов и их статусы."""
+    global servers, server_status
+
+    try:
+        updated_servers = config_manager.get_all_servers(include_disabled=True)
+        if not updated_servers:
+            from extensions.server_checks import initialize_servers
+            updated_servers = initialize_servers()
+            for server in updated_servers:
+                server.setdefault("enabled", True)
+
+        servers = updated_servers
+        current_ips = {server.get("ip") for server in servers if server.get("ip")}
+
+        for ip in list(server_status.keys()):
+            if ip not in current_ips:
+                server_status.pop(ip, None)
+
+        for server in servers:
+            ip = server.get("ip")
+            if not ip:
+                continue
+            if ip not in server_status:
+                server_status[ip] = {
+                    "last_up": datetime.now(),
+                    "alert_sent": False,
+                    "name": server.get("name", ip),
+                    "type": server.get("type"),
+                    "resources": None,
+                    "last_alert": {},
+                    "monitoring_enabled": server.get("enabled", True)
+                }
+
+    except Exception as e:
+        debug_log(f"⚠️ Не удалось обновить список серверов: {e}")
+
 def ensure_alerts_config():
     """Гарантирует применение настроек алертов из конфигурации."""
     global _alerts_configured
@@ -1517,7 +1554,8 @@ def start_monitoring():
             "name": server["name"],
             "type": server["type"],
             "resources": None,
-            "last_alert": {}
+            "last_alert": {},
+            "monitoring_enabled": server.get("enabled", True)
         }
 
     debug_log(f"✅ Мониторинг запущен для {len(servers)} серверов")
@@ -1596,6 +1634,8 @@ def start_monitoring():
         # Основной цикл мониторинга доступности
         if monitoring_active:
             last_check_time = current_time
+
+            refresh_servers()
 
             for server in servers:
                 try:
