@@ -129,15 +129,15 @@ class Monitor:
             current_time: Текущее время
         """
         if status.get("alert_sent"):
-            downtime_start = status.get("downtime_start")
+            last_up = status.get("last_up")
             downtime = 0
-            if downtime_start:
-                downtime = (current_time - downtime_start).total_seconds()
-            
+            if last_up:
+                downtime = (current_time - last_up).total_seconds()
+
             message = f"✅ {status.get('name')} ({ip}) доступен"
             if downtime > 0:
                 message += f" (простой: {int(downtime // 60)} мин {int(downtime % 60)} сек)"
-            
+
             send_alert(message)
         
         # Обновляем статус
@@ -155,20 +155,16 @@ class Monitor:
         """
         Обрабатывает недоступный сервер
         """
-        # ВАЖНО: ключ downtime_start может существовать, но быть None
-        downtime_start = status.get("downtime_start") or current_time
+        last_up = status.get("last_up")
+        if not last_up:
+            self.server_status[ip]["last_up"] = current_time
+            last_up = current_time
 
-        # Первый раз увидели "down" — фиксируем начало простоя и выходим
-        if not downtime_start:
-            self.server_status[ip]["downtime_start"] = current_time
-            return False
-
-        # Теперь downtime_start гарантированно datetime
-        downtime = (current_time - downtime_start).total_seconds()
+        downtime = (current_time - last_up).total_seconds()
 
         # Проверяем нужно ли отправлять алерт
         if downtime >= MAX_FAIL_TIME and not status.get("alert_sent"):
-            message = f"🚨 {status.get('name')} ({ip}) не отвежает"
+            message = f"🚨 {status.get('name')} ({ip}) не отвечает"
             message += f" ({int(downtime // 60)} мин {int(downtime % 60)} сек)"
 
             send_alert(message)
