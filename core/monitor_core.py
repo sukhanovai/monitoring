@@ -1,11 +1,11 @@
 """
 /core/monitor_core.py
-Server Monitoring System v5.1.3
+Server Monitoring System v5.2.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core system
 Система мониторинга серверов
-Версия: 5.1.3
+Версия: 5.2.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Ядро системы
@@ -399,9 +399,18 @@ def silent_status_handler(update, context):
         text=message,
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🔇 Включить принудительно тихий", callback_data='force_silent')],
-            [InlineKeyboardButton("🔊 Включить принудительно громкий", callback_data='force_loud')],
-            [InlineKeyboardButton("🔄 Вернуть автоматический режим", callback_data='auto_mode')],
+            [InlineKeyboardButton(
+                f"{'🟢' if force_silent_active else '🔴'} 🔇 Принудительно тихий",
+                callback_data='force_silent'
+            )],
+            [InlineKeyboardButton(
+                f"{'🟢' if force_loud_active else '🔴'} 🔊 Принудительно громкий",
+                callback_data='force_loud'
+            )],
+            [InlineKeyboardButton(
+                f"{'🟢' if auto_active else '🔴'} 🔄 Авто по расписанию",
+                callback_data='auto_mode'
+            )],
             [InlineKeyboardButton("↩️ Назад в управление", callback_data='control_panel'),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
