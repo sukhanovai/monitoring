@@ -17,7 +17,7 @@ from datetime import datetime
 from typing import Dict, List
 
 from lib.logging import debug_log
-from lib.alerts import send_alert
+from lib.alerts import send_alert, is_silent_time as alerts_is_silent_time
 from config import (
     CHECK_INTERVAL,
     MAX_FAIL_TIME,
@@ -55,13 +55,7 @@ class Monitor:
         if self.silent_override is not None:
             return self.silent_override
         
-        # Стандартная проверка по времени
-        current_hour = datetime.now().hour
-        
-        if SILENT_START > SILENT_END:  # Если период переходит через полночь
-            return current_hour >= SILENT_START or current_hour < SILENT_END
-        
-        return SILENT_START <= current_hour < SILENT_END
+        return alerts_is_silent_time()
     
     def load_servers(self) -> List[Dict]:
         """
@@ -131,8 +125,8 @@ class Monitor:
         if status.get("alert_sent"):
             last_up = status.get("last_up")
             downtime = 0
-            if last_up:
-                downtime = (current_time - last_up).total_seconds()
+            if downtime_start:
+                downtime = (current_time - downtime_start).total_seconds()
 
             message = f"✅ {status.get('name')} ({ip}) доступен"
             if downtime > 0:
@@ -155,12 +149,12 @@ class Monitor:
         """
         Обрабатывает недоступный сервер
         """
-        last_up = status.get("last_up")
-        if not last_up:
-            self.server_status[ip]["last_up"] = current_time
-            last_up = current_time
+        downtime_start = status.get("downtime_start")
+        if downtime_start is None:
+            downtime_start = current_time
+            self.server_status[ip]["downtime_start"] = downtime_start
 
-        downtime = (current_time - last_up).total_seconds()
+        downtime = (current_time - downtime_start).total_seconds()
 
         # Проверяем нужно ли отправлять алерт
         if downtime >= MAX_FAIL_TIME and not status.get("alert_sent"):
