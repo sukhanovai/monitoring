@@ -366,7 +366,7 @@ def settings_callback_handler(update, context):
             manage_chats_handler(update, context)
         elif data == 'server_timeouts':
             show_server_timeouts(update, context)  # Теперь упрощенная версия
-        elif data == 'add_server':
+        elif data == 'settings_add_server':
             add_server_handler(update, context)
         
         # Обработчики для установки значений
@@ -394,11 +394,25 @@ def settings_callback_handler(update, context):
             delete_database_category_confirmation(update, context, category)
         
         # Обработчики для серверов
-        elif data == 'servers_list':
+        elif data == 'settings_servers_list':
             show_servers_list(update, context)
-        elif data.startswith('delete_server_'):
-            ip = data.replace('delete_server_', '')
+        elif data.startswith('settings_delete_server_'):
+            ip = data.replace('settings_delete_server_', '')
             delete_server_confirmation(update, context, ip)
+        elif data.startswith('settings_confirm_delete_server_'):
+            ip = data.replace('settings_confirm_delete_server_', '')
+            delete_server_execute(update, context, ip)
+        elif data.startswith('settings_edit_server_type_select_'):
+            handle_server_type_selection(update, context)
+        elif data.startswith('settings_edit_server_name_'):
+            ip = data.replace('settings_edit_server_name_', '')
+            start_server_name_edit(update, context, ip)
+        elif data.startswith('settings_edit_server_type_'):
+            ip = data.replace('settings_edit_server_type_', '')
+            start_server_type_edit(update, context, ip)
+        elif data.startswith('settings_edit_server_'):
+            ip = data.replace('settings_edit_server_', '')
+            show_server_edit_menu(update, context, ip)
         
         # Обработчики для таймаутов серверов
         elif data == 'set_windows_2025_timeout':
@@ -545,6 +559,10 @@ def handle_setting_value(update, context):
     # Проверяем, не редактируется ли тип серверов
     if context.user_data.get('editing_server_type'):
         return handle_server_type_editing(update, context)
+
+    # Проверяем, не редактируется ли сервер
+    if context.user_data.get('editing_server'):
+        return handle_server_edit_input(update, context)
     
     # Затем проверяем, не добавляется ли сервер
     if context.user_data.get('adding_server'):
@@ -723,6 +741,14 @@ def show_servers_settings(update, context):
     linux_servers = [s for s in servers if s['type'] == 'ssh']
     ping_servers = [s for s in servers if s['type'] == 'ping']
     
+    # Сбрасываем состояния редактирования, если вернулись в меню
+    context.user_data.pop('adding_server', None)
+    context.user_data.pop('editing_server', None)
+    context.user_data.pop('server_stage', None)
+    context.user_data.pop('edit_server_stage', None)
+    context.user_data.pop('edit_server_ip', None)
+    context.user_data.pop('edit_server_data', None)
+
     message = (
         "🖥️ *Настройки серверов*\n\n"
         f"• Windows серверов: {len(windows_servers)}\n"
@@ -733,8 +759,8 @@ def show_servers_settings(update, context):
     )
     
     keyboard = [
-        [InlineKeyboardButton("📋 Список серверов", callback_data='servers_list')],
-        [InlineKeyboardButton("➕ Добавить сервер", callback_data='add_server')],
+        [InlineKeyboardButton("📋 Список серверов", callback_data='settings_servers_list')],
+        [InlineKeyboardButton("➕ Добавить сервер", callback_data='settings_add_server')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
@@ -743,6 +769,337 @@ def show_servers_settings(update, context):
         message,
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def _get_server_by_ip(servers, ip):
+    """Найти сервер по IP из списка"""
+    for server in servers:
+        if server.get('ip') == ip:
+            return server
+    return None
+
+def show_servers_list(update, context):
+    """Показать список серверов с действиями"""
+    query = update.callback_query
+    query.answer()
+
+    servers = settings_manager.get_all_servers()
+
+    # Сбрасываем состояния редактирования при показе списка
+    context.user_data.pop('editing_server', None)
+    context.user_data.pop('edit_server_stage', None)
+    context.user_data.pop('edit_server_ip', None)
+    context.user_data.pop('edit_server_data', None)
+
+    if not servers:
+        message = "📋 *Список серверов*\n\n❌ Серверы не настроены."
+        keyboard = [
+            [InlineKeyboardButton("➕ Добавить сервер", callback_data='settings_add_server')],
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers'),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ]
+        query.edit_message_text(
+            message,
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+        return
+
+    message_lines = ["📋 *Список серверов*\n"]
+    for server in servers:
+        message_lines.append(
+            f"• {server['name']} (`{server['ip']}`) — {server['type'].upper()}"
+        )
+
+    keyboard = []
+    for server in servers:
+        keyboard.append([
+            InlineKeyboardButton(
+                f"✏️ {server['name']}",
+                callback_data=f"settings_edit_server_{server['ip']}"
+            ),
+            InlineKeyboardButton(
+                "🗑️",
+                callback_data=f"settings_delete_server_{server['ip']}"
+            )
+        ])
+
+    keyboard.append([
+        InlineKeyboardButton("➕ Добавить сервер", callback_data='settings_add_server')
+    ])
+    keyboard.append([
+        InlineKeyboardButton("↩️ Назад", callback_data='settings_servers'),
+        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+    ])
+
+    query.edit_message_text(
+        "\n".join(message_lines),
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def delete_server_confirmation(update, context, ip):
+    """Подтверждение удаления сервера"""
+    query = update.callback_query
+    query.answer()
+
+    servers = settings_manager.get_all_servers()
+    server = _get_server_by_ip(servers, ip)
+    if not server:
+        query.edit_message_text(
+            "❌ Сервер не найден.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
+            ])
+        )
+        return
+
+    message = (
+        "🗑️ *Удаление сервера*\n\n"
+        f"Сервер: *{server['name']}* (`{server['ip']}`)\n"
+        "Подтвердите удаление:"
+    )
+
+    keyboard = [
+        [InlineKeyboardButton("✅ Удалить", callback_data=f"settings_confirm_delete_server_{ip}")],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
+    ]
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def delete_server_execute(update, context, ip):
+    """Удалить сервер"""
+    query = update.callback_query
+    query.answer()
+
+    success = settings_manager.delete_server(ip)
+    if success:
+        message = f"✅ Сервер `{ip}` удален."
+    else:
+        message = f"❌ Не удалось удалить сервер `{ip}`."
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад к списку", callback_data='settings_servers_list')]
+        ])
+    )
+
+def show_server_edit_menu(update, context, ip):
+    """Меню редактирования сервера"""
+    query = update.callback_query
+    query.answer()
+
+    servers = settings_manager.get_all_servers()
+    server = _get_server_by_ip(servers, ip)
+    if not server:
+    query.edit_message_text(
+        "❌ Сервер не найден.",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
+        ])
+    )
+    return
+
+    message = (
+        "✏️ *Редактирование сервера*\n\n"
+        f"• Имя: *{server['name']}*\n"
+        f"• IP: `{server['ip']}`\n"
+        f"• Тип: *{server['type'].upper()}*\n\n"
+        "Выберите действие:"
+    )
+
+    keyboard = [
+        [InlineKeyboardButton("📝 Изменить имя", callback_data=f"settings_edit_server_name_{ip}")],
+        [InlineKeyboardButton("🔧 Изменить тип", callback_data=f"settings_edit_server_type_{ip}")],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
+    ]
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def start_server_name_edit(update, context, ip):
+    """Запуск редактирования имени сервера"""
+    query = update.callback_query
+    query.answer()
+
+    servers = settings_manager.get_all_servers()
+    server = _get_server_by_ip(servers, ip)
+    if not server:
+    query.edit_message_text(
+        "❌ Сервер не найден.",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
+        ])
+    )
+    return
+
+    context.user_data['editing_server'] = True
+    context.user_data['edit_server_stage'] = 'name'
+    context.user_data['edit_server_ip'] = ip
+    context.user_data['edit_server_data'] = server
+
+    query.edit_message_text(
+        "📝 Введите новое имя сервера:",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("❌ Отмена", callback_data='settings_servers_list')]
+        ])
+    )
+
+def start_server_type_edit(update, context, ip):
+    """Запуск редактирования типа сервера"""
+    query = update.callback_query
+    query.answer()
+
+    servers = settings_manager.get_all_servers()
+    server = _get_server_by_ip(servers, ip)
+    if not server:
+    query.edit_message_text(
+        "❌ Сервер не найден.",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
+        ])
+    )
+    return
+
+    context.user_data['editing_server'] = True
+    context.user_data['edit_server_stage'] = 'type'
+    context.user_data['edit_server_ip'] = ip
+    context.user_data['edit_server_data'] = server
+
+    keyboard = [
+        [InlineKeyboardButton("🖥️ Windows (RDP)", callback_data=f"settings_edit_server_type_select_rdp_{ip}")],
+        [InlineKeyboardButton("🐧 Linux (SSH)", callback_data=f"settings_edit_server_type_select_ssh_{ip}")],
+        [InlineKeyboardButton("📡 Ping Only", callback_data=f"settings_edit_server_type_select_ping_{ip}")],
+        [InlineKeyboardButton("❌ Отмена", callback_data='settings_servers_list')]
+    ]
+
+    query.edit_message_text(
+        "🔧 Выберите новый тип сервера:",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def handle_server_type_selection(update, context):
+    """Обработчик выбора нового типа сервера"""
+    query = update.callback_query
+    query.answer()
+
+    if not context.user_data.get('editing_server'):
+        return
+
+    data = query.data.replace('settings_edit_server_type_select_', '')
+    parts = data.split('_')
+    if len(parts) < 2:
+        query.edit_message_text(
+            "❌ Неверный формат выбора типа.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
+            ])
+        )
+        return
+
+    server_type = parts[0]
+    ip = "_".join(parts[1:])
+    server = context.user_data.get('edit_server_data') or {}
+    if server.get('ip') != ip:
+        servers = settings_manager.get_all_servers()
+        server = _get_server_by_ip(servers, ip)
+
+    if not server:
+        query.edit_message_text(
+            "❌ Сервер не найден.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
+            ])
+        )
+        return
+
+    success = settings_manager.add_server(
+        ip,
+        server.get('name', ip),
+        server_type,
+        server.get('credentials'),
+        server.get('timeout', 30)
+    )
+
+    context.user_data.pop('editing_server', None)
+    context.user_data.pop('edit_server_stage', None)
+    context.user_data.pop('edit_server_ip', None)
+    context.user_data.pop('edit_server_data', None)
+
+    if success:
+        message = (
+            "✅ Тип сервера обновлен.\n\n"
+            f"• Сервер: *{server.get('name', ip)}*\n"
+            f"• Новый тип: *{server_type.upper()}*"
+        )
+    else:
+        message = "❌ Не удалось обновить тип сервера."
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад к списку", callback_data='settings_servers_list')]
+        ])
+    )
+
+def handle_server_edit_input(update, context):
+    """Обработчик ввода для редактирования сервера"""
+    if not context.user_data.get('editing_server'):
+        return
+
+    stage = context.user_data.get('edit_server_stage')
+    if stage != 'name':
+        return
+
+    new_name = update.message.text.strip()
+    if not new_name:
+        update.message.reply_text("❌ Имя не может быть пустым. Попробуйте снова:")
+        return
+
+    server = context.user_data.get('edit_server_data') or {}
+    ip = context.user_data.get('edit_server_ip')
+    if not ip:
+        update.message.reply_text("❌ Не удалось определить сервер.")
+        return
+
+    success = settings_manager.add_server(
+        ip,
+        new_name,
+        server.get('type', 'ping'),
+        server.get('credentials'),
+        server.get('timeout', 30)
+    )
+
+    context.user_data.pop('editing_server', None)
+    context.user_data.pop('edit_server_stage', None)
+    context.user_data.pop('edit_server_ip', None)
+    context.user_data.pop('edit_server_data', None)
+
+    if success:
+        message = (
+            "✅ Имя сервера обновлено.\n\n"
+            f"• IP: `{ip}`\n"
+            f"• Новое имя: *{new_name}*"
+        )
+    else:
+        message = "❌ Не удалось обновить имя сервера."
+
+    update.message.reply_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад к списку", callback_data='settings_servers_list')]
+        ])
     )
 
 def show_backup_times(update, context):
@@ -1176,7 +1533,7 @@ def handle_server_type(update, context):
             # Очищаем состояние
             context.user_data['adding_server'] = False
             context.user_data.pop('server_ip', None)
-            context.user_pop('server_name', None)
+            context.user_data.pop('server_name', None)
             context.user_data.pop('server_stage', None)
         else:
             message = "❌ Ошибка при добавлении сервера"
@@ -1186,7 +1543,7 @@ def handle_server_type(update, context):
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("↩️ Назад к серверам", callback_data='settings_servers'),
-                 InlineKeyboardButton("➕ Добавить еще", callback_data='add_server')]
+                 InlineKeyboardButton("➕ Добавить еще", callback_data='settings_add_server')]
             ])
         )
         
