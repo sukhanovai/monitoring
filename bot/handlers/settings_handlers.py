@@ -366,7 +366,7 @@ def settings_callback_handler(update, context):
             manage_chats_handler(update, context)
         elif data == 'server_timeouts':
             show_server_timeouts(update, context)  # Теперь упрощенная версия
-        elif data == 'add_server':
+        elif data == 'settings_add_server':
             add_server_handler(update, context)
         
         # Обработчики для установки значений
@@ -394,24 +394,24 @@ def settings_callback_handler(update, context):
             delete_database_category_confirmation(update, context, category)
         
         # Обработчики для серверов
-        elif data == 'servers_list':
+        elif data == 'settings_servers_list':
             show_servers_list(update, context)
-        elif data.startswith('delete_server_'):
-            ip = data.replace('delete_server_', '')
+        elif data.startswith('settings_delete_server_'):
+            ip = data.replace('settings_delete_server_', '')
             delete_server_confirmation(update, context, ip)
-        elif data.startswith('confirm_delete_server_'):
-            ip = data.replace('confirm_delete_server_', '')
+        elif data.startswith('settings_confirm_delete_server_'):
+            ip = data.replace('settings_confirm_delete_server_', '')
             delete_server_execute(update, context, ip)
-        elif data.startswith('edit_server_type_select_'):
+        elif data.startswith('settings_edit_server_type_select_'):
             handle_server_type_selection(update, context)
-        elif data.startswith('edit_server_name_'):
-            ip = data.replace('edit_server_name_', '')
+        elif data.startswith('settings_edit_server_name_'):
+            ip = data.replace('settings_edit_server_name_', '')
             start_server_name_edit(update, context, ip)
-        elif data.startswith('edit_server_type_'):
-            ip = data.replace('edit_server_type_', '')
+        elif data.startswith('settings_edit_server_type_'):
+            ip = data.replace('settings_edit_server_type_', '')
             start_server_type_edit(update, context, ip)
-        elif data.startswith('edit_server_'):
-            ip = data.replace('edit_server_', '')
+        elif data.startswith('settings_edit_server_'):
+            ip = data.replace('settings_edit_server_', '')
             show_server_edit_menu(update, context, ip)
         
         # Обработчики для таймаутов серверов
@@ -759,8 +759,8 @@ def show_servers_settings(update, context):
     )
     
     keyboard = [
-        [InlineKeyboardButton("📋 Список серверов", callback_data='servers_list')],
-        [InlineKeyboardButton("➕ Добавить сервер", callback_data='add_server')],
+        [InlineKeyboardButton("📋 Список серверов", callback_data='settings_servers_list')],
+        [InlineKeyboardButton("➕ Добавить сервер", callback_data='settings_add_server')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
@@ -794,7 +794,7 @@ def show_servers_list(update, context):
     if not servers:
         message = "📋 *Список серверов*\n\n❌ Серверы не настроены."
         keyboard = [
-            [InlineKeyboardButton("➕ Добавить сервер", callback_data='add_server')],
+            [InlineKeyboardButton("➕ Добавить сервер", callback_data='settings_add_server')],
             [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers'),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ]
@@ -816,16 +816,16 @@ def show_servers_list(update, context):
         keyboard.append([
             InlineKeyboardButton(
                 f"✏️ {server['name']}",
-                callback_data=f"edit_server_{server['ip']}"
+                callback_data=f"settings_edit_server_{server['ip']}"
             ),
             InlineKeyboardButton(
                 "🗑️",
-                callback_data=f"delete_server_{server['ip']}"
+                callback_data=f"settings_delete_server_{server['ip']}"
             )
         ])
 
     keyboard.append([
-        InlineKeyboardButton("➕ Добавить сервер", callback_data='add_server')
+        InlineKeyboardButton("➕ Добавить сервер", callback_data='settings_add_server')
     ])
     keyboard.append([
         InlineKeyboardButton("↩️ Назад", callback_data='settings_servers'),
@@ -849,7 +849,7 @@ def delete_server_confirmation(update, context, ip):
         query.edit_message_text(
             "❌ Сервер не найден.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='servers_list')]
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
             ])
         )
         return
@@ -861,8 +861,8 @@ def delete_server_confirmation(update, context, ip):
     )
 
     keyboard = [
-        [InlineKeyboardButton("✅ Удалить", callback_data=f"confirm_delete_server_{ip}")],
-        [InlineKeyboardButton("↩️ Назад", callback_data='servers_list')]
+        [InlineKeyboardButton("✅ Удалить", callback_data=f"settings_confirm_delete_server_{ip}")],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
     ]
 
     query.edit_message_text(
@@ -886,7 +886,7 @@ def delete_server_execute(update, context, ip):
         message,
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад к списку", callback_data='servers_list')]
+            [InlineKeyboardButton("↩️ Назад к списку", callback_data='settings_servers_list')]
         ])
     )
 
@@ -898,13 +898,13 @@ def show_server_edit_menu(update, context, ip):
     servers = settings_manager.get_all_servers()
     server = _get_server_by_ip(servers, ip)
     if not server:
-        query.edit_message_text(
-            "❌ Сервер не найден.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='servers_list')]
-            ])
-        )
-        return
+    query.edit_message_text(
+        "❌ Сервер не найден.",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
+        ])
+    )
+    return
 
     message = (
         "✏️ *Редактирование сервера*\n\n"
@@ -915,9 +915,9 @@ def show_server_edit_menu(update, context, ip):
     )
 
     keyboard = [
-        [InlineKeyboardButton("📝 Изменить имя", callback_data=f"edit_server_name_{ip}")],
-        [InlineKeyboardButton("🔧 Изменить тип", callback_data=f"edit_server_type_{ip}")],
-        [InlineKeyboardButton("↩️ Назад", callback_data='servers_list')]
+        [InlineKeyboardButton("📝 Изменить имя", callback_data=f"settings_edit_server_name_{ip}")],
+        [InlineKeyboardButton("🔧 Изменить тип", callback_data=f"settings_edit_server_type_{ip}")],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
     ]
 
     query.edit_message_text(
@@ -934,13 +934,13 @@ def start_server_name_edit(update, context, ip):
     servers = settings_manager.get_all_servers()
     server = _get_server_by_ip(servers, ip)
     if not server:
-        query.edit_message_text(
-            "❌ Сервер не найден.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='servers_list')]
-            ])
-        )
-        return
+    query.edit_message_text(
+        "❌ Сервер не найден.",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
+        ])
+    )
+    return
 
     context.user_data['editing_server'] = True
     context.user_data['edit_server_stage'] = 'name'
@@ -950,7 +950,7 @@ def start_server_name_edit(update, context, ip):
     query.edit_message_text(
         "📝 Введите новое имя сервера:",
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data='servers_list')]
+            [InlineKeyboardButton("❌ Отмена", callback_data='settings_servers_list')]
         ])
     )
 
@@ -962,13 +962,13 @@ def start_server_type_edit(update, context, ip):
     servers = settings_manager.get_all_servers()
     server = _get_server_by_ip(servers, ip)
     if not server:
-        query.edit_message_text(
-            "❌ Сервер не найден.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='servers_list')]
-            ])
-        )
-        return
+    query.edit_message_text(
+        "❌ Сервер не найден.",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
+        ])
+    )
+    return
 
     context.user_data['editing_server'] = True
     context.user_data['edit_server_stage'] = 'type'
@@ -976,10 +976,10 @@ def start_server_type_edit(update, context, ip):
     context.user_data['edit_server_data'] = server
 
     keyboard = [
-        [InlineKeyboardButton("🖥️ Windows (RDP)", callback_data=f"edit_server_type_select_rdp_{ip}")],
-        [InlineKeyboardButton("🐧 Linux (SSH)", callback_data=f"edit_server_type_select_ssh_{ip}")],
-        [InlineKeyboardButton("📡 Ping Only", callback_data=f"edit_server_type_select_ping_{ip}")],
-        [InlineKeyboardButton("❌ Отмена", callback_data='servers_list')]
+        [InlineKeyboardButton("🖥️ Windows (RDP)", callback_data=f"settings_edit_server_type_select_rdp_{ip}")],
+        [InlineKeyboardButton("🐧 Linux (SSH)", callback_data=f"settings_edit_server_type_select_ssh_{ip}")],
+        [InlineKeyboardButton("📡 Ping Only", callback_data=f"settings_edit_server_type_select_ping_{ip}")],
+        [InlineKeyboardButton("❌ Отмена", callback_data='settings_servers_list')]
     ]
 
     query.edit_message_text(
@@ -995,13 +995,13 @@ def handle_server_type_selection(update, context):
     if not context.user_data.get('editing_server'):
         return
 
-    data = query.data.replace('edit_server_type_select_', '')
+    data = query.data.replace('settings_edit_server_type_select_', '')
     parts = data.split('_')
     if len(parts) < 2:
         query.edit_message_text(
             "❌ Неверный формат выбора типа.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='servers_list')]
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
             ])
         )
         return
@@ -1017,7 +1017,7 @@ def handle_server_type_selection(update, context):
         query.edit_message_text(
             "❌ Сервер не найден.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='servers_list')]
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
             ])
         )
         return
@@ -1048,7 +1048,7 @@ def handle_server_type_selection(update, context):
         message,
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад к списку", callback_data='servers_list')]
+            [InlineKeyboardButton("↩️ Назад к списку", callback_data='settings_servers_list')]
         ])
     )
 
@@ -1098,7 +1098,7 @@ def handle_server_edit_input(update, context):
         message,
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад к списку", callback_data='servers_list')]
+            [InlineKeyboardButton("↩️ Назад к списку", callback_data='settings_servers_list')]
         ])
     )
 
@@ -1543,7 +1543,7 @@ def handle_server_type(update, context):
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("↩️ Назад к серверам", callback_data='settings_servers'),
-                 InlineKeyboardButton("➕ Добавить еще", callback_data='add_server')]
+                 InlineKeyboardButton("➕ Добавить еще", callback_data='settings_add_server')]
             ])
         )
         
