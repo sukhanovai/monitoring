@@ -503,6 +503,29 @@ class ConfigManager:
             error_log(f"Ошибка изменения статуса сервера {ip}: {e}")
             return False
 
+    def get_server_enabled(self, ip: str) -> bool:
+        """
+        Проверить статус мониторинга сервера
+
+        Args:
+            ip: IP адрес сервера
+
+        Returns:
+            True если сервер активен
+        """
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute('SELECT enabled FROM servers WHERE ip = ?', (ip,))
+            row = cursor.fetchone()
+            if row is None:
+                return True
+            return bool(row[0])
+        except Exception as e:
+            error_log(f"Ошибка получения статуса сервера {ip}: {e}")
+            return True
+
 
     # ------------------------------------------------------------
     # Backward-compatible API (тонкий адаптер)
