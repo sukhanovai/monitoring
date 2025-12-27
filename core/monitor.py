@@ -156,7 +156,7 @@ class Monitor:
         Обрабатывает недоступный сервер
         """
         # ВАЖНО: ключ downtime_start может существовать, но быть None
-        downtime_start = status.get("downtime_start") or current_time
+        downtime_start = status.get("downtime_start")
 
         # Первый раз увидели "down" — фиксируем начало простоя и выходим
         if not downtime_start:
