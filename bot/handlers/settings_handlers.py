@@ -898,13 +898,13 @@ def show_server_edit_menu(update, context, ip):
     servers = settings_manager.get_all_servers()
     server = _get_server_by_ip(servers, ip)
     if not server:
-    query.edit_message_text(
-        "❌ Сервер не найден.",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
-        ])
-    )
-    return
+        query.edit_message_text(
+            "❌ Сервер не найден.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
+            ])
+        )
+        return
 
     message = (
         "✏️ *Редактирование сервера*\n\n"
@@ -934,13 +934,13 @@ def start_server_name_edit(update, context, ip):
     servers = settings_manager.get_all_servers()
     server = _get_server_by_ip(servers, ip)
     if not server:
-    query.edit_message_text(
-        "❌ Сервер не найден.",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
-        ])
-    )
-    return
+        query.edit_message_text(
+            "❌ Сервер не найден.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
+            ])
+        )
+        return
 
     context.user_data['editing_server'] = True
     context.user_data['edit_server_stage'] = 'name'
@@ -962,13 +962,13 @@ def start_server_type_edit(update, context, ip):
     servers = settings_manager.get_all_servers()
     server = _get_server_by_ip(servers, ip)
     if not server:
-    query.edit_message_text(
-        "❌ Сервер не найден.",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
-        ])
-    )
-    return
+        query.edit_message_text(
+            "❌ Сервер не найден.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
+            ])
+        )
+        return
 
     context.user_data['editing_server'] = True
     context.user_data['edit_server_stage'] = 'type'
