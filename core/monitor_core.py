@@ -1607,11 +1607,15 @@ def start_monitoring():
                         server_status[ip]["last_up"] = current_time
                         continue
 
-                    if not is_server_monitoring_enabled(ip):
-                        server_status[ip]["last_up"] = current_time
+                    monitoring_enabled = is_server_monitoring_enabled(ip)
+                    if not monitoring_enabled:
+                        server_status[ip]["monitoring_enabled"] = False
+                        continue
+
+                    if not status.get("monitoring_enabled", True):
+                        server_status[ip]["monitoring_enabled"] = True
                         server_status[ip]["alert_sent"] = False
                         server_status[ip]["last_alert"] = {}
-                        continue
 
                     # Проверка доступности
                     is_up = check_server_availability(server)

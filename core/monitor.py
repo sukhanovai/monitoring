@@ -377,12 +377,15 @@ class Monitor:
                             self.server_status[ip]["last_up"] = current_time
                             continue
 
-                        if not self.is_server_enabled(ip):
-                            self.server_status[ip]["last_up"] = current_time
+                        monitoring_enabled = self.is_server_enabled(ip)
+                        if not monitoring_enabled:
+                            self.server_status[ip]["monitoring_enabled"] = False
+                            continue
+
+                        if not self.server_status[ip].get("monitoring_enabled", True):
+                            self.server_status[ip]["monitoring_enabled"] = True
                             self.server_status[ip]["alert_sent"] = False
                             self.server_status[ip]["last_alert"] = {}
-                            self.server_status[ip]["downtime_start"] = None
-                            continue
                         
                         # Проверка доступности
                         is_up = self.check_server_availability(server)
