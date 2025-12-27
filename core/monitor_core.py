@@ -37,6 +37,7 @@ from datetime import datetime, timedelta
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from lib.utils import safe_import
 from extensions.server_checks import check_server_availability
+from core.config_manager import config_manager
 
 # Глобальные переменные
 bot = None
@@ -51,6 +52,14 @@ resource_alerts_sent = {}
 last_report_date = None
 
 _alerts_configured = False
+
+def is_server_monitoring_enabled(ip: str) -> bool:
+    """Проверяет, включен ли мониторинг для сервера."""
+    try:
+        return config_manager.get_server_enabled(ip)
+    except Exception as e:
+        debug_log(f"⚠️ Не удалось получить статус сервера {ip}: {e}")
+        return True
 
 def ensure_alerts_config():
     """Гарантирует применение настроек алертов из конфигурации."""
@@ -1598,6 +1607,12 @@ def start_monitoring():
                         server_status[ip]["last_up"] = current_time
                         continue
 
+                    if not is_server_monitoring_enabled(ip):
+                        server_status[ip]["last_up"] = current_time
+                        server_status[ip]["alert_sent"] = False
+                        server_status[ip]["last_alert"] = {}
+                        continue
+
                     # Проверка доступности
                     is_up = check_server_availability(server)
 
@@ -1670,6 +1685,9 @@ def check_resources_automatically():
         try:
             ip = server["ip"]
             server_name = server["name"]
+
+            if not is_server_monitoring_enabled(ip):
+                continue
 
             debug_log(f"🔍 Проверяем ресурсы {server_name} ({ip})")
 
