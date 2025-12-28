@@ -197,6 +197,14 @@ class Monitor:
     
     def check_resources_automatically(self) -> None:
         """Автоматическая проверка ресурсов серверов"""
+        try:
+            from extensions.extension_manager import extension_manager
+            if not extension_manager.is_extension_enabled('resource_monitor'):
+                debug_log("⏸️ Проверка ресурсов пропущена (расширение отключено)")
+                return
+        except ImportError:
+            pass
+
         if not self.monitoring_active or self.is_silent_time():
             debug_log("⏸️ Проверка ресурсов пропущена (мониторинг неактивен или тихий режим)")
             return
@@ -351,9 +359,20 @@ class Monitor:
             "🟢 *Мониторинг серверов запущен*\n\n"
             f"• Серверов в мониторинге: {len(self.servers)}\n"
             f"• Проверка доступности: каждые {CHECK_INTERVAL} сек\n"
-            f"• Проверка ресурсов: каждые {RESOURCE_CHECK_INTERVAL // 60} минут\n"
             f"• Утренний отчет: {DATA_COLLECTION_TIME.strftime('%H:%M')}\n\n"
         )
+
+        resources_enabled = True
+        try:
+            from extensions.extension_manager import extension_manager
+            resources_enabled = extension_manager.is_extension_enabled('resource_monitor')
+        except ImportError:
+            resources_enabled = True
+
+        if resources_enabled:
+            start_message += f"• Проверка ресурсов: каждые {RESOURCE_CHECK_INTERVAL // 60} минут\n"
+        else:
+            start_message += "• Проверка ресурсов: отключена\n"
         
         # Информация о веб-интерфейсе
         try:

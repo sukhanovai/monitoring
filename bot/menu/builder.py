@@ -18,9 +18,11 @@ def main_menu(extension_manager):
     keyboard = [
         [InlineKeyboardButton("🔄 Доступность всех серверов", callback_data='manual_check')],
         [InlineKeyboardButton("🔍 Доступность сервера", callback_data='show_availability_menu')],
-        [InlineKeyboardButton("📊 Ресурсы сервера", callback_data='check_resources')],
         [InlineKeyboardButton("⚙️ Настройки", callback_data='settings_main')],
     ]
+
+    if extension_manager.is_extension_enabled('resource_monitor'):
+        keyboard.append([InlineKeyboardButton("📊 Ресурсы сервера", callback_data='check_resources')])
 
     if extension_manager.is_extension_enabled('backup_monitor'):
         keyboard.append(
