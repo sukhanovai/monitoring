@@ -386,15 +386,23 @@ def settings_callback_handler(update, context):
             add_pattern_handler(update, context)
         
         # Обработчики для редактирования и удаления категорий БД
-        elif data.startswith('settings_db_edit_'):
-            category = data.replace('settings_db_edit_', '')
-            edit_database_category_details(update, context, category)
         elif data.startswith('settings_db_delete_confirm_'):
             category = data.replace('settings_db_delete_confirm_', '')
             delete_database_category_execute(update, context, category)
         elif data.startswith('settings_db_delete_'):
             category = data.replace('settings_db_delete_', '')
             delete_database_category_confirmation(update, context, category)
+        elif data.startswith('settings_db_add_db_'):
+            category = data.replace('settings_db_add_db_', '')
+            add_database_entry_handler(update, context, category)
+        elif data.startswith('settings_db_edit_db_'):
+            raw_value = data.replace('settings_db_edit_db_', '')
+            if '__' in raw_value:
+                category, db_key = raw_value.split('__', 1)
+                edit_database_entry_handler(update, context, category, db_key)
+        elif data.startswith('settings_db_edit_'):
+            category = data.replace('settings_db_edit_', '')
+            edit_database_category_details(update, context, category)
         
         # Обработчики для серверов
         elif data == 'settings_servers_list':
@@ -577,6 +585,14 @@ def handle_setting_value(update, context):
     # Затем проверяем, не добавляется ли категория БД
     if context.user_data.get('adding_db_category'):
         return handle_db_category_input(update, context)
+
+    # Проверяем, не добавляется ли база данных
+    if context.user_data.get('adding_db_entry'):
+        return handle_db_entry_input(update, context)
+
+    # Проверяем, не редактируется ли база данных
+    if context.user_data.get('editing_db_entry'):
+        return handle_db_entry_edit_input(update, context)
     
     # Если это обычная настройка
     if 'editing_setting' not in context.user_data:
@@ -1194,6 +1210,12 @@ def show_backup_databases_settings(update, context):
     """Показать настройки баз данных для бэкапов - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
     query = update.callback_query
     query.answer()
+
+    # Сбрасываем состояния добавления/редактирования БД при выходе в меню
+    context.user_data.pop('adding_db_entry', None)
+    context.user_data.pop('editing_db_entry', None)
+    context.user_data.pop('db_entry_category', None)
+    context.user_data.pop('db_entry_key', None)
     
     db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
     
@@ -1203,23 +1225,43 @@ def show_backup_databases_settings(update, context):
         message += "❌ *Базы данных не настроены*\n\n"
     else:
         for category, databases in db_config.items():
+            if not isinstance(databases, dict):
+                databases = {}
             message += f"*{category.upper()}* ({len(databases)} БД):\n"
-            for db_key, db_name in list(databases.items())[:3]:
-                message += f"• {db_name}\n"
-            if len(databases) > 3:
-                message += f"• ... и еще {len(databases) - 3} БД\n"
+            for db_key in databases.keys():
+                message += f"• `{db_key}`\n"
             message += "\n"
     
     message += "Выберите действие:"
     
-    keyboard = [
+    keyboard = []
+
+    for category, databases in db_config.items():
+        if not isinstance(databases, dict):
+            databases = {}
+        keyboard.append([InlineKeyboardButton(
+            f"➕ Добавить БД в {category}",
+            callback_data=f"settings_db_add_db_{category}"
+        )])
+        row = []
+        for db_key in databases.keys():
+            row.append(InlineKeyboardButton(
+                f"✏️ {db_key}",
+                callback_data=f"settings_db_edit_db_{category}__{db_key}"
+            ))
+            if len(row) == 2:
+                keyboard.append(row)
+                row = []
+        if row:
+            keyboard.append(row)
+
+    keyboard.extend([
         [InlineKeyboardButton("📋 Просмотр всех БД", callback_data='settings_db_view_all')],
         [InlineKeyboardButton("➕ Добавить категорию БД", callback_data='settings_db_add_category')],
-        [InlineKeyboardButton("✏️ Редактировать БД", callback_data='settings_db_edit_category')],
         [InlineKeyboardButton("🗑️ Удалить категорию", callback_data='settings_db_delete_category')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-    ]
+    ])
     
     query.edit_message_text(
         message,
@@ -1715,6 +1757,8 @@ def edit_database_category_details(update, context, category):
 
     db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
     databases = db_config.get(category)
+    if databases is not None and not isinstance(databases, dict):
+        databases = {}
 
     if databases is None:
         query.edit_message_text(
@@ -1730,17 +1774,90 @@ def edit_database_category_details(update, context, category):
         message += "❌ В этой категории нет баз данных.\n"
     else:
         message += "Список баз данных:\n"
-        for db_name in databases.values():
-            message += f"• {db_name}\n"
+        for db_key, db_name in databases.items():
+            message += f"• {db_name} (`{db_key}`)\n"
 
-    message += "\nДобавление/редактирование БД будет доступно позже."
+    message += "\nВыберите действие:"
+
+    keyboard = [[InlineKeyboardButton("➕ Добавить БД", callback_data=f"settings_db_add_db_{category}")]]
+    for db_key, db_name in databases.items():
+        button_text = f"✏️ {db_name}"
+        keyboard.append([InlineKeyboardButton(button_text, callback_data=f"settings_db_edit_db_{category}__{db_key}")])
+
+    keyboard.append([
+        InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
+        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+    ])
 
     query.edit_message_text(
         message,
         parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def add_database_entry_handler(update, context, category):
+    """Запуск добавления базы данных в категорию"""
+    query = update.callback_query
+    query.answer()
+
+    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    if category not in db_config:
+        query.edit_message_text(
+            "❌ Категория не найдена.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
+            ])
+        )
+        return
+
+    # Инициализируем состояние добавления БД
+    context.user_data['adding_db_entry'] = True
+    context.user_data['db_entry_category'] = category
+    context.user_data.pop('db_entry_key', None)
+
+    query.edit_message_text(
+        "➕ *Добавление базы данных*\n\n"
+        f"Категория: *{category}*\n\n"
+        "Введите ключ базы данных (латиница/цифры/символы `_`, `-`, `.`):\n\n"
+        "_Пример: trade, client_db_01_",
+        parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("❌ Отмена", callback_data='settings_db_main')]
+        ])
+    )
+
+def edit_database_entry_handler(update, context, category, db_key):
+    """Запуск редактирования базы данных"""
+    query = update.callback_query
+    query.answer()
+
+    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    databases = db_config.get(category, {})
+    if not isinstance(databases, dict):
+        databases = {}
+    if not isinstance(databases, dict):
+        databases = {}
+    if db_key not in databases:
+        query.edit_message_text(
+            "❌ База данных не найдена.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
+            ])
+        )
+        return
+
+    context.user_data['editing_db_entry'] = True
+    context.user_data['db_entry_category'] = category
+    context.user_data['db_entry_key'] = db_key
+
+    query.edit_message_text(
+        "✏️ *Редактирование базы данных*\n\n"
+        f"Категория: *{category}*\n"
+        f"Ключ: `{db_key}`\n"
+        "Введите новый ключ:",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("❌ Отмена", callback_data='settings_db_main')]
         ])
     )
 
@@ -1870,6 +1987,107 @@ def handle_db_category_input(update, context):
     
     # Очищаем состояние
     context.user_data['adding_db_category'] = False
+
+def handle_db_entry_input(update, context):
+    """Обработчик добавления базы данных"""
+    if 'adding_db_entry' not in context.user_data:
+        return
+
+    user_input = update.message.text.strip()
+    category = context.user_data.get('db_entry_category')
+
+    if not category:
+        update.message.reply_text("❌ Категория не найдена. Попробуйте снова.")
+        context.user_data['adding_db_entry'] = False
+        return
+
+    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    databases = db_config.get(category, {})
+    if not isinstance(databases, dict):
+        databases = {}
+    if not isinstance(databases, dict):
+        databases = {}
+
+    if not user_input:
+        update.message.reply_text("❌ Ключ не может быть пустым. Попробуйте снова:")
+        return
+
+    if ' ' in user_input:
+        update.message.reply_text("❌ Ключ не должен содержать пробелы. Попробуйте снова:")
+        return
+
+    if user_input in databases:
+        update.message.reply_text("❌ Такой ключ уже существует. Введите другой:")
+        return
+
+    databases[user_input] = user_input
+    db_config[category] = databases
+    settings_manager.set_setting('DATABASE_CONFIG', db_config)
+
+    update.message.reply_text(
+        "✅ *База данных добавлена!*\n\n"
+        f"Категория: *{category}*\n"
+        f"Ключ: `{user_input}`",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
+             InlineKeyboardButton("✏️ Добавить еще", callback_data=f'settings_db_add_db_{category}')]
+        ])
+    )
+
+    context.user_data.pop('adding_db_entry', None)
+    context.user_data.pop('db_entry_category', None)
+    context.user_data.pop('db_entry_key', None)
+
+def handle_db_entry_edit_input(update, context):
+    """Обработчик редактирования базы данных"""
+    if 'editing_db_entry' not in context.user_data:
+        return
+
+    user_input = update.message.text.strip()
+    category = context.user_data.get('db_entry_category')
+    db_key = context.user_data.get('db_entry_key')
+
+    if not category or not db_key:
+        update.message.reply_text("❌ Не удалось определить базу данных. Попробуйте снова.")
+        context.user_data['editing_db_entry'] = False
+        return
+
+    if not user_input:
+        update.message.reply_text("❌ Ключ не может быть пустым. Попробуйте снова:")
+        return
+
+    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    databases = db_config.get(category, {})
+
+    if db_key not in databases:
+        update.message.reply_text("❌ База данных не найдена.")
+        context.user_data['editing_db_entry'] = False
+        return
+
+    if user_input in databases and user_input != db_key:
+        update.message.reply_text("❌ Такой ключ уже существует. Введите другой:")
+        return
+
+    databases.pop(db_key, None)
+    databases[user_input] = user_input
+    db_config[category] = databases
+    settings_manager.set_setting('DATABASE_CONFIG', db_config)
+
+    update.message.reply_text(
+        "✅ *База данных обновлена!*\n\n"
+        f"Категория: *{category}*\n"
+        f"Новый ключ: `{user_input}`",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
+             InlineKeyboardButton("✏️ Редактировать еще", callback_data=f'settings_db_edit_{category}')]
+        ])
+    )
+
+    context.user_data.pop('editing_db_entry', None)
+    context.user_data.pop('db_entry_category', None)
+    context.user_data.pop('db_entry_key', None)
     
 def show_windows_auth_settings(update, context):
     """Показать настройки аутентификации Windows - ОСНОВНОЕ МЕНЮ"""
