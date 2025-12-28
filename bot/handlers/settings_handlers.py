@@ -386,9 +386,6 @@ def settings_callback_handler(update, context):
             add_pattern_handler(update, context)
         
         # Обработчики для редактирования и удаления категорий БД
-        elif data.startswith('settings_db_edit_'):
-            category = data.replace('settings_db_edit_', '')
-            edit_database_category_details(update, context, category)
         elif data.startswith('settings_db_delete_confirm_'):
             category = data.replace('settings_db_delete_confirm_', '')
             delete_database_category_execute(update, context, category)
@@ -403,6 +400,9 @@ def settings_callback_handler(update, context):
             if '__' in raw_value:
                 category, db_key = raw_value.split('__', 1)
                 edit_database_entry_handler(update, context, category, db_key)
+        elif data.startswith('settings_db_edit_'):
+            category = data.replace('settings_db_edit_', '')
+            edit_database_category_details(update, context, category)
         
         # Обработчики для серверов
         elif data == 'settings_servers_list':
@@ -1214,7 +1214,6 @@ def show_backup_databases_settings(update, context):
     # Сбрасываем состояния добавления/редактирования БД при выходе в меню
     context.user_data.pop('adding_db_entry', None)
     context.user_data.pop('editing_db_entry', None)
-    context.user_data.pop('db_entry_stage', None)
     context.user_data.pop('db_entry_category', None)
     context.user_data.pop('db_entry_key', None)
     
@@ -1813,7 +1812,6 @@ def add_database_entry_handler(update, context, category):
 
     # Инициализируем состояние добавления БД
     context.user_data['adding_db_entry'] = True
-    context.user_data['db_entry_stage'] = 'key'
     context.user_data['db_entry_category'] = category
     context.user_data.pop('db_entry_key', None)
 
@@ -1852,13 +1850,11 @@ def edit_database_entry_handler(update, context, category, db_key):
     context.user_data['db_entry_category'] = category
     context.user_data['db_entry_key'] = db_key
 
-    current_name = databases.get(db_key, db_key)
     query.edit_message_text(
         "✏️ *Редактирование базы данных*\n\n"
         f"Категория: *{category}*\n"
         f"Ключ: `{db_key}`\n"
-        f"Текущее имя: *{current_name}*\n\n"
-        "Введите новое отображаемое имя:",
+        "Введите новый ключ:",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("❌ Отмена", callback_data='settings_db_main')]
@@ -1998,7 +1994,6 @@ def handle_db_entry_input(update, context):
         return
 
     user_input = update.message.text.strip()
-    stage = context.user_data.get('db_entry_stage', 'key')
     category = context.user_data.get('db_entry_category')
 
     if not category:
@@ -2013,60 +2008,36 @@ def handle_db_entry_input(update, context):
     if not isinstance(databases, dict):
         databases = {}
 
-    if stage == 'key':
-        if not user_input:
-            update.message.reply_text("❌ Ключ не может быть пустым. Попробуйте снова:")
-            return
-
-        if ' ' in user_input:
-            update.message.reply_text("❌ Ключ не должен содержать пробелы. Попробуйте снова:")
-            return
-
-        if user_input in databases:
-            update.message.reply_text("❌ Такой ключ уже существует. Введите другой:")
-            return
-
-        context.user_data['db_entry_key'] = user_input
-        context.user_data['db_entry_stage'] = 'name'
-
-        update.message.reply_text(
-            "Введите отображаемое имя базы данных:\n\n"
-            "_Пример: Торговая база 1С_",
-            parse_mode='Markdown'
-        )
+    if not user_input:
+        update.message.reply_text("❌ Ключ не может быть пустым. Попробуйте снова:")
         return
 
-    if stage == 'name':
-        db_key = context.user_data.get('db_entry_key')
-        if not db_key:
-            update.message.reply_text("❌ Ключ не найден. Начните заново.")
-            context.user_data['adding_db_entry'] = False
-            return
+    if ' ' in user_input:
+        update.message.reply_text("❌ Ключ не должен содержать пробелы. Попробуйте снова:")
+        return
 
-        if not user_input:
-            update.message.reply_text("❌ Имя не может быть пустым. Попробуйте снова:")
-            return
+    if user_input in databases:
+        update.message.reply_text("❌ Такой ключ уже существует. Введите другой:")
+        return
 
-        databases[db_key] = user_input
-        db_config[category] = databases
-        settings_manager.set_setting('DATABASE_CONFIG', db_config)
+    databases[user_input] = user_input
+    db_config[category] = databases
+    settings_manager.set_setting('DATABASE_CONFIG', db_config)
 
-        update.message.reply_text(
-            "✅ *База данных добавлена!*\n\n"
-            f"Категория: *{category}*\n"
-            f"Ключ: `{db_key}`\n"
-            f"Имя: *{user_input}*",
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
-                 InlineKeyboardButton("✏️ Добавить еще", callback_data=f'settings_db_add_db_{category}')]
-            ])
-        )
+    update.message.reply_text(
+        "✅ *База данных добавлена!*\n\n"
+        f"Категория: *{category}*\n"
+        f"Ключ: `{user_input}`",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
+             InlineKeyboardButton("✏️ Добавить еще", callback_data=f'settings_db_add_db_{category}')]
+        ])
+    )
 
-        context.user_data.pop('adding_db_entry', None)
-        context.user_data.pop('db_entry_stage', None)
-        context.user_data.pop('db_entry_category', None)
-        context.user_data.pop('db_entry_key', None)
+    context.user_data.pop('adding_db_entry', None)
+    context.user_data.pop('db_entry_category', None)
+    context.user_data.pop('db_entry_key', None)
 
 def handle_db_entry_edit_input(update, context):
     """Обработчик редактирования базы данных"""
@@ -2083,7 +2054,7 @@ def handle_db_entry_edit_input(update, context):
         return
 
     if not user_input:
-        update.message.reply_text("❌ Имя не может быть пустым. Попробуйте снова:")
+        update.message.reply_text("❌ Ключ не может быть пустым. Попробуйте снова:")
         return
 
     db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
@@ -2094,15 +2065,19 @@ def handle_db_entry_edit_input(update, context):
         context.user_data['editing_db_entry'] = False
         return
 
-    databases[db_key] = user_input
+    if user_input in databases and user_input != db_key:
+        update.message.reply_text("❌ Такой ключ уже существует. Введите другой:")
+        return
+
+    databases.pop(db_key, None)
+    databases[user_input] = user_input
     db_config[category] = databases
     settings_manager.set_setting('DATABASE_CONFIG', db_config)
 
     update.message.reply_text(
         "✅ *База данных обновлена!*\n\n"
         f"Категория: *{category}*\n"
-        f"Ключ: `{db_key}`\n"
-        f"Новое имя: *{user_input}*",
+        f"Новый ключ: `{user_input}`",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
