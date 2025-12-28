@@ -361,6 +361,9 @@ def settings_callback_handler(update, context):
         elif data.startswith('settings_proxmox_delete_'):
             host_name = data.replace('settings_proxmox_delete_', '')
             delete_proxmox_host(update, context, host_name)
+        elif data.startswith('settings_proxmox_edit_'):
+            host_name = data.replace('settings_proxmox_edit_', '')
+            edit_proxmox_host_handler(update, context, host_name)
         
         # Новые обработчики для настроек БД
         elif data == 'settings_db_main':
@@ -397,6 +400,9 @@ def settings_callback_handler(update, context):
             view_patterns_handler(update, context)
         elif data == 'add_pattern':
             add_pattern_handler(update, context)
+        elif data.startswith('delete_pattern_'):
+            pattern_id = data.replace('delete_pattern_', '')
+            delete_pattern_handler(update, context, pattern_id)
         
         # Обработчики для редактирования и удаления категорий БД
         elif data.startswith('settings_db_delete_confirm_'):
@@ -602,6 +608,10 @@ def handle_setting_value(update, context):
     # Проверяем, не добавляется ли хост Proxmox
     if context.user_data.get('adding_proxmox_host'):
         return handle_proxmox_host_input(update, context)
+
+    # Проверяем, не редактируется ли хост Proxmox
+    if context.user_data.get('editing_proxmox_host'):
+        return handle_proxmox_host_edit_input(update, context)
 
     # Проверяем, не добавляется ли база данных
     if context.user_data.get('adding_db_entry'):
@@ -1406,10 +1416,16 @@ def show_proxmox_hosts_list(update, context):
 
     keyboard = []
     for host_name in sorted(proxmox_hosts.keys()):
-        keyboard.append([InlineKeyboardButton(
-            f"🗑️ {host_name}",
-            callback_data=f"settings_proxmox_delete_{host_name}"
-        )])
+        keyboard.append([
+            InlineKeyboardButton(
+                f"✏️ {host_name}",
+                callback_data=f"settings_proxmox_edit_{host_name}"
+            ),
+            InlineKeyboardButton(
+                f"🗑️ {host_name}",
+                callback_data=f"settings_proxmox_delete_{host_name}"
+            )
+        ])
 
     keyboard.append([
         InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox'),
@@ -1497,6 +1513,77 @@ def handle_proxmox_host_input(update, context):
     )
 
     context.user_data.pop('adding_proxmox_host', None)
+
+def edit_proxmox_host_handler(update, context, host_name):
+    """Начать редактирование хоста Proxmox"""
+    query = update.callback_query
+    query.answer()
+
+    proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
+    if not isinstance(proxmox_hosts, dict):
+        proxmox_hosts = {}
+
+    if host_name not in proxmox_hosts:
+        query.edit_message_text(
+            "❌ Хост не найден.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox')]
+            ])
+        )
+        return
+
+    context.user_data['editing_proxmox_host'] = True
+    context.user_data['editing_proxmox_host_name'] = host_name
+
+    query.edit_message_text(
+        "✏️ *Редактирование хоста Proxmox*\n\n"
+        f"Текущий хост: `{host_name}`\n\n"
+        "Введите новое имя хоста:",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("❌ Отмена", callback_data='settings_backup_proxmox')]
+        ])
+    )
+
+def handle_proxmox_host_edit_input(update, context):
+    """Обработчик редактирования хоста Proxmox"""
+    if 'editing_proxmox_host' not in context.user_data:
+        return
+
+    new_host_name = update.message.text.strip()
+    if not new_host_name:
+        update.message.reply_text("❌ Имя хоста не может быть пустым. Попробуйте снова:")
+        return
+
+    proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
+    if not isinstance(proxmox_hosts, dict):
+        proxmox_hosts = {}
+
+    old_host_name = context.user_data.get('editing_proxmox_host_name')
+    if not old_host_name or old_host_name not in proxmox_hosts:
+        update.message.reply_text("❌ Хост не найден.")
+        context.user_data.pop('editing_proxmox_host', None)
+        context.user_data.pop('editing_proxmox_host_name', None)
+        return
+
+    if new_host_name in proxmox_hosts and new_host_name != old_host_name:
+        update.message.reply_text("❌ Такой хост уже есть. Введите другой:")
+        return
+
+    proxmox_hosts.pop(old_host_name, None)
+    proxmox_hosts[new_host_name] = new_host_name
+    settings_manager.set_setting('PROXMOX_HOSTS', proxmox_hosts)
+
+    update.message.reply_text(
+        f"✅ Хост обновлён: `{new_host_name}`",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox')]
+        ])
+    )
+
+    context.user_data.pop('editing_proxmox_host', None)
+    context.user_data.pop('editing_proxmox_host_name', None)
 
 def handle_setting_input(update, context, setting_key):
     """Обработчик ввода значений настроек"""
@@ -2973,26 +3060,73 @@ def view_patterns_handler(update, context):
     query = update.callback_query
     query.answer()
 
-    patterns = settings_manager.get_backup_patterns()
+    conn = settings_manager.get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT id, pattern_type, pattern, category
+        FROM backup_patterns
+        WHERE enabled = 1
+        ORDER BY category, pattern_type, id
+        """
+    )
+    rows = cursor.fetchall()
 
-    if not patterns:
+    if not rows:
         message = "📋 *Паттерны бэкапов*\n\n❌ Паттерны не настроены."
     else:
         message = "📋 *Паттерны бэкапов*\n\n"
-        for category, category_patterns in patterns.items():
-            message += f"*{category}*\n"
-            for pattern_type, pattern_list in category_patterns.items():
-                message += f"• {pattern_type} ({len(pattern_list)})\n"
-                for pattern in pattern_list:
-                    message += f"  - `{pattern}`\n"
-            message += "\n"
+        current_category = None
+        for pattern_id, pattern_type, pattern, category in rows:
+            if category != current_category:
+                if current_category is not None:
+                    message += "\n"
+                message += f"*{category}*\n"
+                current_category = category
+            message += f"• {pattern_type}: `{pattern}`\n"
+
+    keyboard = []
+    for pattern_id, pattern_type, pattern, category in rows:
+        button_text = f"🗑️ {category}:{pattern_type}"
+        keyboard.append([InlineKeyboardButton(
+            button_text,
+            callback_data=f"delete_pattern_{pattern_id}"
+        )])
+
+    keyboard.append([
+        InlineKeyboardButton("↩️ Назад", callback_data='backup_patterns'),
+        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+    ])
 
     query.edit_message_text(
         message,
         parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def delete_pattern_handler(update, context, pattern_id):
+    """Удалить паттерн"""
+    query = update.callback_query
+    query.answer()
+
+    try:
+        pattern_id_int = int(pattern_id)
+    except ValueError:
+        query.edit_message_text("❌ Некорректный идентификатор паттерна.")
+        return
+
+    conn = settings_manager.get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE backup_patterns SET enabled = 0 WHERE id = ?",
+        (pattern_id_int,)
+    )
+    conn.commit()
+
+    query.edit_message_text(
+        "✅ Паттерн удалён.",
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='backup_patterns'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("↩️ Назад", callback_data='backup_patterns')]
         ])
     )
 
