@@ -16,6 +16,7 @@ from telegram.ext import CommandHandler, CallbackQueryHandler, MessageHandler, F
 from core.config_manager import config_manager as settings_manager
 from lib.logging import debug_log
 import json
+import re
 
 BACKUP_SETTINGS_CALLBACKS = {
     'backup_times',
@@ -3112,11 +3113,11 @@ def add_pattern_handler(update, context):
     query.answer()
 
     context.user_data['adding_backup_pattern'] = True
-    context.user_data['backup_pattern_stage'] = 'category'
+    context.user_data['backup_pattern_stage'] = 'subject'
 
     query.edit_message_text(
         "➕ *Добавление паттерна*\n\n"
-        "Введите категорию (например: company, client, barnaul, yandex):",
+        "Введите тему письма (как приходит в почте):",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("❌ Отмена", callback_data='backup_patterns')]
@@ -3176,6 +3177,16 @@ def view_patterns_handler(update, context):
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
+def _get_database_category(db_name):
+    """Получить категорию базы данных по ключу"""
+    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    if not isinstance(db_config, dict):
+        return "unknown"
+    for category, databases in db_config.items():
+        if isinstance(databases, dict) and db_name in databases:
+            return category
+    return "unknown"
 
 def delete_pattern_handler(update, context, pattern_id):
     """Удалить паттерн"""
@@ -3240,13 +3251,14 @@ def edit_pattern_handler(update, context, pattern_id):
     context.user_data['editing_backup_pattern_id'] = pattern_id_int
     context.user_data['backup_pattern_category'] = category
     context.user_data['backup_pattern_type'] = pattern_type
+    context.user_data['backup_pattern_stage'] = 'subject'
 
     query.edit_message_text(
         "✏️ *Редактирование паттерна*\n\n"
         f"Категория: *{category}*\n"
         f"Тип: *{pattern_type}*\n"
         f"Текущий паттерн: `{pattern}`\n\n"
-        "Введите новое регулярное выражение:",
+        "Введите тему письма (как приходит в почте):",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("❌ Отмена", callback_data='backup_patterns')]
@@ -3261,32 +3273,33 @@ def handle_backup_pattern_input(update, context):
     user_input = update.message.text.strip()
     stage = context.user_data.get('backup_pattern_stage', 'category')
 
-    if stage == 'category':
+    if stage == 'subject':
         if not user_input:
-            update.message.reply_text("❌ Категория не может быть пустой. Попробуйте снова:")
+            update.message.reply_text("❌ Тема не может быть пустой. Попробуйте снова:")
             return
-        context.user_data['backup_pattern_category'] = user_input
-        context.user_data['backup_pattern_stage'] = 'type'
-        update.message.reply_text("Введите тип паттерна (например: subject, body):")
+        context.user_data['backup_pattern_subject'] = user_input
+        context.user_data['backup_pattern_stage'] = 'db_name'
+        update.message.reply_text("Введите имя базы данных из темы письма:")
         return
 
-    if stage == 'type':
+    if stage == 'db_name':
         if not user_input:
-            update.message.reply_text("❌ Тип не может быть пустым. Попробуйте снова:")
-            return
-        context.user_data['backup_pattern_type'] = user_input
-        context.user_data['backup_pattern_stage'] = 'pattern'
-        update.message.reply_text("Введите регулярное выражение паттерна:")
-        return
-
-    if stage == 'pattern':
-        if not user_input:
-            update.message.reply_text("❌ Паттерн не может быть пустым. Попробуйте снова:")
+            update.message.reply_text("❌ Имя базы не может быть пустым. Попробуйте снова:")
             return
 
-        category = context.user_data.get('backup_pattern_category')
-        pattern_type = context.user_data.get('backup_pattern_type')
-        pattern = user_input
+        subject = context.user_data.get('backup_pattern_subject')
+        db_name = user_input
+        escaped_subject = re.escape(subject)
+        escaped_db_name = re.escape(db_name)
+        if escaped_db_name not in escaped_subject:
+            update.message.reply_text(
+                "❌ Имя базы не найдено в теме письма. Проверьте ввод и попробуйте снова:"
+            )
+            return
+
+        pattern = escaped_subject.replace(escaped_db_name, r"([\w.-]+)")
+        pattern_type = "subject"
+        category = _get_database_category(db_name)
 
         try:
             conn = settings_manager.get_connection()
@@ -3317,6 +3330,7 @@ def handle_backup_pattern_input(update, context):
             context.user_data.pop('backup_pattern_stage', None)
             context.user_data.pop('backup_pattern_category', None)
             context.user_data.pop('backup_pattern_type', None)
+            context.user_data.pop('backup_pattern_subject', None)
 
 def handle_backup_pattern_edit_input(update, context):
     """Обработчик редактирования паттерна"""
@@ -3324,40 +3338,72 @@ def handle_backup_pattern_edit_input(update, context):
         return
 
     new_pattern = update.message.text.strip()
-    if not new_pattern:
-        update.message.reply_text("❌ Паттерн не может быть пустым. Попробуйте снова:")
+    stage = context.user_data.get('backup_pattern_stage', 'subject')
+
+    if stage == 'subject':
+        if not new_pattern:
+            update.message.reply_text("❌ Тема не может быть пустой. Попробуйте снова:")
+            return
+        context.user_data['backup_pattern_subject'] = new_pattern
+        context.user_data['backup_pattern_stage'] = 'db_name'
+        update.message.reply_text("Введите имя базы данных из темы письма:")
         return
 
-    pattern_id = context.user_data.get('editing_backup_pattern_id')
-    if not pattern_id:
-        update.message.reply_text("❌ Не найден паттерн для редактирования.")
-        context.user_data.pop('editing_backup_pattern', None)
-        return
+    if stage == 'db_name':
+        if not new_pattern:
+            update.message.reply_text("❌ Имя базы не может быть пустым. Попробуйте снова:")
+            return
 
-    try:
-        conn = settings_manager.get_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            "UPDATE backup_patterns SET pattern = ? WHERE id = ?",
-            (new_pattern, pattern_id)
-        )
-        conn.commit()
+        subject = context.user_data.get('backup_pattern_subject')
+        db_name = new_pattern
+        escaped_subject = re.escape(subject)
+        escaped_db_name = re.escape(db_name)
+        if escaped_db_name not in escaped_subject:
+            update.message.reply_text(
+                "❌ Имя базы не найдено в теме письма. Проверьте ввод и попробуйте снова:"
+            )
+            return
 
-        update.message.reply_text(
-            "✅ *Паттерн обновлён!*\n\n"
-            f"Категория: *{context.user_data.get('backup_pattern_category')}*\n"
-            f"Тип: *{context.user_data.get('backup_pattern_type')}*\n"
-            f"Паттерн: `{new_pattern}`",
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='backup_patterns')]
-            ])
-        )
-    except Exception as e:
-        update.message.reply_text(f"❌ Ошибка сохранения: {e}")
-    finally:
-        context.user_data.pop('editing_backup_pattern', None)
-        context.user_data.pop('editing_backup_pattern_id', None)
-        context.user_data.pop('backup_pattern_category', None)
-        context.user_data.pop('backup_pattern_type', None)
+        pattern_id = context.user_data.get('editing_backup_pattern_id')
+        if not pattern_id:
+            update.message.reply_text("❌ Не найден паттерн для редактирования.")
+            context.user_data.pop('editing_backup_pattern', None)
+            return
+
+        new_pattern = escaped_subject.replace(escaped_db_name, r"([\w.-]+)")
+        category = _get_database_category(db_name)
+        pattern_type = "subject"
+
+        try:
+            conn = settings_manager.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                UPDATE backup_patterns
+                SET pattern = ?, category = ?, pattern_type = ?
+                WHERE id = ?
+                """,
+                (new_pattern, category, pattern_type, pattern_id)
+            )
+            conn.commit()
+
+            update.message.reply_text(
+                "✅ *Паттерн обновлён!*\n\n"
+                f"Категория: *{category}*\n"
+                f"Тип: *{pattern_type}*\n"
+                f"Паттерн: `{new_pattern}`",
+                parse_mode='Markdown',
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("↩️ Назад", callback_data='backup_patterns')]
+                ])
+            )
+        except Exception as e:
+            update.message.reply_text(f"❌ Ошибка сохранения: {e}")
+        finally:
+            context.user_data.pop('editing_backup_pattern', None)
+            context.user_data.pop('editing_backup_pattern_id', None)
+            context.user_data.pop('backup_pattern_category', None)
+            context.user_data.pop('backup_pattern_type', None)
+            context.user_data.pop('backup_pattern_subject', None)
+            context.user_data.pop('backup_pattern_stage', None)
     
