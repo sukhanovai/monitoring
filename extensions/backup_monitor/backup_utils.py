@@ -28,6 +28,13 @@ def _normalize_backup_type(backup_type: str, db_name: str) -> str:
     return backup_type
 
 
+def _is_proxmox_host_enabled(host_value: object) -> bool:
+    """Проверяет, включен ли мониторинг хоста Proxmox."""
+    if isinstance(host_value, dict):
+        return host_value.get("enabled", True)
+    return True
+
+
 def get_backup_summary(period_hours=16):
     """Возвращает текстовую сводку по бэкапам за период."""
     try:
@@ -52,7 +59,10 @@ def get_backup_summary(period_hours=16):
         ''')
         all_hosts = [row[0] for row in cursor.fetchall()]
         if PROXMOX_HOSTS:
-            configured_hosts = set(PROXMOX_HOSTS.keys())
+            configured_hosts = {
+                host for host, value in PROXMOX_HOSTS.items()
+                if _is_proxmox_host_enabled(value)
+            }
             db_hosts = set(all_hosts)
             matched_hosts = sorted(configured_hosts & db_hosts)
             all_hosts = matched_hosts or list(configured_hosts)
