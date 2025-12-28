@@ -99,7 +99,18 @@ def get_backup_summary(period_hours=16):
 
         conn.close()
 
-        hosts_with_success = len([r for r in proxmox_results if r[1] == 'success'])
+        allowed_hosts = set(all_hosts)
+        hosts_with_success = len([
+            r for r in proxmox_results
+            if r[1] == 'success' and r[0] in allowed_hosts
+        ])
+
+        company_databases = DATABASE_BACKUP_CONFIG.get("company_databases", {})
+        client_databases = DATABASE_BACKUP_CONFIG.get("client_databases", {})
+        if "trade" in client_databases and "trade" in company_databases:
+            client_databases = {
+                key: value for key, value in client_databases.items() if key != "trade"
+            }
 
         company_databases = DATABASE_BACKUP_CONFIG.get("company_databases", {})
         client_databases = DATABASE_BACKUP_CONFIG.get("client_databases", {})
