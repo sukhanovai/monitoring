@@ -1210,10 +1210,10 @@ def show_backup_databases_settings(update, context):
     message += "Выберите действие:"
     
     keyboard = [
-        [InlineKeyboardButton("📋 Просмотр всех БД", callback_data='view_all_databases')],
-        [InlineKeyboardButton("➕ Добавить категорию БД", callback_data='add_database_category')],
-        [InlineKeyboardButton("✏️ Редактировать БД", callback_data='edit_databases')],
-        [InlineKeyboardButton("🗑️ Удалить категорию", callback_data='delete_database_category')],
+        [InlineKeyboardButton("📋 Просмотр всех БД", callback_data='settings_db_view_all')],
+        [InlineKeyboardButton("➕ Добавить категорию БД", callback_data='settings_db_add_category')],
+        [InlineKeyboardButton("✏️ Редактировать БД", callback_data='settings_db_edit_category')],
+        [InlineKeyboardButton("🗑️ Удалить категорию", callback_data='settings_db_delete_category')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
