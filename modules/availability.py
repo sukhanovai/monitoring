@@ -1,11 +1,11 @@
 """
 /app/modules/availability.py
-Server Monitoring System v5.3.8
+Server Monitoring System v5.3.9
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Server Availability Monitoring Module
 Система мониторинга серверов
-Версия: 5.3.8
+Версия: 5.3.9
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль мониторинга доступности серверов
