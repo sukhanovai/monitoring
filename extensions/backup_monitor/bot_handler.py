@@ -290,7 +290,10 @@ class BackupMonitorBot(BackupBase):
         # Получаем все известные хосты и БД из конфигурации
         from .db_settings_backup_monitor import PROXMOX_HOSTS, DATABASE_BACKUP_CONFIG
         
-        all_configured_hosts = list(PROXMOX_HOSTS.keys())
+        all_configured_hosts = [
+            host for host, value in PROXMOX_HOSTS.items()
+            if not isinstance(value, dict) or value.get("enabled", True)
+        ]
         all_configured_databases = []
         
         # Собираем все БД из конфигурации

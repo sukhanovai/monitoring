@@ -277,7 +277,7 @@ def callback_router(update, context):
     # ------------------------------------------------
     # НАСТРОЙКИ БЭКАПОВ (settings_handlers)
     # ------------------------------------------------
-    elif data in BACKUP_SETTINGS_CALLBACKS:
+    elif data in BACKUP_SETTINGS_CALLBACKS or data.startswith('delete_pattern_'):
         settings_callback_handler(update, context)
 
     # ------------------------------------------------

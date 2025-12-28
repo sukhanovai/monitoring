@@ -21,7 +21,9 @@ BACKUP_SETTINGS_CALLBACKS = {
     'backup_times',
     'backup_patterns',
     'settings_backup_databases',
-    'backup_db_add_category'
+    'backup_db_add_category',
+    'view_patterns',
+    'add_pattern'
 }
 
 debug_logger = debug_log
@@ -364,6 +366,9 @@ def settings_callback_handler(update, context):
         elif data.startswith('settings_proxmox_edit_'):
             host_name = data.replace('settings_proxmox_edit_', '')
             edit_proxmox_host_handler(update, context, host_name)
+        elif data.startswith('settings_proxmox_toggle_'):
+            host_name = data.replace('settings_proxmox_toggle_', '')
+            toggle_proxmox_host(update, context, host_name)
         
         # Новые обработчики для настроек БД
         elif data == 'settings_db_main':
@@ -1412,10 +1417,20 @@ def show_proxmox_hosts_list(update, context):
         message += "❌ Хосты не настроены."
     else:
         for host_name in sorted(proxmox_hosts.keys()):
-            message += f"• `{host_name}`\n"
+            host_value = proxmox_hosts.get(host_name)
+            enabled = True
+            if isinstance(host_value, dict):
+                enabled = host_value.get('enabled', True)
+            status_icon = "🟢" if enabled else "🔴"
+            message += f"{status_icon} `{host_name}`\n"
 
     keyboard = []
     for host_name in sorted(proxmox_hosts.keys()):
+        host_value = proxmox_hosts.get(host_name)
+        enabled = True
+        if isinstance(host_value, dict):
+            enabled = host_value.get('enabled', True)
+        toggle_text = "⛔️ Отключить" if enabled else "✅ Включить"
         keyboard.append([
             InlineKeyboardButton(
                 f"✏️ {host_name}",
@@ -1424,6 +1439,12 @@ def show_proxmox_hosts_list(update, context):
             InlineKeyboardButton(
                 f"🗑️ {host_name}",
                 callback_data=f"settings_proxmox_delete_{host_name}"
+            ),
+        ])
+        keyboard.append([
+            InlineKeyboardButton(
+                f"{toggle_text} {host_name}",
+                callback_data=f"settings_proxmox_toggle_{host_name}"
             )
         ])
 
@@ -1501,7 +1522,7 @@ def handle_proxmox_host_input(update, context):
         update.message.reply_text("❌ Такой хост уже есть. Введите другой:")
         return
 
-    proxmox_hosts[host_name] = host_name
+    proxmox_hosts[host_name] = {'enabled': True}
     settings_manager.set_setting('PROXMOX_HOSTS', proxmox_hosts)
 
     update.message.reply_text(
@@ -1570,8 +1591,10 @@ def handle_proxmox_host_edit_input(update, context):
         update.message.reply_text("❌ Такой хост уже есть. Введите другой:")
         return
 
-    proxmox_hosts.pop(old_host_name, None)
-    proxmox_hosts[new_host_name] = new_host_name
+    host_value = proxmox_hosts.pop(old_host_name, None)
+    if not isinstance(host_value, dict):
+        host_value = {'enabled': True}
+    proxmox_hosts[new_host_name] = host_value
     settings_manager.set_setting('PROXMOX_HOSTS', proxmox_hosts)
 
     update.message.reply_text(
@@ -1584,6 +1607,44 @@ def handle_proxmox_host_edit_input(update, context):
 
     context.user_data.pop('editing_proxmox_host', None)
     context.user_data.pop('editing_proxmox_host_name', None)
+
+def toggle_proxmox_host(update, context, host_name):
+    """Включить/отключить мониторинг хоста Proxmox"""
+    query = update.callback_query
+    query.answer()
+
+    proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
+    if not isinstance(proxmox_hosts, dict):
+        proxmox_hosts = {}
+
+    if host_name not in proxmox_hosts:
+        query.edit_message_text(
+            "❌ Хост не найден.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox')]
+            ])
+        )
+        return
+
+    host_value = proxmox_hosts.get(host_name)
+    if isinstance(host_value, dict):
+        enabled = host_value.get('enabled', True)
+    else:
+        enabled = True
+        host_value = {'enabled': True}
+
+    host_value['enabled'] = not enabled
+    proxmox_hosts[host_name] = host_value
+    settings_manager.set_setting('PROXMOX_HOSTS', proxmox_hosts)
+
+    status_text = "включен" if host_value['enabled'] else "отключен"
+    query.edit_message_text(
+        f"✅ Мониторинг хоста `{host_name}` {status_text}.",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox')]
+        ])
+    )
 
 def handle_setting_input(update, context, setting_key):
     """Обработчик ввода значений настроек"""
