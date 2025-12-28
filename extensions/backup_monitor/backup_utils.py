@@ -18,6 +18,16 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _normalize_db_key(name: str) -> str:
+    return str(name or "").replace("-", "_").lower()
+
+
+def _normalize_backup_type(backup_type: str, db_name: str) -> str:
+    if _normalize_db_key(db_name) == "trade" and backup_type == "client":
+        return "company_database"
+    return backup_type
+
+
 def get_backup_summary(period_hours=16):
     """Возвращает текстовую сводку по бэкапам за период."""
     try:
@@ -42,7 +52,10 @@ def get_backup_summary(period_hours=16):
         ''')
         all_hosts = [row[0] for row in cursor.fetchall()]
         if PROXMOX_HOSTS:
-            all_hosts = list(PROXMOX_HOSTS.keys())
+            configured_hosts = set(PROXMOX_HOSTS.keys())
+            db_hosts = set(all_hosts)
+            matched_hosts = sorted(configured_hosts & db_hosts)
+            all_hosts = matched_hosts or list(configured_hosts)
 
         cursor.execute('''
             SELECT host_name, backup_status, MAX(received_at) as last_backup
@@ -67,6 +80,10 @@ def get_backup_summary(period_hours=16):
             GROUP BY backup_type, database_name
         ''', (since_time,))
         db_results = cursor.fetchall()
+        db_results = [
+            (_normalize_backup_type(backup_type, db_name), db_name, status, last_backup)
+            for backup_type, db_name, status, last_backup in db_results
+        ]
 
         cursor.execute('''
             SELECT backup_type, database_name, MAX(received_at) as last_backup
@@ -75,6 +92,10 @@ def get_backup_summary(period_hours=16):
             HAVING last_backup < ?
         ''', (stale_threshold,))
         stale_databases = cursor.fetchall()
+        stale_databases = [
+            (_normalize_backup_type(backup_type, db_name), db_name, last_backup)
+            for backup_type, db_name, last_backup in stale_databases
+        ]
 
         conn.close()
 
