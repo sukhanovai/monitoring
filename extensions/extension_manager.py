@@ -63,20 +63,6 @@ AVAILABLE_EXTENSIONS = {
         'commands': [],
         'handlers': [],
         'enabled_by_default': True
-    },
-    'inventory_monitor': {
-        'name': '📦 Инвентаризация',
-        'description': 'Отслеживание аппаратного обеспечения серверов',
-        'commands': [],
-        'handlers': [],
-        'enabled_by_default': False
-    },
-    'zfs_monitor': {
-        'name': '💾 ZFS мониторинг',
-        'description': 'Мониторинг ZFS файловых систем и пулов',
-        'commands': [],
-        'handlers': [],
-        'enabled_by_default': False
     }
 }
 

@@ -116,7 +116,6 @@ def setup_menu(bot):
             BotCommand("debug", "🐛 Управление отладкой"),
             BotCommand("help", "Помощь"),
             BotCommand("check_server", "🔍 Проверить один сервер"),
-            BotCommand("check_res", "📊 Ресурсы одного сервера"),
         ]
         
         # Динамическое добавление команд расширений
@@ -130,6 +129,9 @@ def setup_menu(bot):
         
         if extension_manager.is_extension_enabled('database_backup_monitor'):
             commands.append(BotCommand("db_backups", "🗃️ Бэкапы БД"))
+
+        if extension_manager.is_extension_enabled('resource_monitor'):
+            commands.append(BotCommand("check_res", "📊 Ресурсы одного сервера"))
         
         bot.set_my_commands(commands)
         debug_log("✅ Меню настроено успешно")
@@ -156,12 +158,14 @@ def start_command(update, context):
 
     keyboard = [
         [InlineKeyboardButton("🔄 Проверить все серверы", callback_data='manual_check')],
-        [InlineKeyboardButton("📊 Проверить все ресурсы", callback_data='check_resources')],
         [InlineKeyboardButton("🔍 Проверить один сервер", callback_data='show_availability_menu')],
-        [InlineKeyboardButton("📈 Ресурсы одного сервера", callback_data='show_resources_menu')],
         [InlineKeyboardButton("⚙️ Управление настройками", callback_data='settings_main')],
         [InlineKeyboardButton("🐛 Отладка", callback_data='debug_menu')],
     ]
+
+    if extension_manager.is_extension_enabled('resource_monitor'):
+        keyboard.insert(1, [InlineKeyboardButton("📊 Проверить все ресурсы", callback_data='check_resources')])
+        keyboard.insert(3, [InlineKeyboardButton("📈 Ресурсы одного сервера", callback_data='show_resources_menu')])
    
     extension_manager = get_extension_manager()
     if (extension_manager.is_extension_enabled('backup_monitor') or 
@@ -1319,6 +1323,14 @@ def check_single_server_command(update, context):
 
 def check_single_resources_command(update, context):
     """Команда /check_res - проверка ресурсов одного сервера"""
+    extension_manager = get_extension_manager()
+    if not extension_manager.is_extension_enabled('resource_monitor'):
+        if update.message:
+            update.message.reply_text("📊 Мониторинг ресурсов отключён")
+        elif update.callback_query:
+            update.callback_query.answer("📊 Мониторинг ресурсов отключён", show_alert=True)
+        return
+
     if not context.args:
         # Показываем меню выбора
         return show_server_selection_menu(update, context, "check_resources")
@@ -1330,6 +1342,7 @@ def check_single_resources_command(update, context):
 def show_server_selection_menu(update, context, action="check_availability"):
     """Показывает меню выбора сервера"""
     query = update.callback_query if hasattr(update, 'callback_query') else None
+    extension_manager = get_extension_manager()
     
     # Определяем заголовок
     titles = {
@@ -1338,7 +1351,18 @@ def show_server_selection_menu(update, context, action="check_availability"):
     }
     
     title = titles.get(action, "🔍 *Выберите сервер:*")
-    
+
+    if action == "check_resources" and not extension_manager.is_extension_enabled('resource_monitor'):
+        message = "📊 Мониторинг ресурсов отключён"
+        if query:
+            query.answer()
+            query.edit_message_text(text=message)
+        elif update.message:
+            update.message.reply_text(text=message)
+        else:
+            context.bot.send_message(chat_id=update.effective_chat.id, text=message)
+        return
+
     # Получаем клавиатуру
     keyboard = targeted_checks.create_server_selection_menu(action)
     
@@ -1370,10 +1394,10 @@ def handle_single_check(update, context, server_id):
     # Создаем клавиатуру для действий
     keyboard = []
     if server:
-        keyboard.append([
-            InlineKeyboardButton("📊 Проверить ресурсы", callback_data=f"check_resources_{server['ip']}"),
-            InlineKeyboardButton("🔄 Проверить снова", callback_data=f"check_availability_{server['ip']}")
-        ])
+        row_actions = [InlineKeyboardButton("🔄 Проверить снова", callback_data=f"check_availability_{server['ip']}")]
+        if extension_manager.is_extension_enabled('resource_monitor'):
+            row_actions.insert(0, InlineKeyboardButton("📊 Проверить ресурсы", callback_data=f"check_resources_{server['ip']}"))
+        keyboard.append(row_actions)
     
     keyboard.append([
         InlineKeyboardButton("🔍 Выбрать другой", callback_data="show_availability_menu"),
@@ -1390,7 +1414,15 @@ def handle_single_resources(update, context, server_id):
     query = update.callback_query
     if query:
         query.answer("📊 Проверяем ресурсы...")
-    
+
+    extension_manager = get_extension_manager()
+    if not extension_manager.is_extension_enabled('resource_monitor'):
+        if query:
+            query.edit_message_text("📊 Мониторинг ресурсов отключён")
+        else:
+            update.message.reply_text("📊 Мониторинг ресурсов отключён")
+        return
+
     # Выполняем проверку
     success, server, message = targeted_checks.check_single_server_resources(server_id)
     
@@ -1415,10 +1447,11 @@ def handle_single_resources(update, context, server_id):
 def add_quick_check_buttons(keyboard, server_ip=None):
     """Добавляет кнопки быстрой проверки в клавиатуру"""
     if server_ip:
-        keyboard.append([
-            InlineKeyboardButton("🔍 Проверить доступность", callback_data=f'check_availability_{server_ip}'),
-            InlineKeyboardButton("📊 Проверить ресурсы", callback_data=f'check_resources_{server_ip}')
-        ])
+        extension_manager = get_extension_manager()
+        row_actions = [InlineKeyboardButton("🔍 Проверить доступность", callback_data=f'check_availability_{server_ip}')]
+        if extension_manager.is_extension_enabled('resource_monitor'):
+            row_actions.append(InlineKeyboardButton("📊 Проверить ресурсы", callback_data=f'check_resources_{server_ip}'))
+        keyboard.append(row_actions)
     
     keyboard.append([
         InlineKeyboardButton("🎛️ Главное меню", callback_data='main_menu'),
@@ -1429,14 +1462,20 @@ def add_quick_check_buttons(keyboard, server_ip=None):
 
 def create_quick_actions_menu(server_ip):
     """Создает меню быстрых действий для сервера"""
+    extension_manager = get_extension_manager()
     keyboard = [
         [InlineKeyboardButton("🔍 Проверить доступность", callback_data=f'check_availability_{server_ip}')],
-        [InlineKeyboardButton("📊 Проверить ресурсы", callback_data=f'check_resources_{server_ip}')],
+    ]
+
+    if extension_manager.is_extension_enabled('resource_monitor'):
+        keyboard.append([InlineKeyboardButton("📊 Проверить ресурсы", callback_data=f'check_resources_{server_ip}')])
+
+    keyboard.extend([
         [InlineKeyboardButton("📋 Информация о сервере", callback_data=f'server_info_{server_ip}')],
         [InlineKeyboardButton("🔄 Проверить снова", callback_data=f'check_availability_{server_ip}')],
         [InlineKeyboardButton("🎛️ Главное меню", callback_data='main_menu'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-    ]
+    ])
     
     return InlineKeyboardMarkup(keyboard)
 

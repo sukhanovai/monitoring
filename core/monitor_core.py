@@ -579,6 +579,14 @@ def resume_monitoring_handler(update, context):
         ])
     )
 
+def _resource_monitor_enabled() -> bool:
+    """Проверяет, включен ли мониторинг ресурсов"""
+    try:
+        from extensions.extension_manager import extension_manager
+        return extension_manager.is_extension_enabled('resource_monitor')
+    except ImportError:
+        return True
+
 def check_resources_handler(update, context):
     """Обработчик проверки ресурсов серверов - новое меню с разделением по ресурсам"""
     query = update.callback_query
@@ -594,6 +602,13 @@ def check_resources_handler(update, context):
             query.edit_message_text("⛔ У вас нет прав для выполнения этой команды")
         else:
             update.message.reply_text("⛔ У вас нет прав для выполнения этой команды")
+        return
+    
+    if not _resource_monitor_enabled():
+        if query:
+            query.edit_message_text("📊 Мониторинг ресурсов отключён")
+        else:
+            update.message.reply_text("📊 Мониторинг ресурсов отключён")
         return
 
     # Меню с разделением по ресурсам
@@ -637,6 +652,13 @@ def check_cpu_resources_handler(update, context):
         else:
             update.message.reply_text("⛔ У вас нет прав для выполнения этой команды")
         return
+    
+    if not _resource_monitor_enabled():
+        if query:
+            query.edit_message_text("📊 Мониторинг ресурсов отключён")
+        else:
+            update.message.reply_text("📊 Мониторинг ресурсов отключён")
+        return
 
     progress_message = context.bot.send_message(
         chat_id=chat_id,
@@ -666,6 +688,13 @@ def check_ram_resources_handler(update, context):
         else:
             update.message.reply_text("⛔ У вас нет прав для выполнения этой команды")
         return
+    
+    if not _resource_monitor_enabled():
+        if query:
+            query.edit_message_text("📊 Мониторинг ресурсов отключён")
+        else:
+            update.message.reply_text("📊 Мониторинг ресурсов отключён")
+        return
 
     progress_message = context.bot.send_message(
         chat_id=chat_id,
@@ -694,6 +723,13 @@ def check_disk_resources_handler(update, context):
             query.edit_message_text("⛔ У вас нет прав для выполнения этой команды")
         else:
             update.message.reply_text("⛔ У вас нет прав для выполнения этой команды")
+        return
+    
+    if not _resource_monitor_enabled():
+        if query:
+            query.edit_message_text("📊 Мониторинг ресурсов отключён")
+        else:
+            update.message.reply_text("📊 Мониторинг ресурсов отключён")
         return
 
     progress_message = context.bot.send_message(
@@ -1147,6 +1183,13 @@ def check_linux_resources_handler(update, context):
         else:
             update.message.reply_text("⛔ У вас нет прав для выполнения этой команды")
         return
+    
+    if not _resource_monitor_enabled():
+        if query:
+            query.edit_message_text("📊 Мониторинг ресурсов отключён")
+        else:
+            update.message.reply_text("📊 Мониторинг ресурсов отключён")
+        return
 
     progress_message = context.bot.send_message(
         chat_id=chat_id,
@@ -1230,6 +1273,13 @@ def check_windows_resources_handler(update, context):
             query.edit_message_text("⛔ У вас нет прав для выполнения этой команды")
         else:
             update.message.reply_text("⛔ У вас нет прав для выполнения этой команды")
+        return
+    
+    if not _resource_monitor_enabled():
+        if query:
+            query.edit_message_text("📊 Мониторинг ресурсов отключён")
+        else:
+            update.message.reply_text("📊 Мониторинг ресурсов отключён")
         return
 
     progress_message = context.bot.send_message(
@@ -1385,6 +1435,13 @@ def check_other_resources_handler(update, context):
         else:
             update.message.reply_text("⛔ У вас нет прав для выполнения этой команды")
         return
+    
+    if not _resource_monitor_enabled():
+        if query:
+            query.edit_message_text("📊 Мониторинг ресурсов отключён")
+        else:
+            update.message.reply_text("📊 Мониторинг ресурсов отключён")
+        return
 
     progress_message = context.bot.send_message(
         chat_id=chat_id,
@@ -1455,6 +1512,13 @@ def check_all_resources_handler(update, context):
             query.edit_message_text("⛔ У вас нет прав для выполнения этой команды")
         else:
             update.message.reply_text("⛔ У вас нет прав для выполнения этой команды")
+        return
+    
+    if not _resource_monitor_enabled():
+        if query:
+            query.edit_message_text("📊 Мониторинг ресурсов отключён")
+        else:
+            update.message.reply_text("📊 Мониторинг ресурсов отключён")
         return
 
     progress_message = context.bot.send_message(
@@ -1713,6 +1777,10 @@ def handle_server_down(ip, status, current_time):
 def check_resources_automatically():
     """Автоматическая проверка ресурсов с умными предупреждениями"""
     global resource_history, last_resource_check, resource_alerts_sent
+
+    if not _resource_monitor_enabled():
+        debug_log("⏸️ Проверка ресурсов пропущена (расширение отключено)")
+        return
 
     debug_log("🔍 Автоматическая проверка ресурсов серверов...")
 
