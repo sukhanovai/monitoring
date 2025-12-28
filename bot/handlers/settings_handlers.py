@@ -389,6 +389,9 @@ def settings_callback_handler(update, context):
         elif data.startswith('settings_db_edit_'):
             category = data.replace('settings_db_edit_', '')
             edit_database_category_details(update, context, category)
+        elif data.startswith('settings_db_delete_confirm_'):
+            category = data.replace('settings_db_delete_confirm_', '')
+            delete_database_category_execute(update, context, category)
         elif data.startswith('settings_db_delete_'):
             category = data.replace('settings_db_delete_', '')
             delete_database_category_confirmation(update, context, category)
@@ -1671,7 +1674,7 @@ def edit_databases_handler(update, context):
     else:
         keyboard = []
         for category in db_config.keys():
-            keyboard.append([InlineKeyboardButton(f"✏️ {category}", callback_data=f'edit_db_category_{category}')])
+            keyboard.append([InlineKeyboardButton(f"✏️ {category}", callback_data=f'settings_db_edit_{category}')])
     
     keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')])
     
@@ -1694,7 +1697,7 @@ def delete_database_category_handler(update, context):
     else:
         keyboard = []
         for category in db_config.keys():
-            keyboard.append([InlineKeyboardButton(f"🗑️ {category}", callback_data=f'delete_db_category_{category}')])
+            keyboard.append([InlineKeyboardButton(f"🗑️ {category}", callback_data=f'settings_db_delete_{category}')])
     
     keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')])
     
@@ -1703,6 +1706,99 @@ def delete_database_category_handler(update, context):
         "Выберите категорию для удаления:",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def edit_database_category_details(update, context, category):
+    """Показать детали категории БД"""
+    query = update.callback_query
+    query.answer()
+
+    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    databases = db_config.get(category)
+
+    if databases is None:
+        query.edit_message_text(
+            "❌ Категория не найдена.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
+            ])
+        )
+        return
+
+    message = f"✏️ *Категория {category}*\n\n"
+    if not databases:
+        message += "❌ В этой категории нет баз данных.\n"
+    else:
+        message += "Список баз данных:\n"
+        for db_name in databases.values():
+            message += f"• {db_name}\n"
+
+    message += "\nДобавление/редактирование БД будет доступно позже."
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ])
+    )
+
+def delete_database_category_confirmation(update, context, category):
+    """Подтверждение удаления категории БД"""
+    query = update.callback_query
+    query.answer()
+
+    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    if category not in db_config:
+        query.edit_message_text(
+            "❌ Категория не найдена.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
+            ])
+        )
+        return
+
+    message = (
+        "🗑️ *Удаление категории БД*\n\n"
+        f"Категория: *{category}*\n"
+        "Подтвердите удаление:"
+    )
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("✅ Удалить", callback_data=f"settings_db_delete_confirm_{category}")],
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
+        ])
+    )
+
+def delete_database_category_execute(update, context, category):
+    """Удалить категорию БД"""
+    query = update.callback_query
+    query.answer()
+
+    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    if category not in db_config:
+        query.edit_message_text(
+            "❌ Категория не найдена.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
+            ])
+        )
+        return
+
+    db_config.pop(category, None)
+    settings_manager.set_setting('DATABASE_CONFIG', db_config)
+
+    query.edit_message_text(
+        f"✅ Категория *{category}* удалена.",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ])
     )
     
 def not_implemented_handler(update, context, feature_name=""):
@@ -1757,7 +1853,7 @@ def handle_db_category_input(update, context):
                 "Теперь вы можете добавить базы данных в эту категорию.",
                 parse_mode='Markdown',
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("✏️ Добавить БД", callback_data=f'edit_db_category_{category_name}'),
+                    [InlineKeyboardButton("✏️ Добавить БД", callback_data=f'settings_db_edit_{category_name}'),
                      InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
                 ])
             )
