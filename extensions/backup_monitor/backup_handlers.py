@@ -477,6 +477,11 @@ ALLOWED_DATABASES_NORMALIZED = {
 def _normalize_db_key(name: str) -> str:
     return str(name or "").replace("-", "_").lower()
 
+def _normalize_backup_type(backup_type: str, db_name: str) -> str:
+    if _normalize_db_key(db_name) == "trade" and backup_type == "client":
+        return "company_database"
+    return backup_type
+
 
 def show_database_backups_menu(query, backup_bot):
     """Показывает меню с базами данных (список берём из backups.db, а не из конфигурации)"""
@@ -514,6 +519,7 @@ def show_database_backups_menu(query, backup_bot):
             if not backup_type or not db_name:
                 continue
 
+            backup_type = _normalize_backup_type(backup_type, db_name)
             normalized_key = _normalize_db_key(db_name)
             allowed_map = ALLOWED_DATABASES_NORMALIZED.get(backup_type)
             label = display_name.strip() or db_name
@@ -696,9 +702,10 @@ def show_database_backups_summary(query, backup_bot, hours):
         # Группируем по типам
         by_type = {}
         for backup_type, db_name, db_display, status, count, last_backup in stats:
-            if backup_type not in by_type:
-                by_type[backup_type] = []
-            by_type[backup_type].append((db_name, db_display, status, count, last_backup))
+            normalized_type = _normalize_backup_type(backup_type, db_name)
+            if normalized_type not in by_type:
+                by_type[normalized_type] = []
+            by_type[normalized_type].append((db_name, db_display, status, count, last_backup))
 
         for backup_type, databases in by_type.items():
             type_display = formatters.get_type_display(backup_type)

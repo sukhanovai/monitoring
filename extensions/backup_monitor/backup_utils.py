@@ -18,6 +18,16 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _normalize_db_key(name: str) -> str:
+    return str(name or "").replace("-", "_").lower()
+
+
+def _normalize_backup_type(backup_type: str, db_name: str) -> str:
+    if _normalize_db_key(db_name) == "trade" and backup_type == "client":
+        return "company_database"
+    return backup_type
+
+
 def get_backup_summary(period_hours=16):
     """Возвращает текстовую сводку по бэкапам за период."""
     try:
@@ -43,7 +53,9 @@ def get_backup_summary(period_hours=16):
         all_hosts = [row[0] for row in cursor.fetchall()]
         if PROXMOX_HOSTS:
             configured_hosts = set(PROXMOX_HOSTS.keys())
-            all_hosts = [host for host in all_hosts if host in configured_hosts]
+            db_hosts = set(all_hosts)
+            matched_hosts = sorted(configured_hosts & db_hosts)
+            all_hosts = matched_hosts or list(configured_hosts)
 
         cursor.execute('''
             SELECT host_name, backup_status, MAX(received_at) as last_backup
@@ -68,6 +80,10 @@ def get_backup_summary(period_hours=16):
             GROUP BY backup_type, database_name
         ''', (since_time,))
         db_results = cursor.fetchall()
+        db_results = [
+            (_normalize_backup_type(backup_type, db_name), db_name, status, last_backup)
+            for backup_type, db_name, status, last_backup in db_results
+        ]
 
         cursor.execute('''
             SELECT backup_type, database_name, MAX(received_at) as last_backup
@@ -76,15 +92,30 @@ def get_backup_summary(period_hours=16):
             HAVING last_backup < ?
         ''', (stale_threshold,))
         stale_databases = cursor.fetchall()
+        stale_databases = [
+            (_normalize_backup_type(backup_type, db_name), db_name, last_backup)
+            for backup_type, db_name, last_backup in stale_databases
+        ]
 
         conn.close()
 
-        hosts_with_success = len([r for r in proxmox_results if r[1] == 'success'])
+        allowed_hosts = set(all_hosts)
+        hosts_with_success = len([
+            r for r in proxmox_results
+            if r[1] == 'success' and r[0] in allowed_hosts
+        ])
+
+        company_databases = DATABASE_BACKUP_CONFIG.get("company_databases", {})
+        client_databases = DATABASE_BACKUP_CONFIG.get("client_databases", {})
+        if "trade" in client_databases and "trade" in company_databases:
+            client_databases = {
+                key: value for key, value in client_databases.items() if key != "trade"
+            }
 
         config_databases = {
-            'company_database': DATABASE_BACKUP_CONFIG.get("company_databases", {}),
+            'company_database': company_databases,
             'barnaul': DATABASE_BACKUP_CONFIG.get("barnaul_backups", {}),
-            'client': DATABASE_BACKUP_CONFIG.get("client_databases", {}),
+            'client': client_databases,
             'yandex': DATABASE_BACKUP_CONFIG.get("yandex_backups", {}),
         }
 
