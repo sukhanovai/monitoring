@@ -616,7 +616,8 @@ def enable_debug_mode(query):
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("🔴 Выключить", callback_data='debug_disable')],
                 [InlineKeyboardButton("🔧 Расширенная", callback_data='debug_advanced')],
-                [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu')]
+                [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu')],
+                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')]
             ])
         )
     except Exception as e:
@@ -645,7 +646,8 @@ def disable_debug_mode(query):
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("🟢 Включить", callback_data='debug_enable')],
-                [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu')]
+                [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu')],
+                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')]
             ])
         )
     except Exception as e:
@@ -736,7 +738,8 @@ def show_debug_status(query):
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("🔄 Обновить", callback_data='debug_status')],
                 [InlineKeyboardButton("🗑️ Очистить логи", callback_data='debug_clear_logs')],
-                [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu'),
+                [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu')],
+                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu'),
                  InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
         )
@@ -789,7 +792,8 @@ def clear_debug_logs(query):
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("🔄 Обновить", callback_data='debug_clear_logs')],
                 [InlineKeyboardButton("📊 Статус системы", callback_data='debug_status')],
-                [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu'),
+                [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu')],
+                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu'),
                  InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
         )
@@ -882,7 +886,8 @@ def run_diagnostic(query):
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("🔄 Перезапустить", callback_data='debug_diagnose')],
                 [InlineKeyboardButton("🔧 Расширенная", callback_data='debug_advanced')],
-                [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu'),
+                [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu')],
+                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu'),
                  InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
         )
@@ -932,7 +937,8 @@ def show_advanced_debug(query):
 
         keyboard = [
             [InlineKeyboardButton("🔄 Обновить", callback_data='debug_advanced')],
-            [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu'),
+            [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu')],
+            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu'),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ]
 
@@ -949,7 +955,8 @@ def show_advanced_debug(query):
             "Убедитесь, что файл существует в папке проекта.",
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu'),
+                [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu')],
+                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu'),
                  InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
         )

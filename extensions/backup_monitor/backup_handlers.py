@@ -53,6 +53,7 @@ def create_navigation_buttons(back_button='backup_main', refresh_button=None, cl
         buttons.append([InlineKeyboardButton("🔄 Обновить", callback_data=refresh_button)])
     
     buttons.append([InlineKeyboardButton("↩️ Назад", callback_data=back_button)])
+    buttons.append([InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')])
     
     if close:
         buttons.append([InlineKeyboardButton("✖️ Закрыть", callback_data='close')])
@@ -103,6 +104,7 @@ def create_hosts_keyboard(hosts, host_statuses, show_problems_button=True):
     
     keyboard.append([
         InlineKeyboardButton("↩️ Назад", callback_data='backup_main'),
+        InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu'),
         InlineKeyboardButton("✖️ Закрыть", callback_data='close')
     ])
     
@@ -148,6 +150,7 @@ def create_databases_keyboard(databases_by_type, problem_db_count=0):
     # Кнопки управления
     keyboard.extend([
         [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')],
+        [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
         [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ])
     
