@@ -520,7 +520,6 @@ def control_panel_handler(update, context):
         [monitoring_button],
         [InlineKeyboardButton("📊 Утренний отчет", callback_data='full_report')],
         [InlineKeyboardButton("🔇 Управление тихим режимом", callback_data='silent_status')],
-        [InlineKeyboardButton("🔧 Диагностика отчета", callback_data='debug_report')],
         [InlineKeyboardButton("↩️ Назад", callback_data='main_menu'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
