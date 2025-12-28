@@ -465,15 +465,18 @@ def show_database_backups_menu(query, backup_bot):
             ()
         ) or []
 
-        # Группируем БД по типу
+        # Группируем БД по типу (берём из конфигурации)
         db_by_type = {}
+        allowed_by_type = {}
 
         for category, databases in DATABASE_BACKUP_CONFIG.items():
             if not isinstance(databases, dict):
                 continue
             backup_type = _normalize_config_backup_type(category)
+            allowed_by_type.setdefault(backup_type, set())
             for db_name in databases.keys():
                 normalized_key = _normalize_db_key(db_name)
+                allowed_by_type[backup_type].add(normalized_key)
                 db_by_type.setdefault(backup_type, {})
                 if normalized_key not in db_by_type[backup_type]:
                     db_by_type[backup_type][normalized_key] = {
@@ -487,6 +490,10 @@ def show_database_backups_menu(query, backup_bot):
 
             backup_type = _normalize_backup_type(backup_type, db_name)
             normalized_key = _normalize_db_key(db_name)
+            if backup_type not in allowed_by_type:
+                continue
+            if normalized_key not in allowed_by_type[backup_type]:
+                continue
             db_by_type.setdefault(backup_type, {})
             if normalized_key not in db_by_type[backup_type]:
                 db_by_type[backup_type][normalized_key] = {
