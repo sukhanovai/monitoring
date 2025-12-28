@@ -208,17 +208,21 @@ def show_backup_settings(update, context):
     
     database_config = settings_manager.get_setting('DATABASE_CONFIG', {})
     db_categories = list(database_config.keys()) if database_config else []
+    proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
+    proxmox_count = len(proxmox_hosts) if isinstance(proxmox_hosts, dict) else 0
     
     message = (
         "💾 *Настройки бэкапов*\n\n"
         f"• Алерты через: {backup_alert_hours}ч\n"
         f"• Устаревание через: {backup_stale_hours}ч\n"
         f"• Категории БД: {len(db_categories)}\n\n"
+        f"• Proxmox хосты: {proxmox_count}\n\n"
         "Выберите раздел для настройки:"
     )
     
     keyboard = [
         [InlineKeyboardButton("⏰ Временные интервалы", callback_data='backup_times')],
+        [InlineKeyboardButton("🖥️ Proxmox бэкапы", callback_data='settings_backup_proxmox')],
         [InlineKeyboardButton("🗃️ Базы данных", callback_data='settings_db_main')],
         [InlineKeyboardButton("🔍 Паттерны", callback_data='backup_patterns')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
@@ -348,6 +352,15 @@ def settings_callback_handler(update, context):
             show_backup_times(update, context)
         elif data == 'backup_patterns':
             show_backup_patterns_menu(update, context)
+        elif data == 'settings_backup_proxmox':
+            show_backup_proxmox_settings(update, context)
+        elif data == 'settings_proxmox_add':
+            add_proxmox_host_handler(update, context)
+        elif data == 'settings_proxmox_list':
+            show_proxmox_hosts_list(update, context)
+        elif data.startswith('settings_proxmox_delete_'):
+            host_name = data.replace('settings_proxmox_delete_', '')
+            delete_proxmox_host(update, context, host_name)
         
         # Новые обработчики для настроек БД
         elif data == 'settings_db_main':
@@ -586,6 +599,10 @@ def handle_setting_value(update, context):
     if context.user_data.get('adding_db_category'):
         return handle_db_category_input(update, context)
 
+    # Проверяем, не добавляется ли хост Proxmox
+    if context.user_data.get('adding_proxmox_host'):
+        return handle_proxmox_host_input(update, context)
+
     # Проверяем, не добавляется ли база данных
     if context.user_data.get('adding_db_entry'):
         return handle_db_entry_input(update, context)
@@ -593,6 +610,10 @@ def handle_setting_value(update, context):
     # Проверяем, не редактируется ли база данных
     if context.user_data.get('editing_db_entry'):
         return handle_db_entry_edit_input(update, context)
+
+    # Проверяем, не добавляется ли паттерн бэкапов
+    if context.user_data.get('adding_backup_pattern'):
+        return handle_backup_pattern_input(update, context)
     
     # Если это обычная настройка
     if 'editing_setting' not in context.user_data:
@@ -1336,6 +1357,146 @@ def show_backup_patterns_menu(update, context):
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
+def show_backup_proxmox_settings(update, context):
+    """Показать настройки бэкапов Proxmox"""
+    query = update.callback_query
+    query.answer()
+
+    proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
+    if not isinstance(proxmox_hosts, dict):
+        proxmox_hosts = {}
+
+    message = "🖥️ *Бэкапы Proxmox*\n\n"
+    if not proxmox_hosts:
+        message += "❌ Хосты не настроены.\n\n"
+    else:
+        message += f"Хостов в списке: {len(proxmox_hosts)}\n\n"
+
+    message += "Выберите действие:"
+
+    keyboard = [
+        [InlineKeyboardButton("📋 Список хостов", callback_data='settings_proxmox_list')],
+        [InlineKeyboardButton("➕ Добавить хост", callback_data='settings_proxmox_add')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ]
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def show_proxmox_hosts_list(update, context):
+    """Показать список хостов Proxmox"""
+    query = update.callback_query
+    query.answer()
+
+    proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
+    if not isinstance(proxmox_hosts, dict):
+        proxmox_hosts = {}
+
+    message = "📋 *Хосты Proxmox*\n\n"
+    if not proxmox_hosts:
+        message += "❌ Хосты не настроены."
+    else:
+        for host_name in sorted(proxmox_hosts.keys()):
+            message += f"• `{host_name}`\n"
+
+    keyboard = []
+    for host_name in sorted(proxmox_hosts.keys()):
+        keyboard.append([InlineKeyboardButton(
+            f"🗑️ {host_name}",
+            callback_data=f"settings_proxmox_delete_{host_name}"
+        )])
+
+    keyboard.append([
+        InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox'),
+        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+    ])
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def add_proxmox_host_handler(update, context):
+    """Добавить хост Proxmox"""
+    query = update.callback_query
+    query.answer()
+
+    context.user_data['adding_proxmox_host'] = True
+
+    query.edit_message_text(
+        "➕ *Добавление Proxmox хоста*\n\n"
+        "Введите имя хоста (как в письмах бэкапов):",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("❌ Отмена", callback_data='settings_backup_proxmox')]
+        ])
+    )
+
+def delete_proxmox_host(update, context, host_name):
+    """Удалить хост Proxmox"""
+    query = update.callback_query
+    query.answer()
+
+    proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
+    if not isinstance(proxmox_hosts, dict):
+        proxmox_hosts = {}
+
+    if host_name not in proxmox_hosts:
+        query.edit_message_text(
+            "❌ Хост не найден.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox')]
+            ])
+        )
+        return
+
+    proxmox_hosts.pop(host_name, None)
+    settings_manager.set_setting('PROXMOX_HOSTS', proxmox_hosts)
+
+    query.edit_message_text(
+        f"✅ Хост `{host_name}` удалён.",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox')]
+        ])
+    )
+
+def handle_proxmox_host_input(update, context):
+    """Обработчик добавления хоста Proxmox"""
+    if 'adding_proxmox_host' not in context.user_data:
+        return
+
+    host_name = update.message.text.strip()
+    if not host_name:
+        update.message.reply_text("❌ Имя хоста не может быть пустым. Попробуйте снова:")
+        return
+
+    proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
+    if not isinstance(proxmox_hosts, dict):
+        proxmox_hosts = {}
+
+    if host_name in proxmox_hosts:
+        update.message.reply_text("❌ Такой хост уже есть. Введите другой:")
+        return
+
+    proxmox_hosts[host_name] = host_name
+    settings_manager.set_setting('PROXMOX_HOSTS', proxmox_hosts)
+
+    update.message.reply_text(
+        f"✅ Хост `{host_name}` добавлен.",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox')]
+        ])
+    )
+
+    context.user_data.pop('adding_proxmox_host', None)
 
 def handle_setting_input(update, context, setting_key):
     """Обработчик ввода значений настроек"""
@@ -2790,11 +2951,113 @@ def view_all_settings_handler(update, context):
     """Просмотр всех настроек - заглушка"""
     not_implemented_handler(update, context, "Просмотр всех настроек")
 
-def view_patterns_handler(update, context):
-    """Просмотр паттернов - заглушка"""
-    not_implemented_handler(update, context, "Просмотр паттернов")
-
 def add_pattern_handler(update, context):
     """Добавить паттерн - заглушка"""
-    not_implemented_handler(update, context, "Добавление паттерна")
+    query = update.callback_query
+    query.answer()
+
+    context.user_data['adding_backup_pattern'] = True
+    context.user_data['backup_pattern_stage'] = 'category'
+
+    query.edit_message_text(
+        "➕ *Добавление паттерна*\n\n"
+        "Введите категорию (например: company, client, barnaul, yandex):",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("❌ Отмена", callback_data='backup_patterns')]
+        ])
+    )
+
+def view_patterns_handler(update, context):
+    """Просмотр паттернов"""
+    query = update.callback_query
+    query.answer()
+
+    patterns = settings_manager.get_backup_patterns()
+
+    if not patterns:
+        message = "📋 *Паттерны бэкапов*\n\n❌ Паттерны не настроены."
+    else:
+        message = "📋 *Паттерны бэкапов*\n\n"
+        for category, category_patterns in patterns.items():
+            message += f"*{category}*\n"
+            for pattern_type, pattern_list in category_patterns.items():
+                message += f"• {pattern_type} ({len(pattern_list)})\n"
+                for pattern in pattern_list:
+                    message += f"  - `{pattern}`\n"
+            message += "\n"
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='backup_patterns'),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ])
+    )
+
+def handle_backup_pattern_input(update, context):
+    """Обработчик добавления паттерна"""
+    if 'adding_backup_pattern' not in context.user_data:
+        return
+
+    user_input = update.message.text.strip()
+    stage = context.user_data.get('backup_pattern_stage', 'category')
+
+    if stage == 'category':
+        if not user_input:
+            update.message.reply_text("❌ Категория не может быть пустой. Попробуйте снова:")
+            return
+        context.user_data['backup_pattern_category'] = user_input
+        context.user_data['backup_pattern_stage'] = 'type'
+        update.message.reply_text("Введите тип паттерна (например: subject, body):")
+        return
+
+    if stage == 'type':
+        if not user_input:
+            update.message.reply_text("❌ Тип не может быть пустым. Попробуйте снова:")
+            return
+        context.user_data['backup_pattern_type'] = user_input
+        context.user_data['backup_pattern_stage'] = 'pattern'
+        update.message.reply_text("Введите регулярное выражение паттерна:")
+        return
+
+    if stage == 'pattern':
+        if not user_input:
+            update.message.reply_text("❌ Паттерн не может быть пустым. Попробуйте снова:")
+            return
+
+        category = context.user_data.get('backup_pattern_category')
+        pattern_type = context.user_data.get('backup_pattern_type')
+        pattern = user_input
+
+        try:
+            conn = settings_manager.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO backup_patterns (pattern_type, pattern, category, enabled)
+                VALUES (?, ?, ?, 1)
+                """,
+                (pattern_type, pattern, category)
+            )
+            conn.commit()
+
+            update.message.reply_text(
+                "✅ *Паттерн добавлен!*\n\n"
+                f"Категория: *{category}*\n"
+                f"Тип: *{pattern_type}*\n"
+                f"Паттерн: `{pattern}`",
+                parse_mode='Markdown',
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("↩️ Назад", callback_data='backup_patterns')]
+                ])
+            )
+        except Exception as e:
+            update.message.reply_text(f"❌ Ошибка сохранения: {e}")
+        finally:
+            context.user_data.pop('adding_backup_pattern', None)
+            context.user_data.pop('backup_pattern_stage', None)
+            context.user_data.pop('backup_pattern_category', None)
+            context.user_data.pop('backup_pattern_type', None)
     
