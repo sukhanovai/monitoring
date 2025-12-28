@@ -14,6 +14,7 @@ Handlers for managing settings via a bot
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CommandHandler, CallbackQueryHandler, MessageHandler, Filters
 from core.config_manager import config_manager as settings_manager
+from extensions.extension_manager import extension_manager
 from lib.logging import debug_log
 import json
 import re
@@ -35,15 +36,28 @@ def settings_command(update, context):
         [InlineKeyboardButton("🤖 Настройки бота", callback_data='settings_telegram')],
         [InlineKeyboardButton("⏰ Временные настройки", callback_data='settings_time')],
         [InlineKeyboardButton("🔧 Мониторинг", callback_data='settings_monitoring')],
-        [InlineKeyboardButton("💻 Ресурсы", callback_data='settings_resources')],
+    ]
+
+    if extension_manager.is_extension_enabled('resource_monitor'):
+        keyboard.append([InlineKeyboardButton("💻 Ресурсы", callback_data='settings_resources')])
+
+    keyboard.extend([
         [InlineKeyboardButton("🔐 Аутентификация", callback_data='settings_auth')],
         [InlineKeyboardButton("🖥️ Серверы", callback_data='settings_servers')],
-        [InlineKeyboardButton("💾 Бэкапы", callback_data='settings_backup')],
-        [InlineKeyboardButton("🌐 Веб-интерфейс", callback_data='settings_web')],
+    ])
+
+    if (extension_manager.is_extension_enabled('backup_monitor') or
+            extension_manager.is_extension_enabled('database_backup_monitor')):
+        keyboard.append([InlineKeyboardButton("💾 Бэкапы", callback_data='settings_backup')])
+
+    if extension_manager.is_extension_enabled('web_interface'):
+        keyboard.append([InlineKeyboardButton("🌐 Веб-интерфейс", callback_data='settings_web')])
+
+    keyboard.extend([
         [InlineKeyboardButton("📊 Просмотр всех настроек", callback_data='settings_view_all')],
         [InlineKeyboardButton("↩️ Назад", callback_data='main_menu'),
-        InlineKeyboardButton("✖️ Закрыть", callback_data='close')]    
-    ]
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ])
     
     if update.message:
         update.message.reply_text(
@@ -225,12 +239,19 @@ def show_backup_settings(update, context):
     
     keyboard = [
         [InlineKeyboardButton("⏰ Временные интервалы", callback_data='backup_times')],
-        [InlineKeyboardButton("🖥️ Proxmox бэкапы", callback_data='settings_backup_proxmox')],
-        [InlineKeyboardButton("🗃️ Базы данных", callback_data='settings_db_main')],
+    ]
+
+    if extension_manager.is_extension_enabled('backup_monitor'):
+        keyboard.append([InlineKeyboardButton("🖥️ Proxmox бэкапы", callback_data='settings_backup_proxmox')])
+
+    if extension_manager.is_extension_enabled('database_backup_monitor'):
+        keyboard.append([InlineKeyboardButton("🗃️ Базы данных", callback_data='settings_db_main')])
+
+    keyboard.extend([
         [InlineKeyboardButton("🔍 Паттерны", callback_data='backup_patterns')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-    ]
+    ])
     
     query.edit_message_text(
         message,
