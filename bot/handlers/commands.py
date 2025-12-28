@@ -105,6 +105,10 @@ def handle_check_single_server(update, context, server_ip):
 def handle_check_server_resources(update, context, server_ip):
     """Обработка проверки ресурсов одного сервера"""
     try:
+        from extensions.extension_manager import extension_manager
+        if not extension_manager.is_extension_enabled('resource_monitor'):
+            return "📊 Мониторинг ресурсов отключён"
+
         from modules.resources import resource_monitor
 
         resources = resource_monitor.check_single_server(server_ip)
