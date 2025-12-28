@@ -21,7 +21,9 @@ BACKUP_SETTINGS_CALLBACKS = {
     'backup_times',
     'backup_patterns',
     'settings_backup_databases',
-    'backup_db_add_category'
+    'backup_db_add_category',
+    'view_patterns',
+    'add_pattern'
 }
 
 debug_logger = debug_log
@@ -208,17 +210,21 @@ def show_backup_settings(update, context):
     
     database_config = settings_manager.get_setting('DATABASE_CONFIG', {})
     db_categories = list(database_config.keys()) if database_config else []
+    proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
+    proxmox_count = len(proxmox_hosts) if isinstance(proxmox_hosts, dict) else 0
     
     message = (
         "💾 *Настройки бэкапов*\n\n"
         f"• Алерты через: {backup_alert_hours}ч\n"
         f"• Устаревание через: {backup_stale_hours}ч\n"
         f"• Категории БД: {len(db_categories)}\n\n"
+        f"• Proxmox хосты: {proxmox_count}\n\n"
         "Выберите раздел для настройки:"
     )
     
     keyboard = [
         [InlineKeyboardButton("⏰ Временные интервалы", callback_data='backup_times')],
+        [InlineKeyboardButton("🖥️ Proxmox бэкапы", callback_data='settings_backup_proxmox')],
         [InlineKeyboardButton("🗃️ Базы данных", callback_data='settings_db_main')],
         [InlineKeyboardButton("🔍 Паттерны", callback_data='backup_patterns')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
@@ -348,6 +354,21 @@ def settings_callback_handler(update, context):
             show_backup_times(update, context)
         elif data == 'backup_patterns':
             show_backup_patterns_menu(update, context)
+        elif data == 'settings_backup_proxmox':
+            show_backup_proxmox_settings(update, context)
+        elif data == 'settings_proxmox_add':
+            add_proxmox_host_handler(update, context)
+        elif data == 'settings_proxmox_list':
+            show_proxmox_hosts_list(update, context)
+        elif data.startswith('settings_proxmox_delete_'):
+            host_name = data.replace('settings_proxmox_delete_', '')
+            delete_proxmox_host(update, context, host_name)
+        elif data.startswith('settings_proxmox_edit_'):
+            host_name = data.replace('settings_proxmox_edit_', '')
+            edit_proxmox_host_handler(update, context, host_name)
+        elif data.startswith('settings_proxmox_toggle_'):
+            host_name = data.replace('settings_proxmox_toggle_', '')
+            toggle_proxmox_host(update, context, host_name)
         
         # Новые обработчики для настроек БД
         elif data == 'settings_db_main':
@@ -384,17 +405,31 @@ def settings_callback_handler(update, context):
             view_patterns_handler(update, context)
         elif data == 'add_pattern':
             add_pattern_handler(update, context)
+        elif data.startswith('delete_pattern_'):
+            pattern_id = data.replace('delete_pattern_', '')
+            delete_pattern_handler(update, context, pattern_id)
+        elif data.startswith('edit_pattern_'):
+            pattern_id = data.replace('edit_pattern_', '')
+            edit_pattern_handler(update, context, pattern_id)
         
         # Обработчики для редактирования и удаления категорий БД
-        elif data.startswith('settings_db_edit_'):
-            category = data.replace('settings_db_edit_', '')
-            edit_database_category_details(update, context, category)
         elif data.startswith('settings_db_delete_confirm_'):
             category = data.replace('settings_db_delete_confirm_', '')
             delete_database_category_execute(update, context, category)
         elif data.startswith('settings_db_delete_'):
             category = data.replace('settings_db_delete_', '')
             delete_database_category_confirmation(update, context, category)
+        elif data.startswith('settings_db_add_db_'):
+            category = data.replace('settings_db_add_db_', '')
+            add_database_entry_handler(update, context, category)
+        elif data.startswith('settings_db_edit_db_'):
+            raw_value = data.replace('settings_db_edit_db_', '')
+            if '__' in raw_value:
+                category, db_key = raw_value.split('__', 1)
+                edit_database_entry_handler(update, context, category, db_key)
+        elif data.startswith('settings_db_edit_'):
+            category = data.replace('settings_db_edit_', '')
+            edit_database_category_details(update, context, category)
         
         # Обработчики для серверов
         elif data == 'settings_servers_list':
@@ -577,6 +612,30 @@ def handle_setting_value(update, context):
     # Затем проверяем, не добавляется ли категория БД
     if context.user_data.get('adding_db_category'):
         return handle_db_category_input(update, context)
+
+    # Проверяем, не добавляется ли хост Proxmox
+    if context.user_data.get('adding_proxmox_host'):
+        return handle_proxmox_host_input(update, context)
+
+    # Проверяем, не редактируется ли хост Proxmox
+    if context.user_data.get('editing_proxmox_host'):
+        return handle_proxmox_host_edit_input(update, context)
+
+    # Проверяем, не добавляется ли база данных
+    if context.user_data.get('adding_db_entry'):
+        return handle_db_entry_input(update, context)
+
+    # Проверяем, не редактируется ли база данных
+    if context.user_data.get('editing_db_entry'):
+        return handle_db_entry_edit_input(update, context)
+
+    # Проверяем, не добавляется ли паттерн бэкапов
+    if context.user_data.get('adding_backup_pattern'):
+        return handle_backup_pattern_input(update, context)
+
+    # Проверяем, не редактируется ли паттерн бэкапов
+    if context.user_data.get('editing_backup_pattern'):
+        return handle_backup_pattern_edit_input(update, context)
     
     # Если это обычная настройка
     if 'editing_setting' not in context.user_data:
@@ -1194,6 +1253,12 @@ def show_backup_databases_settings(update, context):
     """Показать настройки баз данных для бэкапов - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
     query = update.callback_query
     query.answer()
+
+    # Сбрасываем состояния добавления/редактирования БД при выходе в меню
+    context.user_data.pop('adding_db_entry', None)
+    context.user_data.pop('editing_db_entry', None)
+    context.user_data.pop('db_entry_category', None)
+    context.user_data.pop('db_entry_key', None)
     
     db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
     
@@ -1203,23 +1268,43 @@ def show_backup_databases_settings(update, context):
         message += "❌ *Базы данных не настроены*\n\n"
     else:
         for category, databases in db_config.items():
+            if not isinstance(databases, dict):
+                databases = {}
             message += f"*{category.upper()}* ({len(databases)} БД):\n"
-            for db_key, db_name in list(databases.items())[:3]:
-                message += f"• {db_name}\n"
-            if len(databases) > 3:
-                message += f"• ... и еще {len(databases) - 3} БД\n"
+            for db_key in databases.keys():
+                message += f"• `{db_key}`\n"
             message += "\n"
     
     message += "Выберите действие:"
     
-    keyboard = [
+    keyboard = []
+
+    for category, databases in db_config.items():
+        if not isinstance(databases, dict):
+            databases = {}
+        keyboard.append([InlineKeyboardButton(
+            f"➕ Добавить БД в {category}",
+            callback_data=f"settings_db_add_db_{category}"
+        )])
+        row = []
+        for db_key in databases.keys():
+            row.append(InlineKeyboardButton(
+                f"✏️ {db_key}",
+                callback_data=f"settings_db_edit_db_{category}__{db_key}"
+            ))
+            if len(row) == 2:
+                keyboard.append(row)
+                row = []
+        if row:
+            keyboard.append(row)
+
+    keyboard.extend([
         [InlineKeyboardButton("📋 Просмотр всех БД", callback_data='settings_db_view_all')],
         [InlineKeyboardButton("➕ Добавить категорию БД", callback_data='settings_db_add_category')],
-        [InlineKeyboardButton("✏️ Редактировать БД", callback_data='settings_db_edit_category')],
         [InlineKeyboardButton("🗑️ Удалить категорию", callback_data='settings_db_delete_category')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-    ]
+    ])
     
     query.edit_message_text(
         message,
@@ -1293,6 +1378,279 @@ def show_backup_patterns_menu(update, context):
         message,
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def show_backup_proxmox_settings(update, context):
+    """Показать настройки бэкапов Proxmox"""
+    query = update.callback_query
+    query.answer()
+
+    proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
+    if not isinstance(proxmox_hosts, dict):
+        proxmox_hosts = {}
+
+    message = "🖥️ *Бэкапы Proxmox*\n\n"
+    if not proxmox_hosts:
+        message += "❌ Хосты не настроены.\n\n"
+    else:
+        message += f"Хостов в списке: {len(proxmox_hosts)}\n\n"
+
+    message += "Выберите действие:"
+
+    keyboard = [
+        [InlineKeyboardButton("📋 Список хостов", callback_data='settings_proxmox_list')],
+        [InlineKeyboardButton("➕ Добавить хост", callback_data='settings_proxmox_add')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ]
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def show_proxmox_hosts_list(update, context):
+    """Показать список хостов Proxmox"""
+    query = update.callback_query
+    query.answer()
+
+    proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
+    if not isinstance(proxmox_hosts, dict):
+        proxmox_hosts = {}
+
+    message = "📋 *Хосты Proxmox*\n\n"
+    if not proxmox_hosts:
+        message += "❌ Хосты не настроены."
+    else:
+        for host_name in sorted(proxmox_hosts.keys()):
+            host_value = proxmox_hosts.get(host_name)
+            enabled = True
+            if isinstance(host_value, dict):
+                enabled = host_value.get('enabled', True)
+            status_icon = "🟢" if enabled else "🔴"
+            message += f"{status_icon} `{host_name}`\n"
+
+    keyboard = []
+    for host_name in sorted(proxmox_hosts.keys()):
+        host_value = proxmox_hosts.get(host_name)
+        enabled = True
+        if isinstance(host_value, dict):
+            enabled = host_value.get('enabled', True)
+        toggle_text = "⛔️ Отключить" if enabled else "✅ Включить"
+        keyboard.append([
+            InlineKeyboardButton(
+                f"✏️ {host_name}",
+                callback_data=f"settings_proxmox_edit_{host_name}"
+            ),
+            InlineKeyboardButton(
+                f"🗑️ {host_name}",
+                callback_data=f"settings_proxmox_delete_{host_name}"
+            ),
+        ])
+        keyboard.append([
+            InlineKeyboardButton(
+                f"{toggle_text} {host_name}",
+                callback_data=f"settings_proxmox_toggle_{host_name}"
+            )
+        ])
+
+    keyboard.append([
+        InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox'),
+        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+    ])
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def add_proxmox_host_handler(update, context):
+    """Добавить хост Proxmox"""
+    query = update.callback_query
+    query.answer()
+
+    context.user_data['adding_proxmox_host'] = True
+
+    query.edit_message_text(
+        "➕ *Добавление Proxmox хоста*\n\n"
+        "Введите имя хоста (как в письмах бэкапов):",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("❌ Отмена", callback_data='settings_backup_proxmox')]
+        ])
+    )
+
+def delete_proxmox_host(update, context, host_name):
+    """Удалить хост Proxmox"""
+    query = update.callback_query
+    query.answer()
+
+    proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
+    if not isinstance(proxmox_hosts, dict):
+        proxmox_hosts = {}
+
+    if host_name not in proxmox_hosts:
+        query.edit_message_text(
+            "❌ Хост не найден.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox')]
+            ])
+        )
+        return
+
+    proxmox_hosts.pop(host_name, None)
+    settings_manager.set_setting('PROXMOX_HOSTS', proxmox_hosts)
+
+    query.edit_message_text(
+        f"✅ Хост `{host_name}` удалён.",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox')]
+        ])
+    )
+
+def handle_proxmox_host_input(update, context):
+    """Обработчик добавления хоста Proxmox"""
+    if 'adding_proxmox_host' not in context.user_data:
+        return
+
+    host_name = update.message.text.strip()
+    if not host_name:
+        update.message.reply_text("❌ Имя хоста не может быть пустым. Попробуйте снова:")
+        return
+
+    proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
+    if not isinstance(proxmox_hosts, dict):
+        proxmox_hosts = {}
+
+    if host_name in proxmox_hosts:
+        update.message.reply_text("❌ Такой хост уже есть. Введите другой:")
+        return
+
+    proxmox_hosts[host_name] = {'enabled': True}
+    settings_manager.set_setting('PROXMOX_HOSTS', proxmox_hosts)
+
+    update.message.reply_text(
+        f"✅ Хост `{host_name}` добавлен.",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox')]
+        ])
+    )
+
+    context.user_data.pop('adding_proxmox_host', None)
+
+def edit_proxmox_host_handler(update, context, host_name):
+    """Начать редактирование хоста Proxmox"""
+    query = update.callback_query
+    query.answer()
+
+    proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
+    if not isinstance(proxmox_hosts, dict):
+        proxmox_hosts = {}
+
+    if host_name not in proxmox_hosts:
+        query.edit_message_text(
+            "❌ Хост не найден.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox')]
+            ])
+        )
+        return
+
+    context.user_data['editing_proxmox_host'] = True
+    context.user_data['editing_proxmox_host_name'] = host_name
+
+    query.edit_message_text(
+        "✏️ *Редактирование хоста Proxmox*\n\n"
+        f"Текущий хост: `{host_name}`\n\n"
+        "Введите новое имя хоста:",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("❌ Отмена", callback_data='settings_backup_proxmox')]
+        ])
+    )
+
+def handle_proxmox_host_edit_input(update, context):
+    """Обработчик редактирования хоста Proxmox"""
+    if 'editing_proxmox_host' not in context.user_data:
+        return
+
+    new_host_name = update.message.text.strip()
+    if not new_host_name:
+        update.message.reply_text("❌ Имя хоста не может быть пустым. Попробуйте снова:")
+        return
+
+    proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
+    if not isinstance(proxmox_hosts, dict):
+        proxmox_hosts = {}
+
+    old_host_name = context.user_data.get('editing_proxmox_host_name')
+    if not old_host_name or old_host_name not in proxmox_hosts:
+        update.message.reply_text("❌ Хост не найден.")
+        context.user_data.pop('editing_proxmox_host', None)
+        context.user_data.pop('editing_proxmox_host_name', None)
+        return
+
+    if new_host_name in proxmox_hosts and new_host_name != old_host_name:
+        update.message.reply_text("❌ Такой хост уже есть. Введите другой:")
+        return
+
+    host_value = proxmox_hosts.pop(old_host_name, None)
+    if not isinstance(host_value, dict):
+        host_value = {'enabled': True}
+    proxmox_hosts[new_host_name] = host_value
+    settings_manager.set_setting('PROXMOX_HOSTS', proxmox_hosts)
+
+    update.message.reply_text(
+        f"✅ Хост обновлён: `{new_host_name}`",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox')]
+        ])
+    )
+
+    context.user_data.pop('editing_proxmox_host', None)
+    context.user_data.pop('editing_proxmox_host_name', None)
+
+def toggle_proxmox_host(update, context, host_name):
+    """Включить/отключить мониторинг хоста Proxmox"""
+    query = update.callback_query
+    query.answer()
+
+    proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
+    if not isinstance(proxmox_hosts, dict):
+        proxmox_hosts = {}
+
+    if host_name not in proxmox_hosts:
+        query.edit_message_text(
+            "❌ Хост не найден.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox')]
+            ])
+        )
+        return
+
+    host_value = proxmox_hosts.get(host_name)
+    if isinstance(host_value, dict):
+        enabled = host_value.get('enabled', True)
+    else:
+        enabled = True
+        host_value = {'enabled': True}
+
+    host_value['enabled'] = not enabled
+    proxmox_hosts[host_name] = host_value
+    settings_manager.set_setting('PROXMOX_HOSTS', proxmox_hosts)
+
+    status_text = "включен" if host_value['enabled'] else "отключен"
+    query.edit_message_text(
+        f"✅ Мониторинг хоста `{host_name}` {status_text}.",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox')]
+        ])
     )
 
 def handle_setting_input(update, context, setting_key):
@@ -1715,6 +2073,8 @@ def edit_database_category_details(update, context, category):
 
     db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
     databases = db_config.get(category)
+    if databases is not None and not isinstance(databases, dict):
+        databases = {}
 
     if databases is None:
         query.edit_message_text(
@@ -1730,17 +2090,90 @@ def edit_database_category_details(update, context, category):
         message += "❌ В этой категории нет баз данных.\n"
     else:
         message += "Список баз данных:\n"
-        for db_name in databases.values():
-            message += f"• {db_name}\n"
+        for db_key, db_name in databases.items():
+            message += f"• {db_name} (`{db_key}`)\n"
 
-    message += "\nДобавление/редактирование БД будет доступно позже."
+    message += "\nВыберите действие:"
+
+    keyboard = [[InlineKeyboardButton("➕ Добавить БД", callback_data=f"settings_db_add_db_{category}")]]
+    for db_key, db_name in databases.items():
+        button_text = f"✏️ {db_name}"
+        keyboard.append([InlineKeyboardButton(button_text, callback_data=f"settings_db_edit_db_{category}__{db_key}")])
+
+    keyboard.append([
+        InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
+        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+    ])
 
     query.edit_message_text(
         message,
         parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def add_database_entry_handler(update, context, category):
+    """Запуск добавления базы данных в категорию"""
+    query = update.callback_query
+    query.answer()
+
+    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    if category not in db_config:
+        query.edit_message_text(
+            "❌ Категория не найдена.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
+            ])
+        )
+        return
+
+    # Инициализируем состояние добавления БД
+    context.user_data['adding_db_entry'] = True
+    context.user_data['db_entry_category'] = category
+    context.user_data.pop('db_entry_key', None)
+
+    query.edit_message_text(
+        "➕ *Добавление базы данных*\n\n"
+        f"Категория: *{category}*\n\n"
+        "Введите ключ базы данных (латиница/цифры/символы `_`, `-`, `.`):\n\n"
+        "_Пример: trade, client_db_01_",
+        parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("❌ Отмена", callback_data='settings_db_main')]
+        ])
+    )
+
+def edit_database_entry_handler(update, context, category, db_key):
+    """Запуск редактирования базы данных"""
+    query = update.callback_query
+    query.answer()
+
+    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    databases = db_config.get(category, {})
+    if not isinstance(databases, dict):
+        databases = {}
+    if not isinstance(databases, dict):
+        databases = {}
+    if db_key not in databases:
+        query.edit_message_text(
+            "❌ База данных не найдена.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
+            ])
+        )
+        return
+
+    context.user_data['editing_db_entry'] = True
+    context.user_data['db_entry_category'] = category
+    context.user_data['db_entry_key'] = db_key
+
+    query.edit_message_text(
+        "✏️ *Редактирование базы данных*\n\n"
+        f"Категория: *{category}*\n"
+        f"Ключ: `{db_key}`\n"
+        "Введите новый ключ:",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("❌ Отмена", callback_data='settings_db_main')]
         ])
     )
 
@@ -1870,6 +2303,107 @@ def handle_db_category_input(update, context):
     
     # Очищаем состояние
     context.user_data['adding_db_category'] = False
+
+def handle_db_entry_input(update, context):
+    """Обработчик добавления базы данных"""
+    if 'adding_db_entry' not in context.user_data:
+        return
+
+    user_input = update.message.text.strip()
+    category = context.user_data.get('db_entry_category')
+
+    if not category:
+        update.message.reply_text("❌ Категория не найдена. Попробуйте снова.")
+        context.user_data['adding_db_entry'] = False
+        return
+
+    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    databases = db_config.get(category, {})
+    if not isinstance(databases, dict):
+        databases = {}
+    if not isinstance(databases, dict):
+        databases = {}
+
+    if not user_input:
+        update.message.reply_text("❌ Ключ не может быть пустым. Попробуйте снова:")
+        return
+
+    if ' ' in user_input:
+        update.message.reply_text("❌ Ключ не должен содержать пробелы. Попробуйте снова:")
+        return
+
+    if user_input in databases:
+        update.message.reply_text("❌ Такой ключ уже существует. Введите другой:")
+        return
+
+    databases[user_input] = user_input
+    db_config[category] = databases
+    settings_manager.set_setting('DATABASE_CONFIG', db_config)
+
+    update.message.reply_text(
+        "✅ *База данных добавлена!*\n\n"
+        f"Категория: *{category}*\n"
+        f"Ключ: `{user_input}`",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
+             InlineKeyboardButton("✏️ Добавить еще", callback_data=f'settings_db_add_db_{category}')]
+        ])
+    )
+
+    context.user_data.pop('adding_db_entry', None)
+    context.user_data.pop('db_entry_category', None)
+    context.user_data.pop('db_entry_key', None)
+
+def handle_db_entry_edit_input(update, context):
+    """Обработчик редактирования базы данных"""
+    if 'editing_db_entry' not in context.user_data:
+        return
+
+    user_input = update.message.text.strip()
+    category = context.user_data.get('db_entry_category')
+    db_key = context.user_data.get('db_entry_key')
+
+    if not category or not db_key:
+        update.message.reply_text("❌ Не удалось определить базу данных. Попробуйте снова.")
+        context.user_data['editing_db_entry'] = False
+        return
+
+    if not user_input:
+        update.message.reply_text("❌ Ключ не может быть пустым. Попробуйте снова:")
+        return
+
+    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    databases = db_config.get(category, {})
+
+    if db_key not in databases:
+        update.message.reply_text("❌ База данных не найдена.")
+        context.user_data['editing_db_entry'] = False
+        return
+
+    if user_input in databases and user_input != db_key:
+        update.message.reply_text("❌ Такой ключ уже существует. Введите другой:")
+        return
+
+    databases.pop(db_key, None)
+    databases[user_input] = user_input
+    db_config[category] = databases
+    settings_manager.set_setting('DATABASE_CONFIG', db_config)
+
+    update.message.reply_text(
+        "✅ *База данных обновлена!*\n\n"
+        f"Категория: *{category}*\n"
+        f"Новый ключ: `{user_input}`",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
+             InlineKeyboardButton("✏️ Редактировать еще", callback_data=f'settings_db_edit_{category}')]
+        ])
+    )
+
+    context.user_data.pop('editing_db_entry', None)
+    context.user_data.pop('db_entry_category', None)
+    context.user_data.pop('db_entry_key', None)
     
 def show_windows_auth_settings(update, context):
     """Показать настройки аутентификации Windows - ОСНОВНОЕ МЕНЮ"""
@@ -2572,11 +3106,258 @@ def view_all_settings_handler(update, context):
     """Просмотр всех настроек - заглушка"""
     not_implemented_handler(update, context, "Просмотр всех настроек")
 
-def view_patterns_handler(update, context):
-    """Просмотр паттернов - заглушка"""
-    not_implemented_handler(update, context, "Просмотр паттернов")
-
 def add_pattern_handler(update, context):
     """Добавить паттерн - заглушка"""
-    not_implemented_handler(update, context, "Добавление паттерна")
+    query = update.callback_query
+    query.answer()
+
+    context.user_data['adding_backup_pattern'] = True
+    context.user_data['backup_pattern_stage'] = 'category'
+
+    query.edit_message_text(
+        "➕ *Добавление паттерна*\n\n"
+        "Введите категорию (например: company, client, barnaul, yandex):",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("❌ Отмена", callback_data='backup_patterns')]
+        ])
+    )
+
+def view_patterns_handler(update, context):
+    """Просмотр паттернов"""
+    query = update.callback_query
+    query.answer()
+
+    conn = settings_manager.get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT id, pattern_type, pattern, category
+        FROM backup_patterns
+        WHERE enabled = 1
+        ORDER BY category, pattern_type, id
+        """
+    )
+    rows = cursor.fetchall()
+
+    if not rows:
+        message = "📋 *Паттерны бэкапов*\n\n❌ Паттерны не настроены."
+    else:
+        message = "📋 *Паттерны бэкапов*\n\n"
+        current_category = None
+        for pattern_id, pattern_type, pattern, category in rows:
+            if category != current_category:
+                if current_category is not None:
+                    message += "\n"
+                message += f"*{category}*\n"
+                current_category = category
+            message += f"• {pattern_type}: `{pattern}`\n"
+
+    keyboard = []
+    for pattern_id, pattern_type, pattern, category in rows:
+        keyboard.append([
+            InlineKeyboardButton(
+                f"✏️ {category}:{pattern_type}",
+                callback_data=f"edit_pattern_{pattern_id}"
+            ),
+            InlineKeyboardButton(
+                f"🗑️ {category}:{pattern_type}",
+                callback_data=f"delete_pattern_{pattern_id}"
+            )
+        ])
+
+    keyboard.append([
+        InlineKeyboardButton("↩️ Назад", callback_data='backup_patterns'),
+        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+    ])
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def delete_pattern_handler(update, context, pattern_id):
+    """Удалить паттерн"""
+    query = update.callback_query
+    query.answer()
+
+    try:
+        pattern_id_int = int(pattern_id)
+    except ValueError:
+        query.edit_message_text("❌ Некорректный идентификатор паттерна.")
+        return
+
+    conn = settings_manager.get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE backup_patterns SET enabled = 0 WHERE id = ?",
+        (pattern_id_int,)
+    )
+    conn.commit()
+
+    query.edit_message_text(
+        "✅ Паттерн удалён.",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='backup_patterns')]
+        ])
+    )
+
+def edit_pattern_handler(update, context, pattern_id):
+    """Редактировать паттерн"""
+    query = update.callback_query
+    query.answer()
+
+    try:
+        pattern_id_int = int(pattern_id)
+    except ValueError:
+        query.edit_message_text("❌ Некорректный идентификатор паттерна.")
+        return
+
+    conn = settings_manager.get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT id, pattern_type, pattern, category
+        FROM backup_patterns
+        WHERE id = ? AND enabled = 1
+        """,
+        (pattern_id_int,)
+    )
+    row = cursor.fetchone()
+
+    if not row:
+        query.edit_message_text(
+            "❌ Паттерн не найден.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='backup_patterns')]
+            ])
+        )
+        return
+
+    _, pattern_type, pattern, category = row
+    context.user_data['editing_backup_pattern'] = True
+    context.user_data['editing_backup_pattern_id'] = pattern_id_int
+    context.user_data['backup_pattern_category'] = category
+    context.user_data['backup_pattern_type'] = pattern_type
+
+    query.edit_message_text(
+        "✏️ *Редактирование паттерна*\n\n"
+        f"Категория: *{category}*\n"
+        f"Тип: *{pattern_type}*\n"
+        f"Текущий паттерн: `{pattern}`\n\n"
+        "Введите новое регулярное выражение:",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("❌ Отмена", callback_data='backup_patterns')]
+        ])
+    )
+
+def handle_backup_pattern_input(update, context):
+    """Обработчик добавления паттерна"""
+    if 'adding_backup_pattern' not in context.user_data:
+        return
+
+    user_input = update.message.text.strip()
+    stage = context.user_data.get('backup_pattern_stage', 'category')
+
+    if stage == 'category':
+        if not user_input:
+            update.message.reply_text("❌ Категория не может быть пустой. Попробуйте снова:")
+            return
+        context.user_data['backup_pattern_category'] = user_input
+        context.user_data['backup_pattern_stage'] = 'type'
+        update.message.reply_text("Введите тип паттерна (например: subject, body):")
+        return
+
+    if stage == 'type':
+        if not user_input:
+            update.message.reply_text("❌ Тип не может быть пустым. Попробуйте снова:")
+            return
+        context.user_data['backup_pattern_type'] = user_input
+        context.user_data['backup_pattern_stage'] = 'pattern'
+        update.message.reply_text("Введите регулярное выражение паттерна:")
+        return
+
+    if stage == 'pattern':
+        if not user_input:
+            update.message.reply_text("❌ Паттерн не может быть пустым. Попробуйте снова:")
+            return
+
+        category = context.user_data.get('backup_pattern_category')
+        pattern_type = context.user_data.get('backup_pattern_type')
+        pattern = user_input
+
+        try:
+            conn = settings_manager.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO backup_patterns (pattern_type, pattern, category, enabled)
+                VALUES (?, ?, ?, 1)
+                """,
+                (pattern_type, pattern, category)
+            )
+            conn.commit()
+
+            update.message.reply_text(
+                "✅ *Паттерн добавлен!*\n\n"
+                f"Категория: *{category}*\n"
+                f"Тип: *{pattern_type}*\n"
+                f"Паттерн: `{pattern}`",
+                parse_mode='Markdown',
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("↩️ Назад", callback_data='backup_patterns')]
+                ])
+            )
+        except Exception as e:
+            update.message.reply_text(f"❌ Ошибка сохранения: {e}")
+        finally:
+            context.user_data.pop('adding_backup_pattern', None)
+            context.user_data.pop('backup_pattern_stage', None)
+            context.user_data.pop('backup_pattern_category', None)
+            context.user_data.pop('backup_pattern_type', None)
+
+def handle_backup_pattern_edit_input(update, context):
+    """Обработчик редактирования паттерна"""
+    if 'editing_backup_pattern' not in context.user_data:
+        return
+
+    new_pattern = update.message.text.strip()
+    if not new_pattern:
+        update.message.reply_text("❌ Паттерн не может быть пустым. Попробуйте снова:")
+        return
+
+    pattern_id = context.user_data.get('editing_backup_pattern_id')
+    if not pattern_id:
+        update.message.reply_text("❌ Не найден паттерн для редактирования.")
+        context.user_data.pop('editing_backup_pattern', None)
+        return
+
+    try:
+        conn = settings_manager.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE backup_patterns SET pattern = ? WHERE id = ?",
+            (new_pattern, pattern_id)
+        )
+        conn.commit()
+
+        update.message.reply_text(
+            "✅ *Паттерн обновлён!*\n\n"
+            f"Категория: *{context.user_data.get('backup_pattern_category')}*\n"
+            f"Тип: *{context.user_data.get('backup_pattern_type')}*\n"
+            f"Паттерн: `{new_pattern}`",
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='backup_patterns')]
+            ])
+        )
+    except Exception as e:
+        update.message.reply_text(f"❌ Ошибка сохранения: {e}")
+    finally:
+        context.user_data.pop('editing_backup_pattern', None)
+        context.user_data.pop('editing_backup_pattern_id', None)
+        context.user_data.pop('backup_pattern_category', None)
+        context.user_data.pop('backup_pattern_type', None)
     
