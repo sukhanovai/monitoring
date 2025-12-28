@@ -42,8 +42,7 @@ def get_backup_summary(period_hours=16):
         ''')
         all_hosts = [row[0] for row in cursor.fetchall()]
         if PROXMOX_HOSTS:
-            configured_hosts = set(PROXMOX_HOSTS.keys())
-            all_hosts = [host for host in all_hosts if host in configured_hosts]
+            all_hosts = list(PROXMOX_HOSTS.keys())
 
         cursor.execute('''
             SELECT host_name, backup_status, MAX(received_at) as last_backup
@@ -81,10 +80,17 @@ def get_backup_summary(period_hours=16):
 
         hosts_with_success = len([r for r in proxmox_results if r[1] == 'success'])
 
+        company_databases = DATABASE_BACKUP_CONFIG.get("company_databases", {})
+        client_databases = DATABASE_BACKUP_CONFIG.get("client_databases", {})
+        if "trade" in client_databases and "trade" in company_databases:
+            client_databases = {
+                key: value for key, value in client_databases.items() if key != "trade"
+            }
+
         config_databases = {
-            'company_database': DATABASE_BACKUP_CONFIG.get("company_databases", {}),
+            'company_database': company_databases,
             'barnaul': DATABASE_BACKUP_CONFIG.get("barnaul_backups", {}),
-            'client': DATABASE_BACKUP_CONFIG.get("client_databases", {}),
+            'client': client_databases,
             'yandex': DATABASE_BACKUP_CONFIG.get("yandex_backups", {}),
         }
 
