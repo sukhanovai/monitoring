@@ -24,7 +24,8 @@ def main_menu(extension_manager):
     if extension_manager.is_extension_enabled('resource_monitor'):
         keyboard.append([InlineKeyboardButton("📊 Ресурсы сервера", callback_data='check_resources')])
 
-    if extension_manager.is_extension_enabled('backup_monitor'):
+    if (extension_manager.is_extension_enabled('backup_monitor') or
+            extension_manager.is_extension_enabled('database_backup_monitor')):
         keyboard.append(
             [InlineKeyboardButton("💾 Бэкапы", callback_data='backup_main')]
         )

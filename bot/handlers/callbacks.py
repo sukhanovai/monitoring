@@ -328,8 +328,23 @@ def callback_router(update, context):
     # БЭКАПЫ
     # ------------------------------------------------
     elif data.startswith("backup_") or data.startswith("db_"):
-        if not extension_manager.is_extension_enabled("backup_monitor"):
+        backup_enabled = extension_manager.is_extension_enabled("backup_monitor")
+        db_enabled = extension_manager.is_extension_enabled("database_backup_monitor")
+
+        if data.startswith("db_") and not db_enabled:
+            query.edit_message_text("🗃️ Модуль бэкапов БД отключён")
+            return
+
+        if data == "backup_main" and not (backup_enabled or db_enabled):
             query.edit_message_text("💾 Модуль бэкапов отключён")
+            return
+
+        if data == "backup_databases" and not db_enabled:
+            query.edit_message_text("🗃️ Модуль бэкапов БД отключён")
+            return
+
+        if data.startswith("backup_") and data not in ("backup_main", "backup_databases") and not backup_enabled:
+            query.edit_message_text("💾 Модуль бэкапов Proxmox отключён")
             return
 
         from extensions.backup_monitor.bot_handler import backup_callback
