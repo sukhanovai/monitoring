@@ -35,15 +35,20 @@ from bot.handlers.extensions import (
 from lib.logging import debug_log
 
 def _server_result_keyboard(server_ip: str) -> InlineKeyboardMarkup:
+    row_actions = [
+        InlineKeyboardButton("📡 Доступность", callback_data=f"check_availability_{server_ip}")
+    ]
+    row_menus = [
+        InlineKeyboardButton("🖥 Доступность сервера", callback_data="show_availability_menu")
+    ]
+
+    if extension_manager.is_extension_enabled("resource_monitor"):
+        row_actions.append(InlineKeyboardButton("📊 Ресурсы", callback_data=f"check_resources_{server_ip}"))
+        row_menus.append(InlineKeyboardButton("💻 Ресурсы сервера", callback_data="show_resources_menu"))
+
     return InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton("📡 Доступность", callback_data=f"check_availability_{server_ip}"),
-            InlineKeyboardButton("📊 Ресурсы", callback_data=f"check_resources_{server_ip}"),
-        ],
-        [
-            InlineKeyboardButton("🖥 Доступность сервера", callback_data="show_availability_menu"),
-            InlineKeyboardButton("💻 Ресурсы сервера", callback_data="show_resources_menu"),
-        ],
+        row_actions,
+        row_menus,
         [
             InlineKeyboardButton("🏠 Главное меню", callback_data="main_menu"),
             InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
@@ -76,6 +81,10 @@ def handle_check_resources_callback(update, context, server_ip):
     query = update.callback_query
     query.answer()
 
+    if not extension_manager.is_extension_enabled("resource_monitor"):
+        query.edit_message_text("📊 Мониторинг ресурсов отключён")
+        return
+
     from bot.handlers.commands import handle_check_server_resources
     result = handle_check_server_resources(update, context, server_ip)
 
@@ -101,6 +110,9 @@ def handle_server_selection_menu(update, context, action="check_single"):
     if action == "check_single":
         message = "📡 *Выберите сервер для проверки доступности:*"
     elif action == "check_resources":
+        if not extension_manager.is_extension_enabled("resource_monitor"):
+            query.edit_message_text("📊 Мониторинг ресурсов отключён")
+            return
         message = "📊 *Выберите сервер для проверки ресурсов:*"
     else:
         message = "🔍 *Выберите сервер:*"
@@ -184,6 +196,9 @@ def callback_router(update, context):
     # РЕСУРСЫ СЕРВЕРА
     # ------------------------------------------------
     elif data == 'show_resources_menu':
+        if not extension_manager.is_extension_enabled("resource_monitor"):
+            query.edit_message_text("📊 Мониторинг ресурсов отключён")
+            return
         query.edit_message_text(
             "📊 *Выберите сервер для проверки ресурсов:*",
             parse_mode='Markdown',
@@ -193,6 +208,9 @@ def callback_router(update, context):
         )
 
     elif data.startswith('check_resources_'):
+        if not extension_manager.is_extension_enabled("resource_monitor"):
+            query.edit_message_text("📊 Мониторинг ресурсов отключён")
+            return
         server_id = data.replace('check_resources_', '')
 
         success, server, message = targeted_checks.check_single_server_resources(server_id)
@@ -208,6 +226,9 @@ def callback_router(update, context):
     # ПРОВЕРКА РЕСУРСОВ ВСЕХ СЕРВЕРОВ
     # ------------------------------------------------
     elif data == 'check_resources':
+        if not extension_manager.is_extension_enabled("resource_monitor"):
+            query.edit_message_text("📊 Мониторинг ресурсов отключён")
+            return
         query.edit_message_text(
             "📊 *Выберите сервер для проверки ресурсов:*",
             parse_mode='Markdown',
@@ -307,8 +328,23 @@ def callback_router(update, context):
     # БЭКАПЫ
     # ------------------------------------------------
     elif data.startswith("backup_") or data.startswith("db_"):
-        if not extension_manager.is_extension_enabled("backup_monitor"):
+        backup_enabled = extension_manager.is_extension_enabled("backup_monitor")
+        db_enabled = extension_manager.is_extension_enabled("database_backup_monitor")
+
+        if data.startswith("db_") and not db_enabled:
+            query.edit_message_text("🗃️ Модуль бэкапов БД отключён")
+            return
+
+        if data == "backup_main" and not (backup_enabled or db_enabled):
             query.edit_message_text("💾 Модуль бэкапов отключён")
+            return
+
+        if data == "backup_databases" and not db_enabled:
+            query.edit_message_text("🗃️ Модуль бэкапов БД отключён")
+            return
+
+        if data.startswith("backup_") and data not in ("backup_main", "backup_databases") and not backup_enabled:
+            query.edit_message_text("💾 Модуль бэкапов Proxmox отключён")
             return
 
         from extensions.backup_monitor.bot_handler import backup_callback

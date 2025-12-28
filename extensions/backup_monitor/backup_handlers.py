@@ -16,6 +16,7 @@ import os
 import sys
 from datetime import datetime, timedelta
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from extensions.extension_manager import extension_manager
 from .backup_utils import DisplayFormatters
 formatters = DisplayFormatters()
 from telegram.utils.helpers import escape_markdown
@@ -29,12 +30,20 @@ logger = logging.getLogger(__name__)
 
 def create_main_menu():
     """Создает главное меню бэкапов"""
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🖥️ По хостам", callback_data='backup_hosts')],
-        [InlineKeyboardButton("🗃️ Бэкапы БД", callback_data='backup_databases')],
+    keyboard = []
+
+    if extension_manager.is_extension_enabled('backup_monitor'):
+        keyboard.append([InlineKeyboardButton("🖥️ По хостам", callback_data='backup_hosts')])
+
+    if extension_manager.is_extension_enabled('database_backup_monitor'):
+        keyboard.append([InlineKeyboardButton("🗃️ Бэкапы БД", callback_data='backup_databases')])
+
+    keyboard.extend([
         [InlineKeyboardButton("↩️ Назад", callback_data='main_menu')],
         [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ])
+
+    return InlineKeyboardMarkup(keyboard)
 
 def create_navigation_buttons(back_button='backup_main', refresh_button=None, close=True):
     """Создает стандартные кнопки навигации"""
