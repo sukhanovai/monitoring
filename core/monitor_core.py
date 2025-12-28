@@ -520,7 +520,6 @@ def control_panel_handler(update, context):
         [monitoring_button],
         [InlineKeyboardButton("📊 Утренний отчет", callback_data='full_report')],
         [InlineKeyboardButton("🔇 Управление тихим режимом", callback_data='silent_status')],
-        [InlineKeyboardButton("🔧 Диагностика отчета", callback_data='debug_report')],
         [InlineKeyboardButton("↩️ Назад", callback_data='main_menu'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
@@ -2109,13 +2108,24 @@ def get_backup_summary_for_report(period_hours=16):
         # Получаем все хосты из конфигурации
         from config.db_settings import PROXMOX_HOSTS
 
+        def is_proxmox_host_enabled(host_value):
+            """Проверяет, включен ли мониторинг хоста Proxmox."""
+            if isinstance(host_value, dict):
+                return host_value.get("enabled", True)
+            return True
+
+        enabled_hosts = [
+            host for host, value in PROXMOX_HOSTS.items()
+            if is_proxmox_host_enabled(value)
+        ]
+
         debug_log("📊 ДИАГНОСТИКА - Хосты из конфигурации PROXMOX_HOSTS:")
-        for host in PROXMOX_HOSTS.keys():
+        for host in enabled_hosts:
             debug_log(f"  - {host}")
 
         # Определяем активные хосты
         active_host_names = [row[0] for row in all_hosts_from_db]
-        all_hosts = [host for host in PROXMOX_HOSTS.keys() if host in active_host_names]
+        all_hosts = [host for host in enabled_hosts if host in active_host_names]
 
         # Если все еще не 15, используем альтернативный метод
         if len(all_hosts) != 15:
@@ -2379,8 +2389,12 @@ def debug_proxmox_config():
     try:
         from config.db_settings import PROXMOX_HOSTS
         debug_log("=== ДИАГНОСТИКА KONФИГУРАЦИИ PROXMOX ===")
-        debug_log(f"Всего хостов в PROXMOX_HOSTS: {len(PROXMOX_HOSTS)}")
-        for i, host in enumerate(PROXMOX_HOSTS.keys(), 1):
+        enabled_hosts = [
+            host for host, value in PROXMOX_HOSTS.items()
+            if not isinstance(value, dict) or value.get("enabled", True)
+        ]
+        debug_log(f"Всего хостов в PROXMOX_HOSTS: {len(enabled_hosts)}")
+        for i, host in enumerate(enabled_hosts, 1):
             debug_log(f"{i}. {host}")
         debug_log("=======================================")
     except Exception as e:
