@@ -1226,23 +1226,43 @@ def show_backup_databases_settings(update, context):
         message += "❌ *Базы данных не настроены*\n\n"
     else:
         for category, databases in db_config.items():
+            if not isinstance(databases, dict):
+                databases = {}
             message += f"*{category.upper()}* ({len(databases)} БД):\n"
-            for db_key, db_name in list(databases.items())[:3]:
-                message += f"• {db_name}\n"
-            if len(databases) > 3:
-                message += f"• ... и еще {len(databases) - 3} БД\n"
+            for db_key in databases.keys():
+                message += f"• `{db_key}`\n"
             message += "\n"
     
     message += "Выберите действие:"
     
-    keyboard = [
+    keyboard = []
+
+    for category, databases in db_config.items():
+        if not isinstance(databases, dict):
+            databases = {}
+        keyboard.append([InlineKeyboardButton(
+            f"➕ Добавить БД в {category}",
+            callback_data=f"settings_db_add_db_{category}"
+        )])
+        row = []
+        for db_key in databases.keys():
+            row.append(InlineKeyboardButton(
+                f"✏️ {db_key}",
+                callback_data=f"settings_db_edit_db_{category}__{db_key}"
+            ))
+            if len(row) == 2:
+                keyboard.append(row)
+                row = []
+        if row:
+            keyboard.append(row)
+
+    keyboard.extend([
         [InlineKeyboardButton("📋 Просмотр всех БД", callback_data='settings_db_view_all')],
         [InlineKeyboardButton("➕ Добавить категорию БД", callback_data='settings_db_add_category')],
-        [InlineKeyboardButton("✏️ Редактировать БД", callback_data='settings_db_edit_category')],
         [InlineKeyboardButton("🗑️ Удалить категорию", callback_data='settings_db_delete_category')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-    ]
+    ])
     
     query.edit_message_text(
         message,
