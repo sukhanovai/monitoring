@@ -191,7 +191,23 @@ class BackupMonitorBot(BackupBase):
         """Получает список всех хостов из базы"""
         query = 'SELECT DISTINCT host_name FROM proxmox_backups ORDER BY host_name'
         results = self.execute_query(query)
-        return [row[0] for row in results]
+        db_hosts = [row[0] for row in results]
+
+        try:
+            from .db_settings_backup_monitor import PROXMOX_HOSTS
+        except Exception:
+            PROXMOX_HOSTS = {}
+
+        if not isinstance(PROXMOX_HOSTS, dict):
+            return db_hosts
+
+        enabled_hosts = {
+            host for host, value in PROXMOX_HOSTS.items()
+            if not isinstance(value, dict) or value.get("enabled", True)
+        }
+
+        filtered_hosts = [host for host in db_hosts if host in enabled_hosts]
+        return filtered_hosts or list(enabled_hosts)
 
     def get_host_recent_status(self, host_name, hours=48):
         """Получает статус хоста за указанный период"""

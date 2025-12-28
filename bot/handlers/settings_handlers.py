@@ -408,6 +408,9 @@ def settings_callback_handler(update, context):
         elif data.startswith('delete_pattern_'):
             pattern_id = data.replace('delete_pattern_', '')
             delete_pattern_handler(update, context, pattern_id)
+        elif data.startswith('edit_pattern_'):
+            pattern_id = data.replace('edit_pattern_', '')
+            edit_pattern_handler(update, context, pattern_id)
         
         # Обработчики для редактирования и удаления категорий БД
         elif data.startswith('settings_db_delete_confirm_'):
@@ -629,6 +632,10 @@ def handle_setting_value(update, context):
     # Проверяем, не добавляется ли паттерн бэкапов
     if context.user_data.get('adding_backup_pattern'):
         return handle_backup_pattern_input(update, context)
+
+    # Проверяем, не редактируется ли паттерн бэкапов
+    if context.user_data.get('editing_backup_pattern'):
+        return handle_backup_pattern_edit_input(update, context)
     
     # Если это обычная настройка
     if 'editing_setting' not in context.user_data:
@@ -3148,11 +3155,16 @@ def view_patterns_handler(update, context):
 
     keyboard = []
     for pattern_id, pattern_type, pattern, category in rows:
-        button_text = f"🗑️ {category}:{pattern_type}"
-        keyboard.append([InlineKeyboardButton(
-            button_text,
-            callback_data=f"delete_pattern_{pattern_id}"
-        )])
+        keyboard.append([
+            InlineKeyboardButton(
+                f"✏️ {category}:{pattern_type}",
+                callback_data=f"edit_pattern_{pattern_id}"
+            ),
+            InlineKeyboardButton(
+                f"🗑️ {category}:{pattern_type}",
+                callback_data=f"delete_pattern_{pattern_id}"
+            )
+        ])
 
     keyboard.append([
         InlineKeyboardButton("↩️ Назад", callback_data='backup_patterns'),
@@ -3188,6 +3200,56 @@ def delete_pattern_handler(update, context, pattern_id):
         "✅ Паттерн удалён.",
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("↩️ Назад", callback_data='backup_patterns')]
+        ])
+    )
+
+def edit_pattern_handler(update, context, pattern_id):
+    """Редактировать паттерн"""
+    query = update.callback_query
+    query.answer()
+
+    try:
+        pattern_id_int = int(pattern_id)
+    except ValueError:
+        query.edit_message_text("❌ Некорректный идентификатор паттерна.")
+        return
+
+    conn = settings_manager.get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT id, pattern_type, pattern, category
+        FROM backup_patterns
+        WHERE id = ? AND enabled = 1
+        """,
+        (pattern_id_int,)
+    )
+    row = cursor.fetchone()
+
+    if not row:
+        query.edit_message_text(
+            "❌ Паттерн не найден.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='backup_patterns')]
+            ])
+        )
+        return
+
+    _, pattern_type, pattern, category = row
+    context.user_data['editing_backup_pattern'] = True
+    context.user_data['editing_backup_pattern_id'] = pattern_id_int
+    context.user_data['backup_pattern_category'] = category
+    context.user_data['backup_pattern_type'] = pattern_type
+
+    query.edit_message_text(
+        "✏️ *Редактирование паттерна*\n\n"
+        f"Категория: *{category}*\n"
+        f"Тип: *{pattern_type}*\n"
+        f"Текущий паттерн: `{pattern}`\n\n"
+        "Введите новое регулярное выражение:",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("❌ Отмена", callback_data='backup_patterns')]
         ])
     )
 
@@ -3255,4 +3317,47 @@ def handle_backup_pattern_input(update, context):
             context.user_data.pop('backup_pattern_stage', None)
             context.user_data.pop('backup_pattern_category', None)
             context.user_data.pop('backup_pattern_type', None)
+
+def handle_backup_pattern_edit_input(update, context):
+    """Обработчик редактирования паттерна"""
+    if 'editing_backup_pattern' not in context.user_data:
+        return
+
+    new_pattern = update.message.text.strip()
+    if not new_pattern:
+        update.message.reply_text("❌ Паттерн не может быть пустым. Попробуйте снова:")
+        return
+
+    pattern_id = context.user_data.get('editing_backup_pattern_id')
+    if not pattern_id:
+        update.message.reply_text("❌ Не найден паттерн для редактирования.")
+        context.user_data.pop('editing_backup_pattern', None)
+        return
+
+    try:
+        conn = settings_manager.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE backup_patterns SET pattern = ? WHERE id = ?",
+            (new_pattern, pattern_id)
+        )
+        conn.commit()
+
+        update.message.reply_text(
+            "✅ *Паттерн обновлён!*\n\n"
+            f"Категория: *{context.user_data.get('backup_pattern_category')}*\n"
+            f"Тип: *{context.user_data.get('backup_pattern_type')}*\n"
+            f"Паттерн: `{new_pattern}`",
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='backup_patterns')]
+            ])
+        )
+    except Exception as e:
+        update.message.reply_text(f"❌ Ошибка сохранения: {e}")
+    finally:
+        context.user_data.pop('editing_backup_pattern', None)
+        context.user_data.pop('editing_backup_pattern_id', None)
+        context.user_data.pop('backup_pattern_category', None)
+        context.user_data.pop('backup_pattern_type', None)
     
