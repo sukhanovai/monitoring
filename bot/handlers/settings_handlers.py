@@ -239,12 +239,19 @@ def show_backup_settings(update, context):
     
     keyboard = [
         [InlineKeyboardButton("⏰ Временные интервалы", callback_data='backup_times')],
-        [InlineKeyboardButton("🖥️ Proxmox бэкапы", callback_data='settings_backup_proxmox')],
-        [InlineKeyboardButton("🗃️ Базы данных", callback_data='settings_db_main')],
+    ]
+
+    if extension_manager.is_extension_enabled('backup_monitor'):
+        keyboard.append([InlineKeyboardButton("🖥️ Proxmox бэкапы", callback_data='settings_backup_proxmox')])
+
+    if extension_manager.is_extension_enabled('database_backup_monitor'):
+        keyboard.append([InlineKeyboardButton("🗃️ Базы данных", callback_data='settings_db_main')])
+
+    keyboard.extend([
         [InlineKeyboardButton("🔍 Паттерны", callback_data='backup_patterns')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-    ]
+    ])
     
     query.edit_message_text(
         message,
