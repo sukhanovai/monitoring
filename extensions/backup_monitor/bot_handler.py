@@ -33,6 +33,7 @@ from extensions.backup_monitor.backup_handlers import (
     show_database_details,
     show_stale_databases,
 )
+from extensions.extension_manager import extension_manager
 
 def register_handlers(dispatcher):
     """
@@ -435,12 +436,18 @@ def backup_callback(update, context):
             show_failed_backups(query, backup_bot)
 
         elif data == 'backup_hosts':
+            if not extension_manager.is_extension_enabled('backup_monitor'):
+                query.edit_message_text("🖥️ Мониторинг бэкапов Proxmox отключён")
+                return
             show_hosts_menu(query, backup_bot)
 
         elif data == 'backup_refresh':
             show_main_menu(query, backup_bot)
 
         elif data == 'backup_databases':
+            if not extension_manager.is_extension_enabled('database_backup_monitor'):
+                query.edit_message_text("🗃️ Мониторинг бэкапов БД отключён")
+                return
             logger.info("🧪 BACKUP DB: entering show_database_backups_menu")
             show_database_backups_menu(query, backup_bot)
 
