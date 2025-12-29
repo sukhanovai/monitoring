@@ -25,22 +25,12 @@ def main_menu(extension_manager):
 
     if extension_manager.is_extension_enabled('backup_monitor'):
         keyboard.append(
-            [InlineKeyboardButton("💾 Бэкапы Proxmox", callback_data='backup_main')]
+            [InlineKeyboardButton("💾 Бэкапы Proxmox", callback_data='backup_proxmox')]
         )
 
     if extension_manager.is_extension_enabled('database_backup_monitor'):
         keyboard.append(
             [InlineKeyboardButton("🗃️ Бэкапы БД", callback_data='backup_databases')]
-        )
-
-    if extension_manager.is_extension_enabled('zfs_monitor'):
-        keyboard.append(
-            [InlineKeyboardButton("🧩 ZFS", callback_data='settings_zfs')]
-        )
-
-    if extension_manager.is_extension_enabled('zfs_monitor'):
-        keyboard.append(
-            [InlineKeyboardButton("🧩 ZFS", callback_data='settings_zfs')]
         )
 
     keyboard.extend([
