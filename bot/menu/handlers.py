@@ -159,7 +159,6 @@ def start_command(update, context):
     keyboard = [
         [InlineKeyboardButton("🔄 Проверить все серверы", callback_data='manual_check')],
         [InlineKeyboardButton("🔍 Проверить один сервер", callback_data='show_availability_menu')],
-        [InlineKeyboardButton("⚙️ Управление настройками", callback_data='settings_main')],
         [InlineKeyboardButton("🐛 Отладка", callback_data='debug_menu')],
     ]
 
@@ -175,6 +174,7 @@ def start_command(update, context):
     keyboard.extend([
         [InlineKeyboardButton("🛠️ Управление расширениями", callback_data='extensions_menu')],
         [InlineKeyboardButton("🎛️ Управление", callback_data='control_panel')],
+        [InlineKeyboardButton("⚙️ Управление настройками", callback_data='settings_main')],
         [InlineKeyboardButton("✖️ Закрыть", callback_data='close')] 
     ])
     

@@ -18,7 +18,6 @@ def main_menu(extension_manager):
     keyboard = [
         [InlineKeyboardButton("🔄 Доступность всех серверов", callback_data='manual_check')],
         [InlineKeyboardButton("🔍 Доступность сервера", callback_data='show_availability_menu')],
-        [InlineKeyboardButton("⚙️ Настройки", callback_data='settings_main')],
     ]
 
     if extension_manager.is_extension_enabled('resource_monitor'):
@@ -33,6 +32,7 @@ def main_menu(extension_manager):
     keyboard.extend([
         [InlineKeyboardButton("🛠️ Расширения", callback_data='extensions_menu')],
         [InlineKeyboardButton("🎛️ Управление", callback_data='control_panel')],
+        [InlineKeyboardButton("⚙️ Настройки", callback_data='settings_main')],
         [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
     ])
 
