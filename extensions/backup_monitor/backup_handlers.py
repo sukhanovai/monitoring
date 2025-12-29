@@ -538,7 +538,7 @@ def show_database_backups_menu(query, backup_bot):
         if not db_by_type:
             message = "🗃️ *Бэкапы баз данных*\n\n❌ Нет данных о бэкапах БД."
             keyboard = [
-                [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')],
+                [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')],
                 [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ]
             query.edit_message_text(
@@ -583,7 +583,7 @@ def show_database_backups_menu(query, backup_bot):
                 keyboard.append(current_row)
 
         keyboard.extend([
-            [InlineKeyboardButton("↩️ Назад", callback_data='backup_main'),
+            [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases'),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
 
