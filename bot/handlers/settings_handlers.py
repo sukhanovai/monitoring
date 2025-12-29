@@ -1891,30 +1891,7 @@ def show_zfs_settings(update, context):
     query = update.callback_query
     query.answer()
 
-    zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
-    if not isinstance(zfs_servers, dict):
-        zfs_servers = {}
-
-    message = "🧊 *Мониторинг ZFS*\n\n"
-    if not zfs_servers:
-        message += "❌ Серверы не настроены.\n\n"
-    else:
-        message += f"Серверов в списке: {len(zfs_servers)}\n\n"
-
-    message += "Выберите действие:"
-
-    keyboard = [
-        [InlineKeyboardButton("📋 Хосты", callback_data='settings_zfs_list')],
-        [InlineKeyboardButton("🔍 Паттерны", callback_data='settings_patterns_zfs')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_extensions'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-    ]
-
-    query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
+    show_zfs_main_menu(update, context)
 
 def show_zfs_main_menu(update, context):
     """Показать меню ZFS из главного меню"""

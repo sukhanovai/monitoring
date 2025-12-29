@@ -74,7 +74,12 @@ def create_navigation_buttons(back_button='backup_main', refresh_button=None, cl
     
     return InlineKeyboardMarkup(buttons)
 
-def create_hosts_keyboard(hosts, host_statuses, show_problems_button=True):
+def create_hosts_keyboard(
+    hosts,
+    host_statuses,
+    show_problems_button=True,
+    back_button='backup_main',
+):
     """Создает клавиатуру для списка хостов"""
     keyboard = []
     
@@ -117,7 +122,7 @@ def create_hosts_keyboard(hosts, host_statuses, show_problems_button=True):
         )])
     
     keyboard.append([
-        InlineKeyboardButton("↩️ Назад", callback_data='backup_main'),
+        InlineKeyboardButton("↩️ Назад", callback_data=back_button),
         InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu'),
         InlineKeyboardButton("✖️ Закрыть", callback_data='close')
     ])
@@ -345,7 +350,11 @@ def show_hosts_menu(query, backup_bot):
         query.edit_message_text(
             message,
             parse_mode='Markdown',
-            reply_markup=create_hosts_keyboard(hosts, host_statuses)
+            reply_markup=create_hosts_keyboard(
+                hosts,
+                host_statuses,
+                back_button='main_menu',
+            )
         )
 
     except Exception as e:
@@ -400,7 +409,7 @@ def show_stale_hosts(query, backup_bot):
         
         keyboard.extend([
             [InlineKeyboardButton("📋 Все хосты", callback_data='backup_hosts')],
-            [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')]
+            [InlineKeyboardButton("↩️ Назад", callback_data='main_menu')]
         ])
         
         query.edit_message_text(
