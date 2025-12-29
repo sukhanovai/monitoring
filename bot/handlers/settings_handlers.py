@@ -54,7 +54,6 @@ def settings_command(update, context):
         keyboard.append([InlineKeyboardButton("🌐 Веб-интерфейс", callback_data='settings_web')])
 
     keyboard.extend([
-        [InlineKeyboardButton("📊 Просмотр всех настроек", callback_data='settings_view_all')],
         [InlineKeyboardButton("↩️ Назад", callback_data='main_menu'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ])
