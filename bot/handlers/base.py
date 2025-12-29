@@ -1,11 +1,11 @@
 """
 /bot/handlers/base.py
-Server Monitoring System v6.0.0
+Server Monitoring System v6.0.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Basic functions: access, universal responses, general checks
 Система мониторинга серверов
-Версия: 6.0.0
+Версия: 6.0.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Базовые функции: доступ, универсальные ответы, общие проверки
