@@ -11,9 +11,12 @@ Handlers for managing settings via a bot
 Обработчики для управления настройками через бота
 """
 
+import sqlite3
+
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CommandHandler, CallbackQueryHandler, MessageHandler, Filters
 from core.config_manager import config_manager as settings_manager
+from config.db_settings import BACKUP_DATABASE_CONFIG
 from extensions.extension_manager import extension_manager
 from lib.logging import debug_log
 import json
@@ -1916,7 +1919,19 @@ def show_zfs_status_summary(update, context):
     query = update.callback_query
     query.answer()
 
-    conn = settings_manager.get_connection()
+    db_path = BACKUP_DATABASE_CONFIG.get("backups_db")
+    if not db_path:
+        query.edit_message_text(
+            "🧊 *ZFS статусы*\n\n❌ База бэкапов не настроена.",
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='main_menu')],
+                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ])
+        )
+        return
+
+    conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
     try:
         cursor.execute(
@@ -1946,8 +1961,11 @@ def show_zfs_status_summary(update, context):
                     [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
                 ])
             )
+            conn.close()
             return
         raise
+    finally:
+        conn.close()
 
     if not rows:
         message = "📊 *ZFS статусы*\n\n❌ Данных нет."
