@@ -38,13 +38,13 @@ def settings_command(update, context):
         [InlineKeyboardButton("🔧 Мониторинг", callback_data='settings_monitoring')],
     ]
 
-    if extension_manager.is_extension_enabled('resource_monitor'):
-        keyboard.append([InlineKeyboardButton("💻 Ресурсы", callback_data='settings_resources')])
-
     keyboard.extend([
         [InlineKeyboardButton("🔐 Аутентификация", callback_data='settings_auth')],
         [InlineKeyboardButton("🖥️ Серверы", callback_data='settings_servers')],
     ])
+
+    if extension_manager.is_extension_enabled('resource_monitor'):
+        keyboard.append([InlineKeyboardButton("💻 Ресурсы", callback_data='settings_resources')])
 
     if (extension_manager.is_extension_enabled('backup_monitor') or
             extension_manager.is_extension_enabled('database_backup_monitor') or
@@ -401,6 +401,8 @@ def settings_callback_handler(update, context):
             show_zfs_settings(update, context)
         elif data == 'settings_zfs_list':
             show_zfs_servers_list(update, context)
+        elif data == 'settings_zfs_status':
+            show_zfs_status_summary(update, context)
         elif data == 'settings_zfs_add':
             add_zfs_server_handler(update, context)
         elif data.startswith('settings_zfs_edit_name_'):
@@ -1751,10 +1753,60 @@ def show_zfs_settings(update, context):
 
     keyboard = [
         [InlineKeyboardButton("📋 Список серверов", callback_data='settings_zfs_list')],
+        [InlineKeyboardButton("📊 Результаты", callback_data='settings_zfs_status')],
         [InlineKeyboardButton("➕ Добавить сервер", callback_data='settings_zfs_add')],
         [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ]
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def show_zfs_status_summary(update, context):
+    """Показать последние статусы ZFS массивов"""
+    query = update.callback_query
+    query.answer()
+
+    conn = settings_manager.get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT s.server_name, s.pool_name, s.pool_state, s.received_at
+        FROM zfs_pool_status s
+        JOIN (
+            SELECT server_name, pool_name, MAX(received_at) AS last_seen
+            FROM zfs_pool_status
+            GROUP BY server_name, pool_name
+        ) latest
+        ON s.server_name = latest.server_name
+        AND s.pool_name = latest.pool_name
+        AND s.received_at = latest.last_seen
+        ORDER BY s.server_name, s.pool_name
+        """
+    )
+    rows = cursor.fetchall()
+
+    if not rows:
+        message = "📊 *ZFS статусы*\n\n❌ Данных нет."
+    else:
+        message = "📊 *ZFS статусы (последние)*\n\n"
+        current_server = None
+        for server_name, pool_name, pool_state, received_at in rows:
+            if server_name != current_server:
+                if current_server is not None:
+                    message += "\n"
+                message += f"*{server_name}*\n"
+                current_server = server_name
+            message += f"• {pool_name}: `{pool_state}` ({received_at})\n"
+
+    keyboard = [
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs')],
+        [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+        [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
 
     query.edit_message_text(
