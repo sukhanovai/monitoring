@@ -495,18 +495,9 @@ class BackupProcessor:
             logger.info("ℹ️ ZFS сервер отключен в настройках: %s", matched_server)
             return None
 
-        arrays = server_config.get("arrays", []) if isinstance(server_config, dict) else []
-        if arrays and len(arrays) != len(states):
-            logger.warning(
-                "⚠️ Количество массивов ZFS не совпадает со статусами: %s (%s/%s)",
-                matched_server,
-                len(arrays),
-                len(states),
-            )
-
         entries = []
         for index, state in enumerate(states, start=1):
-            pool_name = arrays[index - 1] if index - 1 < len(arrays) else f"pool_{index}"
+            pool_name = f"pool_{index}"
             entries.append(
                 {
                     "server_name": matched_server,

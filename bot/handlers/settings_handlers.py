@@ -408,9 +408,6 @@ def settings_callback_handler(update, context):
         elif data.startswith('settings_zfs_edit_name_'):
             server_name = data.replace('settings_zfs_edit_name_', '')
             edit_zfs_server_name_handler(update, context, server_name)
-        elif data.startswith('settings_zfs_edit_arrays_'):
-            server_name = data.replace('settings_zfs_edit_arrays_', '')
-            edit_zfs_server_arrays_handler(update, context, server_name)
         elif data.startswith('settings_zfs_delete_'):
             server_name = data.replace('settings_zfs_delete_', '')
             delete_zfs_server(update, context, server_name)
@@ -676,10 +673,6 @@ def handle_setting_value(update, context):
     # Проверяем, не редактируется ли имя ZFS сервера
     if context.user_data.get('editing_zfs_server_name'):
         return handle_zfs_server_name_edit_input(update, context)
-
-    # Проверяем, не редактируются ли массивы ZFS сервера
-    if context.user_data.get('editing_zfs_server_arrays'):
-        return handle_zfs_server_arrays_edit_input(update, context)
 
     # Проверяем, не добавляется ли база данных
     if context.user_data.get('adding_db_entry'):
@@ -1831,13 +1824,10 @@ def show_zfs_servers_list(update, context):
         for server_name in sorted(zfs_servers.keys()):
             server_value = zfs_servers.get(server_name, {})
             enabled = True
-            arrays = []
             if isinstance(server_value, dict):
                 enabled = server_value.get('enabled', True)
-                arrays = server_value.get('arrays', []) or []
             status_icon = "🟢" if enabled else "🔴"
-            arrays_text = ", ".join(arrays) if arrays else "не указаны"
-            message += f"{status_icon} `{server_name}` — массивы: {arrays_text}\n"
+            message += f"{status_icon} `{server_name}`\n"
 
     keyboard = []
     for server_name in sorted(zfs_servers.keys()):
@@ -1850,10 +1840,6 @@ def show_zfs_servers_list(update, context):
             InlineKeyboardButton(
                 f"✏️ {server_name}",
                 callback_data=f"settings_zfs_edit_name_{server_name}"
-            ),
-            InlineKeyboardButton(
-                f"🧱 {server_name}",
-                callback_data=f"settings_zfs_edit_arrays_{server_name}"
             ),
         ])
         keyboard.append([
@@ -1952,38 +1938,18 @@ def handle_zfs_server_input(update, context):
             update.message.reply_text("❌ Такой сервер уже есть. Введите другой:")
             return
 
-        context.user_data['zfs_server_name'] = user_input
-        context.user_data['zfs_server_stage'] = 'arrays'
-        update.message.reply_text(
-            "Введите массивы через запятую (например: tank, backup). "
-            "Если массивы не нужны, отправьте пустую строку:"
-        )
-        return
-
-    if stage == 'arrays':
-        server_name = context.user_data.get('zfs_server_name')
-        if not server_name:
-            update.message.reply_text("❌ Не удалось определить имя сервера.")
-            context.user_data.pop('adding_zfs_server', None)
-            return
-
-        arrays = [item.strip() for item in user_input.split(",") if item.strip()]
-
         zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
         if not isinstance(zfs_servers, dict):
             zfs_servers = {}
 
-        zfs_servers[server_name] = {
+        zfs_servers[user_input] = {
             'enabled': True,
-            'arrays': arrays,
         }
         settings_manager.set_setting('ZFS_SERVERS', zfs_servers)
 
-        arrays_text = ", ".join(arrays) if arrays else "не указаны"
         update.message.reply_text(
             "✅ Сервер добавлен.\n"
-            f"Имя: `{server_name}`\n"
-            f"Массивы: {arrays_text}",
+            f"Имя: `{user_input}`",
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
@@ -1994,7 +1960,6 @@ def handle_zfs_server_input(update, context):
 
         context.user_data.pop('adding_zfs_server', None)
         context.user_data.pop('zfs_server_stage', None)
-        context.user_data.pop('zfs_server_name', None)
 
 def edit_zfs_server_name_handler(update, context, server_name):
     """Начать редактирование имени ZFS сервера"""
@@ -2058,7 +2023,7 @@ def handle_zfs_server_name_edit_input(update, context):
 
     server_value = zfs_servers.pop(old_name, None)
     if not isinstance(server_value, dict):
-        server_value = {'enabled': True, 'arrays': []}
+        server_value = {'enabled': True}
     zfs_servers[new_name] = server_value
     settings_manager.set_setting('ZFS_SERVERS', zfs_servers)
 
@@ -2074,85 +2039,6 @@ def handle_zfs_server_name_edit_input(update, context):
 
     context.user_data.pop('editing_zfs_server_name', None)
     context.user_data.pop('editing_zfs_server_old_name', None)
-
-def edit_zfs_server_arrays_handler(update, context, server_name):
-    """Начать редактирование массивов ZFS сервера"""
-    query = update.callback_query
-    query.answer()
-
-    zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
-    if not isinstance(zfs_servers, dict):
-        zfs_servers = {}
-
-    if server_name not in zfs_servers:
-        query.edit_message_text(
-            "❌ Сервер не найден.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs'),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-            ])
-        )
-        return
-
-    context.user_data['editing_zfs_server_arrays'] = True
-    context.user_data['editing_zfs_server_arrays_name'] = server_name
-
-    query.edit_message_text(
-        "🧱 *Редактирование массивов ZFS*\n\n"
-        f"Сервер: `{server_name}`\n\n"
-        "Введите массивы через запятую (например: tank, backup). "
-        "Если массивы не нужны, отправьте пустую строку:",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data='settings_zfs'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
-    )
-
-def handle_zfs_server_arrays_edit_input(update, context):
-    """Обработчик редактирования массивов ZFS сервера"""
-    if 'editing_zfs_server_arrays' not in context.user_data:
-        return
-
-    user_input = update.message.text.strip()
-    arrays = [item.strip() for item in user_input.split(",") if item.strip()]
-
-    zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
-    if not isinstance(zfs_servers, dict):
-        zfs_servers = {}
-
-    server_name = context.user_data.get('editing_zfs_server_arrays_name')
-    if not server_name or server_name not in zfs_servers:
-        update.message.reply_text("❌ Сервер не найден.")
-        context.user_data.pop('editing_zfs_server_arrays', None)
-        context.user_data.pop('editing_zfs_server_arrays_name', None)
-        return
-
-    server_value = zfs_servers.get(server_name)
-    if not isinstance(server_value, dict):
-        server_value = {'enabled': True}
-
-    server_value['arrays'] = arrays
-    zfs_servers[server_name] = server_value
-    settings_manager.set_setting('ZFS_SERVERS', zfs_servers)
-
-    arrays_text = ", ".join(arrays) if arrays else "не указаны"
-    update.message.reply_text(
-        "✅ Массивы обновлены.\n"
-        f"Сервер: `{server_name}`\n"
-        f"Массивы: {arrays_text}",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
-    )
-
-    context.user_data.pop('editing_zfs_server_arrays', None)
-    context.user_data.pop('editing_zfs_server_arrays_name', None)
 
 def toggle_zfs_server(update, context, server_name):
     """Включить/отключить мониторинг ZFS сервера"""
