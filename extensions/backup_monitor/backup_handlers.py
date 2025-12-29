@@ -16,6 +16,7 @@ import os
 import sys
 from datetime import datetime, timedelta
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.error import BadRequest
 from extensions.extension_manager import extension_manager
 from .backup_utils import DisplayFormatters
 formatters = DisplayFormatters()
@@ -45,6 +46,20 @@ def create_main_menu():
 
     return InlineKeyboardMarkup(keyboard)
 
+def create_proxmox_menu():
+    """Создает меню бэкапов Proxmox"""
+    keyboard = []
+
+    if extension_manager.is_extension_enabled('backup_monitor'):
+        keyboard.append([InlineKeyboardButton("🖥️ По хостам", callback_data='backup_hosts')])
+
+    keyboard.extend([
+        [InlineKeyboardButton("↩️ Назад", callback_data='main_menu')],
+        [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ])
+
+    return InlineKeyboardMarkup(keyboard)
+
 def create_navigation_buttons(back_button='backup_main', refresh_button=None, close=True):
     """Создает стандартные кнопки навигации"""
     buttons = []
@@ -60,7 +75,12 @@ def create_navigation_buttons(back_button='backup_main', refresh_button=None, cl
     
     return InlineKeyboardMarkup(buttons)
 
-def create_hosts_keyboard(hosts, host_statuses, show_problems_button=True):
+def create_hosts_keyboard(
+    hosts,
+    host_statuses,
+    show_problems_button=True,
+    back_button='backup_main',
+):
     """Создает клавиатуру для списка хостов"""
     keyboard = []
     
@@ -103,7 +123,7 @@ def create_hosts_keyboard(hosts, host_statuses, show_problems_button=True):
         )])
     
     keyboard.append([
-        InlineKeyboardButton("↩️ Назад", callback_data='backup_main'),
+        InlineKeyboardButton("↩️ Назад", callback_data=back_button),
         InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu'),
         InlineKeyboardButton("✖️ Закрыть", callback_data='close')
     ])
@@ -164,6 +184,14 @@ def show_main_menu(query, backup_bot):
         "💾 *Мониторинг бэкапов Proxmox*\n\nВыберите опцию:",
         parse_mode='Markdown',
         reply_markup=create_main_menu()
+    )
+
+def show_proxmox_menu(query, backup_bot):
+    """Показывает меню бэкапов Proxmox"""
+    query.edit_message_text(
+        "💾 *Бэкапы Proxmox*\n\nВыберите опцию:",
+        parse_mode='Markdown',
+        reply_markup=create_proxmox_menu()
     )
 
 def show_today_status(query, backup_bot):
@@ -323,7 +351,11 @@ def show_hosts_menu(query, backup_bot):
         query.edit_message_text(
             message,
             parse_mode='Markdown',
-            reply_markup=create_hosts_keyboard(hosts, host_statuses)
+            reply_markup=create_hosts_keyboard(
+                hosts,
+                host_statuses,
+                back_button='main_menu',
+            )
         )
 
     except Exception as e:
@@ -378,7 +410,7 @@ def show_stale_hosts(query, backup_bot):
         
         keyboard.extend([
             [InlineKeyboardButton("📋 Все хосты", callback_data='backup_hosts')],
-            [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')]
+            [InlineKeyboardButton("↩️ Назад", callback_data='main_menu')]
         ])
         
         query.edit_message_text(
@@ -465,6 +497,9 @@ def show_database_backups_menu(query, backup_bot):
 
         from .db_settings_backup_monitor import DATABASE_BACKUP_CONFIG
 
+        if not isinstance(DATABASE_BACKUP_CONFIG, dict):
+            DATABASE_BACKUP_CONFIG = {}
+
         rows = backup_bot.execute_query(
             """
             SELECT DISTINCT
@@ -516,14 +551,18 @@ def show_database_backups_menu(query, backup_bot):
         if not db_by_type:
             message = "🗃️ *Бэкапы баз данных*\n\n❌ Нет данных о бэкапах БД."
             keyboard = [
-                [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')],
+                [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')],
                 [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ]
-            query.edit_message_text(
-                message,
-                parse_mode='Markdown',
-                reply_markup=InlineKeyboardMarkup(keyboard)
-            )
+            try:
+                query.edit_message_text(
+                    message,
+                    parse_mode='Markdown',
+                    reply_markup=InlineKeyboardMarkup(keyboard)
+                )
+            except BadRequest as exc:
+                if "Message is not modified" not in str(exc):
+                    raise
             return
 
         keyboard = []
@@ -561,7 +600,7 @@ def show_database_backups_menu(query, backup_bot):
                 keyboard.append(current_row)
 
         keyboard.extend([
-            [InlineKeyboardButton("↩️ Назад", callback_data='backup_main'),
+            [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases'),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
 
@@ -574,11 +613,15 @@ def show_database_backups_menu(query, backup_bot):
         message += "⚫ - нет бэкапов >48ч\n"
         message += "⚪ - статус неизвестен\n\n"
         message += "Выберите базу данных для просмотра деталей:"
-        query.edit_message_text(
-            message,
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
+        try:
+            query.edit_message_text(
+                message,
+                parse_mode='Markdown',
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+        except BadRequest as exc:
+            if "Message is not modified" not in str(exc):
+                raise
 
     except Exception as e:
         logger.error(f"Ошибка в show_database_backups_menu: {e}")
