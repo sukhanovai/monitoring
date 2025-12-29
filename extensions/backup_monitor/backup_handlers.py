@@ -16,6 +16,7 @@ import os
 import sys
 from datetime import datetime, timedelta
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.error import BadRequest
 from extensions.extension_manager import extension_manager
 from .backup_utils import DisplayFormatters
 formatters = DisplayFormatters()
@@ -553,11 +554,15 @@ def show_database_backups_menu(query, backup_bot):
                 [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')],
                 [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ]
-            query.edit_message_text(
-                message,
-                parse_mode='Markdown',
-                reply_markup=InlineKeyboardMarkup(keyboard)
-            )
+            try:
+                query.edit_message_text(
+                    message,
+                    parse_mode='Markdown',
+                    reply_markup=InlineKeyboardMarkup(keyboard)
+                )
+            except BadRequest as exc:
+                if "Message is not modified" not in str(exc):
+                    raise
             return
 
         keyboard = []
@@ -608,11 +613,15 @@ def show_database_backups_menu(query, backup_bot):
         message += "⚫ - нет бэкапов >48ч\n"
         message += "⚪ - статус неизвестен\n\n"
         message += "Выберите базу данных для просмотра деталей:"
-        query.edit_message_text(
-            message,
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
+        try:
+            query.edit_message_text(
+                message,
+                parse_mode='Markdown',
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+        except BadRequest as exc:
+            if "Message is not modified" not in str(exc):
+                raise
 
     except Exception as e:
         logger.error(f"Ошибка в show_database_backups_menu: {e}")
