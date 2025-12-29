@@ -46,8 +46,6 @@ def settings_command(update, context):
 
     keyboard.append([InlineKeyboardButton("🧩 Расширения", callback_data='settings_extensions')])
 
-    keyboard.append([InlineKeyboardButton("🧩 Расширения", callback_data='settings_extensions')])
-
     if extension_manager.is_extension_enabled('web_interface'):
         keyboard.append([InlineKeyboardButton("🌐 Веб-интерфейс", callback_data='settings_web')])
 
@@ -252,14 +250,65 @@ def show_backup_settings(update, context):
     if extension_manager.is_extension_enabled('zfs_monitor'):
         keyboard.append([InlineKeyboardButton("🧩 ZFS", callback_data='settings_zfs')])
 
-    if extension_manager.is_extension_enabled('zfs_monitor'):
-        keyboard.append([InlineKeyboardButton("🧩 ZFS", callback_data='settings_zfs')])
-
     keyboard.extend([
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ])
     
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def show_proxmox_backup_settings(update, context):
+    """Показать настройки бэкапов Proxmox в разделе расширений"""
+    query = update.callback_query
+    query.answer()
+
+    proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
+    proxmox_count = len(proxmox_hosts) if isinstance(proxmox_hosts, dict) else 0
+
+    message = (
+        "🖥️ *Бэкапы Proxmox*\n\n"
+        f"Хостов в списке: {proxmox_count}\n\n"
+        "Выберите раздел:"
+    )
+
+    keyboard = [
+        [InlineKeyboardButton("📋 Хосты", callback_data='settings_backup_proxmox')],
+        [InlineKeyboardButton("🔍 Паттерны", callback_data='settings_patterns_proxmox')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_extensions'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ]
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def show_database_backup_settings(update, context):
+    """Показать настройки бэкапов БД в разделе расширений"""
+    query = update.callback_query
+    query.answer()
+
+    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    db_categories = list(db_config.keys()) if isinstance(db_config, dict) else []
+
+    message = (
+        "🗃️ *Бэкапы БД*\n\n"
+        f"Категорий: {len(db_categories)}\n\n"
+        "Выберите раздел:"
+    )
+
+    keyboard = [
+        [InlineKeyboardButton("📋 Базы", callback_data='settings_db_main')],
+        [InlineKeyboardButton("🔍 Паттерны", callback_data='settings_patterns_db')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_extensions'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ]
+
     query.edit_message_text(
         message,
         parse_mode='Markdown',
@@ -377,6 +426,10 @@ def settings_callback_handler(update, context):
             show_settings_extensions_menu(update, context)
         elif data == 'settings_extensions_manage':
             show_extensions_settings_menu(update, context)
+        elif data == 'settings_ext_backup_proxmox':
+            show_proxmox_backup_settings(update, context)
+        elif data == 'settings_ext_backup_db':
+            show_database_backup_settings(update, context)
         elif data == 'settings_patterns_db':
             show_db_patterns_menu(update, context)
         elif data == 'settings_patterns_proxmox':
@@ -410,8 +463,6 @@ def settings_callback_handler(update, context):
             show_zfs_settings(update, context)
         elif data == 'settings_zfs_list':
             show_zfs_servers_list(update, context)
-        elif data == 'settings_zfs_status':
-            show_zfs_status_summary(update, context)
         elif data == 'settings_zfs_add':
             add_zfs_server_handler(update, context)
         elif data.startswith('settings_zfs_edit_name_'):
@@ -1415,7 +1466,7 @@ def show_backup_databases(update, context):
         [InlineKeyboardButton("📋 Просмотр всех БД", callback_data='view_all_databases')],
         [InlineKeyboardButton("➕ Добавить БД", callback_data='add_database'),
          InlineKeyboardButton("✏️ Редактировать БД", callback_data='edit_databases')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup'),
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_backup_db'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
     
@@ -1432,19 +1483,19 @@ def show_settings_extensions_menu(update, context):
 
     message = "🧩 *Расширения*\n\nВыберите раздел:"
 
-    keyboard = [
-        [InlineKeyboardButton("🛠️ Управление расширениями", callback_data='settings_extensions_manage')],
-    ]
+    keyboard = []
 
-    if (extension_manager.is_extension_enabled('backup_monitor') or
-            extension_manager.is_extension_enabled('database_backup_monitor')):
-        keyboard.append([InlineKeyboardButton("💾 Бэкапы", callback_data='settings_backup')])
+    if extension_manager.is_extension_enabled('backup_monitor'):
+        keyboard.append([InlineKeyboardButton("💾 Бэкапы Proxmox", callback_data='settings_ext_backup_proxmox')])
 
-    if extension_manager.is_extension_enabled('resource_monitor'):
-        keyboard.append([InlineKeyboardButton("💻 Ресурсы", callback_data='settings_resources')])
+    if extension_manager.is_extension_enabled('database_backup_monitor'):
+        keyboard.append([InlineKeyboardButton("🗃️ Бэкапы БД", callback_data='settings_ext_backup_db')])
 
     if extension_manager.is_extension_enabled('zfs_monitor'):
         keyboard.append([InlineKeyboardButton("🧩 ZFS", callback_data='settings_zfs')])
+
+    if extension_manager.is_extension_enabled('resource_monitor'):
+        keyboard.append([InlineKeyboardButton("💻 Ресурсы", callback_data='settings_resources')])
 
     keyboard.extend([
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
@@ -1521,7 +1572,7 @@ def _disable_all_extensions_settings(query):
 def show_db_patterns_menu(update, context):
     """Показать паттерны для БД"""
     context.user_data['patterns_filter'] = 'db'
-    context.user_data['patterns_back'] = 'settings_backup'
+    context.user_data['patterns_back'] = 'settings_ext_backup_db'
     context.user_data['patterns_add'] = 'add_pattern'
     context.user_data['patterns_title'] = "🗃️ *Паттерны бэкапов БД*"
     view_patterns_handler(update, context)
@@ -1529,7 +1580,7 @@ def show_db_patterns_menu(update, context):
 def show_proxmox_patterns_menu(update, context):
     """Показать паттерны для Proxmox"""
     context.user_data['patterns_filter'] = 'proxmox'
-    context.user_data['patterns_back'] = 'settings_backup'
+    context.user_data['patterns_back'] = 'settings_ext_backup_proxmox'
     context.user_data['patterns_add'] = 'add_proxmox_pattern'
     context.user_data['patterns_title'] = "🖥️ *Паттерны бэкапов Proxmox*"
     view_patterns_handler(update, context)
@@ -1563,7 +1614,7 @@ def show_backup_proxmox_settings(update, context):
         [InlineKeyboardButton("📋 Список хостов", callback_data='settings_proxmox_list')],
         [InlineKeyboardButton("➕ Добавить хост", callback_data='settings_proxmox_add')],
         [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup'),
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_backup_proxmox'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
 
@@ -1853,12 +1904,9 @@ def show_zfs_settings(update, context):
     message += "Выберите действие:"
 
     keyboard = [
-        [InlineKeyboardButton("📋 Список серверов", callback_data='settings_zfs_list')],
-        [InlineKeyboardButton("📊 Результаты", callback_data='settings_zfs_status')],
-        [InlineKeyboardButton("🔍 Паттерны ZFS", callback_data='settings_patterns_zfs')],
-        [InlineKeyboardButton("➕ Добавить сервер", callback_data='settings_zfs_add')],
-        [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup'),
+        [InlineKeyboardButton("📋 Хосты", callback_data='settings_zfs_list')],
+        [InlineKeyboardButton("🔍 Паттерны", callback_data='settings_patterns_zfs')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_extensions'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
 
@@ -1890,7 +1938,8 @@ def show_zfs_status_summary(update, context):
         ORDER BY s.server_name, s.pool_name
         """
     )
-    rows = cursor.fetchall()
+    if filter_mode != 'db':
+        rows = cursor.fetchall()
 
     if not rows:
         message = "📊 *ZFS статусы*\n\n❌ Данных нет."
@@ -1961,6 +2010,10 @@ def show_zfs_servers_list(update, context):
                 callback_data=f"settings_zfs_toggle_{server_name}"
             ),
         ])
+
+    keyboard.append([
+        InlineKeyboardButton("➕ Добавить сервер", callback_data='settings_zfs_add')
+    ])
 
     keyboard.append([
         InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu'),
@@ -3722,14 +3775,22 @@ def view_patterns_handler(update, context):
             """
         )
     elif filter_mode == 'db':
-        cursor.execute(
-            """
-            SELECT id, pattern_type, pattern, category
-            FROM backup_patterns
-            WHERE enabled = 1 AND category NOT IN ('zfs', 'proxmox')
-            ORDER BY category, pattern_type, id
-            """
-        )
+        db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+        categories = list(db_config.keys()) if isinstance(db_config, dict) else []
+        if not categories:
+            rows = []
+        else:
+            placeholders = ", ".join(["?"] * len(categories))
+            cursor.execute(
+                f"""
+                SELECT id, pattern_type, pattern, category
+                FROM backup_patterns
+                WHERE enabled = 1 AND category IN ({placeholders})
+                ORDER BY category, pattern_type, id
+                """,
+                categories,
+            )
+            rows = cursor.fetchall()
     elif filter_mode == 'proxmox':
         cursor.execute(
             """
