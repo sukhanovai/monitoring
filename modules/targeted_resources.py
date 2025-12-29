@@ -1,11 +1,11 @@
 """
 /modules/targeted_resources.py
-Server Monitoring System v6.0.9
+Server Monitoring System v6.0.10
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 A placeholder for address verification of resources.
 Система мониторинга серверов
-Версия: 6.0.9
+Версия: 6.0.10
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Заглушка для адресных проверок ресурсов.
