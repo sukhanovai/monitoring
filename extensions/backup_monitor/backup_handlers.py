@@ -45,6 +45,20 @@ def create_main_menu():
 
     return InlineKeyboardMarkup(keyboard)
 
+def create_proxmox_menu():
+    """Создает меню бэкапов Proxmox"""
+    keyboard = []
+
+    if extension_manager.is_extension_enabled('backup_monitor'):
+        keyboard.append([InlineKeyboardButton("🖥️ По хостам", callback_data='backup_hosts')])
+
+    keyboard.extend([
+        [InlineKeyboardButton("↩️ Назад", callback_data='main_menu')],
+        [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ])
+
+    return InlineKeyboardMarkup(keyboard)
+
 def create_navigation_buttons(back_button='backup_main', refresh_button=None, close=True):
     """Создает стандартные кнопки навигации"""
     buttons = []
@@ -164,6 +178,14 @@ def show_main_menu(query, backup_bot):
         "💾 *Мониторинг бэкапов Proxmox*\n\nВыберите опцию:",
         parse_mode='Markdown',
         reply_markup=create_main_menu()
+    )
+
+def show_proxmox_menu(query, backup_bot):
+    """Показывает меню бэкапов Proxmox"""
+    query.edit_message_text(
+        "💾 *Бэкапы Proxmox*\n\nВыберите опцию:",
+        parse_mode='Markdown',
+        reply_markup=create_proxmox_menu()
     )
 
 def show_today_status(query, backup_bot):
@@ -465,6 +487,9 @@ def show_database_backups_menu(query, backup_bot):
 
         from .db_settings_backup_monitor import DATABASE_BACKUP_CONFIG
 
+        if not isinstance(DATABASE_BACKUP_CONFIG, dict):
+            DATABASE_BACKUP_CONFIG = {}
+
         rows = backup_bot.execute_query(
             """
             SELECT DISTINCT
@@ -516,7 +541,7 @@ def show_database_backups_menu(query, backup_bot):
         if not db_by_type:
             message = "🗃️ *Бэкапы баз данных*\n\n❌ Нет данных о бэкапах БД."
             keyboard = [
-                [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')],
+                [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')],
                 [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ]
             query.edit_message_text(
@@ -561,7 +586,7 @@ def show_database_backups_menu(query, backup_bot):
                 keyboard.append(current_row)
 
         keyboard.extend([
-            [InlineKeyboardButton("↩️ Назад", callback_data='backup_main'),
+            [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases'),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
 

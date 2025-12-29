@@ -42,6 +42,13 @@ AVAILABLE_EXTENSIONS = {
         'enabled_by_default': True,
         'package': 'extensions.server_checks'
     },
+    'zfs_monitor': {
+        'name': '🧊 Мониторинг ZFS',
+        'description': 'Отслеживание статуса ZFS массивов по почтовым уведомлениям',
+        'commands': [],
+        'handlers': [],
+        'enabled_by_default': True
+    },
     'resource_monitor': {
         'name': '💻 Мониторинг ресурсов',
         'description': 'Проверка загрузки CPU, RAM и дискового пространства',
