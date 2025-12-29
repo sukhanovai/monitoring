@@ -1,7 +1,13 @@
 """
-Server Monitoring System v2.4.8
+/extensions/backup_monitor/backup_utils.py
+Server Monitoring System v6.0.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
+Utilities for working with backups
+Система мониторинга серверов
+Версия: 6.0.0
+Автор: Александр Суханов (c)
+Лицензия: MIT
 Утилиты для работы с бэкапами
 """
 
@@ -10,6 +16,192 @@ from datetime import datetime, timedelta
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def _normalize_db_key(name: str) -> str:
+    return str(name or "").replace("-", "_").lower()
+
+
+def _normalize_backup_type(backup_type: str, db_name: str) -> str:
+    if _normalize_db_key(db_name) == "trade" and backup_type == "client":
+        return "company_database"
+    return backup_type
+
+
+def _is_proxmox_host_enabled(host_value: object) -> bool:
+    """Проверяет, включен ли мониторинг хоста Proxmox."""
+    if isinstance(host_value, dict):
+        return host_value.get("enabled", True)
+    return True
+
+
+def get_backup_summary(period_hours=16):
+    """Возвращает текстовую сводку по бэкапам за период."""
+    try:
+        from config.db_settings import DATA_DIR, DATABASE_BACKUP_CONFIG, PROXMOX_HOSTS
+
+        db_path = DATA_DIR / "backups.db"
+        if not db_path.exists():
+            logger.error("База данных бэкапов недоступна: %s", db_path)
+            return "❌ База данных бэкапов недоступна\n"
+
+        since_time = (datetime.now() - timedelta(hours=period_hours)).strftime('%Y-%m-%d %H:%M:%S')
+        stale_threshold = (datetime.now() - timedelta(hours=24)).strftime('%Y-%m-%d %H:%M:%S')
+
+        conn = sqlite3.connect(str(db_path))
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT DISTINCT host_name
+            FROM proxmox_backups
+            WHERE received_at >= datetime('now', '-30 days')
+            ORDER BY host_name
+        ''')
+        all_hosts = [row[0] for row in cursor.fetchall()]
+        if PROXMOX_HOSTS:
+            configured_hosts = {
+                host for host, value in PROXMOX_HOSTS.items()
+                if _is_proxmox_host_enabled(value)
+            }
+            db_hosts = set(all_hosts)
+            matched_hosts = sorted(configured_hosts & db_hosts)
+            all_hosts = matched_hosts or list(configured_hosts)
+
+        cursor.execute('''
+            SELECT host_name, backup_status, MAX(received_at) as last_backup
+            FROM proxmox_backups
+            WHERE received_at >= ?
+            GROUP BY host_name
+        ''', (since_time,))
+        proxmox_results = cursor.fetchall()
+
+        cursor.execute('''
+            SELECT host_name, MAX(received_at) as last_backup
+            FROM proxmox_backups
+            GROUP BY host_name
+            HAVING last_backup < ?
+        ''', (stale_threshold,))
+        stale_hosts = cursor.fetchall()
+
+        cursor.execute('''
+            SELECT backup_type, database_name, backup_status, MAX(received_at) as last_backup
+            FROM database_backups
+            WHERE received_at >= ?
+            GROUP BY backup_type, database_name
+        ''', (since_time,))
+        db_results = cursor.fetchall()
+        db_results = [
+            (_normalize_backup_type(backup_type, db_name), db_name, status, last_backup)
+            for backup_type, db_name, status, last_backup in db_results
+        ]
+
+        cursor.execute('''
+            SELECT backup_type, database_name, MAX(received_at) as last_backup
+            FROM database_backups
+            GROUP BY backup_type, database_name
+            HAVING last_backup < ?
+        ''', (stale_threshold,))
+        stale_databases = cursor.fetchall()
+        stale_databases = [
+            (_normalize_backup_type(backup_type, db_name), db_name, last_backup)
+            for backup_type, db_name, last_backup in stale_databases
+        ]
+
+        conn.close()
+
+        allowed_hosts = set(all_hosts)
+        hosts_with_success = len([
+            r for r in proxmox_results
+            if r[1] == 'success' and r[0] in allowed_hosts
+        ])
+
+        company_databases = DATABASE_BACKUP_CONFIG.get("company_databases", {})
+        client_databases = DATABASE_BACKUP_CONFIG.get("client_databases", {})
+        if "trade" in client_databases and "trade" in company_databases:
+            client_databases = {
+                key: value for key, value in client_databases.items() if key != "trade"
+            }
+
+        company_databases = DATABASE_BACKUP_CONFIG.get("company_databases", {})
+        client_databases = DATABASE_BACKUP_CONFIG.get("client_databases", {})
+        if "trade" in client_databases and "trade" in company_databases:
+            client_databases = {
+                key: value for key, value in client_databases.items() if key != "trade"
+            }
+
+        config_databases = {
+            'company_database': company_databases,
+            'barnaul': DATABASE_BACKUP_CONFIG.get("barnaul_backups", {}),
+            'client': client_databases,
+            'yandex': DATABASE_BACKUP_CONFIG.get("yandex_backups", {}),
+        }
+
+        db_stats = {}
+        for category, databases in config_databases.items():
+            total_in_config = len(databases)
+            if total_in_config == 0:
+                continue
+
+            successful_count = 0
+            for db_key in databases.keys():
+                if any(
+                    backup_type == category and db_name == db_key and status == 'success'
+                    for backup_type, db_name, status, _ in db_results
+                ):
+                    successful_count += 1
+
+            db_stats[category] = {
+                'total': total_in_config,
+                'successful': successful_count,
+            }
+
+        message = ""
+
+        if len(all_hosts) > 0:
+            success_rate = (hosts_with_success / len(all_hosts)) * 100
+            message += f"• Proxmox: {hosts_with_success}/{len(all_hosts)} успешно ({success_rate:.1f}%)"
+            if stale_hosts:
+                message += f" ⚠️ {len(stale_hosts)} хостов без бэкапов >24ч"
+            message += "\n"
+
+        message += "• Базы данных:\n"
+
+        category_names = {
+            'company_database': 'Основные',
+            'barnaul': 'Барнаул',
+            'client': 'Клиенты',
+            'yandex': 'Yandex',
+        }
+
+        for category in ['company_database', 'barnaul', 'client', 'yandex']:
+            if category not in db_stats:
+                continue
+            stats = db_stats[category]
+            if stats['total'] <= 0:
+                continue
+
+            type_name = category_names[category]
+            success_rate = (stats['successful'] / stats['total']) * 100
+            message += f"  - {type_name}: {stats['successful']}/{stats['total']} успешно ({success_rate:.1f}%)"
+
+            stale_count = len([db for db in stale_databases if db[0] == category])
+            if stale_count > 0:
+                message += f" ⚠️ {stale_count} БД без бэкапов >24ч"
+            message += "\n"
+
+        total_stale = len(stale_hosts) + len(stale_databases)
+        if total_stale > 0:
+            message += f"\n🚨 Внимание: {total_stale} проблем:\n"
+            if stale_hosts:
+                message += f"• {len(stale_hosts)} хостов без бэкапов >24ч\n"
+            if stale_databases:
+                message += f"• {len(stale_databases)} БД без бэкапов >24ч\n"
+
+        return message
+
+    except Exception as e:
+        logger.exception("Ошибка формирования отчета о бэкапах: %s", e)
+        return "❌ Ошибка формирования отчета о бэкапах\n"
 
 class BackupBase:
     """Базовый класс для работы с бэкапами"""

@@ -1,32 +1,49 @@
 """
-Server Monitoring System v2.4.8
+/extensions/backup_monitor/backup_handlers.py
+Server Monitoring System v6.0.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
+Handlers for the backup bot
+Система мониторинга серверов
+Версия: 6.0.0
+Автор: Александр Суханов (c)
+Лицензия: MIT
 Обработчики для бота бэкапов
 """
 
 import logging
+import os
+import sys
 from datetime import datetime, timedelta
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from extensions.extension_manager import extension_manager
+from .backup_utils import DisplayFormatters
+formatters = DisplayFormatters()
+from telegram.utils.helpers import escape_markdown
 
-from backup_utils import DisplayFormatters
+def _md(s) -> str:
+    return escape_markdown(str(s or ""), version=1)
 
 logger = logging.getLogger(__name__)
-formatters = DisplayFormatters()
 
 # === УТИЛИТЫ ДЛЯ СОЗДАНИЯ КЛАВИАТУР ===
 
 def create_main_menu():
     """Создает главное меню бэкапов"""
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("📊 Сегодня", callback_data='backup_today')],
-        [InlineKeyboardButton("⏰ 24 часа", callback_data='backup_24h')],
-        [InlineKeyboardButton("❌ Ошибки", callback_data='backup_failed')],
-        [InlineKeyboardButton("🖥️ По хостам", callback_data='backup_hosts')],
-        [InlineKeyboardButton("🗃️ Бэкапы БД", callback_data='backup_databases')],
-        [InlineKeyboardButton("🔄 Обновить", callback_data='backup_refresh')],
+    keyboard = []
+
+    if extension_manager.is_extension_enabled('backup_monitor'):
+        keyboard.append([InlineKeyboardButton("🖥️ По хостам", callback_data='backup_hosts')])
+
+    if extension_manager.is_extension_enabled('database_backup_monitor'):
+        keyboard.append([InlineKeyboardButton("🗃️ Бэкапы БД", callback_data='backup_databases')])
+
+    keyboard.extend([
+        [InlineKeyboardButton("↩️ Назад", callback_data='main_menu')],
         [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ])
+
+    return InlineKeyboardMarkup(keyboard)
 
 def create_navigation_buttons(back_button='backup_main', refresh_button=None, close=True):
     """Создает стандартные кнопки навигации"""
@@ -36,6 +53,7 @@ def create_navigation_buttons(back_button='backup_main', refresh_button=None, cl
         buttons.append([InlineKeyboardButton("🔄 Обновить", callback_data=refresh_button)])
     
     buttons.append([InlineKeyboardButton("↩️ Назад", callback_data=back_button)])
+    buttons.append([InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')])
     
     if close:
         buttons.append([InlineKeyboardButton("✖️ Закрыть", callback_data='close')])
@@ -84,7 +102,11 @@ def create_hosts_keyboard(hosts, host_statuses, show_problems_button=True):
             callback_data='backup_stale_hosts'
         )])
     
-    keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data='backup_main')])
+    keyboard.append([
+        InlineKeyboardButton("↩️ Назад", callback_data='backup_main'),
+        InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu'),
+        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+    ])
     
     return InlineKeyboardMarkup(keyboard)
 
@@ -125,17 +147,10 @@ def create_databases_keyboard(databases_by_type, problem_db_count=0):
     if keyboard and not keyboard[-1]:
         keyboard.pop()
     
-    # Кнопка проблемных БД
-    if problem_db_count > 0:
-        keyboard.append([InlineKeyboardButton(
-            f"🔍 Показать проблемные БД ({problem_db_count})", 
-            callback_data='db_stale_list'
-        )])
-    
     # Кнопки управления
     keyboard.extend([
-        [InlineKeyboardButton("🔄 Обновить", callback_data='db_backups_list')],
         [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')],
+        [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
         [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ])
     
@@ -143,7 +158,7 @@ def create_databases_keyboard(databases_by_type, problem_db_count=0):
 
 # === ОСНОВНЫЕ ОБРАБОТЧИКИ ===
 
-def show_main_menu(query):
+def show_main_menu(query, backup_bot):
     """Показывает главное меню бэкапов"""
     query.edit_message_text(
         "💾 *Мониторинг бэкапов Proxmox*\n\nВыберите опцию:",
@@ -362,7 +377,6 @@ def show_stale_hosts(query, backup_bot):
         message += f"\n*Всего проблемных хостов:* {len(problem_hosts)}"
         
         keyboard.extend([
-            [InlineKeyboardButton("🔄 Обновить", callback_data='backup_stale_hosts')],
             [InlineKeyboardButton("📋 Все хосты", callback_data='backup_hosts')],
             [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')]
         ])
@@ -416,7 +430,7 @@ def show_host_status(query, backup_bot, host_name):
             parse_mode='Markdown',
             reply_markup=create_navigation_buttons(
                 back_button='backup_hosts', 
-                refresh_button=f'backup_host_{host_name}'
+                refresh_button=None
             )
         )
 
@@ -424,102 +438,175 @@ def show_host_status(query, backup_bot, host_name):
         logger.error(f"Ошибка в show_host_status: {e}")
         query.edit_message_text("❌ Ошибка при получении данных")
 
+def _normalize_db_key(name: str) -> str:
+    return str(name or "").replace("-", "_").lower()
+
+def _normalize_backup_type(backup_type: str, db_name: str) -> str:
+    if _normalize_db_key(db_name) == "trade" and backup_type == "client":
+        return "company_database"
+    return backup_type
+
+def _normalize_config_backup_type(category: str) -> str:
+    normalized = _normalize_db_key(category)
+    if normalized in ("company", "company_database"):
+        return "company_database"
+    if normalized in ("barnaul", "barnaul_backups"):
+        return "barnaul"
+    if normalized in ("client", "client_databases"):
+        return "client"
+    if normalized in ("yandex", "yandex_backups"):
+        return "yandex"
+    return category
+
 def show_database_backups_menu(query, backup_bot):
-    """Показывает меню бэкапов баз данных"""
-    keyboard = [
-        [InlineKeyboardButton("📊 Сводка за 24ч", callback_data='db_backups_24h')],
-        [InlineKeyboardButton("📈 Сводка за 48ч", callback_data='db_backups_48h')],
-        [InlineKeyboardButton("📋 Список БД", callback_data='db_backups_list')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')],
-        [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-    ]
-
-    query.edit_message_text(
-        "🗃️ *Бэкапы баз данных*\n\nВыберите опцию:",
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
-
-def show_database_backups_list(query, backup_bot):
-    """Показывает список всех баз данных"""
+    """Показывает меню с базами данных (из конфигурации и backups.db)"""
     try:
-        from config import DATABASE_BACKUP_CONFIG
-        
-        # Группируем базы по типам
-        databases_by_type = {
-            'company_database': [],
-            'barnaul': [],
-            'client': [],
-            'yandex': []
-        }
-        
-        problem_db_count = 0
-        
-        # Заполняем списки базами из конфигурации
-        config_mapping = [
-            ('company_database', DATABASE_BACKUP_CONFIG.get("company_databases", {})),
-            ('barnaul', DATABASE_BACKUP_CONFIG.get("barnaul_backups", {})),
-            ('client', DATABASE_BACKUP_CONFIG.get("client_databases", {})),
-            ('yandex', DATABASE_BACKUP_CONFIG.get("yandex_backups", {}))
-        ]
-        
-        for backup_type, config_dict in config_mapping:
-            for db_name, display_name in config_dict.items():
-                status = backup_bot.get_database_display_status(backup_type, db_name)
-                
-                if status not in ['success', 'unknown']:
-                    problem_db_count += 1
-                
-                databases_by_type[backup_type].append({
-                    'original_name': db_name,
-                    'display_name': display_name,
-                    'status': status
-                })
+        logger.info("🧪 BACKUP DB: entering show_database_backups_menu")
 
-        # Создаем сообщение с легендой
-        message = "📋 *Список баз данных*\n\n"
+        from .db_settings_backup_monitor import DATABASE_BACKUP_CONFIG
+
+        rows = backup_bot.execute_query(
+            """
+            SELECT DISTINCT
+                backup_type,
+                database_name,
+                COALESCE(database_display_name, '')
+            FROM database_backups
+            ORDER BY backup_type, database_name
+            """,
+            ()
+        ) or []
+
+        # Группируем БД по типу (берём из конфигурации)
+        db_by_type = {}
+        allowed_by_type = {}
+
+        for category, databases in DATABASE_BACKUP_CONFIG.items():
+            if not isinstance(databases, dict):
+                continue
+            backup_type = _normalize_config_backup_type(category)
+            allowed_by_type.setdefault(backup_type, set())
+            for db_name in databases.keys():
+                normalized_key = _normalize_db_key(db_name)
+                allowed_by_type[backup_type].add(normalized_key)
+                db_by_type.setdefault(backup_type, {})
+                if normalized_key not in db_by_type[backup_type]:
+                    db_by_type[backup_type][normalized_key] = {
+                        "db_name": db_name,
+                        "label": db_name,
+                    }
+
+        for backup_type, db_name, display_name in rows:
+            if not backup_type or not db_name:
+                continue
+
+            backup_type = _normalize_backup_type(backup_type, db_name)
+            normalized_key = _normalize_db_key(db_name)
+            if backup_type not in allowed_by_type:
+                continue
+            if normalized_key not in allowed_by_type[backup_type]:
+                continue
+            db_by_type.setdefault(backup_type, {})
+            if normalized_key not in db_by_type[backup_type]:
+                db_by_type[backup_type][normalized_key] = {
+                    "db_name": db_name,
+                    "label": db_name,
+                }
+
+        if not db_by_type:
+            message = "🗃️ *Бэкапы баз данных*\n\n❌ Нет данных о бэкапах БД."
+            keyboard = [
+                [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')],
+                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ]
+            query.edit_message_text(
+                message,
+                parse_mode='Markdown',
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+            return
+
+        keyboard = []
+        for backup_type in sorted(db_by_type.keys()):
+            type_display = formatters.get_type_display(backup_type)
+            keyboard.append([InlineKeyboardButton(
+                f"───── {type_display} ─────",
+                callback_data='no_action'
+            )])
+
+            current_row = []
+            entries = list(db_by_type[backup_type].values())
+            entries.sort(key=lambda item: item["label"].lower())
+            for entry in entries:
+                db_name = entry["db_name"]
+                display_name = entry["label"]
+                try:
+                    effective_type = _get_latest_backup_type(backup_bot, db_name, hours=48) or backup_type
+                    status = backup_bot.get_database_display_status(effective_type, db_name)
+                    display_btn = formatters.get_db_display_name(display_name, status)
+
+                    current_row.append(InlineKeyboardButton(
+                        display_btn,
+                        callback_data=f'db_detail_{backup_type}__{db_name}'
+                    ))
+
+                    if len(current_row) == 2:
+                        keyboard.append(current_row)
+                        current_row = []
+                except Exception as e:
+                    logger.error(f"❌ Ошибка обработки БД {backup_type}/{db_name}: {e}")
+                    continue
+
+            if current_row:
+                keyboard.append(current_row)
+
+        keyboard.extend([
+            [InlineKeyboardButton("↩️ Назад", callback_data='backup_main'),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ])
+
+        message = "🗃️ *Бэкапы баз данных*\n\n"
         message += "*Легенда:*\n"
         message += "✅ - все бэкапы успешны\n"
         message += "🔴 - последний бэкап неудачен\n"
-        message += "🟠 - есть неудачные бэкапы/ошибки\n"
-        message += "🟡 - есть предупреждения\n"
-        message += "⚫ - нет свежих бэкапов\n"
+        message += "🟠 - есть неудачные бэкапы в истории\n"
+        message += "🟡 - есть ошибки или последний бэкап старше 24ч\n"
+        message += "⚫ - нет бэкапов >48ч\n"
         message += "⚪ - статус неизвестен\n\n"
-        
-        message += "Выберите базу для просмотра деталей:"
-
+        message += "Выберите базу данных для просмотра деталей:"
         query.edit_message_text(
             message,
             parse_mode='Markdown',
-            reply_markup=create_databases_keyboard(databases_by_type, problem_db_count)
+            reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
     except Exception as e:
-        logger.error(f"Ошибка в show_database_backups_list: {e}")
-        query.edit_message_text("❌ Ошибка при получении данных")
-
+        logger.error(f"Ошибка в show_database_backups_menu: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        query.edit_message_text("❌ Ошибка при формировании меню баз данных")
+                                
 def show_stale_databases(query, backup_bot):
     """Показывает только проблемные базы данных"""
     try:
-        from config import DATABASE_BACKUP_CONFIG
+        from .db_settings_backup_monitor import DATABASE_BACKUP_CONFIG
         
         problem_databases = []
         
         # Проверяем все базы из конфигурации
-        config_mapping = [
-            ('company_database', DATABASE_BACKUP_CONFIG.get("company_databases", {})),
-            ('barnaul', DATABASE_BACKUP_CONFIG.get("barnaul_backups", {})),
-            ('client', DATABASE_BACKUP_CONFIG.get("client_databases", {})),
-            ('yandex', DATABASE_BACKUP_CONFIG.get("yandex_backups", {}))
-        ]
+        config_mapping = []
+        for category, databases in DATABASE_BACKUP_CONFIG.items():
+            if not isinstance(databases, dict):
+                continue
+            config_mapping.append((_normalize_config_backup_type(category), databases))
         
         for backup_type, config_dict in config_mapping:
-            for db_name, display_name in config_dict.items():
+            for db_name in config_dict.keys():
                 status = backup_bot.get_database_display_status(backup_type, db_name)
                 if status not in ['success', 'unknown']:
                     recent = backup_bot.get_database_recent_status(backup_type, db_name, 72)
                     last_time = recent[0][1] if recent else None
-                    problem_databases.append((backup_type, db_name, display_name, status, last_time))
+                    problem_databases.append((backup_type, db_name, db_name, status, last_time))
 
         if not problem_databases:
             query.edit_message_text(
@@ -563,7 +650,6 @@ def show_stale_databases(query, backup_bot):
         message += f"\n*Всего проблемных БД:* {len(problem_databases)}"
         
         keyboard.extend([
-            [InlineKeyboardButton("🔄 Обновить", callback_data='db_stale_list')],
             [InlineKeyboardButton("📋 Все БД", callback_data='db_backups_list')],
             [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')]
         ])
@@ -599,9 +685,10 @@ def show_database_backups_summary(query, backup_bot, hours):
         # Группируем по типам
         by_type = {}
         for backup_type, db_name, db_display, status, count, last_backup in stats:
-            if backup_type not in by_type:
-                by_type[backup_type] = []
-            by_type[backup_type].append((db_name, db_display, status, count, last_backup))
+            normalized_type = _normalize_backup_type(backup_type, db_name)
+            if normalized_type not in by_type:
+                by_type[normalized_type] = []
+            by_type[normalized_type].append((db_name, db_display, status, count, last_backup))
 
         for backup_type, databases in by_type.items():
             type_display = formatters.get_type_display(backup_type)
@@ -642,65 +729,142 @@ def show_database_backups_summary(query, backup_bot, hours):
         logger.error(f"Ошибка в show_database_backups_summary: {e}")
         query.edit_message_text("❌ Ошибка при получении данных")
 
-def format_database_details(backup_bot, backup_type, db_name, hours=168):
-    """Форматирует детальную информацию по БД"""
+def _esc_md(text: str) -> str:
+    """Экранирует спецсимволы Markdown (parse_mode='Markdown')."""
+    if text is None:
+        return ""
+    s = str(text)
+    # для Markdown v1 достаточно экранировать базовые символы
+    return (s.replace("\\", "\\\\")
+             .replace("_", "\\_")
+             .replace("*", "\\*")
+             .replace("[", "\\[")
+             .replace("`", "\\`"))
+
+def _get_latest_database_display_name(backup_bot, backup_type, db_name):
     try:
-        display_names = backup_bot.get_database_display_names()
-        display_name = display_names.get(db_name, db_name)
-        
+        rows = backup_bot.execute_query(
+            """
+            SELECT database_display_name
+            FROM database_backups
+            WHERE backup_type = ? AND database_name = ?
+              AND database_display_name IS NOT NULL
+              AND TRIM(database_display_name) != ''
+            ORDER BY received_at DESC
+            LIMIT 1
+            """,
+            (backup_type, db_name),
+        )
+        if rows:
+            return rows[0][0]
+    except Exception as e:
+        logger.error(f"Ошибка получения display_name для {backup_type}/{db_name}: {e}")
+    return None
+
+
+def _get_latest_backup_type(backup_bot, db_name, hours=168):
+    try:
+        since_time = (datetime.now() - timedelta(hours=hours)).strftime('%Y-%m-%d %H:%M:%S')
+        rows = backup_bot.execute_query(
+            """
+            SELECT backup_type
+            FROM database_backups
+            WHERE database_name = ? AND received_at >= ?
+            ORDER BY received_at DESC
+            LIMIT 1
+            """,
+            (db_name, since_time),
+        )
+        if rows:
+            return rows[0][0]
+    except Exception as e:
+        logger.error(f"Ошибка получения backup_type для {db_name}: {e}")
+    return None
+
+
+def _get_client_suffix(display_name: str | None) -> str | None:
+    if not display_name:
+        return None
+    if "КС" in display_name.split():
+        return "КС"
+    if "Рубикон" in display_name:
+        return "Рубикон"
+    return None
+
+
+def _get_details_display_name(backup_bot, backup_type, db_name):
+    base_name = db_name
+    if backup_type == "barnaul":
+        return f"{base_name} Барнаул"
+    if backup_type == "client":
+        display_name = _get_latest_database_display_name(backup_bot, backup_type, db_name)
+        client_suffix = _get_client_suffix(display_name)
+        if client_suffix:
+            return f"{base_name} {client_suffix}"
+    return base_name
+
+
+def format_database_details(backup_bot, backup_type, db_name, hours=168):
+    """Форматирует детальную информацию по БД."""
+    try:
+        requested_type = backup_type
+        display_name = _get_details_display_name(backup_bot, requested_type, db_name)
+
         details = backup_bot.get_database_details(backup_type, db_name, hours)
-        
         if not details:
-            return f"📋 Детали по {display_name}\n\nНет данных за последние {hours} часов"
-                
-        type_display = formatters.get_type_display(backup_type)
-        
-        message = f"📋 *Детали по {display_name}*\n"
-        message += f"*Тип:* {type_display}\n"
+            fallback_type = _get_latest_backup_type(backup_bot, db_name, hours)
+            if fallback_type and fallback_type != backup_type:
+                details = backup_bot.get_database_details(fallback_type, db_name, hours)
+        if not details:
+            return f"📋 Детали по {_esc_md(display_name)}\n\nНет данных за последние {hours} часов"
+
+        type_display = formatters.get_type_display(requested_type)
+
+        message = f"📋 *Детали по {_esc_md(display_name)}*\n"
+        message += f"*Тип:* {_esc_md(type_display)}\n"
         message += f"*Период:* {hours} часов\n\n"
-        
-        # Статистика
-        success_count = len([d for d in details if d[0] == 'success'])
-        failed_count = len([d for d in details if d[0] == 'failed'])
+
+        # expected tuple: (status, task_type, error_count, subject, received_at)
+        success_count = sum(1 for d in details if d and d[0] == 'success')
+        failed_count = sum(1 for d in details if d and d[0] == 'failed')
         total_count = len(details)
-        
-        message += f"📊 *Статистика:*\n"
+
+        message += "📊 *Статистика:*\n"
         message += f"✅ Успешных: {success_count}\n"
         message += f"❌ Ошибок: {failed_count}\n"
         message += f"📈 Всего: {total_count}\n\n"
-        
-        # Последние бэкапы
+
         message += "⏰ *Последние бэкапы:*\n"
-        
+
         task_type_names = {
             'database_dump': 'Дамп БД',
-            'client_database_dump': 'Дамп клиентской БД', 
+            'client_database_dump': 'Дамп клиентской БД',
             'cobian_backup': 'Резервное копирование',
             'yandex_backup': 'Yandex Backup'
         }
-        
+
         for status, task_type, error_count, subject, received_at in details[:5]:
             status_icon = "✅" if status == 'success' else "❌"
             try:
                 backup_time = datetime.strptime(received_at, '%Y-%m-%d %H:%M:%S')
                 time_str = backup_time.strftime('%d.%m %H:%M')
-            except:
-                time_str = received_at[:16]
-            
+            except Exception:
+                time_str = (received_at or "")[:16]
+
             task_display = task_type_names.get(task_type, task_type or 'Резервное копирование')
-            
-            message += f"{status_icon} *{time_str}* - {status} - {task_display}"
-            if error_count and error_count > 0:
-                message += f" (ошибок: {error_count})"
-            message += "\n"
-        
+
+            line = f"{status_icon} *{_esc_md(time_str)}* - {_esc_md(status)} - {_esc_md(task_display)}"
+            if error_count and int(error_count) > 0:
+                line += f" (ошибок: {int(error_count)})"
+            message += line + "\n"
+
         message += f"\n🕒 *Обновлено:* {datetime.now().strftime('%H:%M:%S')}"
         return message
-        
-    except Exception as e:
-        logger.error(f"Ошибка в format_database_details: {e}")
-        return f"❌ Ошибка при получении деталей БД: {e}"
 
+    except Exception as e:
+        logger.exception(f"Ошибка в format_database_details: {e}")
+        return f"❌ Ошибка при получении деталей БД: {e}"
+    
 def show_database_details(query, backup_bot, backup_type, db_name):
     """Показывает детальную информацию по БД"""
     try:

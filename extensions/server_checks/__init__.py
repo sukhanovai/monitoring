@@ -1,7 +1,13 @@
 """
-Server Monitoring System v2.4.1
+/extensions/server_checks/__init__.py
+Server Monitoring System v6.0.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
+Unified server checks: resources, availability, list
+Система мониторинга серверов
+Версия: 6.0.0
+Автор: Александр Суханов (c)
+Лицензия: MIT
 Унифицированные проверки серверов: ресурсы, доступность, список
 """
 
@@ -11,20 +17,40 @@ import socket
 from datetime import datetime
 import sys
 import os
-sys.path.insert(0, '/opt/monitoring')
+from lib.network import check_port as net_check_port, check_ping as net_check_ping
+from config.settings import BASE_DIR
+from config.db_settings import (
+    RDP_SERVERS,
+    SSH_SERVERS,
+    PING_SERVERS,
+    SSH_KEY_PATH,
+    SSH_USERNAME,
+    RESOURCE_THRESHOLDS,
+    WINDOWS_SERVER_CREDENTIALS,
+    WINRM_CONFIGS,
+    SERVER_CONFIG,
+    get_servers_config,
+)
+from core.checker import ServerChecker
+from lib.logging import debug_log
+sys.path.insert(0, str(BASE_DIR))
 
-from config import (RDP_SERVERS, SSH_SERVERS, PING_SERVERS, SSH_KEY_PATH, SSH_USERNAME, 
-                   RESOURCE_THRESHOLDS, WINDOWS_SERVER_CREDENTIALS, WINRM_CONFIGS,
-                   SERVER_CONFIG)
+# Локальный экземпляр проверяющего
+_server_checker = ServerChecker()
 
 # === СПИСОК СЕРВЕРОВ ===
 
 def initialize_servers():
     """Инициализация списка серверов из конфигурации"""
     servers = []
+    servers_config = get_servers_config()
+    if not any(servers_config.values()):
+        servers_config = SERVER_CONFIG
+        if not any(servers_config.values()):
+            debug_log("⚠️ Конфигурация серверов пуста")
     
     # Windows RDP серверы
-    for ip, name in SERVER_CONFIG["windows_servers"].items():
+    for ip, name in servers_config.get("windows_servers", {}).items():
         servers.append({
             "ip": ip,
             "name": name,
@@ -32,7 +58,7 @@ def initialize_servers():
         })
     
     # Linux SSH серверы
-    for ip, name in SERVER_CONFIG["linux_servers"].items():
+    for ip, name in servers_config.get("linux_servers", {}).items():
         servers.append({
             "ip": ip,
             "name": name,
@@ -40,7 +66,7 @@ def initialize_servers():
         })
     
     # Ping-only серверы
-    for ip, name in SERVER_CONFIG["ping_servers"].items():
+    for ip, name in servers_config.get("ping_servers", {}).items():
         servers.append({
             "ip": ip,
             "name": name,
@@ -100,8 +126,7 @@ def servers_command(update, context):
         message += "\n"
     
     keyboard = [
-        [InlineKeyboardButton("🔄 Обновить список", callback_data='servers_list')],
-        [InlineKeyboardButton("📊 Статус мониторинга", callback_data='monitor_status')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers')],
         [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
     
@@ -126,23 +151,11 @@ def servers_list_handler(update, context):
 
 def check_port(ip, port, timeout=5):
     """Проверка доступности порта"""
-    try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(timeout)
-        result = sock.connect_ex((ip, port))
-        sock.close()
-        return result == 0
-    except:
-        return False
+    return net_check_port(ip, port, timeout=timeout)
 
 def check_ping(ip):
     """Проверка доступности через ping"""
-    try:
-        result = subprocess.run(['ping', '-c', '2', '-W', '2', ip], 
-                              capture_output=True, text=True, timeout=10)
-        return result.returncode == 0
-    except:
-        return False
+    return net_check_ping(ip, timeout=10)
 
 def run_ssh_command(ip, command, timeout=10):
     """Выполняет команду через SSH с обработкой ошибок"""
@@ -630,3 +643,20 @@ def check_resource_thresholds(ip, resources, server_name):
         alerts.append(f"⚠️ Disk: {disk}% (мало места)")
 
     return alerts
+
+def check_server_availability(server):
+    """Универсальная проверка доступности сервера - РАБОЧАЯ ВЕРСИЯ"""
+    try:
+        server_type = server.get("type", "ssh")
+        ip = server["ip"]
+        
+        if server_type == "rdp":
+            return check_port(ip, 3389)
+        elif server_type == "ping":
+            return check_ping(ip)
+        else:
+            return _server_checker.check_ssh_universal(ip)
+    except Exception as e:
+        debug_log(f"❌ Ошибка проверки {server.get('name', 'unknown')}: {e}")
+        return False
+    
