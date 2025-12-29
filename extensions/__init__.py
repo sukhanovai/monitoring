@@ -1,11 +1,11 @@
 """
 /extensions/__init__.py
-Server Monitoring System v6.0.5
+Server Monitoring System v6.0.6
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Extensions interface
 Система мониторинга серверов
-Версия: 6.0.5
+Версия: 6.0.6
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Интерфейс расширений
