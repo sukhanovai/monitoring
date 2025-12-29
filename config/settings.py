@@ -154,6 +154,7 @@ PROXMOX_HOSTS: Dict[str, Any] = {}
 DUPLICATE_IP_HOSTS: Dict[str, List[str]] = {}
 HOSTNAME_ALIASES: Dict[str, List[str]] = {}
 BACKUP_PATTERNS: Dict[str, Dict[str, List[str]]] = {}
+ZFS_SERVERS: Dict[str, Dict[str, Any]] = {}
 BACKUP_STATUS_MAP = {
     'backup successful': 'success',
     'successful': 'success',
