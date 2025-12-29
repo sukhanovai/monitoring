@@ -31,7 +31,10 @@ from config.db_settings import (
     MAILDIR_CUR,
     MAILDIR_NEW,
     MAIL_MONITOR_LOG_FILE,
+    ZFS_SERVERS,
 )
+from core.config_manager import config_manager
+from extensions.extension_manager import extension_manager
 from lib.logging import setup_logging
 
 LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -107,6 +110,32 @@ logger.info(
 )
 
 
+def get_zfs_patterns_from_config() -> list[str]:
+    """Извлекает паттерны для писем ZFS из таблицы паттернов."""
+    try:
+        patterns = config_manager.get_backup_patterns()
+        zfs_patterns = patterns.get("zfs", {})
+        subject_patterns: list[str] = []
+
+        if isinstance(zfs_patterns, dict):
+            subject_patterns = zfs_patterns.get("subject", [])
+        elif isinstance(zfs_patterns, list):
+            subject_patterns = zfs_patterns
+
+        if not subject_patterns:
+            fallback = BACKUP_PATTERNS.get("zfs", {})
+            if isinstance(fallback, dict):
+                subject_patterns = fallback.get("subject", [])
+            elif isinstance(fallback, list):
+                subject_patterns = fallback
+
+        return [pattern for pattern in subject_patterns if isinstance(pattern, str)]
+
+    except Exception as exc:
+        logger.error(f"❌ Ошибка извлечения ZFS паттернов: {exc}")
+        return []
+
+
 class BackupProcessor:
     """Обработчик бэкапов."""
 
@@ -141,6 +170,28 @@ class BackupProcessor:
                 """
                 CREATE INDEX IF NOT EXISTS idx_backups_host_date
                 ON proxmox_backups(host_name, received_at)
+            """
+            )
+
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS zfs_pool_status (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    server_name TEXT NOT NULL,
+                    pool_name TEXT NOT NULL,
+                    pool_index INTEGER,
+                    pool_state TEXT NOT NULL,
+                    email_subject TEXT,
+                    received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(server_name, pool_name, received_at)
+                )
+            """
+            )
+
+            cursor.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_zfs_server_date
+                ON zfs_pool_status(server_name, received_at)
             """
             )
 
@@ -400,6 +451,120 @@ class BackupProcessor:
             if "conn" in locals():
                 conn.close()
 
+    def parse_zfs_status(self, subject: str) -> list[dict] | None:
+        """Парсит статусы ZFS массивов из темы письма."""
+        if not extension_manager.is_extension_enabled("zfs_monitor"):
+            return None
+
+        patterns = get_zfs_patterns_from_config()
+        if not patterns:
+            logger.info("⚠️ Паттерны ZFS не настроены")
+            return None
+
+        matched_server = None
+        for pattern in patterns:
+            match = re.search(pattern, subject, re.IGNORECASE)
+            if not match:
+                continue
+
+            if match.groupdict().get("server"):
+                matched_server = match.group("server")
+            elif match.groups():
+                matched_server = match.group(1)
+            break
+
+        if not matched_server:
+            return None
+
+        matched_server = matched_server.strip()
+        if matched_server not in ZFS_SERVERS and matched_server.lower() in ZFS_SERVERS:
+            matched_server = matched_server.lower()
+
+        states = re.findall(r"state:\s*([A-Za-z0-9_-]+)", subject, re.IGNORECASE)
+        if not states:
+            logger.warning(f"⚠️ Не удалось найти статусы ZFS в теме: {subject}")
+            return None
+
+        server_config = ZFS_SERVERS.get(matched_server, {})
+        if not server_config:
+            logger.warning(
+                "⚠️ ZFS сервер не найден в настройках: %s",
+                matched_server,
+            )
+        if isinstance(server_config, dict) and not server_config.get("enabled", True):
+            logger.info("ℹ️ ZFS сервер отключен в настройках: %s", matched_server)
+            return None
+
+        arrays = server_config.get("arrays", []) if isinstance(server_config, dict) else []
+        if arrays and len(arrays) != len(states):
+            logger.warning(
+                "⚠️ Количество массивов ZFS не совпадает со статусами: %s (%s/%s)",
+                matched_server,
+                len(arrays),
+                len(states),
+            )
+
+        entries = []
+        for index, state in enumerate(states, start=1):
+            pool_name = arrays[index - 1] if index - 1 < len(arrays) else f"pool_{index}"
+            entries.append(
+                {
+                    "server_name": matched_server,
+                    "pool_name": pool_name,
+                    "pool_index": index,
+                    "pool_state": state.upper(),
+                }
+            )
+
+        return entries
+
+    def save_zfs_status(
+        self,
+        entries: list[dict],
+        subject: str,
+        email_date: datetime | None = None,
+    ) -> None:
+        """Сохраняет статусы ZFS массивов в БД."""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            received_at = (
+                email_date.strftime("%Y-%m-%d %H:%M:%S")
+                if email_date
+                else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            )
+
+            for entry in entries:
+                cursor.execute(
+                    """
+                    INSERT OR IGNORE INTO zfs_pool_status
+                    (server_name, pool_name, pool_index, pool_state, email_subject, received_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                    (
+                        entry["server_name"],
+                        entry["pool_name"],
+                        entry.get("pool_index"),
+                        entry["pool_state"],
+                        subject[:500],
+                        received_at,
+                    ),
+                )
+
+            conn.commit()
+            logger.info(
+                "✅ Сохранены статусы ZFS: %s (%s шт.)",
+                entries[0]["server_name"] if entries else "unknown",
+                len(entries),
+            )
+
+        except Exception as exc:
+            logger.error(f"❌ Ошибка сохранения ZFS статуса в БД: {exc}")
+        finally:
+            if "conn" in locals():
+                conn.close()
+
     def parse_email_file(self, file_path: Path) -> dict | None:
         """Парсит email файл."""
         try:
@@ -453,8 +618,16 @@ class BackupProcessor:
                 self.save_database_backup(db_backup_info, subject, email_date)
                 return db_backup_info
 
+            zfs_entries = self.parse_zfs_status(subject)
+            if zfs_entries:
+                self.save_zfs_status(zfs_entries, subject, email_date)
+                return {"zfs_entries": zfs_entries}
+
             if not self.is_proxmox_backup_email(subject):
-                logger.info(f"Пропускаем не-Proxmox и не-БД письмо: {subject[:50]}...")
+                logger.info(
+                    "Пропускаем не-Proxmox/БД/ZFS письмо: %s...",
+                    subject[:50],
+                )
                 return None
 
             backup_info = self.parse_subject(subject)
