@@ -29,6 +29,11 @@ def main_menu(extension_manager):
             [InlineKeyboardButton("💾 Бэкапы", callback_data='backup_main')]
         )
 
+    if extension_manager.is_extension_enabled('zfs_monitor'):
+        keyboard.append(
+            [InlineKeyboardButton("🧩 ZFS", callback_data='settings_zfs')]
+        )
+
     keyboard.extend([
         [InlineKeyboardButton("🛠️ Расширения", callback_data='extensions_menu')],
         [InlineKeyboardButton("🎛️ Управление", callback_data='control_panel')],
