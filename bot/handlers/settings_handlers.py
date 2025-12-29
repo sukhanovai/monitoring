@@ -21,11 +21,12 @@ import re
 
 BACKUP_SETTINGS_CALLBACKS = {
     'backup_times',
-    'backup_patterns',
     'settings_backup_databases',
     'backup_db_add_category',
     'view_patterns',
-    'add_pattern'
+    'add_pattern',
+    'add_zfs_pattern',
+    'add_proxmox_pattern'
 }
 
 debug_logger = debug_log
@@ -38,17 +39,12 @@ def settings_command(update, context):
         [InlineKeyboardButton("🔧 Мониторинг", callback_data='settings_monitoring')],
     ]
 
-    if extension_manager.is_extension_enabled('resource_monitor'):
-        keyboard.append([InlineKeyboardButton("💻 Ресурсы", callback_data='settings_resources')])
-
     keyboard.extend([
         [InlineKeyboardButton("🔐 Аутентификация", callback_data='settings_auth')],
         [InlineKeyboardButton("🖥️ Серверы", callback_data='settings_servers')],
     ])
 
-    if (extension_manager.is_extension_enabled('backup_monitor') or
-            extension_manager.is_extension_enabled('database_backup_monitor')):
-        keyboard.append([InlineKeyboardButton("💾 Бэкапы", callback_data='settings_backup')])
+    keyboard.append([InlineKeyboardButton("🧩 Расширения", callback_data='settings_extensions')])
 
     if extension_manager.is_extension_enabled('web_interface'):
         keyboard.append([InlineKeyboardButton("🌐 Веб-интерфейс", callback_data='settings_web')])
@@ -226,6 +222,8 @@ def show_backup_settings(update, context):
     db_categories = list(database_config.keys()) if database_config else []
     proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
     proxmox_count = len(proxmox_hosts) if isinstance(proxmox_hosts, dict) else 0
+    zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
+    zfs_count = len(zfs_servers) if isinstance(zfs_servers, dict) else 0
     
     message = (
         "💾 *Настройки бэкапов*\n\n"
@@ -233,6 +231,7 @@ def show_backup_settings(update, context):
         f"• Устаревание через: {backup_stale_hours}ч\n"
         f"• Категории БД: {len(db_categories)}\n\n"
         f"• Proxmox хосты: {proxmox_count}\n\n"
+        f"• ZFS серверы: {zfs_count}\n\n"
         "Выберите раздел для настройки:"
     )
     
@@ -242,16 +241,74 @@ def show_backup_settings(update, context):
 
     if extension_manager.is_extension_enabled('backup_monitor'):
         keyboard.append([InlineKeyboardButton("🖥️ Proxmox бэкапы", callback_data='settings_backup_proxmox')])
+        keyboard.append([InlineKeyboardButton("🖥️ Паттерны Proxmox", callback_data='settings_patterns_proxmox')])
 
     if extension_manager.is_extension_enabled('database_backup_monitor'):
         keyboard.append([InlineKeyboardButton("🗃️ Базы данных", callback_data='settings_db_main')])
+        keyboard.append([InlineKeyboardButton("🗃️ Паттерны БД", callback_data='settings_patterns_db')])
+
+    if extension_manager.is_extension_enabled('zfs_monitor'):
+        keyboard.append([InlineKeyboardButton("🧊 ZFS", callback_data='settings_zfs')])
 
     keyboard.extend([
-        [InlineKeyboardButton("🔍 Паттерны", callback_data='backup_patterns')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ])
     
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def show_proxmox_backup_settings(update, context):
+    """Показать настройки бэкапов Proxmox в разделе расширений"""
+    query = update.callback_query
+    query.answer()
+
+    proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
+    proxmox_count = len(proxmox_hosts) if isinstance(proxmox_hosts, dict) else 0
+
+    message = (
+        "🖥️ *Бэкапы Proxmox*\n\n"
+        f"Хостов в списке: {proxmox_count}\n\n"
+        "Выберите раздел:"
+    )
+
+    keyboard = [
+        [InlineKeyboardButton("📋 Хосты", callback_data='settings_backup_proxmox')],
+        [InlineKeyboardButton("🔍 Паттерны", callback_data='settings_patterns_proxmox')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_extensions'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ]
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def show_database_backup_settings(update, context):
+    """Показать настройки бэкапов БД в разделе расширений"""
+    query = update.callback_query
+    query.answer()
+
+    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    db_categories = list(db_config.keys()) if isinstance(db_config, dict) else []
+
+    message = (
+        "🗃️ *Бэкапы БД*\n\n"
+        f"Категорий: {len(db_categories)}\n\n"
+        "Выберите раздел:"
+    )
+
+    keyboard = [
+        [InlineKeyboardButton("📋 Базы", callback_data='settings_db_main')],
+        [InlineKeyboardButton("🔍 Паттерны", callback_data='settings_patterns_db')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_extensions'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ]
+
     query.edit_message_text(
         message,
         parse_mode='Markdown',
@@ -290,7 +347,7 @@ def show_backup_databases_settings(update, context):
         [InlineKeyboardButton("✏️ Редактировать категорию", callback_data='settings_db_edit_category')],
         [InlineKeyboardButton("🗑️ Удалить категорию", callback_data='settings_db_delete_category')],
         [InlineKeyboardButton("📋 Просмотр всех БД", callback_data='settings_db_view_all')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup'),
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_extensions'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
     
@@ -365,6 +422,20 @@ def settings_callback_handler(update, context):
             show_servers_settings(update, context)
         elif data == 'settings_backup':
             show_backup_settings(update, context)
+        elif data == 'settings_extensions':
+            show_settings_extensions_menu(update, context)
+        elif data == 'settings_extensions_manage':
+            show_extensions_settings_menu(update, context)
+        elif data == 'settings_ext_backup_proxmox':
+            show_proxmox_backup_settings(update, context)
+        elif data == 'settings_ext_backup_db':
+            show_database_backup_settings(update, context)
+        elif data == 'settings_patterns_db':
+            show_db_patterns_menu(update, context)
+        elif data == 'settings_patterns_proxmox':
+            show_proxmox_patterns_menu(update, context)
+        elif data == 'settings_patterns_zfs':
+            show_zfs_patterns_menu(update, context)
         elif data == 'settings_web':
             show_web_settings(update, context)
         elif data == 'settings_view_all':
@@ -373,8 +444,6 @@ def settings_callback_handler(update, context):
         # Подпункты
         elif data == 'backup_times':
             show_backup_times(update, context)
-        elif data == 'backup_patterns':
-            show_backup_patterns_menu(update, context)
         elif data == 'settings_backup_proxmox':
             show_backup_proxmox_settings(update, context)
         elif data == 'settings_proxmox_add':
@@ -390,6 +459,21 @@ def settings_callback_handler(update, context):
         elif data.startswith('settings_proxmox_toggle_'):
             host_name = data.replace('settings_proxmox_toggle_', '')
             toggle_proxmox_host(update, context, host_name)
+        elif data == 'settings_zfs':
+            show_zfs_settings(update, context)
+        elif data == 'settings_zfs_list':
+            show_zfs_servers_list(update, context)
+        elif data == 'settings_zfs_add':
+            add_zfs_server_handler(update, context)
+        elif data.startswith('settings_zfs_edit_name_'):
+            server_name = data.replace('settings_zfs_edit_name_', '')
+            edit_zfs_server_name_handler(update, context, server_name)
+        elif data.startswith('settings_zfs_delete_'):
+            server_name = data.replace('settings_zfs_delete_', '')
+            delete_zfs_server(update, context, server_name)
+        elif data.startswith('settings_zfs_toggle_'):
+            server_name = data.replace('settings_zfs_toggle_', '')
+            toggle_zfs_server(update, context, server_name)
         
         # Новые обработчики для настроек БД
         elif data == 'settings_db_main':
@@ -426,6 +510,24 @@ def settings_callback_handler(update, context):
             view_patterns_handler(update, context)
         elif data == 'add_pattern':
             add_pattern_handler(update, context)
+        elif data == 'add_zfs_pattern':
+            add_zfs_pattern_handler(update, context)
+        elif data == 'add_proxmox_pattern':
+            add_proxmox_pattern_handler(update, context)
+        elif data == 'settings_ext_enable_all':
+            _enable_all_extensions_settings(query)
+            show_extensions_settings_menu(update, context)
+        elif data == 'settings_ext_disable_all':
+            _disable_all_extensions_settings(query)
+            show_extensions_settings_menu(update, context)
+        elif data.startswith('settings_ext_toggle_'):
+            extension_id = data.replace('settings_ext_toggle_', '')
+            success, message = extension_manager.toggle_extension(extension_id)
+            if success:
+                query.answer(message)
+                show_extensions_settings_menu(update, context)
+            else:
+                query.answer(message, show_alert=True)
         elif data.startswith('delete_pattern_'):
             pattern_id = data.replace('delete_pattern_', '')
             delete_pattern_handler(update, context, pattern_id)
@@ -641,6 +743,14 @@ def handle_setting_value(update, context):
     # Проверяем, не редактируется ли хост Proxmox
     if context.user_data.get('editing_proxmox_host'):
         return handle_proxmox_host_edit_input(update, context)
+
+    # Проверяем, не добавляется ли ZFS сервер
+    if context.user_data.get('adding_zfs_server'):
+        return handle_zfs_server_input(update, context)
+
+    # Проверяем, не редактируется ли имя ZFS сервера
+    if context.user_data.get('editing_zfs_server_name'):
+        return handle_zfs_server_name_edit_input(update, context)
 
     # Проверяем, не добавляется ли база данных
     if context.user_data.get('adding_db_entry'):
@@ -1356,7 +1466,7 @@ def show_backup_databases(update, context):
         [InlineKeyboardButton("📋 Просмотр всех БД", callback_data='view_all_databases')],
         [InlineKeyboardButton("➕ Добавить БД", callback_data='add_database'),
          InlineKeyboardButton("✏️ Редактировать БД", callback_data='edit_databases')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup'),
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_backup_db'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
     
@@ -1366,41 +1476,122 @@ def show_backup_databases(update, context):
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
-def show_backup_patterns_menu(update, context):
-    """Показать меню паттернов бэкапов - С КНОПКОЙ ЗАКРЫТЬ"""
+def show_settings_extensions_menu(update, context):
+    """Показать меню расширений в настройках"""
     query = update.callback_query
     query.answer()
-    
-    patterns = settings_manager.get_backup_patterns()
-    
-    message = "🔍 *Паттерны бэкапов*\n\n"
-    
-    total_patterns = 0
-    for category, category_patterns in patterns.items():
-        if isinstance(category_patterns, dict):
-            for pattern_type, pattern_list in category_patterns.items():
-                message += f"*{pattern_type}*: {len(pattern_list)} паттернов\n"
-                total_patterns += len(pattern_list)
-        else:
-            message += f"*{category}*: {len(category_patterns)} паттернов\n"
-            total_patterns += len(category_patterns)
-    
-    message += f"\nВсего паттернов: {total_patterns}\n\n"
-    message += "Выберите действие:"
-    
-    keyboard = [
-        [InlineKeyboardButton("📋 Просмотр паттернов", callback_data='view_patterns')],
-        [InlineKeyboardButton("➕ Добавить паттерн", callback_data='add_pattern')],
-        [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup'),
+
+    message = "🧩 *Расширения*\n\nВыберите раздел:"
+
+    keyboard = []
+
+    if extension_manager.is_extension_enabled('backup_monitor'):
+        keyboard.append([InlineKeyboardButton("💾 Бэкапы Proxmox", callback_data='settings_ext_backup_proxmox')])
+
+    if extension_manager.is_extension_enabled('database_backup_monitor'):
+        keyboard.append([InlineKeyboardButton("🗃️ Бэкапы БД", callback_data='settings_ext_backup_db')])
+
+    if extension_manager.is_extension_enabled('zfs_monitor'):
+        keyboard.append([InlineKeyboardButton("🧊 ZFS", callback_data='settings_zfs')])
+
+    if extension_manager.is_extension_enabled('resource_monitor'):
+        keyboard.append([InlineKeyboardButton("💻 Ресурсы", callback_data='settings_resources')])
+
+    keyboard.extend([
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-    ]
-    
+    ])
+
     query.edit_message_text(
         message,
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
+def show_extensions_settings_menu(update, context):
+    """Показать управление расширениями с возвратом в настройки"""
+    query = update.callback_query
+    query.answer()
+
+    extensions_status = extension_manager.get_extensions_status()
+
+    message = "🛠️ *Управление расширениями*\n\n"
+    message += "📊 *Статус расширений:*\n\n"
+
+    keyboard = []
+
+    for ext_id, status_info in extensions_status.items():
+        enabled = status_info['enabled']
+        ext_info = status_info['info']
+
+        status_icon = "🟢" if enabled else "🔴"
+        toggle_text = "🔴 Выключить" if enabled else "🟢 Включить"
+
+        message += f"{status_icon} *{ext_info['name']}*\n"
+        message += f"   {ext_info['description']}\n"
+        message += f"   Статус: {'Включено' if enabled else 'Отключено'}\n\n"
+
+        keyboard.append([
+            InlineKeyboardButton(
+                f"{toggle_text} {ext_info['name']}",
+                callback_data=f'settings_ext_toggle_{ext_id}'
+            )
+        ])
+
+    keyboard.extend([
+        [InlineKeyboardButton("📊 Включить все", callback_data='settings_ext_enable_all')],
+        [InlineKeyboardButton("📋 Отключить все", callback_data='settings_ext_disable_all')],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data='settings_extensions'),
+            InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+        ]
+    ])
+
+    query.edit_message_text(
+        text=message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def _enable_all_extensions_settings(query):
+    enabled = 0
+    for ext_id in extension_manager.get_extensions_status():
+        success, _ = extension_manager.enable_extension(ext_id)
+        if success:
+            enabled += 1
+    query.answer(f"✅ Включено {enabled} расширений")
+
+def _disable_all_extensions_settings(query):
+    disabled = 0
+    for ext_id in extension_manager.get_extensions_status():
+        success, _ = extension_manager.disable_extension(ext_id)
+        if success:
+            disabled += 1
+    query.answer(f"✅ Отключено {disabled} расширений")
+
+def show_db_patterns_menu(update, context):
+    """Показать паттерны для БД"""
+    context.user_data['patterns_filter'] = 'db'
+    context.user_data['patterns_back'] = 'settings_ext_backup_db'
+    context.user_data['patterns_add'] = 'add_pattern'
+    context.user_data['patterns_title'] = "🗃️ *Паттерны бэкапов БД*"
+    view_patterns_handler(update, context)
+
+def show_proxmox_patterns_menu(update, context):
+    """Показать паттерны для Proxmox"""
+    context.user_data['patterns_filter'] = 'proxmox'
+    context.user_data['patterns_back'] = 'settings_ext_backup_proxmox'
+    context.user_data['patterns_add'] = 'add_proxmox_pattern'
+    context.user_data['patterns_title'] = "🖥️ *Паттерны бэкапов Proxmox*"
+    view_patterns_handler(update, context)
+
+def show_zfs_patterns_menu(update, context):
+    """Показать паттерны для ZFS"""
+    context.user_data['patterns_filter'] = 'zfs'
+    context.user_data['patterns_back'] = 'settings_zfs'
+    context.user_data['patterns_add'] = 'add_zfs_pattern'
+    context.user_data['patterns_title'] = "🧊 *Паттерны ZFS*"
+    view_patterns_handler(update, context)
 
 def show_backup_proxmox_settings(update, context):
     """Показать настройки бэкапов Proxmox"""
@@ -1423,7 +1614,7 @@ def show_backup_proxmox_settings(update, context):
         [InlineKeyboardButton("📋 Список хостов", callback_data='settings_proxmox_list')],
         [InlineKeyboardButton("➕ Добавить хост", callback_data='settings_proxmox_add')],
         [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup'),
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_backup_proxmox'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
 
@@ -1691,6 +1882,359 @@ def toggle_proxmox_host(update, context, host_name):
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
             [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox'),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ])
+    )
+
+def show_zfs_settings(update, context):
+    """Показать настройки ZFS"""
+    query = update.callback_query
+    query.answer()
+
+    show_zfs_main_menu(update, context)
+
+def show_zfs_main_menu(update, context):
+    """Показать меню ZFS из главного меню"""
+    query = update.callback_query
+    query.answer()
+
+    keyboard = [
+        [InlineKeyboardButton("📋 Хосты", callback_data='settings_zfs_list')],
+        [InlineKeyboardButton("🔍 Паттерны", callback_data='settings_patterns_zfs')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='main_menu'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ]
+
+    query.edit_message_text(
+        "🧊 *Мониторинг ZFS*\n\nВыберите раздел:",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def show_zfs_status_summary(update, context):
+    """Показать последние статусы ZFS массивов"""
+    query = update.callback_query
+    query.answer()
+
+    conn = settings_manager.get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT s.server_name, s.pool_name, s.pool_state, s.received_at
+        FROM zfs_pool_status s
+        JOIN (
+            SELECT server_name, pool_name, MAX(received_at) AS last_seen
+            FROM zfs_pool_status
+            GROUP BY server_name, pool_name
+        ) latest
+        ON s.server_name = latest.server_name
+        AND s.pool_name = latest.pool_name
+        AND s.received_at = latest.last_seen
+        ORDER BY s.server_name, s.pool_name
+        """
+    )
+    if filter_mode != 'db':
+        rows = cursor.fetchall()
+
+    if not rows:
+        message = "📊 *ZFS статусы*\n\n❌ Данных нет."
+    else:
+        message = "📊 *ZFS статусы (последние)*\n\n"
+        current_server = None
+        for server_name, pool_name, pool_state, received_at in rows:
+            if server_name != current_server:
+                if current_server is not None:
+                    message += "\n"
+                message += f"*{server_name}*\n"
+                current_server = server_name
+            message += f"• {pool_name}: `{pool_state}` ({received_at})\n"
+
+    keyboard = [
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs')],
+        [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+        [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ]
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def show_zfs_servers_list(update, context):
+    """Показать список ZFS серверов"""
+    query = update.callback_query
+    query.answer()
+
+    zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
+    if not isinstance(zfs_servers, dict):
+        zfs_servers = {}
+
+    message = "📋 *ZFS серверы*\n\n"
+    if not zfs_servers:
+        message += "❌ Серверы не настроены."
+    else:
+        for server_name in sorted(zfs_servers.keys()):
+            server_value = zfs_servers.get(server_name, {})
+            enabled = True
+            if isinstance(server_value, dict):
+                enabled = server_value.get('enabled', True)
+            status_icon = "🟢" if enabled else "🔴"
+            message += f"{status_icon} `{server_name}`\n"
+
+    keyboard = []
+    for server_name in sorted(zfs_servers.keys()):
+        server_value = zfs_servers.get(server_name, {})
+        enabled = True
+        if isinstance(server_value, dict):
+            enabled = server_value.get('enabled', True)
+        toggle_text = "⛔️ Отключить" if enabled else "✅ Включить"
+        keyboard.append([
+            InlineKeyboardButton(
+                f"✏️ {server_name}",
+                callback_data=f"settings_zfs_edit_name_{server_name}"
+            ),
+        ])
+        keyboard.append([
+            InlineKeyboardButton(
+                f"🗑️ {server_name}",
+                callback_data=f"settings_zfs_delete_{server_name}"
+            ),
+            InlineKeyboardButton(
+                f"{toggle_text} {server_name}",
+                callback_data=f"settings_zfs_toggle_{server_name}"
+            ),
+        ])
+
+    keyboard.append([
+        InlineKeyboardButton("➕ Добавить сервер", callback_data='settings_zfs_add')
+    ])
+
+    keyboard.append([
+        InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu'),
+        InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs'),
+        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+    ])
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def add_zfs_server_handler(update, context):
+    """Добавить ZFS сервер"""
+    query = update.callback_query
+    query.answer()
+
+    context.user_data['adding_zfs_server'] = True
+    context.user_data['zfs_server_stage'] = 'name'
+
+    query.edit_message_text(
+        "➕ *Добавление ZFS сервера*\n\n"
+        "Введите имя сервера (как приходит в теме письма):",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("❌ Отмена", callback_data='settings_zfs'),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ])
+    )
+
+def delete_zfs_server(update, context, server_name):
+    """Удалить ZFS сервер"""
+    query = update.callback_query
+    query.answer()
+
+    zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
+    if not isinstance(zfs_servers, dict):
+        zfs_servers = {}
+
+    if server_name not in zfs_servers:
+        query.edit_message_text(
+            "❌ Сервер не найден.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs'),
+                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ])
+        )
+        return
+
+    zfs_servers.pop(server_name, None)
+    settings_manager.set_setting('ZFS_SERVERS', zfs_servers)
+
+    query.edit_message_text(
+        f"✅ Сервер `{server_name}` удалён.",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs'),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ])
+    )
+
+def handle_zfs_server_input(update, context):
+    """Обработчик добавления ZFS сервера"""
+    if 'adding_zfs_server' not in context.user_data:
+        return
+
+    user_input = update.message.text.strip()
+    stage = context.user_data.get('zfs_server_stage', 'name')
+
+    if stage == 'name':
+        if not user_input:
+            update.message.reply_text("❌ Имя сервера не может быть пустым. Попробуйте снова:")
+            return
+
+        zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
+        if not isinstance(zfs_servers, dict):
+            zfs_servers = {}
+
+        if user_input in zfs_servers:
+            update.message.reply_text("❌ Такой сервер уже есть. Введите другой:")
+            return
+
+        zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
+        if not isinstance(zfs_servers, dict):
+            zfs_servers = {}
+
+        zfs_servers[user_input] = {
+            'enabled': True,
+        }
+        settings_manager.set_setting('ZFS_SERVERS', zfs_servers)
+
+        update.message.reply_text(
+            "✅ Сервер добавлен.\n"
+            f"Имя: `{user_input}`",
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs'),
+                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ])
+        )
+
+        context.user_data.pop('adding_zfs_server', None)
+        context.user_data.pop('zfs_server_stage', None)
+
+def edit_zfs_server_name_handler(update, context, server_name):
+    """Начать редактирование имени ZFS сервера"""
+    query = update.callback_query
+    query.answer()
+
+    zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
+    if not isinstance(zfs_servers, dict):
+        zfs_servers = {}
+
+    if server_name not in zfs_servers:
+        query.edit_message_text(
+            "❌ Сервер не найден.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs'),
+                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ])
+        )
+        return
+
+    context.user_data['editing_zfs_server_name'] = True
+    context.user_data['editing_zfs_server_old_name'] = server_name
+
+    query.edit_message_text(
+        "✏️ *Редактирование ZFS сервера*\n\n"
+        f"Текущее имя: `{server_name}`\n\n"
+        "Введите новое имя сервера:",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("❌ Отмена", callback_data='settings_zfs'),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ])
+    )
+
+def handle_zfs_server_name_edit_input(update, context):
+    """Обработчик редактирования имени ZFS сервера"""
+    if 'editing_zfs_server_name' not in context.user_data:
+        return
+
+    new_name = update.message.text.strip()
+    if not new_name:
+        update.message.reply_text("❌ Имя сервера не может быть пустым. Попробуйте снова:")
+        return
+
+    zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
+    if not isinstance(zfs_servers, dict):
+        zfs_servers = {}
+
+    old_name = context.user_data.get('editing_zfs_server_old_name')
+    if not old_name or old_name not in zfs_servers:
+        update.message.reply_text("❌ Сервер не найден.")
+        context.user_data.pop('editing_zfs_server_name', None)
+        context.user_data.pop('editing_zfs_server_old_name', None)
+        return
+
+    if new_name in zfs_servers and new_name != old_name:
+        update.message.reply_text("❌ Такой сервер уже есть. Введите другой:")
+        return
+
+    server_value = zfs_servers.pop(old_name, None)
+    if not isinstance(server_value, dict):
+        server_value = {'enabled': True}
+    zfs_servers[new_name] = server_value
+    settings_manager.set_setting('ZFS_SERVERS', zfs_servers)
+
+    update.message.reply_text(
+        f"✅ Сервер обновлён: `{new_name}`",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs'),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ])
+    )
+
+    context.user_data.pop('editing_zfs_server_name', None)
+    context.user_data.pop('editing_zfs_server_old_name', None)
+
+def toggle_zfs_server(update, context, server_name):
+    """Включить/отключить мониторинг ZFS сервера"""
+    query = update.callback_query
+    query.answer()
+
+    zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
+    if not isinstance(zfs_servers, dict):
+        zfs_servers = {}
+
+    if server_name not in zfs_servers:
+        query.edit_message_text(
+            "❌ Сервер не найден.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs'),
+                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ])
+        )
+        return
+
+    server_value = zfs_servers.get(server_name)
+    if isinstance(server_value, dict):
+        enabled = server_value.get('enabled', True)
+    else:
+        enabled = True
+        server_value = {'enabled': True}
+
+    server_value['enabled'] = not enabled
+    zfs_servers[server_name] = server_value
+    settings_manager.set_setting('ZFS_SERVERS', zfs_servers)
+
+    status_text = "включен" if server_value['enabled'] else "отключен"
+    query.edit_message_text(
+        f"✅ Мониторинг сервера `{server_name}` {status_text}.",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs'),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
     )
@@ -3155,6 +3699,7 @@ def add_pattern_handler(update, context):
 
     context.user_data['adding_backup_pattern'] = True
     context.user_data['backup_pattern_stage'] = 'subject'
+    context.user_data['backup_pattern_mode'] = 'db'
 
     query.edit_message_text(
         "➕ *Добавление паттерна*\n\n"
@@ -3162,7 +3707,47 @@ def add_pattern_handler(update, context):
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data='backup_patterns'),
+            [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ])
+    )
+
+def add_zfs_pattern_handler(update, context):
+    """Добавить паттерн для ZFS"""
+    query = update.callback_query
+    query.answer()
+
+    context.user_data['adding_backup_pattern'] = True
+    context.user_data['backup_pattern_stage'] = 'pattern_only'
+    context.user_data['backup_pattern_mode'] = 'zfs'
+
+    query.edit_message_text(
+        "➕ *Добавление паттерна ZFS*\n\n"
+        "Введите regex паттерн темы письма:",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ])
+    )
+
+def add_proxmox_pattern_handler(update, context):
+    """Добавить паттерн для Proxmox"""
+    query = update.callback_query
+    query.answer()
+
+    context.user_data['adding_backup_pattern'] = True
+    context.user_data['backup_pattern_stage'] = 'pattern_only'
+    context.user_data['backup_pattern_mode'] = 'proxmox'
+
+    query.edit_message_text(
+        "➕ *Добавление паттерна Proxmox*\n\n"
+        "Введите regex паттерн темы письма:",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
     )
@@ -3174,20 +3759,59 @@ def view_patterns_handler(update, context):
 
     conn = settings_manager.get_connection()
     cursor = conn.cursor()
-    cursor.execute(
-        """
-        SELECT id, pattern_type, pattern, category
-        FROM backup_patterns
-        WHERE enabled = 1
-        ORDER BY category, pattern_type, id
-        """
-    )
+    filter_mode = context.user_data.get('patterns_filter', 'all')
+    if filter_mode == 'zfs':
+        cursor.execute(
+            """
+            SELECT id, pattern_type, pattern, category
+            FROM backup_patterns
+            WHERE enabled = 1 AND category = 'zfs'
+            ORDER BY category, pattern_type, id
+            """
+        )
+    elif filter_mode == 'db':
+        db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+        categories = list(db_config.keys()) if isinstance(db_config, dict) else []
+        if not categories:
+            rows = []
+        else:
+            placeholders = ", ".join(["?"] * len(categories))
+            cursor.execute(
+                f"""
+                SELECT id, pattern_type, pattern, category
+                FROM backup_patterns
+                WHERE enabled = 1 AND category IN ({placeholders})
+                ORDER BY category, pattern_type, id
+                """,
+                categories,
+            )
+            rows = cursor.fetchall()
+    elif filter_mode == 'proxmox':
+        cursor.execute(
+            """
+            SELECT id, pattern_type, pattern, category
+            FROM backup_patterns
+            WHERE enabled = 1 AND category = 'proxmox'
+            ORDER BY category, pattern_type, id
+            """
+        )
+    else:
+        cursor.execute(
+            """
+            SELECT id, pattern_type, pattern, category
+            FROM backup_patterns
+            WHERE enabled = 1
+            ORDER BY category, pattern_type, id
+            """
+        )
     rows = cursor.fetchall()
 
+    title = context.user_data.get('patterns_title', "📋 *Паттерны*")
+
     if not rows:
-        message = "📋 *Паттерны бэкапов*\n\n❌ Паттерны не настроены."
+        message = f"{title}\n\n❌ Паттерны не настроены."
     else:
-        message = "📋 *Паттерны бэкапов*\n\n"
+        message = f"{title}\n\n"
         current_category = None
         for pattern_id, pattern_type, pattern, category in rows:
             if category != current_category:
@@ -3210,9 +3834,14 @@ def view_patterns_handler(update, context):
             )
         ])
 
+    add_callback = context.user_data.get('patterns_add')
+    if add_callback:
+        keyboard.append([InlineKeyboardButton("➕ Добавить паттерн", callback_data=add_callback)])
+
+    back_callback = context.user_data.get('patterns_back', 'settings_backup')
     keyboard.append([
         InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu'),
-        InlineKeyboardButton("↩️ Назад", callback_data='backup_patterns'),
+        InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
         InlineKeyboardButton("✖️ Закрыть", callback_data='close')
     ])
 
@@ -3251,11 +3880,12 @@ def delete_pattern_handler(update, context, pattern_id):
     )
     conn.commit()
 
+    back_callback = context.user_data.get('patterns_back', 'settings_backup')
     query.edit_message_text(
         "✅ Паттерн удалён.",
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
-            [InlineKeyboardButton("↩️ Назад", callback_data='backup_patterns'),
+            [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
     )
@@ -3284,11 +3914,12 @@ def edit_pattern_handler(update, context, pattern_id):
     row = cursor.fetchone()
 
     if not row:
+        back_callback = context.user_data.get('patterns_back', 'settings_backup')
         query.edit_message_text(
             "❌ Паттерн не найден.",
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
-                [InlineKeyboardButton("↩️ Назад", callback_data='backup_patterns'),
+                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
                  InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
         )
@@ -3299,18 +3930,33 @@ def edit_pattern_handler(update, context, pattern_id):
     context.user_data['editing_backup_pattern_id'] = pattern_id_int
     context.user_data['backup_pattern_category'] = category
     context.user_data['backup_pattern_type'] = pattern_type
-    context.user_data['backup_pattern_stage'] = 'subject'
+    if category == 'zfs':
+        context.user_data['backup_pattern_mode'] = 'zfs'
+        context.user_data['backup_pattern_stage'] = 'pattern_only'
+    elif category == 'proxmox':
+        context.user_data['backup_pattern_mode'] = 'proxmox'
+        context.user_data['backup_pattern_stage'] = 'pattern_only'
+    else:
+        context.user_data['backup_pattern_mode'] = 'db'
+        context.user_data['backup_pattern_stage'] = 'subject'
+
+    back_callback = context.user_data.get('patterns_back', 'settings_backup')
+    prompt = (
+        "Введите паттерн темы письма:"
+        if category in ('zfs', 'proxmox')
+        else "Введите тему письма (как приходит в почте):"
+    )
 
     query.edit_message_text(
         "✏️ *Редактирование паттерна*\n\n"
         f"Категория: *{category}*\n"
         f"Тип: *{pattern_type}*\n"
         f"Текущий паттерн: `{pattern}`\n\n"
-        "Введите тему письма (как приходит в почте):",
+        f"{prompt}",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data='backup_patterns'),
+            [InlineKeyboardButton("❌ Отмена", callback_data=back_callback),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
     )
@@ -3322,6 +3968,52 @@ def handle_backup_pattern_input(update, context):
 
     user_input = update.message.text.strip()
     stage = context.user_data.get('backup_pattern_stage', 'category')
+    mode = context.user_data.get('backup_pattern_mode', 'db')
+
+    if mode in ('zfs', 'proxmox'):
+        if not user_input:
+            update.message.reply_text("❌ Паттерн не может быть пустым. Попробуйте снова:")
+            return
+
+        pattern = user_input
+        pattern_type = "subject"
+        category = "zfs" if mode == 'zfs' else 'proxmox'
+        back_callback = context.user_data.get('patterns_back', 'settings_backup')
+
+        try:
+            conn = settings_manager.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO backup_patterns (pattern_type, pattern, category, enabled)
+                VALUES (?, ?, ?, 1)
+                """,
+                (pattern_type, pattern, category)
+            )
+            conn.commit()
+
+            update.message.reply_text(
+                "✅ *Паттерн добавлен!*\n\n"
+                f"Категория: *{category}*\n"
+                f"Тип: *{pattern_type}*\n"
+                f"Паттерн: `{pattern}`",
+                parse_mode='Markdown',
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+                    [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                     InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+                ])
+            )
+        except Exception as e:
+            update.message.reply_text(f"❌ Ошибка сохранения: {e}")
+        finally:
+            context.user_data.pop('adding_backup_pattern', None)
+            context.user_data.pop('backup_pattern_stage', None)
+            context.user_data.pop('backup_pattern_category', None)
+            context.user_data.pop('backup_pattern_type', None)
+            context.user_data.pop('backup_pattern_subject', None)
+            context.user_data.pop('backup_pattern_mode', None)
+        return
 
     if stage == 'subject':
         if not user_input:
@@ -3351,6 +4043,8 @@ def handle_backup_pattern_input(update, context):
         pattern_type = "subject"
         category = _get_database_category(db_name)
 
+        back_callback = context.user_data.get('patterns_back', 'settings_backup')
+
         try:
             conn = settings_manager.get_connection()
             cursor = conn.cursor()
@@ -3371,7 +4065,7 @@ def handle_backup_pattern_input(update, context):
                 parse_mode='Markdown',
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
-                    [InlineKeyboardButton("↩️ Назад", callback_data='backup_patterns'),
+                    [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
                      InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
                 ])
             )
@@ -3383,6 +4077,7 @@ def handle_backup_pattern_input(update, context):
             context.user_data.pop('backup_pattern_category', None)
             context.user_data.pop('backup_pattern_type', None)
             context.user_data.pop('backup_pattern_subject', None)
+            context.user_data.pop('backup_pattern_mode', None)
 
 def handle_backup_pattern_edit_input(update, context):
     """Обработчик редактирования паттерна"""
@@ -3391,6 +4086,58 @@ def handle_backup_pattern_edit_input(update, context):
 
     new_pattern = update.message.text.strip()
     stage = context.user_data.get('backup_pattern_stage', 'subject')
+    mode = context.user_data.get('backup_pattern_mode', 'db')
+
+    if mode in ('zfs', 'proxmox'):
+        if not new_pattern:
+            update.message.reply_text("❌ Паттерн не может быть пустым. Попробуйте снова:")
+            return
+
+        pattern_id = context.user_data.get('editing_backup_pattern_id')
+        if not pattern_id:
+            update.message.reply_text("❌ Не найден паттерн для редактирования.")
+            context.user_data.pop('editing_backup_pattern', None)
+            return
+
+        category = 'zfs' if mode == 'zfs' else 'proxmox'
+        back_callback = context.user_data.get('patterns_back', 'settings_backup')
+
+        try:
+            conn = settings_manager.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                UPDATE backup_patterns
+                SET pattern = ?, category = ?, pattern_type = ?
+                WHERE id = ?
+                """,
+                (new_pattern, category, "subject", pattern_id)
+            )
+            conn.commit()
+
+            update.message.reply_text(
+                "✅ *Паттерн обновлён!*\n\n"
+                f"Категория: *{category}*\n"
+                "Тип: *subject*\n"
+                f"Паттерн: `{new_pattern}`",
+                parse_mode='Markdown',
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+                    [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                     InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+                ])
+            )
+        except Exception as e:
+            update.message.reply_text(f"❌ Ошибка сохранения: {e}")
+        finally:
+            context.user_data.pop('editing_backup_pattern', None)
+            context.user_data.pop('editing_backup_pattern_id', None)
+            context.user_data.pop('backup_pattern_category', None)
+            context.user_data.pop('backup_pattern_type', None)
+            context.user_data.pop('backup_pattern_subject', None)
+            context.user_data.pop('backup_pattern_stage', None)
+            context.user_data.pop('backup_pattern_mode', None)
+        return
 
     if stage == 'subject':
         if not new_pattern:
@@ -3426,6 +4173,8 @@ def handle_backup_pattern_edit_input(update, context):
         category = _get_database_category(db_name)
         pattern_type = "subject"
 
+        back_callback = context.user_data.get('patterns_back', 'settings_backup')
+
         try:
             conn = settings_manager.get_connection()
             cursor = conn.cursor()
@@ -3447,7 +4196,7 @@ def handle_backup_pattern_edit_input(update, context):
                 parse_mode='Markdown',
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
-                    [InlineKeyboardButton("↩️ Назад", callback_data='backup_patterns'),
+                    [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
                      InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
                 ])
             )
@@ -3460,4 +4209,5 @@ def handle_backup_pattern_edit_input(update, context):
             context.user_data.pop('backup_pattern_type', None)
             context.user_data.pop('backup_pattern_subject', None)
             context.user_data.pop('backup_pattern_stage', None)
+            context.user_data.pop('backup_pattern_mode', None)
     
