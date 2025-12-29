@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v6.0.0
+Server Monitoring System v6.0.5
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 6.0.0
+Версия: 6.0.5
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -43,6 +43,8 @@ def settings_command(update, context):
         [InlineKeyboardButton("🔐 Аутентификация", callback_data='settings_auth')],
         [InlineKeyboardButton("🖥️ Серверы", callback_data='settings_servers')],
     ])
+
+    keyboard.append([InlineKeyboardButton("🧩 Расширения", callback_data='settings_extensions')])
 
     keyboard.append([InlineKeyboardButton("🧩 Расширения", callback_data='settings_extensions')])
 
@@ -246,6 +248,9 @@ def show_backup_settings(update, context):
     if extension_manager.is_extension_enabled('database_backup_monitor'):
         keyboard.append([InlineKeyboardButton("🗃️ Базы данных", callback_data='settings_db_main')])
         keyboard.append([InlineKeyboardButton("🗃️ Паттерны БД", callback_data='settings_patterns_db')])
+
+    if extension_manager.is_extension_enabled('zfs_monitor'):
+        keyboard.append([InlineKeyboardButton("🧩 ZFS", callback_data='settings_zfs')])
 
     if extension_manager.is_extension_enabled('zfs_monitor'):
         keyboard.append([InlineKeyboardButton("🧩 ZFS", callback_data='settings_zfs')])
