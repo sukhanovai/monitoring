@@ -56,19 +56,15 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 4. Создайте конфигурацию
-Скопируйте шаблон конфигурации:
-```bash
-cp config_template.py config.py
-```
-Или для минимального старта:
-```bash
-cp config_template_simple.py config.py
-```
+### 4. Настройте конфигурацию
+Конфигурация хранится в базе `data/settings.db` и загружается через
+`config/db_settings.py`. Если в БД нет значений, используются значения по
+умолчанию из `config/settings.py`.
 
-Откройте файл и задайте параметры:
+Для первого запуска на чистой системе проще всего задать минимум в
+`config/settings.py`:
 ```bash
-nano config.py
+nano config/settings.py
 ```
 
 Минимально необходимые параметры:
@@ -76,6 +72,9 @@ nano config.py
 TELEGRAM_TOKEN = "YOUR_BOT_TOKEN"
 CHAT_IDS = ["123456789"]
 ```
+
+После первого запуска база `data/settings.db` создаётся автоматически и при
+наличии значений в ней они будут иметь приоритет над `config/settings.py`.
 
 ### 5. Создайте Telegram-бота
 1. Напишите @BotFather в Telegram.
