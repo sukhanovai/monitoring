@@ -43,7 +43,7 @@ AVAILABLE_EXTENSIONS = {
         'package': 'extensions.server_checks'
     },
     'zfs_monitor': {
-        'name': '🧩 Мониторинг ZFS',
+        'name': '🧊 Мониторинг ZFS',
         'description': 'Отслеживание статуса ZFS массивов по почтовым уведомлениям',
         'commands': [],
         'handlers': [],

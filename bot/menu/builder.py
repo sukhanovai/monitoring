@@ -35,7 +35,7 @@ def main_menu(extension_manager):
 
     if extension_manager.is_extension_enabled('zfs_monitor'):
         keyboard.append(
-            [InlineKeyboardButton("🧩 ZFS", callback_data='zfs_menu')]
+            [InlineKeyboardButton("🧊 ZFS", callback_data='zfs_menu')]
         )
 
     keyboard.extend([

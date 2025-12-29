@@ -487,6 +487,9 @@ def show_database_backups_menu(query, backup_bot):
 
         from .db_settings_backup_monitor import DATABASE_BACKUP_CONFIG
 
+        if not isinstance(DATABASE_BACKUP_CONFIG, dict):
+            DATABASE_BACKUP_CONFIG = {}
+
         rows = backup_bot.execute_query(
             """
             SELECT DISTINCT

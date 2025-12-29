@@ -284,8 +284,8 @@ def callback_router(update, context):
         servers_list_handler(update, context)
 
     elif data == 'zfs_menu':
-        from bot.handlers.settings_handlers import show_zfs_settings
-        show_zfs_settings(update, context)
+        from bot.handlers.settings_handlers import show_zfs_main_menu
+        show_zfs_main_menu(update, context)
 
     elif data in ('full_report', 'daily_report'):
         # в monitor_core это один и тот же handler в старом меню

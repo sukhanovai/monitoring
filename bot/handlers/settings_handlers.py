@@ -248,7 +248,7 @@ def show_backup_settings(update, context):
         keyboard.append([InlineKeyboardButton("🗃️ Паттерны БД", callback_data='settings_patterns_db')])
 
     if extension_manager.is_extension_enabled('zfs_monitor'):
-        keyboard.append([InlineKeyboardButton("🧩 ZFS", callback_data='settings_zfs')])
+        keyboard.append([InlineKeyboardButton("🧊 ZFS", callback_data='settings_zfs')])
 
     keyboard.extend([
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
@@ -1492,7 +1492,7 @@ def show_settings_extensions_menu(update, context):
         keyboard.append([InlineKeyboardButton("🗃️ Бэкапы БД", callback_data='settings_ext_backup_db')])
 
     if extension_manager.is_extension_enabled('zfs_monitor'):
-        keyboard.append([InlineKeyboardButton("🧩 ZFS", callback_data='settings_zfs')])
+        keyboard.append([InlineKeyboardButton("🧊 ZFS", callback_data='settings_zfs')])
 
     if extension_manager.is_extension_enabled('resource_monitor'):
         keyboard.append([InlineKeyboardButton("💻 Ресурсы", callback_data='settings_resources')])
@@ -1590,7 +1590,7 @@ def show_zfs_patterns_menu(update, context):
     context.user_data['patterns_filter'] = 'zfs'
     context.user_data['patterns_back'] = 'settings_zfs'
     context.user_data['patterns_add'] = 'add_zfs_pattern'
-    context.user_data['patterns_title'] = "🧩 *Паттерны ZFS*"
+    context.user_data['patterns_title'] = "🧊 *Паттерны ZFS*"
     view_patterns_handler(update, context)
 
 def show_backup_proxmox_settings(update, context):
@@ -1895,7 +1895,7 @@ def show_zfs_settings(update, context):
     if not isinstance(zfs_servers, dict):
         zfs_servers = {}
 
-    message = "🧩 *Мониторинг ZFS*\n\n"
+    message = "🧊 *Мониторинг ZFS*\n\n"
     if not zfs_servers:
         message += "❌ Серверы не настроены.\n\n"
     else:
@@ -1912,6 +1912,24 @@ def show_zfs_settings(update, context):
 
     query.edit_message_text(
         message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def show_zfs_main_menu(update, context):
+    """Показать меню ZFS из главного меню"""
+    query = update.callback_query
+    query.answer()
+
+    keyboard = [
+        [InlineKeyboardButton("📋 Хосты", callback_data='settings_zfs_list')],
+        [InlineKeyboardButton("🔍 Паттерны", callback_data='settings_patterns_zfs')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='main_menu'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ]
+
+    query.edit_message_text(
+        "🧊 *Мониторинг ZFS*\n\nВыберите раздел:",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
