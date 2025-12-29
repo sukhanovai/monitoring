@@ -14,6 +14,7 @@ Handlers for managing settings via a bot
 import sqlite3
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.utils.helpers import escape_markdown
 from telegram.ext import CommandHandler, CallbackQueryHandler, MessageHandler, Filters
 from core.config_manager import config_manager as settings_manager
 from config.db_settings import BACKUP_DATABASE_CONFIG
@@ -1970,15 +1971,20 @@ def show_zfs_status_summary(update, context):
     if not rows:
         message = "📊 *ZFS статусы*\n\n❌ Данных нет."
     else:
+        def _md(value: object) -> str:
+            return escape_markdown(str(value or ""), version=1)
+
         message = "📊 *ZFS статусы (последние)*\n\n"
         current_server = None
         for server_name, pool_name, pool_state, received_at in rows:
             if server_name != current_server:
                 if current_server is not None:
                     message += "\n"
-                message += f"*{server_name}*\n"
+                message += f"*{_md(server_name)}*\n"
                 current_server = server_name
-            message += f"• {pool_name}: `{pool_state}` ({received_at})\n"
+            message += (
+                f"• {_md(pool_name)}: `{_md(pool_state)}` ({_md(received_at)})\n"
+            )
 
     keyboard = [
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs')],
