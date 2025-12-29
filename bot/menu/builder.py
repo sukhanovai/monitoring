@@ -1,11 +1,11 @@
 """
 /bot/menu/builder.py
-Server Monitoring System v6.0.12
+Server Monitoring System v6.0.13
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 The place where keyboards are made.
 Система мониторинга серверов
-Версия: 6.0.12
+Версия: 6.0.13
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Место, где строятся клавиатуры
