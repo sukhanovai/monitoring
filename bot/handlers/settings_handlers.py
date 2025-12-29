@@ -1918,23 +1918,36 @@ def show_zfs_status_summary(update, context):
 
     conn = settings_manager.get_connection()
     cursor = conn.cursor()
-    cursor.execute(
-        """
-        SELECT s.server_name, s.pool_name, s.pool_state, s.received_at
-        FROM zfs_pool_status s
-        JOIN (
-            SELECT server_name, pool_name, MAX(received_at) AS last_seen
-            FROM zfs_pool_status
-            GROUP BY server_name, pool_name
-        ) latest
-        ON s.server_name = latest.server_name
-        AND s.pool_name = latest.pool_name
-        AND s.received_at = latest.last_seen
-        ORDER BY s.server_name, s.pool_name
-        """
-    )
-    if filter_mode != 'db':
+    try:
+        cursor.execute(
+            """
+            SELECT s.server_name, s.pool_name, s.pool_state, s.received_at
+            FROM zfs_pool_status s
+            JOIN (
+                SELECT server_name, pool_name, MAX(received_at) AS last_seen
+                FROM zfs_pool_status
+                GROUP BY server_name, pool_name
+            ) latest
+            ON s.server_name = latest.server_name
+            AND s.pool_name = latest.pool_name
+            AND s.received_at = latest.last_seen
+            ORDER BY s.server_name, s.pool_name
+            """
+        )
         rows = cursor.fetchall()
+    except Exception as exc:
+        if "no such table: zfs_pool_status" in str(exc):
+            query.edit_message_text(
+                "🧊 *ZFS статусы*\n\n❌ Таблица ZFS ещё не создана.\n"
+                "Дождитесь первого письма или перезапустите мониторинг.",
+                parse_mode='Markdown',
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("↩️ Назад", callback_data='main_menu')],
+                    [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+                ])
+            )
+            return
+        raise
 
     if not rows:
         message = "📊 *ZFS статусы*\n\n❌ Данных нет."
