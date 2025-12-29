@@ -187,6 +187,7 @@ class ConfigManager:
             # Бэкапы
             ('BACKUP_ALERT_HOURS', '24', 'backup', 'Часы для алертов о бэкапах', 'int'),
             ('BACKUP_STALE_HOURS', '36', 'backup', 'Часы для устаревших бэкапов', 'int'),
+            ('ZFS_SERVERS', '{}', 'backup', 'Список ZFS серверов и массивов', 'dict'),
             
             # Веб-интерфейс
             ('WEB_PORT', '5000', 'web', 'Порт веб-интерфейса', 'int'),
