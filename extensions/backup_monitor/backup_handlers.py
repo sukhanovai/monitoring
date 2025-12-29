@@ -551,7 +551,7 @@ def show_database_backups_menu(query, backup_bot):
         if not db_by_type:
             message = "🗃️ *Бэкапы баз данных*\n\n❌ Нет данных о бэкапах БД."
             keyboard = [
-                [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')],
+                [InlineKeyboardButton("↩️ Назад", callback_data='main_menu')],
                 [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ]
             try:
@@ -561,8 +561,10 @@ def show_database_backups_menu(query, backup_bot):
                     reply_markup=InlineKeyboardMarkup(keyboard)
                 )
             except BadRequest as exc:
-                if "Message is not modified" not in str(exc):
-                    raise
+                if "Message is not modified" in str(exc):
+                    query.answer("Меню уже открыто", show_alert=False)
+                    return
+                raise
             return
 
         keyboard = []
@@ -600,7 +602,7 @@ def show_database_backups_menu(query, backup_bot):
                 keyboard.append(current_row)
 
         keyboard.extend([
-            [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases'),
+            [InlineKeyboardButton("↩️ Назад", callback_data='main_menu'),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
 
@@ -620,8 +622,10 @@ def show_database_backups_menu(query, backup_bot):
                 reply_markup=InlineKeyboardMarkup(keyboard)
             )
         except BadRequest as exc:
-            if "Message is not modified" not in str(exc):
-                raise
+            if "Message is not modified" in str(exc):
+                query.answer("Меню уже открыто", show_alert=False)
+                return
+            raise
 
     except Exception as e:
         logger.error(f"Ошибка в show_database_backups_menu: {e}")
