@@ -150,7 +150,6 @@ class MorningReport:
         try:
             from config.db_settings import BACKUP_DATABASE_CONFIG
             from core.config_manager import config_manager as settings_manager
-            from telegram.utils.helpers import escape_markdown
 
             db_path = BACKUP_DATABASE_CONFIG.get("backups_db")
             if not db_path:
@@ -200,21 +199,17 @@ class MorningReport:
             if not rows:
                 return "• Данных нет\n"
 
-            message = ""
-            current_server = None
-            for server_name, pool_name, pool_state, received_at in rows:
-                server_name = escape_markdown(str(server_name), version=1)
-                pool_name = escape_markdown(str(pool_name), version=1)
-                pool_state = escape_markdown(str(pool_state), version=1)
-                received_at = escape_markdown(str(received_at), version=1)
-                if server_name != current_server:
-                    if current_server is not None:
-                        message += "\n"
-                    message += f"*{server_name}*\n"
-                    current_server = server_name
-                message += f"• {pool_name}: `{pool_state}` ({received_at})\n"
+            total_pools = len(rows)
+            ok_pools = sum(1 for _, _, pool_state, _ in rows if str(pool_state).upper() == "ONLINE")
+            bad_pools = total_pools - ok_pools
+            servers_count = len({row[0] for row in rows})
 
-            return message
+            return (
+                f"• Серверов: {servers_count}\n"
+                f"• Пулов: {total_pools}\n"
+                f"• OK: {ok_pools}\n"
+                f"• Проблемы: {bad_pools}\n"
+            )
         except Exception as e:
             debug_log(f"❌ Ошибка получения сводки ZFS: {e}")
             return "❌ Данные ZFS недоступны\n"
