@@ -1920,6 +1920,16 @@ def show_zfs_status_summary(update, context):
     query = update.callback_query
     query.answer()
 
+    zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
+    if not isinstance(zfs_servers, dict):
+        zfs_servers = {}
+
+    allowed_servers = {
+        name
+        for name, server_value in zfs_servers.items()
+        if not isinstance(server_value, dict) or server_value.get('enabled', True)
+    }
+
     db_path = BACKUP_DATABASE_CONFIG.get("backups_db")
     if not db_path:
         query.edit_message_text(
@@ -1967,6 +1977,11 @@ def show_zfs_status_summary(update, context):
         raise
     finally:
         conn.close()
+
+    if allowed_servers:
+        rows = [row for row in rows if row[0] in allowed_servers]
+    else:
+        rows = []
 
     if not rows:
         message = "📊 *ZFS статусы*\n\n❌ Данных нет."
@@ -2099,6 +2114,7 @@ def delete_zfs_server(update, context, server_name):
 
     zfs_servers.pop(server_name, None)
     settings_manager.set_setting('ZFS_SERVERS', zfs_servers)
+    _delete_zfs_server_statuses(server_name)
 
     query.edit_message_text(
         f"✅ Сервер `{server_name}` удалён.",
@@ -2219,6 +2235,7 @@ def handle_zfs_server_name_edit_input(update, context):
         server_value = {'enabled': True}
     zfs_servers[new_name] = server_value
     settings_manager.set_setting('ZFS_SERVERS', zfs_servers)
+    _rename_zfs_server_statuses(old_name, new_name)
 
     update.message.reply_text(
         f"✅ Сервер обновлён: `{new_name}`",
@@ -2274,6 +2291,46 @@ def toggle_zfs_server(update, context, server_name):
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
     )
+
+def _delete_zfs_server_statuses(server_name: str) -> None:
+    """Удалить статусы ZFS сервера из БД бэкапов."""
+    db_path = BACKUP_DATABASE_CONFIG.get("backups_db")
+    if not db_path:
+        return
+
+    conn = sqlite3.connect(str(db_path))
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM zfs_pool_status WHERE server_name = ?",
+            (server_name,)
+        )
+        conn.commit()
+    except Exception as exc:
+        if "no such table: zfs_pool_status" not in str(exc):
+            debug_logger(f"⚠️ Не удалось удалить статусы ZFS сервера: {exc}")
+    finally:
+        conn.close()
+
+def _rename_zfs_server_statuses(old_name: str, new_name: str) -> None:
+    """Переименовать статусы ZFS сервера в БД бэкапов."""
+    db_path = BACKUP_DATABASE_CONFIG.get("backups_db")
+    if not db_path:
+        return
+
+    conn = sqlite3.connect(str(db_path))
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE zfs_pool_status SET server_name = ? WHERE server_name = ?",
+            (new_name, old_name)
+        )
+        conn.commit()
+    except Exception as exc:
+        if "no such table: zfs_pool_status" not in str(exc):
+            debug_logger(f"⚠️ Не удалось переименовать статусы ZFS сервера: {exc}")
+    finally:
+        conn.close()
 
 def handle_setting_input(update, context, setting_key):
     """Обработчик ввода значений настроек"""
