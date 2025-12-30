@@ -35,7 +35,7 @@ def _is_proxmox_host_enabled(host_value: object) -> bool:
     return True
 
 
-def get_backup_summary(period_hours=16):
+def get_backup_summary(period_hours=16, include_proxmox=True, include_databases=True):
     """Возвращает текстовую сводку по бэкапам за период."""
     try:
         from config.db_settings import DATA_DIR, DATABASE_BACKUP_CONFIG, PROXMOX_HOSTS
@@ -51,61 +51,68 @@ def get_backup_summary(period_hours=16):
         conn = sqlite3.connect(str(db_path))
         cursor = conn.cursor()
 
-        cursor.execute('''
-            SELECT DISTINCT host_name
-            FROM proxmox_backups
-            WHERE received_at >= datetime('now', '-30 days')
-            ORDER BY host_name
-        ''')
-        all_hosts = [row[0] for row in cursor.fetchall()]
-        if PROXMOX_HOSTS:
-            configured_hosts = {
-                host for host, value in PROXMOX_HOSTS.items()
-                if _is_proxmox_host_enabled(value)
-            }
-            db_hosts = set(all_hosts)
-            matched_hosts = sorted(configured_hosts & db_hosts)
-            all_hosts = matched_hosts or list(configured_hosts)
+        proxmox_results = []
+        stale_hosts = []
+        all_hosts = []
+        if include_proxmox:
+            cursor.execute('''
+                SELECT DISTINCT host_name
+                FROM proxmox_backups
+                WHERE received_at >= datetime('now', '-30 days')
+                ORDER BY host_name
+            ''')
+            all_hosts = [row[0] for row in cursor.fetchall()]
+            if PROXMOX_HOSTS:
+                configured_hosts = {
+                    host for host, value in PROXMOX_HOSTS.items()
+                    if _is_proxmox_host_enabled(value)
+                }
+                db_hosts = set(all_hosts)
+                matched_hosts = sorted(configured_hosts & db_hosts)
+                all_hosts = matched_hosts or list(configured_hosts)
 
-        cursor.execute('''
-            SELECT host_name, backup_status, MAX(received_at) as last_backup
-            FROM proxmox_backups
-            WHERE received_at >= ?
-            GROUP BY host_name
-        ''', (since_time,))
-        proxmox_results = cursor.fetchall()
+            cursor.execute('''
+                SELECT host_name, backup_status, MAX(received_at) as last_backup
+                FROM proxmox_backups
+                WHERE received_at >= ?
+                GROUP BY host_name
+            ''', (since_time,))
+            proxmox_results = cursor.fetchall()
 
-        cursor.execute('''
-            SELECT host_name, MAX(received_at) as last_backup
-            FROM proxmox_backups
-            GROUP BY host_name
-            HAVING last_backup < ?
-        ''', (stale_threshold,))
-        stale_hosts = cursor.fetchall()
+            cursor.execute('''
+                SELECT host_name, MAX(received_at) as last_backup
+                FROM proxmox_backups
+                GROUP BY host_name
+                HAVING last_backup < ?
+            ''', (stale_threshold,))
+            stale_hosts = cursor.fetchall()
 
-        cursor.execute('''
-            SELECT backup_type, database_name, backup_status, MAX(received_at) as last_backup
-            FROM database_backups
-            WHERE received_at >= ?
-            GROUP BY backup_type, database_name
-        ''', (since_time,))
-        db_results = cursor.fetchall()
-        db_results = [
-            (_normalize_backup_type(backup_type, db_name), db_name, status, last_backup)
-            for backup_type, db_name, status, last_backup in db_results
-        ]
+        db_results = []
+        stale_databases = []
+        if include_databases:
+            cursor.execute('''
+                SELECT backup_type, database_name, backup_status, MAX(received_at) as last_backup
+                FROM database_backups
+                WHERE received_at >= ?
+                GROUP BY backup_type, database_name
+            ''', (since_time,))
+            db_results = cursor.fetchall()
+            db_results = [
+                (_normalize_backup_type(backup_type, db_name), db_name, status, last_backup)
+                for backup_type, db_name, status, last_backup in db_results
+            ]
 
-        cursor.execute('''
-            SELECT backup_type, database_name, MAX(received_at) as last_backup
-            FROM database_backups
-            GROUP BY backup_type, database_name
-            HAVING last_backup < ?
-        ''', (stale_threshold,))
-        stale_databases = cursor.fetchall()
-        stale_databases = [
-            (_normalize_backup_type(backup_type, db_name), db_name, last_backup)
-            for backup_type, db_name, last_backup in stale_databases
-        ]
+            cursor.execute('''
+                SELECT backup_type, database_name, MAX(received_at) as last_backup
+                FROM database_backups
+                GROUP BY backup_type, database_name
+                HAVING last_backup < ?
+            ''', (stale_threshold,))
+            stale_databases = cursor.fetchall()
+            stale_databases = [
+                (_normalize_backup_type(backup_type, db_name), db_name, last_backup)
+                for backup_type, db_name, last_backup in stale_databases
+            ]
 
         conn.close()
 
@@ -157,14 +164,15 @@ def get_backup_summary(period_hours=16):
 
         message = ""
 
-        if len(all_hosts) > 0:
+        if include_proxmox and len(all_hosts) > 0:
             success_rate = (hosts_with_success / len(all_hosts)) * 100
             message += f"• Proxmox: {hosts_with_success}/{len(all_hosts)} успешно ({success_rate:.1f}%)"
             if stale_hosts:
                 message += f" ⚠️ {len(stale_hosts)} хостов без бэкапов >24ч"
             message += "\n"
 
-        message += "• Базы данных:\n"
+        if include_databases:
+            message += "• Базы данных:\n"
 
         category_names = {
             'company_database': 'Основные',
@@ -173,28 +181,33 @@ def get_backup_summary(period_hours=16):
             'yandex': 'Yandex',
         }
 
-        for category in ['company_database', 'barnaul', 'client', 'yandex']:
-            if category not in db_stats:
-                continue
-            stats = db_stats[category]
-            if stats['total'] <= 0:
-                continue
+            for category in ['company_database', 'barnaul', 'client', 'yandex']:
+                if category not in db_stats:
+                    continue
+                stats = db_stats[category]
+                if stats['total'] <= 0:
+                    continue
 
-            type_name = category_names[category]
-            success_rate = (stats['successful'] / stats['total']) * 100
-            message += f"  - {type_name}: {stats['successful']}/{stats['total']} успешно ({success_rate:.1f}%)"
+                type_name = category_names[category]
+                success_rate = (stats['successful'] / stats['total']) * 100
+                message += f"  - {type_name}: {stats['successful']}/{stats['total']} успешно ({success_rate:.1f}%)"
 
-            stale_count = len([db for db in stale_databases if db[0] == category])
-            if stale_count > 0:
-                message += f" ⚠️ {stale_count} БД без бэкапов >24ч"
-            message += "\n"
+                stale_count = len([db for db in stale_databases if db[0] == category])
+                if stale_count > 0:
+                    message += f" ⚠️ {stale_count} БД без бэкапов >24ч"
+                message += "\n"
 
-        total_stale = len(stale_hosts) + len(stale_databases)
+        total_stale = 0
+        if include_proxmox:
+            total_stale += len(stale_hosts)
+        if include_databases:
+            total_stale += len(stale_databases)
+
         if total_stale > 0:
             message += f"\n🚨 Внимание: {total_stale} проблем:\n"
-            if stale_hosts:
+            if include_proxmox and stale_hosts:
                 message += f"• {len(stale_hosts)} хостов без бэкапов >24ч\n"
-            if stale_databases:
+            if include_databases and stale_databases:
                 message += f"• {len(stale_databases)} БД без бэкапов >24ч\n"
 
         return message
