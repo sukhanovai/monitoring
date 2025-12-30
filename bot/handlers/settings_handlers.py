@@ -1987,8 +1987,7 @@ def show_zfs_status_summary(update, context):
             )
 
     keyboard = [
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs')],
-        [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='main_menu')],
         [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
 
