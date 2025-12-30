@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_utils.py
-Server Monitoring System v6.0.19
+Server Monitoring System v6.0.20
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Utilities for working with backups
 Система мониторинга серверов
-Версия: 6.0.19
+Версия: 6.0.20
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Утилиты для работы с бэкапами
@@ -181,21 +181,27 @@ def get_backup_summary(period_hours=16, include_proxmox=True, include_databases=
             'yandex': 'Yandex',
         }
 
-        for category in ['company_database', 'barnaul', 'client', 'yandex']:
-            if category not in db_stats:
-                continue
-            stats = db_stats[category]
-            if stats['total'] <= 0:
-                continue
+            for category in ['company_database', 'barnaul', 'client', 'yandex']:
+                if category not in db_stats:
+                    continue
+                stats = db_stats[category]
+                if stats['total'] <= 0:
+                    continue
 
-            type_name = category_names[category]
-            success_rate = (stats['successful'] / stats['total']) * 100
-            message += f"  - {type_name}: {stats['successful']}/{stats['total']} успешно ({success_rate:.1f}%)"
+                type_name = category_names[category]
+                success_rate = (stats['successful'] / stats['total']) * 100
+                message += f"  - {type_name}: {stats['successful']}/{stats['total']} успешно ({success_rate:.1f}%)"
 
-            stale_count = len([db for db in stale_databases if db[0] == category])
-            if stale_count > 0:
-                message += f" ⚠️ {stale_count} БД без бэкапов >24ч"
-            message += "\n"
+                stale_count = len([db for db in stale_databases if db[0] == category])
+                if stale_count > 0:
+                    message += f" ⚠️ {stale_count} БД без бэкапов >24ч"
+                message += "\n"
+
+        total_stale = 0
+        if include_proxmox:
+            total_stale += len(stale_hosts)
+        if include_databases:
+            total_stale += len(stale_databases)
 
         total_stale = 0
         if include_proxmox:
