@@ -1,11 +1,11 @@
 """
 /core/monitor_core.py
-Server Monitoring System v6.0.19
+Server Monitoring System v6.0.22
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core system
 Система мониторинга серверов
-Версия: 6.0.19
+Версия: 6.0.22
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Ядро системы
