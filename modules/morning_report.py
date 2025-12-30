@@ -71,6 +71,8 @@ class MorningReport:
         message += f"🟢 *Доступно:* {up_count}\n"
         message += f"🔴 *Недоступно:* {down_count}\n"
 
+        from telegram.utils.helpers import escape_markdown
+
         if down_count > 0:
             message += f"\n⚠️ *Проблемные серверы ({down_count}):*\n"
             # Группируем по типу
@@ -81,9 +83,12 @@ class MorningReport:
                 by_type[server["type"]].append(server)
                 
             for server_type, servers_list in by_type.items():
-                message += f"\n**{server_type.upper()} ({len(servers_list)}):**\n"
+                safe_type = escape_markdown(str(server_type).upper(), version=1)
+                message += f"\n**{safe_type} ({len(servers_list)}):**\n"
                 for s in servers_list:
-                    message += f"• {s['name']} ({s['ip']})\n"
+                    safe_name = escape_markdown(str(s.get('name', '')), version=1)
+                    safe_ip = escape_markdown(str(s.get('ip', '')), version=1)
+                    message += f"• {safe_name} ({safe_ip})\n"
         else:
             message += f"\n✅ *Все серверы доступны!*\n"
 
@@ -145,6 +150,7 @@ class MorningReport:
         try:
             from config.db_settings import BACKUP_DATABASE_CONFIG
             from core.config_manager import config_manager as settings_manager
+            from telegram.utils.helpers import escape_markdown
 
             db_path = BACKUP_DATABASE_CONFIG.get("backups_db")
             if not db_path:
@@ -197,12 +203,16 @@ class MorningReport:
             message = ""
             current_server = None
             for server_name, pool_name, pool_state, received_at in rows:
+                server_name = escape_markdown(str(server_name), version=1)
+                pool_name = escape_markdown(str(pool_name), version=1)
+                pool_state = escape_markdown(str(pool_state), version=1)
+                received_at = escape_markdown(str(received_at), version=1)
                 if server_name != current_server:
                     if current_server is not None:
                         message += "\n"
                     message += f"*{server_name}*\n"
                     current_server = server_name
-                message += f"• {pool_name}: {pool_state} ({received_at})\n"
+                message += f"• {pool_name}: `{pool_state}` ({received_at})\n"
 
             return message
         except Exception as e:

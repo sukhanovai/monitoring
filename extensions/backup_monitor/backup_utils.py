@@ -174,12 +174,13 @@ def get_backup_summary(period_hours=16, include_proxmox=True, include_databases=
         if include_databases:
             message += "• Базы данных:\n"
 
-        category_names = {
-            'company_database': 'Основные',
-            'barnaul': 'Барнаул',
-            'client': 'Клиенты',
-            'yandex': 'Yandex',
-        }
+        if include_databases:
+            category_names = {
+                'company_database': 'Основные',
+                'barnaul': 'Барнаул',
+                'client': 'Клиенты',
+                'yandex': 'Yandex',
+            }
 
             for category in ['company_database', 'barnaul', 'client', 'yandex']:
                 if category not in db_stats:
