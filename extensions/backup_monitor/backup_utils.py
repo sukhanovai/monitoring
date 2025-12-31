@@ -199,9 +199,42 @@ def get_backup_summary(period_hours=16, include_proxmox=True, include_databases=
                 'yandex': 'Yandex',
             }
 
-            total_configured = sum(len(databases) for databases in config_databases.values())
+            total_configured = sum(
+                len(databases) for databases in config_databases.values()
+                if isinstance(databases, dict)
+            )
             if total_configured == 0:
-                message += "  - Нет настроенных БД\n"
+                if not db_results:
+                    message += "  - Нет настроенных БД\n"
+                else:
+                    fallback_stats = {}
+                    for backup_type, db_name, status, _ in db_results:
+                        stats = fallback_stats.setdefault(
+                            backup_type,
+                            {"total": 0, "successful": 0},
+                        )
+                        stats["total"] += 1
+                        if status == 'success':
+                            stats["successful"] += 1
+
+                    for backup_type in ['company_database', 'barnaul', 'client', 'yandex']:
+                        if backup_type not in fallback_stats:
+                            continue
+                        stats = fallback_stats[backup_type]
+                        if stats["total"] <= 0:
+                            continue
+
+                        type_name = category_names.get(backup_type, backup_type)
+                        success_rate = (stats["successful"] / stats["total"]) * 100
+                        message += (
+                            f"  - {type_name}: {stats['successful']}/{stats['total']} успешно "
+                            f"({success_rate:.1f}%)"
+                        )
+
+                        stale_count = len([db for db in stale_databases if db[0] == backup_type])
+                        if stale_count > 0:
+                            message += f" ⚠️ {stale_count} БД без бэкапов >24ч"
+                        message += "\n"
             else:
                 for category in ['company_database', 'barnaul', 'client', 'yandex']:
                     if category not in db_stats:
