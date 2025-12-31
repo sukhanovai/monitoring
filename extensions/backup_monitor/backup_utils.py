@@ -199,6 +199,9 @@ def get_backup_summary(period_hours=16, include_proxmox=True, include_databases=
                 'yandex': 'Yandex',
             }
 
+            if not db_stats:
+                message += "  - Нет настроенных БД\n"
+
             for category in ['company_database', 'barnaul', 'client', 'yandex']:
                 if category not in db_stats:
                     continue
