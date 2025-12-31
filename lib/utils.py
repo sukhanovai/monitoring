@@ -1,11 +1,11 @@
 """
 /lib/utils.py
-Server Monitoring System v6.0.25
+Server Monitoring System v6.0.26
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Utility functions
 Система мониторинга серверов
-Версия: 6.0.25
+Версия: 6.0.26
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Вспомогательные функции
