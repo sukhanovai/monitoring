@@ -122,15 +122,25 @@ def get_backup_summary(period_hours=16, include_proxmox=True, include_databases=
             if r[1] == 'success' and r[0] in allowed_hosts
         ])
 
-        company_databases = DATABASE_BACKUP_CONFIG.get("company_databases", {})
-        client_databases = DATABASE_BACKUP_CONFIG.get("client_databases", {})
-        if "trade" in client_databases and "trade" in company_databases:
-            client_databases = {
-                key: value for key, value in client_databases.items() if key != "trade"
-            }
+        def _get_db_config(config: dict, *keys: str) -> dict:
+            for key in keys:
+                value = config.get(key)
+                if isinstance(value, dict):
+                    return value
+            return {}
 
-        company_databases = DATABASE_BACKUP_CONFIG.get("company_databases", {})
-        client_databases = DATABASE_BACKUP_CONFIG.get("client_databases", {})
+        company_databases = _get_db_config(
+            DATABASE_BACKUP_CONFIG,
+            "company_databases",
+            "company_database",
+            "company",
+        )
+        client_databases = _get_db_config(
+            DATABASE_BACKUP_CONFIG,
+            "client_databases",
+            "client",
+            "clients",
+        )
         if "trade" in client_databases and "trade" in company_databases:
             client_databases = {
                 key: value for key, value in client_databases.items() if key != "trade"
