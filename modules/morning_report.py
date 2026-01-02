@@ -196,20 +196,63 @@ class MorningReport:
             else:
                 rows = []
 
+            expected_servers = set(allowed_servers)
+            if not expected_servers:
+                expected_servers = {row[0] for row in rows}
+
+            latest_by_server = {}
+            for server_name, _, _, received_at in rows:
+                if server_name not in latest_by_server:
+                    latest_by_server[server_name] = received_at
+                else:
+                    if received_at > latest_by_server[server_name]:
+                        latest_by_server[server_name] = received_at
+
+            stale_servers = set()
+            stale_threshold = datetime.now() - timedelta(hours=24)
+            for server in expected_servers:
+                received_at = latest_by_server.get(server)
+                if not received_at:
+                    stale_servers.add(server)
+                    continue
+                try:
+                    last_seen = datetime.strptime(received_at, "%Y-%m-%d %H:%M:%S")
+                except ValueError:
+                    stale_servers.add(server)
+                    continue
+                if last_seen < stale_threshold:
+                    stale_servers.add(server)
+
+            if not rows and expected_servers:
+                stale_list = ", ".join(sorted(stale_servers))
+                return (
+                    f"• Серверов: {len(expected_servers)}\n"
+                    "• Пулов: 0\n"
+                    "• OK: 0\n"
+                    f"• Проблемы: {len(stale_servers)}\n"
+                    f"• Нет свежих данных (>24ч): {stale_list}\n"
+                )
             if not rows:
                 return "• Данных нет\n"
 
             total_pools = len(rows)
             ok_pools = sum(1 for _, _, pool_state, _ in rows if str(pool_state).upper() == "ONLINE")
             bad_pools = total_pools - ok_pools
-            servers_count = len({row[0] for row in rows})
+            servers_count = len(expected_servers) if expected_servers else len({row[0] for row in rows})
+            problems_count = bad_pools + len(stale_servers)
 
-            return (
+            summary = (
                 f"• Серверов: {servers_count}\n"
                 f"• Пулов: {total_pools}\n"
                 f"• OK: {ok_pools}\n"
-                f"• Проблемы: {bad_pools}\n"
+                f"• Проблемы: {problems_count}\n"
             )
+
+            if stale_servers:
+                stale_list = ", ".join(sorted(stale_servers))
+                summary += f"• Нет свежих данных (>24ч): {stale_list}\n"
+
+            return summary
         except Exception as e:
             debug_log(f"❌ Ошибка получения сводки ZFS: {e}")
             return "❌ Данные ZFS недоступны\n"
