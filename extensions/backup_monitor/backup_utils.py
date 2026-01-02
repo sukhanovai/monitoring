@@ -122,15 +122,25 @@ def get_backup_summary(period_hours=16, include_proxmox=True, include_databases=
             if r[1] == 'success' and r[0] in allowed_hosts
         ])
 
-        company_databases = DATABASE_BACKUP_CONFIG.get("company_databases", {})
-        client_databases = DATABASE_BACKUP_CONFIG.get("client_databases", {})
-        if "trade" in client_databases and "trade" in company_databases:
-            client_databases = {
-                key: value for key, value in client_databases.items() if key != "trade"
-            }
+        def _get_db_config(config: dict, *keys: str) -> dict:
+            for key in keys:
+                value = config.get(key)
+                if isinstance(value, dict):
+                    return value
+            return {}
 
-        company_databases = DATABASE_BACKUP_CONFIG.get("company_databases", {})
-        client_databases = DATABASE_BACKUP_CONFIG.get("client_databases", {})
+        company_databases = _get_db_config(
+            DATABASE_BACKUP_CONFIG,
+            "company_databases",
+            "company_database",
+            "company",
+        )
+        client_databases = _get_db_config(
+            DATABASE_BACKUP_CONFIG,
+            "client_databases",
+            "client",
+            "clients",
+        )
         if "trade" in client_databases and "trade" in company_databases:
             client_databases = {
                 key: value for key, value in client_databases.items() if key != "trade"
@@ -138,9 +148,9 @@ def get_backup_summary(period_hours=16, include_proxmox=True, include_databases=
 
         config_databases = {
             'company_database': company_databases,
-            'barnaul': DATABASE_BACKUP_CONFIG.get("barnaul_backups", {}),
+            'barnaul': _get_db_config(DATABASE_BACKUP_CONFIG, "barnaul_backups", "barnaul"),
             'client': client_databases,
-            'yandex': DATABASE_BACKUP_CONFIG.get("yandex_backups", {}),
+            'yandex': _get_db_config(DATABASE_BACKUP_CONFIG, "yandex_backups", "yandex"),
         }
 
         db_stats = {}
@@ -153,6 +163,15 @@ def get_backup_summary(period_hours=16, include_proxmox=True, include_databases=
             (category, db_name)
             for category, databases in configured_databases.items()
             for db_name in databases
+        }
+        recent_db_keys = {
+            (backup_type, db_name)
+            for backup_type, db_name, _, _ in db_results
+        }
+        successful_db_keys = {
+            (backup_type, db_name)
+            for backup_type, db_name, status, _ in db_results
+            if status == 'success'
         }
 
         stale_databases = [
@@ -167,16 +186,17 @@ def get_backup_summary(period_hours=16, include_proxmox=True, include_databases=
                 continue
 
             successful_count = 0
+            missing_recent = 0
             for db_key in databases.keys():
-                if any(
-                    backup_type == category and db_name == db_key and status == 'success'
-                    for backup_type, db_name, status, _ in db_results
-                ):
+                if (category, db_key) in successful_db_keys:
                     successful_count += 1
+                if (category, db_key) not in recent_db_keys:
+                    missing_recent += 1
 
             db_stats[category] = {
                 'total': total_in_config,
                 'successful': successful_count,
+                'missing_recent': missing_recent,
             }
 
         message = ""
@@ -250,6 +270,9 @@ def get_backup_summary(period_hours=16, include_proxmox=True, include_databases=
                     stale_count = len([db for db in stale_databases if db[0] == category])
                     if stale_count > 0:
                         message += f" ⚠️ {stale_count} БД без бэкапов >24ч"
+                    missing_recent = stats.get('missing_recent', 0)
+                    if missing_recent > 0:
+                        message += f" ⚠️ {missing_recent} БД без бэкапов за последние {period_hours}ч"
                     message += "\n"
 
         total_stale = 0
@@ -258,12 +281,23 @@ def get_backup_summary(period_hours=16, include_proxmox=True, include_databases=
         if include_databases:
             total_stale += len(stale_databases)
 
-        if total_stale > 0:
-            message += f"\n🚨 Внимание: {total_stale} проблем:\n"
+        total_missing_recent = 0
+        if include_databases:
+            total_missing_recent = sum(
+                stats.get('missing_recent', 0) for stats in db_stats.values()
+            )
+
+        total_issues = total_stale + total_missing_recent
+        if total_issues > 0:
+            message += f"\n🚨 Внимание: {total_issues} проблем:\n"
             if include_proxmox and stale_hosts:
                 message += f"• {len(stale_hosts)} хостов без бэкапов >24ч\n"
             if include_databases and stale_databases:
                 message += f"• {len(stale_databases)} БД без бэкапов >24ч\n"
+            if include_databases and total_missing_recent > 0:
+                message += (
+                    f"• {total_missing_recent} БД без бэкапов за последние {period_hours}ч\n"
+                )
 
         return message
 
