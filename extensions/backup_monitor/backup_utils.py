@@ -146,16 +146,14 @@ def get_backup_summary(period_hours=16, include_proxmox=True, include_databases=
                 key: value for key, value in client_databases.items() if key != "trade"
             }
 
-        def _get_db_config(config: dict, *keys: str) -> dict:
-            for key in keys:
-                value = config.get(key)
-                if isinstance(value, dict):
-                    return value
-            return {}
-
         config_databases = {
             'company_database': company_databases,
-            'barnaul': _get_db_config(DATABASE_BACKUP_CONFIG, "barnaul_backups", "barnaul"),
+            'barnaul': _get_db_config(
+                DATABASE_BACKUP_CONFIG,
+                "barnaul_backups",
+                "barnaul",
+                "Филиалы",
+            ),
             'client': client_databases,
             'yandex': _get_db_config(DATABASE_BACKUP_CONFIG, "yandex_backups", "yandex"),
         }
