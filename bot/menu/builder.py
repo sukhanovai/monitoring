@@ -1,11 +1,11 @@
 """
 /bot/menu/builder.py
-Server Monitoring System v6.0.0
+Server Monitoring System v7.0.00
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 The place where keyboards are made.
 Система мониторинга серверов
-Версия: 6.0.0
+Версия: 7.0.00
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Место, где строятся клавиатуры
@@ -23,10 +23,19 @@ def main_menu(extension_manager):
     if extension_manager.is_extension_enabled('resource_monitor'):
         keyboard.append([InlineKeyboardButton("📊 Ресурсы сервера", callback_data='check_resources')])
 
-    if (extension_manager.is_extension_enabled('backup_monitor') or
-            extension_manager.is_extension_enabled('database_backup_monitor')):
+    if extension_manager.is_extension_enabled('backup_monitor'):
         keyboard.append(
-            [InlineKeyboardButton("💾 Бэкапы", callback_data='backup_main')]
+            [InlineKeyboardButton("💾 Бэкапы Proxmox", callback_data='backup_hosts')]
+        )
+
+    if extension_manager.is_extension_enabled('database_backup_monitor'):
+        keyboard.append(
+            [InlineKeyboardButton("🗃️ Бэкапы БД", callback_data='backup_databases')]
+        )
+
+    if extension_manager.is_extension_enabled('zfs_monitor'):
+        keyboard.append(
+            [InlineKeyboardButton("🧊 ZFS", callback_data='zfs_menu')]
         )
 
     keyboard.extend([

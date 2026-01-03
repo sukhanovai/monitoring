@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/bot_handler.py
-Server Monitoring System v6.0.0
+Server Monitoring System v7.0.00
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring Proxmox backups
 Система мониторинга серверов
-Версия: 6.0.0
+Версия: 7.0.00
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг бэкапов Proxmox
@@ -22,6 +22,7 @@ from config.settings import BOT_DEBUG_LOG_FILE
 from lib.logging import debug_log, setup_logging
 from extensions.backup_monitor.backup_handlers import (
     show_main_menu,
+    show_proxmox_menu,
     show_today_status,
     show_recent_backups,
     show_failed_backups,
@@ -452,7 +453,7 @@ def backup_callback(update, context):
             show_database_backups_menu(query, backup_bot)
 
         elif data == 'backup_proxmox':
-            show_main_menu(query, backup_bot)
+            show_proxmox_menu(query, backup_bot)
 
         elif data == 'backup_stale_hosts':
             show_stale_hosts(query, backup_bot)

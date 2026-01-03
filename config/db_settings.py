@@ -1,11 +1,11 @@
 """
 /config/db_settings.py
-Server Monitoring System v6.0.0
+Server Monitoring System v7.0.00
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Database-backed settings loader
 Система мониторинга серверов
-Версия: 6.0.0
+Версия: 7.0.00
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Загрузчик настроек из базы данных
@@ -202,7 +202,7 @@ def load_all_settings() -> None:
     global SERVER_TIMEOUTS, WEB_PORT, WEB_HOST, MONITOR_SERVER_IP
     global RDP_SERVERS, SSH_SERVERS, PING_SERVERS
     global PROXMOX_HOSTS, DUPLICATE_IP_HOSTS, HOSTNAME_ALIASES
-    global BACKUP_PATTERNS, BACKUP_STATUS_MAP, DATABASE_CONFIG
+    global BACKUP_PATTERNS, BACKUP_STATUS_MAP, DATABASE_CONFIG, ZFS_SERVERS
     global BACKUP_DATABASE_CONFIG, DATABASE_BACKUP_CONFIG
     
     if not USE_DB:
@@ -323,6 +323,7 @@ def load_all_settings() -> None:
             defaults.HOSTNAME_ALIASES,
         )
         BACKUP_PATTERNS = get_json_setting('BACKUP_PATTERNS', defaults.BACKUP_PATTERNS)
+        ZFS_SERVERS = get_json_setting('ZFS_SERVERS', defaults.ZFS_SERVERS)
         BACKUP_STATUS_MAP = get_json_setting(
             'BACKUP_STATUS_MAP',
             defaults.BACKUP_STATUS_MAP,

@@ -1,11 +1,11 @@
 """
 /app/modules/morning_report.py
-Server Monitoring System v6.0.0
+Server Monitoring System v7.0.00
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Morning Report Module
 Система мониторинга серверов
-Версия: 6.0.0
+Версия: 7.0.00
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль утреннего отчета
@@ -14,6 +14,7 @@ Morning Report Module
 import threading
 import time
 from datetime import datetime, timedelta
+import sqlite3
 from config.db_settings import DATA_COLLECTION_TIME
 from lib.logging import debug_log
 
@@ -69,16 +70,9 @@ class MorningReport:
         message += f"🔢 *Всего серверов:* {total_servers}\n"
         message += f"🟢 *Доступно:* {up_count}\n"
         message += f"🔴 *Недоступно:* {down_count}\n"
-        
-        # Добавляем информацию о бэкапах
-        try:
-            backup_summary = self.get_backup_summary_for_report(24 if is_manual else 16)
-            message += f"\n💾 *Статус бэкапов ({'за последние 24ч' if is_manual else 'за последние 16ч'})*\n"
-            message += backup_summary
-        except Exception as e:
-            debug_log(f"⚠️ Ошибка получения данных о бэкапах: {e}")
-            message += "\n💾 *Статус бэкапов:* данные недоступны\n"
-        
+
+        from telegram.utils.helpers import escape_markdown
+
         if down_count > 0:
             message += f"\n⚠️ *Проблемные серверы ({down_count}):*\n"
             # Группируем по типу
@@ -89,11 +83,42 @@ class MorningReport:
                 by_type[server["type"]].append(server)
                 
             for server_type, servers_list in by_type.items():
-                message += f"\n**{server_type.upper()} ({len(servers_list)}):**\n"
+                safe_type = escape_markdown(str(server_type).upper(), version=1)
+                message += f"\n**{safe_type} ({len(servers_list)}):**\n"
                 for s in servers_list:
-                    message += f"• {s['name']} ({s['ip']})\n"
+                    safe_name = escape_markdown(str(s.get('name', '')), version=1)
+                    safe_ip = escape_markdown(str(s.get('ip', '')), version=1)
+                    message += f"• {safe_name} ({safe_ip})\n"
         else:
             message += f"\n✅ *Все серверы доступны!*\n"
+
+        # Добавляем информацию о бэкапах
+        try:
+            from extensions.extension_manager import extension_manager
+            show_proxmox = extension_manager.is_extension_enabled('backup_monitor')
+            show_databases = extension_manager.is_extension_enabled('database_backup_monitor')
+            if show_proxmox or show_databases:
+                backup_summary = self.get_backup_summary_for_report(
+                    24 if is_manual else 16,
+                    include_proxmox=show_proxmox,
+                    include_databases=show_databases,
+                )
+                message += f"\n💾 *Статус бэкапов ({'за последние 24ч' if is_manual else 'за последние 16ч'})*\n"
+                message += backup_summary
+        except Exception as e:
+            debug_log(f"⚠️ Ошибка получения данных о бэкапах: {e}")
+            message += "\n💾 *Статус бэкапов:* данные недоступны\n"
+
+        # Добавляем информацию о ZFS
+        try:
+            from extensions.extension_manager import extension_manager
+            if extension_manager.is_extension_enabled('zfs_monitor'):
+                zfs_summary = self.get_zfs_summary_for_report()
+                message += "\n🧊 *Статусы ZFS (последние)*\n"
+                message += zfs_summary
+        except Exception as e:
+            debug_log(f"⚠️ Ошибка получения данных о ZFS: {e}")
+            message += "\n🧊 *Статусы ZFS:* данные недоступны\n"
             
         message += f"\n⏰ *Отчет сформирован:* {datetime.now().strftime('%H:%M:%S')}"
         return message
@@ -106,15 +131,131 @@ class MorningReport:
 
         return self.generate_report_message()
     
-    def get_backup_summary_for_report(self, period_hours=16):
+    def get_backup_summary_for_report(self, period_hours=16, include_proxmox=True, include_databases=True):
         """Получает сводку по бэкапам"""
         try:
             # Импорт функций бэкапов
             from extensions.backup_monitor.backup_utils import get_backup_summary
-            return get_backup_summary(period_hours)
+            return get_backup_summary(
+                period_hours,
+                include_proxmox=include_proxmox,
+                include_databases=include_databases,
+            )
         except Exception as e:
             debug_log(f"❌ Ошибка получения сводки по бэкапам: {e}")
             return "❌ Данные о бэкапах недоступны"
+
+    def get_zfs_summary_for_report(self):
+        """Получает сводку по ZFS"""
+        try:
+            from config.db_settings import BACKUP_DATABASE_CONFIG
+            from core.config_manager import config_manager as settings_manager
+
+            db_path = BACKUP_DATABASE_CONFIG.get("backups_db")
+            if not db_path:
+                return "❌ База бэкапов не настроена\n"
+
+            zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
+            if not isinstance(zfs_servers, dict):
+                zfs_servers = {}
+
+            allowed_servers = {
+                name
+                for name, server_value in zfs_servers.items()
+                if not isinstance(server_value, dict) or server_value.get('enabled', True)
+            }
+
+            conn = sqlite3.connect(str(db_path))
+            cursor = conn.cursor()
+            try:
+                cursor.execute(
+                    """
+                    SELECT s.server_name, s.pool_name, s.pool_state, s.received_at
+                    FROM zfs_pool_status s
+                    JOIN (
+                        SELECT server_name, pool_name, MAX(received_at) AS last_seen
+                        FROM zfs_pool_status
+                        GROUP BY server_name, pool_name
+                    ) latest
+                    ON s.server_name = latest.server_name
+                    AND s.pool_name = latest.pool_name
+                    AND s.received_at = latest.last_seen
+                    ORDER BY s.server_name, s.pool_name
+                    """
+                )
+                rows = cursor.fetchall()
+            except Exception as exc:
+                if "no such table: zfs_pool_status" in str(exc):
+                    return "❌ Таблица ZFS ещё не создана.\n"
+                raise
+            finally:
+                conn.close()
+
+            if allowed_servers:
+                rows = [row for row in rows if row[0] in allowed_servers]
+            else:
+                rows = []
+
+            expected_servers = set(allowed_servers)
+            if not expected_servers:
+                expected_servers = {row[0] for row in rows}
+
+            latest_by_server = {}
+            for server_name, _, _, received_at in rows:
+                if server_name not in latest_by_server:
+                    latest_by_server[server_name] = received_at
+                else:
+                    if received_at > latest_by_server[server_name]:
+                        latest_by_server[server_name] = received_at
+
+            stale_servers = set()
+            stale_threshold = datetime.now() - timedelta(hours=24)
+            for server in expected_servers:
+                received_at = latest_by_server.get(server)
+                if not received_at:
+                    stale_servers.add(server)
+                    continue
+                try:
+                    last_seen = datetime.strptime(received_at, "%Y-%m-%d %H:%M:%S")
+                except ValueError:
+                    stale_servers.add(server)
+                    continue
+                if last_seen < stale_threshold:
+                    stale_servers.add(server)
+
+            if not rows and expected_servers:
+                stale_list = ", ".join(sorted(stale_servers))
+                return (
+                    f"• Серверов: {len(expected_servers)}\n"
+                    "• Пулов: 0\n"
+                    "• OK: 0\n"
+                    f"• Проблемы: {len(stale_servers)}\n"
+                    f"• Нет свежих данных (>24ч): {stale_list}\n"
+                )
+            if not rows:
+                return "• Данных нет\n"
+
+            total_pools = len(rows)
+            ok_pools = sum(1 for _, _, pool_state, _ in rows if str(pool_state).upper() == "ONLINE")
+            bad_pools = total_pools - ok_pools
+            servers_count = len(expected_servers) if expected_servers else len({row[0] for row in rows})
+            problems_count = bad_pools + len(stale_servers)
+
+            summary = (
+                f"• Серверов: {servers_count}\n"
+                f"• Пулов: {total_pools}\n"
+                f"• OK: {ok_pools}\n"
+                f"• Проблемы: {problems_count}\n"
+            )
+
+            if stale_servers:
+                stale_list = ", ".join(sorted(stale_servers))
+                summary += f"• Нет свежих данных (>24ч): {stale_list}\n"
+
+            return summary
+        except Exception as e:
+            debug_log(f"❌ Ошибка получения сводки ZFS: {e}")
+            return "❌ Данные ZFS недоступны\n"
     
     def send_report(self, manual_call=False):
         """Отправка отчета"""

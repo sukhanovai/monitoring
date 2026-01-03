@@ -1,11 +1,11 @@
 """
 /core/config_manager.py
-Server Monitoring System v6.0.0
+Server Monitoring System v7.0.00
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Configuration Manager
 Система мониторинга серверов
-Версия: 6.0.0
+Версия: 7.0.00
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Менеджер конфигурации
@@ -187,6 +187,7 @@ class ConfigManager:
             # Бэкапы
             ('BACKUP_ALERT_HOURS', '24', 'backup', 'Часы для алертов о бэкапах', 'int'),
             ('BACKUP_STALE_HOURS', '36', 'backup', 'Часы для устаревших бэкапов', 'int'),
+            ('ZFS_SERVERS', '{}', 'backup', 'Список ZFS серверов и массивов', 'dict'),
             
             # Веб-интерфейс
             ('WEB_PORT', '5000', 'web', 'Порт веб-интерфейса', 'int'),

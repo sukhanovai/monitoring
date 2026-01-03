@@ -1,11 +1,11 @@
 """
 /config/settings.py
-Server Monitoring System v6.0.0
+Server Monitoring System v7.0.00
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Application settings - default values
 Система мониторинга серверов
-Версия: 6.0.0
+Версия: 7.0.00
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Настройки приложения - значения по умолчанию
@@ -154,6 +154,7 @@ PROXMOX_HOSTS: Dict[str, Any] = {}
 DUPLICATE_IP_HOSTS: Dict[str, List[str]] = {}
 HOSTNAME_ALIASES: Dict[str, List[str]] = {}
 BACKUP_PATTERNS: Dict[str, Dict[str, List[str]]] = {}
+ZFS_SERVERS: Dict[str, Dict[str, Any]] = {}
 BACKUP_STATUS_MAP = {
     'backup successful': 'success',
     'successful': 'success',

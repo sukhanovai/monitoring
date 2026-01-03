@@ -1,11 +1,11 @@
 """
 /extensions/extension_manager.py
-Server Monitoring System v6.0.0
+Server Monitoring System v7.0.00
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Extension Manager for Monitoring
 Система мониторинга серверов
-Версия: 6.0.0
+Версия: 7.0.00
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Менеджер расширений для мониторинга
@@ -41,6 +41,13 @@ AVAILABLE_EXTENSIONS = {
         'handlers': ['db_backups_'],
         'enabled_by_default': True,
         'package': 'extensions.server_checks'
+    },
+    'zfs_monitor': {
+        'name': '🧊 Мониторинг ZFS',
+        'description': 'Отслеживание статуса ZFS массивов по почтовым уведомлениям',
+        'commands': [],
+        'handlers': [],
+        'enabled_by_default': True
     },
     'resource_monitor': {
         'name': '💻 Мониторинг ресурсов',
