@@ -1,0 +1,48 @@
+"""
+/bot/menu/builder.py
+Server Monitoring System v7.0.00
+Copyright (c) 2025 Aleksandr Sukhanov
+License: MIT
+The place where keyboards are made.
+Система мониторинга серверов
+Версия: 7.0.00
+Автор: Александр Суханов (c)
+Лицензия: MIT
+Место, где строятся клавиатуры
+"""
+
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
+
+def main_menu(extension_manager):
+    keyboard = [
+        [InlineKeyboardButton("🔄 Доступность всех серверов", callback_data='manual_check')],
+        [InlineKeyboardButton("🔍 Доступность сервера", callback_data='show_availability_menu')],
+    ]
+
+    if extension_manager.is_extension_enabled('resource_monitor'):
+        keyboard.append([InlineKeyboardButton("📊 Ресурсы сервера", callback_data='check_resources')])
+
+    if extension_manager.is_extension_enabled('backup_monitor'):
+        keyboard.append(
+            [InlineKeyboardButton("💾 Бэкапы Proxmox", callback_data='backup_hosts')]
+        )
+
+    if extension_manager.is_extension_enabled('database_backup_monitor'):
+        keyboard.append(
+            [InlineKeyboardButton("🗃️ Бэкапы БД", callback_data='backup_databases')]
+        )
+
+    if extension_manager.is_extension_enabled('zfs_monitor'):
+        keyboard.append(
+            [InlineKeyboardButton("🧊 ZFS", callback_data='zfs_menu')]
+        )
+
+    keyboard.extend([
+        [InlineKeyboardButton("🛠️ Расширения", callback_data='extensions_menu')],
+        [InlineKeyboardButton("🎛️ Управление", callback_data='control_panel')],
+        [InlineKeyboardButton("⚙️ Настройки", callback_data='settings_main')],
+        [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
+    ])
+
+    return InlineKeyboardMarkup(keyboard)
