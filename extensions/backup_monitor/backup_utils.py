@@ -179,6 +179,13 @@ def get_backup_summary(period_hours=16, include_proxmox=True, include_databases=
             if status == 'success'
         }
 
+        missing_recent_db_keys = {
+            (category, db_name)
+            for category, databases in configured_databases.items()
+            for db_name in databases
+            if (category, db_name) not in recent_db_keys
+        }
+
         stale_databases = [
             (backup_type, db_name, last_backup)
             for backup_type, db_name, last_backup in stale_databases
@@ -303,6 +310,40 @@ def get_backup_summary(period_hours=16, include_proxmox=True, include_databases=
                 message += (
                     f"• {total_missing_recent} БД без бэкапов за последние {period_hours}ч\n"
                 )
+
+            if include_proxmox and stale_hosts:
+                stale_host_names = sorted({host_name for host_name, _ in stale_hosts})
+                stale_host_list = ", ".join(stale_host_names)
+                message += f"• Проблемные хосты (>24ч): {stale_host_list}\n"
+
+            if include_databases:
+                stale_by_category = {}
+                for backup_type, db_name, _ in stale_databases:
+                    stale_by_category.setdefault(backup_type, []).append(db_name)
+
+                if stale_by_category:
+                    message += "• Проблемные БД (>24ч):\n"
+                    for category in ['company_database', 'barnaul', 'client', 'yandex']:
+                        if category not in stale_by_category:
+                            continue
+                        db_list = ", ".join(sorted(stale_by_category[category]))
+                        type_name = category_names.get(category, category)
+                        message += f"  - {type_name}: {db_list}\n"
+
+                missing_recent_by_category = {}
+                for backup_type, db_name in sorted(missing_recent_db_keys):
+                    missing_recent_by_category.setdefault(backup_type, []).append(db_name)
+
+                if missing_recent_by_category:
+                    message += (
+                        f"• Нет бэкапов за последние {period_hours}ч:\n"
+                    )
+                    for category in ['company_database', 'barnaul', 'client', 'yandex']:
+                        if category not in missing_recent_by_category:
+                            continue
+                        db_list = ", ".join(sorted(missing_recent_by_category[category]))
+                        type_name = category_names.get(category, category)
+                        message += f"  - {type_name}: {db_list}\n"
 
         return message
 
