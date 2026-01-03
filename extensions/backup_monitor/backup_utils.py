@@ -122,6 +122,13 @@ def get_backup_summary(period_hours=16):
                 key: value for key, value in client_databases.items() if key != "trade"
             }
 
+        company_databases = DATABASE_BACKUP_CONFIG.get("company_databases", {})
+        client_databases = DATABASE_BACKUP_CONFIG.get("client_databases", {})
+        if "trade" in client_databases and "trade" in company_databases:
+            client_databases = {
+                key: value for key, value in client_databases.items() if key != "trade"
+            }
+
         config_databases = {
             'company_database': company_databases,
             'barnaul': DATABASE_BACKUP_CONFIG.get("barnaul_backups", {}),
@@ -130,11 +137,6 @@ def get_backup_summary(period_hours=16):
         }
 
         db_stats = {}
-        recent_databases = {
-            (backup_type, db_name)
-            for backup_type, db_name, _, _ in db_results
-        }
-        missing_recent_databases = {}
         for category, databases in config_databases.items():
             total_in_config = len(databases)
             if total_in_config == 0:
@@ -152,17 +154,8 @@ def get_backup_summary(period_hours=16):
                 'total': total_in_config,
                 'successful': successful_count,
             }
-            missing_recent_databases[category] = [
-                db_key for db_key in databases.keys()
-                if (category, db_key) not in recent_databases
-            ]
 
         message = ""
-
-        missing_recent_hosts = sorted([
-            host for host in all_hosts
-            if host not in {row[0] for row in proxmox_results}
-        ])
 
         if len(all_hosts) > 0:
             success_rate = (hosts_with_success / len(all_hosts)) * 100
@@ -194,47 +187,15 @@ def get_backup_summary(period_hours=16):
             stale_count = len([db for db in stale_databases if db[0] == category])
             if stale_count > 0:
                 message += f" ⚠️ {stale_count} БД без бэкапов >24ч"
-            missing_recent_count = len(missing_recent_databases.get(category, []))
-            if missing_recent_count > 0:
-                message += f" ⚠️ {missing_recent_count} БД без бэкапов за последние {period_hours}ч"
             message += "\n"
 
-        total_issues = len(stale_hosts) + len(stale_databases) + len(missing_recent_hosts)
-        total_issues += sum(len(items) for items in missing_recent_databases.values())
-        if total_issues > 0:
-            message += f"\n🚨 Внимание: {total_issues} проблем:\n"
+        total_stale = len(stale_hosts) + len(stale_databases)
+        if total_stale > 0:
+            message += f"\n🚨 Внимание: {total_stale} проблем:\n"
             if stale_hosts:
                 message += f"• {len(stale_hosts)} хостов без бэкапов >24ч\n"
             if stale_databases:
                 message += f"• {len(stale_databases)} БД без бэкапов >24ч\n"
-            if missing_recent_hosts:
-                message += f"• {len(missing_recent_hosts)} хостов без бэкапов за последние {period_hours}ч\n"
-            missing_recent_total = sum(len(items) for items in missing_recent_databases.values())
-            if missing_recent_total:
-                message += f"• {missing_recent_total} БД без бэкапов за последние {period_hours}ч\n"
-
-            if stale_hosts:
-                stale_host_names = ", ".join(sorted({row[0] for row in stale_hosts}))
-                message += f"• Хосты без бэкапов >24ч: {stale_host_names}\n"
-            if stale_databases:
-                stale_db_names = ", ".join(
-                    f"{category_names.get(category, category)}:{db_name}"
-                    for category, db_name, _ in sorted(stale_databases, key=lambda item: (item[0], item[1]))
-                )
-                message += f"• БД без бэкапов >24ч: {stale_db_names}\n"
-            if missing_recent_hosts:
-                message += f"• Хосты без бэкапов за последние {period_hours}ч: {', '.join(missing_recent_hosts)}\n"
-            if missing_recent_total:
-                missing_recent_list = []
-                for category in ['company_database', 'barnaul', 'client', 'yandex']:
-                    for db_name in missing_recent_databases.get(category, []):
-                        missing_recent_list.append(
-                            f"{category_names.get(category, category)}:{db_name}"
-                        )
-                message += (
-                    f"• БД без бэкапов за последние {period_hours}ч: "
-                    f"{', '.join(missing_recent_list)}\n"
-                )
 
         return message
 
