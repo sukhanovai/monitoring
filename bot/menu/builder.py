@@ -33,6 +33,11 @@ def main_menu(extension_manager):
             [InlineKeyboardButton("🗃️ Бэкапы БД", callback_data='backup_databases')]
         )
 
+    if extension_manager.is_extension_enabled('mail_backup_monitor'):
+        keyboard.append(
+            [InlineKeyboardButton("📬 Бэкапы почты", callback_data='backup_mail')]
+        )
+
     if extension_manager.is_extension_enabled('zfs_monitor'):
         keyboard.append(
             [InlineKeyboardButton("🧊 ZFS", callback_data='zfs_menu')]
