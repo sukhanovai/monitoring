@@ -11,6 +11,7 @@ Morning Report Module
 Модуль утреннего отчета
 """
 
+import re
 import threading
 import time
 from datetime import datetime, timedelta
@@ -170,7 +171,7 @@ class MorningReport:
             try:
                 cursor.execute(
                     """
-                    SELECT s.server_name, s.pool_name, s.pool_state, s.received_at
+                    SELECT s.server_name, s.pool_name, s.pool_state, s.email_subject, s.received_at
                     FROM zfs_pool_status s
                     JOIN (
                         SELECT server_name, pool_name, MAX(received_at) AS last_seen
@@ -201,7 +202,7 @@ class MorningReport:
                 expected_servers = {row[0] for row in rows}
 
             latest_by_server = {}
-            for server_name, _, _, received_at in rows:
+            for server_name, _, _, _, received_at in rows:
                 if server_name not in latest_by_server:
                     latest_by_server[server_name] = received_at
                 else:
@@ -235,8 +236,22 @@ class MorningReport:
             if not rows:
                 return "• Данных нет\n"
 
+            def _subject_has_errors(subject: str | None) -> bool:
+                if not subject:
+                    return False
+                subject_lower = subject.lower()
+                if "no known data errors" in subject_lower:
+                    return False
+                error_numbers = re.findall(r"errors:\s*(\d+)", subject_lower)
+                return any(int(value) > 0 for value in error_numbers)
+
             total_pools = len(rows)
-            ok_pools = sum(1 for _, _, pool_state, _ in rows if str(pool_state).upper() == "ONLINE")
+            ok_pools = sum(
+                1
+                for _, _, pool_state, email_subject, _ in rows
+                if str(pool_state).upper() == "ONLINE"
+                and not _subject_has_errors(email_subject)
+            )
             bad_pools = total_pools - ok_pools
             servers_count = len(expected_servers) if expected_servers else len({row[0] for row in rows})
             problems_count = bad_pools
