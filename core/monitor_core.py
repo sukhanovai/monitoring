@@ -2070,10 +2070,22 @@ def send_morning_report(manual_call=False):
     message += f"🔴 *Недоступно:* {down_count}\n"
 
     # Для ручного отчета используем другой период бэкапов
+    try:
+        from extensions.extension_manager import extension_manager
+        include_mail = extension_manager.is_extension_enabled('mail_backup_monitor')
+    except Exception:
+        include_mail = False
+
     if is_manual:
-        backup_data = get_backup_summary_for_report(period_hours=24)  # Последние 24 часа
+        backup_data = get_backup_summary_for_report(
+            period_hours=24,
+            include_mail=include_mail,
+        )  # Последние 24 часа
     else:
-        backup_data = get_backup_summary_for_report(period_hours=16)  # С 18:00 предыдущего дня
+        backup_data = get_backup_summary_for_report(
+            period_hours=16,
+            include_mail=include_mail,
+        )  # С 18:00 предыдущего дня
 
     message += f"\n💾 *Статус бэкапов ({'за последние 24ч' if is_manual else 'за последние 16ч'})*\n"
     message += backup_data
@@ -2122,11 +2134,12 @@ def send_morning_report(manual_call=False):
     send_alert(message, force=True)
     debug_log(f"✅ {report_type} отправлен: {up_count}/{total_servers} доступно")
 
-def get_backup_summary_for_report(period_hours=16):
+def get_backup_summary_for_report(period_hours=16, include_mail=False):
     """Получает сводку по бэкапам за указанный период
 
     Args:
         period_hours (int): Количество часов для периода (16 для авто-отчета, 24 для ручного)
+        include_mail (bool): Добавлять ли бэкапы почтового сервера
     """
     try:
         debug_log(f"🔄 Сбор данных о бэкапах за {period_hours} часов...")
@@ -2292,6 +2305,36 @@ def get_backup_summary_for_report(period_hours=16):
         ''', (stale_threshold,))
         stale_databases = cursor.fetchall()
 
+        mail_recent = None
+        mail_latest = None
+        try:
+            cursor.execute(
+                '''
+                SELECT backup_status, total_size, backup_path, received_at
+                FROM mail_server_backups
+                WHERE received_at >= ?
+                ORDER BY received_at DESC
+                LIMIT 1
+            ''',
+                (since_time,),
+            )
+            mail_recent = cursor.fetchone()
+
+            cursor.execute(
+                '''
+                SELECT backup_status, total_size, backup_path, received_at
+                FROM mail_server_backups
+                ORDER BY received_at DESC
+                LIMIT 1
+            '''
+            )
+            mail_latest = cursor.fetchone()
+        except Exception as exc:
+            if "no such table: mail_server_backups" in str(exc):
+                mail_latest = None
+            else:
+                raise
+
         conn.close()
 
         # Формируем сообщение
@@ -2329,6 +2372,40 @@ def get_backup_summary_for_report(period_hours=16):
                 if stale_count > 0:
                     message += f" ⚠️ {stale_count} БД без бэкапов >24ч"
                 message += "\n"
+
+        if include_mail:
+            try:
+                def _mail_time_ago(received_at):
+                    if not received_at:
+                        return "неизвестно"
+                    try:
+                        last_time = datetime.strptime(received_at, "%Y-%m-%d %H:%M:%S")
+                    except ValueError:
+                        return "неизвестно"
+                    hours_ago = int((datetime.now() - last_time).total_seconds() / 3600)
+                    if hours_ago >= 24:
+                        days = hours_ago // 24
+                        hours = hours_ago % 24
+                        return f"{days}д {hours}ч назад"
+                    return f"{hours_ago}ч назад"
+
+                if not mail_latest:
+                    message += "• Почта: нет данных\n"
+                else:
+                    _, size, path, received_at = mail_latest
+                    size_text = size or "неизвестно"
+                    path_text = path or "без пути"
+                    time_ago = _mail_time_ago(received_at)
+                    if mail_recent:
+                        message += f"• Почта: {size_text} {path_text} ({time_ago})\n"
+                    else:
+                        message += (
+                            f"• Почта: нет свежих бэкапов "
+                            f"(>{period_hours}ч), последний: {size_text} "
+                            f"{path_text} ({time_ago})\n"
+                        )
+            except Exception as exc:
+                debug_log(f"⚠️ Ошибка получения данных о бэкапах почты: {exc}")
 
         # Общие проблемы
         total_stale = len(stale_hosts) + len(stale_databases)

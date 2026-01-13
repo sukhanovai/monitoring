@@ -33,6 +33,7 @@ from extensions.backup_monitor.backup_handlers import (
     show_database_backups_summary,
     show_database_details,
     show_stale_databases,
+    show_mail_backups,
 )
 from extensions.extension_manager import extension_manager
 
@@ -274,6 +275,24 @@ class BackupMonitorBot(BackupBase):
         recent_backups = self.get_database_recent_status(backup_type, db_name, 48)
         return self.status_calc.calculate_db_status(recent_backups)
 
+    # === МЕТОДЫ ДЛЯ ПОЧТОВЫХ БЭКАПОВ ===
+
+    def get_mail_backups(self, hours=72, limit=10):
+        """Получает последние бэкапы почтового сервера"""
+        since_time = (datetime.now() - timedelta(hours=hours)).strftime('%Y-%m-%d %H:%M:%S')
+        query = '''
+            SELECT backup_status, total_size, backup_path, received_at
+            FROM mail_server_backups
+            WHERE received_at >= ?
+            ORDER BY received_at DESC
+            LIMIT ?
+        '''
+        try:
+            return self.execute_query(query, (since_time, limit))
+        except Exception as exc:
+            logger.error(f"Ошибка получения почтовых бэкапов: {exc}")
+            return []
+
     # === МЕТОДЫ ДЛЯ ОТЧЕТОВ ===
     
     def get_stale_proxmox_backups(self, hours_threshold=24):
@@ -391,8 +410,9 @@ def backup_help_command(update, context):
             "• ❌ Ошибки - Неудачные бэкапы\n"
             "• 🖥️ По хостам - Статус по серверам\n"
             "• 🗃️ Бэкапы БД - Бэкапы баз данных\n"
+            "• 📬 Бэкапы почты - Бэкапы почтового сервера\n"
             "• 🔄 Обновить - Обновить данные\n\n"
-            "*Данные обновляются автоматически при получении писем от Proxmox*"
+            "*Данные обновляются автоматически при получении писем от Proxmox/почтового сервера*"
         )
 
         update.message.reply_text(help_text, parse_mode='Markdown')
@@ -451,6 +471,12 @@ def backup_callback(update, context):
                 return
             logger.info("🧪 BACKUP DB: entering show_database_backups_menu")
             show_database_backups_menu(query, backup_bot)
+
+        elif data == 'backup_mail':
+            if not extension_manager.is_extension_enabled('mail_backup_monitor'):
+                query.edit_message_text("📬 Мониторинг бэкапов почты отключён")
+                return
+            show_mail_backups(query, backup_bot)
 
         elif data == 'backup_proxmox':
             show_proxmox_menu(query, backup_bot)

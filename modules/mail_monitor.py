@@ -195,6 +195,28 @@ class BackupProcessor:
             """
             )
 
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS mail_server_backups (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    host_name TEXT NOT NULL,
+                    backup_status TEXT NOT NULL,
+                    total_size TEXT,
+                    backup_path TEXT,
+                    email_subject TEXT,
+                    received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(host_name, backup_path, received_at)
+                )
+            """
+            )
+
+            cursor.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_mail_backup_date
+                ON mail_server_backups(host_name, received_at)
+            """
+            )
+
             conn.commit()
             conn.close()
             logger.info("База данных бэкапов инициализирована")
@@ -556,6 +578,78 @@ class BackupProcessor:
             if "conn" in locals():
                 conn.close()
 
+    def parse_mail_backup(self, subject: str) -> dict | None:
+        """Парсит результат бэкапа почтового сервера из темы письма."""
+        if not extension_manager.is_extension_enabled("mail_backup_monitor"):
+            return None
+
+        pattern = (
+            r"^\s*бэкап\s+zimbra\s*-\s*"
+            r"(?P<size>\d+(?:[.,]\d+)?\s*[TGMK]?(?:i?B)?)\s+"
+            r"(?P<path>/\S+)\s*$"
+        )
+        match = re.search(pattern, subject, re.IGNORECASE)
+        if not match:
+            return None
+
+        size = match.group("size").strip()
+        path = match.group("path").strip()
+
+        logger.info("✅ Найден бэкап Zimbra: размер=%s, путь=%s", size, path)
+        return {
+            "host_name": "zimbra",
+            "backup_status": "success",
+            "task_type": "mail_backup",
+            "total_size": size,
+            "backup_path": path,
+        }
+
+    def save_mail_backup(
+        self,
+        backup_info: dict,
+        subject: str,
+        email_date: datetime | None = None,
+    ) -> None:
+        """Сохраняет результат бэкапа почтового сервера."""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            received_at = (
+                email_date.strftime("%Y-%m-%d %H:%M:%S")
+                if email_date
+                else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            )
+
+            cursor.execute(
+                """
+                INSERT OR IGNORE INTO mail_server_backups
+                (host_name, backup_status, total_size, backup_path, email_subject, received_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """,
+                (
+                    backup_info["host_name"],
+                    backup_info["backup_status"],
+                    backup_info.get("total_size"),
+                    backup_info.get("backup_path"),
+                    subject[:500],
+                    received_at,
+                ),
+            )
+
+            conn.commit()
+            logger.info(
+                "✅ Сохранен бэкап почтового сервера: %s (%s)",
+                backup_info.get("total_size") or "неизвестно",
+                backup_info.get("backup_path") or "без пути",
+            )
+
+        except Exception as exc:
+            logger.error(f"❌ Ошибка сохранения бэкапа почтового сервера: {exc}")
+        finally:
+            if "conn" in locals():
+                conn.close()
+
     def parse_email_file(self, file_path: Path) -> dict | None:
         """Парсит email файл."""
         try:
@@ -614,9 +708,14 @@ class BackupProcessor:
                 self.save_zfs_status(zfs_entries, subject, email_date)
                 return {"zfs_entries": zfs_entries}
 
+            mail_backup_info = self.parse_mail_backup(subject)
+            if mail_backup_info:
+                self.save_mail_backup(mail_backup_info, subject, email_date)
+                return mail_backup_info
+
             if not self.is_proxmox_backup_email(subject):
                 logger.info(
-                    "Пропускаем не-Proxmox/БД/ZFS письмо: %s...",
+                    "Пропускаем не-Proxmox/БД/ZFS/почта письмо: %s...",
                     subject[:50],
                 )
                 return None
