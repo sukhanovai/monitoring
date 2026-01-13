@@ -229,7 +229,7 @@ class MorningReport:
                     f"• Серверов: {len(expected_servers)}\n"
                     "• Пулов: 0\n"
                     "• OK: 0\n"
-                    f"• Проблемы: {len(stale_servers)}\n"
+                    "• Проблемы: 0\n"
                     f"• Нет свежих данных (>24ч): {stale_list}\n"
                 )
             if not rows:
@@ -239,7 +239,7 @@ class MorningReport:
             ok_pools = sum(1 for _, _, pool_state, _ in rows if str(pool_state).upper() == "ONLINE")
             bad_pools = total_pools - ok_pools
             servers_count = len(expected_servers) if expected_servers else len({row[0] for row in rows})
-            problems_count = bad_pools + len(stale_servers)
+            problems_count = bad_pools
 
             summary = (
                 f"• Серверов: {servers_count}\n"
