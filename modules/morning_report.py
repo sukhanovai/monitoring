@@ -236,8 +236,16 @@ class MorningReport:
                 return "• Данных нет\n"
 
             total_pools = len(rows)
-            ok_pools = sum(1 for _, _, pool_state, _ in rows if str(pool_state).upper() == "ONLINE")
-            bad_pools = total_pools - ok_pools
+            ok_pools = sum(
+                1
+                for server_name, _, pool_state, _ in rows
+                if server_name not in stale_servers and str(pool_state).upper() == "ONLINE"
+            )
+            bad_pools = sum(
+                1
+                for server_name, _, pool_state, _ in rows
+                if server_name not in stale_servers and str(pool_state).upper() != "ONLINE"
+            )
             servers_count = len(expected_servers) if expected_servers else len({row[0] for row in rows})
             problems_count = bad_pools + len(stale_servers)
 
