@@ -191,6 +191,11 @@ def get_backup_summary(period_hours=16, include_proxmox=True, include_databases=
             for backup_type, db_name, last_backup in stale_databases
             if (backup_type, db_name) in configured_db_keys
         ]
+        stale_databases = [
+            (backup_type, db_name, last_backup)
+            for backup_type, db_name, last_backup in stale_databases
+            if (backup_type, db_name) not in recent_db_keys
+        ]
 
         for category, databases in config_databases.items():
             total_in_config = len(databases)
