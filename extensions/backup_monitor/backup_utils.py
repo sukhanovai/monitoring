@@ -35,7 +35,12 @@ def _is_proxmox_host_enabled(host_value: object) -> bool:
     return True
 
 
-def get_backup_summary(period_hours=16, include_proxmox=True, include_databases=True):
+def get_backup_summary(
+    period_hours=16,
+    include_proxmox=True,
+    include_databases=True,
+    include_mail=False,
+):
     """Возвращает текстовую сводку по бэкапам за период."""
     try:
         from config.db_settings import DATA_DIR, DATABASE_BACKUP_CONFIG, PROXMOX_HOSTS
@@ -113,6 +118,37 @@ def get_backup_summary(period_hours=16, include_proxmox=True, include_databases=
                 (_normalize_backup_type(backup_type, db_name), db_name, last_backup)
                 for backup_type, db_name, last_backup in stale_databases
             ]
+
+        mail_recent = None
+        mail_latest = None
+        if include_mail:
+            try:
+                cursor.execute(
+                    '''
+                    SELECT backup_status, total_size, backup_path, received_at
+                    FROM mail_server_backups
+                    WHERE received_at >= ?
+                    ORDER BY received_at DESC
+                    LIMIT 1
+                ''',
+                    (since_time,),
+                )
+                mail_recent = cursor.fetchone()
+
+                cursor.execute(
+                    '''
+                    SELECT backup_status, total_size, backup_path, received_at
+                    FROM mail_server_backups
+                    ORDER BY received_at DESC
+                    LIMIT 1
+                '''
+                )
+                mail_latest = cursor.fetchone()
+            except Exception as exc:
+                if "no such table: mail_server_backups" in str(exc):
+                    mail_latest = None
+                else:
+                    raise
 
         conn.close()
 
@@ -349,6 +385,39 @@ def get_backup_summary(period_hours=16, include_proxmox=True, include_databases=
                         db_list = ", ".join(sorted(missing_recent_by_category[category]))
                         type_name = category_names.get(category, category)
                         message += f"  - {type_name}: {db_list}\n"
+
+        if include_mail:
+            def _mail_time_ago(received_at):
+                if not received_at:
+                    return "неизвестно"
+                try:
+                    last_time = datetime.strptime(received_at, "%Y-%m-%d %H:%M:%S")
+                except ValueError:
+                    return "неизвестно"
+                hours_ago = int((datetime.now() - last_time).total_seconds() / 3600)
+                if hours_ago >= 24:
+                    days = hours_ago // 24
+                    hours = hours_ago % 24
+                    return f"{days}д {hours}ч назад"
+                return f"{hours_ago}ч назад"
+
+            if not mail_latest:
+                message += "• Почта: нет данных\n"
+            else:
+                status, size, path, received_at = mail_latest
+                size_text = size or "неизвестно"
+                path_text = path or "без пути"
+                time_ago = _mail_time_ago(received_at)
+                if mail_recent:
+                    message += (
+                        f"• Почта: {size_text} {path_text} ({time_ago})\n"
+                    )
+                else:
+                    message += (
+                        f"• Почта: нет свежих бэкапов "
+                        f"(>{period_hours}ч), последний: {size_text} "
+                        f"{path_text} ({time_ago})\n"
+                    )
 
         return message
 

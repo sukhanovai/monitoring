@@ -167,8 +167,11 @@ def start_command(update, context):
         keyboard.insert(3, [InlineKeyboardButton("📈 Ресурсы одного сервера", callback_data='show_resources_menu')])
    
     extension_manager = get_extension_manager()
-    if (extension_manager.is_extension_enabled('backup_monitor') or 
-        extension_manager.is_extension_enabled('database_backup_monitor')):
+    if (
+        extension_manager.is_extension_enabled('backup_monitor')
+        or extension_manager.is_extension_enabled('database_backup_monitor')
+        or extension_manager.is_extension_enabled('mail_backup_monitor')
+    ):
         keyboard.append([InlineKeyboardButton("💾 Бэкапы", callback_data='backup_main')])
     
     keyboard.extend([
@@ -1138,7 +1141,8 @@ def get_callback_handlers():
         CallbackQueryHandler(lambda u, c: lazy_handler('db_backups_list')(u, c), pattern='^db_backups_list$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('backup_main')(u, c), pattern='^backup_main$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('backup_proxmox')(u, c), pattern='^backup_proxmox$'),
-        CallbackQueryHandler(lambda u, c: lazy_handler('backup_databases')(u, c), pattern='^backup_databases$'),                
+        CallbackQueryHandler(lambda u, c: lazy_handler('backup_databases')(u, c), pattern='^backup_databases$'),
+        CallbackQueryHandler(lambda u, c: lazy_handler('backup_mail')(u, c), pattern='^backup_mail$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('backup_host_')(u, c), pattern='^backup_host_'),
         CallbackQueryHandler(lambda u, c: lazy_handler('db_detail_')(u, c), pattern='^db_detail_'),
         CallbackQueryHandler(lambda u, c: lazy_handler('backup_stale_hosts')(u, c), pattern='^backup_stale_hosts$'),
@@ -1268,6 +1272,9 @@ def lazy_handler(pattern):
             from extensions.backup_monitor.bot_handler import backup_callback as handler
             return handler(update, context)
         elif pattern == 'backup_databases':
+            from extensions.backup_monitor.bot_handler import backup_callback as handler
+            return handler(update, context)
+        elif pattern == 'backup_mail':
             from extensions.backup_monitor.bot_handler import backup_callback as handler
             return handler(update, context)
         elif pattern == 'db_backups_summary':

@@ -97,11 +97,13 @@ class MorningReport:
             from extensions.extension_manager import extension_manager
             show_proxmox = extension_manager.is_extension_enabled('backup_monitor')
             show_databases = extension_manager.is_extension_enabled('database_backup_monitor')
-            if show_proxmox or show_databases:
+            show_mail = extension_manager.is_extension_enabled('mail_backup_monitor')
+            if show_proxmox or show_databases or show_mail:
                 backup_summary = self.get_backup_summary_for_report(
                     24 if is_manual else 16,
                     include_proxmox=show_proxmox,
                     include_databases=show_databases,
+                    include_mail=show_mail,
                 )
                 message += f"\n💾 *Статус бэкапов ({'за последние 24ч' if is_manual else 'за последние 16ч'})*\n"
                 message += backup_summary
@@ -131,7 +133,13 @@ class MorningReport:
 
         return self.generate_report_message()
     
-    def get_backup_summary_for_report(self, period_hours=16, include_proxmox=True, include_databases=True):
+    def get_backup_summary_for_report(
+        self,
+        period_hours=16,
+        include_proxmox=True,
+        include_databases=True,
+        include_mail=False,
+    ):
         """Получает сводку по бэкапам"""
         try:
             # Импорт функций бэкапов
@@ -140,6 +148,7 @@ class MorningReport:
                 period_hours,
                 include_proxmox=include_proxmox,
                 include_databases=include_databases,
+                include_mail=include_mail,
             )
         except Exception as e:
             debug_log(f"❌ Ошибка получения сводки по бэкапам: {e}")
