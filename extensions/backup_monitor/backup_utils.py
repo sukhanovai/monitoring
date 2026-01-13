@@ -89,6 +89,7 @@ def get_backup_summary(period_hours=16, include_proxmox=True, include_databases=
 
         db_results = []
         stale_databases = []
+        last_db_backups = []
         if include_databases:
             cursor.execute('''
                 SELECT backup_type, database_name, backup_status, MAX(received_at) as last_backup
@@ -106,13 +107,8 @@ def get_backup_summary(period_hours=16, include_proxmox=True, include_databases=
                 SELECT backup_type, database_name, MAX(received_at) as last_backup
                 FROM database_backups
                 GROUP BY backup_type, database_name
-                HAVING last_backup < ?
-            ''', (stale_threshold,))
-            stale_databases = cursor.fetchall()
-            stale_databases = [
-                (_normalize_backup_type(backup_type, db_name), db_name, last_backup)
-                for backup_type, db_name, last_backup in stale_databases
-            ]
+            ''')
+            last_db_backups = cursor.fetchall()
 
         conn.close()
 
@@ -186,11 +182,23 @@ def get_backup_summary(period_hours=16, include_proxmox=True, include_databases=
             if (category, db_name) not in recent_db_keys
         }
 
-        stale_databases = [
-            (backup_type, db_name, last_backup)
-            for backup_type, db_name, last_backup in stale_databases
-            if (backup_type, db_name) in configured_db_keys
-        ]
+        latest_by_db_key = {}
+        if include_databases:
+            for backup_type, db_name, last_backup in last_db_backups:
+                normalized_type = _normalize_backup_type(backup_type, db_name)
+                key = (normalized_type, db_name)
+                if key not in latest_by_db_key:
+                    latest_by_db_key[key] = last_backup
+                    continue
+                if last_backup and last_backup > latest_by_db_key[key]:
+                    latest_by_db_key[key] = last_backup
+
+            stale_databases = []
+            for (backup_type, db_name), last_backup in latest_by_db_key.items():
+                if (backup_type, db_name) not in configured_db_keys:
+                    continue
+                if not last_backup or last_backup < stale_threshold:
+                    stale_databases.append((backup_type, db_name, last_backup))
 
         for category, databases in config_databases.items():
             total_in_config = len(databases)
