@@ -649,7 +649,7 @@ def show_mail_backups(query, backup_bot, hours=72):
             query.edit_message_text(
                 message,
                 parse_mode='Markdown',
-                reply_markup=create_navigation_buttons(back_button='backup_main')
+                reply_markup=create_navigation_buttons(back_button='main_menu')
             )
             return
 
@@ -665,7 +665,7 @@ def show_mail_backups(query, backup_bot, hours=72):
             message,
             parse_mode='Markdown',
             reply_markup=create_navigation_buttons(
-                back_button='backup_main',
+                back_button='main_menu',
                 refresh_button='backup_mail'
             )
         )
