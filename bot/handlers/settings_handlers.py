@@ -39,6 +39,11 @@ debug_logger = debug_log
 
 def _get_mail_fallback_patterns() -> list:
     """Получить запасные паттерны для бэкапов почты."""
+    default_pattern = (
+        r"^\s*бэкап\s+zimbra\s*-\s*"
+        r"(?P<size>\d+(?:[.,]\d+)?\s*[TGMK]?(?:i?B)?)\s+"
+        r"(?P<path>/\S+)\s*$"
+    )
     config_patterns = settings_manager.get_backup_patterns()
     if isinstance(config_patterns, str):
         try:
@@ -66,10 +71,10 @@ def _get_mail_fallback_patterns() -> list:
         fallback_raw = DEFAULT_BACKUP_PATTERNS
     fallback_mail = fallback_raw.get("mail", {})
     if isinstance(fallback_mail, dict):
-        return fallback_mail.get("subject", [])
+        return fallback_mail.get("subject", []) or [default_pattern]
     if isinstance(fallback_mail, list):
-        return fallback_mail
-    return []
+        return fallback_mail or [default_pattern]
+    return [default_pattern]
 
 def settings_command(update, context):
     """Команда управления настройками"""
