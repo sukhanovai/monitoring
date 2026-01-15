@@ -4002,7 +4002,21 @@ def view_patterns_handler(update, context):
 
     title = context.user_data.get('patterns_title', "📋 *Паттерны*")
 
-    if not rows:
+    fallback_patterns = []
+    if not rows and filter_mode == 'mail':
+        fallback_raw = settings_manager.get_setting('BACKUP_PATTERNS', {})
+        if isinstance(fallback_raw, str):
+            try:
+                fallback_raw = json.loads(fallback_raw)
+            except json.JSONDecodeError:
+                fallback_raw = {}
+        fallback_mail = fallback_raw.get("mail", {})
+        if isinstance(fallback_mail, dict):
+            fallback_patterns = fallback_mail.get("subject", [])
+        elif isinstance(fallback_mail, list):
+            fallback_patterns = fallback_mail
+
+    if not rows and not fallback_patterns:
         message = f"{title}\n\n❌ Паттерны не настроены."
     else:
         message = f"{title}\n\n"
@@ -4014,6 +4028,12 @@ def view_patterns_handler(update, context):
                 message += f"*{category}*\n"
                 current_category = category
             message += f"• {pattern_type}: `{pattern}`\n"
+        if fallback_patterns:
+            if rows:
+                message += "\n"
+            message += "*mail (по умолчанию)*\n"
+            for pattern in fallback_patterns:
+                message += f"• subject: `{pattern}`\n"
 
     keyboard = []
     for pattern_id, pattern_type, pattern, category in rows:
