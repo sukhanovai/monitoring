@@ -37,6 +37,40 @@ BACKUP_SETTINGS_CALLBACKS = {
 
 debug_logger = debug_log
 
+def _get_mail_fallback_patterns() -> list:
+    """Получить запасные паттерны для бэкапов почты."""
+    config_patterns = settings_manager.get_backup_patterns()
+    if isinstance(config_patterns, str):
+        try:
+            config_patterns = json.loads(config_patterns)
+        except json.JSONDecodeError:
+            config_patterns = {}
+    config_mail = config_patterns.get("mail", {})
+    if isinstance(config_mail, dict):
+        patterns = config_mail.get("subject", [])
+    elif isinstance(config_mail, list):
+        patterns = config_mail
+    else:
+        patterns = []
+
+    if patterns:
+        return patterns
+
+    fallback_raw = settings_manager.get_setting('BACKUP_PATTERNS', DEFAULT_BACKUP_PATTERNS)
+    if isinstance(fallback_raw, str):
+        try:
+            fallback_raw = json.loads(fallback_raw)
+        except json.JSONDecodeError:
+            fallback_raw = {}
+    if not fallback_raw:
+        fallback_raw = DEFAULT_BACKUP_PATTERNS
+    fallback_mail = fallback_raw.get("mail", {})
+    if isinstance(fallback_mail, dict):
+        return fallback_mail.get("subject", [])
+    if isinstance(fallback_mail, list):
+        return fallback_mail
+    return []
+
 def settings_command(update, context):
     """Команда управления настройками"""
     keyboard = [
@@ -1588,17 +1622,8 @@ def show_mail_backup_settings(update, context):
         pattern_count = len(mail_patterns)
 
     if pattern_count == 0:
-        fallback = settings_manager.get_setting('BACKUP_PATTERNS', DEFAULT_BACKUP_PATTERNS)
-        if isinstance(fallback, str):
-            try:
-                fallback = json.loads(fallback)
-            except json.JSONDecodeError:
-                fallback = {}
-        fallback_mail = fallback.get("mail", {})
-        if isinstance(fallback_mail, dict):
-            pattern_count = len(fallback_mail.get("subject", []))
-        elif isinstance(fallback_mail, list):
-            pattern_count = len(fallback_mail)
+        fallback_patterns = _get_mail_fallback_patterns()
+        pattern_count = len(fallback_patterns)
         if pattern_count:
             source_label = "по умолчанию"
         else:
@@ -4005,29 +4030,7 @@ def view_patterns_handler(update, context):
 
     fallback_patterns = []
     if not rows and filter_mode == 'mail':
-        config_patterns = settings_manager.get_backup_patterns()
-        if isinstance(config_patterns, str):
-            try:
-                config_patterns = json.loads(config_patterns)
-            except json.JSONDecodeError:
-                config_patterns = {}
-        config_mail = config_patterns.get("mail", {})
-        if isinstance(config_mail, dict):
-            fallback_patterns = config_mail.get("subject", [])
-        elif isinstance(config_mail, list):
-            fallback_patterns = config_mail
-        if not fallback_patterns:
-            fallback_raw = settings_manager.get_setting('BACKUP_PATTERNS', DEFAULT_BACKUP_PATTERNS)
-            if isinstance(fallback_raw, str):
-                try:
-                    fallback_raw = json.loads(fallback_raw)
-                except json.JSONDecodeError:
-                    fallback_raw = {}
-            fallback_mail = fallback_raw.get("mail", {})
-            if isinstance(fallback_mail, dict):
-                fallback_patterns = fallback_mail.get("subject", [])
-            elif isinstance(fallback_mail, list):
-                fallback_patterns = fallback_mail
+        fallback_patterns = _get_mail_fallback_patterns()
 
     if not rows and not fallback_patterns:
         message = f"{title}\n\n❌ Паттерны не настроены."
