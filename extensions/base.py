@@ -1,11 +1,11 @@
 """
 /extensions/base.py
-Server Monitoring System v7.1.4
+Server Monitoring System v7.1.5
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Extensions interface
 Система мониторинга серверов
-Версия: 7.1.4
+Версия: 7.1.5
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Интерфейс расширений
