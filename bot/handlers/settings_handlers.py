@@ -4004,17 +4004,29 @@ def view_patterns_handler(update, context):
 
     fallback_patterns = []
     if not rows and filter_mode == 'mail':
-        fallback_raw = settings_manager.get_setting('BACKUP_PATTERNS', {})
-        if isinstance(fallback_raw, str):
+        config_patterns = settings_manager.get_backup_patterns()
+        if isinstance(config_patterns, str):
             try:
-                fallback_raw = json.loads(fallback_raw)
+                config_patterns = json.loads(config_patterns)
             except json.JSONDecodeError:
-                fallback_raw = {}
-        fallback_mail = fallback_raw.get("mail", {})
-        if isinstance(fallback_mail, dict):
-            fallback_patterns = fallback_mail.get("subject", [])
-        elif isinstance(fallback_mail, list):
-            fallback_patterns = fallback_mail
+                config_patterns = {}
+        config_mail = config_patterns.get("mail", {})
+        if isinstance(config_mail, dict):
+            fallback_patterns = config_mail.get("subject", [])
+        elif isinstance(config_mail, list):
+            fallback_patterns = config_mail
+        if not fallback_patterns:
+            fallback_raw = settings_manager.get_setting('BACKUP_PATTERNS', {})
+            if isinstance(fallback_raw, str):
+                try:
+                    fallback_raw = json.loads(fallback_raw)
+                except json.JSONDecodeError:
+                    fallback_raw = {}
+            fallback_mail = fallback_raw.get("mail", {})
+            if isinstance(fallback_mail, dict):
+                fallback_patterns = fallback_mail.get("subject", [])
+            elif isinstance(fallback_mail, list):
+                fallback_patterns = fallback_mail
 
     if not rows and not fallback_patterns:
         message = f"{title}\n\n❌ Паттерны не настроены."
