@@ -1,11 +1,11 @@
 """
 /core/checker.py
-Server Monitoring System v7.1.7
+Server Monitoring System v7.1.8
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Server Checker Module
 Система мониторинга серверов
-Версия: 7.1.7
+Версия: 7.1.8
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль проверки серверов
