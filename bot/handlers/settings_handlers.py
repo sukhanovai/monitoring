@@ -1575,6 +1575,11 @@ def show_mail_backup_settings(update, context):
     pattern_count = 0
     source_label = "база"
     patterns = settings_manager.get_backup_patterns()
+    if isinstance(patterns, str):
+        try:
+            patterns = json.loads(patterns)
+        except json.JSONDecodeError:
+            patterns = {}
     mail_patterns = patterns.get("mail", {})
     if isinstance(mail_patterns, dict):
         pattern_count = len(mail_patterns.get("subject", []))
@@ -1583,6 +1588,11 @@ def show_mail_backup_settings(update, context):
 
     if pattern_count == 0:
         fallback = settings_manager.get_setting('BACKUP_PATTERNS', {})
+        if isinstance(fallback, str):
+            try:
+                fallback = json.loads(fallback)
+            except json.JSONDecodeError:
+                fallback = {}
         fallback_mail = fallback.get("mail", {})
         if isinstance(fallback_mail, dict):
             pattern_count = len(fallback_mail.get("subject", []))
