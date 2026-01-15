@@ -153,7 +153,15 @@ EXTENSIONS_CONFIG_FILE = DATA_DIR / "extensions" / "extensions_config.json"
 PROXMOX_HOSTS: Dict[str, Any] = {}
 DUPLICATE_IP_HOSTS: Dict[str, List[str]] = {}
 HOSTNAME_ALIASES: Dict[str, List[str]] = {}
-BACKUP_PATTERNS: Dict[str, Dict[str, List[str]]] = {}
+BACKUP_PATTERNS: Dict[str, Dict[str, List[str]]] = {
+    "mail": {
+        "subject": [
+            r"^\s*бэкап\s+zimbra\s*-\s*"
+            r"(?P<size>\d+(?:[.,]\d+)?\s*[TGMK]?(?:i?B)?)\s+"
+            r"(?P<path>/\S+)\s*$"
+        ]
+    }
+}
 ZFS_SERVERS: Dict[str, Dict[str, Any]] = {}
 BACKUP_STATUS_MAP = {
     'backup successful': 'success',

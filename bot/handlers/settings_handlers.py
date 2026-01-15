@@ -18,6 +18,7 @@ from telegram.utils.helpers import escape_markdown
 from telegram.ext import CommandHandler, CallbackQueryHandler, MessageHandler, Filters
 from core.config_manager import config_manager as settings_manager
 from config.db_settings import BACKUP_DATABASE_CONFIG
+from config.settings import BACKUP_PATTERNS as DEFAULT_BACKUP_PATTERNS
 from extensions.extension_manager import extension_manager
 from lib.logging import debug_log
 import json
@@ -1587,7 +1588,7 @@ def show_mail_backup_settings(update, context):
         pattern_count = len(mail_patterns)
 
     if pattern_count == 0:
-        fallback = settings_manager.get_setting('BACKUP_PATTERNS', {})
+        fallback = settings_manager.get_setting('BACKUP_PATTERNS', DEFAULT_BACKUP_PATTERNS)
         if isinstance(fallback, str):
             try:
                 fallback = json.loads(fallback)
@@ -4016,7 +4017,7 @@ def view_patterns_handler(update, context):
         elif isinstance(config_mail, list):
             fallback_patterns = config_mail
         if not fallback_patterns:
-            fallback_raw = settings_manager.get_setting('BACKUP_PATTERNS', {})
+            fallback_raw = settings_manager.get_setting('BACKUP_PATTERNS', DEFAULT_BACKUP_PATTERNS)
             if isinstance(fallback_raw, str):
                 try:
                     fallback_raw = json.loads(fallback_raw)
