@@ -32,7 +32,8 @@ BACKUP_SETTINGS_CALLBACKS = {
     'add_pattern',
     'add_zfs_pattern',
     'add_proxmox_pattern',
-    'add_mail_pattern'
+    'add_mail_pattern',
+    'edit_mail_default_pattern'
 }
 
 debug_logger = debug_log
@@ -565,6 +566,8 @@ def settings_callback_handler(update, context):
             add_proxmox_pattern_handler(update, context)
         elif data == 'add_mail_pattern':
             add_mail_pattern_handler(update, context)
+        elif data == 'edit_mail_default_pattern':
+            edit_mail_default_pattern_handler(update, context)
         elif data == 'settings_ext_enable_all':
             _enable_all_extensions_settings(query)
             show_extensions_settings_menu(update, context)
@@ -3968,6 +3971,30 @@ def add_mail_pattern_handler(update, context):
         ])
     )
 
+def edit_mail_default_pattern_handler(update, context):
+    """Изменить дефолтный паттерн для бэкапов почты"""
+    query = update.callback_query
+    query.answer()
+
+    fallback_patterns = _get_mail_fallback_patterns()
+    current_pattern = fallback_patterns[0] if fallback_patterns else ""
+
+    context.user_data['adding_backup_pattern'] = True
+    context.user_data['backup_pattern_stage'] = 'pattern_only'
+    context.user_data['backup_pattern_mode'] = 'mail'
+
+    query.edit_message_text(
+        "✏️ *Изменение паттерна почты*\n\n"
+        f"Текущий паттерн:\n`{current_pattern}`\n\n"
+        "Введите новый regex паттерн темы письма:",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ])
+    )
+
 def view_patterns_handler(update, context):
     """Просмотр паттернов"""
     query = update.callback_query
@@ -4067,6 +4094,11 @@ def view_patterns_handler(update, context):
                 f"🗑️ {category}:{pattern_type}",
                 callback_data=f"delete_pattern_{pattern_id}"
             )
+        ])
+
+    if fallback_patterns and filter_mode == 'mail':
+        keyboard.append([
+            InlineKeyboardButton("✏️ Изменить дефолтный паттерн", callback_data='edit_mail_default_pattern')
         ])
 
     add_callback = context.user_data.get('patterns_add')
