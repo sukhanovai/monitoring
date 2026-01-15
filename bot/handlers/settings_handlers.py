@@ -1572,20 +1572,30 @@ def show_mail_backup_settings(update, context):
     query = update.callback_query
     query.answer()
 
-    conn = settings_manager.get_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        """
-        SELECT COUNT(*)
-        FROM backup_patterns
-        WHERE enabled = 1 AND category = 'mail'
-        """
-    )
-    pattern_count = cursor.fetchone()[0]
+    pattern_count = 0
+    source_label = "база"
+    patterns = settings_manager.get_backup_patterns()
+    mail_patterns = patterns.get("mail", {})
+    if isinstance(mail_patterns, dict):
+        pattern_count = len(mail_patterns.get("subject", []))
+    elif isinstance(mail_patterns, list):
+        pattern_count = len(mail_patterns)
+
+    if pattern_count == 0:
+        fallback = settings_manager.get_setting('BACKUP_PATTERNS', {})
+        fallback_mail = fallback.get("mail", {})
+        if isinstance(fallback_mail, dict):
+            pattern_count = len(fallback_mail.get("subject", []))
+        elif isinstance(fallback_mail, list):
+            pattern_count = len(fallback_mail)
+        if pattern_count:
+            source_label = "по умолчанию"
+        else:
+            source_label = "не настроены"
 
     message = (
         "📬 *Бэкапы почты*\n\n"
-        f"Паттернов: {pattern_count}\n\n"
+        f"Паттернов: {pattern_count} ({source_label})\n\n"
         "Выберите раздел:"
     )
 
