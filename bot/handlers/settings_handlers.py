@@ -30,7 +30,8 @@ BACKUP_SETTINGS_CALLBACKS = {
     'view_patterns',
     'add_pattern',
     'add_zfs_pattern',
-    'add_proxmox_pattern'
+    'add_proxmox_pattern',
+    'add_mail_pattern'
 }
 
 debug_logger = debug_log
@@ -434,12 +435,16 @@ def settings_callback_handler(update, context):
             show_proxmox_backup_settings(update, context)
         elif data == 'settings_ext_backup_db':
             show_database_backup_settings(update, context)
+        elif data == 'settings_ext_backup_mail':
+            show_mail_backup_settings(update, context)
         elif data == 'settings_patterns_db':
             show_db_patterns_menu(update, context)
         elif data == 'settings_patterns_proxmox':
             show_proxmox_patterns_menu(update, context)
         elif data == 'settings_patterns_zfs':
             show_zfs_patterns_menu(update, context)
+        elif data == 'settings_patterns_mail':
+            show_mail_patterns_menu(update, context)
         elif data == 'settings_web':
             show_web_settings(update, context)
         elif data == 'settings_view_all':
@@ -518,6 +523,8 @@ def settings_callback_handler(update, context):
             add_zfs_pattern_handler(update, context)
         elif data == 'add_proxmox_pattern':
             add_proxmox_pattern_handler(update, context)
+        elif data == 'add_mail_pattern':
+            add_mail_pattern_handler(update, context)
         elif data == 'settings_ext_enable_all':
             _enable_all_extensions_settings(query)
             show_extensions_settings_menu(update, context)
@@ -1495,6 +1502,9 @@ def show_settings_extensions_menu(update, context):
     if extension_manager.is_extension_enabled('database_backup_monitor'):
         keyboard.append([InlineKeyboardButton("🗃️ Бэкапы БД", callback_data='settings_ext_backup_db')])
 
+    if extension_manager.is_extension_enabled('mail_backup_monitor'):
+        keyboard.append([InlineKeyboardButton("📬 Бэкапы почты", callback_data='settings_ext_backup_mail')])
+
     if extension_manager.is_extension_enabled('zfs_monitor'):
         keyboard.append([InlineKeyboardButton("🧊 ZFS", callback_data='settings_zfs')])
 
@@ -1557,6 +1567,50 @@ def show_extensions_settings_menu(update, context):
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
+def show_mail_backup_settings(update, context):
+    """Показать настройки бэкапов почты в разделе расширений"""
+    query = update.callback_query
+    query.answer()
+
+    pattern_count = 0
+    source_label = "база"
+    patterns = settings_manager.get_backup_patterns()
+    mail_patterns = patterns.get("mail", {})
+    if isinstance(mail_patterns, dict):
+        pattern_count = len(mail_patterns.get("subject", []))
+    elif isinstance(mail_patterns, list):
+        pattern_count = len(mail_patterns)
+
+    if pattern_count == 0:
+        fallback = settings_manager.get_setting('BACKUP_PATTERNS', {})
+        fallback_mail = fallback.get("mail", {})
+        if isinstance(fallback_mail, dict):
+            pattern_count = len(fallback_mail.get("subject", []))
+        elif isinstance(fallback_mail, list):
+            pattern_count = len(fallback_mail)
+        if pattern_count:
+            source_label = "по умолчанию"
+        else:
+            source_label = "не настроены"
+
+    message = (
+        "📬 *Бэкапы почты*\n\n"
+        f"Паттернов: {pattern_count} ({source_label})\n\n"
+        "Выберите раздел:"
+    )
+
+    keyboard = [
+        [InlineKeyboardButton("🔍 Паттерны", callback_data='settings_patterns_mail')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_extensions'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ]
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
 def _enable_all_extensions_settings(query):
     enabled = 0
     for ext_id in extension_manager.get_extensions_status():
@@ -1595,6 +1649,14 @@ def show_zfs_patterns_menu(update, context):
     context.user_data['patterns_back'] = 'settings_zfs'
     context.user_data['patterns_add'] = 'add_zfs_pattern'
     context.user_data['patterns_title'] = "🧊 *Паттерны ZFS*"
+    view_patterns_handler(update, context)
+
+def show_mail_patterns_menu(update, context):
+    """Показать паттерны для бэкапов почты"""
+    context.user_data['patterns_filter'] = 'mail'
+    context.user_data['patterns_back'] = 'settings_ext_backup_mail'
+    context.user_data['patterns_add'] = 'add_mail_pattern'
+    context.user_data['patterns_title'] = "📬 *Паттерны бэкапов почты*"
     view_patterns_handler(update, context)
 
 def show_backup_proxmox_settings(update, context):
@@ -3845,6 +3907,26 @@ def add_proxmox_pattern_handler(update, context):
         ])
     )
 
+def add_mail_pattern_handler(update, context):
+    """Добавить паттерн для бэкапов почты"""
+    query = update.callback_query
+    query.answer()
+
+    context.user_data['adding_backup_pattern'] = True
+    context.user_data['backup_pattern_stage'] = 'pattern_only'
+    context.user_data['backup_pattern_mode'] = 'mail'
+
+    query.edit_message_text(
+        "➕ *Добавление паттерна почты*\n\n"
+        "Введите regex паттерн темы письма:",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ])
+    )
+
 def view_patterns_handler(update, context):
     """Просмотр паттернов"""
     query = update.callback_query
@@ -3885,6 +3967,15 @@ def view_patterns_handler(update, context):
             SELECT id, pattern_type, pattern, category
             FROM backup_patterns
             WHERE enabled = 1 AND category = 'proxmox'
+            ORDER BY category, pattern_type, id
+            """
+        )
+    elif filter_mode == 'mail':
+        cursor.execute(
+            """
+            SELECT id, pattern_type, pattern, category
+            FROM backup_patterns
+            WHERE enabled = 1 AND category = 'mail'
             ORDER BY category, pattern_type, id
             """
         )
@@ -4029,6 +4120,9 @@ def edit_pattern_handler(update, context, pattern_id):
     elif category == 'proxmox':
         context.user_data['backup_pattern_mode'] = 'proxmox'
         context.user_data['backup_pattern_stage'] = 'pattern_only'
+    elif category == 'mail':
+        context.user_data['backup_pattern_mode'] = 'mail'
+        context.user_data['backup_pattern_stage'] = 'pattern_only'
     else:
         context.user_data['backup_pattern_mode'] = 'db'
         context.user_data['backup_pattern_stage'] = 'subject'
@@ -4036,7 +4130,7 @@ def edit_pattern_handler(update, context, pattern_id):
     back_callback = context.user_data.get('patterns_back', 'settings_backup')
     prompt = (
         "Введите паттерн темы письма:"
-        if category in ('zfs', 'proxmox')
+        if category in ('zfs', 'proxmox', 'mail')
         else "Введите тему письма (как приходит в почте):"
     )
 
@@ -4063,14 +4157,19 @@ def handle_backup_pattern_input(update, context):
     stage = context.user_data.get('backup_pattern_stage', 'category')
     mode = context.user_data.get('backup_pattern_mode', 'db')
 
-    if mode in ('zfs', 'proxmox'):
+    if mode in ('zfs', 'proxmox', 'mail'):
         if not user_input:
             update.message.reply_text("❌ Паттерн не может быть пустым. Попробуйте снова:")
             return
 
         pattern = user_input
         pattern_type = "subject"
-        category = "zfs" if mode == 'zfs' else 'proxmox'
+        if mode == 'zfs':
+            category = 'zfs'
+        elif mode == 'proxmox':
+            category = 'proxmox'
+        else:
+            category = 'mail'
         back_callback = context.user_data.get('patterns_back', 'settings_backup')
 
         try:
@@ -4181,7 +4280,7 @@ def handle_backup_pattern_edit_input(update, context):
     stage = context.user_data.get('backup_pattern_stage', 'subject')
     mode = context.user_data.get('backup_pattern_mode', 'db')
 
-    if mode in ('zfs', 'proxmox'):
+    if mode in ('zfs', 'proxmox', 'mail'):
         if not new_pattern:
             update.message.reply_text("❌ Паттерн не может быть пустым. Попробуйте снова:")
             return
@@ -4192,7 +4291,12 @@ def handle_backup_pattern_edit_input(update, context):
             context.user_data.pop('editing_backup_pattern', None)
             return
 
-        category = 'zfs' if mode == 'zfs' else 'proxmox'
+        if mode == 'zfs':
+            category = 'zfs'
+        elif mode == 'proxmox':
+            category = 'proxmox'
+        else:
+            category = 'mail'
         back_callback = context.user_data.get('patterns_back', 'settings_backup')
 
         try:
