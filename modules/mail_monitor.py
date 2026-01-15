@@ -136,6 +136,32 @@ def get_zfs_patterns_from_config() -> list[str]:
         return []
 
 
+def get_mail_patterns_from_config() -> list[str]:
+    """Извлекает паттерны для писем о бэкапах почты из таблицы паттернов."""
+    try:
+        patterns = config_manager.get_backup_patterns()
+        mail_patterns = patterns.get("mail", {})
+        subject_patterns: list[str] = []
+
+        if isinstance(mail_patterns, dict):
+            subject_patterns = mail_patterns.get("subject", [])
+        elif isinstance(mail_patterns, list):
+            subject_patterns = mail_patterns
+
+        if not subject_patterns:
+            fallback = BACKUP_PATTERNS.get("mail", {})
+            if isinstance(fallback, dict):
+                subject_patterns = fallback.get("subject", [])
+            elif isinstance(fallback, list):
+                subject_patterns = fallback
+
+        return [pattern for pattern in subject_patterns if isinstance(pattern, str)]
+
+    except Exception as exc:
+        logger.error(f"❌ Ошибка извлечения паттернов почты: {exc}")
+        return []
+
+
 class BackupProcessor:
     """Обработчик бэкапов."""
 
@@ -583,17 +609,34 @@ class BackupProcessor:
         if not extension_manager.is_extension_enabled("mail_backup_monitor"):
             return None
 
-        pattern = (
+        default_pattern = (
             r"^\s*бэкап\s+zimbra\s*-\s*"
             r"(?P<size>\d+(?:[.,]\d+)?\s*[TGMK]?(?:i?B)?)\s+"
             r"(?P<path>/\S+)\s*$"
         )
-        match = re.search(pattern, subject, re.IGNORECASE)
+        patterns = get_mail_patterns_from_config()
+        if not patterns:
+            patterns = [default_pattern]
+
+        match = None
+        for pattern in patterns:
+            match = re.search(pattern, subject, re.IGNORECASE)
+            if match:
+                break
+
         if not match:
             return None
 
-        size = match.group("size").strip()
-        path = match.group("path").strip()
+        match_groups = match.groupdict()
+        size = match_groups.get("size")
+        path = match_groups.get("path")
+        if size is None and match.lastindex and match.lastindex >= 1:
+            size = match.group(1)
+        if path is None and match.lastindex and match.lastindex >= 2:
+            path = match.group(2)
+
+        size = size.strip() if isinstance(size, str) else None
+        path = path.strip() if isinstance(path, str) else None
 
         logger.info("✅ Найден бэкап Zimbra: размер=%s, путь=%s", size, path)
         return {
