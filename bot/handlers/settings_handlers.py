@@ -4532,6 +4532,17 @@ def view_patterns_handler(update, context):
                 categories,
             )
             rows = cursor.fetchall()
+        if not rows:
+            cursor.execute(
+                """
+                SELECT id, pattern_type, pattern, category
+                FROM backup_patterns
+                WHERE enabled = 1
+                AND category NOT IN ('mail', 'zfs', 'proxmox')
+                ORDER BY category, pattern_type, id
+                """
+            )
+            rows = cursor.fetchall()
     elif filter_mode == 'proxmox':
         cursor.execute(
             """
