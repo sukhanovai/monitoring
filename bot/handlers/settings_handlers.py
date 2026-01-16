@@ -40,6 +40,8 @@ BACKUP_SETTINGS_CALLBACKS = {
     'zfs_pattern_retry',
     'db_pattern_confirm',
     'db_pattern_retry',
+    'proxmox_pattern_confirm',
+    'proxmox_pattern_retry',
 }
 
 debug_logger = debug_log
@@ -837,6 +839,10 @@ def settings_callback_handler(update, context):
             zfs_pattern_confirm_handler(update, context)
         elif data == 'zfs_pattern_retry':
             zfs_pattern_retry_handler(update, context)
+        elif data == 'proxmox_pattern_confirm':
+            proxmox_pattern_confirm_handler(update, context)
+        elif data == 'proxmox_pattern_retry':
+            proxmox_pattern_retry_handler(update, context)
         elif data.startswith('db_default_edit_'):
             raw_value = data.replace('db_default_edit_', '')
             if '__' in raw_value:
@@ -873,12 +879,6 @@ def settings_callback_handler(update, context):
             edit_pattern_handler(update, context, pattern_id)
         
         # Обработчики для редактирования и удаления категорий БД
-        elif data.startswith('settings_db_delete_confirm_'):
-            category = data.replace('settings_db_delete_confirm_', '')
-            delete_database_category_execute(update, context, category)
-        elif data.startswith('settings_db_delete_'):
-            category = data.replace('settings_db_delete_', '')
-            delete_database_category_confirmation(update, context, category)
         elif data.startswith('settings_db_add_db_'):
             category = data.replace('settings_db_add_db_', '')
             add_database_entry_handler(update, context, category)
@@ -887,6 +887,22 @@ def settings_callback_handler(update, context):
             if '__' in raw_value:
                 category, db_key = raw_value.split('__', 1)
                 edit_database_entry_handler(update, context, category, db_key)
+        elif data.startswith('settings_db_delete_db_confirm_'):
+            raw_value = data.replace('settings_db_delete_db_confirm_', '')
+            if '__' in raw_value:
+                category, db_key = raw_value.split('__', 1)
+                delete_database_entry_execute(update, context, category, db_key)
+        elif data.startswith('settings_db_delete_db_'):
+            raw_value = data.replace('settings_db_delete_db_', '')
+            if '__' in raw_value:
+                category, db_key = raw_value.split('__', 1)
+                delete_database_entry_confirmation(update, context, category, db_key)
+        elif data.startswith('settings_db_delete_confirm_'):
+            category = data.replace('settings_db_delete_confirm_', '')
+            delete_database_category_execute(update, context, category)
+        elif data.startswith('settings_db_delete_'):
+            category = data.replace('settings_db_delete_', '')
+            delete_database_category_confirmation(update, context, category)
         elif data.startswith('settings_db_edit_'):
             category = data.replace('settings_db_edit_', '')
             edit_database_category_details(update, context, category)
@@ -1764,6 +1780,10 @@ def show_backup_databases_settings(update, context):
                 f"✏️ {db_key}",
                 callback_data=f"settings_db_edit_db_{category}__{db_key}"
             ))
+            row.append(InlineKeyboardButton(
+                f"🗑️ {db_key}",
+                callback_data=f"settings_db_delete_db_{category}__{db_key}"
+            ))
             if len(row) == 2:
                 keyboard.append(row)
                 row = []
@@ -1774,7 +1794,7 @@ def show_backup_databases_settings(update, context):
         [InlineKeyboardButton("📋 Просмотр всех БД", callback_data='settings_db_view_all')],
         [InlineKeyboardButton("➕ Добавить категорию БД", callback_data='settings_db_add_category')],
         [InlineKeyboardButton("🗑️ Удалить категорию", callback_data='settings_db_delete_category')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup'),
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_backup_db'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ])
     
@@ -3170,7 +3190,10 @@ def edit_database_category_details(update, context, category):
     keyboard = [[InlineKeyboardButton("➕ Добавить БД", callback_data=f"settings_db_add_db_{category}")]]
     for db_key, db_name in databases.items():
         button_text = f"✏️ {db_name}"
-        keyboard.append([InlineKeyboardButton(button_text, callback_data=f"settings_db_edit_db_{category}__{db_key}")])
+        keyboard.append([
+            InlineKeyboardButton(button_text, callback_data=f"settings_db_edit_db_{category}__{db_key}"),
+            InlineKeyboardButton(f"🗑️ {db_name}", callback_data=f"settings_db_delete_db_{category}__{db_key}")
+        ])
 
     keyboard.append([
         InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
@@ -3246,6 +3269,73 @@ def edit_database_entry_handler(update, context, category, db_key):
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("❌ Отмена", callback_data='settings_db_main')]
+        ])
+    )
+
+def delete_database_entry_confirmation(update, context, category, db_key):
+    """Подтверждение удаления базы данных"""
+    query = update.callback_query
+    query.answer()
+
+    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    databases = db_config.get(category, {})
+    if not isinstance(databases, dict):
+        databases = {}
+    db_name = databases.get(db_key)
+
+    if db_name is None:
+        query.edit_message_text(
+            "❌ База данных не найдена.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
+            ])
+        )
+        return
+
+    query.edit_message_text(
+        "🗑️ *Удаление базы данных*\n\n"
+        f"Категория: *{category}*\n"
+        f"База: `{db_name}`\n\n"
+        "Удалить?",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("✅ Удалить", callback_data=f"settings_db_delete_db_confirm_{category}__{db_key}")],
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ])
+    )
+
+def delete_database_entry_execute(update, context, category, db_key):
+    """Удаление базы данных"""
+    query = update.callback_query
+    query.answer()
+
+    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    databases = db_config.get(category, {})
+    if not isinstance(databases, dict):
+        databases = {}
+    db_name = databases.pop(db_key, None)
+
+    if db_name is None:
+        query.edit_message_text(
+            "❌ База данных не найдена.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
+            ])
+        )
+        return
+
+    db_config[category] = databases
+    settings_manager.set_setting('DATABASE_CONFIG', db_config)
+
+    query.edit_message_text(
+        "✅ *База данных удалена!*\n\n"
+        f"Категория: *{category}*\n"
+        f"База: `{db_name}`",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
     )
 
@@ -4234,12 +4324,15 @@ def add_proxmox_pattern_handler(update, context):
     query.answer()
 
     context.user_data['adding_backup_pattern'] = True
-    context.user_data['backup_pattern_stage'] = 'pattern_only'
-    context.user_data['backup_pattern_mode'] = 'proxmox'
+    context.user_data['backup_pattern_stage'] = 'proxmox_input'
+    context.user_data['backup_pattern_mode'] = 'proxmox_wizard'
 
     query.edit_message_text(
-        "➕ *Добавление паттерна Proxmox*\n\n"
-        "Введите regex паттерн темы письма:",
+        "🧙 *Мастер добавления паттерна Proxmox*\n\n"
+        "Введите тему письма целиком или обязательные фрагменты через `;`/`,`.\n"
+        "Фрагменты учитываются в указанном порядке.\n\n"
+        "Пример темы:\n"
+        "`vzdump backup status`",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
@@ -4612,6 +4705,85 @@ def zfs_pattern_confirm_handler(update, context):
         context.user_data.pop('backup_pattern_generated', None)
         context.user_data.pop('backup_pattern_source', None)
 
+def proxmox_pattern_retry_handler(update, context):
+    """Повторить ввод темы/фрагментов для паттерна Proxmox."""
+    query = update.callback_query
+    query.answer()
+
+    context.user_data['adding_backup_pattern'] = True
+    context.user_data['backup_pattern_stage'] = 'proxmox_input'
+    context.user_data['backup_pattern_mode'] = 'proxmox_wizard'
+    context.user_data.pop('backup_pattern_generated', None)
+    context.user_data.pop('backup_pattern_source', None)
+
+    query.edit_message_text(
+        "🧙 *Мастер добавления паттерна Proxmox*\n\n"
+        "Введите тему письма целиком или обязательные фрагменты через `;`/`,`.\n"
+        "Фрагменты учитываются в указанном порядке.",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ])
+    )
+
+def proxmox_pattern_confirm_handler(update, context):
+    """Подтвердить сохранение паттерна Proxmox."""
+    query = update.callback_query
+    query.answer()
+
+    pattern = context.user_data.get('backup_pattern_generated')
+    back_callback = context.user_data.get('patterns_back', 'settings_backup')
+
+    if not pattern:
+        query.edit_message_text(
+            "❌ Паттерн не найден. Начните добавление заново.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)],
+                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ])
+        )
+        return
+
+    try:
+        conn = settings_manager.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO backup_patterns (pattern_type, pattern, category, enabled)
+            VALUES (?, ?, ?, 1)
+            """,
+            ("subject", pattern, "proxmox")
+        )
+        conn.commit()
+
+        source_label = context.user_data.get('backup_pattern_source', 'мастер')
+        query.edit_message_text(
+            "✅ *Паттерн добавлен!*\n\n"
+            "Категория: *proxmox*\n"
+            "Тип: *subject*\n"
+            f"Источник: *{source_label}*\n"
+            f"Паттерн: `{pattern}`",
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ])
+        )
+    except Exception as e:
+        query.edit_message_text(f"❌ Ошибка сохранения: {e}")
+    finally:
+        context.user_data.pop('adding_backup_pattern', None)
+        context.user_data.pop('backup_pattern_stage', None)
+        context.user_data.pop('backup_pattern_category', None)
+        context.user_data.pop('backup_pattern_type', None)
+        context.user_data.pop('backup_pattern_subject', None)
+        context.user_data.pop('backup_pattern_mode', None)
+        context.user_data.pop('backup_pattern_generated', None)
+        context.user_data.pop('backup_pattern_source', None)
+
 def view_patterns_handler(update, context):
     """Просмотр паттернов"""
     query = update.callback_query
@@ -4671,7 +4843,8 @@ def view_patterns_handler(update, context):
             """
             SELECT id, pattern_type, pattern, category
             FROM backup_patterns
-            WHERE enabled = 1 AND category = 'proxmox'
+            WHERE enabled = 1
+            AND (category = 'proxmox' OR (category = 'database' AND pattern_type LIKE 'proxmox%'))
             ORDER BY category, pattern_type, id
             """
         )
@@ -4696,20 +4869,45 @@ def view_patterns_handler(update, context):
     rows = cursor.fetchall()
 
     title = context.user_data.get('patterns_title', "📋 *Паттерны*")
+    display_rows = rows
+    if filter_mode == 'db':
+        display_rows = []
+        for pattern_id, pattern_type, pattern, category in rows:
+            if category == "database" and pattern_type.startswith("proxmox"):
+                continue
+            display_category = category
+            display_type = pattern_type
+            if category == "database" and pattern_type.startswith("database"):
+                normalized = pattern_type
+                while normalized.startswith("database"):
+                    normalized = normalized[len("database"):]
+                display_category = normalized or category
+                display_type = "subject"
+            display_rows.append((pattern_id, display_type, pattern, display_category))
+    if filter_mode == 'proxmox':
+        display_rows = []
+        for pattern_id, pattern_type, pattern, category in rows:
+            display_category = category
+            display_type = pattern_type
+            if category == "database" and pattern_type.startswith("proxmox"):
+                normalized = pattern_type[len("proxmox"):]
+                display_category = "proxmox"
+                display_type = normalized or "subject"
+            display_rows.append((pattern_id, display_type, pattern, display_category))
 
     fallback_patterns = []
     fallback_db_patterns = {}
-    if not rows and filter_mode == 'mail':
+    if not display_rows and filter_mode == 'mail':
         fallback_patterns = _get_mail_fallback_patterns()
-    if not rows and filter_mode == 'db':
+    if not display_rows and filter_mode == 'db':
         fallback_db_patterns = _get_database_fallback_patterns()
 
-    if not rows and not fallback_patterns and not fallback_db_patterns:
+    if not display_rows and not fallback_patterns and not fallback_db_patterns:
         message = f"{title}\n\n❌ Паттерны не настроены."
     else:
         message = f"{title}\n\n"
         current_category = None
-        for index, (pattern_id, pattern_type, pattern, category) in enumerate(rows, start=1):
+        for index, (pattern_id, pattern_type, pattern, category) in enumerate(display_rows, start=1):
             if category != current_category:
                 if current_category is not None:
                     message += "\n"
@@ -4732,7 +4930,7 @@ def view_patterns_handler(update, context):
                     message += f"{index}. subject: `{pattern}`\n"
 
     keyboard = []
-    for index, (pattern_id, pattern_type, pattern, category) in enumerate(rows, start=1):
+    for index, (pattern_id, pattern_type, pattern, category) in enumerate(display_rows, start=1):
         keyboard.append([
             InlineKeyboardButton(
                 f"✏️ {index}. {category}:{pattern_type}",
@@ -4957,22 +5155,7 @@ def handle_backup_pattern_input(update, context):
         context.user_data['backup_pattern_category'] = category
         context.user_data['backup_pattern_db_name'] = db_name
 
-        back_callback = context.user_data.get('patterns_back', 'settings_backup')
-        update.message.reply_text(
-            "✅ *Черновик паттерна готов!*\n\n"
-            f"БД: *{db_name}*\n"
-            f"Категория: *{category}*\n"
-            f"Источник: *{source_label}*\n"
-            f"Паттерн: `{pattern}`\n\n"
-            "Сохранить?",
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("✅ Сохранить", callback_data='db_pattern_confirm')],
-                [InlineKeyboardButton("✏️ Ввести заново", callback_data='db_pattern_retry')],
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-            ])
-        )
+        _show_db_pattern_confirm(update, context)
         return
 
     if mode == 'zfs_wizard':
@@ -5078,6 +5261,49 @@ def handle_backup_pattern_input(update, context):
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("✅ Сохранить", callback_data='mail_pattern_confirm')],
                 [InlineKeyboardButton("✏️ Ввести заново", callback_data='mail_pattern_retry')],
+                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ])
+        )
+        return
+
+    if mode == 'proxmox_wizard':
+        if stage != 'proxmox_input':
+            update.message.reply_text("❌ Неверный шаг мастера. Попробуйте снова.")
+            return
+
+        if not user_input:
+            update.message.reply_text("❌ Ввод не может быть пустым. Попробуйте снова:")
+            return
+
+        fragments = [chunk.strip() for chunk in re.split(r"[;,\n]+", user_input)]
+        fragments = [fragment for fragment in fragments if fragment]
+
+        if len(fragments) > 1:
+            pattern = _build_mail_pattern_from_fragments(fragments)
+            source_label = "фрагменты"
+        else:
+            pattern = _build_mail_pattern_from_subject(user_input)
+            source_label = "тема письма"
+
+        if not pattern:
+            update.message.reply_text("❌ Не удалось собрать паттерн. Попробуйте снова:")
+            return
+
+        context.user_data['backup_pattern_generated'] = pattern
+        context.user_data['backup_pattern_source'] = source_label
+        context.user_data['backup_pattern_stage'] = 'proxmox_confirm'
+
+        back_callback = context.user_data.get('patterns_back', 'settings_backup')
+        update.message.reply_text(
+            "✅ *Черновик паттерна готов!*\n\n"
+            f"Источник: *{source_label}*\n"
+            f"Паттерн: `{pattern}`\n\n"
+            "Сохранить?",
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("✅ Сохранить", callback_data='proxmox_pattern_confirm')],
+                [InlineKeyboardButton("✏️ Ввести заново", callback_data='proxmox_pattern_retry')],
                 [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
                  InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
