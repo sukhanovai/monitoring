@@ -706,7 +706,15 @@ def settings_callback_handler(update, context):
     data = query.data
     
     # если это callback от бэкапов, НЕ обрабатываем здесь
-    if data.startswith('db_') or (data.startswith('backup_') and data not in BACKUP_SETTINGS_CALLBACKS):
+    if (
+        data.startswith('db_')
+        and data not in BACKUP_SETTINGS_CALLBACKS
+        and not data.startswith('db_default_')
+    ):
+        query.answer("⚙️ Перенаправление к модулю бэкапов...")
+        # Передаем обработку дальше по цепочке
+        return
+    if data.startswith('backup_') and data not in BACKUP_SETTINGS_CALLBACKS:
         query.answer("⚙️ Перенаправление к модулю бэкапов...")
         # Передаем обработку дальше по цепочке
         return
