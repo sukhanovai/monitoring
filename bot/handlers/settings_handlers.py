@@ -155,6 +155,44 @@ def _get_database_fallback_patterns() -> dict[str, list[str]]:
         }
     return {}
 
+def _get_backup_patterns_setting() -> dict:
+    """Получить полные паттерны из настроек."""
+    raw_patterns = settings_manager.get_setting('BACKUP_PATTERNS', DEFAULT_BACKUP_PATTERNS)
+    if isinstance(raw_patterns, str):
+        try:
+            raw_patterns = json.loads(raw_patterns)
+        except json.JSONDecodeError:
+            raw_patterns = {}
+    if not isinstance(raw_patterns, dict):
+        return {}
+    return raw_patterns
+
+def _get_database_patterns_setting() -> dict[str, list[str]]:
+    """Получить паттерны БД из настроек в нормализованном виде."""
+    raw_patterns = _get_backup_patterns_setting()
+    db_patterns = raw_patterns.get("database", {})
+    if isinstance(db_patterns, list):
+        normalized: dict[str, list[str]] = {}
+        for item in db_patterns:
+            if isinstance(item, dict):
+                for key, value in item.items():
+                    if isinstance(value, list):
+                        normalized[key] = [p for p in value if isinstance(p, str)]
+        return normalized
+    if isinstance(db_patterns, dict):
+        return {
+            key: [p for p in value if isinstance(p, str)]
+            for key, value in db_patterns.items()
+            if isinstance(value, list)
+        }
+    return {}
+
+def _save_database_patterns_setting(db_patterns: dict[str, list[str]]) -> None:
+    """Сохранить паттерны БД в настройках."""
+    raw_patterns = _get_backup_patterns_setting()
+    raw_patterns["database"] = db_patterns
+    settings_manager.set_setting('BACKUP_PATTERNS', raw_patterns)
+
 def _get_database_names() -> list[str]:
     """Получить список имён БД из настроек."""
     db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
@@ -799,6 +837,16 @@ def settings_callback_handler(update, context):
             zfs_pattern_confirm_handler(update, context)
         elif data == 'zfs_pattern_retry':
             zfs_pattern_retry_handler(update, context)
+        elif data.startswith('db_default_edit_'):
+            raw_value = data.replace('db_default_edit_', '')
+            if '__' in raw_value:
+                category, index_value = raw_value.split('__', 1)
+                edit_default_db_pattern_handler(update, context, category, index_value)
+        elif data.startswith('db_default_delete_'):
+            raw_value = data.replace('db_default_delete_', '')
+            if '__' in raw_value:
+                category, index_value = raw_value.split('__', 1)
+                delete_default_db_pattern_handler(update, context, category, index_value)
         elif data == 'mail_pattern_confirm':
             mail_pattern_confirm_handler(update, context)
         elif data == 'mail_pattern_retry':
@@ -1056,6 +1104,10 @@ def handle_setting_value(update, context):
     # Проверяем, не редактируется ли паттерн бэкапов
     if context.user_data.get('editing_backup_pattern'):
         return handle_backup_pattern_edit_input(update, context)
+
+    # Проверяем, не редактируется ли дефолтный паттерн БД
+    if context.user_data.get('editing_default_db_pattern'):
+        return handle_default_db_pattern_edit_input(update, context)
     
     # Если это обычная настройка
     if 'editing_setting' not in context.user_data:
@@ -4410,6 +4462,77 @@ def db_pattern_confirm_handler(update, context):
         context.user_data.pop('backup_pattern_source', None)
         context.user_data.pop('backup_pattern_db_name', None)
 
+def edit_default_db_pattern_handler(update, context, category: str, index_value: str):
+    """Редактировать дефолтный паттерн БД."""
+    query = update.callback_query
+    query.answer()
+
+    try:
+        index = int(index_value)
+    except ValueError:
+        query.edit_message_text("❌ Некорректный индекс паттерна.")
+        return
+
+    db_patterns = _get_database_patterns_setting()
+    patterns = db_patterns.get(category, [])
+    if index < 1 or index > len(patterns):
+        query.edit_message_text("❌ Паттерн не найден.")
+        return
+
+    current_pattern = patterns[index - 1]
+    context.user_data['editing_default_db_pattern'] = True
+    context.user_data['editing_default_db_category'] = category
+    context.user_data['editing_default_db_index'] = index
+
+    back_callback = context.user_data.get('patterns_back', 'settings_backup')
+    query.edit_message_text(
+        "✏️ *Редактирование дефолтного паттерна БД*\n\n"
+        f"Категория: *{category}*\n"
+        f"Текущий паттерн: `{current_pattern}`\n\n"
+        "Введите новый regex паттерн темы письма:",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("❌ Отмена", callback_data=back_callback),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ])
+    )
+
+def delete_default_db_pattern_handler(update, context, category: str, index_value: str):
+    """Удалить дефолтный паттерн БД."""
+    query = update.callback_query
+    query.answer()
+
+    try:
+        index = int(index_value)
+    except ValueError:
+        query.edit_message_text("❌ Некорректный индекс паттерна.")
+        return
+
+    db_patterns = _get_database_patterns_setting()
+    patterns = db_patterns.get(category, [])
+    if index < 1 or index > len(patterns):
+        query.edit_message_text("❌ Паттерн не найден.")
+        return
+
+    patterns.pop(index - 1)
+    if patterns:
+        db_patterns[category] = patterns
+    else:
+        db_patterns.pop(category, None)
+
+    _save_database_patterns_setting(db_patterns)
+
+    back_callback = context.user_data.get('patterns_back', 'settings_backup')
+    query.edit_message_text(
+        "✅ Дефолтный паттерн удалён.",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ])
+    )
+
 def zfs_pattern_retry_handler(update, context):
     """Повторить ввод темы/фрагментов для паттерна ZFS."""
     query = update.callback_query
@@ -4625,6 +4748,19 @@ def view_patterns_handler(update, context):
         keyboard.append([
             InlineKeyboardButton("✏️ Изменить дефолтный паттерн", callback_data='edit_mail_default_pattern')
         ])
+    if fallback_db_patterns and filter_mode == 'db':
+        for category, patterns in fallback_db_patterns.items():
+            for index, _ in enumerate(patterns, start=1):
+                keyboard.append([
+                    InlineKeyboardButton(
+                        f"✏️ {category} #{index}",
+                        callback_data=f"db_default_edit_{category}__{index}"
+                    ),
+                    InlineKeyboardButton(
+                        f"🗑️ {category} #{index}",
+                        callback_data=f"db_default_delete_{category}__{index}"
+                    )
+                ])
 
     add_callback = context.user_data.get('patterns_add')
     if add_callback:
@@ -5199,3 +5335,44 @@ def handle_backup_pattern_edit_input(update, context):
             context.user_data.pop('backup_pattern_stage', None)
             context.user_data.pop('backup_pattern_mode', None)
     
+def handle_default_db_pattern_edit_input(update, context):
+    """Обработчик редактирования дефолтного паттерна БД."""
+    new_pattern = update.message.text.strip()
+    if not new_pattern:
+        update.message.reply_text("❌ Паттерн не может быть пустым. Попробуйте снова:")
+        return
+
+    category = context.user_data.get('editing_default_db_category')
+    index = context.user_data.get('editing_default_db_index')
+    if not category or not index:
+        update.message.reply_text("❌ Не найден паттерн для редактирования.")
+        context.user_data.pop('editing_default_db_pattern', None)
+        return
+
+    db_patterns = _get_database_patterns_setting()
+    patterns = db_patterns.get(category, [])
+    if index < 1 or index > len(patterns):
+        update.message.reply_text("❌ Паттерн не найден.")
+        context.user_data.pop('editing_default_db_pattern', None)
+        return
+
+    patterns[index - 1] = new_pattern
+    db_patterns[category] = patterns
+    _save_database_patterns_setting(db_patterns)
+
+    back_callback = context.user_data.get('patterns_back', 'settings_backup')
+    update.message.reply_text(
+        "✅ *Паттерн обновлён!*\n\n"
+        f"Категория: *{category}*\n"
+        f"Паттерн: `{new_pattern}`",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ])
+    )
+
+    context.user_data.pop('editing_default_db_pattern', None)
+    context.user_data.pop('editing_default_db_category', None)
+    context.user_data.pop('editing_default_db_index', None)
