@@ -4510,7 +4510,16 @@ def view_patterns_handler(update, context):
         db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
         categories = list(db_config.keys()) if isinstance(db_config, dict) else []
         if not categories:
-            rows = []
+            cursor.execute(
+                """
+                SELECT id, pattern_type, pattern, category
+                FROM backup_patterns
+                WHERE enabled = 1
+                AND category NOT IN ('mail', 'zfs', 'proxmox')
+                ORDER BY category, pattern_type, id
+                """
+            )
+            rows = cursor.fetchall()
         else:
             placeholders = ", ".join(["?"] * len(categories))
             cursor.execute(
