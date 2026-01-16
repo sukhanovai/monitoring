@@ -4203,29 +4203,29 @@ def view_patterns_handler(update, context):
     else:
         message = f"{title}\n\n"
         current_category = None
-        for pattern_id, pattern_type, pattern, category in rows:
+        for index, (pattern_id, pattern_type, pattern, category) in enumerate(rows, start=1):
             if category != current_category:
                 if current_category is not None:
                     message += "\n"
                 message += f"*{category}*\n"
                 current_category = category
-            message += f"• {pattern_type}: `{pattern}`\n"
+            message += f"{index}. {pattern_type}: `{pattern}`\n"
         if fallback_patterns:
             if rows:
                 message += "\n"
             message += "*mail (по умолчанию)*\n"
-            for pattern in fallback_patterns:
-                message += f"• subject: `{pattern}`\n"
+            for index, pattern in enumerate(fallback_patterns, start=1):
+                message += f"{index}. subject: `{pattern}`\n"
 
     keyboard = []
-    for pattern_id, pattern_type, pattern, category in rows:
+    for index, (pattern_id, pattern_type, pattern, category) in enumerate(rows, start=1):
         keyboard.append([
             InlineKeyboardButton(
-                f"✏️ {category}:{pattern_type}",
+                f"✏️ {index}. {category}:{pattern_type}",
                 callback_data=f"edit_pattern_{pattern_id}"
             ),
             InlineKeyboardButton(
-                f"🗑️ {category}:{pattern_type}",
+                f"🗑️ {index}. {category}:{pattern_type}",
                 callback_data=f"delete_pattern_{pattern_id}"
             )
         ])
