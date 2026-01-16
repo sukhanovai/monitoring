@@ -1,11 +1,11 @@
 """
 /app/modules/debug.py
-Server Monitoring System v7.1.14
+Server Monitoring System v7.1.15
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Debugging and diagnostics module
 Система мониторинга серверов
-Версия: 7.1.14
+Версия: 7.1.15
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль отладки и диагностики
