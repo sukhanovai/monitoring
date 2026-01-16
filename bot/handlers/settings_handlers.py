@@ -38,6 +38,8 @@ BACKUP_SETTINGS_CALLBACKS = {
     'mail_pattern_retry',
     'zfs_pattern_confirm',
     'zfs_pattern_retry',
+    'db_pattern_confirm',
+    'db_pattern_retry',
 }
 
 debug_logger = debug_log
@@ -124,6 +126,113 @@ def _build_mail_pattern_from_fragments(fragments: list[str]) -> str:
         return ""
     escaped_parts = [re.escape(fragment) for fragment in cleaned]
     return r".*".join(escaped_parts)
+
+def _get_database_fallback_patterns() -> dict[str, list[str]]:
+    """Получить запасные паттерны для бэкапов БД."""
+    fallback_raw = settings_manager.get_setting('BACKUP_PATTERNS', DEFAULT_BACKUP_PATTERNS)
+    if isinstance(fallback_raw, str):
+        try:
+            fallback_raw = json.loads(fallback_raw)
+        except json.JSONDecodeError:
+            fallback_raw = {}
+    if not fallback_raw:
+        fallback_raw = DEFAULT_BACKUP_PATTERNS
+
+    db_patterns = fallback_raw.get("database", {})
+    if isinstance(db_patterns, list):
+        result: dict[str, list[str]] = {}
+        for item in db_patterns:
+            if isinstance(item, dict):
+                for key, value in item.items():
+                    if isinstance(value, list):
+                        result[key] = [p for p in value if isinstance(p, str)]
+        return result
+    if isinstance(db_patterns, dict):
+        return {
+            key: [p for p in value if isinstance(p, str)]
+            for key, value in db_patterns.items()
+            if isinstance(value, list)
+        }
+    return {}
+
+def _get_database_names() -> list[str]:
+    """Получить список имён БД из настроек."""
+    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    if not isinstance(db_config, dict):
+        return []
+
+    names: list[str] = []
+    for databases in db_config.values():
+        if isinstance(databases, dict):
+            names.extend([name for name in databases.keys() if isinstance(name, str)])
+    return names
+
+def _inject_db_placeholder(text: str, db_names: list[str]) -> tuple[str, str | None]:
+    """Подменить имя БД на плейсхолдер, если найдено."""
+    if not text or not db_names:
+        return text, None
+
+    matched = None
+    for db_name in sorted(db_names, key=len, reverse=True):
+        if re.search(re.escape(db_name), text, re.IGNORECASE):
+            matched = db_name
+            break
+
+    if not matched:
+        return text, None
+
+    replaced = re.sub(
+        re.escape(matched),
+        "__DB__",
+        text,
+        flags=re.IGNORECASE
+    )
+    return replaced, matched
+
+def _build_db_pattern_from_subject(subject: str, db_names: list[str]) -> tuple[str, str | None]:
+    """Собрать regex паттерн БД по теме письма."""
+    if not subject:
+        return "", None
+
+    normalized = subject.strip()
+    if not normalized:
+        return "", None
+
+    normalized, db_name = _inject_db_placeholder(normalized, db_names)
+    if not db_name:
+        return "", None
+
+    escaped = re.escape(normalized)
+    escaped = re.sub(r"\\\s+", r"\\s+", escaped)
+    escaped = escaped.replace(re.escape("__DB__"), r"([\w.-]+)")
+    return escaped, db_name
+
+def _build_db_pattern_from_fragments(
+    fragments: list[str],
+    db_names: list[str],
+) -> tuple[str, str | None]:
+    """Собрать regex паттерн БД из обязательных фрагментов."""
+    cleaned = [fragment.strip() for fragment in fragments if fragment.strip()]
+    if not cleaned:
+        return "", None
+
+    processed = []
+    matched_db: str | None = None
+    for fragment in cleaned:
+        replaced, db_name = _inject_db_placeholder(fragment, db_names)
+        if db_name:
+            if matched_db and matched_db != db_name:
+                return "", None
+            matched_db = db_name
+        processed.append(replaced)
+
+    if not matched_db:
+        return "", None
+
+    escaped_parts = [re.escape(fragment) for fragment in processed]
+    pattern = r".*".join(escaped_parts)
+    pattern = pattern.replace(re.escape("__DB__"), r"([\w.-]+)")
+    return pattern, matched_db
 
 def _get_zfs_server_names() -> list[str]:
     """Получить список имён ZFS серверов из настроек."""
@@ -682,6 +791,10 @@ def settings_callback_handler(update, context):
             add_mail_pattern_handler(update, context)
         elif data == 'edit_mail_default_pattern':
             edit_mail_default_pattern_handler(update, context)
+        elif data == 'db_pattern_confirm':
+            db_pattern_confirm_handler(update, context)
+        elif data == 'db_pattern_retry':
+            db_pattern_retry_handler(update, context)
         elif data == 'zfs_pattern_confirm':
             zfs_pattern_confirm_handler(update, context)
         elif data == 'zfs_pattern_retry':
@@ -4019,12 +4132,17 @@ def add_pattern_handler(update, context):
     query.answer()
 
     context.user_data['adding_backup_pattern'] = True
-    context.user_data['backup_pattern_stage'] = 'subject'
-    context.user_data['backup_pattern_mode'] = 'db'
+    context.user_data['backup_pattern_stage'] = 'db_input'
+    context.user_data['backup_pattern_mode'] = 'db_wizard'
 
     query.edit_message_text(
-        "➕ *Добавление паттерна*\n\n"
-        "Введите тему письма (как приходит в почте):",
+        "🧙 *Мастер добавления паттерна БД*\n\n"
+        "Введите тему письма целиком или обязательные фрагменты через `;`/`,`.\n"
+        "Во фрагментах обязательно укажите имя БД из настроек.\n\n"
+        "Пример темы:\n"
+        "`Backup db company_main completed`\n\n"
+        "Пример фрагментов:\n"
+        "`Backup db; company_main; completed`",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
@@ -4206,6 +4324,92 @@ def mail_pattern_confirm_handler(update, context):
         context.user_data.pop('backup_pattern_generated', None)
         context.user_data.pop('backup_pattern_source', None)
 
+def db_pattern_retry_handler(update, context):
+    """Повторить ввод темы/фрагментов для паттерна БД."""
+    query = update.callback_query
+    query.answer()
+
+    context.user_data['adding_backup_pattern'] = True
+    context.user_data['backup_pattern_stage'] = 'db_input'
+    context.user_data['backup_pattern_mode'] = 'db_wizard'
+    context.user_data.pop('backup_pattern_generated', None)
+    context.user_data.pop('backup_pattern_source', None)
+    context.user_data.pop('backup_pattern_category', None)
+    context.user_data.pop('backup_pattern_db_name', None)
+
+    query.edit_message_text(
+        "🧙 *Мастер добавления паттерна БД*\n\n"
+        "Введите тему письма целиком или обязательные фрагменты через `;`/`,`.\n"
+        "Во фрагментах обязательно укажите имя БД из настроек.",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ])
+    )
+
+def db_pattern_confirm_handler(update, context):
+    """Подтвердить сохранение паттерна БД."""
+    query = update.callback_query
+    query.answer()
+
+    pattern = context.user_data.get('backup_pattern_generated')
+    category = context.user_data.get('backup_pattern_category')
+    back_callback = context.user_data.get('patterns_back', 'settings_backup')
+
+    if not pattern or not category:
+        query.edit_message_text(
+            "❌ Паттерн не найден. Начните добавление заново.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)],
+                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ])
+        )
+        return
+
+    try:
+        conn = settings_manager.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO backup_patterns (pattern_type, pattern, category, enabled)
+            VALUES (?, ?, ?, 1)
+            """,
+            ("subject", pattern, category)
+        )
+        conn.commit()
+
+        source_label = context.user_data.get('backup_pattern_source', 'мастер')
+        db_name = context.user_data.get('backup_pattern_db_name', '')
+        db_info = f"БД: *{db_name}*\n" if db_name else ""
+        query.edit_message_text(
+            "✅ *Паттерн добавлен!*\n\n"
+            f"{db_info}"
+            f"Категория: *{category}*\n"
+            "Тип: *subject*\n"
+            f"Источник: *{source_label}*\n"
+            f"Паттерн: `{pattern}`",
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ])
+        )
+    except Exception as e:
+        query.edit_message_text(f"❌ Ошибка сохранения: {e}")
+    finally:
+        context.user_data.pop('adding_backup_pattern', None)
+        context.user_data.pop('backup_pattern_stage', None)
+        context.user_data.pop('backup_pattern_category', None)
+        context.user_data.pop('backup_pattern_type', None)
+        context.user_data.pop('backup_pattern_subject', None)
+        context.user_data.pop('backup_pattern_mode', None)
+        context.user_data.pop('backup_pattern_generated', None)
+        context.user_data.pop('backup_pattern_source', None)
+        context.user_data.pop('backup_pattern_db_name', None)
+
 def zfs_pattern_retry_handler(update, context):
     """Повторить ввод темы/фрагментов для паттерна ZFS."""
     query = update.callback_query
@@ -4351,10 +4555,13 @@ def view_patterns_handler(update, context):
     title = context.user_data.get('patterns_title', "📋 *Паттерны*")
 
     fallback_patterns = []
+    fallback_db_patterns = {}
     if not rows and filter_mode == 'mail':
         fallback_patterns = _get_mail_fallback_patterns()
+    if not rows and filter_mode == 'db':
+        fallback_db_patterns = _get_database_fallback_patterns()
 
-    if not rows and not fallback_patterns:
+    if not rows and not fallback_patterns and not fallback_db_patterns:
         message = f"{title}\n\n❌ Паттерны не настроены."
     else:
         message = f"{title}\n\n"
@@ -4372,6 +4579,14 @@ def view_patterns_handler(update, context):
             message += "*mail (по умолчанию)*\n"
             for index, pattern in enumerate(fallback_patterns, start=1):
                 message += f"{index}. subject: `{pattern}`\n"
+        if fallback_db_patterns:
+            if rows or fallback_patterns:
+                message += "\n"
+            message += "*database (по умолчанию)*\n"
+            for category, patterns in fallback_db_patterns.items():
+                message += f"*{category}*\n"
+                for index, pattern in enumerate(patterns, start=1):
+                    message += f"{index}. subject: `{pattern}`\n"
 
     keyboard = []
     for index, (pattern_id, pattern_type, pattern, category) in enumerate(rows, start=1):
@@ -4529,6 +4744,80 @@ def handle_backup_pattern_input(update, context):
     user_input = update.message.text.strip()
     stage = context.user_data.get('backup_pattern_stage', 'category')
     mode = context.user_data.get('backup_pattern_mode', 'db')
+
+    if mode == 'db_wizard':
+        if stage != 'db_input':
+            update.message.reply_text("❌ Неверный шаг мастера. Попробуйте снова.")
+            return
+
+        if not user_input:
+            update.message.reply_text("❌ Ввод не может быть пустым. Попробуйте снова:")
+            return
+
+        db_names = _get_database_names()
+        if not db_names:
+            update.message.reply_text(
+                "❌ Базы данных не настроены. Сначала добавьте БД в настройках."
+            )
+            context.user_data.pop('adding_backup_pattern', None)
+            context.user_data.pop('backup_pattern_stage', None)
+            context.user_data.pop('backup_pattern_mode', None)
+            return
+
+        fragments = [chunk.strip() for chunk in re.split(r"[;,\n]+", user_input)]
+        fragments = [fragment for fragment in fragments if fragment]
+
+        if len(fragments) > 1:
+            pattern, db_name = _build_db_pattern_from_fragments(
+                fragments,
+                db_names,
+            )
+            source_label = "фрагменты"
+        else:
+            pattern, db_name = _build_db_pattern_from_subject(
+                user_input,
+                db_names,
+            )
+            source_label = "тема письма"
+
+        if not pattern or not db_name:
+            update.message.reply_text(
+                "❌ Не найдено имя БД из настроек.\n"
+                "Добавьте в тему или фрагменты имя БД и попробуйте снова:"
+            )
+            return
+
+        category = _get_database_category(db_name)
+        if category == "unknown":
+            update.message.reply_text(
+                "❌ Не удалось определить категорию БД.\n"
+                "Проверьте, что БД есть в настройках."
+            )
+            return
+
+        context.user_data['backup_pattern_generated'] = pattern
+        context.user_data['backup_pattern_source'] = source_label
+        context.user_data['backup_pattern_stage'] = 'db_confirm'
+        context.user_data['backup_pattern_category'] = category
+        context.user_data['backup_pattern_db_name'] = db_name
+
+        back_callback = context.user_data.get('patterns_back', 'settings_backup')
+        update.message.reply_text(
+            "✅ *Черновик паттерна готов!*\n\n"
+            f"БД: *{db_name}*\n"
+            f"Категория: *{category}*\n"
+            f"Источник: *{source_label}*\n"
+            f"Паттерн: `{pattern}`\n\n"
+            "Сохранить?",
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("✅ Сохранить", callback_data='db_pattern_confirm')],
+                [InlineKeyboardButton("✏️ Ввести заново", callback_data='db_pattern_retry')],
+                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ])
+        )
+        return
 
     if mode == 'zfs_wizard':
         if stage != 'zfs_input':
