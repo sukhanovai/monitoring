@@ -884,12 +884,6 @@ def settings_callback_handler(update, context):
             edit_pattern_handler(update, context, pattern_id)
         
         # Обработчики для редактирования и удаления категорий БД
-        elif data.startswith('settings_db_delete_confirm_'):
-            category = data.replace('settings_db_delete_confirm_', '')
-            delete_database_category_execute(update, context, category)
-        elif data.startswith('settings_db_delete_'):
-            category = data.replace('settings_db_delete_', '')
-            delete_database_category_confirmation(update, context, category)
         elif data.startswith('settings_db_add_db_'):
             category = data.replace('settings_db_add_db_', '')
             add_database_entry_handler(update, context, category)
@@ -908,6 +902,12 @@ def settings_callback_handler(update, context):
             if '__' in raw_value:
                 category, db_key = raw_value.split('__', 1)
                 delete_database_entry_confirmation(update, context, category, db_key)
+        elif data.startswith('settings_db_delete_confirm_'):
+            category = data.replace('settings_db_delete_confirm_', '')
+            delete_database_category_execute(update, context, category)
+        elif data.startswith('settings_db_delete_'):
+            category = data.replace('settings_db_delete_', '')
+            delete_database_category_confirmation(update, context, category)
         elif data.startswith('settings_db_edit_'):
             category = data.replace('settings_db_edit_', '')
             edit_database_category_details(update, context, category)
