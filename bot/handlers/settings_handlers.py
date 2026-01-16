@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v7.1.20
+Server Monitoring System v7.1.24
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 7.1.20
+Версия: 7.1.24
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -706,7 +706,15 @@ def settings_callback_handler(update, context):
     data = query.data
     
     # если это callback от бэкапов, НЕ обрабатываем здесь
-    if data.startswith('db_') or (data.startswith('backup_') and data not in BACKUP_SETTINGS_CALLBACKS):
+    if (
+        data.startswith('db_')
+        and data not in BACKUP_SETTINGS_CALLBACKS
+        and not data.startswith('db_default_')
+    ):
+        query.answer("⚙️ Перенаправление к модулю бэкапов...")
+        # Передаем обработку дальше по цепочке
+        return
+    if data.startswith('backup_') and data not in BACKUP_SETTINGS_CALLBACKS:
         query.answer("⚙️ Перенаправление к модулю бэкапов...")
         # Передаем обработку дальше по цепочке
         return
@@ -833,6 +841,9 @@ def settings_callback_handler(update, context):
             db_pattern_confirm_handler(update, context)
         elif data == 'db_pattern_retry':
             db_pattern_retry_handler(update, context)
+        elif data.startswith('db_pattern_set_category_'):
+            category = data.replace('db_pattern_set_category_', '')
+            db_pattern_set_category_handler(update, context, category)
         elif data == 'zfs_pattern_confirm':
             zfs_pattern_confirm_handler(update, context)
         elif data == 'zfs_pattern_retry':
@@ -4485,6 +4496,82 @@ def db_pattern_retry_handler(update, context):
         ])
     )
 
+def _get_database_categories() -> list[str]:
+    """Получить список категорий БД из настроек."""
+    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    if not isinstance(db_config, dict):
+        return []
+    return sorted([key for key in db_config.keys() if isinstance(key, str)])
+
+def _show_db_pattern_confirm(update, context):
+    """Показать экран подтверждения паттерна БД с выбором категории."""
+    pattern = context.user_data.get('backup_pattern_generated')
+    db_name = context.user_data.get('backup_pattern_db_name', '')
+    category = context.user_data.get('backup_pattern_category', '')
+    source_label = context.user_data.get('backup_pattern_source', 'мастер')
+    back_callback = context.user_data.get('patterns_back', 'settings_backup')
+
+    if not pattern:
+        return
+
+    categories = _get_database_categories()
+    keyboard: list[list[InlineKeyboardButton]] = []
+    if categories:
+        row: list[InlineKeyboardButton] = []
+        for category_name in categories:
+            label = f"✅ {category_name}" if category_name == category else category_name
+            row.append(
+                InlineKeyboardButton(
+                    label,
+                    callback_data=f"db_pattern_set_category_{category_name}"
+                )
+            )
+            if len(row) == 2:
+                keyboard.append(row)
+                row = []
+        if row:
+            keyboard.append(row)
+
+    keyboard.extend([
+        [InlineKeyboardButton("✅ Сохранить", callback_data='db_pattern_confirm')],
+        [InlineKeyboardButton("✏️ Ввести заново", callback_data='db_pattern_retry')],
+        [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ])
+
+    message = (
+        "✅ *Черновик паттерна готов!*\n\n"
+        f"БД: *{db_name}*\n"
+        f"Категория: *{category}*\n"
+        f"Источник: *{source_label}*\n"
+        f"Паттерн: `{pattern}`\n"
+    )
+    if categories:
+        message += "\nВыберите категорию перед сохранением:"
+    else:
+        message += "\n⚠️ Нет доступных категорий БД."
+
+    query = update.callback_query
+    if query:
+        query.answer()
+        query.edit_message_text(
+            message,
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+        return
+
+    update.message.reply_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def db_pattern_set_category_handler(update, context, category: str):
+    """Выбрать категорию для паттерна БД."""
+    context.user_data['backup_pattern_category'] = category
+    _show_db_pattern_confirm(update, context)
+
 def db_pattern_confirm_handler(update, context):
     """Подтвердить сохранение паттерна БД."""
     query = update.callback_query
@@ -4714,42 +4801,15 @@ def view_patterns_handler(update, context):
             """
         )
     elif filter_mode == 'db':
-        db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
-        categories = list(db_config.keys()) if isinstance(db_config, dict) else []
-        if not categories:
-            cursor.execute(
-                """
-                SELECT id, pattern_type, pattern, category
-                FROM backup_patterns
-                WHERE enabled = 1
-                AND category NOT IN ('mail', 'zfs', 'proxmox')
-                ORDER BY category, pattern_type, id
-                """
-            )
-            rows = cursor.fetchall()
-        else:
-            placeholders = ", ".join(["?"] * len(categories))
-            cursor.execute(
-                f"""
-                SELECT id, pattern_type, pattern, category
-                FROM backup_patterns
-                WHERE enabled = 1 AND category IN ({placeholders})
-                ORDER BY category, pattern_type, id
-                """,
-                categories,
-            )
-            rows = cursor.fetchall()
-        if not rows:
-            cursor.execute(
-                """
-                SELECT id, pattern_type, pattern, category
-                FROM backup_patterns
-                WHERE enabled = 1
-                AND category NOT IN ('mail', 'zfs', 'proxmox')
-                ORDER BY category, pattern_type, id
-                """
-            )
-            rows = cursor.fetchall()
+        cursor.execute(
+            """
+            SELECT id, pattern_type, pattern, category
+            FROM backup_patterns
+            WHERE enabled = 1
+            AND category NOT IN ('mail', 'zfs', 'proxmox')
+            ORDER BY category, pattern_type, id
+            """
+        )
     elif filter_mode == 'proxmox':
         cursor.execute(
             """
@@ -5056,22 +5116,7 @@ def handle_backup_pattern_input(update, context):
         context.user_data['backup_pattern_category'] = category
         context.user_data['backup_pattern_db_name'] = db_name
 
-        back_callback = context.user_data.get('patterns_back', 'settings_backup')
-        update.message.reply_text(
-            "✅ *Черновик паттерна готов!*\n\n"
-            f"БД: *{db_name}*\n"
-            f"Категория: *{category}*\n"
-            f"Источник: *{source_label}*\n"
-            f"Паттерн: `{pattern}`\n\n"
-            "Сохранить?",
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("✅ Сохранить", callback_data='db_pattern_confirm')],
-                [InlineKeyboardButton("✏️ Ввести заново", callback_data='db_pattern_retry')],
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-            ])
-        )
+        _show_db_pattern_confirm(update, context)
         return
 
     if mode == 'zfs_wizard':
