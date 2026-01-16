@@ -4696,20 +4696,35 @@ def view_patterns_handler(update, context):
     rows = cursor.fetchall()
 
     title = context.user_data.get('patterns_title', "📋 *Паттерны*")
+    display_rows = rows
+    if filter_mode == 'db':
+        display_rows = []
+        for pattern_id, pattern_type, pattern, category in rows:
+            if category == "database" and pattern_type.startswith("proxmox"):
+                continue
+            display_category = category
+            display_type = pattern_type
+            if category == "database" and pattern_type.startswith("database"):
+                normalized = pattern_type
+                while normalized.startswith("database"):
+                    normalized = normalized[len("database"):]
+                display_category = normalized or category
+                display_type = "subject"
+            display_rows.append((pattern_id, display_type, pattern, display_category))
 
     fallback_patterns = []
     fallback_db_patterns = {}
-    if not rows and filter_mode == 'mail':
+    if not display_rows and filter_mode == 'mail':
         fallback_patterns = _get_mail_fallback_patterns()
-    if not rows and filter_mode == 'db':
+    if not display_rows and filter_mode == 'db':
         fallback_db_patterns = _get_database_fallback_patterns()
 
-    if not rows and not fallback_patterns and not fallback_db_patterns:
+    if not display_rows and not fallback_patterns and not fallback_db_patterns:
         message = f"{title}\n\n❌ Паттерны не настроены."
     else:
         message = f"{title}\n\n"
         current_category = None
-        for index, (pattern_id, pattern_type, pattern, category) in enumerate(rows, start=1):
+        for index, (pattern_id, pattern_type, pattern, category) in enumerate(display_rows, start=1):
             if category != current_category:
                 if current_category is not None:
                     message += "\n"
@@ -4732,7 +4747,7 @@ def view_patterns_handler(update, context):
                     message += f"{index}. subject: `{pattern}`\n"
 
     keyboard = []
-    for index, (pattern_id, pattern_type, pattern, category) in enumerate(rows, start=1):
+    for index, (pattern_id, pattern_type, pattern, category) in enumerate(display_rows, start=1):
         keyboard.append([
             InlineKeyboardButton(
                 f"✏️ {index}. {category}:{pattern_type}",
