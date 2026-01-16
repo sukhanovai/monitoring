@@ -887,6 +887,16 @@ def settings_callback_handler(update, context):
             if '__' in raw_value:
                 category, db_key = raw_value.split('__', 1)
                 edit_database_entry_handler(update, context, category, db_key)
+        elif data.startswith('settings_db_delete_db_confirm_'):
+            raw_value = data.replace('settings_db_delete_db_confirm_', '')
+            if '__' in raw_value:
+                category, db_key = raw_value.split('__', 1)
+                delete_database_entry_execute(update, context, category, db_key)
+        elif data.startswith('settings_db_delete_db_'):
+            raw_value = data.replace('settings_db_delete_db_', '')
+            if '__' in raw_value:
+                category, db_key = raw_value.split('__', 1)
+                delete_database_entry_confirmation(update, context, category, db_key)
         elif data.startswith('settings_db_edit_'):
             category = data.replace('settings_db_edit_', '')
             edit_database_category_details(update, context, category)
@@ -1764,6 +1774,10 @@ def show_backup_databases_settings(update, context):
                 f"✏️ {db_key}",
                 callback_data=f"settings_db_edit_db_{category}__{db_key}"
             ))
+            row.append(InlineKeyboardButton(
+                f"🗑️ {db_key}",
+                callback_data=f"settings_db_delete_db_{category}__{db_key}"
+            ))
             if len(row) == 2:
                 keyboard.append(row)
                 row = []
@@ -1774,7 +1788,7 @@ def show_backup_databases_settings(update, context):
         [InlineKeyboardButton("📋 Просмотр всех БД", callback_data='settings_db_view_all')],
         [InlineKeyboardButton("➕ Добавить категорию БД", callback_data='settings_db_add_category')],
         [InlineKeyboardButton("🗑️ Удалить категорию", callback_data='settings_db_delete_category')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup'),
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_backup_db'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ])
     
@@ -3170,7 +3184,10 @@ def edit_database_category_details(update, context, category):
     keyboard = [[InlineKeyboardButton("➕ Добавить БД", callback_data=f"settings_db_add_db_{category}")]]
     for db_key, db_name in databases.items():
         button_text = f"✏️ {db_name}"
-        keyboard.append([InlineKeyboardButton(button_text, callback_data=f"settings_db_edit_db_{category}__{db_key}")])
+        keyboard.append([
+            InlineKeyboardButton(button_text, callback_data=f"settings_db_edit_db_{category}__{db_key}"),
+            InlineKeyboardButton(f"🗑️ {db_name}", callback_data=f"settings_db_delete_db_{category}__{db_key}")
+        ])
 
     keyboard.append([
         InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
@@ -3246,6 +3263,73 @@ def edit_database_entry_handler(update, context, category, db_key):
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("❌ Отмена", callback_data='settings_db_main')]
+        ])
+    )
+
+def delete_database_entry_confirmation(update, context, category, db_key):
+    """Подтверждение удаления базы данных"""
+    query = update.callback_query
+    query.answer()
+
+    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    databases = db_config.get(category, {})
+    if not isinstance(databases, dict):
+        databases = {}
+    db_name = databases.get(db_key)
+
+    if db_name is None:
+        query.edit_message_text(
+            "❌ База данных не найдена.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
+            ])
+        )
+        return
+
+    query.edit_message_text(
+        "🗑️ *Удаление базы данных*\n\n"
+        f"Категория: *{category}*\n"
+        f"База: `{db_name}`\n\n"
+        "Удалить?",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("✅ Удалить", callback_data=f"settings_db_delete_db_confirm_{category}__{db_key}")],
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ])
+    )
+
+def delete_database_entry_execute(update, context, category, db_key):
+    """Удаление базы данных"""
+    query = update.callback_query
+    query.answer()
+
+    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    databases = db_config.get(category, {})
+    if not isinstance(databases, dict):
+        databases = {}
+    db_name = databases.pop(db_key, None)
+
+    if db_name is None:
+        query.edit_message_text(
+            "❌ База данных не найдена.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
+            ])
+        )
+        return
+
+    db_config[category] = databases
+    settings_manager.set_setting('DATABASE_CONFIG', db_config)
+
+    query.edit_message_text(
+        "✅ *База данных удалена!*\n\n"
+        f"Категория: *{category}*\n"
+        f"База: `{db_name}`",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
     )
 
@@ -4696,20 +4780,35 @@ def view_patterns_handler(update, context):
     rows = cursor.fetchall()
 
     title = context.user_data.get('patterns_title', "📋 *Паттерны*")
+    display_rows = rows
+    if filter_mode == 'db':
+        display_rows = []
+        for pattern_id, pattern_type, pattern, category in rows:
+            if category == "database" and pattern_type.startswith("proxmox"):
+                continue
+            display_category = category
+            display_type = pattern_type
+            if category == "database" and pattern_type.startswith("database"):
+                normalized = pattern_type
+                while normalized.startswith("database"):
+                    normalized = normalized[len("database"):]
+                display_category = normalized or category
+                display_type = "subject"
+            display_rows.append((pattern_id, display_type, pattern, display_category))
 
     fallback_patterns = []
     fallback_db_patterns = {}
-    if not rows and filter_mode == 'mail':
+    if not display_rows and filter_mode == 'mail':
         fallback_patterns = _get_mail_fallback_patterns()
-    if not rows and filter_mode == 'db':
+    if not display_rows and filter_mode == 'db':
         fallback_db_patterns = _get_database_fallback_patterns()
 
-    if not rows and not fallback_patterns and not fallback_db_patterns:
+    if not display_rows and not fallback_patterns and not fallback_db_patterns:
         message = f"{title}\n\n❌ Паттерны не настроены."
     else:
         message = f"{title}\n\n"
         current_category = None
-        for index, (pattern_id, pattern_type, pattern, category) in enumerate(rows, start=1):
+        for index, (pattern_id, pattern_type, pattern, category) in enumerate(display_rows, start=1):
             if category != current_category:
                 if current_category is not None:
                     message += "\n"
@@ -4732,7 +4831,7 @@ def view_patterns_handler(update, context):
                     message += f"{index}. subject: `{pattern}`\n"
 
     keyboard = []
-    for index, (pattern_id, pattern_type, pattern, category) in enumerate(rows, start=1):
+    for index, (pattern_id, pattern_type, pattern, category) in enumerate(display_rows, start=1):
         keyboard.append([
             InlineKeyboardButton(
                 f"✏️ {index}. {category}:{pattern_type}",
