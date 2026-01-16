@@ -1,11 +1,11 @@
 """
 /lib/monitoring_utils.py
-Server Monitoring System v7.1.20
+Server Monitoring System v7.1.25
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Utilities: diagnostics, reports, statistics
 Система мониторинга серверов
-Версия: 7.1.20
+Версия: 7.1.25
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Утилиты: диагностика, отчеты, статистика
