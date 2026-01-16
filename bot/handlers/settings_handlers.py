@@ -33,7 +33,9 @@ BACKUP_SETTINGS_CALLBACKS = {
     'add_zfs_pattern',
     'add_proxmox_pattern',
     'add_mail_pattern',
-    'edit_mail_default_pattern'
+    'edit_mail_default_pattern',
+    'mail_pattern_confirm',
+    'mail_pattern_retry',
 }
 
 debug_logger = debug_log
@@ -76,6 +78,50 @@ def _get_mail_fallback_patterns() -> list:
     if isinstance(fallback_mail, list):
         return fallback_mail or [default_pattern]
     return [default_pattern]
+
+def _build_mail_pattern_from_subject(subject: str) -> str:
+    """Собрать regex паттерн по теме письма."""
+    if not subject:
+        return ""
+
+    normalized = subject.strip()
+    if not normalized:
+        return ""
+
+    size_regex = r"\b\d+(?:[.,]\d+)?\s*[TGMK]?(?:i?B)?\b"
+    path_regex = r"/\S+"
+    date_iso_regex = r"\b\d{4}[-/.]\d{2}[-/.]\d{2}\b"
+    date_ru_regex = r"\b\d{2}[-/.]\d{2}[-/.]\d{4}\b"
+    time_regex = r"\b\d{2}:\d{2}(?::\d{2})?\b"
+
+    draft = re.sub(size_regex, "__SIZE__", normalized, flags=re.IGNORECASE)
+    draft = re.sub(path_regex, "__PATH__", draft)
+    draft = re.sub(date_iso_regex, "__DATE__", draft)
+    draft = re.sub(date_ru_regex, "__DATE__", draft)
+    draft = re.sub(time_regex, "__TIME__", draft)
+
+    escaped = re.escape(draft)
+    escaped = re.sub(r"\\\s+", r"\\s+", escaped)
+
+    replacements = {
+        "__SIZE__": r"(?P<size>\d+(?:[.,]\d+)?\s*[TGMK]?(?:i?B)?)",
+        "__PATH__": r"(?P<path>/\S+)",
+        "__DATE__": r"\d{2,4}[-/.]\d{2}[-/.]\d{2,4}",
+        "__TIME__": r"\d{2}:\d{2}(?::\d{2})?",
+    }
+
+    for placeholder, pattern in replacements.items():
+        escaped = escaped.replace(re.escape(placeholder), pattern)
+
+    return escaped
+
+def _build_mail_pattern_from_fragments(fragments: list[str]) -> str:
+    """Собрать regex паттерн из обязательных фрагментов."""
+    cleaned = [fragment.strip() for fragment in fragments if fragment.strip()]
+    if not cleaned:
+        return ""
+    escaped_parts = [re.escape(fragment) for fragment in cleaned]
+    return r".*".join(escaped_parts)
 
 def settings_command(update, context):
     """Команда управления настройками"""
@@ -568,6 +614,10 @@ def settings_callback_handler(update, context):
             add_mail_pattern_handler(update, context)
         elif data == 'edit_mail_default_pattern':
             edit_mail_default_pattern_handler(update, context)
+        elif data == 'mail_pattern_confirm':
+            mail_pattern_confirm_handler(update, context)
+        elif data == 'mail_pattern_retry':
+            mail_pattern_retry_handler(update, context)
         elif data == 'settings_ext_enable_all':
             _enable_all_extensions_settings(query)
             show_extensions_settings_menu(update, context)
@@ -3957,12 +4007,17 @@ def add_mail_pattern_handler(update, context):
     query.answer()
 
     context.user_data['adding_backup_pattern'] = True
-    context.user_data['backup_pattern_stage'] = 'pattern_only'
-    context.user_data['backup_pattern_mode'] = 'mail'
+    context.user_data['backup_pattern_stage'] = 'mail_input'
+    context.user_data['backup_pattern_mode'] = 'mail_wizard'
 
     query.edit_message_text(
-        "➕ *Добавление паттерна почты*\n\n"
-        "Введите regex паттерн темы письма:",
+        "🧙 *Мастер добавления паттерна почты*\n\n"
+        "Введите тему письма целиком или обязательные фрагменты через `;`/`,`.\n"
+        "Фрагменты учитываются в указанном порядке.\n\n"
+        "Пример темы:\n"
+        "`Бэкап Zimbra - 52G /backups/zimbra/2025-03-01`\n\n"
+        "Пример фрагментов:\n"
+        "`Бэкап Zimbra; /backups/zimbra`",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
@@ -3994,6 +4049,85 @@ def edit_mail_default_pattern_handler(update, context):
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
     )
+
+def mail_pattern_retry_handler(update, context):
+    """Повторить ввод темы/фрагментов для паттерна почты."""
+    query = update.callback_query
+    query.answer()
+
+    context.user_data['adding_backup_pattern'] = True
+    context.user_data['backup_pattern_stage'] = 'mail_input'
+    context.user_data['backup_pattern_mode'] = 'mail_wizard'
+    context.user_data.pop('backup_pattern_generated', None)
+    context.user_data.pop('backup_pattern_source', None)
+
+    query.edit_message_text(
+        "🧙 *Мастер добавления паттерна почты*\n\n"
+        "Введите тему письма целиком или обязательные фрагменты через `;`/`,`.\n"
+        "Фрагменты учитываются в указанном порядке.",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ])
+    )
+
+def mail_pattern_confirm_handler(update, context):
+    """Подтвердить сохранение паттерна почты."""
+    query = update.callback_query
+    query.answer()
+
+    pattern = context.user_data.get('backup_pattern_generated')
+    back_callback = context.user_data.get('patterns_back', 'settings_backup')
+
+    if not pattern:
+        query.edit_message_text(
+            "❌ Паттерн не найден. Начните добавление заново.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)],
+                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ])
+        )
+        return
+
+    try:
+        conn = settings_manager.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO backup_patterns (pattern_type, pattern, category, enabled)
+            VALUES (?, ?, ?, 1)
+            """,
+            ("subject", pattern, "mail")
+        )
+        conn.commit()
+
+        source_label = context.user_data.get('backup_pattern_source', 'мастер')
+        query.edit_message_text(
+            "✅ *Паттерн добавлен!*\n\n"
+            "Категория: *mail*\n"
+            "Тип: *subject*\n"
+            f"Источник: *{source_label}*\n"
+            f"Паттерн: `{pattern}`",
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ])
+        )
+    except Exception as e:
+        query.edit_message_text(f"❌ Ошибка сохранения: {e}")
+    finally:
+        context.user_data.pop('adding_backup_pattern', None)
+        context.user_data.pop('backup_pattern_stage', None)
+        context.user_data.pop('backup_pattern_category', None)
+        context.user_data.pop('backup_pattern_type', None)
+        context.user_data.pop('backup_pattern_subject', None)
+        context.user_data.pop('backup_pattern_mode', None)
+        context.user_data.pop('backup_pattern_generated', None)
+        context.user_data.pop('backup_pattern_source', None)
 
 def view_patterns_handler(update, context):
     """Просмотр паттернов"""
@@ -4069,29 +4203,29 @@ def view_patterns_handler(update, context):
     else:
         message = f"{title}\n\n"
         current_category = None
-        for pattern_id, pattern_type, pattern, category in rows:
+        for index, (pattern_id, pattern_type, pattern, category) in enumerate(rows, start=1):
             if category != current_category:
                 if current_category is not None:
                     message += "\n"
                 message += f"*{category}*\n"
                 current_category = category
-            message += f"• {pattern_type}: `{pattern}`\n"
+            message += f"{index}. {pattern_type}: `{pattern}`\n"
         if fallback_patterns:
             if rows:
                 message += "\n"
             message += "*mail (по умолчанию)*\n"
-            for pattern in fallback_patterns:
-                message += f"• subject: `{pattern}`\n"
+            for index, pattern in enumerate(fallback_patterns, start=1):
+                message += f"{index}. subject: `{pattern}`\n"
 
     keyboard = []
-    for pattern_id, pattern_type, pattern, category in rows:
+    for index, (pattern_id, pattern_type, pattern, category) in enumerate(rows, start=1):
         keyboard.append([
             InlineKeyboardButton(
-                f"✏️ {category}:{pattern_type}",
+                f"✏️ {index}. {category}:{pattern_type}",
                 callback_data=f"edit_pattern_{pattern_id}"
             ),
             InlineKeyboardButton(
-                f"🗑️ {category}:{pattern_type}",
+                f"🗑️ {index}. {category}:{pattern_type}",
                 callback_data=f"delete_pattern_{pattern_id}"
             )
         ])
@@ -4239,6 +4373,49 @@ def handle_backup_pattern_input(update, context):
     user_input = update.message.text.strip()
     stage = context.user_data.get('backup_pattern_stage', 'category')
     mode = context.user_data.get('backup_pattern_mode', 'db')
+
+    if mode == 'mail_wizard':
+        if stage != 'mail_input':
+            update.message.reply_text("❌ Неверный шаг мастера. Попробуйте снова.")
+            return
+
+        if not user_input:
+            update.message.reply_text("❌ Ввод не может быть пустым. Попробуйте снова:")
+            return
+
+        fragments = [chunk.strip() for chunk in re.split(r"[;,\n]+", user_input)]
+        fragments = [fragment for fragment in fragments if fragment]
+
+        if len(fragments) > 1:
+            pattern = _build_mail_pattern_from_fragments(fragments)
+            source_label = "фрагменты"
+        else:
+            pattern = _build_mail_pattern_from_subject(user_input)
+            source_label = "тема письма"
+
+        if not pattern:
+            update.message.reply_text("❌ Не удалось собрать паттерн. Попробуйте снова:")
+            return
+
+        context.user_data['backup_pattern_generated'] = pattern
+        context.user_data['backup_pattern_source'] = source_label
+        context.user_data['backup_pattern_stage'] = 'mail_confirm'
+
+        back_callback = context.user_data.get('patterns_back', 'settings_backup')
+        update.message.reply_text(
+            "✅ *Черновик паттерна готов!*\n\n"
+            f"Источник: *{source_label}*\n"
+            f"Паттерн: `{pattern}`\n\n"
+            "Сохранить?",
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("✅ Сохранить", callback_data='mail_pattern_confirm')],
+                [InlineKeyboardButton("✏️ Ввести заново", callback_data='mail_pattern_retry')],
+                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ])
+        )
+        return
 
     if mode in ('zfs', 'proxmox', 'mail'):
         if not user_input:
