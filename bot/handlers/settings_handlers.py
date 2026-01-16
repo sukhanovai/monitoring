@@ -40,6 +40,8 @@ BACKUP_SETTINGS_CALLBACKS = {
     'zfs_pattern_retry',
     'db_pattern_confirm',
     'db_pattern_retry',
+    'proxmox_pattern_confirm',
+    'proxmox_pattern_retry',
 }
 
 debug_logger = debug_log
@@ -848,6 +850,10 @@ def settings_callback_handler(update, context):
             zfs_pattern_confirm_handler(update, context)
         elif data == 'zfs_pattern_retry':
             zfs_pattern_retry_handler(update, context)
+        elif data == 'proxmox_pattern_confirm':
+            proxmox_pattern_confirm_handler(update, context)
+        elif data == 'proxmox_pattern_retry':
+            proxmox_pattern_retry_handler(update, context)
         elif data.startswith('db_default_edit_'):
             raw_value = data.replace('db_default_edit_', '')
             if '__' in raw_value:
@@ -4329,12 +4335,15 @@ def add_proxmox_pattern_handler(update, context):
     query.answer()
 
     context.user_data['adding_backup_pattern'] = True
-    context.user_data['backup_pattern_stage'] = 'pattern_only'
-    context.user_data['backup_pattern_mode'] = 'proxmox'
+    context.user_data['backup_pattern_stage'] = 'proxmox_input'
+    context.user_data['backup_pattern_mode'] = 'proxmox_wizard'
 
     query.edit_message_text(
-        "➕ *Добавление паттерна Proxmox*\n\n"
-        "Введите regex паттерн темы письма:",
+        "🧙 *Мастер добавления паттерна Proxmox*\n\n"
+        "Введите тему письма целиком или обязательные фрагменты через `;`/`,`.\n"
+        "Фрагменты учитываются в указанном порядке.\n\n"
+        "Пример темы:\n"
+        "`vzdump backup status`",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
@@ -4761,6 +4770,85 @@ def zfs_pattern_confirm_handler(update, context):
         query.edit_message_text(
             "✅ *Паттерн добавлен!*\n\n"
             "Категория: *zfs*\n"
+            "Тип: *subject*\n"
+            f"Источник: *{source_label}*\n"
+            f"Паттерн: `{pattern}`",
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ])
+        )
+    except Exception as e:
+        query.edit_message_text(f"❌ Ошибка сохранения: {e}")
+    finally:
+        context.user_data.pop('adding_backup_pattern', None)
+        context.user_data.pop('backup_pattern_stage', None)
+        context.user_data.pop('backup_pattern_category', None)
+        context.user_data.pop('backup_pattern_type', None)
+        context.user_data.pop('backup_pattern_subject', None)
+        context.user_data.pop('backup_pattern_mode', None)
+        context.user_data.pop('backup_pattern_generated', None)
+        context.user_data.pop('backup_pattern_source', None)
+
+def proxmox_pattern_retry_handler(update, context):
+    """Повторить ввод темы/фрагментов для паттерна Proxmox."""
+    query = update.callback_query
+    query.answer()
+
+    context.user_data['adding_backup_pattern'] = True
+    context.user_data['backup_pattern_stage'] = 'proxmox_input'
+    context.user_data['backup_pattern_mode'] = 'proxmox_wizard'
+    context.user_data.pop('backup_pattern_generated', None)
+    context.user_data.pop('backup_pattern_source', None)
+
+    query.edit_message_text(
+        "🧙 *Мастер добавления паттерна Proxmox*\n\n"
+        "Введите тему письма целиком или обязательные фрагменты через `;`/`,`.\n"
+        "Фрагменты учитываются в указанном порядке.",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ])
+    )
+
+def proxmox_pattern_confirm_handler(update, context):
+    """Подтвердить сохранение паттерна Proxmox."""
+    query = update.callback_query
+    query.answer()
+
+    pattern = context.user_data.get('backup_pattern_generated')
+    back_callback = context.user_data.get('patterns_back', 'settings_backup')
+
+    if not pattern:
+        query.edit_message_text(
+            "❌ Паттерн не найден. Начните добавление заново.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)],
+                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ])
+        )
+        return
+
+    try:
+        conn = settings_manager.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO backup_patterns (pattern_type, pattern, category, enabled)
+            VALUES (?, ?, ?, 1)
+            """,
+            ("subject", pattern, "proxmox")
+        )
+        conn.commit()
+
+        source_label = context.user_data.get('backup_pattern_source', 'мастер')
+        query.edit_message_text(
+            "✅ *Паттерн добавлен!*\n\n"
+            "Категория: *proxmox*\n"
             "Тип: *subject*\n"
             f"Источник: *{source_label}*\n"
             f"Паттерн: `{pattern}`",
@@ -5233,6 +5321,49 @@ def handle_backup_pattern_input(update, context):
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("✅ Сохранить", callback_data='mail_pattern_confirm')],
                 [InlineKeyboardButton("✏️ Ввести заново", callback_data='mail_pattern_retry')],
+                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ])
+        )
+        return
+
+    if mode == 'proxmox_wizard':
+        if stage != 'proxmox_input':
+            update.message.reply_text("❌ Неверный шаг мастера. Попробуйте снова.")
+            return
+
+        if not user_input:
+            update.message.reply_text("❌ Ввод не может быть пустым. Попробуйте снова:")
+            return
+
+        fragments = [chunk.strip() for chunk in re.split(r"[;,\n]+", user_input)]
+        fragments = [fragment for fragment in fragments if fragment]
+
+        if len(fragments) > 1:
+            pattern = _build_mail_pattern_from_fragments(fragments)
+            source_label = "фрагменты"
+        else:
+            pattern = _build_mail_pattern_from_subject(user_input)
+            source_label = "тема письма"
+
+        if not pattern:
+            update.message.reply_text("❌ Не удалось собрать паттерн. Попробуйте снова:")
+            return
+
+        context.user_data['backup_pattern_generated'] = pattern
+        context.user_data['backup_pattern_source'] = source_label
+        context.user_data['backup_pattern_stage'] = 'proxmox_confirm'
+
+        back_callback = context.user_data.get('patterns_back', 'settings_backup')
+        update.message.reply_text(
+            "✅ *Черновик паттерна готов!*\n\n"
+            f"Источник: *{source_label}*\n"
+            f"Паттерн: `{pattern}`\n\n"
+            "Сохранить?",
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("✅ Сохранить", callback_data='proxmox_pattern_confirm')],
+                [InlineKeyboardButton("✏️ Ввести заново", callback_data='proxmox_pattern_retry')],
                 [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
                  InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
