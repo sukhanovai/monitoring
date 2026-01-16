@@ -4815,7 +4815,8 @@ def view_patterns_handler(update, context):
             """
             SELECT id, pattern_type, pattern, category
             FROM backup_patterns
-            WHERE enabled = 1 AND category = 'proxmox'
+            WHERE enabled = 1
+            AND (category = 'proxmox' OR (category = 'database' AND pattern_type LIKE 'proxmox%'))
             ORDER BY category, pattern_type, id
             """
         )
@@ -4854,6 +4855,16 @@ def view_patterns_handler(update, context):
                     normalized = normalized[len("database"):]
                 display_category = normalized or category
                 display_type = "subject"
+            display_rows.append((pattern_id, display_type, pattern, display_category))
+    if filter_mode == 'proxmox':
+        display_rows = []
+        for pattern_id, pattern_type, pattern, category in rows:
+            display_category = category
+            display_type = pattern_type
+            if category == "database" and pattern_type.startswith("proxmox"):
+                normalized = pattern_type[len("proxmox"):]
+                display_category = "proxmox"
+                display_type = normalized or "subject"
             display_rows.append((pattern_id, display_type, pattern, display_category))
 
     fallback_patterns = []
