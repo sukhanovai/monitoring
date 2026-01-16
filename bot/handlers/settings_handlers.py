@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v7.1.13
+Server Monitoring System v7.1.19
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 7.1.13
+Версия: 7.1.19
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -4633,7 +4633,16 @@ def view_patterns_handler(update, context):
         db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
         categories = list(db_config.keys()) if isinstance(db_config, dict) else []
         if not categories:
-            rows = []
+            cursor.execute(
+                """
+                SELECT id, pattern_type, pattern, category
+                FROM backup_patterns
+                WHERE enabled = 1
+                AND category NOT IN ('mail', 'zfs', 'proxmox')
+                ORDER BY category, pattern_type, id
+                """
+            )
+            rows = cursor.fetchall()
         else:
             placeholders = ", ".join(["?"] * len(categories))
             cursor.execute(
