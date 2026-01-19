@@ -175,6 +175,17 @@ def get_stock_load_patterns_from_config() -> dict[str, list[str]]:
                 patterns = {}
         if not isinstance(patterns, dict):
             patterns = {}
+        if not patterns:
+            fallback_raw = config_manager.get_setting("BACKUP_PATTERNS", BACKUP_PATTERNS)
+            if isinstance(fallback_raw, str):
+                try:
+                    import json
+
+                    fallback_raw = json.loads(fallback_raw)
+                except Exception:
+                    fallback_raw = {}
+            if isinstance(fallback_raw, dict):
+                patterns = fallback_raw
         stock_patterns = patterns.get("stock_load", {})
 
         def _normalize_list(value: object) -> list[str]:
