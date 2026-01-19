@@ -685,7 +685,7 @@ def show_mail_backups(query, backup_bot, hours=72):
 def show_stock_loads(query, backup_bot, hours=24):
     """Показывает результаты загрузки остатков 1С."""
     try:
-        results = backup_bot.get_stock_loads(hours=hours, limit=15)
+        results = backup_bot.get_stock_loads(hours=hours)
 
         if not results:
             message = (
@@ -699,7 +699,8 @@ def show_stock_loads(query, backup_bot, hours=24):
             )
             return
 
-        message = f"📦 *Загрузка остатков 1С (за {hours}ч)*\n\n"
+        message = f"📦 *Загрузка остатков 1С (за {hours}ч)*\n"
+        message += f"Всего поставщиков: {len(results)}\n\n"
         for supplier, status, rows_count, error_sample, received_at in results:
             status_icon = "✅" if status == "success" else "⚠️" if status == "warning" else "❌"
             time_ago = backup_bot.format_time_ago(received_at)

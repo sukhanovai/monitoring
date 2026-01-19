@@ -4537,6 +4537,7 @@ def show_stock_pattern_type_menu(update, context):
         [InlineKeyboardButton("📎 Имя вложения", callback_data='stock_pattern_select_attachment')],
         [InlineKeyboardButton("📄 Строка файла", callback_data='stock_pattern_select_file_entry')],
         [InlineKeyboardButton("✅ Успешная загрузка", callback_data='stock_pattern_select_success')],
+        [InlineKeyboardButton("🙈 Игнорировать строки", callback_data='stock_pattern_select_ignore')],
         [InlineKeyboardButton("❌ Ошибка загрузки", callback_data='stock_pattern_select_failure')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_patterns_stock'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
@@ -4588,6 +4589,14 @@ def stock_pattern_select_handler(update, context, pattern_type: str):
             "Введите строку с результатом успешной загрузки.\n\n"
             "Пример:\n"
             "`19.01.26 07:35:39: ***Остатки загружены!***   строк 348   07:35:39`"
+        )
+    elif pattern_type == 'ignore':
+        prompt = (
+            "🧙 *Мастер добавления игнорируемой строки*\n\n"
+            "Введите строку или обязательные фрагменты через `;`/`,`.\n"
+            "Эти строки будут пропускаться при разборе.\n\n"
+            "Пример:\n"
+            "`Внимание! Ошибка в номенклатуре Артикул=`"
         )
     else:
         prompt = (
@@ -5719,6 +5728,9 @@ def handle_backup_pattern_input(update, context):
             elif pattern_type == 'attachment':
                 pattern = re.escape(user_input.strip()) + r"$"
                 source_label = "имя файла"
+            elif pattern_type == 'ignore':
+                pattern = _build_stock_pattern_from_fragments([user_input])
+                source_label = "строка лога"
             elif pattern_type == 'failure':
                 pattern = _build_stock_pattern_from_fragments([user_input])
                 source_label = "строка лога"

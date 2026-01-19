@@ -206,6 +206,7 @@ def get_stock_load_patterns_from_config() -> dict[str, list[str]]:
             "attachment": [],
             "file_entry": [],
             "success": [],
+            "ignore": [],
             "failure": [],
         }
 
@@ -858,10 +859,12 @@ class BackupProcessor:
         file_entry_patterns = patterns.get("file_entry", [])
         success_patterns = patterns.get("success", [])
         failure_patterns = patterns.get("failure", [])
+        ignore_patterns = patterns.get("ignore", [])
 
         file_entry_regexes = [re.compile(pat, re.IGNORECASE) for pat in file_entry_patterns]
         success_regexes = [re.compile(pat, re.IGNORECASE) for pat in success_patterns]
         failure_regexes = [re.compile(pat, re.IGNORECASE) for pat in failure_patterns]
+        ignore_regexes = [re.compile(pat, re.IGNORECASE) for pat in ignore_patterns]
 
         entries: list[dict] = []
         current: dict | None = None
@@ -938,6 +941,14 @@ class BackupProcessor:
                 continue
 
             if not current:
+                continue
+
+            ignored = False
+            for regex in ignore_regexes:
+                if regex.search(line):
+                    ignored = True
+                    break
+            if ignored:
                 continue
 
             success_match = None

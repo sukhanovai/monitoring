@@ -298,18 +298,24 @@ class BackupMonitorBot(BackupBase):
 
     # === МЕТОДЫ ДЛЯ ЗАГРУЗКИ ОСТАТКОВ ===
 
-    def get_stock_loads(self, hours=24, limit=15):
-        """Получает результаты загрузки остатков товаров."""
+    def get_stock_loads(self, hours=24):
+        """Получает последние результаты загрузки остатков товаров по каждому поставщику."""
         since_time = (datetime.now() - timedelta(hours=hours)).strftime('%Y-%m-%d %H:%M:%S')
         query = '''
-            SELECT supplier_name, status, rows_count, error_sample, received_at
-            FROM stock_load_results
-            WHERE received_at >= ?
-            ORDER BY received_at DESC
-            LIMIT ?
+            SELECT s.supplier_name, s.status, s.rows_count, s.error_sample, s.received_at
+            FROM stock_load_results s
+            JOIN (
+                SELECT supplier_name, MAX(received_at) AS last_seen
+                FROM stock_load_results
+                WHERE received_at >= ?
+                GROUP BY supplier_name
+            ) latest
+            ON s.supplier_name = latest.supplier_name
+            AND s.received_at = latest.last_seen
+            ORDER BY s.supplier_name
         '''
         try:
-            return self.execute_query(query, (since_time, limit))
+            return self.execute_query(query, (since_time,))
         except Exception as exc:
             logger.error(f"Ошибка получения остатков: {exc}")
             return []
