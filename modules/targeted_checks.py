@@ -1,11 +1,11 @@
 """
 /app/modules/targeted_checks.py
-Server Monitoring System v7.2.1
+Server Monitoring System v7.2.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Server Spot Check Module
 Система мониторинга серверов
-Версия: 7.2.1
+Версия: 7.2.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль точечных проверок серверов
