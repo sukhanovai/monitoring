@@ -166,6 +166,15 @@ def get_stock_load_patterns_from_config() -> dict[str, list[str]]:
     """Извлекает паттерны для логов загрузки остатков из настроек."""
     try:
         patterns = config_manager.get_backup_patterns()
+        if isinstance(patterns, str):
+            try:
+                import json
+
+                patterns = json.loads(patterns)
+            except Exception:
+                patterns = {}
+        if not isinstance(patterns, dict):
+            patterns = {}
         stock_patterns = patterns.get("stock_load", {})
 
         def _normalize_list(value: object) -> list[str]:
