@@ -1,11 +1,11 @@
 """
 /config/db_settings_app.py
-Server Monitoring System v7.2.4
+Server Monitoring System v7.2.5
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Database Settings Manager
 Система мониторинга серверов
-Версия: 7.2.4
+Версия: 7.2.5
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Менеджер настроек БД
