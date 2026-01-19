@@ -160,6 +160,28 @@ BACKUP_PATTERNS: Dict[str, Dict[str, List[str]]] = {
             r"(?P<size>\d+(?:[.,]\d+)?\s*[TGMK]?(?:i?B)?)\s+"
             r"(?P<path>/\S+)\s*$"
         ]
+    },
+    "stock_load": {
+        "subject": [
+            r"^Логи\s+загрузки\s+файлов\s+в\s+рабочую\s+базу\s+\d{2}:\d{2}:\d{2}$"
+        ],
+        "attachment": [
+            r"LogiLogistam\.txt$"
+        ],
+        "file_entry": [
+            (
+                r"^\d{2}\.\d{2}\.\d{2}\s+\d{2}:\d{2}:\d{2}:\s+"
+                r"(?P<supplier>.+?)\s{2,}(?P<path>[A-Za-z]:\\.+)$"
+            )
+        ],
+        "success": [
+            r"\*{3}Остатки загружены!\*{3}\s+строк\s+(?P<rows>\d+)"
+        ],
+        "failure": [
+            r"---\s*неудача!!!.*",
+            r"Внимание!\s*Ошибка.*",
+            r"Ошибка.*"
+        ]
     }
 }
 ZFS_SERVERS: Dict[str, Dict[str, Any]] = {}
