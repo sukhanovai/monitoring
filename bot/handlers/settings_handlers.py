@@ -88,6 +88,10 @@ def _get_mail_fallback_patterns() -> list:
         return fallback_mail or [default_pattern]
     return [default_pattern]
 
+def _escape_pattern_text(text: str) -> str:
+    """Экранирует текст для Markdown."""
+    return escape_markdown(str(text or ""), version=1)
+
 def _build_mail_pattern_from_subject(subject: str) -> str:
     """Собрать regex паттерн по теме письма."""
     if not subject:
@@ -5257,31 +5261,37 @@ def view_patterns_handler(update, context):
             if category != current_category:
                 if current_category is not None:
                     message += "\n"
-                message += f"*{category}*\n"
-                current_category = category
-            message += f"{index}. {pattern_type}: `{pattern}`\n"
+            message += f"*{_escape_pattern_text(category)}*\n"
+            current_category = category
+            message += (
+                f"{index}. {_escape_pattern_text(pattern_type)}: "
+                f"`{_escape_pattern_text(pattern)}`\n"
+            )
         if fallback_patterns:
             if rows:
                 message += "\n"
             message += "*mail (по умолчанию)*\n"
             for index, pattern in enumerate(fallback_patterns, start=1):
-                message += f"{index}. subject: `{pattern}`\n"
+                message += f"{index}. subject: `{_escape_pattern_text(pattern)}`\n"
         if fallback_db_patterns:
             if rows or fallback_patterns:
                 message += "\n"
             message += "*database (по умолчанию)*\n"
             for category, patterns in fallback_db_patterns.items():
-                message += f"*{category}*\n"
+                message += f"*{_escape_pattern_text(category)}*\n"
                 for index, pattern in enumerate(patterns, start=1):
-                    message += f"{index}. subject: `{pattern}`\n"
+                    message += f"{index}. subject: `{_escape_pattern_text(pattern)}`\n"
         if fallback_stock_patterns:
             if rows or fallback_patterns or fallback_db_patterns:
                 message += "\n"
             message += "*stock_load (по умолчанию)*\n"
             for pattern_type, patterns in fallback_stock_patterns.items():
-                message += f"*{pattern_type}*\n"
+                message += f"*{_escape_pattern_text(pattern_type)}*\n"
                 for index, pattern in enumerate(patterns, start=1):
-                    message += f"{index}. {pattern_type}: `{pattern}`\n"
+                    message += (
+                        f"{index}. {_escape_pattern_text(pattern_type)}: "
+                        f"`{_escape_pattern_text(pattern)}`\n"
+                    )
 
     keyboard = []
     for index, (pattern_id, pattern_type, pattern, category) in enumerate(display_rows, start=1):
