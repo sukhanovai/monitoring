@@ -138,7 +138,25 @@ def _build_mail_pattern_from_fragments(fragments: list[str]) -> str:
 
 def _build_stock_subject_pattern(subject: str) -> str:
     """Собрать regex паттерн для темы письма загрузки остатков."""
-    return _build_mail_pattern_from_subject(subject)
+    if not subject:
+        return ""
+
+    normalized = subject.strip()
+    if not normalized:
+        return ""
+
+    time_regex = r"\b\d{2}:\d{2}:\d{2}\b"
+    date_regex = r"\b\d{2}[./-]\d{2}[./-]\d{2,4}\b"
+
+    draft = re.sub(time_regex, "__TIME__", normalized)
+    draft = re.sub(date_regex, "__DATE__", draft)
+
+    escaped = re.escape(draft)
+    escaped = re.sub(r"\\\s+", r"\\s+", escaped)
+
+    escaped = escaped.replace(re.escape("__TIME__"), r"\d{2}:\d{2}:\d{2}")
+    escaped = escaped.replace(re.escape("__DATE__"), r"\d{2}[./-]\d{2}[./-]\d{2,4}")
+    return escaped
 
 def _build_stock_pattern_from_fragments(fragments: list[str]) -> str:
     """Собрать regex паттерн для остатков из обязательных фрагментов."""
