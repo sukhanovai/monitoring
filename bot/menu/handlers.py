@@ -171,6 +171,7 @@ def start_command(update, context):
         extension_manager.is_extension_enabled('backup_monitor')
         or extension_manager.is_extension_enabled('database_backup_monitor')
         or extension_manager.is_extension_enabled('mail_backup_monitor')
+        or extension_manager.is_extension_enabled('stock_load_monitor')
     ):
         keyboard.append([InlineKeyboardButton("💾 Бэкапы", callback_data='backup_main')])
     
