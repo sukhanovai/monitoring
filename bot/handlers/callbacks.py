@@ -302,7 +302,7 @@ def callback_router(update, context):
     # ------------------------------------------------
     # НАСТРОЙКИ БЭКАПОВ (settings_handlers)
     # ------------------------------------------------
-    elif data in BACKUP_SETTINGS_CALLBACKS or data.startswith(('delete_pattern_', 'edit_pattern_', 'db_default_')):
+    elif data in BACKUP_SETTINGS_CALLBACKS or data.startswith(('delete_pattern_', 'edit_pattern_', 'db_default_', 'stock_pattern_select_')):
         settings_callback_handler(update, context)
 
     # ------------------------------------------------
