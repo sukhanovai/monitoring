@@ -42,6 +42,9 @@ def create_main_menu():
     if extension_manager.is_extension_enabled('mail_backup_monitor'):
         keyboard.append([InlineKeyboardButton("📬 Бэкапы почты", callback_data='backup_mail')])
 
+    if extension_manager.is_extension_enabled('stock_load_monitor'):
+        keyboard.append([InlineKeyboardButton("📦 Остатки 1С", callback_data='backup_stock_loads')])
+
     keyboard.extend([
         [InlineKeyboardButton("↩️ Назад", callback_data='main_menu')],
         [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
@@ -678,6 +681,50 @@ def show_mail_backups(query, backup_bot, hours=72):
     except Exception as e:
         logger.error(f"Ошибка в show_mail_backups: {e}")
         query.edit_message_text("❌ Ошибка при получении данных по почтовым бэкапам")
+
+def show_stock_loads(query, backup_bot, hours=24):
+    """Показывает результаты загрузки остатков 1С."""
+    try:
+        results = backup_bot.get_stock_loads(hours=hours)
+
+        if not results:
+            message = (
+                "📦 *Загрузка остатков 1С*\n\n"
+                f"❌ Нет данных за последние {hours} часов."
+            )
+            query.edit_message_text(
+                message,
+                parse_mode='Markdown',
+                reply_markup=create_navigation_buttons(back_button='main_menu')
+            )
+            return
+
+        message = f"📦 *Загрузка остатков 1С (за {hours}ч)*\n"
+        message += f"Всего поставщиков: {len(results)}\n\n"
+        for supplier, status, rows_count, error_sample, received_at in results:
+            status_icon = "✅" if status == "success" else "⚠️" if status == "warning" else "❌"
+            time_ago = backup_bot.format_time_ago(received_at)
+            rows_text = f"{rows_count} строк" if rows_count else "строки: —"
+            error_text = f" — {error_sample}" if error_sample else ""
+            message += f"{status_icon} {_md(supplier)} ({rows_text}){error_text} ({_md(time_ago)})\n"
+
+        query.edit_message_text(
+            message,
+            parse_mode='Markdown',
+            reply_markup=create_navigation_buttons(
+                back_button='main_menu',
+                refresh_button='backup_stock_loads'
+            )
+        )
+
+    except BadRequest as exc:
+        if "Message is not modified" in str(exc):
+            query.answer("Меню уже открыто", show_alert=False)
+            return
+        raise
+    except Exception as e:
+        logger.error(f"Ошибка в show_stock_loads: {e}")
+        query.edit_message_text("❌ Ошибка при получении данных по остаткам")
                                 
 def show_stale_databases(query, backup_bot):
     """Показывает только проблемные базы данных"""

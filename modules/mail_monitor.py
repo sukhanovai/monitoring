@@ -162,6 +162,83 @@ def get_mail_patterns_from_config() -> list[str]:
         return []
 
 
+def get_stock_load_patterns_from_config() -> dict[str, list[str]]:
+    """Извлекает паттерны для логов загрузки остатков из настроек."""
+    try:
+        patterns = config_manager.get_backup_patterns()
+        if isinstance(patterns, str):
+            try:
+                import json
+
+                patterns = json.loads(patterns)
+            except Exception:
+                patterns = {}
+        if not isinstance(patterns, dict):
+            patterns = {}
+        if not patterns:
+            fallback_raw = config_manager.get_setting("BACKUP_PATTERNS", BACKUP_PATTERNS)
+            if isinstance(fallback_raw, str):
+                try:
+                    import json
+
+                    fallback_raw = json.loads(fallback_raw)
+                except Exception:
+                    fallback_raw = {}
+            if isinstance(fallback_raw, dict):
+                patterns = fallback_raw
+        stock_patterns = patterns.get("stock_load", {})
+
+        def _normalize_list(value: object) -> list[str]:
+            if isinstance(value, list):
+                return [item for item in value if isinstance(item, str)]
+            if isinstance(value, str):
+                return [value]
+            return []
+
+        def _strip_named_groups(patterns: list[str]) -> list[str]:
+            sanitized: list[str] = []
+            for pattern in patterns:
+                sanitized.append(re.sub(r"\(\?P<[^>]+>", "(?:", pattern))
+            return sanitized
+
+        normalized: dict[str, list[str]] = {
+            "subject": [],
+            "attachment": [],
+            "file_entry": [],
+            "success": [],
+            "ignore": [],
+            "failure": [],
+        }
+
+        if isinstance(stock_patterns, dict):
+            for key in normalized:
+                normalized[key] = _normalize_list(stock_patterns.get(key))
+        elif isinstance(stock_patterns, list):
+            normalized["subject"] = _normalize_list(stock_patterns)
+
+        if normalized["subject"]:
+            normalized["subject"] = _strip_named_groups(normalized["subject"])
+
+        if not any(normalized.values()):
+            fallback = BACKUP_PATTERNS.get("stock_load", {})
+            if isinstance(fallback, dict):
+                for key in normalized:
+                    normalized[key] = _normalize_list(fallback.get(key))
+        if normalized["subject"]:
+            normalized["subject"] = _strip_named_groups(normalized["subject"])
+
+        return normalized
+    except Exception as exc:
+        logger.error(f"❌ Ошибка извлечения паттернов остатков: {exc}")
+        return {
+            "subject": [],
+            "attachment": [],
+            "file_entry": [],
+            "success": [],
+            "failure": [],
+        }
+
+
 class BackupProcessor:
     """Обработчик бэкапов."""
 
@@ -240,6 +317,32 @@ class BackupProcessor:
                 """
                 CREATE INDEX IF NOT EXISTS idx_mail_backup_date
                 ON mail_server_backups(host_name, received_at)
+            """
+            )
+
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS stock_load_results (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    supplier_name TEXT NOT NULL,
+                    file_path TEXT,
+                    status TEXT NOT NULL,
+                    rows_count INTEGER,
+                    error_count INTEGER DEFAULT 0,
+                    error_sample TEXT,
+                    attachment_name TEXT,
+                    log_timestamp TEXT,
+                    email_subject TEXT,
+                    received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(supplier_name, file_path, log_timestamp, received_at)
+                )
+            """
+            )
+
+            cursor.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_stock_load_date
+                ON stock_load_results(received_at)
             """
             )
 
@@ -693,6 +796,286 @@ class BackupProcessor:
             if "conn" in locals():
                 conn.close()
 
+    def _match_subject_patterns(self, subject: str, patterns: list[str]) -> bool:
+        """Проверяет тему письма по списку паттернов."""
+        for pattern in patterns:
+            try:
+                if re.search(pattern, subject, re.IGNORECASE):
+                    return True
+            except re.error as exc:
+                logger.warning("⚠️ Некорректный паттерн '%s': %s", pattern, exc)
+        return False
+
+    def _decode_attachment_payload(self, payload: bytes | None) -> str:
+        """Пытается декодировать содержимое вложения."""
+        if not payload:
+            return ""
+
+        for encoding in ("utf-8", "cp1251", "windows-1251", "latin-1"):
+            try:
+                return payload.decode(encoding)
+            except UnicodeDecodeError:
+                continue
+
+        return payload.decode("utf-8", errors="ignore")
+
+    def _extract_matching_attachments(
+        self,
+        msg,
+        filename_patterns: list[str],
+    ) -> list[dict]:
+        """Возвращает список вложений, подходящих под паттерны имени файла."""
+        matched: list[dict] = []
+        if not msg.is_multipart():
+            return matched
+
+        for part in msg.walk():
+            filename = part.get_filename()
+            if not filename:
+                continue
+            if filename_patterns and not self._match_subject_patterns(
+                filename,
+                filename_patterns,
+            ):
+                continue
+
+            payload = part.get_payload(decode=True)
+            content = self._decode_attachment_payload(payload)
+            matched.append(
+                {
+                    "filename": filename,
+                    "content": content,
+                }
+            )
+
+        return matched
+
+    def parse_stock_load_log(
+        self,
+        content: str,
+        patterns: dict[str, list[str]],
+    ) -> list[dict]:
+        """Парсит содержимое лога загрузки остатков."""
+        file_entry_patterns = patterns.get("file_entry", [])
+        success_patterns = patterns.get("success", [])
+        failure_patterns = patterns.get("failure", [])
+        ignore_patterns = patterns.get("ignore", [])
+
+        file_entry_regexes = [re.compile(pat, re.IGNORECASE) for pat in file_entry_patterns]
+        success_regexes = [re.compile(pat, re.IGNORECASE) for pat in success_patterns]
+        failure_regexes = [re.compile(pat, re.IGNORECASE) for pat in failure_patterns]
+        ignore_regexes = [re.compile(pat, re.IGNORECASE) for pat in ignore_patterns]
+
+        entries: list[dict] = []
+        current: dict | None = None
+
+        def finalize_current() -> None:
+            nonlocal current
+            if not current:
+                return
+
+            has_success = current.get("has_success", False)
+            has_failure = current.get("has_failure", False)
+            if has_success and has_failure:
+                status = "warning"
+            elif has_success:
+                status = "success"
+            elif has_failure:
+                status = "failed"
+            else:
+                status = "unknown"
+
+            current["status"] = status
+            current["error_count"] = len(current.get("errors", []))
+            if current.get("errors"):
+                current["error_sample"] = current["errors"][0][:500]
+            else:
+                current["error_sample"] = None
+
+            entries.append(current)
+            current = None
+
+        for raw_line in content.splitlines():
+            line = raw_line.strip()
+            if not line:
+                continue
+
+            file_match = None
+            for regex in file_entry_regexes:
+                file_match = regex.search(line)
+                if file_match:
+                    break
+
+            if file_match:
+                finalize_current()
+
+                supplier = None
+                path = None
+                match_groups = file_match.groupdict()
+                if match_groups:
+                    supplier = match_groups.get("supplier")
+                    path = match_groups.get("path")
+                if supplier is None and file_match.lastindex:
+                    supplier = file_match.group(1)
+                if path is None and file_match.lastindex and file_match.lastindex >= 2:
+                    path = file_match.group(2)
+
+                supplier = " ".join((supplier or "").split()) or "неизвестно"
+                path = path.strip() if isinstance(path, str) else None
+
+                timestamp_match = re.match(
+                    r"^(\d{2}\.\d{2}\.\d{2}\s+\d{2}:\d{2}:\d{2})",
+                    line,
+                )
+                log_timestamp = timestamp_match.group(1) if timestamp_match else None
+
+                current = {
+                    "supplier_name": supplier,
+                    "file_path": path,
+                    "rows_count": None,
+                    "errors": [],
+                    "has_success": False,
+                    "has_failure": False,
+                    "log_timestamp": log_timestamp,
+                }
+                continue
+
+            if not current:
+                continue
+
+            ignored = False
+            for regex in ignore_regexes:
+                if regex.search(line):
+                    ignored = True
+                    break
+            if ignored:
+                continue
+
+            success_match = None
+            for regex in success_regexes:
+                success_match = regex.search(line)
+                if success_match:
+                    break
+
+            if success_match:
+                current["has_success"] = True
+                rows_value = None
+                match_groups = success_match.groupdict()
+                if match_groups:
+                    rows_value = match_groups.get("rows")
+                if rows_value is None and success_match.lastindex:
+                    rows_value = success_match.group(1)
+                try:
+                    current["rows_count"] = int(str(rows_value)) if rows_value else None
+                except ValueError:
+                    current["rows_count"] = None
+                continue
+
+            failure_match = None
+            for regex in failure_regexes:
+                failure_match = regex.search(line)
+                if failure_match:
+                    break
+
+            if failure_match:
+                current["has_failure"] = True
+                current["errors"].append(line)
+                continue
+
+        finalize_current()
+        return entries
+
+    def save_stock_load_entries(
+        self,
+        entries: list[dict],
+        subject: str,
+        attachment_name: str | None,
+        email_date: datetime | None = None,
+    ) -> None:
+        """Сохраняет результаты загрузки остатков в БД."""
+        if not entries:
+            return
+
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            received_at = (
+                email_date.strftime("%Y-%m-%d %H:%M:%S")
+                if email_date
+                else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            )
+
+            for entry in entries:
+                cursor.execute(
+                    """
+                    INSERT OR IGNORE INTO stock_load_results
+                    (supplier_name, file_path, status, rows_count, error_count, error_sample,
+                    attachment_name, log_timestamp, email_subject, received_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                    (
+                        entry.get("supplier_name", "неизвестно"),
+                        entry.get("file_path"),
+                        entry.get("status", "unknown"),
+                        entry.get("rows_count"),
+                        entry.get("error_count", 0),
+                        entry.get("error_sample"),
+                        attachment_name,
+                        entry.get("log_timestamp"),
+                        subject[:500],
+                        received_at,
+                    ),
+                )
+
+            conn.commit()
+            logger.info("✅ Сохранены результаты загрузки остатков: %s", len(entries))
+
+        except Exception as exc:
+            logger.error(f"❌ Ошибка сохранения остатков в БД: {exc}")
+        finally:
+            if "conn" in locals():
+                conn.close()
+
+    def parse_stock_load_email(
+        self,
+        subject: str,
+        msg,
+        email_date: datetime | None,
+    ) -> dict | None:
+        """Парсит письмо с логами загрузки остатков."""
+        if not extension_manager.is_extension_enabled("stock_load_monitor"):
+            return None
+
+        patterns = get_stock_load_patterns_from_config()
+        subject_patterns = patterns.get("subject", [])
+        if subject_patterns and not self._match_subject_patterns(subject, subject_patterns):
+            return None
+
+        attachment_patterns = patterns.get("attachment", [])
+        attachments = self._extract_matching_attachments(msg, attachment_patterns)
+        if not attachments:
+            logger.warning("⚠️ Лог остатков не найден во вложениях письма: %s", subject)
+            return None
+
+        all_entries: list[dict] = []
+        for attachment in attachments:
+            content = attachment.get("content", "")
+            entries = self.parse_stock_load_log(content, patterns)
+            self.save_stock_load_entries(
+                entries,
+                subject,
+                attachment.get("filename"),
+                email_date,
+            )
+            all_entries.extend(entries)
+
+        if not all_entries:
+            logger.warning("⚠️ Не удалось извлечь результаты остатков из письма: %s", subject)
+            return None
+
+        return {"stock_load_entries": all_entries}
+
     def parse_email_file(self, file_path: Path) -> dict | None:
         """Парсит email файл."""
         try:
@@ -756,9 +1139,13 @@ class BackupProcessor:
                 self.save_mail_backup(mail_backup_info, subject, email_date)
                 return mail_backup_info
 
+            stock_load_info = self.parse_stock_load_email(subject, msg, email_date)
+            if stock_load_info:
+                return stock_load_info
+
             if not self.is_proxmox_backup_email(subject):
                 logger.info(
-                    "Пропускаем не-Proxmox/БД/ZFS/почта письмо: %s...",
+                    "Пропускаем не-Proxmox/БД/ZFS/почта/остатки письмо: %s...",
                     subject[:50],
                 )
                 return None

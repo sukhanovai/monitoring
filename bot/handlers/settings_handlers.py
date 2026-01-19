@@ -33,9 +33,12 @@ BACKUP_SETTINGS_CALLBACKS = {
     'add_zfs_pattern',
     'add_proxmox_pattern',
     'add_mail_pattern',
+    'add_stock_pattern',
     'edit_mail_default_pattern',
     'mail_pattern_confirm',
     'mail_pattern_retry',
+    'stock_pattern_confirm',
+    'stock_pattern_retry',
     'zfs_pattern_confirm',
     'zfs_pattern_retry',
     'db_pattern_confirm',
@@ -85,6 +88,10 @@ def _get_mail_fallback_patterns() -> list:
         return fallback_mail or [default_pattern]
     return [default_pattern]
 
+def _escape_pattern_text(text: str) -> str:
+    """Экранирует текст для Markdown."""
+    return escape_markdown(str(text or ""), version=1)
+
 def _build_mail_pattern_from_subject(subject: str) -> str:
     """Собрать regex паттерн по теме письма."""
     if not subject:
@@ -128,6 +135,74 @@ def _build_mail_pattern_from_fragments(fragments: list[str]) -> str:
         return ""
     escaped_parts = [re.escape(fragment) for fragment in cleaned]
     return r".*".join(escaped_parts)
+
+def _build_stock_subject_pattern(subject: str) -> str:
+    """Собрать regex паттерн для темы письма загрузки остатков."""
+    if not subject:
+        return ""
+
+    normalized = subject.strip()
+    if not normalized:
+        return ""
+
+    time_regex = r"\b\d{2}:\d{2}:\d{2}\b"
+    date_regex = r"\b\d{2}[./-]\d{2}[./-]\d{2,4}\b"
+
+    draft = re.sub(time_regex, "__TIME__", normalized)
+    draft = re.sub(date_regex, "__DATE__", draft)
+
+    escaped = re.escape(draft)
+    escaped = re.sub(r"\\\s+", r"\\s+", escaped)
+
+    escaped = escaped.replace(re.escape("__TIME__"), r"\d{2}:\d{2}:\d{2}")
+    escaped = escaped.replace(re.escape("__DATE__"), r"\d{2}[./-]\d{2}[./-]\d{2,4}")
+    return escaped
+
+def _build_stock_pattern_from_fragments(fragments: list[str]) -> str:
+    """Собрать regex паттерн для остатков из обязательных фрагментов."""
+    return _build_mail_pattern_from_fragments(fragments)
+
+def _build_stock_success_pattern(sample: str) -> str:
+    """Собрать regex паттерн успеха по примеру строки."""
+    normalized = sample.strip()
+    if not normalized:
+        return ""
+
+    date_regex = r"\b\d{2}\.\d{2}\.\d{2}\b"
+    time_regex = r"\b\d{2}:\d{2}:\d{2}\b"
+
+    draft = re.sub(date_regex, "__DATE__", normalized)
+    draft = re.sub(time_regex, "__TIME__", draft)
+    draft = re.sub(r"(строк\s+)\d+", r"\1__ROWS__", draft, flags=re.IGNORECASE)
+
+    escaped = re.escape(draft)
+    escaped = re.sub(r"\\\s+", r"\\s+", escaped)
+
+    escaped = escaped.replace(re.escape("__DATE__"), r"\d{2}\.\d{2}\.\d{2}")
+    escaped = escaped.replace(re.escape("__TIME__"), r"\d{2}:\d{2}:\d{2}")
+    escaped = escaped.replace(re.escape("__ROWS__"), r"(?P<rows>\d+)")
+    return escaped
+
+def _get_stock_load_fallback_patterns() -> dict[str, list[str]]:
+    """Получить запасные паттерны для загрузки остатков."""
+    fallback_raw = settings_manager.get_setting('BACKUP_PATTERNS', DEFAULT_BACKUP_PATTERNS)
+    if isinstance(fallback_raw, str):
+        try:
+            fallback_raw = json.loads(fallback_raw)
+        except json.JSONDecodeError:
+            fallback_raw = {}
+    if not fallback_raw:
+        fallback_raw = DEFAULT_BACKUP_PATTERNS
+
+    stock_patterns = fallback_raw.get("stock_load", {})
+    if not isinstance(stock_patterns, dict):
+        return {}
+
+    return {
+        key: [p for p in value if isinstance(p, str)]
+        for key, value in stock_patterns.items()
+        if isinstance(value, list)
+    }
 
 def _get_database_fallback_patterns() -> dict[str, list[str]]:
     """Получить запасные паттерны для бэкапов БД."""
@@ -749,6 +824,8 @@ def settings_callback_handler(update, context):
             show_database_backup_settings(update, context)
         elif data == 'settings_ext_backup_mail':
             show_mail_backup_settings(update, context)
+        elif data == 'settings_ext_stock_load':
+            show_stock_load_settings(update, context)
         elif data == 'settings_patterns_db':
             show_db_patterns_menu(update, context)
         elif data == 'settings_patterns_proxmox':
@@ -757,6 +834,8 @@ def settings_callback_handler(update, context):
             show_zfs_patterns_menu(update, context)
         elif data == 'settings_patterns_mail':
             show_mail_patterns_menu(update, context)
+        elif data == 'settings_patterns_stock':
+            show_stock_load_patterns_menu(update, context)
         elif data == 'settings_web':
             show_web_settings(update, context)
         elif data == 'settings_view_all':
@@ -837,6 +916,8 @@ def settings_callback_handler(update, context):
             add_proxmox_pattern_handler(update, context)
         elif data == 'add_mail_pattern':
             add_mail_pattern_handler(update, context)
+        elif data == 'add_stock_pattern':
+            show_stock_pattern_type_menu(update, context)
         elif data == 'edit_mail_default_pattern':
             edit_mail_default_pattern_handler(update, context)
         elif data == 'db_pattern_confirm':
@@ -854,6 +935,13 @@ def settings_callback_handler(update, context):
             proxmox_pattern_confirm_handler(update, context)
         elif data == 'proxmox_pattern_retry':
             proxmox_pattern_retry_handler(update, context)
+        elif data == 'stock_pattern_confirm':
+            stock_pattern_confirm_handler(update, context)
+        elif data == 'stock_pattern_retry':
+            stock_pattern_retry_handler(update, context)
+        elif data.startswith('stock_pattern_select_'):
+            pattern_type = data.replace('stock_pattern_select_', '')
+            stock_pattern_select_handler(update, context, pattern_type)
         elif data.startswith('db_default_edit_'):
             raw_value = data.replace('db_default_edit_', '')
             if '__' in raw_value:
@@ -1866,6 +1954,9 @@ def show_settings_extensions_menu(update, context):
     if extension_manager.is_extension_enabled('mail_backup_monitor'):
         keyboard.append([InlineKeyboardButton("📬 Бэкапы почты", callback_data='settings_ext_backup_mail')])
 
+    if extension_manager.is_extension_enabled('stock_load_monitor'):
+        keyboard.append([InlineKeyboardButton("📦 Загрузка остатков 1С", callback_data='settings_ext_stock_load')])
+
     if extension_manager.is_extension_enabled('zfs_monitor'):
         keyboard.append([InlineKeyboardButton("🧊 ZFS", callback_data='settings_zfs')])
 
@@ -1973,6 +2064,52 @@ def show_mail_backup_settings(update, context):
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
+def show_stock_load_settings(update, context):
+    """Показать настройки загрузки остатков 1С в разделе расширений."""
+    query = update.callback_query
+    query.answer()
+
+    pattern_count = 0
+    source_label = "база"
+    patterns = settings_manager.get_backup_patterns()
+    if isinstance(patterns, str):
+        try:
+            patterns = json.loads(patterns)
+        except json.JSONDecodeError:
+            patterns = {}
+
+    stock_patterns = patterns.get("stock_load", {})
+    if isinstance(stock_patterns, dict):
+        pattern_count = sum(
+            len(value) for value in stock_patterns.values() if isinstance(value, list)
+        )
+
+    if pattern_count == 0:
+        fallback_patterns = _get_stock_load_fallback_patterns()
+        pattern_count = sum(len(value) for value in fallback_patterns.values())
+        if pattern_count:
+            source_label = "по умолчанию"
+        else:
+            source_label = "не настроены"
+
+    message = (
+        "📦 *Загрузка остатков 1С*\n\n"
+        f"Паттернов: {pattern_count} ({source_label})\n\n"
+        "Выберите раздел:"
+    )
+
+    keyboard = [
+        [InlineKeyboardButton("🔍 Паттерны", callback_data='settings_patterns_stock')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_extensions'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ]
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
 def _enable_all_extensions_settings(query):
     enabled = 0
     for ext_id in extension_manager.get_extensions_status():
@@ -2019,6 +2156,14 @@ def show_mail_patterns_menu(update, context):
     context.user_data['patterns_back'] = 'settings_ext_backup_mail'
     context.user_data['patterns_add'] = 'add_mail_pattern'
     context.user_data['patterns_title'] = "📬 *Паттерны бэкапов почты*"
+    view_patterns_handler(update, context)
+
+def show_stock_load_patterns_menu(update, context):
+    """Показать паттерны для загрузки остатков."""
+    context.user_data['patterns_filter'] = 'stock_load'
+    context.user_data['patterns_back'] = 'settings_ext_stock_load'
+    context.user_data['patterns_add'] = 'add_stock_pattern'
+    context.user_data['patterns_title'] = "📦 *Паттерны загрузки остатков*"
     view_patterns_handler(update, context)
 
 def show_backup_proxmox_settings(update, context):
@@ -4377,6 +4522,166 @@ def add_mail_pattern_handler(update, context):
         ])
     )
 
+def show_stock_pattern_type_menu(update, context):
+    """Показать выбор типа паттерна для остатков."""
+    query = update.callback_query
+    query.answer()
+
+    message = (
+        "📦 *Добавление паттерна для загрузки остатков*\n\n"
+        "Выберите, что нужно настроить:"
+    )
+
+    keyboard = [
+        [InlineKeyboardButton("🧾 Тема письма", callback_data='stock_pattern_select_subject')],
+        [InlineKeyboardButton("📎 Имя вложения", callback_data='stock_pattern_select_attachment')],
+        [InlineKeyboardButton("📄 Строка файла", callback_data='stock_pattern_select_file_entry')],
+        [InlineKeyboardButton("✅ Успешная загрузка", callback_data='stock_pattern_select_success')],
+        [InlineKeyboardButton("🙈 Игнорировать строки", callback_data='stock_pattern_select_ignore')],
+        [InlineKeyboardButton("❌ Ошибка загрузки", callback_data='stock_pattern_select_failure')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_patterns_stock'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ]
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def stock_pattern_select_handler(update, context, pattern_type: str):
+    """Запустить мастер для выбранного типа паттерна остатков."""
+    query = update.callback_query
+    query.answer()
+
+    context.user_data['adding_backup_pattern'] = True
+    context.user_data['backup_pattern_stage'] = 'stock_input'
+    context.user_data['backup_pattern_mode'] = 'stock_subject_wizard' if pattern_type == 'subject' else 'stock_log_wizard'
+    context.user_data['backup_pattern_stock_type'] = pattern_type
+    context.user_data.pop('backup_pattern_generated', None)
+    context.user_data.pop('backup_pattern_source', None)
+
+    if pattern_type == 'subject':
+        prompt = (
+            "🧙 *Мастер добавления темы*\n\n"
+            "Введите тему письма целиком или обязательные фрагменты через `;`/`,`.\n"
+            "Фрагменты учитываются в указанном порядке.\n\n"
+            "Пример:\n"
+            "`Логи загрузки файлов в рабочую базу 07:38:14`"
+        )
+    elif pattern_type == 'attachment':
+        prompt = (
+            "🧙 *Мастер добавления имени вложения*\n\n"
+            "Введите имя файла или фрагменты через `;`/`,`.\n\n"
+            "Пример:\n"
+            "`LogiLogistam.txt`"
+        )
+    elif pattern_type == 'file_entry':
+        prompt = (
+            "🧙 *Мастер добавления строки файла*\n\n"
+            "Введите строку с названием поставщика и путем к файлу.\n\n"
+            "Пример:\n"
+            "`19.01.26 07:35:36: ЗЭТА  НСК  D:\\Obmen\\OCTATKu\\ЗЭТА\\Остатки ЗЭТА НСК.csv`"
+        )
+    elif pattern_type == 'success':
+        prompt = (
+            "🧙 *Мастер добавления строки успеха*\n\n"
+            "Введите строку с результатом успешной загрузки.\n\n"
+            "Пример:\n"
+            "`19.01.26 07:35:39: ***Остатки загружены!***   строк 348   07:35:39`"
+        )
+    elif pattern_type == 'ignore':
+        prompt = (
+            "🧙 *Мастер добавления игнорируемой строки*\n\n"
+            "Введите строку или обязательные фрагменты через `;`/`,`.\n"
+            "Эти строки будут пропускаться при разборе.\n\n"
+            "Пример:\n"
+            "`Внимание! Ошибка в номенклатуре Артикул=`"
+        )
+    else:
+        prompt = (
+            "🧙 *Мастер добавления строки ошибки*\n\n"
+            "Введите строку с ошибкой или обязательные фрагменты через `;`/`,`.\n\n"
+            "Пример:\n"
+            "`--- неудача!!! пустая загрузка`"
+        )
+
+    query.edit_message_text(
+        prompt,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ])
+    )
+
+def stock_pattern_retry_handler(update, context):
+    """Повторить ввод для паттернов остатков."""
+    query = update.callback_query
+    query.answer()
+
+    pattern_type = context.user_data.get('backup_pattern_stock_type', 'subject')
+    stock_pattern_select_handler(update, context, pattern_type)
+
+def stock_pattern_confirm_handler(update, context):
+    """Подтвердить сохранение паттерна остатков."""
+    query = update.callback_query
+    query.answer()
+
+    pattern = context.user_data.get('backup_pattern_generated')
+    pattern_type = context.user_data.get('backup_pattern_stock_type')
+    back_callback = context.user_data.get('patterns_back', 'settings_backup')
+
+    if not pattern or not pattern_type:
+        query.edit_message_text(
+            "❌ Паттерн не найден. Начните добавление заново.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)],
+                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ])
+        )
+        return
+
+    try:
+        conn = settings_manager.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO backup_patterns (pattern_type, pattern, category, enabled)
+            VALUES (?, ?, ?, 1)
+            """,
+            (pattern_type, pattern, "stock_load")
+        )
+        conn.commit()
+
+        source_label = context.user_data.get('backup_pattern_source', 'мастер')
+        query.edit_message_text(
+            "✅ *Паттерн добавлен!*\n\n"
+            "Категория: *stock_load*\n"
+            f"Тип: *{pattern_type}*\n"
+            f"Источник: *{source_label}*\n"
+            f"Паттерн: `{pattern}`",
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ])
+        )
+    except Exception as e:
+        query.edit_message_text(f"❌ Ошибка сохранения: {e}")
+    finally:
+        context.user_data.pop('adding_backup_pattern', None)
+        context.user_data.pop('backup_pattern_stage', None)
+        context.user_data.pop('backup_pattern_category', None)
+        context.user_data.pop('backup_pattern_type', None)
+        context.user_data.pop('backup_pattern_subject', None)
+        context.user_data.pop('backup_pattern_mode', None)
+        context.user_data.pop('backup_pattern_generated', None)
+        context.user_data.pop('backup_pattern_source', None)
+        context.user_data.pop('backup_pattern_stock_type', None)
+
 def edit_mail_default_pattern_handler(update, context):
     """Изменить дефолтный паттерн для бэкапов почты"""
     query = update.callback_query
@@ -4917,6 +5222,15 @@ def view_patterns_handler(update, context):
             ORDER BY category, pattern_type, id
             """
         )
+    elif filter_mode == 'stock_load':
+        cursor.execute(
+            """
+            SELECT id, pattern_type, pattern, category
+            FROM backup_patterns
+            WHERE enabled = 1 AND category = 'stock_load'
+            ORDER BY category, pattern_type, id
+            """
+        )
     else:
         cursor.execute(
             """
@@ -4957,12 +5271,15 @@ def view_patterns_handler(update, context):
 
     fallback_patterns = []
     fallback_db_patterns = {}
+    fallback_stock_patterns: dict[str, list[str]] = {}
     if not display_rows and filter_mode == 'mail':
         fallback_patterns = _get_mail_fallback_patterns()
     if not display_rows and filter_mode == 'db':
         fallback_db_patterns = _get_database_fallback_patterns()
+    if not display_rows and filter_mode == 'stock_load':
+        fallback_stock_patterns = _get_stock_load_fallback_patterns()
 
-    if not display_rows and not fallback_patterns and not fallback_db_patterns:
+    if not display_rows and not fallback_patterns and not fallback_db_patterns and not fallback_stock_patterns:
         message = f"{title}\n\n❌ Паттерны не настроены."
     else:
         message = f"{title}\n\n"
@@ -4971,23 +5288,37 @@ def view_patterns_handler(update, context):
             if category != current_category:
                 if current_category is not None:
                     message += "\n"
-                message += f"*{category}*\n"
-                current_category = category
-            message += f"{index}. {pattern_type}: `{pattern}`\n"
+            message += f"*{_escape_pattern_text(category)}*\n"
+            current_category = category
+            message += (
+                f"{index}. {_escape_pattern_text(pattern_type)}: "
+                f"`{_escape_pattern_text(pattern)}`\n"
+            )
         if fallback_patterns:
             if rows:
                 message += "\n"
             message += "*mail (по умолчанию)*\n"
             for index, pattern in enumerate(fallback_patterns, start=1):
-                message += f"{index}. subject: `{pattern}`\n"
+                message += f"{index}. subject: `{_escape_pattern_text(pattern)}`\n"
         if fallback_db_patterns:
             if rows or fallback_patterns:
                 message += "\n"
             message += "*database (по умолчанию)*\n"
             for category, patterns in fallback_db_patterns.items():
-                message += f"*{category}*\n"
+                message += f"*{_escape_pattern_text(category)}*\n"
                 for index, pattern in enumerate(patterns, start=1):
-                    message += f"{index}. subject: `{pattern}`\n"
+                    message += f"{index}. subject: `{_escape_pattern_text(pattern)}`\n"
+        if fallback_stock_patterns:
+            if rows or fallback_patterns or fallback_db_patterns:
+                message += "\n"
+            message += "*stock_load (по умолчанию)*\n"
+            for pattern_type, patterns in fallback_stock_patterns.items():
+                message += f"*{_escape_pattern_text(pattern_type)}*\n"
+                for index, pattern in enumerate(patterns, start=1):
+                    message += (
+                        f"{index}. {_escape_pattern_text(pattern_type)}: "
+                        f"`{_escape_pattern_text(pattern)}`\n"
+                    )
 
     keyboard = []
     for index, (pattern_id, pattern_type, pattern, category) in enumerate(display_rows, start=1):
@@ -5125,16 +5456,20 @@ def edit_pattern_handler(update, context, pattern_id):
     elif category == 'mail':
         context.user_data['backup_pattern_mode'] = 'mail'
         context.user_data['backup_pattern_stage'] = 'pattern_only'
+    elif category == 'stock_load':
+        context.user_data['backup_pattern_mode'] = 'stock'
+        context.user_data['backup_pattern_stage'] = 'pattern_only'
     else:
         context.user_data['backup_pattern_mode'] = 'db'
         context.user_data['backup_pattern_stage'] = 'subject'
 
     back_callback = context.user_data.get('patterns_back', 'settings_backup')
-    prompt = (
-        "Введите паттерн темы письма:"
-        if category in ('zfs', 'proxmox', 'mail')
-        else "Введите тему письма (как приходит в почте):"
-    )
+    if category in ('zfs', 'proxmox', 'mail'):
+        prompt = "Введите паттерн темы письма:"
+    elif category == 'stock_load':
+        prompt = "Введите regex паттерн для выбранного типа:"
+    else:
+        prompt = "Введите тему письма (как приходит в почте):"
 
     query.edit_message_text(
         "✏️ *Редактирование паттерна*\n\n"
@@ -5327,6 +5662,109 @@ def handle_backup_pattern_input(update, context):
         )
         return
 
+    if mode == 'stock_subject_wizard':
+        if stage != 'stock_input':
+            update.message.reply_text("❌ Неверный шаг мастера. Попробуйте снова.")
+            return
+
+        if not user_input:
+            update.message.reply_text("❌ Ввод не может быть пустым. Попробуйте снова:")
+            return
+
+        fragments = [chunk.strip() for chunk in re.split(r"[;,\n]+", user_input)]
+        fragments = [fragment for fragment in fragments if fragment]
+
+        if len(fragments) > 1:
+            pattern = _build_stock_pattern_from_fragments(fragments)
+            source_label = "фрагменты"
+        else:
+            pattern = _build_stock_subject_pattern(user_input)
+            source_label = "тема письма"
+
+        if not pattern:
+            update.message.reply_text("❌ Не удалось собрать паттерн. Попробуйте снова:")
+            return
+
+        context.user_data['backup_pattern_generated'] = pattern
+        context.user_data['backup_pattern_source'] = source_label
+        context.user_data['backup_pattern_stage'] = 'stock_confirm'
+
+        back_callback = context.user_data.get('patterns_back', 'settings_backup')
+        update.message.reply_text(
+            "✅ *Черновик паттерна готов!*\n\n"
+            f"Источник: *{source_label}*\n"
+            f"Паттерн: `{pattern}`\n\n"
+            "Сохранить?",
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("✅ Сохранить", callback_data='stock_pattern_confirm')],
+                [InlineKeyboardButton("✏️ Ввести заново", callback_data='stock_pattern_retry')],
+                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ])
+        )
+        return
+
+    if mode == 'stock_log_wizard':
+        if stage != 'stock_input':
+            update.message.reply_text("❌ Неверный шаг мастера. Попробуйте снова.")
+            return
+
+        if not user_input:
+            update.message.reply_text("❌ Ввод не может быть пустым. Попробуйте снова:")
+            return
+
+        pattern_type = context.user_data.get('backup_pattern_stock_type', 'file_entry')
+        fragments = [chunk.strip() for chunk in re.split(r"[;,\n]+", user_input)]
+        fragments = [fragment for fragment in fragments if fragment]
+
+        if len(fragments) > 1:
+            pattern = _build_stock_pattern_from_fragments(fragments)
+            source_label = "фрагменты"
+        else:
+            if pattern_type == 'success':
+                pattern = _build_stock_success_pattern(user_input)
+                source_label = "строка лога"
+            elif pattern_type == 'attachment':
+                pattern = re.escape(user_input.strip()) + r"$"
+                source_label = "имя файла"
+            elif pattern_type == 'ignore':
+                pattern = _build_stock_pattern_from_fragments([user_input])
+                source_label = "строка лога"
+            elif pattern_type == 'failure':
+                pattern = _build_stock_pattern_from_fragments([user_input])
+                source_label = "строка лога"
+            else:
+                pattern = (
+                    r"^\d{2}\.\d{2}\.\d{2}\s+\d{2}:\d{2}:\d{2}:\s+"
+                    r"(?P<supplier>.+?)\s{2,}(?P<path>[A-Za-z]:\\.+)$"
+                )
+                source_label = "строка лога"
+
+        if not pattern:
+            update.message.reply_text("❌ Не удалось собрать паттерн. Попробуйте снова:")
+            return
+
+        context.user_data['backup_pattern_generated'] = pattern
+        context.user_data['backup_pattern_source'] = source_label
+        context.user_data['backup_pattern_stage'] = 'stock_confirm'
+
+        back_callback = context.user_data.get('patterns_back', 'settings_backup')
+        update.message.reply_text(
+            "✅ *Черновик паттерна готов!*\n\n"
+            f"Источник: *{source_label}*\n"
+            f"Паттерн: `{pattern}`\n\n"
+            "Сохранить?",
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("✅ Сохранить", callback_data='stock_pattern_confirm')],
+                [InlineKeyboardButton("✏️ Ввести заново", callback_data='stock_pattern_retry')],
+                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ])
+        )
+        return
+
     if mode == 'proxmox_wizard':
         if stage != 'proxmox_input':
             update.message.reply_text("❌ Неверный шаг мастера. Попробуйте снова.")
@@ -5493,7 +5931,7 @@ def handle_backup_pattern_edit_input(update, context):
     stage = context.user_data.get('backup_pattern_stage', 'subject')
     mode = context.user_data.get('backup_pattern_mode', 'db')
 
-    if mode in ('zfs', 'proxmox', 'mail'):
+    if mode in ('zfs', 'proxmox', 'mail', 'stock'):
         if not new_pattern:
             update.message.reply_text("❌ Паттерн не может быть пустым. Попробуйте снова:")
             return
@@ -5508,8 +5946,11 @@ def handle_backup_pattern_edit_input(update, context):
             category = 'zfs'
         elif mode == 'proxmox':
             category = 'proxmox'
-        else:
+        elif mode == 'mail':
             category = 'mail'
+        else:
+            category = 'stock_load'
+        pattern_type = context.user_data.get('backup_pattern_type', 'subject')
         back_callback = context.user_data.get('patterns_back', 'settings_backup')
 
         try:
@@ -5521,14 +5962,14 @@ def handle_backup_pattern_edit_input(update, context):
                 SET pattern = ?, category = ?, pattern_type = ?
                 WHERE id = ?
                 """,
-                (new_pattern, category, "subject", pattern_id)
+                (new_pattern, category, pattern_type, pattern_id)
             )
             conn.commit()
 
             update.message.reply_text(
                 "✅ *Паттерн обновлён!*\n\n"
                 f"Категория: *{category}*\n"
-                "Тип: *subject*\n"
+                f"Тип: *{pattern_type}*\n"
                 f"Паттерн: `{new_pattern}`",
                 parse_mode='Markdown',
                 reply_markup=InlineKeyboardMarkup([
