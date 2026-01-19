@@ -38,6 +38,11 @@ def main_menu(extension_manager):
             [InlineKeyboardButton("📬 Бэкапы почты", callback_data='backup_mail')]
         )
 
+    if extension_manager.is_extension_enabled('stock_load_monitor'):
+        keyboard.append(
+            [InlineKeyboardButton("📦 Остатки 1С", callback_data='backup_stock_loads')]
+        )
+
     if extension_manager.is_extension_enabled('zfs_monitor'):
         keyboard.append(
             [InlineKeyboardButton("🧊 ZFS", callback_data='zfs_menu')]
