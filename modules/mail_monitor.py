@@ -195,6 +195,12 @@ def get_stock_load_patterns_from_config() -> dict[str, list[str]]:
                 return [value]
             return []
 
+        def _strip_named_groups(patterns: list[str]) -> list[str]:
+            sanitized: list[str] = []
+            for pattern in patterns:
+                sanitized.append(re.sub(r"\(\?P<[^>]+>", "(?:", pattern))
+            return sanitized
+
         normalized: dict[str, list[str]] = {
             "subject": [],
             "attachment": [],
@@ -209,11 +215,16 @@ def get_stock_load_patterns_from_config() -> dict[str, list[str]]:
         elif isinstance(stock_patterns, list):
             normalized["subject"] = _normalize_list(stock_patterns)
 
+        if normalized["subject"]:
+            normalized["subject"] = _strip_named_groups(normalized["subject"])
+
         if not any(normalized.values()):
             fallback = BACKUP_PATTERNS.get("stock_load", {})
             if isinstance(fallback, dict):
                 for key in normalized:
                     normalized[key] = _normalize_list(fallback.get(key))
+        if normalized["subject"]:
+            normalized["subject"] = _strip_named_groups(normalized["subject"])
 
         return normalized
     except Exception as exc:
@@ -787,8 +798,11 @@ class BackupProcessor:
     def _match_subject_patterns(self, subject: str, patterns: list[str]) -> bool:
         """Проверяет тему письма по списку паттернов."""
         for pattern in patterns:
-            if re.search(pattern, subject, re.IGNORECASE):
-                return True
+            try:
+                if re.search(pattern, subject, re.IGNORECASE):
+                    return True
+            except re.error as exc:
+                logger.warning("⚠️ Некорректный паттерн '%s': %s", pattern, exc)
         return False
 
     def _decode_attachment_payload(self, payload: bytes | None) -> str:
