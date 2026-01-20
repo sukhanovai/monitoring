@@ -1115,7 +1115,25 @@ class BackupProcessor:
 
         patterns = get_stock_load_patterns_from_config()
         subject_patterns = patterns.get("subject", [])
-        if subject_patterns and not self._match_subject_patterns(subject, subject_patterns):
+        sources = patterns.get("sources", [])
+        matches_subject = (
+            self._match_subject_patterns(subject, subject_patterns)
+            if subject_patterns
+            else True
+        )
+        matches_source = False
+        if isinstance(sources, list) and sources:
+            for source in sources:
+                if not isinstance(source, dict):
+                    continue
+                source_subject = source.get("subject", [])
+                if not isinstance(source_subject, list):
+                    continue
+                if self._match_subject_patterns(subject, source_subject):
+                    matches_source = True
+                    break
+
+        if not matches_subject and not matches_source:
             return None
 
         source_name = self._match_stock_load_source(subject, patterns)
