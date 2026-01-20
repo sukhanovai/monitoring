@@ -241,7 +241,9 @@ def get_stock_load_patterns_from_config() -> dict[str, list[str]]:
             normalized["subject"] = _strip_named_groups(normalized["subject"])
 
         if not any(normalized.values()):
-            fallback = BACKUP_PATTERNS.get("stock_load", {})
+            from config import settings as defaults
+
+            fallback = defaults.BACKUP_PATTERNS.get("stock_load", {})
             if isinstance(fallback, dict):
                 for key in normalized:
                     normalized[key] = _normalize_list(fallback.get(key))
@@ -258,7 +260,9 @@ def get_stock_load_patterns_from_config() -> dict[str, list[str]]:
                 subject_patterns = _normalize_list(source.get("subject"))
                 source["subject"] = _strip_named_groups(subject_patterns)
         if not sources:
-            fallback_sources = BACKUP_PATTERNS.get("stock_load", {}).get("sources", [])
+            from config import settings as defaults
+
+            fallback_sources = defaults.BACKUP_PATTERNS.get("stock_load", {}).get("sources", [])
             if isinstance(fallback_sources, list) and fallback_sources:
                 sources = [item for item in fallback_sources if isinstance(item, dict)]
                 for source in sources:
