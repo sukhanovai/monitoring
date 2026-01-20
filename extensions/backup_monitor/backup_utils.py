@@ -254,12 +254,18 @@ def get_backup_summary(
 
         message = ""
 
-        if include_proxmox and len(all_hosts) > 0:
-            success_rate = (hosts_with_success / len(all_hosts)) * 100
-            message += f"• Proxmox: {hosts_with_success}/{len(all_hosts)} успешно ({success_rate:.1f}%)"
-            if stale_hosts:
-                message += f" ⚠️ {len(stale_hosts)} хостов без бэкапов >24ч"
-            message += "\n"
+        if include_proxmox:
+            if len(all_hosts) > 0:
+                success_rate = (hosts_with_success / len(all_hosts)) * 100
+                message += (
+                    f"• Proxmox: {hosts_with_success}/{len(all_hosts)} успешно "
+                    f"({success_rate:.1f}%)"
+                )
+                if stale_hosts:
+                    message += f" ⚠️ {len(stale_hosts)} хостов без бэкапов >24ч"
+                message += "\n"
+            else:
+                message += "• Proxmox: нет данных\n"
 
         if include_databases:
             message += "• Базы данных:\n"
