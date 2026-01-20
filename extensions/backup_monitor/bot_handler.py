@@ -302,40 +302,34 @@ class BackupMonitorBot(BackupBase):
         """Получает последние результаты загрузки остатков товаров по каждому поставщику."""
         since_time = (datetime.now() - timedelta(hours=hours)).strftime('%Y-%m-%d %H:%M:%S')
         query = '''
-            SELECT COALESCE(s.source_name, 'Основное предприятие') AS source_name,
-                   CASE
-                       WHEN s.supplier_name IS NULL OR s.supplier_name = 'неизвестно'
-                           THEN COALESCE(s.source_name, 'Основное предприятие')
-                       ELSE s.supplier_name
-                   END AS supplier_name,
-                   s.status, s.rows_count, s.error_sample, s.received_at
-            FROM stock_load_results s
-            JOIN (
-                SELECT COALESCE(source_name, 'Основное предприятие') AS source_name,
-                       CASE
-                           WHEN supplier_name IS NULL OR supplier_name = 'неизвестно'
-                               THEN COALESCE(source_name, 'Основное предприятие')
-                           ELSE supplier_name
-                       END AS supplier_name,
-                       MAX(received_at) AS last_seen
+            WITH normalized AS (
+                SELECT
+                    id,
+                    COALESCE(source_name, 'Основное предприятие') AS source_name,
+                    CASE
+                        WHEN supplier_name IS NULL OR supplier_name = 'неизвестно'
+                            THEN COALESCE(source_name, 'Основное предприятие')
+                        ELSE supplier_name
+                    END AS supplier_name,
+                    status,
+                    rows_count,
+                    error_sample,
+                    received_at
                 FROM stock_load_results
                 WHERE received_at >= ?
-                GROUP BY COALESCE(source_name, 'Основное предприятие'),
-                         CASE
-                             WHEN supplier_name IS NULL OR supplier_name = 'неизвестно'
-                                 THEN COALESCE(source_name, 'Основное предприятие')
-                             ELSE supplier_name
-                         END
-            ) latest
-            ON s.received_at = latest.last_seen
-            AND COALESCE(s.source_name, 'Основное предприятие') = latest.source_name
-            AND (
-                CASE
-                    WHEN s.supplier_name IS NULL OR s.supplier_name = 'неизвестно'
-                        THEN COALESCE(s.source_name, 'Основное предприятие')
-                    ELSE s.supplier_name
-                END
-            ) = latest.supplier_name
+            ),
+            ranked AS (
+                SELECT
+                    *,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY source_name, supplier_name
+                        ORDER BY received_at DESC, id DESC
+                    ) AS row_num
+                FROM normalized
+            )
+            SELECT source_name, supplier_name, status, rows_count, error_sample, received_at
+            FROM ranked
+            WHERE row_num = 1
             ORDER BY source_name, supplier_name
         '''
         try:
