@@ -253,28 +253,44 @@ def get_stock_load_patterns_from_config() -> dict[str, list[str]]:
         if normalized["subject"]:
             normalized["subject"] = _strip_named_groups(normalized["subject"])
 
+        from config import settings as defaults
+
+        default_sources = defaults.BACKUP_PATTERNS.get("stock_load", {}).get("sources", [])
+        if not isinstance(default_sources, list):
+            default_sources = []
+
         if sources:
             for source in sources:
                 if not isinstance(source, dict):
                     continue
                 subject_patterns = _normalize_list(source.get("subject"))
                 source["subject"] = _strip_named_groups(subject_patterns)
-        if not sources:
-            from config import settings as defaults
+        else:
+            sources = []
 
-            fallback_sources = defaults.BACKUP_PATTERNS.get("stock_load", {}).get("sources", [])
-            if isinstance(fallback_sources, list) and fallback_sources:
-                sources = [item for item in fallback_sources if isinstance(item, dict)]
-                for source in sources:
-                    subject_patterns = _normalize_list(source.get("subject"))
-                    source["subject"] = _strip_named_groups(subject_patterns)
-            else:
-                sources = [
+        default_by_name = {
+            str(item.get("name") or "").strip(): item
+            for item in default_sources
+            if isinstance(item, dict) and str(item.get("name") or "").strip()
+        }
+        existing_names = {str(item.get("name") or "").strip() for item in sources if isinstance(item, dict)}
+        for name, source in default_by_name.items():
+            if name not in existing_names:
+                subject_patterns = _normalize_list(source.get("subject"))
+                sources.append(
                     {
-                        "name": "Основное предприятие",
-                        "subject": normalized.get("subject", []),
+                        "name": name,
+                        "subject": _strip_named_groups(subject_patterns),
                     }
-                ]
+                )
+
+        if not sources:
+            sources = [
+                {
+                    "name": "Основное предприятие",
+                    "subject": normalized.get("subject", []),
+                }
+            ]
         normalized["sources"] = sources
 
         return normalized
