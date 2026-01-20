@@ -966,6 +966,13 @@ class BackupProcessor:
         failure_patterns = patterns.get("failure", [])
         ignore_patterns = patterns.get("ignore", [])
 
+        default_file_entry = (
+            r"^\d{2}\.\d{2}\.\d{2}\s+\d{2}:\d{2}:\d{2}:\s+"
+            r"(?P<supplier>.+?)\s{2,}(?P<path>(?:[A-Za-z]:\\|\\\\[^\\]+\\).+)$"
+        )
+        if default_file_entry not in file_entry_patterns:
+            file_entry_patterns = [*file_entry_patterns, default_file_entry]
+
         file_entry_regexes = [re.compile(pat, re.IGNORECASE) for pat in file_entry_patterns]
         success_regexes = [re.compile(pat, re.IGNORECASE) for pat in success_patterns]
         failure_regexes = [re.compile(pat, re.IGNORECASE) for pat in failure_patterns]

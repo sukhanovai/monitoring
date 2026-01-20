@@ -171,7 +171,7 @@ BACKUP_PATTERNS: Dict[str, Dict[str, List[str]]] = {
         "file_entry": [
             (
                 r"^\d{2}\.\d{2}\.\d{2}\s+\d{2}:\d{2}:\d{2}:\s+"
-                r"(?P<supplier>.+?)\s{2,}(?P<path>[A-Za-z]:\\.+)$"
+                r"(?P<supplier>.+?)\s{2,}(?P<path>(?:[A-Za-z]:\\|\\\\[^\\]+\\).+)$"
             )
         ],
         "success": [
