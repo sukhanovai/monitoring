@@ -302,18 +302,20 @@ class BackupMonitorBot(BackupBase):
         """Получает последние результаты загрузки остатков товаров по каждому поставщику."""
         since_time = (datetime.now() - timedelta(hours=hours)).strftime('%Y-%m-%d %H:%M:%S')
         query = '''
-            SELECT s.source_name, s.supplier_name, s.status, s.rows_count, s.error_sample, s.received_at
+            SELECT COALESCE(s.source_name, 'Основное предприятие') AS source_name,
+                   s.supplier_name, s.status, s.rows_count, s.error_sample, s.received_at
             FROM stock_load_results s
             JOIN (
-                SELECT source_name, supplier_name, MAX(received_at) AS last_seen
+                SELECT COALESCE(source_name, 'Основное предприятие') AS source_name,
+                       supplier_name, MAX(received_at) AS last_seen
                 FROM stock_load_results
                 WHERE received_at >= ?
-                GROUP BY source_name, supplier_name
+                GROUP BY COALESCE(source_name, 'Основное предприятие'), supplier_name
             ) latest
             ON s.supplier_name = latest.supplier_name
-            AND s.source_name = latest.source_name
+            AND COALESCE(s.source_name, 'Основное предприятие') = latest.source_name
             AND s.received_at = latest.last_seen
-            ORDER BY s.source_name, s.supplier_name
+            ORDER BY source_name, s.supplier_name
         '''
         try:
             return self.execute_query(query, (since_time,))
