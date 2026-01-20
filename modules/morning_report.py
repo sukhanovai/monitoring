@@ -111,6 +111,19 @@ class MorningReport:
             debug_log(f"⚠️ Ошибка получения данных о бэкапах: {e}")
             message += "\n💾 *Статус бэкапов:* данные недоступны\n"
 
+        # Добавляем информацию о загрузке остатков 1С
+        try:
+            from extensions.extension_manager import extension_manager
+            if extension_manager.is_extension_enabled('stock_load_monitor'):
+                from extensions.backup_monitor.backup_utils import get_stock_load_summary
+
+                stock_summary = get_stock_load_summary(24 if is_manual else 16)
+                message += "\n📦 *Загрузка остатков 1С*\n"
+                message += stock_summary
+        except Exception as e:
+            debug_log(f"⚠️ Ошибка получения данных о загрузке остатков: {e}")
+            message += "\n📦 *Загрузка остатков 1С:* данные недоступны\n"
+
         # Добавляем информацию о ZFS
         try:
             from extensions.extension_manager import extension_manager
