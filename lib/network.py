@@ -1,11 +1,11 @@
 """
 /lib/network.py
-Server Monitoring System v7.1.27
+Server Monitoring System v7.3.12
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Network utilities
 Система мониторинга серверов
-Версия: 7.1.27
+Версия: 7.3.12
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Сетевые утилиты
