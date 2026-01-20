@@ -425,6 +425,80 @@ def get_backup_summary(
         logger.exception("Ошибка формирования отчета о бэкапах: %s", e)
         return "❌ Ошибка формирования отчета о бэкапах\n"
 
+
+def get_stock_load_summary(period_hours=16) -> str:
+    """Возвращает сводку по загрузке остатков за период."""
+    try:
+        from config.db_settings import DATA_DIR
+
+        db_path = DATA_DIR / "backups.db"
+        if not db_path.exists():
+            logger.error("База данных бэкапов недоступна: %s", db_path)
+            return "❌ База данных бэкапов недоступна\n"
+
+        since_time = (datetime.now() - timedelta(hours=period_hours)).strftime("%Y-%m-%d %H:%M:%S")
+
+        conn = sqlite3.connect(str(db_path))
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                """
+                SELECT supplier_name, status, rows_count, error_sample, received_at
+                FROM stock_load_results
+                WHERE received_at >= ?
+                ORDER BY received_at DESC
+            """,
+                (since_time,),
+            )
+            rows = cursor.fetchall()
+        except Exception as exc:
+            if "no such table: stock_load_results" in str(exc):
+                return "❌ Таблица остатков ещё не создана.\n"
+            raise
+        finally:
+            conn.close()
+
+        if not rows:
+            return "❌ Нет свежих данных о загрузке остатков\n"
+
+        total = len(rows)
+        success_count = len([row for row in rows if row[1] == "success"])
+        warning_count = len([row for row in rows if row[1] == "warning"])
+        failed_count = len([row for row in rows if row[1] == "failed"])
+        unknown_count = total - success_count - warning_count - failed_count
+
+        summary = f"• Файлов: {total}, ✅ {success_count} успешно"
+        if warning_count:
+            summary += f", ⚠️ {warning_count} с ошибками"
+        if failed_count:
+            summary += f", ❌ {failed_count} неудачно"
+        if unknown_count:
+            summary += f", ❔ {unknown_count} без статуса"
+        summary += "\n"
+
+        problem_rows = [
+            row for row in rows if row[1] in ("warning", "failed")
+        ]
+        if problem_rows:
+            summary += "  Проблемы:\n"
+            seen = set()
+            for supplier_name, status, _, error_sample, _ in problem_rows:
+                if supplier_name in seen:
+                    continue
+                seen.add(supplier_name)
+                status_icon = "❌" if status == "failed" else "⚠️"
+                details = f" — {error_sample}" if error_sample else ""
+                summary += f"  {status_icon} {supplier_name}{details}\n"
+                if len(seen) >= 5:
+                    break
+
+        return summary
+
+    except Exception as exc:
+        logger.exception("Ошибка формирования сводки остатков: %s", exc)
+        return "❌ Ошибка формирования отчета о загрузке остатков\n"
+
+
 class BackupBase:
     """Базовый класс для работы с бэкапами"""
     
