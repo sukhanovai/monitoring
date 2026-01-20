@@ -98,10 +98,11 @@ class MorningReport:
             show_proxmox = extension_manager.is_extension_enabled('backup_monitor')
             show_databases = extension_manager.is_extension_enabled('database_backup_monitor')
             show_mail = extension_manager.is_extension_enabled('mail_backup_monitor')
-            if show_proxmox or show_databases or show_mail:
+            show_backups = show_proxmox or show_databases or show_mail
+            if show_backups:
                 backup_summary = self.get_backup_summary_for_report(
                     24 if is_manual else 16,
-                    include_proxmox=show_proxmox,
+                    include_proxmox=True,
                     include_databases=show_databases,
                     include_mail=show_mail,
                 )
