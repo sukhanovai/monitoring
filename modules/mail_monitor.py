@@ -970,6 +970,15 @@ class BackupProcessor:
 
         entries: list[dict] = []
         current: dict | None = None
+        fallback_entry = {
+            "supplier_name": "неизвестно",
+            "file_path": None,
+            "rows_count": None,
+            "errors": [],
+            "has_success": False,
+            "has_failure": False,
+            "log_timestamp": None,
+        }
 
         def finalize_current() -> None:
             nonlocal current
@@ -1043,6 +1052,61 @@ class BackupProcessor:
                 continue
 
             if not current:
+                ignored = False
+                for regex in ignore_regexes:
+                    if regex.search(line):
+                        ignored = True
+                        break
+                if ignored:
+                    continue
+
+                success_match = None
+                for regex in success_regexes:
+                    success_match = regex.search(line)
+                    if success_match:
+                        break
+
+                if success_match:
+                    fallback_entry["has_success"] = True
+                    if fallback_entry["log_timestamp"] is None:
+                        timestamp_match = re.match(
+                            r"^(\d{2}\.\d{2}\.\d{2}\s+\d{2}:\d{2}:\d{2})",
+                            line,
+                        )
+                        fallback_entry["log_timestamp"] = (
+                            timestamp_match.group(1) if timestamp_match else None
+                        )
+                    rows_value = None
+                    match_groups = success_match.groupdict()
+                    if match_groups:
+                        rows_value = match_groups.get("rows")
+                    if rows_value is None and success_match.lastindex:
+                        rows_value = success_match.group(1)
+                    try:
+                        fallback_entry["rows_count"] = (
+                            int(str(rows_value)) if rows_value else None
+                        )
+                    except ValueError:
+                        fallback_entry["rows_count"] = None
+                    continue
+
+                failure_match = None
+                for regex in failure_regexes:
+                    failure_match = regex.search(line)
+                    if failure_match:
+                        break
+
+                if failure_match:
+                    fallback_entry["has_failure"] = True
+                    if fallback_entry["log_timestamp"] is None:
+                        timestamp_match = re.match(
+                            r"^(\d{2}\.\d{2}\.\d{2}\s+\d{2}:\d{2}:\d{2})",
+                            line,
+                        )
+                        fallback_entry["log_timestamp"] = (
+                            timestamp_match.group(1) if timestamp_match else None
+                        )
+                    fallback_entry["errors"].append(line)
                 continue
 
             ignored = False
@@ -1085,6 +1149,28 @@ class BackupProcessor:
                 continue
 
         finalize_current()
+
+        if not entries and (fallback_entry["has_success"] or fallback_entry["has_failure"]):
+            has_success = fallback_entry.get("has_success", False)
+            has_failure = fallback_entry.get("has_failure", False)
+            if has_success and has_failure:
+                status = "warning"
+            elif has_success:
+                status = "success"
+            elif has_failure:
+                status = "failed"
+            else:
+                status = "unknown"
+
+            fallback_entry["status"] = status
+            fallback_entry["error_count"] = len(fallback_entry.get("errors", []))
+            if fallback_entry.get("errors"):
+                fallback_entry["error_sample"] = fallback_entry["errors"][0][:500]
+            else:
+                fallback_entry["error_sample"] = None
+
+            entries.append(fallback_entry)
+
         return entries
 
     def save_stock_load_entries(
