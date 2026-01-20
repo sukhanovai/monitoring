@@ -476,22 +476,6 @@ def get_stock_load_summary(period_hours=16) -> str:
             summary += f", ❔ {unknown_count} без статуса"
         summary += "\n"
 
-        problem_rows = [
-            row for row in rows if row[1] in ("warning", "failed")
-        ]
-        if problem_rows:
-            summary += "  Проблемы:\n"
-            seen = set()
-            for supplier_name, status, _, error_sample, _ in problem_rows:
-                if supplier_name in seen:
-                    continue
-                seen.add(supplier_name)
-                status_icon = "❌" if status == "failed" else "⚠️"
-                details = f" — {error_sample}" if error_sample else ""
-                summary += f"  {status_icon} {supplier_name}{details}\n"
-                if len(seen) >= 5:
-                    break
-
         return summary
 
     except Exception as exc:
