@@ -760,6 +760,9 @@ class BackupProcessor:
             )
 
             for entry in entries:
+                supplier_name = entry.get("supplier_name")
+                if not supplier_name or supplier_name == "неизвестно":
+                    supplier_name = source_name or "неизвестно"
                 cursor.execute(
                     """
                     INSERT OR IGNORE INTO zfs_pool_status
@@ -1196,6 +1199,9 @@ class BackupProcessor:
             )
 
             for entry in entries:
+                supplier_name = entry.get("supplier_name")
+                if not supplier_name or supplier_name == "неизвестно":
+                    supplier_name = source_name or "неизвестно"
                 cursor.execute(
                     """
                     INSERT OR IGNORE INTO stock_load_results
@@ -1204,7 +1210,7 @@ class BackupProcessor:
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                     (
-                        entry.get("supplier_name", "неизвестно"),
+                        supplier_name,
                         source_name,
                         entry.get("file_path"),
                         entry.get("status", "unknown"),
