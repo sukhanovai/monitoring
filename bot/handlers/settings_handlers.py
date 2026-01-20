@@ -4534,6 +4534,7 @@ def show_stock_pattern_type_menu(update, context):
 
     keyboard = [
         [InlineKeyboardButton("🧾 Тема письма", callback_data='stock_pattern_select_subject')],
+        [InlineKeyboardButton("🗂️ Источник отчета", callback_data='stock_pattern_select_source')],
         [InlineKeyboardButton("📎 Имя вложения", callback_data='stock_pattern_select_attachment')],
         [InlineKeyboardButton("📄 Строка файла", callback_data='stock_pattern_select_file_entry')],
         [InlineKeyboardButton("✅ Успешная загрузка", callback_data='stock_pattern_select_success')],
@@ -4556,10 +4557,16 @@ def stock_pattern_select_handler(update, context, pattern_type: str):
 
     context.user_data['adding_backup_pattern'] = True
     context.user_data['backup_pattern_stage'] = 'stock_input'
-    context.user_data['backup_pattern_mode'] = 'stock_subject_wizard' if pattern_type == 'subject' else 'stock_log_wizard'
+    if pattern_type == 'subject':
+        context.user_data['backup_pattern_mode'] = 'stock_subject_wizard'
+    elif pattern_type == 'source':
+        context.user_data['backup_pattern_mode'] = 'stock_source_wizard'
+    else:
+        context.user_data['backup_pattern_mode'] = 'stock_log_wizard'
     context.user_data['backup_pattern_stock_type'] = pattern_type
     context.user_data.pop('backup_pattern_generated', None)
     context.user_data.pop('backup_pattern_source', None)
+    context.user_data.pop('backup_pattern_stock_label', None)
 
     if pattern_type == 'subject':
         prompt = (
@@ -4568,6 +4575,14 @@ def stock_pattern_select_handler(update, context, pattern_type: str):
             "Фрагменты учитываются в указанном порядке.\n\n"
             "Пример:\n"
             "`Логи загрузки файлов в рабочую базу 07:38:14`"
+        )
+    elif pattern_type == 'source':
+        prompt = (
+            "🧙 *Мастер добавления источника отчета*\n\n"
+            "Введите название источника и тему письма через `|`.\n"
+            "В теме можно использовать фрагменты через `;`/`,`.\n\n"
+            "Пример:\n"
+            "`Филиал Москва | Логи загрузки файлов в рабочую базу 07:38:14`"
         )
     elif pattern_type == 'attachment':
         prompt = (
@@ -4632,6 +4647,7 @@ def stock_pattern_confirm_handler(update, context):
     pattern = context.user_data.get('backup_pattern_generated')
     pattern_type = context.user_data.get('backup_pattern_stock_type')
     back_callback = context.user_data.get('patterns_back', 'settings_backup')
+    label = context.user_data.get('backup_pattern_stock_label')
 
     if not pattern or not pattern_type:
         query.edit_message_text(
@@ -4656,10 +4672,12 @@ def stock_pattern_confirm_handler(update, context):
         conn.commit()
 
         source_label = context.user_data.get('backup_pattern_source', 'мастер')
+        label_text = f"Метка: *{label}*\n" if label else ""
         query.edit_message_text(
             "✅ *Паттерн добавлен!*\n\n"
             "Категория: *stock_load*\n"
             f"Тип: *{pattern_type}*\n"
+            f"{label_text}"
             f"Источник: *{source_label}*\n"
             f"Паттерн: `{pattern}`",
             parse_mode='Markdown',
@@ -4681,6 +4699,7 @@ def stock_pattern_confirm_handler(update, context):
         context.user_data.pop('backup_pattern_generated', None)
         context.user_data.pop('backup_pattern_source', None)
         context.user_data.pop('backup_pattern_stock_type', None)
+        context.user_data.pop('backup_pattern_stock_label', None)
 
 def edit_mail_default_pattern_handler(update, context):
     """Изменить дефолтный паттерн для бэкапов почты"""
@@ -5268,6 +5287,17 @@ def view_patterns_handler(update, context):
                 display_category = "proxmox"
                 display_type = normalized or "subject"
             display_rows.append((pattern_id, display_type, pattern, display_category))
+    if filter_mode == 'stock_load':
+        display_rows = []
+        for pattern_id, pattern_type, pattern, category in rows:
+            display_category = category
+            display_type = pattern_type
+            if isinstance(pattern_type, str) and pattern_type.startswith("source:"):
+                label = pattern_type.split("source:", 1)[1].strip()
+                display_type = "source"
+                if label:
+                    display_type = f"source ({label})"
+            display_rows.append((pattern_id, display_type, pattern, display_category))
 
     fallback_patterns = []
     fallback_db_patterns = {}
@@ -5693,6 +5723,64 @@ def handle_backup_pattern_input(update, context):
         update.message.reply_text(
             "✅ *Черновик паттерна готов!*\n\n"
             f"Источник: *{source_label}*\n"
+            f"Паттерн: `{pattern}`\n\n"
+            "Сохранить?",
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("✅ Сохранить", callback_data='stock_pattern_confirm')],
+                [InlineKeyboardButton("✏️ Ввести заново", callback_data='stock_pattern_retry')],
+                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ])
+        )
+        return
+
+    if mode == 'stock_source_wizard':
+        if stage != 'stock_input':
+            update.message.reply_text("❌ Неверный шаг мастера. Попробуйте снова.")
+            return
+
+        if not user_input:
+            update.message.reply_text("❌ Ввод не может быть пустым. Попробуйте снова:")
+            return
+
+        if "|" not in user_input:
+            update.message.reply_text(
+                "❌ Нужен формат `Название | Тема письма`. Попробуйте снова:"
+            )
+            return
+
+        label_raw, subject_raw = [part.strip() for part in user_input.split("|", 1)]
+        if not label_raw or not subject_raw:
+            update.message.reply_text(
+                "❌ Название и тема не могут быть пустыми. Попробуйте снова:"
+            )
+            return
+
+        fragments = [chunk.strip() for chunk in re.split(r"[;,\n]+", subject_raw)]
+        fragments = [fragment for fragment in fragments if fragment]
+        if len(fragments) > 1:
+            pattern = _build_stock_pattern_from_fragments(fragments)
+            source_label = "фрагменты"
+        else:
+            pattern = _build_stock_subject_pattern(subject_raw)
+            source_label = "тема письма"
+
+        if not pattern:
+            update.message.reply_text("❌ Не удалось собрать паттерн. Попробуйте снова:")
+            return
+
+        context.user_data['backup_pattern_generated'] = pattern
+        context.user_data['backup_pattern_source'] = source_label
+        context.user_data['backup_pattern_stage'] = 'stock_confirm'
+        context.user_data['backup_pattern_stock_type'] = f"source:{label_raw}"
+        context.user_data['backup_pattern_stock_label'] = label_raw
+
+        back_callback = context.user_data.get('patterns_back', 'settings_backup')
+        update.message.reply_text(
+            "✅ *Черновик паттерна готов!*\n\n"
+            f"Источник: *{source_label}*\n"
+            f"Метка: *{label_raw}*\n"
             f"Паттерн: `{pattern}`\n\n"
             "Сохранить?",
             parse_mode='Markdown',

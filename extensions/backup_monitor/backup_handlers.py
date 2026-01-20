@@ -699,14 +699,25 @@ def show_stock_loads(query, backup_bot, hours=24):
             )
             return
 
+        grouped = {}
+        for source_name, supplier, status, rows_count, error_sample, received_at in results:
+            grouped.setdefault(source_name or "Основное предприятие", []).append(
+                (supplier, status, rows_count, error_sample, received_at)
+            )
+
+        total_suppliers = sum(len(items) for items in grouped.values())
         message = f"📦 *Загрузка остатков 1С (за {hours}ч)*\n"
-        message += f"Всего поставщиков: {len(results)}\n\n"
-        for supplier, status, rows_count, error_sample, received_at in results:
-            status_icon = "✅" if status == "success" else "⚠️" if status == "warning" else "❌"
-            time_ago = backup_bot.format_time_ago(received_at)
-            rows_text = f"{rows_count} строк" if rows_count else "строки: —"
-            error_text = f" — {error_sample}" if error_sample else ""
-            message += f"{status_icon} {_md(supplier)} ({rows_text}){error_text} ({_md(time_ago)})\n"
+        message += f"Всего поставщиков: {total_suppliers}\n\n"
+
+        for source_name, items in grouped.items():
+            message += f"*{_md(source_name)}* ({len(items)})\n"
+            for supplier, status, rows_count, error_sample, received_at in items:
+                status_icon = "✅" if status == "success" else "⚠️" if status == "warning" else "❌"
+                time_ago = backup_bot.format_time_ago(received_at)
+                rows_text = f"{rows_count} строк" if rows_count else "строки: —"
+                error_text = f" — {error_sample}" if error_sample else ""
+                message += f"{status_icon} {_md(supplier)} ({rows_text}){error_text} ({_md(time_ago)})\n"
+            message += "\n"
 
         query.edit_message_text(
             message,

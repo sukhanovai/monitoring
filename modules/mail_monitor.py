@@ -209,12 +209,33 @@ def get_stock_load_patterns_from_config() -> dict[str, list[str]]:
             "ignore": [],
             "failure": [],
         }
+        sources: list[dict] = []
 
         if isinstance(stock_patterns, dict):
             for key in normalized:
                 normalized[key] = _normalize_list(stock_patterns.get(key))
+            raw_sources = stock_patterns.get("sources", [])
+            if isinstance(raw_sources, list):
+                sources = [item for item in raw_sources if isinstance(item, dict)]
         elif isinstance(stock_patterns, list):
             normalized["subject"] = _normalize_list(stock_patterns)
+
+        source_from_db = []
+        if isinstance(stock_patterns, dict):
+            for key, patterns_list in stock_patterns.items():
+                if not isinstance(key, str) or not key.startswith("source:"):
+                    continue
+                name = key.split("source:", 1)[1].strip()
+                if not name:
+                    continue
+                source_from_db.append(
+                    {
+                        "name": name,
+                        "subject": _normalize_list(patterns_list),
+                    }
+                )
+        if source_from_db:
+            sources = source_from_db
 
         if normalized["subject"]:
             normalized["subject"] = _strip_named_groups(normalized["subject"])
@@ -224,8 +245,26 @@ def get_stock_load_patterns_from_config() -> dict[str, list[str]]:
             if isinstance(fallback, dict):
                 for key in normalized:
                     normalized[key] = _normalize_list(fallback.get(key))
+                fallback_sources = fallback.get("sources", [])
+                if isinstance(fallback_sources, list):
+                    sources = [item for item in fallback_sources if isinstance(item, dict)]
         if normalized["subject"]:
             normalized["subject"] = _strip_named_groups(normalized["subject"])
+
+        if sources:
+            for source in sources:
+                if not isinstance(source, dict):
+                    continue
+                subject_patterns = _normalize_list(source.get("subject"))
+                source["subject"] = _strip_named_groups(subject_patterns)
+        if not sources:
+            sources = [
+                {
+                    "name": "Основное предприятие",
+                    "subject": normalized.get("subject", []),
+                }
+            ]
+        normalized["sources"] = sources
 
         return normalized
     except Exception as exc:
@@ -235,7 +274,9 @@ def get_stock_load_patterns_from_config() -> dict[str, list[str]]:
             "attachment": [],
             "file_entry": [],
             "success": [],
+            "ignore": [],
             "failure": [],
+            "sources": [],
         }
 
 
@@ -325,6 +366,7 @@ class BackupProcessor:
                 CREATE TABLE IF NOT EXISTS stock_load_results (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     supplier_name TEXT NOT NULL,
+                    source_name TEXT,
                     file_path TEXT,
                     status TEXT NOT NULL,
                     rows_count INTEGER,
@@ -338,6 +380,11 @@ class BackupProcessor:
                 )
             """
             )
+
+            cursor.execute("PRAGMA table_info(stock_load_results)")
+            existing_columns = {row[1] for row in cursor.fetchall()}
+            if "source_name" not in existing_columns:
+                cursor.execute("ALTER TABLE stock_load_results ADD COLUMN source_name TEXT")
 
             cursor.execute(
                 """
@@ -850,6 +897,23 @@ class BackupProcessor:
 
         return matched
 
+    def _match_stock_load_source(self, subject: str, patterns: dict[str, list[str]]) -> str:
+        """Определяет источник отчёта по теме письма."""
+        sources = patterns.get("sources", [])
+        if isinstance(sources, list):
+            for source in sources:
+                if not isinstance(source, dict):
+                    continue
+                name = str(source.get("name") or "").strip()
+                if not name:
+                    continue
+                subject_patterns = source.get("subject", [])
+                if not isinstance(subject_patterns, list):
+                    continue
+                if self._match_subject_patterns(subject, subject_patterns):
+                    return name
+        return "Основное предприятие"
+
     def parse_stock_load_log(
         self,
         content: str,
@@ -990,6 +1054,7 @@ class BackupProcessor:
         entries: list[dict],
         subject: str,
         attachment_name: str | None,
+        source_name: str | None,
         email_date: datetime | None = None,
     ) -> None:
         """Сохраняет результаты загрузки остатков в БД."""
@@ -1010,12 +1075,13 @@ class BackupProcessor:
                 cursor.execute(
                     """
                     INSERT OR IGNORE INTO stock_load_results
-                    (supplier_name, file_path, status, rows_count, error_count, error_sample,
+                    (supplier_name, source_name, file_path, status, rows_count, error_count, error_sample,
                     attachment_name, log_timestamp, email_subject, received_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                     (
                         entry.get("supplier_name", "неизвестно"),
+                        source_name,
                         entry.get("file_path"),
                         entry.get("status", "unknown"),
                         entry.get("rows_count"),
@@ -1052,6 +1118,8 @@ class BackupProcessor:
         if subject_patterns and not self._match_subject_patterns(subject, subject_patterns):
             return None
 
+        source_name = self._match_stock_load_source(subject, patterns)
+
         attachment_patterns = patterns.get("attachment", [])
         attachments = self._extract_matching_attachments(msg, attachment_patterns)
         if not attachments:
@@ -1066,6 +1134,7 @@ class BackupProcessor:
                 entries,
                 subject,
                 attachment.get("filename"),
+                source_name,
                 email_date,
             )
             all_entries.extend(entries)
