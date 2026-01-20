@@ -880,9 +880,12 @@ class BackupProcessor:
 
     def _match_subject_patterns(self, subject: str, patterns: list[str]) -> bool:
         """Проверяет тему письма по списку паттернов."""
+        normalized_subject = re.sub(r"\s+", " ", subject).strip()
         for pattern in patterns:
             try:
                 if re.search(pattern, subject, re.IGNORECASE):
+                    return True
+                if normalized_subject != subject and re.search(pattern, normalized_subject, re.IGNORECASE):
                     return True
             except re.error as exc:
                 logger.warning("⚠️ Некорректный паттерн '%s': %s", pattern, exc)
