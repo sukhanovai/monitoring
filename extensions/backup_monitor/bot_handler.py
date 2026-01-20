@@ -34,6 +34,7 @@ from extensions.backup_monitor.backup_handlers import (
     show_database_details,
     show_stale_databases,
     show_mail_backups,
+    show_stock_loads,
 )
 from extensions.extension_manager import extension_manager
 
@@ -67,6 +68,7 @@ try:
         show_hosts_menu, show_stale_hosts, show_host_status,
         show_database_backups_menu, show_stale_databases,
         show_database_backups_summary, show_database_details,
+        show_stock_loads,
         format_database_details
     )
     logger.info("✅ Модули backup_utils и backup_handlers успешно импортированы")
@@ -83,6 +85,7 @@ except ImportError as e:
             show_hosts_menu, show_stale_hosts, show_host_status,
             show_database_backups_menu, show_stale_databases,
             show_database_backups_summary, show_database_details,
+            show_stock_loads,
             format_database_details
         )
         logger.info("✅ Модули импортированы через абсолютный путь")
@@ -293,6 +296,33 @@ class BackupMonitorBot(BackupBase):
             logger.error(f"Ошибка получения почтовых бэкапов: {exc}")
             return []
 
+    # === МЕТОДЫ ДЛЯ ЗАГРУЗКИ ОСТАТКОВ ===
+
+    def get_stock_loads(self, hours=24):
+        """Получает последние результаты загрузки остатков товаров по каждому поставщику."""
+        since_time = (datetime.now() - timedelta(hours=hours)).strftime('%Y-%m-%d %H:%M:%S')
+        query = '''
+            SELECT COALESCE(s.source_name, 'Основное предприятие') AS source_name,
+                   s.supplier_name, s.status, s.rows_count, s.error_sample, s.received_at
+            FROM stock_load_results s
+            JOIN (
+                SELECT COALESCE(source_name, 'Основное предприятие') AS source_name,
+                       supplier_name, MAX(received_at) AS last_seen
+                FROM stock_load_results
+                WHERE received_at >= ?
+                GROUP BY COALESCE(source_name, 'Основное предприятие'), supplier_name
+            ) latest
+            ON s.supplier_name = latest.supplier_name
+            AND COALESCE(s.source_name, 'Основное предприятие') = latest.source_name
+            AND s.received_at = latest.last_seen
+            ORDER BY source_name, s.supplier_name
+        '''
+        try:
+            return self.execute_query(query, (since_time,))
+        except Exception as exc:
+            logger.error(f"Ошибка получения остатков: {exc}")
+            return []
+
     # === МЕТОДЫ ДЛЯ ОТЧЕТОВ ===
     
     def get_stale_proxmox_backups(self, hours_threshold=24):
@@ -411,6 +441,7 @@ def backup_help_command(update, context):
             "• 🖥️ По хостам - Статус по серверам\n"
             "• 🗃️ Бэкапы БД - Бэкапы баз данных\n"
             "• 📬 Бэкапы почты - Бэкапы почтового сервера\n"
+            "• 📦 Остатки 1С - Результаты загрузки остатков\n"
             "• 🔄 Обновить - Обновить данные\n\n"
             "*Данные обновляются автоматически при получении писем от Proxmox/почтового сервера*"
         )
@@ -477,6 +508,12 @@ def backup_callback(update, context):
                 query.edit_message_text("📬 Мониторинг бэкапов почты отключён")
                 return
             show_mail_backups(query, backup_bot)
+
+        elif data == 'backup_stock_loads':
+            if not extension_manager.is_extension_enabled('stock_load_monitor'):
+                query.edit_message_text("📦 Мониторинг остатков 1С отключён")
+                return
+            show_stock_loads(query, backup_bot)
 
         elif data == 'backup_proxmox':
             show_proxmox_menu(query, backup_bot)
