@@ -1,11 +1,11 @@
 """
 /config/db_settings.py
-Server Monitoring System v7.3.14
+Server Monitoring System v7.3.15
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Database-backed settings loader
 Система мониторинга серверов
-Версия: 7.3.14
+Версия: 7.3.15
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Загрузчик настроек из базы данных
