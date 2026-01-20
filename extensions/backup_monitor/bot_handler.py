@@ -303,19 +303,40 @@ class BackupMonitorBot(BackupBase):
         since_time = (datetime.now() - timedelta(hours=hours)).strftime('%Y-%m-%d %H:%M:%S')
         query = '''
             SELECT COALESCE(s.source_name, 'Основное предприятие') AS source_name,
-                   s.supplier_name, s.status, s.rows_count, s.error_sample, s.received_at
+                   CASE
+                       WHEN s.supplier_name IS NULL OR s.supplier_name = 'неизвестно'
+                           THEN COALESCE(s.source_name, 'Основное предприятие')
+                       ELSE s.supplier_name
+                   END AS supplier_name,
+                   s.status, s.rows_count, s.error_sample, s.received_at
             FROM stock_load_results s
             JOIN (
                 SELECT COALESCE(source_name, 'Основное предприятие') AS source_name,
-                       supplier_name, MAX(received_at) AS last_seen
+                       CASE
+                           WHEN supplier_name IS NULL OR supplier_name = 'неизвестно'
+                               THEN COALESCE(source_name, 'Основное предприятие')
+                           ELSE supplier_name
+                       END AS supplier_name,
+                       MAX(received_at) AS last_seen
                 FROM stock_load_results
                 WHERE received_at >= ?
-                GROUP BY COALESCE(source_name, 'Основное предприятие'), supplier_name
+                GROUP BY COALESCE(source_name, 'Основное предприятие'),
+                         CASE
+                             WHEN supplier_name IS NULL OR supplier_name = 'неизвестно'
+                                 THEN COALESCE(source_name, 'Основное предприятие')
+                             ELSE supplier_name
+                         END
             ) latest
-            ON s.supplier_name = latest.supplier_name
+            ON s.received_at = latest.last_seen
             AND COALESCE(s.source_name, 'Основное предприятие') = latest.source_name
-            AND s.received_at = latest.last_seen
-            ORDER BY source_name, s.supplier_name
+            AND (
+                CASE
+                    WHEN s.supplier_name IS NULL OR s.supplier_name = 'неизвестно'
+                        THEN COALESCE(s.source_name, 'Основное предприятие')
+                    ELSE s.supplier_name
+                END
+            ) = latest.supplier_name
+            ORDER BY source_name, supplier_name
         '''
         try:
             return self.execute_query(query, (since_time,))
