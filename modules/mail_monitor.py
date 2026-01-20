@@ -258,12 +258,19 @@ def get_stock_load_patterns_from_config() -> dict[str, list[str]]:
                 subject_patterns = _normalize_list(source.get("subject"))
                 source["subject"] = _strip_named_groups(subject_patterns)
         if not sources:
-            sources = [
-                {
-                    "name": "Основное предприятие",
-                    "subject": normalized.get("subject", []),
-                }
-            ]
+            fallback_sources = BACKUP_PATTERNS.get("stock_load", {}).get("sources", [])
+            if isinstance(fallback_sources, list) and fallback_sources:
+                sources = [item for item in fallback_sources if isinstance(item, dict)]
+                for source in sources:
+                    subject_patterns = _normalize_list(source.get("subject"))
+                    source["subject"] = _strip_named_groups(subject_patterns)
+            else:
+                sources = [
+                    {
+                        "name": "Основное предприятие",
+                        "subject": normalized.get("subject", []),
+                    }
+                ]
         normalized["sources"] = sources
 
         return normalized
