@@ -59,8 +59,14 @@ class MorningReport:
         
         # Определяем тип отчета
         report_type = "Ручной отчёт мониторинга" if is_manual else "Утренний отчёт мониторинга"
+        try:
+            from config.settings import APP_VERSION
+        except Exception:
+            APP_VERSION = None
 
         message = f"📊 *{report_type}*\n\n"
+        if APP_VERSION:
+            message += f"🔖 *Версия:* {APP_VERSION}\n"
         message += "🖥 *Доступность серверов*\n"
         message += (
             f"• Всего: {total_servers} "
@@ -217,13 +223,35 @@ class MorningReport:
             if not expected_servers:
                 expected_servers = {row[0] for row in rows}
 
+            def parse_received_at(value):
+                if isinstance(value, bytes):
+                    try:
+                        value = value.decode("utf-8")
+                    except Exception:
+                        return None
+                if isinstance(value, datetime):
+                    return value
+                if isinstance(value, str):
+                    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S.%f"):
+                        try:
+                            return datetime.strptime(value, fmt)
+                        except ValueError:
+                            continue
+                    try:
+                        return datetime.fromisoformat(value)
+                    except ValueError:
+                        return None
+                return None
+
             latest_by_server = {}
             for server_name, _, _, received_at in rows:
+                parsed_time = parse_received_at(received_at)
                 if server_name not in latest_by_server:
-                    latest_by_server[server_name] = received_at
-                else:
-                    if received_at > latest_by_server[server_name]:
-                        latest_by_server[server_name] = received_at
+                    latest_by_server[server_name] = parsed_time
+                    continue
+                current_latest = latest_by_server.get(server_name)
+                if not current_latest or (parsed_time and parsed_time > current_latest):
+                    latest_by_server[server_name] = parsed_time
 
             stale_servers = set()
             stale_threshold = datetime.now() - timedelta(hours=24)
@@ -247,11 +275,7 @@ class MorningReport:
                 if not received_at:
                     stale_servers.add(server)
                     continue
-                last_seen = parse_received_at(received_at)
-                if not last_seen:
-                    stale_servers.add(server)
-                    continue
-                if last_seen < stale_threshold:
+                if received_at < stale_threshold:
                     stale_servers.add(server)
 
             if not rows and expected_servers:
