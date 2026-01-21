@@ -154,7 +154,10 @@ def _download_http(
 
     request = Request(url, headers=headers)
     opener = build_opener(*handlers)
-    response = opener.open(request, timeout=timeout)
+    try:
+        response = opener.open(request, timeout=timeout)
+    except Exception as exc:
+        return {"success": False, "error": str(exc)}
 
     try:
         _ensure_parent(output_path)
@@ -246,6 +249,7 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
         name = source.get("name") or source_id
         method = source.get("method", "http")
         output_name = source.get("output_name")
+        rendered_url = _render_template(str(source.get("url", "")), now, render_context)
         if output_name:
             output_name = _render_template(str(output_name), now, render_context)
             output_path = temp_dir / output_name
@@ -257,6 +261,8 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
             "source_id": source_id,
             "source_name": name,
             "method": method,
+            "url": rendered_url,
+            "output_name": output_name,
         }
 
         try:
@@ -277,7 +283,14 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
 
         append_supplier_stock_report(entry)
         results.append(entry)
-        debug_log(f"📦 Остатки поставщиков: {entry['source_id']} -> {entry['status']}")
+        if entry.get("status") == "error" and entry.get("error"):
+            debug_log(
+                "📦 Остатки поставщиков: %s -> error (%s)",
+                entry["source_id"],
+                entry["error"],
+            )
+        else:
+            debug_log(f"📦 Остатки поставщиков: {entry['source_id']} -> {entry['status']}")
 
     success_count = sum(1 for item in results if item.get("status") == "success")
     return {
