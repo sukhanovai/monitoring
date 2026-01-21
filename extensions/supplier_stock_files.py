@@ -87,13 +87,15 @@ def _ensure_parent(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
 
 
-def _render_template(value: str, now: datetime) -> str:
+def _render_template(value: str, now: datetime, extra_context: Dict[str, Any] | None = None) -> str:
     context = {
         "date": now.strftime("%d.%m.%Y"),
         "date_iso": now.strftime("%Y-%m-%d"),
         "datetime": now.strftime("%Y-%m-%d_%H-%M-%S"),
         "time": now.strftime("%H-%M-%S"),
     }
+    if extra_context:
+        context.update(extra_context)
     def _replace_date(match: re.Match[str]) -> str:
         fmt = match.group("format") or ""
         fmt = fmt.replace("\\'", "'")
@@ -104,13 +106,28 @@ def _render_template(value: str, now: datetime) -> str:
 
     rendered = re.sub(r"\$\(\s*date\s+'(?P<format>[^']+)'\s*\)", _replace_date, value)
     try:
-        return rendered.format_map(context)
+        rendered = rendered.format_map(context)
     except Exception:
-        return rendered
+        pass
+    return re.sub(r"\$\{(?P<key>[A-Za-z_][A-Za-z0-9_]*)\}", lambda m: str(context.get(m.group("key"), m.group(0))), rendered)
 
 
-def _download_http(source: Dict[str, Any], output_path: Path, now: datetime) -> Dict[str, Any]:
-    url = _render_template(str(source.get("url", "")), now)
+def _build_render_context(source: Dict[str, Any], now: datetime) -> Dict[str, Any]:
+    context: Dict[str, Any] = {}
+    vars_map = source.get("vars", {})
+    if isinstance(vars_map, dict):
+        for key, value in vars_map.items():
+            context[key] = _render_template(str(value), now, context)
+    return context
+
+
+def _download_http(
+    source: Dict[str, Any],
+    output_path: Path,
+    now: datetime,
+    render_context: Dict[str, Any],
+) -> Dict[str, Any]:
+    url = _render_template(str(source.get("url", "")), now, render_context)
     timeout = int(source.get("timeout", 300))
     headers = dict(source.get("headers") or {})
     verify_ssl = bool(source.get("verify_ssl", True))
@@ -147,10 +164,15 @@ def _download_http(source: Dict[str, Any], output_path: Path, now: datetime) -> 
             pass
 
 
-def _run_shell_command(source: Dict[str, Any], now: datetime, temp_dir: Path) -> Dict[str, Any]:
+def _run_shell_command(
+    source: Dict[str, Any],
+    now: datetime,
+    temp_dir: Path,
+    render_context: Dict[str, Any],
+) -> Dict[str, Any]:
     import subprocess
 
-    command = _render_template(str(source.get("command", "")), now)
+    command = _render_template(str(source.get("command", "")), now, render_context)
     if not command:
         return {"success": False, "error": "Команда не задана"}
 
@@ -210,12 +232,13 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
     for source in sources:
         if not source.get("enabled", True):
             continue
+        render_context = _build_render_context(source, now)
         source_id = source.get("id") or source.get("name") or "unknown"
         name = source.get("name") or source_id
         method = source.get("method", "http")
         output_name = source.get("output_name")
         if output_name:
-            output_name = _render_template(str(output_name), now)
+            output_name = _render_template(str(output_name), now, render_context)
             output_path = temp_dir / output_name
         else:
             output_path = temp_dir / f"{source_id}_orig"
@@ -229,9 +252,9 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
 
         try:
             if method == "shell":
-                result = _run_shell_command(source, now, temp_dir)
+                result = _run_shell_command(source, now, temp_dir, render_context)
             else:
-                result = _download_http(source, output_path, now)
+                result = _download_http(source, output_path, now, render_context)
 
             entry.update(result)
             entry["status"] = "success" if result.get("success") else "error"

@@ -1239,7 +1239,11 @@ def handle_setting_value(update, context):
     if context.user_data.get('adding_windows_cred'):
         return handle_windows_credential_input(update, context)
 
-    if context.user_data.get('supplier_stock_edit') or context.user_data.get('supplier_stock_add_source'):
+    if (
+        context.user_data.get('supplier_stock_edit')
+        or context.user_data.get('supplier_stock_add_source')
+        or context.user_data.get('supplier_stock_edit_source')
+    ):
         return supplier_stock_handle_input(update, context)
     
     # Проверяем, не создается ли тип серверов
