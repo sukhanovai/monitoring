@@ -109,7 +109,16 @@ def _render_template(value: str, now: datetime, extra_context: Dict[str, Any] | 
         rendered = rendered.format_map(context)
     except Exception:
         pass
-    return re.sub(r"\$\{(?P<key>[A-Za-z_][A-Za-z0-9_]*)\}", lambda m: str(context.get(m.group("key"), m.group(0))), rendered)
+    rendered = re.sub(
+        r"\$\{(?P<key>[A-Za-z_][A-Za-z0-9_]*)\}",
+        lambda m: str(context.get(m.group("key"), m.group(0))),
+        rendered,
+    )
+    return re.sub(
+        r"\$(?P<key>[A-Za-z_][A-Za-z0-9_]*)",
+        lambda m: str(context.get(m.group("key"), m.group(0))),
+        rendered,
+    )
 
 
 def _build_render_context(source: Dict[str, Any], now: datetime) -> Dict[str, Any]:

@@ -2507,22 +2507,13 @@ def supplier_stock_handle_source_input(update, context):
             update.message.reply_text("❌ URL не может быть пустым. Попробуйте снова:")
             return None
         source_data['url'] = user_input
-        context.user_data['supplier_stock_source_stage'] = 'output_name'
-        context.user_data['supplier_stock_source_data'] = source_data
-        update.message.reply_text("Введите имя выходного файла (например: supplier_orig.xls):")
-        return None
-
-    if stage == 'output_name':
-        if not user_input:
-            update.message.reply_text("❌ Имя файла не может быть пустым. Попробуйте снова:")
-            return None
-        source_data['output_name'] = user_input
         context.user_data['supplier_stock_source_stage'] = 'vars'
         context.user_data['supplier_stock_source_data'] = source_data
         update.message.reply_text(
             "Введите переменные в формате key=value через запятую "
-            "(пример: zipfile=DKC_Maga_Del_1200_$(date '+%d.%m.%Y').zip) "
-            "или '-' если не нужно:"
+            "(пример: zipfile=DKC_Maga_Del_1200_$(date '+%d.%m.%Y').zip). "
+            "В URL можно использовать $zipfile или ${zipfile}. "
+            "Введите '-' если не нужно:"
         )
         return None
 
@@ -2534,6 +2525,18 @@ def supplier_stock_handle_source_input(update, context):
                 return None
             source_data['vars'] = vars_map
 
+        context.user_data['supplier_stock_source_stage'] = 'output_name'
+        context.user_data['supplier_stock_source_data'] = source_data
+        update.message.reply_text(
+            "Введите имя файла назначения (например: dkc_orig.zip):"
+        )
+        return None
+
+    if stage == 'output_name':
+        if not user_input:
+            update.message.reply_text("❌ Имя файла не может быть пустым. Попробуйте снова:")
+            return None
+        source_data['output_name'] = user_input
         context.user_data['supplier_stock_source_stage'] = 'auth'
         context.user_data['supplier_stock_source_data'] = source_data
         update.message.reply_text(
@@ -2595,26 +2598,20 @@ def supplier_stock_handle_source_edit_input(update, context):
             source['name'] = user_input
         context.user_data['supplier_stock_edit_source_stage'] = 'url'
         update.message.reply_text(
-            f"Текущий URL: {source.get('url')}\nВведите новый URL (или '-' чтобы оставить текущее):"
+            "Введите новый URL (или '-' чтобы оставить текущее). "
+            "Можно использовать $zipfile или ${zipfile}:\n"
+            f"{source.get('url')}"
         )
         return None
 
     if stage == 'url':
         if user_input and user_input not in ('-',):
             source['url'] = user_input
-        context.user_data['supplier_stock_edit_source_stage'] = 'output_name'
-        update.message.reply_text(
-            f"Текущий файл: {source.get('output_name')}\nВведите новое имя файла (или '-' чтобы оставить текущее):"
-        )
-        return None
-
-    if stage == 'output_name':
-        if user_input and user_input not in ('-',):
-            source['output_name'] = user_input
         context.user_data['supplier_stock_edit_source_stage'] = 'vars'
         update.message.reply_text(
             "Введите переменные в формате key=value через запятую "
-            "(пример: zipfile=DKC_Maga_Del_1200_$(date '+%d.%m.%Y').zip), "
+            "(пример: zipfile=DKC_Maga_Del_1200_$(date '+%d.%m.%Y').zip). "
+            "В URL можно использовать $zipfile или ${zipfile}. "
             "'-' чтобы оставить текущее или 'none' чтобы очистить:"
         )
         return None
@@ -2629,6 +2626,16 @@ def supplier_stock_handle_source_edit_input(update, context):
                 return None
             source['vars'] = vars_map
 
+        context.user_data['supplier_stock_edit_source_stage'] = 'output_name'
+        update.message.reply_text(
+            f"Текущий файл назначения: {source.get('output_name')}\n"
+            "Введите новое имя файла назначения (или '-' чтобы оставить текущее):"
+        )
+        return None
+
+    if stage == 'output_name':
+        if user_input and user_input not in ('-',):
+            source['output_name'] = user_input
         context.user_data['supplier_stock_edit_source_stage'] = 'auth'
         update.message.reply_text(
             "Введите логин и пароль через двоеточие (login:password), '-' чтобы оставить текущее или 'none' чтобы очистить:"
