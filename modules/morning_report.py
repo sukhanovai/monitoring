@@ -1,20 +1,19 @@
 """
 /app/modules/morning_report.py
-Server Monitoring System v7.0.00
+Server Monitoring System v8.0.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Morning Report Module
 Система мониторинга серверов
-Версия: 7.0.00
+Версия: 8.0.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль утреннего отчета
 """
 
-import re
 import threading
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import sqlite3
 from config.db_settings import DATA_COLLECTION_TIME
 from lib.logging import debug_log
@@ -51,6 +50,7 @@ class MorningReport:
             return "❌ Нет данных для отчета"
             
         status = self.morning_data["status"]
+        collection_time = self.morning_data.get("collection_time", datetime.now())
         is_manual = self.morning_data.get("manual_call", False)
         
         total_servers = len(status["ok"]) + len(status["failed"])
@@ -58,23 +58,25 @@ class MorningReport:
         down_count = len(status["failed"])
         
         # Определяем тип отчета
-        if is_manual:
-            report_type = "Ручной отчёт мониторинга"
-            report_icon = "📝"
-        else:
-            report_type = "Утренний отчёт мониторинга"
-            report_icon = "📊"
-        
-        message = f"{report_icon} *{report_type}*\n\n"
+        report_type = "Ручной отчёт мониторинга" if is_manual else "Утренний отчёт мониторинга"
+        try:
+            from config.settings import APP_VERSION
+        except Exception:
+            APP_VERSION = None
+
+        message = f"📊 *{report_type}*\n\n"
+        if APP_VERSION:
+            message += f"🔖 *Версия:* {APP_VERSION}\n"
+        message += "🖥 *Доступность серверов*\n"
         message += (
-            "🖥️ *Доступность серверов:* "
-            f"{total_servers} всего · ✅ {up_count} доступно · ❌ {down_count} недоступно\n"
+            f"• Всего: {total_servers} "
+            f"(🟢 {up_count} / 🔴 {down_count})\n"
         )
 
         from telegram.utils.helpers import escape_markdown
 
         if down_count > 0:
-            message += f"\n⚠️ *Проблемные серверы ({down_count}):*\n"
+            message += f"\n🔴 *Проблемные серверы ({down_count}):*\n"
             # Группируем по типу
             by_type = {}
             for server in status["failed"]:
@@ -89,38 +91,57 @@ class MorningReport:
                     safe_name = escape_markdown(str(s.get('name', '')), version=1)
                     safe_ip = escape_markdown(str(s.get('ip', '')), version=1)
                     message += f"• {safe_name} ({safe_ip})\n"
-        else:
-            message += ""
 
         # Добавляем информацию о бэкапах
         try:
             from extensions.extension_manager import extension_manager
             show_proxmox = extension_manager.is_extension_enabled('backup_monitor')
             show_databases = extension_manager.is_extension_enabled('database_backup_monitor')
-            if show_proxmox or show_databases:
-                backup_summary = self.get_backup_summary_for_report(
+            show_mail = extension_manager.is_extension_enabled('mail_backup_monitor')
+            show_backups = show_proxmox or show_databases or show_mail
+            if show_backups:
+                backup_summary, backup_has_issues = self.get_backup_summary_for_report(
                     24 if is_manual else 16,
                     include_proxmox=show_proxmox,
                     include_databases=show_databases,
+                    include_mail=show_mail,
                 )
-                message += f"\n💾 *Статус бэкапов ({'за последние 24ч' if is_manual else 'за последние 16ч'})*\n"
+                backup_header_icon = "🔴" if backup_has_issues else "🟢"
+                message += (
+                    f"\n{backup_header_icon} *Статус бэкапов "
+                    f"({'за последние 24ч' if is_manual else 'за последние 16ч'})*\n"
+                )
                 message += backup_summary
         except Exception as e:
             debug_log(f"⚠️ Ошибка получения данных о бэкапах: {e}")
             message += "\n💾 *Статус бэкапов:* данные недоступны\n"
 
+        # Добавляем информацию о загрузке остатков 1С
+        try:
+            from extensions.extension_manager import extension_manager
+            if extension_manager.is_extension_enabled('stock_load_monitor'):
+                from extensions.backup_monitor.backup_utils import get_stock_load_summary
+
+                stock_summary = get_stock_load_summary(24 if is_manual else 16)
+                message += "\n📦 *Загрузка остатков 1С*\n"
+                message += stock_summary
+        except Exception as e:
+            debug_log(f"⚠️ Ошибка получения данных о загрузке остатков: {e}")
+            message += "\n📦 *Загрузка остатков 1С:* данные недоступны\n"
+
         # Добавляем информацию о ZFS
         try:
             from extensions.extension_manager import extension_manager
             if extension_manager.is_extension_enabled('zfs_monitor'):
-                zfs_summary = self.get_zfs_summary_for_report()
-                message += "\n🧊 *ZFS (последние данные)*\n"
+                zfs_summary, zfs_has_issues = self.get_zfs_summary_for_report()
+                zfs_header_icon = "🔴" if zfs_has_issues else "🟢"
+                message += f"\n{zfs_header_icon} *Статусы ZFS (последние)*\n"
                 message += zfs_summary
         except Exception as e:
             debug_log(f"⚠️ Ошибка получения данных о ZFS: {e}")
             message += "\n🧊 *Статусы ZFS:* данные недоступны\n"
             
-        message += f"\n⏰ *Отчет сформирован:* {datetime.now().strftime('%H:%M:%S')}"
+        message += f"\n⏰ *Отчёт сформирован:* {collection_time.strftime('%H:%M:%S')}"
         return message
 
     def force_report(self):
@@ -131,7 +152,13 @@ class MorningReport:
 
         return self.generate_report_message()
     
-    def get_backup_summary_for_report(self, period_hours=16, include_proxmox=True, include_databases=True):
+    def get_backup_summary_for_report(
+        self,
+        period_hours=16,
+        include_proxmox=True,
+        include_databases=True,
+        include_mail=False,
+    ):
         """Получает сводку по бэкапам"""
         try:
             # Импорт функций бэкапов
@@ -140,10 +167,11 @@ class MorningReport:
                 period_hours,
                 include_proxmox=include_proxmox,
                 include_databases=include_databases,
+                include_mail=include_mail,
             )
         except Exception as e:
             debug_log(f"❌ Ошибка получения сводки по бэкапам: {e}")
-            return "❌ Данные о бэкапах недоступны"
+            return "❌ Данные о бэкапах недоступны", True
 
     def get_zfs_summary_for_report(self):
         """Получает сводку по ZFS"""
@@ -153,7 +181,7 @@ class MorningReport:
 
             db_path = BACKUP_DATABASE_CONFIG.get("backups_db")
             if not db_path:
-                return "❌ База бэкапов не настроена\n"
+                return "❌ База бэкапов не настроена\n", True
 
             zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
             if not isinstance(zfs_servers, dict):
@@ -170,7 +198,7 @@ class MorningReport:
             try:
                 cursor.execute(
                     """
-                    SELECT s.server_name, s.pool_name, s.pool_state, s.email_subject, s.received_at
+                    SELECT s.server_name, s.pool_name, s.pool_state, s.received_at
                     FROM zfs_pool_status s
                     JOIN (
                         SELECT server_name, pool_name, MAX(received_at) AS last_seen
@@ -186,7 +214,7 @@ class MorningReport:
                 rows = cursor.fetchall()
             except Exception as exc:
                 if "no such table: zfs_pool_status" in str(exc):
-                    return "❌ Таблица ZFS ещё не создана.\n"
+                    return "❌ Таблица ZFS ещё не создана.\n", True
                 raise
             finally:
                 conn.close()
@@ -200,76 +228,122 @@ class MorningReport:
             if not expected_servers:
                 expected_servers = {row[0] for row in rows}
 
+            def parse_received_at(value):
+                if isinstance(value, bytes):
+                    try:
+                        value = value.decode("utf-8")
+                    except Exception:
+                        return None
+                if isinstance(value, (int, float)):
+                    try:
+                        return datetime.fromtimestamp(value)
+                    except (ValueError, OSError):
+                        return None
+                if isinstance(value, datetime):
+                    return value
+                if isinstance(value, str):
+                    normalized = value.strip()
+                    if normalized.endswith("Z"):
+                        normalized = f"{normalized[:-1]}+00:00"
+                    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S.%f"):
+                        try:
+                            return datetime.strptime(normalized, fmt)
+                        except ValueError:
+                            continue
+                    if len(normalized) >= 19:
+                        try:
+                            return datetime.strptime(normalized[:19], "%Y-%m-%d %H:%M:%S")
+                        except ValueError:
+                            pass
+                    try:
+                        return datetime.fromisoformat(normalized)
+                    except ValueError:
+                        return None
+                return None
+
             latest_by_server = {}
-            for server_name, _, _, _, received_at in rows:
+            for server_name, _, _, received_at in rows:
+                parsed_time = parse_received_at(received_at)
                 if server_name not in latest_by_server:
-                    latest_by_server[server_name] = received_at
-                else:
-                    if received_at > latest_by_server[server_name]:
-                        latest_by_server[server_name] = received_at
+                    latest_by_server[server_name] = parsed_time
+                    continue
+                current_latest = latest_by_server.get(server_name)
+                if not current_latest or (parsed_time and parsed_time > current_latest):
+                    latest_by_server[server_name] = parsed_time
 
             stale_servers = set()
             stale_threshold = datetime.now() - timedelta(hours=24)
+
+            def parse_received_at(value):
+                if isinstance(value, datetime):
+                    return value
+                if isinstance(value, str):
+                    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S.%f"):
+                        try:
+                            return datetime.strptime(value, fmt)
+                        except ValueError:
+                            continue
+                    try:
+                        return datetime.fromisoformat(value)
+                    except ValueError:
+                        return None
+                return None
             for server in expected_servers:
                 received_at = latest_by_server.get(server)
                 if not received_at:
                     stale_servers.add(server)
                     continue
-                try:
-                    last_seen = datetime.strptime(received_at, "%Y-%m-%d %H:%M:%S")
-                except ValueError:
-                    stale_servers.add(server)
-                    continue
-                if last_seen < stale_threshold:
+                if received_at.tzinfo is not None:
+                    received_at = received_at.astimezone(timezone.utc).replace(tzinfo=None)
+                if received_at < stale_threshold:
                     stale_servers.add(server)
 
             if not rows and expected_servers:
-                stale_list = ", ".join(sorted(stale_servers))
-                return (
-                    f"• Серверов: {len(expected_servers)}\n"
-                    "• Пулов: 0\n"
-                    "• ✅ Без проблем: 0\n"
-                    "• ❌ Проблемы: 0\n"
-                    f"• ⚠️ Нет свежих данных (>24ч): {len(stale_servers)} ({stale_list})\n"
+                servers_total = len(expected_servers)
+                servers_problem = len(stale_servers)
+                servers_ok = servers_total - servers_problem
+                summary = (
+                    f"• Серверов: {servers_total} (🟢 {servers_ok} / 🔴 {servers_problem})\n"
+                    "• Пулов: 0 (🟢 0 / 🔴 0)\n"
                 )
+                return summary, True
             if not rows:
-                return "• Данных нет\n"
-
-            def _subject_has_errors(subject: str | None) -> bool:
-                if not subject:
-                    return False
-                subject_lower = subject.lower()
-                if "no known data errors" in subject_lower:
-                    return False
-                error_numbers = re.findall(r"errors:\s*(\d+)", subject_lower)
-                return any(int(value) > 0 for value in error_numbers)
+                return "• Данных нет\n", False
 
             total_pools = len(rows)
             ok_pools = sum(
                 1
-                for _, _, pool_state, email_subject, _ in rows
-                if str(pool_state).upper() == "ONLINE"
-                and not _subject_has_errors(email_subject)
+                for server_name, _, pool_state, _ in rows
+                if server_name not in stale_servers and str(pool_state).upper() == "ONLINE"
             )
-            bad_pools = total_pools - ok_pools
+            bad_pools = sum(
+                1
+                for server_name, _, pool_state, _ in rows
+                if server_name not in stale_servers and str(pool_state).upper() != "ONLINE"
+            )
             servers_count = len(expected_servers) if expected_servers else len({row[0] for row in rows})
-            problems_count = bad_pools
+            server_problem_flags = {server: False for server in expected_servers}
+            for server_name, _, pool_state, _ in rows:
+                if server_name in stale_servers:
+                    continue
+                if str(pool_state).upper() != "ONLINE":
+                    server_problem_flags[server_name] = True
+
+            servers_problem = len(
+                {server for server in expected_servers if server in stale_servers or server_problem_flags.get(server)}
+            )
+            servers_ok = servers_count - servers_problem
 
             summary = (
-                f"• Серверов: {servers_count}\n"
-                f"• Пулов: {total_pools}\n"
-                f"• ✅ Без проблем: {ok_pools}\n"
-                f"• ❌ Проблемы: {problems_count}\n"
+                f"• Серверов: {servers_count} (🟢 {servers_ok} / 🔴 {servers_problem})\n"
+                f"• Пулов: {total_pools} (🟢 {ok_pools} / 🔴 {bad_pools})\n"
             )
 
-            if stale_servers:
-                stale_list = ", ".join(sorted(stale_servers))
-                summary += f"• ⚠️ Нет свежих данных (>24ч): {len(stale_servers)} ({stale_list})\n"
-
-            return summary
+            has_issues = servers_problem > 0 or bad_pools > 0 or bool(stale_servers)
+            return summary, has_issues
         except Exception as e:
             debug_log(f"❌ Ошибка получения сводки ZFS: {e}")
-            return "❌ Данные ZFS недоступны\n"
+            return "❌ Данные ZFS недоступны\n", True
     
     def send_report(self, manual_call=False):
         """Отправка отчета"""

@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v7.0.00
+Server Monitoring System v8.0.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 7.0.00
+Версия: 8.0.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов
@@ -38,6 +38,12 @@ def create_main_menu():
 
     if extension_manager.is_extension_enabled('database_backup_monitor'):
         keyboard.append([InlineKeyboardButton("🗃️ Бэкапы БД", callback_data='backup_databases')])
+
+    if extension_manager.is_extension_enabled('mail_backup_monitor'):
+        keyboard.append([InlineKeyboardButton("📬 Бэкапы почты", callback_data='backup_mail')])
+
+    if extension_manager.is_extension_enabled('stock_load_monitor'):
+        keyboard.append([InlineKeyboardButton("📦 Остатки 1С", callback_data='backup_stock_loads')])
 
     keyboard.extend([
         [InlineKeyboardButton("↩️ Назад", callback_data='main_menu')],
@@ -632,6 +638,104 @@ def show_database_backups_menu(query, backup_bot):
         import traceback
         logger.error(traceback.format_exc())
         query.edit_message_text("❌ Ошибка при формировании меню баз данных")
+
+def show_mail_backups(query, backup_bot, hours=72):
+    """Показывает последние бэкапы почтового сервера"""
+    try:
+        backups = backup_bot.get_mail_backups(hours=hours, limit=10)
+
+        if not backups:
+            message = (
+                "📬 *Бэкапы почтового сервера*\n\n"
+                f"❌ Нет данных за последние {hours} часов."
+            )
+            query.edit_message_text(
+                message,
+                parse_mode='Markdown',
+                reply_markup=create_navigation_buttons(back_button='main_menu')
+            )
+            return
+
+        message = f"📬 *Бэкапы почтового сервера (за {hours}ч)*\n\n"
+        for status, size, path, received_at in backups:
+            status_icon = "✅" if status == "success" else "❌"
+            time_ago = backup_bot.format_time_ago(received_at)
+            size_text = _md(size) if size else "—"
+            path_text = _md(path) if path else "—"
+            message += f"{status_icon} {size_text} — {path_text} ({_md(time_ago)})\n"
+
+        query.edit_message_text(
+            message,
+            parse_mode='Markdown',
+            reply_markup=create_navigation_buttons(
+                back_button='main_menu',
+                refresh_button='backup_mail'
+            )
+        )
+
+    except BadRequest as exc:
+        if "Message is not modified" in str(exc):
+            query.answer("Меню уже открыто", show_alert=False)
+            return
+        raise
+    except Exception as e:
+        logger.error(f"Ошибка в show_mail_backups: {e}")
+        query.edit_message_text("❌ Ошибка при получении данных по почтовым бэкапам")
+
+def show_stock_loads(query, backup_bot, hours=24):
+    """Показывает результаты загрузки остатков 1С."""
+    try:
+        results = backup_bot.get_stock_loads(hours=hours)
+
+        if not results:
+            message = (
+                "📦 *Загрузка остатков 1С*\n\n"
+                f"❌ Нет данных за последние {hours} часов."
+            )
+            query.edit_message_text(
+                message,
+                parse_mode='Markdown',
+                reply_markup=create_navigation_buttons(back_button='main_menu')
+            )
+            return
+
+        grouped = {}
+        for source_name, supplier, status, rows_count, error_sample, received_at in results:
+            grouped.setdefault(source_name or "Основное предприятие", []).append(
+                (supplier, status, rows_count, error_sample, received_at)
+            )
+
+        total_suppliers = sum(len(items) for items in grouped.values())
+        message = f"📦 *Загрузка остатков 1С (за {hours}ч)*\n"
+        message += f"Всего поставщиков: {total_suppliers}\n\n"
+
+        for source_name, items in grouped.items():
+            message += f"*{_md(source_name)}* ({len(items)})\n"
+            for supplier, status, rows_count, error_sample, received_at in items:
+                status_icon = "✅" if status == "success" else "⚠️" if status == "warning" else "❌"
+                time_ago = backup_bot.format_time_ago(received_at)
+                rows_text = f"{rows_count} строк" if rows_count else "строки: —"
+                error_text = f" — {error_sample}" if error_sample else ""
+                message += f"{status_icon} {_md(supplier)} ({rows_text}){error_text} ({_md(time_ago)})\n"
+            message += "\n"
+
+        query.edit_message_text(
+            message,
+            parse_mode='Markdown',
+            reply_markup=create_navigation_buttons(
+                back_button='main_menu',
+                refresh_button='backup_stock_loads'
+            )
+        )
+
+    except BadRequest as exc:
+        if "Message is not modified" in str(exc):
+            query.answer("Меню уже открыто", show_alert=False)
+            return
+        raise
+    except Exception as e:
+        logger.error(f"Ошибка в show_stock_loads: {e}")
+        query.edit_message_text("❌ Ошибка при получении данных по остаткам")
                                 
 def show_stale_databases(query, backup_bot):
     """Показывает только проблемные базы данных"""

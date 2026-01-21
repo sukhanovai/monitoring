@@ -1,11 +1,11 @@
 """
 /bot/menu/builder.py
-Server Monitoring System v7.0.00
+Server Monitoring System v8.0.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 The place where keyboards are made.
 Система мониторинга серверов
-Версия: 7.0.00
+Версия: 8.0.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Место, где строятся клавиатуры
@@ -33,6 +33,16 @@ def main_menu(extension_manager):
             [InlineKeyboardButton("🗃️ Бэкапы БД", callback_data='backup_databases')]
         )
 
+    if extension_manager.is_extension_enabled('mail_backup_monitor'):
+        keyboard.append(
+            [InlineKeyboardButton("📬 Бэкапы почты", callback_data='backup_mail')]
+        )
+
+    if extension_manager.is_extension_enabled('stock_load_monitor'):
+        keyboard.append(
+            [InlineKeyboardButton("📦 Остатки 1С", callback_data='backup_stock_loads')]
+        )
+
     if extension_manager.is_extension_enabled('zfs_monitor'):
         keyboard.append(
             [InlineKeyboardButton("🧊 ZFS", callback_data='zfs_menu')]
@@ -42,6 +52,7 @@ def main_menu(extension_manager):
         [InlineKeyboardButton("🛠️ Расширения", callback_data='extensions_menu')],
         [InlineKeyboardButton("🎛️ Управление", callback_data='control_panel')],
         [InlineKeyboardButton("⚙️ Настройки", callback_data='settings_main')],
+        [InlineKeyboardButton("ℹ️ О боте", callback_data='about_bot')],
         [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
     ])
 

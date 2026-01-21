@@ -1,11 +1,11 @@
 """
 /bot/menu/handlers.py
-Server Monitoring System v7.0.00
+Server Monitoring System v8.0.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Bot menu handlers
 Система мониторинга серверов
-Версия: 7.0.00
+Версия: 8.0.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики меню бота
@@ -35,10 +35,11 @@ def show_main_menu(update, context):
         deny_access(update)
         return
 
-    text = (
-        "🤖 *Серверный мониторинг*\n\n"
-        "✅ Система активна"
-    )
+    config = get_config()
+    text = "🤖 *Серверный мониторинг*\n"
+    if getattr(config, "APP_VERSION", None):
+        text += f"🔖 *Версия:* {config.APP_VERSION}\n"
+    text += "\n✅ Система активна"
 
     if update.message:
         update.message.reply_text(
@@ -167,23 +168,32 @@ def start_command(update, context):
         keyboard.insert(3, [InlineKeyboardButton("📈 Ресурсы одного сервера", callback_data='show_resources_menu')])
    
     extension_manager = get_extension_manager()
-    if (extension_manager.is_extension_enabled('backup_monitor') or 
-        extension_manager.is_extension_enabled('database_backup_monitor')):
+    if (
+        extension_manager.is_extension_enabled('backup_monitor')
+        or extension_manager.is_extension_enabled('database_backup_monitor')
+        or extension_manager.is_extension_enabled('mail_backup_monitor')
+        or extension_manager.is_extension_enabled('stock_load_monitor')
+    ):
         keyboard.append([InlineKeyboardButton("💾 Бэкапы", callback_data='backup_main')])
+
+    if extension_manager.is_extension_enabled('stock_load_monitor'):
+        keyboard.append([InlineKeyboardButton("📦 Остатки 1С", callback_data='backup_stock_loads')])
     
     keyboard.extend([
         [InlineKeyboardButton("🛠️ Управление расширениями", callback_data='extensions_menu')],
         [InlineKeyboardButton("🎛️ Управление", callback_data='control_panel')],
         [InlineKeyboardButton("⚙️ Управление настройками", callback_data='settings_main')],
+        [InlineKeyboardButton("ℹ️ О боте", callback_data='about_bot')],
         [InlineKeyboardButton("✖️ Закрыть", callback_data='close')] 
     ])
     
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    welcome_text = (
-        "🤖 *Серверный мониторинг*\n\n"
-        "✅ Система работает\n\n"
-    )
+    config = get_config()
+    welcome_text = "🤖 *Серверный мониторинг*\n"
+    if getattr(config, "APP_VERSION", None):
+        welcome_text += f"🔖 *Версия:* {config.APP_VERSION}\n"
+    welcome_text += "\n✅ Система работает\n\n"
     
     # Информация о отладке
     try:
@@ -204,6 +214,38 @@ def start_command(update, context):
         update.callback_query.edit_message_text(
             welcome_text, 
             parse_mode='Markdown', 
+            reply_markup=reply_markup
+        )
+
+def show_about_bot(update, context):
+    """Показывает сведения о боте"""
+    if not base_check_access(update):
+        deny_access(update)
+        return
+
+    config = get_config()
+    about_text = "ℹ️ *О боте*\n\n"
+    if getattr(config, "APP_VERSION", None):
+        about_text += f"🔖 *Версия:* {config.APP_VERSION}\n"
+    about_text += (
+        "👤 *Разработчик:* Александр Суханов\n"
+        "✉️ *Связь:* aleksandr.i.sukhanov@gmail.com\n"
+        "📄 *Лицензия:* MIT\n"
+        "🛠 *Назначение:* мониторинг доступности серверов.\n"
+        "➕ *Дополнительно:* ресурсы, бэкапы, сбор и проверка данных по остаткам товаров для БД.\n"
+    )
+
+    reply_markup = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+        [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
+    ])
+
+    if update.message:
+        update.message.reply_text(about_text, parse_mode='Markdown', reply_markup=reply_markup)
+    elif update.callback_query:
+        update.callback_query.edit_message_text(
+            about_text,
+            parse_mode='Markdown',
             reply_markup=reply_markup
         )
 
@@ -1138,7 +1180,8 @@ def get_callback_handlers():
         CallbackQueryHandler(lambda u, c: lazy_handler('db_backups_list')(u, c), pattern='^db_backups_list$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('backup_main')(u, c), pattern='^backup_main$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('backup_proxmox')(u, c), pattern='^backup_proxmox$'),
-        CallbackQueryHandler(lambda u, c: lazy_handler('backup_databases')(u, c), pattern='^backup_databases$'),                
+        CallbackQueryHandler(lambda u, c: lazy_handler('backup_databases')(u, c), pattern='^backup_databases$'),
+        CallbackQueryHandler(lambda u, c: lazy_handler('backup_mail')(u, c), pattern='^backup_mail$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('backup_host_')(u, c), pattern='^backup_host_'),
         CallbackQueryHandler(lambda u, c: lazy_handler('db_detail_')(u, c), pattern='^db_detail_'),
         CallbackQueryHandler(lambda u, c: lazy_handler('backup_stale_hosts')(u, c), pattern='^backup_stale_hosts$'),
@@ -1268,6 +1311,9 @@ def lazy_handler(pattern):
             from extensions.backup_monitor.bot_handler import backup_callback as handler
             return handler(update, context)
         elif pattern == 'backup_databases':
+            from extensions.backup_monitor.bot_handler import backup_callback as handler
+            return handler(update, context)
+        elif pattern == 'backup_mail':
             from extensions.backup_monitor.bot_handler import backup_callback as handler
             return handler(update, context)
         elif pattern == 'db_backups_summary':

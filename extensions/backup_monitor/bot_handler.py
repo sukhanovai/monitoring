@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/bot_handler.py
-Server Monitoring System v7.0.00
+Server Monitoring System v8.0.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring Proxmox backups
 Система мониторинга серверов
-Версия: 7.0.00
+Версия: 8.0.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг бэкапов Proxmox
@@ -33,6 +33,8 @@ from extensions.backup_monitor.backup_handlers import (
     show_database_backups_summary,
     show_database_details,
     show_stale_databases,
+    show_mail_backups,
+    show_stock_loads,
 )
 from extensions.extension_manager import extension_manager
 
@@ -66,6 +68,7 @@ try:
         show_hosts_menu, show_stale_hosts, show_host_status,
         show_database_backups_menu, show_stale_databases,
         show_database_backups_summary, show_database_details,
+        show_stock_loads,
         format_database_details
     )
     logger.info("✅ Модули backup_utils и backup_handlers успешно импортированы")
@@ -82,6 +85,7 @@ except ImportError as e:
             show_hosts_menu, show_stale_hosts, show_host_status,
             show_database_backups_menu, show_stale_databases,
             show_database_backups_summary, show_database_details,
+            show_stock_loads,
             format_database_details
         )
         logger.info("✅ Модули импортированы через абсолютный путь")
@@ -274,6 +278,66 @@ class BackupMonitorBot(BackupBase):
         recent_backups = self.get_database_recent_status(backup_type, db_name, 48)
         return self.status_calc.calculate_db_status(recent_backups)
 
+    # === МЕТОДЫ ДЛЯ ПОЧТОВЫХ БЭКАПОВ ===
+
+    def get_mail_backups(self, hours=72, limit=10):
+        """Получает последние бэкапы почтового сервера"""
+        since_time = (datetime.now() - timedelta(hours=hours)).strftime('%Y-%m-%d %H:%M:%S')
+        query = '''
+            SELECT backup_status, total_size, backup_path, received_at
+            FROM mail_server_backups
+            WHERE received_at >= ?
+            ORDER BY received_at DESC
+            LIMIT ?
+        '''
+        try:
+            return self.execute_query(query, (since_time, limit))
+        except Exception as exc:
+            logger.error(f"Ошибка получения почтовых бэкапов: {exc}")
+            return []
+
+    # === МЕТОДЫ ДЛЯ ЗАГРУЗКИ ОСТАТКОВ ===
+
+    def get_stock_loads(self, hours=24):
+        """Получает последние результаты загрузки остатков товаров по каждому поставщику."""
+        since_time = (datetime.now() - timedelta(hours=hours)).strftime('%Y-%m-%d %H:%M:%S')
+        query = '''
+            WITH normalized AS (
+                SELECT
+                    id,
+                    COALESCE(source_name, 'Основное предприятие') AS source_name,
+                    CASE
+                        WHEN supplier_name IS NULL OR supplier_name = 'неизвестно'
+                            THEN COALESCE(source_name, 'Основное предприятие')
+                        ELSE supplier_name
+                    END AS supplier_name,
+                    status,
+                    rows_count,
+                    error_sample,
+                    received_at
+                FROM stock_load_results
+                WHERE received_at >= ?
+            ),
+            ranked AS (
+                SELECT
+                    *,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY source_name, supplier_name
+                        ORDER BY received_at DESC, id DESC
+                    ) AS row_num
+                FROM normalized
+            )
+            SELECT source_name, supplier_name, status, rows_count, error_sample, received_at
+            FROM ranked
+            WHERE row_num = 1
+            ORDER BY source_name, supplier_name
+        '''
+        try:
+            return self.execute_query(query, (since_time,))
+        except Exception as exc:
+            logger.error(f"Ошибка получения остатков: {exc}")
+            return []
+
     # === МЕТОДЫ ДЛЯ ОТЧЕТОВ ===
     
     def get_stale_proxmox_backups(self, hours_threshold=24):
@@ -391,8 +455,10 @@ def backup_help_command(update, context):
             "• ❌ Ошибки - Неудачные бэкапы\n"
             "• 🖥️ По хостам - Статус по серверам\n"
             "• 🗃️ Бэкапы БД - Бэкапы баз данных\n"
+            "• 📬 Бэкапы почты - Бэкапы почтового сервера\n"
+            "• 📦 Остатки 1С - Результаты загрузки остатков\n"
             "• 🔄 Обновить - Обновить данные\n\n"
-            "*Данные обновляются автоматически при получении писем от Proxmox*"
+            "*Данные обновляются автоматически при получении писем от Proxmox/почтового сервера*"
         )
 
         update.message.reply_text(help_text, parse_mode='Markdown')
@@ -451,6 +517,18 @@ def backup_callback(update, context):
                 return
             logger.info("🧪 BACKUP DB: entering show_database_backups_menu")
             show_database_backups_menu(query, backup_bot)
+
+        elif data == 'backup_mail':
+            if not extension_manager.is_extension_enabled('mail_backup_monitor'):
+                query.edit_message_text("📬 Мониторинг бэкапов почты отключён")
+                return
+            show_mail_backups(query, backup_bot)
+
+        elif data == 'backup_stock_loads':
+            if not extension_manager.is_extension_enabled('stock_load_monitor'):
+                query.edit_message_text("📦 Мониторинг остатков 1С отключён")
+                return
+            show_stock_loads(query, backup_bot)
 
         elif data == 'backup_proxmox':
             show_proxmox_menu(query, backup_bot)

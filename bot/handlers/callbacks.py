@@ -1,11 +1,11 @@
 """
 /bot/handlers/callbacks.py
-Server Monitoring System v7.0.00
+Server Monitoring System v8.0.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 A single router for callbacks.
 Система мониторинга серверов
-Версия: 7.0.00
+Версия: 8.0.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единый router callback’ов.
@@ -162,6 +162,10 @@ def callback_router(update, context):
         from bot.menu.handlers import show_main_menu
         show_main_menu(update, context)
 
+    elif data == 'about_bot':
+        from bot.menu.handlers import show_about_bot
+        show_about_bot(update, context)
+
     # ------------------------------------------------
     # ДОСТУПНОСТЬ ВСЕХ СЕРВЕРОВ (ручная проверка)
     # ------------------------------------------------
@@ -302,7 +306,7 @@ def callback_router(update, context):
     # ------------------------------------------------
     # НАСТРОЙКИ БЭКАПОВ (settings_handlers)
     # ------------------------------------------------
-    elif data in BACKUP_SETTINGS_CALLBACKS or data.startswith('delete_pattern_'):
+    elif data in BACKUP_SETTINGS_CALLBACKS or data.startswith(('delete_pattern_', 'edit_pattern_', 'db_default_', 'stock_pattern_select_')):
         settings_callback_handler(update, context)
 
     # ------------------------------------------------
@@ -334,12 +338,14 @@ def callback_router(update, context):
     elif data.startswith("backup_") or data.startswith("db_"):
         backup_enabled = extension_manager.is_extension_enabled("backup_monitor")
         db_enabled = extension_manager.is_extension_enabled("database_backup_monitor")
+        mail_enabled = extension_manager.is_extension_enabled("mail_backup_monitor")
+        stock_enabled = extension_manager.is_extension_enabled("stock_load_monitor")
 
         if data.startswith("db_") and not db_enabled:
             query.edit_message_text("🗃️ Модуль бэкапов БД отключён")
             return
 
-        if data == "backup_main" and not (backup_enabled or db_enabled):
+        if data == "backup_main" and not (backup_enabled or db_enabled or mail_enabled or stock_enabled):
             query.edit_message_text("💾 Модуль бэкапов отключён")
             return
 
@@ -347,7 +353,19 @@ def callback_router(update, context):
             query.edit_message_text("🗃️ Модуль бэкапов БД отключён")
             return
 
-        if data.startswith("backup_") and data not in ("backup_main", "backup_databases") and not backup_enabled:
+        if data == "backup_mail" and not mail_enabled:
+            query.edit_message_text("📬 Модуль бэкапов почты отключён")
+            return
+
+        if data == "backup_stock_loads" and not stock_enabled:
+            query.edit_message_text("📦 Модуль загрузки остатков отключён")
+            return
+
+        if (
+            data.startswith("backup_")
+            and data not in ("backup_main", "backup_databases", "backup_mail", "backup_stock_loads")
+            and not backup_enabled
+        ):
             query.edit_message_text("💾 Модуль бэкапов Proxmox отключён")
             return
 

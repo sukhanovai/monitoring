@@ -1,11 +1,11 @@
 """
 /config/settings.py
-Server Monitoring System v7.0.00
+Server Monitoring System v8.0.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Application settings - default values
 Система мониторинга серверов
-Версия: 7.0.00
+Версия: 8.0.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Настройки приложения - значения по умолчанию
@@ -20,6 +20,9 @@ from lib.utils import is_proxmox_server
 
 # Режим отладки
 DEBUG_MODE = False
+
+# Версия приложения
+APP_VERSION = "8.0.0"
 
 # === БАЗОВЫЕ ПУТИ ===
 _DEFAULT_BASE = Path(__file__).resolve().parents[1]
@@ -153,7 +156,54 @@ EXTENSIONS_CONFIG_FILE = DATA_DIR / "extensions" / "extensions_config.json"
 PROXMOX_HOSTS: Dict[str, Any] = {}
 DUPLICATE_IP_HOSTS: Dict[str, List[str]] = {}
 HOSTNAME_ALIASES: Dict[str, List[str]] = {}
-BACKUP_PATTERNS: Dict[str, Dict[str, List[str]]] = {}
+BACKUP_PATTERNS: Dict[str, Dict[str, List[str]]] = {
+    "mail": {
+        "subject": [
+            r"^\s*бэкап\s+zimbra\s*-\s*"
+            r"(?P<size>\d+(?:[.,]\d+)?\s*[TGMK]?(?:i?B)?)\s+"
+            r"(?P<path>/\S+)\s*$"
+        ]
+    },
+    "stock_load": {
+        "subject": [
+            r"^Логи\s+загрузки\s+файлов\s+в\s+рабочую\s+базу(?:\s+\d{2}:\d{2}:\d{2,3})?$"
+        ],
+        "attachment": [
+            r"LogiLogistam\.txt$"
+        ],
+        "file_entry": [
+            (
+                r"^\d{2}\.\d{2}\.\d{2}\s+\d{2}:\d{2}:\d{2}:\s+"
+                r"(?P<supplier>.+?)\s{2,}(?P<path>(?:[A-Za-z]:\\|\\\\[^\\]+\\).+)$"
+            )
+        ],
+        "success": [
+            r"\*{3}Остатки загружены!\*{3}\s+строк\s+(?P<rows>\d+)"
+        ],
+        "sources": [
+            {
+                "name": "Основное предприятие",
+                "subject": [
+                    r"^Логи\s+загрузки\s+файлов\s+в\s+рабочую\s+базу(?:\s+\d{2}:\d{2}:\d{2,3})?$"
+                ],
+            },
+            {
+                "name": "Барнаул",
+                "subject": [
+                    r"^Логи\s+загрузки\s+файлов\s+в\s+рабочую\s+базу\s+\(Барнаул\)(?:\s+\d{2}:\d{2}:\d{2,3})?$"
+                ],
+            }
+        ],
+        "ignore": [
+            r"Внимание!\s*Ошибка.*строка файла =\s*\d+"
+        ],
+        "failure": [
+            r"---\s*неудача!!!.*",
+            r"Внимание!\s*Ошибка.*",
+            r"Ошибка.*"
+        ]
+    }
+}
 ZFS_SERVERS: Dict[str, Dict[str, Any]] = {}
 BACKUP_STATUS_MAP = {
     'backup successful': 'success',

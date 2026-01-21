@@ -1,11 +1,11 @@
 """
 /core/monitor.py
-Server Monitoring System v7.0.00
+Server Monitoring System v8.0.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core monitoring module
 Система мониторинга серверов
-Версия: 7.0.00
+Версия: 8.0.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль мониторинга
@@ -355,8 +355,15 @@ class Monitor:
         self.initialize_server_status()
         
         # Отправляем стартовое сообщение
-        start_message = (
-            "🟢 *Мониторинг серверов запущен*\n\n"
+        try:
+            from config.settings import APP_VERSION
+        except Exception:
+            APP_VERSION = None
+
+        start_message = "🟢 *Мониторинг серверов запущен*\n\n"
+        if APP_VERSION:
+            start_message += f"🔖 *Версия:* {APP_VERSION}\n"
+        start_message += (
             f"• Серверов в мониторинге: {len(self.servers)}\n"
             f"• Проверка доступности: каждые {CHECK_INTERVAL} сек\n"
             f"• Утренний отчет: {DATA_COLLECTION_TIME.strftime('%H:%M')}\n\n"

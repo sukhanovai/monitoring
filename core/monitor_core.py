@@ -1,11 +1,11 @@
 """
 /core/monitor_core.py
-Server Monitoring System v7.0.00
+Server Monitoring System v8.0.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core system
 Система мониторинга серверов
-Версия: 7.0.00
+Версия: 8.0.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Ядро системы
@@ -1629,8 +1629,10 @@ def start_monitoring():
     debug_log(f"✅ Мониторинг запущен для {len(servers)} серверов")
 
     # Обновляем стартовое сообщение
-    start_message = (
-        "🟢 *Мониторинг серверов запущен*\n\n"
+    start_message = "🟢 *Мониторинг серверов запущен*\n\n"
+    if getattr(config, "APP_VERSION", None):
+        start_message += f"🔖 *Версия:* {config.APP_VERSION}\n"
+    start_message += (
         f"• Серверов в мониторинге: {len(servers)}\n"
         f"• Проверка ресурсов: каждые {config.RESOURCE_CHECK_INTERVAL // 60} минут\n"
         f"• Утренний отчет: {config.DATA_COLLECTION_TIME.strftime('%H:%M')}\n\n"
@@ -2048,6 +2050,7 @@ def send_morning_report(manual_call=False):
             }
 
     status = morning_data["status"]
+    collection_time = morning_data.get("collection_time", datetime.now())
     is_manual = morning_data.get("manual_call", False)
 
     total_servers = len(status["ok"]) + len(status["failed"])
@@ -2056,23 +2059,35 @@ def send_morning_report(manual_call=False):
 
     # Формируем сообщение с указанием типа отчета
     if is_manual:
-        report_type = "Ручной отчёт мониторинга"
-        report_icon = "📝"
+        report_type = "Ручной запрос"
+        time_prefix = "⏰ *Время проверки:*"
     else:
-        report_type = "Утренний отчёт мониторинга"
-        report_icon = "📊"
+        report_type = "Утренний отчет"
+        time_prefix = "⏰ *Время сбора данных:*"
 
-    message = f"{report_icon} *{report_type}*\n\n"
-    message += (
-        "🖥️ *Доступность серверов:* "
-        f"{total_servers} всего · ✅ {up_count} доступно · ❌ {down_count} недоступно\n"
-    )
+    message = f"📊 *{report_type} о доступности серверов*\n\n"
+    message += f"{time_prefix} {collection_time.strftime('%H:%M')}\n"
+    message += f"🔢 *Всего серверов:* {total_servers}\n"
+    message += f"🟢 *Доступно:* {up_count}\n"
+    message += f"🔴 *Недоступно:* {down_count}\n"
 
     # Для ручного отчета используем другой период бэкапов
+    try:
+        from extensions.extension_manager import extension_manager
+        include_mail = extension_manager.is_extension_enabled('mail_backup_monitor')
+    except Exception:
+        include_mail = False
+
     if is_manual:
-        backup_data = get_backup_summary_for_report(period_hours=24)  # Последние 24 часа
+        backup_data = get_backup_summary_for_report(
+            period_hours=24,
+            include_mail=include_mail,
+        )  # Последние 24 часа
     else:
-        backup_data = get_backup_summary_for_report(period_hours=16)  # С 18:00 предыдущего дня
+        backup_data = get_backup_summary_for_report(
+            period_hours=16,
+            include_mail=include_mail,
+        )  # С 18:00 предыдущего дня
 
     message += f"\n💾 *Статус бэкапов ({'за последние 24ч' if is_manual else 'за последние 16ч'})*\n"
     message += backup_data
@@ -2092,17 +2107,41 @@ def send_morning_report(manual_call=False):
             for s in servers_list:
                 message += f"• {s['name']} ({s['ip']})\n"
 
-    message += f"\n⏰ *Отчет сформирован:* {datetime.now().strftime('%H:%M:%S')}"
+    else:
+        message += f"\n✅ *Все серверы доступны!*\n"
+
+    message += f"\n📋 *Статистика по типам:*\n"
+
+    # Статистика по типам серверов
+    type_stats = {}
+    all_servers = status["ok"] + status["failed"]
+    for server in all_servers:
+        if server["type"] not in type_stats:
+            type_stats[server["type"]] = {"total": 0, "up": 0}
+        type_stats[server["type"]]["total"] += 1
+
+    for server in status["ok"]:
+        type_stats[server["type"]]["up"] += 1
+
+    for server_type, stats in type_stats.items():
+        up_percent = (stats["up"] / stats["total"]) * 100 if stats["total"] > 0 else 0
+        message += f"• {server_type.upper()}: {stats['up']}/{stats['total']} ({up_percent:.1f}%)\n"
+
+    if is_manual:
+        message += f"\n⏰ *Отчет сформирован:* {datetime.now().strftime('%H:%M:%S')}"
+    else:
+        message += f"\n⏰ *Отчет отправлен:* {datetime.now().strftime('%H:%M:%S')}"
 
     # Отправляем отчет принудительно, даже в тихом режиме
     send_alert(message, force=True)
     debug_log(f"✅ {report_type} отправлен: {up_count}/{total_servers} доступно")
 
-def get_backup_summary_for_report(period_hours=16):
+def get_backup_summary_for_report(period_hours=16, include_mail=False):
     """Получает сводку по бэкапам за указанный период
 
     Args:
         period_hours (int): Количество часов для периода (16 для авто-отчета, 24 для ручного)
+        include_mail (bool): Добавлять ли бэкапы почтового сервера
     """
     try:
         debug_log(f"🔄 Сбор данных о бэкапах за {period_hours} часов...")
@@ -2268,6 +2307,36 @@ def get_backup_summary_for_report(period_hours=16):
         ''', (stale_threshold,))
         stale_databases = cursor.fetchall()
 
+        mail_recent = None
+        mail_latest = None
+        try:
+            cursor.execute(
+                '''
+                SELECT backup_status, total_size, backup_path, received_at
+                FROM mail_server_backups
+                WHERE received_at >= ?
+                ORDER BY received_at DESC
+                LIMIT 1
+            ''',
+                (since_time,),
+            )
+            mail_recent = cursor.fetchone()
+
+            cursor.execute(
+                '''
+                SELECT backup_status, total_size, backup_path, received_at
+                FROM mail_server_backups
+                ORDER BY received_at DESC
+                LIMIT 1
+            '''
+            )
+            mail_latest = cursor.fetchone()
+        except Exception as exc:
+            if "no such table: mail_server_backups" in str(exc):
+                mail_latest = None
+            else:
+                raise
+
         conn.close()
 
         # Формируем сообщение
@@ -2305,6 +2374,40 @@ def get_backup_summary_for_report(period_hours=16):
                 if stale_count > 0:
                     message += f" ⚠️ {stale_count} БД без бэкапов >24ч"
                 message += "\n"
+
+        if include_mail:
+            try:
+                def _mail_time_ago(received_at):
+                    if not received_at:
+                        return "неизвестно"
+                    try:
+                        last_time = datetime.strptime(received_at, "%Y-%m-%d %H:%M:%S")
+                    except ValueError:
+                        return "неизвестно"
+                    hours_ago = int((datetime.now() - last_time).total_seconds() / 3600)
+                    if hours_ago >= 24:
+                        days = hours_ago // 24
+                        hours = hours_ago % 24
+                        return f"{days}д {hours}ч назад"
+                    return f"{hours_ago}ч назад"
+
+                if not mail_latest:
+                    message += "• Почта: нет данных\n"
+                else:
+                    _, size, path, received_at = mail_latest
+                    size_text = size or "неизвестно"
+                    path_text = path or "без пути"
+                    time_ago = _mail_time_ago(received_at)
+                    if mail_recent:
+                        message += f"• Почта: {size_text} {path_text} ({time_ago})\n"
+                    else:
+                        message += (
+                            f"• Почта: нет свежих бэкапов "
+                            f"(>{period_hours}ч), последний: {size_text} "
+                            f"{path_text} ({time_ago})\n"
+                        )
+            except Exception as exc:
+                debug_log(f"⚠️ Ошибка получения данных о бэкапах почты: {exc}")
 
         # Общие проблемы
         total_stale = len(stale_hosts) + len(stale_databases)
