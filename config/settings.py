@@ -21,6 +21,9 @@ from lib.utils import is_proxmox_server
 # Режим отладки
 DEBUG_MODE = False
 
+# Версия приложения
+APP_VERSION = "7.3.18"
+
 # === БАЗОВЫЕ ПУТИ ===
 _DEFAULT_BASE = Path(__file__).resolve().parents[1]
 BASE_DIR = Path(
