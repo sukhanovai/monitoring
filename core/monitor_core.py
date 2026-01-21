@@ -1629,8 +1629,10 @@ def start_monitoring():
     debug_log(f"✅ Мониторинг запущен для {len(servers)} серверов")
 
     # Обновляем стартовое сообщение
-    start_message = (
-        "🟢 *Мониторинг серверов запущен*\n\n"
+    start_message = "🟢 *Мониторинг серверов запущен*\n\n"
+    if getattr(config, "APP_VERSION", None):
+        start_message += f"🔖 *Версия:* {config.APP_VERSION}\n"
+    start_message += (
         f"• Серверов в мониторинге: {len(servers)}\n"
         f"• Проверка ресурсов: каждые {config.RESOURCE_CHECK_INTERVAL // 60} минут\n"
         f"• Утренний отчет: {config.DATA_COLLECTION_TIME.strftime('%H:%M')}\n\n"
