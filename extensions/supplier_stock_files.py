@@ -240,33 +240,36 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
     sources = download_config.get("sources", [])
     now = datetime.now()
     results: List[Dict[str, Any]] = []
+    debug_log("📦 Остатки поставщиков: источников к обработке %s", len(sources))
 
     for source in sources:
-        if not source.get("enabled", True):
-            continue
-        render_context = _build_render_context(source, now)
         source_id = source.get("id") or source.get("name") or "unknown"
         name = source.get("name") or source_id
-        method = source.get("method", "http")
-        output_name = source.get("output_name")
-        rendered_url = _render_template(str(source.get("url", "")), now, render_context)
-        if output_name:
-            output_name = _render_template(str(output_name), now, render_context)
-            output_path = temp_dir / output_name
-        else:
-            output_path = temp_dir / f"{source_id}_orig"
+        if not source.get("enabled", True):
+            debug_log("📦 Остатки поставщиков: %s пропущен (выключен)", source_id)
+            results.append({"source_id": source_id, "source_name": name, "status": "skipped"})
+            continue
 
         entry: Dict[str, Any] = {
             "timestamp": now.isoformat(),
             "source_id": source_id,
             "source_name": name,
-            "method": method,
-            "url": rendered_url,
-            "output_name": output_name,
+            "method": source.get("method", "http"),
         }
 
         try:
-            if method == "shell":
+            render_context = _build_render_context(source, now)
+            output_name = source.get("output_name")
+            rendered_url = _render_template(str(source.get("url", "")), now, render_context)
+            if output_name:
+                output_name = _render_template(str(output_name), now, render_context)
+                output_path = temp_dir / output_name
+            else:
+                output_path = temp_dir / f"{source_id}_orig"
+
+            entry.update({"url": rendered_url, "output_name": output_name})
+
+            if entry["method"] == "shell":
                 result = _run_shell_command(source, now, temp_dir, render_context)
             else:
                 result = _download_http(source, output_path, now, render_context)
