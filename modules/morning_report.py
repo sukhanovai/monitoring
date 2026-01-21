@@ -58,23 +58,19 @@ class MorningReport:
         down_count = len(status["failed"])
         
         # Определяем тип отчета
-        if is_manual:
-            report_type = "Ручной запрос"
-            time_prefix = "⏰ *Время проверки:*"
-        else:
-            report_type = "Утренний отчет"
-            time_prefix = "⏰ *Время сбора данных:*"
-        
-        message = f"📊 *{report_type} о доступности серверов*\n\n"
-        message += f"{time_prefix} {collection_time.strftime('%H:%M')}\n"
-        message += f"🔢 *Всего серверов:* {total_servers}\n"
-        message += f"🟢 *Доступно:* {up_count}\n"
-        message += f"🔴 *Недоступно:* {down_count}\n"
+        report_type = "Ручной отчёт мониторинга" if is_manual else "Утренний отчёт мониторинга"
+
+        message = f"📊 *{report_type}*\n\n"
+        message += "🖥 *Доступность серверов*\n"
+        message += (
+            f"• Всего: {total_servers} "
+            f"(🟢 {up_count} / 🔴 {down_count})\n"
+        )
 
         from telegram.utils.helpers import escape_markdown
 
         if down_count > 0:
-            message += f"\n⚠️ *Проблемные серверы ({down_count}):*\n"
+            message += f"\n🔴 *Проблемные серверы ({down_count}):*\n"
             # Группируем по типу
             by_type = {}
             for server in status["failed"]:
@@ -89,8 +85,6 @@ class MorningReport:
                     safe_name = escape_markdown(str(s.get('name', '')), version=1)
                     safe_ip = escape_markdown(str(s.get('ip', '')), version=1)
                     message += f"• {safe_name} ({safe_ip})\n"
-        else:
-            message += f"\n✅ *Все серверы доступны!*\n"
 
         # Добавляем информацию о бэкапах
         try:
@@ -136,7 +130,7 @@ class MorningReport:
             debug_log(f"⚠️ Ошибка получения данных о ZFS: {e}")
             message += "\n🧊 *Статусы ZFS:* данные недоступны\n"
             
-        message += f"\n⏰ *Отчет сформирован:* {datetime.now().strftime('%H:%M:%S')}"
+        message += f"\n⏰ *Отчёт сформирован:* {collection_time.strftime('%H:%M:%S')}"
         return message
 
     def force_report(self):
@@ -233,14 +227,28 @@ class MorningReport:
 
             stale_servers = set()
             stale_threshold = datetime.now() - timedelta(hours=24)
+
+            def parse_received_at(value):
+                if isinstance(value, datetime):
+                    return value
+                if isinstance(value, str):
+                    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S.%f"):
+                        try:
+                            return datetime.strptime(value, fmt)
+                        except ValueError:
+                            continue
+                    try:
+                        return datetime.fromisoformat(value)
+                    except ValueError:
+                        return None
+                return None
             for server in expected_servers:
                 received_at = latest_by_server.get(server)
                 if not received_at:
                     stale_servers.add(server)
                     continue
-                try:
-                    last_seen = datetime.strptime(received_at, "%Y-%m-%d %H:%M:%S")
-                except ValueError:
+                last_seen = parse_received_at(received_at)
+                if not last_seen:
                     stale_servers.add(server)
                     continue
                 if last_seen < stale_threshold:
@@ -248,11 +256,12 @@ class MorningReport:
 
             if not rows and expected_servers:
                 stale_list = ", ".join(sorted(stale_servers))
+                servers_total = len(expected_servers)
+                servers_problem = len(stale_servers)
+                servers_ok = servers_total - servers_problem
                 return (
-                    f"• Серверов: {len(expected_servers)}\n"
-                    "• Пулов: 0\n"
-                    "• OK: 0\n"
-                    f"• Проблемы: {len(stale_servers)}\n"
+                    f"• Серверов: {servers_total} (🟢 {servers_ok} / 🔴 {servers_problem})\n"
+                    "• Пулов: 0 (🟢 0 / 🔴 0)\n"
                     f"• Нет свежих данных (>24ч): {stale_list}\n"
                 )
             if not rows:
@@ -270,13 +279,21 @@ class MorningReport:
                 if server_name not in stale_servers and str(pool_state).upper() != "ONLINE"
             )
             servers_count = len(expected_servers) if expected_servers else len({row[0] for row in rows})
-            problems_count = bad_pools + len(stale_servers)
+            server_problem_flags = {server: False for server in expected_servers}
+            for server_name, _, pool_state, _ in rows:
+                if server_name in stale_servers:
+                    continue
+                if str(pool_state).upper() != "ONLINE":
+                    server_problem_flags[server_name] = True
+
+            servers_problem = len(
+                {server for server in expected_servers if server in stale_servers or server_problem_flags.get(server)}
+            )
+            servers_ok = servers_count - servers_problem
 
             summary = (
-                f"• Серверов: {servers_count}\n"
-                f"• Пулов: {total_pools}\n"
-                f"• OK: {ok_pools}\n"
-                f"• Проблемы: {problems_count}\n"
+                f"• Серверов: {servers_count} (🟢 {servers_ok} / 🔴 {servers_problem})\n"
+                f"• Пулов: {total_pools} (🟢 {ok_pools} / 🔴 {bad_pools})\n"
             )
 
             if stale_servers:
