@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import base64
+import re
 import ssl
 import threading
 from datetime import datetime
@@ -93,10 +94,19 @@ def _render_template(value: str, now: datetime) -> str:
         "datetime": now.strftime("%Y-%m-%d_%H-%M-%S"),
         "time": now.strftime("%H-%M-%S"),
     }
+    def _replace_date(match: re.Match[str]) -> str:
+        fmt = match.group("format") or ""
+        fmt = fmt.replace("\\'", "'")
+        try:
+            return now.strftime(fmt)
+        except Exception:
+            return match.group(0)
+
+    rendered = re.sub(r"\$\(\s*date\s+'(?P<format>[^']+)'\s*\)", _replace_date, value)
     try:
-        return value.format_map(context)
+        return rendered.format_map(context)
     except Exception:
-        return value
+        return rendered
 
 
 def _download_http(source: Dict[str, Any], output_path: Path, now: datetime) -> Dict[str, Any]:
