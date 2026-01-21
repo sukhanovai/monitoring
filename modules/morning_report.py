@@ -100,13 +100,17 @@ class MorningReport:
             show_mail = extension_manager.is_extension_enabled('mail_backup_monitor')
             show_backups = show_proxmox or show_databases or show_mail
             if show_backups:
-                backup_summary = self.get_backup_summary_for_report(
+                backup_summary, backup_has_issues = self.get_backup_summary_for_report(
                     24 if is_manual else 16,
                     include_proxmox=True,
                     include_databases=show_databases,
                     include_mail=show_mail,
                 )
-                message += f"\n💾 *Статус бэкапов ({'за последние 24ч' if is_manual else 'за последние 16ч'})*\n"
+                backup_header_icon = "🔴" if backup_has_issues else "🟢"
+                message += (
+                    f"\n{backup_header_icon} *Статус бэкапов "
+                    f"({'за последние 24ч' if is_manual else 'за последние 16ч'})*\n"
+                )
                 message += backup_summary
         except Exception as e:
             debug_log(f"⚠️ Ошибка получения данных о бэкапах: {e}")
@@ -129,8 +133,9 @@ class MorningReport:
         try:
             from extensions.extension_manager import extension_manager
             if extension_manager.is_extension_enabled('zfs_monitor'):
-                zfs_summary = self.get_zfs_summary_for_report()
-                message += "\n🧊 *Статусы ZFS (последние)*\n"
+                zfs_summary, zfs_has_issues = self.get_zfs_summary_for_report()
+                zfs_header_icon = "🔴" if zfs_has_issues else "🟢"
+                message += f"\n{zfs_header_icon} *Статусы ZFS (последние)*\n"
                 message += zfs_summary
         except Exception as e:
             debug_log(f"⚠️ Ошибка получения данных о ZFS: {e}")
@@ -166,7 +171,7 @@ class MorningReport:
             )
         except Exception as e:
             debug_log(f"❌ Ошибка получения сводки по бэкапам: {e}")
-            return "❌ Данные о бэкапах недоступны"
+            return "❌ Данные о бэкапах недоступны", True
 
     def get_zfs_summary_for_report(self):
         """Получает сводку по ZFS"""
@@ -176,7 +181,7 @@ class MorningReport:
 
             db_path = BACKUP_DATABASE_CONFIG.get("backups_db")
             if not db_path:
-                return "❌ База бэкапов не настроена\n"
+                return "❌ База бэкапов не настроена\n", True
 
             zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
             if not isinstance(zfs_servers, dict):
@@ -209,7 +214,7 @@ class MorningReport:
                 rows = cursor.fetchall()
             except Exception as exc:
                 if "no such table: zfs_pool_status" in str(exc):
-                    return "❌ Таблица ZFS ещё не создана.\n"
+                    return "❌ Таблица ZFS ещё не создана.\n", True
                 raise
             finally:
                 conn.close()
@@ -294,17 +299,16 @@ class MorningReport:
                     stale_servers.add(server)
 
             if not rows and expected_servers:
-                stale_list = ", ".join(sorted(stale_servers))
                 servers_total = len(expected_servers)
                 servers_problem = len(stale_servers)
                 servers_ok = servers_total - servers_problem
-                return (
+                summary = (
                     f"• Серверов: {servers_total} (🟢 {servers_ok} / 🔴 {servers_problem})\n"
                     "• Пулов: 0 (🟢 0 / 🔴 0)\n"
-                    f"• Нет свежих данных (>24ч): {stale_list}\n"
                 )
+                return summary, True
             if not rows:
-                return "• Данных нет\n"
+                return "• Данных нет\n", False
 
             total_pools = len(rows)
             ok_pools = sum(
@@ -335,14 +339,11 @@ class MorningReport:
                 f"• Пулов: {total_pools} (🟢 {ok_pools} / 🔴 {bad_pools})\n"
             )
 
-            if stale_servers:
-                stale_list = ", ".join(sorted(stale_servers))
-                summary += f"• Нет свежих данных (>24ч): {stale_list}\n"
-
-            return summary
+            has_issues = servers_problem > 0 or bad_pools > 0 or bool(stale_servers)
+            return summary, has_issues
         except Exception as e:
             debug_log(f"❌ Ошибка получения сводки ZFS: {e}")
-            return "❌ Данные ZFS недоступны\n"
+            return "❌ Данные ZFS недоступны\n", True
     
     def send_report(self, manual_call=False):
         """Отправка отчета"""
