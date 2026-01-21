@@ -573,7 +573,10 @@ HTML_TEMPLATE = """
                         {% for source in supplier_stock.sources %}
                         <div class="server-item">
                             <div class="server-info">
-                                <div class="server-name">{{ source.name or source.id }}</div>
+                                <div class="server-name">
+                                    {% if source.enabled %}🟢{% else %}🔴{% endif %}
+                                    {{ source.name or source.id }}
+                                </div>
                                 <div class="server-details">{{ source.url or 'URL не задан' }}</div>
                                 <div class="server-details">Файл: {{ source.output_name or 'не задан' }}</div>
                                 <div class="server-details">Метод: {{ source.method }}</div>

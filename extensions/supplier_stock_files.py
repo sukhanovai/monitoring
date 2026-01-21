@@ -1,11 +1,11 @@
 """
 /extensions/supplier_stock_files.py
-Server Monitoring System v8.1.2
+Server Monitoring System v8.0.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Supplier stock files downloader
 Система мониторинга серверов
-Версия: 8.1.2
+Версия: 8.0.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Получение файлов остатков поставщиков
@@ -57,7 +57,13 @@ def _merge_dicts(defaults: Dict[str, Any], current: Dict[str, Any]) -> Dict[str,
 def normalize_supplier_stock_config(config: Dict[str, Any] | None) -> Dict[str, Any]:
     if not isinstance(config, dict):
         return dict(DEFAULT_SUPPLIER_STOCK_CONFIG)
-    return _merge_dicts(DEFAULT_SUPPLIER_STOCK_CONFIG, config)
+    merged = _merge_dicts(DEFAULT_SUPPLIER_STOCK_CONFIG, config)
+    sources = merged.get("download", {}).get("sources", [])
+    if isinstance(sources, list):
+        for source in sources:
+            if isinstance(source, dict):
+                source.setdefault("enabled", True)
+    return merged
 
 
 def get_supplier_stock_config() -> Dict[str, Any]:
@@ -67,6 +73,8 @@ def get_supplier_stock_config() -> Dict[str, Any]:
 
 def save_supplier_stock_config(config: Dict[str, Any]) -> tuple[bool, str]:
     normalized = normalize_supplier_stock_config(config)
+    temp_dir = Path(normalized["download"]["temp_dir"])
+    temp_dir.mkdir(parents=True, exist_ok=True)
     return extension_manager.save_extension_config(SUPPLIER_STOCK_EXTENSION_ID, normalized)
 
 
@@ -184,6 +192,8 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
     results: List[Dict[str, Any]] = []
 
     for source in sources:
+        if not source.get("enabled", True):
+            continue
         source_id = source.get("id") or source.get("name") or "unknown"
         name = source.get("name") or source_id
         method = source.get("method", "http")
@@ -280,6 +290,7 @@ def summarize_supplier_stock_sources(sources: Iterable[Dict[str, Any]]) -> List[
                 "url": source.get("url"),
                 "output_name": source.get("output_name"),
                 "method": source.get("method", "http"),
+                "enabled": source.get("enabled", True),
             }
         )
     return summary

@@ -881,6 +881,20 @@ def settings_callback_handler(update, context):
             show_supplier_stock_sources_menu(update, context)
         elif data == 'supplier_stock_source_add':
             supplier_stock_start_source_wizard(update, context)
+        elif data.startswith('supplier_stock_source_edit_'):
+            source_id = data.replace('supplier_stock_source_edit_', '')
+            supplier_stock_start_edit_wizard(update, context, source_id)
+        elif data.startswith('supplier_stock_source_toggle_'):
+            source_id = data.replace('supplier_stock_source_toggle_', '')
+            config = get_supplier_stock_config()
+            sources = config.get("download", {}).get("sources", [])
+            for source in sources:
+                if str(source.get("id")) == source_id:
+                    source["enabled"] = not source.get("enabled", True)
+                    break
+            config["download"]["sources"] = sources
+            save_supplier_stock_config(config)
+            show_supplier_stock_sources_menu(update, context)
         elif data.startswith('supplier_stock_source_delete_'):
             source_id = data.replace('supplier_stock_source_delete_', '')
             config = get_supplier_stock_config()
@@ -2279,6 +2293,9 @@ def show_supplier_stock_sources_menu(update, context):
     context.user_data.pop('supplier_stock_add_source', None)
     context.user_data.pop('supplier_stock_source_stage', None)
     context.user_data.pop('supplier_stock_source_data', None)
+    context.user_data.pop('supplier_stock_edit_source', None)
+    context.user_data.pop('supplier_stock_edit_source_stage', None)
+    context.user_data.pop('supplier_stock_edit_source_id', None)
 
     config = get_supplier_stock_config()
     sources = config.get("download", {}).get("sources", [])
@@ -2292,8 +2309,15 @@ def show_supplier_stock_sources_menu(update, context):
             url = _escape_pattern_text(source.get("url") or "URL не задан")
             output_name = _escape_pattern_text(source.get("output_name") or "не задано")
             method = _escape_pattern_text(source.get("method") or "http")
+            enabled = source.get("enabled", True)
+            status_icon = "🟢" if enabled else "🔴"
             message_lines.append(
-                f"{index}. *{name}*\n   • URL: `{url}`\n   • Файл: `{output_name}`\n   • Метод: `{method}`\n"
+                (
+                    f"{index}. {status_icon} *{name}*\n"
+                    f"   • URL: `{url}`\n"
+                    f"   • Файл: `{output_name}`\n"
+                    f"   • Метод: `{method}`\n"
+                )
             )
         message = "\n".join(message_lines)
 
@@ -2305,11 +2329,21 @@ def show_supplier_stock_sources_menu(update, context):
         source_id = source.get("id") or ""
         if not source_id:
             continue
+        enabled = source.get("enabled", True)
+        toggle_text = "⛔️ Выключить" if enabled else "✅ Включить"
         keyboard.append([
             InlineKeyboardButton(
-                f"🗑️ Удалить {source.get('name', source_id)}",
+                f"✏️ {source.get('name', source_id)}",
+                callback_data=f'supplier_stock_source_edit_{source_id}'
+            ),
+            InlineKeyboardButton(
+                f"{toggle_text}",
+                callback_data=f'supplier_stock_source_toggle_{source_id}'
+            ),
+            InlineKeyboardButton(
+                "🗑️",
                 callback_data=f'supplier_stock_source_delete_{source_id}'
-            )
+            ),
         ])
 
     keyboard.append([
@@ -2340,10 +2374,43 @@ def supplier_stock_start_source_wizard(update, context):
         ])
     )
 
+def supplier_stock_start_edit_wizard(update, context, source_id: str):
+    """Запуск мастера редактирования источника остатков."""
+    query = update.callback_query
+    query.answer()
+
+    config = get_supplier_stock_config()
+    sources = config.get("download", {}).get("sources", [])
+    source = next((item for item in sources if str(item.get("id")) == source_id), None)
+
+    if not source:
+        query.edit_message_text(
+            "❌ Источник не найден.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources')]
+            ])
+        )
+        return
+
+    context.user_data['supplier_stock_edit_source'] = True
+    context.user_data['supplier_stock_edit_source_stage'] = 'name'
+    context.user_data['supplier_stock_edit_source_id'] = source_id
+
+    query.edit_message_text(
+        f"✏️ *Редактирование источника*\n\nТекущее имя: `{_escape_pattern_text(source.get('name'))}`\n"
+        "Введите новое имя (или '-' чтобы оставить текущее):",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_sources')]
+        ])
+    )
+
 def supplier_stock_handle_input(update, context):
     """Обработчик ввода для настроек остатков поставщиков."""
     if context.user_data.get('supplier_stock_edit'):
         return supplier_stock_handle_edit_input(update, context)
+    if context.user_data.get('supplier_stock_edit_source'):
+        return supplier_stock_handle_source_edit_input(update, context)
     if context.user_data.get('supplier_stock_add_source'):
         return supplier_stock_handle_source_input(update, context)
     return None
@@ -2437,6 +2504,7 @@ def supplier_stock_handle_source_input(update, context):
             source_data['auth'] = {'username': username, 'password': password}
 
         source_data.setdefault('method', 'http')
+        source_data.setdefault('enabled', True)
 
         config = get_supplier_stock_config()
         sources = config['download'].get('sources', [])
@@ -2458,6 +2526,77 @@ def supplier_stock_handle_source_input(update, context):
         return None
 
     update.message.reply_text("❌ Не удалось определить шаг мастера. Попробуйте снова.")
+    return None
+
+def supplier_stock_handle_source_edit_input(update, context):
+    """Обработка ввода при редактировании источника остатков."""
+    stage = context.user_data.get('supplier_stock_edit_source_stage')
+    source_id = context.user_data.get('supplier_stock_edit_source_id')
+    user_input = update.message.text.strip()
+
+    config = get_supplier_stock_config()
+    sources = config.get("download", {}).get("sources", [])
+    source = next((item for item in sources if str(item.get("id")) == source_id), None)
+
+    if not source:
+        update.message.reply_text("❌ Источник не найден.", reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources')]
+        ]))
+        return None
+
+    if stage == 'name':
+        if user_input and user_input not in ('-',):
+            source['name'] = user_input
+        context.user_data['supplier_stock_edit_source_stage'] = 'url'
+        update.message.reply_text(
+            f"Текущий URL: {source.get('url')}\nВведите новый URL (или '-' чтобы оставить текущее):"
+        )
+        return None
+
+    if stage == 'url':
+        if user_input and user_input not in ('-',):
+            source['url'] = user_input
+        context.user_data['supplier_stock_edit_source_stage'] = 'output_name'
+        update.message.reply_text(
+            f"Текущий файл: {source.get('output_name')}\nВведите новое имя файла (или '-' чтобы оставить текущее):"
+        )
+        return None
+
+    if stage == 'output_name':
+        if user_input and user_input not in ('-',):
+            source['output_name'] = user_input
+        context.user_data['supplier_stock_edit_source_stage'] = 'auth'
+        update.message.reply_text(
+            "Введите логин и пароль через двоеточие (login:password), '-' чтобы оставить текущее или 'none' чтобы очистить:"
+        )
+        return None
+
+    if stage == 'auth':
+        if user_input.lower() in ('none', 'нет'):
+            source.pop('auth', None)
+        elif user_input not in ('-',):
+            if ':' not in user_input:
+                update.message.reply_text("❌ Формат должен быть login:password, '-' или 'none'. Попробуйте снова:")
+                return None
+            username, password = user_input.split(':', 1)
+            source['auth'] = {'username': username, 'password': password}
+
+        config["download"]["sources"] = sources
+        save_supplier_stock_config(config)
+
+        context.user_data.pop('supplier_stock_edit_source', None)
+        context.user_data.pop('supplier_stock_edit_source_stage', None)
+        context.user_data.pop('supplier_stock_edit_source_id', None)
+
+        update.message.reply_text(
+            "✅ Источник обновлен.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources')]
+            ])
+        )
+        return None
+
+    update.message.reply_text("❌ Не удалось определить шаг редактирования. Попробуйте снова.")
     return None
 
 def _slugify_supplier_source_id(value: str) -> str:
