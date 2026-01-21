@@ -51,7 +51,6 @@ class MorningReport:
             return "❌ Нет данных для отчета"
             
         status = self.morning_data["status"]
-        collection_time = self.morning_data.get("collection_time", datetime.now())
         is_manual = self.morning_data.get("manual_call", False)
         
         total_servers = len(status["ok"]) + len(status["failed"])
@@ -60,17 +59,17 @@ class MorningReport:
         
         # Определяем тип отчета
         if is_manual:
-            report_type = "Ручной запрос"
-            time_prefix = "⏰ *Время проверки:*"
+            report_type = "Ручной отчёт мониторинга"
+            report_icon = "📝"
         else:
-            report_type = "Утренний отчет"
-            time_prefix = "⏰ *Время сбора данных:*"
+            report_type = "Утренний отчёт мониторинга"
+            report_icon = "📊"
         
-        message = f"📊 *{report_type} о доступности серверов*\n\n"
-        message += f"{time_prefix} {collection_time.strftime('%H:%M')}\n"
-        message += f"🔢 *Всего серверов:* {total_servers}\n"
-        message += f"🟢 *Доступно:* {up_count}\n"
-        message += f"🔴 *Недоступно:* {down_count}\n"
+        message = f"{report_icon} *{report_type}*\n\n"
+        message += (
+            "🖥️ *Доступность серверов:* "
+            f"{total_servers} всего · ✅ {up_count} доступно · ❌ {down_count} недоступно\n"
+        )
 
         from telegram.utils.helpers import escape_markdown
 
@@ -91,7 +90,7 @@ class MorningReport:
                     safe_ip = escape_markdown(str(s.get('ip', '')), version=1)
                     message += f"• {safe_name} ({safe_ip})\n"
         else:
-            message += f"\n✅ *Все серверы доступны!*\n"
+            message += ""
 
         # Добавляем информацию о бэкапах
         try:
@@ -115,7 +114,7 @@ class MorningReport:
             from extensions.extension_manager import extension_manager
             if extension_manager.is_extension_enabled('zfs_monitor'):
                 zfs_summary = self.get_zfs_summary_for_report()
-                message += "\n🧊 *Статусы ZFS (последние)*\n"
+                message += "\n🧊 *ZFS (последние данные)*\n"
                 message += zfs_summary
         except Exception as e:
             debug_log(f"⚠️ Ошибка получения данных о ZFS: {e}")
@@ -229,9 +228,9 @@ class MorningReport:
                 return (
                     f"• Серверов: {len(expected_servers)}\n"
                     "• Пулов: 0\n"
-                    "• OK: 0\n"
-                    "• Проблемы: 0\n"
-                    f"• Нет свежих данных (>24ч): {stale_list}\n"
+                    "• ✅ Без проблем: 0\n"
+                    "• ❌ Проблемы: 0\n"
+                    f"• ⚠️ Нет свежих данных (>24ч): {len(stale_servers)} ({stale_list})\n"
                 )
             if not rows:
                 return "• Данных нет\n"
@@ -259,13 +258,13 @@ class MorningReport:
             summary = (
                 f"• Серверов: {servers_count}\n"
                 f"• Пулов: {total_pools}\n"
-                f"• OK: {ok_pools}\n"
-                f"• Проблемы: {problems_count}\n"
+                f"• ✅ Без проблем: {ok_pools}\n"
+                f"• ❌ Проблемы: {problems_count}\n"
             )
 
             if stale_servers:
                 stale_list = ", ".join(sorted(stale_servers))
-                summary += f"• Нет свежих данных (>24ч): {stale_list}\n"
+                summary += f"• ⚠️ Нет свежих данных (>24ч): {len(stale_servers)} ({stale_list})\n"
 
             return summary
         except Exception as e:
