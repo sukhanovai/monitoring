@@ -2517,6 +2517,23 @@ def supplier_stock_handle_source_input(update, context):
             update.message.reply_text("❌ Имя файла не может быть пустым. Попробуйте снова:")
             return None
         source_data['output_name'] = user_input
+        context.user_data['supplier_stock_source_stage'] = 'vars'
+        context.user_data['supplier_stock_source_data'] = source_data
+        update.message.reply_text(
+            "Введите переменные в формате key=value через запятую "
+            "(пример: zipfile=DKC_Maga_Del_1200_$(date '+%d.%m.%Y').zip) "
+            "или '-' если не нужно:"
+        )
+        return None
+
+    if stage == 'vars':
+        if user_input not in ('-', ''):
+            vars_map = _parse_supplier_vars(user_input)
+            if vars_map is None:
+                update.message.reply_text("❌ Формат должен быть key=value, разделители запятая/новая строка.")
+                return None
+            source_data['vars'] = vars_map
+
         context.user_data['supplier_stock_source_stage'] = 'auth'
         context.user_data['supplier_stock_source_data'] = source_data
         update.message.reply_text(
@@ -2594,6 +2611,24 @@ def supplier_stock_handle_source_edit_input(update, context):
     if stage == 'output_name':
         if user_input and user_input not in ('-',):
             source['output_name'] = user_input
+        context.user_data['supplier_stock_edit_source_stage'] = 'vars'
+        update.message.reply_text(
+            "Введите переменные в формате key=value через запятую "
+            "(пример: zipfile=DKC_Maga_Del_1200_$(date '+%d.%m.%Y').zip), "
+            "'-' чтобы оставить текущее или 'none' чтобы очистить:"
+        )
+        return None
+
+    if stage == 'vars':
+        if user_input.lower() in ('none', 'нет'):
+            source.pop('vars', None)
+        elif user_input not in ('-',):
+            vars_map = _parse_supplier_vars(user_input)
+            if vars_map is None:
+                update.message.reply_text("❌ Формат должен быть key=value, разделители запятая/новая строка.")
+                return None
+            source['vars'] = vars_map
+
         context.user_data['supplier_stock_edit_source_stage'] = 'auth'
         update.message.reply_text(
             "Введите логин и пароль через двоеточие (login:password), '-' чтобы оставить текущее или 'none' чтобы очистить:"
@@ -2640,6 +2675,25 @@ def _unique_supplier_source_id(source_id: str, sources: list[dict]) -> str:
     while f"{source_id}_{index}" in existing:
         index += 1
     return f"{source_id}_{index}"
+
+def _parse_supplier_vars(raw_value: str) -> dict | None:
+    if not raw_value:
+        return {}
+    parts = re.split(r'[,\n]+', raw_value)
+    result = {}
+    for part in parts:
+        part = part.strip()
+        if not part:
+            continue
+        if '=' not in part:
+            return None
+        key, value = part.split('=', 1)
+        key = key.strip()
+        value = value.strip()
+        if not key:
+            return None
+        result[key] = value
+    return result
 
 def _enable_all_extensions_settings(query):
     enabled = 0
