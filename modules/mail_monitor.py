@@ -760,9 +760,6 @@ class BackupProcessor:
             )
 
             for entry in entries:
-                supplier_name = entry.get("supplier_name")
-                if not supplier_name or supplier_name == "неизвестно":
-                    supplier_name = source_name or "неизвестно"
                 cursor.execute(
                     """
                     INSERT OR IGNORE INTO zfs_pool_status
