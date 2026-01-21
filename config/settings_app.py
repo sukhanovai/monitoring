@@ -1,11 +1,11 @@
 """
 /config/settings_app.py
-Server Monitoring System v7.3.22
+Server Monitoring System v7.3.23
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Deprecated wrapper for database-backed settings
 Система мониторинга серверов
-Версия: 7.3.22
+Версия: 7.3.23
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Устаревшая обертка для настроек из БД
