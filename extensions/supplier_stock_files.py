@@ -1,11 +1,11 @@
 """
 /extensions/supplier_stock_files.py
-Server Monitoring System v8.1.3
+Server Monitoring System v8.0.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Supplier stock files downloader
 Система мониторинга серверов
-Версия: 8.1.3
+Версия: 8.0.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Получение файлов остатков поставщиков
@@ -30,6 +30,7 @@ SUPPLIER_STOCK_EXTENSION_ID = "supplier_stock_files"
 DEFAULT_SUPPLIER_STOCK_CONFIG: Dict[str, Any] = {
     "download": {
         "temp_dir": str(DATA_DIR / "supplier_stock" / "tmp"),
+        "archive_dir": str(DATA_DIR / "supplier_stock" / "archive"),
         "reports_file": str(DATA_DIR / "supplier_stock" / "reports.jsonl"),
         "schedule": {"enabled": False, "time": "06:00"},
         "sources": [],
@@ -41,7 +42,7 @@ DEFAULT_SUPPLIER_STOCK_CONFIG: Dict[str, Any] = {
 
 _scheduler_lock = threading.Lock()
 _scheduler_started = False
-_last_run_date: str | None = None
+_last_run_marker: str | None = None
 
 
 def _merge_dicts(defaults: Dict[str, Any], current: Dict[str, Any]) -> Dict[str, Any]:
@@ -75,6 +76,8 @@ def save_supplier_stock_config(config: Dict[str, Any]) -> tuple[bool, str]:
     normalized = normalize_supplier_stock_config(config)
     temp_dir = Path(normalized["download"]["temp_dir"])
     temp_dir.mkdir(parents=True, exist_ok=True)
+    archive_dir = Path(normalized["download"]["archive_dir"])
+    archive_dir.mkdir(parents=True, exist_ok=True)
     return extension_manager.save_extension_config(SUPPLIER_STOCK_EXTENSION_ID, normalized)
 
 
@@ -186,6 +189,8 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
     download_config = config.get("download", {})
     temp_dir = Path(download_config.get("temp_dir", DEFAULT_SUPPLIER_STOCK_CONFIG["download"]["temp_dir"]))
     temp_dir.mkdir(parents=True, exist_ok=True)
+    archive_dir = Path(download_config.get("archive_dir", DEFAULT_SUPPLIER_STOCK_CONFIG["download"]["archive_dir"]))
+    archive_dir.mkdir(parents=True, exist_ok=True)
 
     sources = download_config.get("sources", [])
     now = datetime.now()
@@ -219,6 +224,11 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
 
             entry.update(result)
             entry["status"] = "success" if result.get("success") else "error"
+
+            if entry["status"] == "success" and output_path.exists():
+                archive_path = _archive_original_file(output_path, archive_dir, now)
+                if archive_path:
+                    entry["archive_path"] = str(archive_path)
         except Exception as exc:
             entry.update({"status": "error", "error": str(exc)})
 
@@ -251,12 +261,13 @@ def _should_run_schedule(schedule: Dict[str, Any], now: datetime) -> bool:
     if now.hour != hours or now.minute != minutes:
         return False
 
-    global _last_run_date
+    global _last_run_marker
     current_date = now.strftime("%Y-%m-%d")
-    if _last_run_date == current_date:
+    marker = f"{current_date}|{schedule_time}"
+    if _last_run_marker == marker:
         return False
 
-    _last_run_date = current_date
+    _last_run_marker = marker
     return True
 
 
@@ -278,6 +289,25 @@ def start_supplier_stock_scheduler() -> None:
             threading.Event().wait(30)
 
     threading.Thread(target=_loop, daemon=True).start()
+
+
+def _archive_original_file(source_path: Path, archive_dir: Path, now: datetime) -> Path | None:
+    if not source_path.exists():
+        return None
+    archive_dir.mkdir(parents=True, exist_ok=True)
+    date_stamp = now.strftime("%Y-%m-%d")
+    if source_path.suffix:
+        archive_name = f"{source_path.stem}_{date_stamp}{source_path.suffix}"
+    else:
+        archive_name = f"{source_path.name}_{date_stamp}"
+    archive_path = archive_dir / archive_name
+    try:
+        import shutil
+
+        shutil.copy2(source_path, archive_path)
+        return archive_path
+    except Exception:
+        return None
 
 
 def summarize_supplier_stock_sources(sources: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:

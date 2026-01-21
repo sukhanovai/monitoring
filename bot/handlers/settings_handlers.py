@@ -862,6 +862,14 @@ def settings_callback_handler(update, context):
             )
         elif data == 'supplier_stock_schedule':
             show_supplier_stock_schedule_menu(update, context)
+        elif data == 'supplier_stock_archive_dir':
+            context.user_data['supplier_stock_edit'] = 'archive_dir'
+            query.edit_message_text(
+                "Введите путь к каталогу архива:",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_download')]
+                ])
+            )
         elif data == 'supplier_stock_schedule_toggle':
             config = get_supplier_stock_config()
             schedule = config.get("download", {}).get("schedule", {})
@@ -2234,6 +2242,7 @@ def show_supplier_stock_download_settings(update, context):
     message = (
         "📦 *Скачивание файлов остатков*\n\n"
         f"Временный каталог: `{temp_dir}`\n"
+        f"Архив: `{download.get('archive_dir', '')}`\n"
         f"Источников: {len(sources)}\n"
         f"Расписание: {schedule_state} ({schedule_time})\n\n"
         "Выберите действие:"
@@ -2241,6 +2250,7 @@ def show_supplier_stock_download_settings(update, context):
 
     keyboard = [
         [InlineKeyboardButton("📁 Временный каталог", callback_data='supplier_stock_temp_dir')],
+        [InlineKeyboardButton("🗄️ Каталог архива", callback_data='supplier_stock_archive_dir')],
         [InlineKeyboardButton("⏰ Расписание", callback_data='supplier_stock_schedule')],
         [InlineKeyboardButton("📦 Источники", callback_data='supplier_stock_sources')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_supplier_stock'),
@@ -2450,6 +2460,21 @@ def supplier_stock_handle_edit_input(update, context):
             "✅ Время расписания обновлено.",
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_schedule')]
+            ])
+        )
+        return None
+
+    if field == 'archive_dir':
+        if not user_input:
+            update.message.reply_text("❌ Путь не может быть пустым. Попробуйте снова:")
+            return None
+        config['download']['archive_dir'] = user_input
+        save_supplier_stock_config(config)
+        context.user_data.pop('supplier_stock_edit', None)
+        update.message.reply_text(
+            "✅ Каталог архива обновлен.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_download')]
             ])
         )
         return None
