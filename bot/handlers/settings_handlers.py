@@ -2512,7 +2512,8 @@ def supplier_stock_handle_source_input(update, context):
         update.message.reply_text(
             "Введите переменные в формате key=value через запятую "
             "(пример: zipfile=DKC_Maga_Del_1200_$(date '+%d.%m.%Y').zip). "
-            "В URL можно использовать $zipfile или ${zipfile}. "
+            "Можно использовать переменные формата подстановки вида $a или ${a} "
+            "для дальнейшей подмены значений. "
             "Введите '-' если не нужно:"
         )
         return None
@@ -2540,7 +2541,8 @@ def supplier_stock_handle_source_input(update, context):
         context.user_data['supplier_stock_source_stage'] = 'auth'
         context.user_data['supplier_stock_source_data'] = source_data
         update.message.reply_text(
-            "Введите логин и пароль через двоеточие (login:password) или '-' если не нужно:"
+            "Введите логин и пароль через двоеточие (login:password) "
+            "или '-' чтобы пропустить и сохранить:"
         )
         return None
 
@@ -2599,7 +2601,8 @@ def supplier_stock_handle_source_edit_input(update, context):
         context.user_data['supplier_stock_edit_source_stage'] = 'url'
         update.message.reply_text(
             "Введите новый URL (или '-' чтобы оставить текущее). "
-            "Можно использовать $zipfile или ${zipfile}:\n"
+            "Можно использовать переменные формата подстановки вида $a или ${a} "
+            "для дальнейшей подмены значений:\n"
             f"{source.get('url')}"
         )
         return None
@@ -2611,7 +2614,8 @@ def supplier_stock_handle_source_edit_input(update, context):
         update.message.reply_text(
             "Введите переменные в формате key=value через запятую "
             "(пример: zipfile=DKC_Maga_Del_1200_$(date '+%d.%m.%Y').zip). "
-            "В URL можно использовать $zipfile или ${zipfile}. "
+            "Можно использовать переменные формата подстановки вида $a или ${a} "
+            "для дальнейшей подмены значений. "
             "'-' чтобы оставить текущее или 'none' чтобы очистить:"
         )
         return None
@@ -2638,7 +2642,8 @@ def supplier_stock_handle_source_edit_input(update, context):
             source['output_name'] = user_input
         context.user_data['supplier_stock_edit_source_stage'] = 'auth'
         update.message.reply_text(
-            "Введите логин и пароль через двоеточие (login:password), '-' чтобы оставить текущее или 'none' чтобы очистить:"
+            "Введите логин и пароль через двоеточие (login:password), "
+            "'-' чтобы оставить текущее или 'none' чтобы очистить:"
         )
         return None
 
