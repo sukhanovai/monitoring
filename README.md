@@ -238,4 +238,3 @@ systemctl status server-monitor
 
 ## 📄 Лицензия
 MIT License — подробности в файле [LICENSE](LICENSE).
-
