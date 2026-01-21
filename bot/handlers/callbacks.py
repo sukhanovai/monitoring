@@ -162,6 +162,10 @@ def callback_router(update, context):
         from bot.menu.handlers import show_main_menu
         show_main_menu(update, context)
 
+    elif data == 'about_bot':
+        from bot.menu.handlers import show_about_bot
+        show_about_bot(update, context)
+
     # ------------------------------------------------
     # ДОСТУПНОСТЬ ВСЕХ СЕРВЕРОВ (ручная проверка)
     # ------------------------------------------------
