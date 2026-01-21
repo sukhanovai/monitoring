@@ -309,6 +309,9 @@ def callback_router(update, context):
     elif data in BACKUP_SETTINGS_CALLBACKS or data.startswith(('delete_pattern_', 'edit_pattern_', 'db_default_', 'stock_pattern_select_')):
         settings_callback_handler(update, context)
 
+    elif data.startswith('supplier_stock_'):
+        settings_callback_handler(update, context)
+
     # ------------------------------------------------
     # РЕСУРСЫ: группы/списки (TargetedChecks)
     # ------------------------------------------------
