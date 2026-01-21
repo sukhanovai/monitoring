@@ -14,12 +14,13 @@ Supplier stock files downloader
 from __future__ import annotations
 
 import json
+import base64
 import ssl
 import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, List
-from urllib.request import HTTPBasicAuthHandler, HTTPSHandler, Request, build_opener
+from urllib.request import HTTPSHandler, Request, build_opener
 
 from config.settings import DATA_DIR
 from extensions.extension_manager import extension_manager
@@ -101,21 +102,21 @@ def _render_template(value: str, now: datetime) -> str:
 def _download_http(source: Dict[str, Any], output_path: Path, now: datetime) -> Dict[str, Any]:
     url = _render_template(str(source.get("url", "")), now)
     timeout = int(source.get("timeout", 300))
-    headers = source.get("headers") or {}
+    headers = dict(source.get("headers") or {})
     verify_ssl = bool(source.get("verify_ssl", True))
     auth = source.get("auth") or {}
     username = auth.get("username") or ""
     password = auth.get("password") or ""
 
-    request = Request(url, headers=headers)
     handlers = []
-    if username and password:
-        passman = HTTPBasicAuthHandler()
-        passman.add_password(None, url, username, password)
-        handlers.append(passman)
+    if username or password:
+        auth_encoding = str(auth.get("encoding", "utf-8"))
+        credentials = f"{username}:{password}".encode(auth_encoding)
+        headers["Authorization"] = "Basic " + base64.b64encode(credentials).decode("ascii")
     if not verify_ssl:
         handlers.append(HTTPSHandler(context=ssl._create_unverified_context()))
 
+    request = Request(url, headers=headers)
     opener = build_opener(*handlers)
     response = opener.open(request, timeout=timeout)
 
