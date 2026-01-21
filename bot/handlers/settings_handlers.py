@@ -2469,9 +2469,9 @@ def _unique_supplier_source_id(source_id: str, sources: list[dict]) -> str:
     if source_id not in existing:
         return source_id
     index = 2
-    while f\"{source_id}_{index}\" in existing:
+    while f"{source_id}_{index}" in existing:
         index += 1
-    return f\"{source_id}_{index}\"
+    return f"{source_id}_{index}"
 
 def _enable_all_extensions_settings(query):
     enabled = 0
