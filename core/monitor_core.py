@@ -2048,7 +2048,6 @@ def send_morning_report(manual_call=False):
             }
 
     status = morning_data["status"]
-    collection_time = morning_data.get("collection_time", datetime.now())
     is_manual = morning_data.get("manual_call", False)
 
     total_servers = len(status["ok"]) + len(status["failed"])
@@ -2057,17 +2056,17 @@ def send_morning_report(manual_call=False):
 
     # Формируем сообщение с указанием типа отчета
     if is_manual:
-        report_type = "Ручной запрос"
-        time_prefix = "⏰ *Время проверки:*"
+        report_type = "Ручной отчёт мониторинга"
+        report_icon = "📝"
     else:
-        report_type = "Утренний отчет"
-        time_prefix = "⏰ *Время сбора данных:*"
+        report_type = "Утренний отчёт мониторинга"
+        report_icon = "📊"
 
-    message = f"📊 *{report_type} о доступности серверов*\n\n"
-    message += f"{time_prefix} {collection_time.strftime('%H:%M')}\n"
-    message += f"🔢 *Всего серверов:* {total_servers}\n"
-    message += f"🟢 *Доступно:* {up_count}\n"
-    message += f"🔴 *Недоступно:* {down_count}\n"
+    message = f"{report_icon} *{report_type}*\n\n"
+    message += (
+        "🖥️ *Доступность серверов:* "
+        f"{total_servers} всего · ✅ {up_count} доступно · ❌ {down_count} недоступно\n"
+    )
 
     # Для ручного отчета используем другой период бэкапов
     if is_manual:
@@ -2093,30 +2092,7 @@ def send_morning_report(manual_call=False):
             for s in servers_list:
                 message += f"• {s['name']} ({s['ip']})\n"
 
-    else:
-        message += f"\n✅ *Все серверы доступны!*\n"
-
-    message += f"\n📋 *Статистика по типам:*\n"
-
-    # Статистика по типам серверов
-    type_stats = {}
-    all_servers = status["ok"] + status["failed"]
-    for server in all_servers:
-        if server["type"] not in type_stats:
-            type_stats[server["type"]] = {"total": 0, "up": 0}
-        type_stats[server["type"]]["total"] += 1
-
-    for server in status["ok"]:
-        type_stats[server["type"]]["up"] += 1
-
-    for server_type, stats in type_stats.items():
-        up_percent = (stats["up"] / stats["total"]) * 100 if stats["total"] > 0 else 0
-        message += f"• {server_type.upper()}: {stats['up']}/{stats['total']} ({up_percent:.1f}%)\n"
-
-    if is_manual:
-        message += f"\n⏰ *Отчет сформирован:* {datetime.now().strftime('%H:%M:%S')}"
-    else:
-        message += f"\n⏰ *Отчет отправлен:* {datetime.now().strftime('%H:%M:%S')}"
+    message += f"\n⏰ *Отчет сформирован:* {datetime.now().strftime('%H:%M:%S')}"
 
     # Отправляем отчет принудительно, даже в тихом режиме
     send_alert(message, force=True)
