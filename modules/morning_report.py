@@ -227,14 +227,28 @@ class MorningReport:
 
             stale_servers = set()
             stale_threshold = datetime.now() - timedelta(hours=24)
+
+            def parse_received_at(value):
+                if isinstance(value, datetime):
+                    return value
+                if isinstance(value, str):
+                    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S.%f"):
+                        try:
+                            return datetime.strptime(value, fmt)
+                        except ValueError:
+                            continue
+                    try:
+                        return datetime.fromisoformat(value)
+                    except ValueError:
+                        return None
+                return None
             for server in expected_servers:
                 received_at = latest_by_server.get(server)
                 if not received_at:
                     stale_servers.add(server)
                     continue
-                try:
-                    last_seen = datetime.strptime(received_at, "%Y-%m-%d %H:%M:%S")
-                except ValueError:
+                last_seen = parse_received_at(received_at)
+                if not last_seen:
                     stale_servers.add(server)
                     continue
                 if last_seen < stale_threshold:
