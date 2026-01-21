@@ -1,11 +1,11 @@
 """
 /config/__init__.py
-Server Monitoring System v7.3.19
+Server Monitoring System v7.3.20
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Configuration package
 Система мониторинга серверов
-Версия: 7.3.19
+Версия: 7.3.20
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Пакет конфигурации
