@@ -1,11 +1,11 @@
 """
 /bot/handlers/__init__.py
-Server Monitoring System v8.1.6
+Server Monitoring System v8.1.7
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers package exports
 Система мониторинга серверов
-Версия: 8.1.6
+Версия: 8.1.7
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Экспорт вспомогательных функций для регистрации обработчиков
