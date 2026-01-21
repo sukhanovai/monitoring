@@ -52,6 +52,7 @@ def main_menu(extension_manager):
         [InlineKeyboardButton("🛠️ Расширения", callback_data='extensions_menu')],
         [InlineKeyboardButton("🎛️ Управление", callback_data='control_panel')],
         [InlineKeyboardButton("⚙️ Настройки", callback_data='settings_main')],
+        [InlineKeyboardButton("ℹ️ О боте", callback_data='about_bot')],
         [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
     ])
 
