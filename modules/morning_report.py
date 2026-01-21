@@ -102,7 +102,7 @@ class MorningReport:
             if show_backups:
                 backup_summary, backup_has_issues = self.get_backup_summary_for_report(
                     24 if is_manual else 16,
-                    include_proxmox=True,
+                    include_proxmox=show_proxmox,
                     include_databases=show_databases,
                     include_mail=show_mail,
                 )
