@@ -13,7 +13,7 @@ Morning Report Module
 
 import threading
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import sqlite3
 from config.db_settings import DATA_COLLECTION_TIME
 from lib.logging import debug_log
@@ -245,6 +245,11 @@ class MorningReport:
                             return datetime.strptime(normalized, fmt)
                         except ValueError:
                             continue
+                    if len(normalized) >= 19:
+                        try:
+                            return datetime.strptime(normalized[:19], "%Y-%m-%d %H:%M:%S")
+                        except ValueError:
+                            pass
                     try:
                         return datetime.fromisoformat(normalized)
                     except ValueError:
@@ -283,6 +288,8 @@ class MorningReport:
                 if not received_at:
                     stale_servers.add(server)
                     continue
+                if received_at.tzinfo is not None:
+                    received_at = received_at.astimezone(timezone.utc).replace(tzinfo=None)
                 if received_at < stale_threshold:
                     stale_servers.add(server)
 
