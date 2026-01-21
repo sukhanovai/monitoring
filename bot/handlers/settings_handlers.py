@@ -2499,7 +2499,11 @@ def supplier_stock_handle_source_input(update, context):
         source_data['id'] = _slugify_supplier_source_id(user_input)
         context.user_data['supplier_stock_source_stage'] = 'url'
         context.user_data['supplier_stock_source_data'] = source_data
-        update.message.reply_text("Введите URL для скачивания:")
+        update.message.reply_text(
+            "Введите URL для скачивания. "
+            "Можно использовать переменные формата подстановки вида $a или ${a} "
+            "для дальнейшей подмены значений."
+        )
         return None
 
     if stage == 'url':
@@ -2510,10 +2514,8 @@ def supplier_stock_handle_source_input(update, context):
         context.user_data['supplier_stock_source_stage'] = 'vars'
         context.user_data['supplier_stock_source_data'] = source_data
         update.message.reply_text(
-            "Введите переменные в формате key=value через запятую "
-            "(пример: zipfile=DKC_Maga_Del_1200_$(date '+%d.%m.%Y').zip). "
-            "Можно использовать переменные формата подстановки вида $a или ${a} "
-            "для дальнейшей подмены значений. "
+            "Введите ранее указанные переменные подстановки в формате key=value через запятую "
+            "(пример: a=DKC_Maga_Del_1200_$(date '+%d.%m.%Y').zip). "
             "Введите '-' если не нужно:"
         )
         return None
@@ -2612,10 +2614,8 @@ def supplier_stock_handle_source_edit_input(update, context):
             source['url'] = user_input
         context.user_data['supplier_stock_edit_source_stage'] = 'vars'
         update.message.reply_text(
-            "Введите переменные в формате key=value через запятую "
-            "(пример: zipfile=DKC_Maga_Del_1200_$(date '+%d.%m.%Y').zip). "
-            "Можно использовать переменные формата подстановки вида $a или ${a} "
-            "для дальнейшей подмены значений. "
+            "Введите ранее указанные переменные подстановки в формате key=value через запятую "
+            "(пример: a=DKC_Maga_Del_1200_$(date '+%d.%m.%Y').zip). "
             "'-' чтобы оставить текущее или 'none' чтобы очистить:"
         )
         return None
