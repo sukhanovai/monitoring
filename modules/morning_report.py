@@ -229,16 +229,24 @@ class MorningReport:
                         value = value.decode("utf-8")
                     except Exception:
                         return None
+                if isinstance(value, (int, float)):
+                    try:
+                        return datetime.fromtimestamp(value)
+                    except (ValueError, OSError):
+                        return None
                 if isinstance(value, datetime):
                     return value
                 if isinstance(value, str):
+                    normalized = value.strip()
+                    if normalized.endswith("Z"):
+                        normalized = f"{normalized[:-1]}+00:00"
                     for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S.%f"):
                         try:
-                            return datetime.strptime(value, fmt)
+                            return datetime.strptime(normalized, fmt)
                         except ValueError:
                             continue
                     try:
-                        return datetime.fromisoformat(value)
+                        return datetime.fromisoformat(normalized)
                     except ValueError:
                         return None
                 return None
