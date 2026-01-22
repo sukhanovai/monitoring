@@ -241,6 +241,11 @@ def main(args: argparse.Namespace):
                 ).start()
                 logger.info("✅ Веб-интерфейс запущен")
 
+            if extension_manager.is_extension_enabled('supplier_stock_files'):
+                from extensions.supplier_stock_files import start_supplier_stock_scheduler
+                start_supplier_stock_scheduler()
+                logger.info("✅ Планировщик остатков поставщиков запущен")
+
         except Exception as e:
             logger.warning(f"⚠️ Ошибка инициализации расширений: {e}")
     else:
