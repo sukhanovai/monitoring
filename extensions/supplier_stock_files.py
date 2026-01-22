@@ -1,11 +1,11 @@
 """
 /extensions/supplier_stock_files.py
-Server Monitoring System v8.1.20
+Server Monitoring System v8.0.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Supplier stock files downloader
 Система мониторинга серверов
-Версия: 8.1.20
+Версия: 8.0.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Получение файлов остатков поставщиков
@@ -185,7 +185,18 @@ def _download_http(
         _ensure_parent(output_path)
         with response:
             data = response.read()
-            output_path.write_bytes(data)
+        include_headers = bool(source.get("include_headers"))
+        append_mode = bool(source.get("append"))
+        if include_headers:
+            version_map = {10: "1.0", 11: "1.1"}
+            http_version = version_map.get(getattr(response, "version", 11), "1.1")
+            status_line = f"HTTP/{http_version} {response.status} {response.reason}\r\n"
+            header_lines = [f"{key}: {value}\r\n" for key, value in response.getheaders()]
+            header_block = status_line + "".join(header_lines) + "\r\n"
+            data = header_block.encode("utf-8") + data
+        write_mode = "ab" if append_mode else "wb"
+        with output_path.open(write_mode) as file:
+            file.write(data)
         return {
             "success": True,
             "bytes": output_path.stat().st_size,

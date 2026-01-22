@@ -2595,6 +2595,25 @@ def supplier_stock_handle_source_input(update, context):
                 return None
             source_data['pre_request'] = pre_request
 
+        context.user_data['supplier_stock_source_stage'] = 'options'
+        context.user_data['supplier_stock_source_data'] = source_data
+        update.message.reply_text(
+            "Введите дополнительные параметры сохранения: headers (с заголовками), append (дописывать).\n"
+            "Пример: headers, append\n"
+            "Введите '-' если не нужно:"
+        )
+        return None
+
+    if stage == 'options':
+        if user_input not in ('-', ''):
+            options = _parse_supplier_options(user_input)
+            if options is None:
+                update.message.reply_text(
+                    "❌ Формат должен быть списком через запятую (headers, append)."
+                )
+                return None
+            source_data.update(options)
+
         source_data.setdefault('method', 'http')
         source_data.setdefault('enabled', True)
 
@@ -2758,6 +2777,36 @@ def supplier_stock_handle_source_edit_input(update, context):
         config["download"]["sources"] = sources
         save_supplier_stock_config(config)
 
+        context.user_data['supplier_stock_edit_source_stage'] = 'options'
+        current_options = []
+        if source.get("include_headers"):
+            current_options.append("headers")
+        if source.get("append"):
+            current_options.append("append")
+        current_label = ", ".join(current_options) if current_options else "-"
+        update.message.reply_text(
+            "Введите дополнительные параметры сохранения: headers (с заголовками), append (дописывать). "
+            "'-' чтобы оставить текущее или 'none' чтобы очистить.\n"
+            f"Текущее значение: {current_label}"
+        )
+        return None
+
+    if stage == 'options':
+        if user_input.lower() in ('none', 'нет'):
+            source.pop('include_headers', None)
+            source.pop('append', None)
+        elif user_input not in ('-',):
+            options = _parse_supplier_options(user_input)
+            if options is None:
+                update.message.reply_text(
+                    "❌ Формат должен быть списком через запятую (headers, append), '-' или 'none'."
+                )
+                return None
+            source.update(options)
+
+        config["download"]["sources"] = sources
+        save_supplier_stock_config(config)
+
         context.user_data.pop('supplier_stock_edit_source', None)
         context.user_data.pop('supplier_stock_edit_source_stage', None)
         context.user_data.pop('supplier_stock_edit_source_id', None)
@@ -2834,6 +2883,22 @@ def _parse_supplier_discover(raw_value: str) -> dict | None:
     if not url or not pattern:
         return None
     return {"url": url, "pattern": pattern, "prefix": prefix}
+
+def _parse_supplier_options(raw_value: str) -> dict | None:
+    if not raw_value:
+        return None
+    parts = [part.strip().lower() for part in re.split(r"[,\n]+", raw_value) if part.strip()]
+    if not parts:
+        return None
+    options = {}
+    for part in parts:
+        if part in ("headers", "header"):
+            options["include_headers"] = True
+        elif part in ("append", "дописать"):
+            options["append"] = True
+        else:
+            return None
+    return options
 
 def _enable_all_extensions_settings(query):
     enabled = 0
