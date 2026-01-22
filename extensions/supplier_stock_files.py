@@ -1,11 +1,11 @@
 """
 /extensions/supplier_stock_files.py
-Server Monitoring System v8.1.22
+Server Monitoring System v8.0.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Supplier stock files downloader
 Система мониторинга серверов
-Версия: 8.1.22
+Версия: 8.0.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Получение файлов остатков поставщиков
@@ -151,6 +151,36 @@ def _is_ascii(value: str) -> bool:
     return True
 
 
+def _open_with_auth_retry(
+    opener: Any,
+    url: str,
+    headers: Dict[str, str],
+    timeout: int,
+    username: str,
+    password: str,
+    handlers: list,
+) -> Any:
+    request = Request(url, headers=headers)
+    try:
+        return opener.open(request, timeout=timeout)
+    except HTTPError as exc:
+        if exc.code != 401 or not (username or password):
+            raise
+    auth_headers = dict(headers)
+    if "Authorization" not in auth_headers:
+        credentials = f"{username}:{password}".encode("utf-8")
+        auth_headers["Authorization"] = "Basic " + base64.b64encode(credentials).decode("ascii")
+    if _is_ascii(f"{username}{password}"):
+        password_mgr = HTTPPasswordMgrWithDefaultRealm()
+        password_mgr.add_password(None, url, username, password)
+        auth_handler = HTTPBasicAuthHandler(password_mgr)
+        auth_opener = build_opener(*handlers, auth_handler)
+        request = Request(url, headers=auth_headers)
+        return auth_opener.open(request, timeout=timeout)
+    request = Request(url, headers=auth_headers)
+    return opener.open(request, timeout=timeout)
+
+
 def _download_http(
     source: Dict[str, Any],
     output_path: Path,
@@ -191,15 +221,16 @@ def _download_http(
     else:
         url = _render_template(str(source.get("url", "")), now, render_context)
 
-    if (username or password) and _is_ascii(f"{username}{password}"):
-        password_mgr = HTTPPasswordMgrWithDefaultRealm()
-        password_mgr.add_password(None, url, username, password)
-        auth_handler = HTTPBasicAuthHandler(password_mgr)
-        opener = build_opener(*handlers, auth_handler)
-
-    request = Request(url, headers=headers)
     try:
-        response = opener.open(request, timeout=timeout)
+        response = _open_with_auth_retry(
+            opener,
+            url,
+            headers,
+            timeout,
+            username,
+            password,
+            handlers,
+        )
     except Exception as exc:
         return {"success": False, "error": str(exc)}
 
