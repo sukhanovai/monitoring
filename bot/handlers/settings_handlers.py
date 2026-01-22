@@ -1292,6 +1292,9 @@ def handle_setting_value(update, context):
         context.user_data.get('supplier_stock_edit')
         or context.user_data.get('supplier_stock_add_source')
         or context.user_data.get('supplier_stock_edit_source')
+        or context.user_data.get('supplier_stock_mail_edit')
+        or context.user_data.get('supplier_stock_mail_add_source')
+        or context.user_data.get('supplier_stock_mail_edit_source')
     ):
         return supplier_stock_handle_input(update, context)
     
