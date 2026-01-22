@@ -1,11 +1,11 @@
 """
 /modules/mail_monitor.py
-Server Monitoring System v8.1.15
+Server Monitoring System v8.1.16
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Mailbox monitoring
 Система мониторинга серверов
-Версия: 8.1.15
+Версия: 8.1.16
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг почтового ящика
