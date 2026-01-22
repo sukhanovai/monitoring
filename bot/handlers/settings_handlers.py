@@ -2501,7 +2501,7 @@ def supplier_stock_handle_source_input(update, context):
         context.user_data['supplier_stock_source_data'] = source_data
         update.message.reply_text(
             "Введите URL для скачивания. "
-            "Можно использовать переменные формата подстановки вида $a или ${a} "
+            "Можно использовать переменные формата подстановки вида {abc} "
             "для дальнейшей подмены значений."
         )
         return None
@@ -2515,7 +2515,7 @@ def supplier_stock_handle_source_input(update, context):
         context.user_data['supplier_stock_source_data'] = source_data
         update.message.reply_text(
             "Введите ранее указанные переменные подстановки в формате key=value через запятую "
-            "(пример: a=DKC_Maga_Del_1200_$(date '+%d.%m.%Y').zip). "
+            "(пример: abc=DKC_Maga_Del_1200_$(date '%d.%m.%Y').zip). "
             "Введите '-' если не нужно:"
         )
         return None
@@ -2600,10 +2600,12 @@ def supplier_stock_handle_source_edit_input(update, context):
     if stage == 'name':
         if user_input and user_input not in ('-',):
             source['name'] = user_input
+            config["download"]["sources"] = sources
+            save_supplier_stock_config(config)
         context.user_data['supplier_stock_edit_source_stage'] = 'url'
         update.message.reply_text(
             "Введите новый URL (или '-' чтобы оставить текущее). "
-            "Можно использовать переменные формата подстановки вида $a или ${a} "
+            "Можно использовать переменные формата подстановки вида {abc} "
             "для дальнейшей подмены значений:\n"
             f"{source.get('url')}"
         )
@@ -2612,10 +2614,12 @@ def supplier_stock_handle_source_edit_input(update, context):
     if stage == 'url':
         if user_input and user_input not in ('-',):
             source['url'] = user_input
+            config["download"]["sources"] = sources
+            save_supplier_stock_config(config)
         context.user_data['supplier_stock_edit_source_stage'] = 'vars'
         update.message.reply_text(
             "Введите ранее указанные переменные подстановки в формате key=value через запятую "
-            "(пример: a=DKC_Maga_Del_1200_$(date '+%d.%m.%Y').zip). "
+            "(пример: abc=DKC_Maga_Del_1200_$(date '%d.%m.%Y').zip). "
             "'-' чтобы оставить текущее или 'none' чтобы очистить:"
         )
         return None
@@ -2623,12 +2627,16 @@ def supplier_stock_handle_source_edit_input(update, context):
     if stage == 'vars':
         if user_input.lower() in ('none', 'нет'):
             source.pop('vars', None)
+            config["download"]["sources"] = sources
+            save_supplier_stock_config(config)
         elif user_input not in ('-',):
             vars_map = _parse_supplier_vars(user_input)
             if vars_map is None:
                 update.message.reply_text("❌ Формат должен быть key=value, разделители запятая/новая строка.")
                 return None
             source['vars'] = vars_map
+            config["download"]["sources"] = sources
+            save_supplier_stock_config(config)
 
         context.user_data['supplier_stock_edit_source_stage'] = 'output_name'
         update.message.reply_text(
@@ -2640,6 +2648,8 @@ def supplier_stock_handle_source_edit_input(update, context):
     if stage == 'output_name':
         if user_input and user_input not in ('-',):
             source['output_name'] = user_input
+            config["download"]["sources"] = sources
+            save_supplier_stock_config(config)
         context.user_data['supplier_stock_edit_source_stage'] = 'auth'
         update.message.reply_text(
             "Введите логин и пароль через двоеточие (login:password), "
