@@ -20,7 +20,7 @@ import sqlite3
 import time
 from datetime import datetime
 from email import message_from_bytes
-from email.utils import parsedate_to_datetime
+from email.utils import getaddresses, parsedate_to_datetime
 from pathlib import Path
 
 from config.db_settings import (
@@ -35,6 +35,7 @@ from config.db_settings import (
 )
 from core.config_manager import config_manager
 from extensions.extension_manager import extension_manager
+from extensions.supplier_stock_files import get_supplier_stock_config
 from lib.logging import setup_logging
 
 LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -904,6 +905,36 @@ class BackupProcessor:
 
         return payload.decode("utf-8", errors="ignore")
 
+    def _match_regex(self, pattern: str, value: str) -> bool:
+        try:
+            return bool(re.search(pattern, value, re.IGNORECASE))
+        except re.error as exc:
+            logger.warning("⚠️ Некорректный паттерн '%s': %s", pattern, exc)
+        return False
+
+    def _get_sender_candidates(self, msg) -> list[str]:
+        from_header = msg.get("from", "") or ""
+        addresses = [addr for _, addr in getaddresses([from_header]) if addr]
+        candidates = [from_header, *addresses]
+        return [candidate.strip() for candidate in candidates if candidate.strip()]
+
+    def _append_date_suffix(self, filename: str, timestamp: datetime) -> str:
+        path = Path(filename)
+        stamp = timestamp.strftime("%Y%m%d_%H%M%S")
+        return f"{path.stem}_{stamp}{path.suffix}"
+
+    def _build_attachment_output_name(
+        self,
+        template: str,
+        filename: str,
+        index: int,
+    ) -> str:
+        base_name = Path(filename).stem if filename else "attachment"
+        try:
+            return template.format(index=index, name=base_name)
+        except Exception:
+            return template or filename or f"attachment_{index}"
+
     def _extract_matching_attachments(
         self,
         msg,
@@ -934,6 +965,114 @@ class BackupProcessor:
             )
 
         return matched
+
+    def parse_supplier_stock_email(
+        self,
+        subject: str,
+        msg,
+        email_date: datetime | None,
+    ) -> dict | None:
+        """Парсит письма с файлами остатков поставщиков."""
+        if not extension_manager.is_extension_enabled("supplier_stock_files"):
+            return None
+
+        config = get_supplier_stock_config()
+        mail_config = config.get("mail", {})
+        if not mail_config.get("enabled"):
+            return None
+
+        sources = mail_config.get("sources", [])
+        if not isinstance(sources, list) or not sources:
+            return None
+
+        now = email_date or datetime.now()
+        temp_dir = Path(mail_config.get("temp_dir") or "")
+        archive_dir = Path(mail_config.get("archive_dir") or "")
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        archive_dir.mkdir(parents=True, exist_ok=True)
+
+        sender_candidates = self._get_sender_candidates(msg)
+        matched_files: list[str] = []
+
+        for source in sources:
+            if not isinstance(source, dict):
+                continue
+            if not source.get("enabled", True):
+                continue
+
+            sender_pattern = source.get("sender_pattern") or ""
+            if sender_pattern:
+                if not any(
+                    self._match_regex(sender_pattern, candidate)
+                    for candidate in sender_candidates
+                ):
+                    continue
+
+            subject_pattern = source.get("subject_pattern") or ""
+            if subject_pattern and not self._match_regex(subject_pattern, subject):
+                continue
+
+            expected = int(source.get("expected_attachments") or 1)
+            mime_pattern = source.get("mime_pattern") or "application/.*"
+            filename_pattern = source.get("filename_pattern") or ""
+            output_template = str(source.get("output_template") or "").strip()
+
+            collected = 0
+            if not msg.is_multipart():
+                continue
+
+            for part in msg.walk():
+                filename = part.get_filename() or ""
+                if not filename:
+                    continue
+
+                content_type = part.get_content_type() or ""
+                if mime_pattern and not self._match_regex(mime_pattern, content_type):
+                    continue
+
+                if filename_pattern and not self._match_regex(filename_pattern, filename):
+                    continue
+
+                payload = part.get_payload(decode=True)
+                if not payload:
+                    continue
+
+                output_name = (
+                    self._build_attachment_output_name(output_template, filename, collected + 1)
+                    if output_template
+                    else filename
+                )
+                output_path = temp_dir / output_name
+                output_path.write_bytes(payload)
+
+                archive_name = self._append_date_suffix(output_name, now)
+                archive_path = archive_dir / archive_name
+                archive_path.write_bytes(payload)
+
+                matched_files.append(str(output_path))
+                collected += 1
+
+                logger.info(
+                    "📦 Сохранено вложение поставщика: %s -> %s",
+                    filename,
+                    output_path,
+                )
+
+                if collected >= expected:
+                    break
+
+            if collected < expected:
+                logger.warning(
+                    "⚠️ Для правила '%s' найдено %s/%s вложений",
+                    source.get("name") or source.get("id") or "без имени",
+                    collected,
+                    expected,
+                )
+
+        if not matched_files:
+            return None
+
+        return {"supplier_stock_files": matched_files}
 
     def _match_stock_load_source(self, subject: str, patterns: dict[str, list[str]]) -> str:
         """Определяет источник отчёта по теме письма."""
@@ -1359,6 +1498,10 @@ class BackupProcessor:
             if mail_backup_info:
                 self.save_mail_backup(mail_backup_info, subject, email_date)
                 return mail_backup_info
+
+            supplier_stock_info = self.parse_supplier_stock_email(subject, msg, email_date)
+            if supplier_stock_info:
+                return supplier_stock_info
 
             stock_load_info = self.parse_stock_load_email(subject, msg, email_date)
             if stock_load_info:
