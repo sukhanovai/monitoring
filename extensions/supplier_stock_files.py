@@ -14,6 +14,7 @@ Supplier stock files downloader
 from __future__ import annotations
 
 import json
+import logging
 import base64
 import re
 import ssl
@@ -28,6 +29,7 @@ from extensions.extension_manager import extension_manager
 from lib.logging import debug_log
 
 SUPPLIER_STOCK_EXTENSION_ID = "supplier_stock_files"
+_logger = logging.getLogger("supplier_stock_files")
 
 DEFAULT_SUPPLIER_STOCK_CONFIG: Dict[str, Any] = {
     "download": {
@@ -246,6 +248,10 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
         except Exception:
             formatted = message % args if args else message
             debug_log(formatted)
+        try:
+            _logger.info(message, *args)
+        except Exception:
+            pass
 
     _log("📦 Остатки поставщиков: источников к обработке %s", len(sources))
 
@@ -268,6 +274,12 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
             render_context = _build_render_context(source, now)
             output_name = source.get("output_name")
             rendered_url = _render_template(str(source.get("url", "")), now, render_context)
+            if not rendered_url:
+                entry.update({"status": "error", "error": "URL не задан"})
+                append_supplier_stock_report(entry)
+                results.append(entry)
+                _log("📦 Остатки поставщиков: %s -> error (URL не задан)", entry["source_id"])
+                continue
             if output_name:
                 output_name = _render_template(str(output_name), now, render_context)
                 output_path = temp_dir / output_name
