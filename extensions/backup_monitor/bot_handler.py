@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/bot_handler.py
-Server Monitoring System v8.1.23
+Server Monitoring System v8.1.28
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring Proxmox backups
 Система мониторинга серверов
-Версия: 8.1.23
+Версия: 8.1.28
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг бэкапов Proxmox
