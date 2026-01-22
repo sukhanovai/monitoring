@@ -52,6 +52,8 @@ DEFAULT_SUPPLIER_STOCK_CONFIG: Dict[str, Any] = {
     },
     "mail": {
         "enabled": False,
+        "recipient": "",
+        "sources": [],
     },
 }
 
@@ -77,6 +79,11 @@ def normalize_supplier_stock_config(config: Dict[str, Any] | None) -> Dict[str, 
     sources = merged.get("download", {}).get("sources", [])
     if isinstance(sources, list):
         for source in sources:
+            if isinstance(source, dict):
+                source.setdefault("enabled", True)
+    mail_sources = merged.get("mail", {}).get("sources", [])
+    if isinstance(mail_sources, list):
+        for source in mail_sources:
             if isinstance(source, dict):
                 source.setdefault("enabled", True)
     return merged
