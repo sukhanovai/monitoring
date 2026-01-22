@@ -920,6 +920,9 @@ class BackupProcessor:
             cleaned = cleaned[1:-1].strip()
         return cleaned
 
+    def _normalize_match_text(self, value: str) -> str:
+        return re.sub(r"\s+", " ", str(value or "").strip()).lower()
+
     def _match_rule_pattern(self, pattern: str, value: str) -> bool:
         cleaned = self._normalize_rule_pattern(pattern)
         if not cleaned:
@@ -929,8 +932,8 @@ class BackupProcessor:
         fragments = [part.strip() for part in cleaned.split("|") if part.strip()]
         if not fragments:
             return True
-        haystack = value.lower()
-        return any(fragment.lower() in haystack for fragment in fragments)
+        haystack = self._normalize_match_text(value)
+        return any(self._normalize_match_text(fragment) in haystack for fragment in fragments)
 
     def _get_sender_candidates(self, msg) -> list[str]:
         from_header = msg.get("from", "") or ""
