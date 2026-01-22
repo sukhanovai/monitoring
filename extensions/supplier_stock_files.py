@@ -240,13 +240,20 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
     sources = download_config.get("sources", [])
     now = datetime.now()
     results: List[Dict[str, Any]] = []
-    debug_log("📦 Остатки поставщиков: источников к обработке %s", len(sources))
+    def _log(message: str, *args: object) -> None:
+        try:
+            debug_log(message, *args)
+        except Exception:
+            formatted = message % args if args else message
+            debug_log(formatted)
+
+    _log("📦 Остатки поставщиков: источников к обработке %s", len(sources))
 
     for source in sources:
         source_id = source.get("id") or source.get("name") or "unknown"
         name = source.get("name") or source_id
         if not source.get("enabled", True):
-            debug_log("📦 Остатки поставщиков: %s пропущен (выключен)", source_id)
+            _log("📦 Остатки поставщиков: %s пропущен (выключен)", source_id)
             results.append({"source_id": source_id, "source_name": name, "status": "skipped"})
             continue
 
@@ -287,13 +294,13 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
         append_supplier_stock_report(entry)
         results.append(entry)
         if entry.get("status") == "error" and entry.get("error"):
-            debug_log(
+            _log(
                 "📦 Остатки поставщиков: %s -> error (%s)",
                 entry["source_id"],
                 entry["error"],
             )
         else:
-            debug_log(f"📦 Остатки поставщиков: {entry['source_id']} -> {entry['status']}")
+            _log("📦 Остатки поставщиков: %s -> %s", entry["source_id"], entry["status"])
 
     success_count = sum(1 for item in results if item.get("status") == "success")
     return {
