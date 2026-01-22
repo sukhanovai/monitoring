@@ -851,7 +851,48 @@ def settings_callback_handler(update, context):
         elif data == 'supplier_stock_download':
             show_supplier_stock_download_settings(update, context)
         elif data == 'supplier_stock_mail':
-            not_implemented_handler(update, context, "Получение через почту")
+            show_supplier_stock_mail_settings(update, context)
+        elif data == 'supplier_stock_mail_toggle':
+            config = get_supplier_stock_config()
+            mail_settings = config.get("mail", {})
+            mail_settings["enabled"] = not mail_settings.get("enabled", False)
+            config["mail"] = mail_settings
+            save_supplier_stock_config(config)
+            show_supplier_stock_mail_settings(update, context)
+        elif data == 'supplier_stock_mail_recipient':
+            context.user_data['supplier_stock_mail_edit'] = 'recipient'
+            query.edit_message_text(
+                "Введите адрес получателя для фильтрации писем (например: stock@example.com):",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_mail')]
+                ])
+            )
+        elif data == 'supplier_stock_mail_sources':
+            show_supplier_stock_mail_sources_menu(update, context)
+        elif data == 'supplier_stock_mail_source_add':
+            supplier_stock_start_mail_source_wizard(update, context)
+        elif data.startswith('supplier_stock_mail_source_edit_'):
+            source_id = data.replace('supplier_stock_mail_source_edit_', '')
+            supplier_stock_start_mail_edit_wizard(update, context, source_id)
+        elif data.startswith('supplier_stock_mail_source_toggle_'):
+            source_id = data.replace('supplier_stock_mail_source_toggle_', '')
+            config = get_supplier_stock_config()
+            sources = config.get("mail", {}).get("sources", [])
+            for source in sources:
+                if str(source.get("id")) == source_id:
+                    source["enabled"] = not source.get("enabled", True)
+                    break
+            config["mail"]["sources"] = sources
+            save_supplier_stock_config(config)
+            show_supplier_stock_mail_sources_menu(update, context)
+        elif data.startswith('supplier_stock_mail_source_delete_'):
+            source_id = data.replace('supplier_stock_mail_source_delete_', '')
+            config = get_supplier_stock_config()
+            sources = config.get("mail", {}).get("sources", [])
+            sources = [item for item in sources if str(item.get("id")) != source_id]
+            config["mail"]["sources"] = sources
+            save_supplier_stock_config(config)
+            show_supplier_stock_mail_sources_menu(update, context)
         elif data == 'supplier_stock_temp_dir':
             context.user_data['supplier_stock_edit'] = 'temp_dir'
             query.edit_message_text(
@@ -2198,6 +2239,8 @@ def show_supplier_stock_settings(update, context):
 
     context.user_data.pop('supplier_stock_edit', None)
     context.user_data.pop('supplier_stock_add_source', None)
+    context.user_data.pop('supplier_stock_mail_edit', None)
+    context.user_data.pop('supplier_stock_mail_add_source', None)
 
     config = get_supplier_stock_config()
     download = config.get("download", {})
@@ -2260,6 +2303,123 @@ def show_supplier_stock_download_settings(update, context):
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_supplier_stock'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def show_supplier_stock_mail_settings(update, context):
+    """Показать настройки получения остатков через почту."""
+    query = update.callback_query
+    query.answer()
+
+    context.user_data.pop('supplier_stock_mail_edit', None)
+    context.user_data.pop('supplier_stock_mail_add_source', None)
+    context.user_data.pop('supplier_stock_mail_source_stage', None)
+    context.user_data.pop('supplier_stock_mail_source_data', None)
+    context.user_data.pop('supplier_stock_mail_edit_source', None)
+    context.user_data.pop('supplier_stock_mail_edit_source_stage', None)
+    context.user_data.pop('supplier_stock_mail_edit_source_id', None)
+
+    config = get_supplier_stock_config()
+    mail_settings = config.get("mail", {})
+    recipient = mail_settings.get("recipient") or "не задано"
+    sources = mail_settings.get("sources", [])
+    status_text = "🟢 Включено" if mail_settings.get("enabled") else "🔴 Выключено"
+
+    message = (
+        "📧 *Почтовые сообщения (остатки)*\n\n"
+        f"Статус: {status_text}\n"
+        f"Получатель: `{_escape_pattern_text(recipient)}`\n"
+        f"Правил: {len(sources)}\n\n"
+        "Выберите действие:"
+    )
+
+    keyboard = [
+        [InlineKeyboardButton("🔁 Включить/выключить", callback_data='supplier_stock_mail_toggle')],
+        [InlineKeyboardButton("👤 Получатель", callback_data='supplier_stock_mail_recipient')],
+        [InlineKeyboardButton("📎 Правила вложений", callback_data='supplier_stock_mail_sources')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_supplier_stock'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ]
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def show_supplier_stock_mail_sources_menu(update, context):
+    """Показать список правил вложений для почты."""
+    query = update.callback_query
+    query.answer()
+
+    context.user_data.pop('supplier_stock_mail_add_source', None)
+    context.user_data.pop('supplier_stock_mail_source_stage', None)
+    context.user_data.pop('supplier_stock_mail_source_data', None)
+    context.user_data.pop('supplier_stock_mail_edit_source', None)
+    context.user_data.pop('supplier_stock_mail_edit_source_stage', None)
+    context.user_data.pop('supplier_stock_mail_edit_source_id', None)
+
+    config = get_supplier_stock_config()
+    sources = config.get("mail", {}).get("sources", [])
+
+    if not sources:
+        message = "📎 *Правила вложений*\n\n❌ Правила не настроены."
+    else:
+        message_lines = ["📎 *Правила вложений*\n"]
+        for index, source in enumerate(sources, start=1):
+            name = _escape_pattern_text(source.get("name") or source.get("id") or f"Правило {index}")
+            subject = _escape_pattern_text(source.get("subject_pattern") or "любой")
+            mime_pattern = _escape_pattern_text(source.get("mime_pattern") or "application/.*")
+            filename_pattern = _escape_pattern_text(source.get("filename_pattern") or "любой")
+            expected = source.get("expected_attachments", 1)
+            output_template = _escape_pattern_text(source.get("output_template") or "не задано")
+            enabled = source.get("enabled", True)
+            status_icon = "🟢" if enabled else "🔴"
+            message_lines.append(
+                (
+                    f"{index}. {status_icon} *{name}*\n"
+                    f"   • Тема: `{subject}`\n"
+                    f"   • MIME: `{mime_pattern}`\n"
+                    f"   • Имя файла: `{filename_pattern}`\n"
+                    f"   • Ожидается: `{expected}`\n"
+                    f"   • Шаблон: `{output_template}`\n"
+                )
+            )
+        message = "\n".join(message_lines)
+
+    keyboard = [
+        [InlineKeyboardButton("➕ Добавить правило", callback_data='supplier_stock_mail_source_add')],
+    ]
+
+    for source in sources:
+        source_id = source.get("id") or ""
+        if not source_id:
+            continue
+        enabled = source.get("enabled", True)
+        toggle_text = "⛔️ Выключить" if enabled else "✅ Включить"
+        keyboard.append([
+            InlineKeyboardButton(
+                f"✏️ {source.get('name', source_id)}",
+                callback_data=f'supplier_stock_mail_source_edit_{source_id}'
+            ),
+            InlineKeyboardButton(
+                f"{toggle_text}",
+                callback_data=f'supplier_stock_mail_source_toggle_{source_id}'
+            ),
+            InlineKeyboardButton(
+                "🗑️",
+                callback_data=f'supplier_stock_mail_source_delete_{source_id}'
+            ),
+        ])
+
+    keyboard.append([
+        InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail'),
+        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+    ])
 
     query.edit_message_text(
         message,
@@ -2423,6 +2583,12 @@ def supplier_stock_handle_input(update, context):
     """Обработчик ввода для настроек остатков поставщиков."""
     if context.user_data.get('supplier_stock_edit'):
         return supplier_stock_handle_edit_input(update, context)
+    if context.user_data.get('supplier_stock_mail_edit'):
+        return supplier_stock_handle_mail_edit_input(update, context)
+    if context.user_data.get('supplier_stock_mail_edit_source'):
+        return supplier_stock_handle_mail_source_edit_input(update, context)
+    if context.user_data.get('supplier_stock_mail_add_source'):
+        return supplier_stock_handle_mail_source_input(update, context)
     if context.user_data.get('supplier_stock_edit_source'):
         return supplier_stock_handle_source_edit_input(update, context)
     if context.user_data.get('supplier_stock_add_source'):
@@ -2483,6 +2649,286 @@ def supplier_stock_handle_edit_input(update, context):
         )
         return None
 
+    return None
+
+def supplier_stock_handle_mail_edit_input(update, context):
+    """Обработка ввода для общих настроек почты остатков."""
+    field = context.user_data.get('supplier_stock_mail_edit')
+    if not field:
+        return None
+
+    user_input = update.message.text.strip()
+    config = get_supplier_stock_config()
+
+    if field == 'recipient':
+        if not user_input:
+            update.message.reply_text("❌ Адрес не может быть пустым. Попробуйте снова:")
+            return None
+        config["mail"]["recipient"] = user_input
+        save_supplier_stock_config(config)
+        context.user_data.pop('supplier_stock_mail_edit', None)
+        update.message.reply_text(
+            "✅ Адрес получателя обновлен.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail')]
+            ])
+        )
+        return None
+
+    return None
+
+def supplier_stock_start_mail_source_wizard(update, context):
+    """Запуск мастера добавления правила вложений почты."""
+    query = update.callback_query
+    query.answer()
+
+    context.user_data['supplier_stock_mail_source_stage'] = 'name'
+    context.user_data['supplier_stock_mail_source_data'] = {}
+    context.user_data['supplier_stock_mail_add_source'] = True
+
+    query.edit_message_text(
+        "➕ *Новое правило вложений*\n\nВведите название правила:",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_mail_sources')]
+        ])
+    )
+
+def supplier_stock_start_mail_edit_wizard(update, context, source_id: str):
+    """Запуск мастера редактирования правила вложений почты."""
+    query = update.callback_query
+    query.answer()
+
+    config = get_supplier_stock_config()
+    sources = config.get("mail", {}).get("sources", [])
+    source = next((item for item in sources if str(item.get("id")) == source_id), None)
+
+    if not source:
+        query.edit_message_text(
+            "❌ Правило не найдено.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail_sources')]
+            ])
+        )
+        return
+
+    context.user_data['supplier_stock_mail_edit_source'] = True
+    context.user_data['supplier_stock_mail_edit_source_stage'] = 'name'
+    context.user_data['supplier_stock_mail_edit_source_id'] = source_id
+
+    query.edit_message_text(
+        f"✏️ *Редактирование правила*\n\n"
+        f"Текущее имя: `{_escape_pattern_text(source.get('name'))}`\n"
+        "Введите новое имя (или '-' чтобы оставить текущее):",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_mail_sources')]
+        ])
+    )
+
+def supplier_stock_handle_mail_source_input(update, context):
+    """Обработка ввода в мастере добавления правила вложений."""
+    stage = context.user_data.get('supplier_stock_mail_source_stage')
+    source_data = context.user_data.get('supplier_stock_mail_source_data', {})
+    user_input = update.message.text.strip()
+
+    if stage == 'name':
+        if not user_input:
+            update.message.reply_text("❌ Название не может быть пустым. Попробуйте снова:")
+            return None
+        source_data['name'] = user_input
+        source_data['id'] = _slugify_supplier_source_id(user_input)
+        context.user_data['supplier_stock_mail_source_stage'] = 'subject'
+        context.user_data['supplier_stock_mail_source_data'] = source_data
+        update.message.reply_text(
+            "Введите regex для темы письма или '-' чтобы принимать любую тему:"
+        )
+        return None
+
+    if stage == 'subject':
+        if user_input not in ('-', ''):
+            source_data['subject_pattern'] = user_input
+        context.user_data['supplier_stock_mail_source_stage'] = 'mime'
+        context.user_data['supplier_stock_mail_source_data'] = source_data
+        update.message.reply_text(
+            "Введите MIME-фильтр (например: application/vnd.ms-excel) "
+            "или '-' чтобы использовать application/.*:"
+        )
+        return None
+
+    if stage == 'mime':
+        if user_input not in ('-', ''):
+            source_data['mime_pattern'] = user_input
+        context.user_data['supplier_stock_mail_source_stage'] = 'filename'
+        context.user_data['supplier_stock_mail_source_data'] = source_data
+        update.message.reply_text(
+            "Введите regex для имени вложения или '-' чтобы принимать любые файлы:"
+        )
+        return None
+
+    if stage == 'filename':
+        if user_input not in ('-', ''):
+            source_data['filename_pattern'] = user_input
+        context.user_data['supplier_stock_mail_source_stage'] = 'expected'
+        context.user_data['supplier_stock_mail_source_data'] = source_data
+        update.message.reply_text(
+            "Введите количество ожидаемых вложений (например: 1 или 2):"
+        )
+        return None
+
+    if stage == 'expected':
+        expected = _parse_expected_attachments(user_input)
+        if expected is None:
+            update.message.reply_text("❌ Введите целое число больше 0.")
+            return None
+        source_data['expected_attachments'] = expected
+        context.user_data['supplier_stock_mail_source_stage'] = 'output'
+        context.user_data['supplier_stock_mail_source_data'] = source_data
+        update.message.reply_text(
+            "Введите шаблон имени выходного файла "
+            "(например: supplier_{index}_orig.xls, доступны {index}, {name}):"
+        )
+        return None
+
+    if stage == 'output':
+        if not user_input:
+            update.message.reply_text("❌ Шаблон не может быть пустым. Попробуйте снова:")
+            return None
+        source_data['output_template'] = user_input
+        source_data.setdefault('enabled', True)
+
+        config = get_supplier_stock_config()
+        sources = config['mail'].get('sources', [])
+        source_data['id'] = _unique_supplier_source_id(source_data.get('id', 'source'), sources)
+        sources.append(source_data)
+        config['mail']['sources'] = sources
+        save_supplier_stock_config(config)
+
+        context.user_data.pop('supplier_stock_mail_add_source', None)
+        context.user_data.pop('supplier_stock_mail_source_stage', None)
+        context.user_data.pop('supplier_stock_mail_source_data', None)
+
+        update.message.reply_text(
+            "✅ Правило добавлено.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail_sources')]
+            ])
+        )
+        return None
+
+    update.message.reply_text("❌ Не удалось определить шаг мастера. Попробуйте снова.")
+    return None
+
+def supplier_stock_handle_mail_source_edit_input(update, context):
+    """Обработка ввода при редактировании правила вложений."""
+    stage = context.user_data.get('supplier_stock_mail_edit_source_stage')
+    source_id = context.user_data.get('supplier_stock_mail_edit_source_id')
+    user_input = update.message.text.strip()
+
+    config = get_supplier_stock_config()
+    sources = config.get("mail", {}).get("sources", [])
+    source = next((item for item in sources if str(item.get("id")) == source_id), None)
+
+    if not source:
+        update.message.reply_text("❌ Правило не найдено.", reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail_sources')]
+        ]))
+        return None
+
+    if stage == 'name':
+        if user_input and user_input not in ('-',):
+            source['name'] = user_input
+            config["mail"]["sources"] = sources
+            save_supplier_stock_config(config)
+        context.user_data['supplier_stock_mail_edit_source_stage'] = 'subject'
+        current_subject = source.get("subject_pattern") or "-"
+        update.message.reply_text(
+            "Введите regex для темы письма, '-' чтобы оставить текущее или 'none' чтобы очистить.\n"
+            f"Текущее значение: {current_subject}"
+        )
+        return None
+
+    if stage == 'subject':
+        if user_input.lower() in ('none', 'нет'):
+            source.pop('subject_pattern', None)
+        elif user_input not in ('-',):
+            source['subject_pattern'] = user_input
+        config["mail"]["sources"] = sources
+        save_supplier_stock_config(config)
+        context.user_data['supplier_stock_mail_edit_source_stage'] = 'mime'
+        current_mime = source.get("mime_pattern") or "-"
+        update.message.reply_text(
+            "Введите MIME-фильтр, '-' чтобы оставить текущее или 'none' чтобы очистить.\n"
+            f"Текущее значение: {current_mime}"
+        )
+        return None
+
+    if stage == 'mime':
+        if user_input.lower() in ('none', 'нет'):
+            source.pop('mime_pattern', None)
+        elif user_input not in ('-',):
+            source['mime_pattern'] = user_input
+        config["mail"]["sources"] = sources
+        save_supplier_stock_config(config)
+        context.user_data['supplier_stock_mail_edit_source_stage'] = 'filename'
+        current_filename = source.get("filename_pattern") or "-"
+        update.message.reply_text(
+            "Введите regex для имени вложения, '-' чтобы оставить текущее или 'none' чтобы очистить.\n"
+            f"Текущее значение: {current_filename}"
+        )
+        return None
+
+    if stage == 'filename':
+        if user_input.lower() in ('none', 'нет'):
+            source.pop('filename_pattern', None)
+        elif user_input not in ('-',):
+            source['filename_pattern'] = user_input
+        config["mail"]["sources"] = sources
+        save_supplier_stock_config(config)
+        context.user_data['supplier_stock_mail_edit_source_stage'] = 'expected'
+        current_expected = source.get("expected_attachments", 1)
+        update.message.reply_text(
+            "Введите количество ожидаемых вложений, '-' чтобы оставить текущее.\n"
+            f"Текущее значение: {current_expected}"
+        )
+        return None
+
+    if stage == 'expected':
+        if user_input not in ('-',):
+            expected = _parse_expected_attachments(user_input)
+            if expected is None:
+                update.message.reply_text("❌ Введите целое число больше 0 или '-'.")
+                return None
+            source['expected_attachments'] = expected
+        config["mail"]["sources"] = sources
+        save_supplier_stock_config(config)
+        context.user_data['supplier_stock_mail_edit_source_stage'] = 'output'
+        current_output = source.get("output_template") or "-"
+        update.message.reply_text(
+            "Введите шаблон имени выходного файла, '-' чтобы оставить текущее.\n"
+            f"Текущее значение: {current_output}"
+        )
+        return None
+
+    if stage == 'output':
+        if user_input and user_input not in ('-',):
+            source['output_template'] = user_input
+        config["mail"]["sources"] = sources
+        save_supplier_stock_config(config)
+
+        context.user_data.pop('supplier_stock_mail_edit_source', None)
+        context.user_data.pop('supplier_stock_mail_edit_source_stage', None)
+        context.user_data.pop('supplier_stock_mail_edit_source_id', None)
+
+        update.message.reply_text(
+            "✅ Правило обновлено.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail_sources')]
+            ])
+        )
+        return None
+
+    update.message.reply_text("❌ Не удалось определить шаг редактирования. Попробуйте снова.")
     return None
 
 def supplier_stock_handle_source_input(update, context):
@@ -2899,6 +3345,15 @@ def _parse_supplier_options(raw_value: str) -> dict | None:
         else:
             return None
     return options
+
+def _parse_expected_attachments(raw_value: str) -> int | None:
+    if not raw_value:
+        return None
+    try:
+        value = int(raw_value)
+    except ValueError:
+        return None
+    return value if value > 0 else None
 
 def _enable_all_extensions_settings(query):
     enabled = 0
