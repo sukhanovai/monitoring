@@ -52,6 +52,9 @@ DEFAULT_SUPPLIER_STOCK_CONFIG: Dict[str, Any] = {
     },
     "mail": {
         "enabled": False,
+        "temp_dir": str(DATA_DIR / "supplier_stock" / "mail_tmp"),
+        "archive_dir": str(DATA_DIR / "supplier_stock" / "mail_archive"),
+        "sources": [],
     },
 }
 
@@ -79,6 +82,11 @@ def normalize_supplier_stock_config(config: Dict[str, Any] | None) -> Dict[str, 
         for source in sources:
             if isinstance(source, dict):
                 source.setdefault("enabled", True)
+    mail_sources = merged.get("mail", {}).get("sources", [])
+    if isinstance(mail_sources, list):
+        for source in mail_sources:
+            if isinstance(source, dict):
+                source.setdefault("enabled", True)
     return merged
 
 
@@ -93,6 +101,10 @@ def save_supplier_stock_config(config: Dict[str, Any]) -> tuple[bool, str]:
     temp_dir.mkdir(parents=True, exist_ok=True)
     archive_dir = Path(normalized["download"]["archive_dir"])
     archive_dir.mkdir(parents=True, exist_ok=True)
+    mail_temp_dir = Path(normalized["mail"]["temp_dir"])
+    mail_temp_dir.mkdir(parents=True, exist_ok=True)
+    mail_archive_dir = Path(normalized["mail"]["archive_dir"])
+    mail_archive_dir.mkdir(parents=True, exist_ok=True)
     return extension_manager.save_extension_config(SUPPLIER_STOCK_EXTENSION_ID, normalized)
 
 
