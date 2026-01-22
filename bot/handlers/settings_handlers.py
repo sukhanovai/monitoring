@@ -2511,6 +2511,25 @@ def supplier_stock_handle_source_input(update, context):
             update.message.reply_text("❌ URL не может быть пустым. Попробуйте снова:")
             return None
         source_data['url'] = user_input
+        context.user_data['supplier_stock_source_stage'] = 'discover'
+        context.user_data['supplier_stock_source_data'] = source_data
+        update.message.reply_text(
+            "Если нужно искать ссылку на странице, введите URL, regex и префикс через '|'.\n"
+            "Пример: http://site/page | ostatki_msk_ot_[^\"']*\\.xls | http://site/f/\n"
+            "Введите '-' если не нужно:"
+        )
+        return None
+
+    if stage == 'discover':
+        if user_input not in ('-', ''):
+            discover = _parse_supplier_discover(user_input)
+            if discover is None:
+                update.message.reply_text(
+                    "❌ Формат должен быть URL | regex | prefix (префикс можно оставить пустым)."
+                )
+                return None
+            source_data['discover'] = discover
+
         context.user_data['supplier_stock_source_stage'] = 'vars'
         context.user_data['supplier_stock_source_data'] = source_data
         update.message.reply_text(
@@ -2636,6 +2655,30 @@ def supplier_stock_handle_source_edit_input(update, context):
             source['url'] = user_input
             config["download"]["sources"] = sources
             save_supplier_stock_config(config)
+        context.user_data['supplier_stock_edit_source_stage'] = 'discover'
+        update.message.reply_text(
+            "Введите параметры поиска ссылки на странице в формате URL | regex | prefix, "
+            "'-' чтобы оставить текущее или 'none' чтобы очистить.\n"
+            "Пример: http://site/page | ostatki_msk_ot_[^\"']*\\.xls | http://site/f/"
+        )
+        return None
+
+    if stage == 'discover':
+        if user_input.lower() in ('none', 'нет'):
+            source.pop('discover', None)
+            config["download"]["sources"] = sources
+            save_supplier_stock_config(config)
+        elif user_input not in ('-',):
+            discover = _parse_supplier_discover(user_input)
+            if discover is None:
+                update.message.reply_text(
+                    "❌ Формат должен быть URL | regex | prefix, '-' или 'none'. Попробуйте снова:"
+                )
+                return None
+            source['discover'] = discover
+            config["download"]["sources"] = sources
+            save_supplier_stock_config(config)
+
         context.user_data['supplier_stock_edit_source_stage'] = 'vars'
         update.message.reply_text(
             "Введите ранее указанные переменные подстановки в формате key=value через запятую "
@@ -2778,6 +2821,19 @@ def _parse_supplier_pre_request(raw_value: str) -> dict | None:
     if data in ('-', ''):
         data = ''
     return {"url": url, "data": data}
+
+def _parse_supplier_discover(raw_value: str) -> dict | None:
+    if not raw_value:
+        return None
+    parts = [part.strip() for part in raw_value.split('|')]
+    if len(parts) < 2:
+        return None
+    url = parts[0]
+    pattern = parts[1]
+    prefix = parts[2] if len(parts) > 2 else ''
+    if not url or not pattern:
+        return None
+    return {"url": url, "pattern": pattern, "prefix": prefix}
 
 def _enable_all_extensions_settings(query):
     enabled = 0

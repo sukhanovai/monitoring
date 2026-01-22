@@ -1,11 +1,11 @@
 """
 /extensions/supplier_stock_files.py
-Server Monitoring System v8.1.19
+Server Monitoring System v8.0.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Supplier stock files downloader
 Система мониторинга серверов
-Версия: 8.1.19
+Версия: 8.0.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Получение файлов остатков поставщиков
@@ -142,7 +142,6 @@ def _download_http(
     now: datetime,
     render_context: Dict[str, Any],
 ) -> Dict[str, Any]:
-    url = _render_template(str(source.get("url", "")), now, render_context)
     timeout = int(source.get("timeout", 300))
     headers = dict(source.get("headers") or {})
     verify_ssl = bool(source.get("verify_ssl", True))
@@ -166,6 +165,15 @@ def _download_http(
         pre_result = _run_pre_request(pre_request, opener, now, render_context, timeout)
         if not pre_result.get("success"):
             return pre_result
+
+    discover = source.get("discover")
+    if discover:
+        discover_result = _discover_url(discover, opener, now, render_context, timeout)
+        if not discover_result.get("success"):
+            return discover_result
+        url = discover_result.get("url", "")
+    else:
+        url = _render_template(str(source.get("url", "")), now, render_context)
 
     request = Request(url, headers=headers)
     try:
@@ -236,6 +244,36 @@ def _run_pre_request(
         except Exception as exc:
             return {"success": False, "error": f"pre_request: {exc}"}
     return {"success": False, "error": "pre_request: слишком много перенаправлений"}
+
+
+def _discover_url(
+    discover: Dict[str, Any],
+    opener: Any,
+    now: datetime,
+    render_context: Dict[str, Any],
+    timeout: int,
+) -> Dict[str, Any]:
+    if not isinstance(discover, dict):
+        return {"success": False, "error": "Некорректные данные discover"}
+    source_url = _render_template(str(discover.get("url", "")), now, render_context)
+    pattern = _render_template(str(discover.get("pattern", "")), now, render_context)
+    prefix = _render_template(str(discover.get("prefix", "")), now, render_context)
+    if not source_url or not pattern:
+        return {"success": False, "error": "discover: URL или шаблон не задан"}
+    try:
+        request = Request(source_url)
+        with opener.open(request, timeout=timeout) as response:
+            page_content = response.read().decode("utf-8", errors="ignore")
+    except Exception as exc:
+        return {"success": False, "error": f"discover: {exc}"}
+
+    match = re.search(pattern, page_content)
+    if not match:
+        return {"success": False, "error": "discover: ссылка не найдена"}
+    discovered = match.group(0)
+    if prefix:
+        discovered = prefix + discovered
+    return {"success": True, "url": discovered}
 
 
 def _run_shell_command(
