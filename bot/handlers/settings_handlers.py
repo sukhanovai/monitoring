@@ -859,10 +859,18 @@ def settings_callback_handler(update, context):
             config["mail"] = mail_settings
             save_supplier_stock_config(config)
             show_supplier_stock_mail_settings(update, context)
-        elif data == 'supplier_stock_mail_recipient':
-            context.user_data['supplier_stock_mail_edit'] = 'recipient'
+        elif data == 'supplier_stock_mail_temp_dir':
+            context.user_data['supplier_stock_mail_edit'] = 'temp_dir'
             query.edit_message_text(
-                "Введите адрес получателя для фильтрации писем (например: stock@example.com):",
+                "Введите путь к временному каталогу для почтовых файлов:",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_mail')]
+                ])
+            )
+        elif data == 'supplier_stock_mail_archive_dir':
+            context.user_data['supplier_stock_mail_edit'] = 'archive_dir'
+            query.edit_message_text(
+                "Введите путь к каталогу архива для почтовых файлов:",
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_mail')]
                 ])
@@ -2325,21 +2333,24 @@ def show_supplier_stock_mail_settings(update, context):
 
     config = get_supplier_stock_config()
     mail_settings = config.get("mail", {})
-    recipient = mail_settings.get("recipient") or "не задано"
     sources = mail_settings.get("sources", [])
     status_text = "🟢 Включено" if mail_settings.get("enabled") else "🔴 Выключено"
+    temp_dir = mail_settings.get("temp_dir") or ""
+    archive_dir = mail_settings.get("archive_dir") or ""
 
     message = (
         "📧 *Почтовые сообщения (остатки)*\n\n"
         f"Статус: {status_text}\n"
-        f"Получатель: `{_escape_pattern_text(recipient)}`\n"
+        f"Временный каталог: `{_escape_pattern_text(temp_dir)}`\n"
+        f"Архив: `{_escape_pattern_text(archive_dir)}`\n"
         f"Правил: {len(sources)}\n\n"
         "Выберите действие:"
     )
 
     keyboard = [
         [InlineKeyboardButton("🔁 Включить/выключить", callback_data='supplier_stock_mail_toggle')],
-        [InlineKeyboardButton("👤 Получатель", callback_data='supplier_stock_mail_recipient')],
+        [InlineKeyboardButton("📁 Временный каталог", callback_data='supplier_stock_mail_temp_dir')],
+        [InlineKeyboardButton("🗄️ Каталог архива", callback_data='supplier_stock_mail_archive_dir')],
         [InlineKeyboardButton("📎 Правила вложений", callback_data='supplier_stock_mail_sources')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_supplier_stock'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
@@ -2372,6 +2383,7 @@ def show_supplier_stock_mail_sources_menu(update, context):
         message_lines = ["📎 *Правила вложений*\n"]
         for index, source in enumerate(sources, start=1):
             name = _escape_pattern_text(source.get("name") or source.get("id") or f"Правило {index}")
+            sender = _escape_pattern_text(source.get("sender_pattern") or "любой")
             subject = _escape_pattern_text(source.get("subject_pattern") or "любой")
             mime_pattern = _escape_pattern_text(source.get("mime_pattern") or "application/.*")
             filename_pattern = _escape_pattern_text(source.get("filename_pattern") or "любой")
@@ -2382,6 +2394,7 @@ def show_supplier_stock_mail_sources_menu(update, context):
             message_lines.append(
                 (
                     f"{index}. {status_icon} *{name}*\n"
+                    f"   • Отправитель: `{sender}`\n"
                     f"   • Тема: `{subject}`\n"
                     f"   • MIME: `{mime_pattern}`\n"
                     f"   • Имя файла: `{filename_pattern}`\n"
@@ -2660,15 +2673,30 @@ def supplier_stock_handle_mail_edit_input(update, context):
     user_input = update.message.text.strip()
     config = get_supplier_stock_config()
 
-    if field == 'recipient':
+    if field == 'temp_dir':
         if not user_input:
-            update.message.reply_text("❌ Адрес не может быть пустым. Попробуйте снова:")
+            update.message.reply_text("❌ Путь не может быть пустым. Попробуйте снова:")
             return None
-        config["mail"]["recipient"] = user_input
+        config["mail"]["temp_dir"] = user_input
         save_supplier_stock_config(config)
         context.user_data.pop('supplier_stock_mail_edit', None)
         update.message.reply_text(
-            "✅ Адрес получателя обновлен.",
+            "✅ Временный каталог обновлен.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail')]
+            ])
+        )
+        return None
+
+    if field == 'archive_dir':
+        if not user_input:
+            update.message.reply_text("❌ Путь не может быть пустым. Попробуйте снова:")
+            return None
+        config["mail"]["archive_dir"] = user_input
+        save_supplier_stock_config(config)
+        context.user_data.pop('supplier_stock_mail_edit', None)
+        update.message.reply_text(
+            "✅ Каталог архива обновлен.",
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail')]
             ])
@@ -2738,6 +2766,17 @@ def supplier_stock_handle_mail_source_input(update, context):
             return None
         source_data['name'] = user_input
         source_data['id'] = _slugify_supplier_source_id(user_input)
+        context.user_data['supplier_stock_mail_source_stage'] = 'sender'
+        context.user_data['supplier_stock_mail_source_data'] = source_data
+        update.message.reply_text(
+            "Введите regex или адрес отправителя (например: sender@example.com) "
+            "или '-' чтобы принимать любые письма:"
+        )
+        return None
+
+    if stage == 'sender':
+        if user_input not in ('-', ''):
+            source_data['sender_pattern'] = user_input
         context.user_data['supplier_stock_mail_source_stage'] = 'subject'
         context.user_data['supplier_stock_mail_source_data'] = source_data
         update.message.reply_text(
@@ -2840,6 +2879,21 @@ def supplier_stock_handle_mail_source_edit_input(update, context):
             source['name'] = user_input
             config["mail"]["sources"] = sources
             save_supplier_stock_config(config)
+        context.user_data['supplier_stock_mail_edit_source_stage'] = 'sender'
+        current_sender = source.get("sender_pattern") or "-"
+        update.message.reply_text(
+            "Введите regex/адрес отправителя, '-' чтобы оставить текущее или 'none' чтобы очистить.\n"
+            f"Текущее значение: {current_sender}"
+        )
+        return None
+
+    if stage == 'sender':
+        if user_input.lower() in ('none', 'нет'):
+            source.pop('sender_pattern', None)
+        elif user_input not in ('-',):
+            source['sender_pattern'] = user_input
+        config["mail"]["sources"] = sources
+        save_supplier_stock_config(config)
         context.user_data['supplier_stock_mail_edit_source_stage'] = 'subject'
         current_subject = source.get("subject_pattern") or "-"
         update.message.reply_text(
