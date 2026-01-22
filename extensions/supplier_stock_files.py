@@ -30,6 +30,7 @@ from lib.logging import debug_log
 
 SUPPLIER_STOCK_EXTENSION_ID = "supplier_stock_files"
 _logger = logging.getLogger("supplier_stock_files")
+_monitor_logger = logging.getLogger("monitoring")
 
 DEFAULT_SUPPLIER_STOCK_CONFIG: Dict[str, Any] = {
     "download": {
@@ -252,6 +253,10 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
             _logger.info(message, *args)
         except Exception:
             pass
+        try:
+            _monitor_logger.info(message, *args)
+        except Exception:
+            pass
 
     _log("📦 Остатки поставщиков: источников к обработке %s", len(sources))
 
@@ -287,6 +292,7 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
                 output_path = temp_dir / f"{source_id}_orig"
 
             entry.update({"url": rendered_url, "output_name": output_name})
+            _log("📦 Остатки поставщиков: %s -> старт (%s)", entry["source_id"], rendered_url)
 
             if entry["method"] == "shell":
                 result = _run_shell_command(source, now, temp_dir, render_context)
