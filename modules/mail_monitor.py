@@ -912,6 +912,26 @@ class BackupProcessor:
             logger.warning("⚠️ Некорректный паттерн '%s': %s", pattern, exc)
         return False
 
+    def _normalize_rule_pattern(self, value: str) -> str:
+        cleaned = str(value or "").strip()
+        if not cleaned:
+            return ""
+        if cleaned[0] in ("'", '"') and cleaned[-1:] == cleaned[0]:
+            cleaned = cleaned[1:-1].strip()
+        return cleaned
+
+    def _match_rule_pattern(self, pattern: str, value: str) -> bool:
+        cleaned = self._normalize_rule_pattern(pattern)
+        if not cleaned:
+            return True
+        if cleaned.lower().startswith("re:"):
+            return self._match_regex(cleaned[3:].strip(), value)
+        fragments = [part.strip() for part in cleaned.split("|") if part.strip()]
+        if not fragments:
+            return True
+        haystack = value.lower()
+        return any(fragment.lower() in haystack for fragment in fragments)
+
     def _get_sender_candidates(self, msg) -> list[str]:
         from_header = msg.get("from", "") or ""
         addresses = [addr for _, addr in getaddresses([from_header]) if addr]
@@ -1003,17 +1023,17 @@ class BackupProcessor:
             sender_pattern = source.get("sender_pattern") or ""
             if sender_pattern:
                 if not any(
-                    self._match_regex(sender_pattern, candidate)
+                    self._match_rule_pattern(sender_pattern, candidate)
                     for candidate in sender_candidates
                 ):
                     continue
 
             subject_pattern = source.get("subject_pattern") or ""
-            if subject_pattern and not self._match_regex(subject_pattern, subject):
+            if subject_pattern and not self._match_rule_pattern(subject_pattern, subject):
                 continue
 
             expected = int(source.get("expected_attachments") or 1)
-            mime_pattern = source.get("mime_pattern") or "application/.*"
+            mime_pattern = source.get("mime_pattern") or "application/"
             filename_pattern = source.get("filename_pattern") or ""
             output_template = str(source.get("output_template") or "").strip()
 
@@ -1027,10 +1047,10 @@ class BackupProcessor:
                     continue
 
                 content_type = part.get_content_type() or ""
-                if mime_pattern and not self._match_regex(mime_pattern, content_type):
+                if mime_pattern and not self._match_rule_pattern(mime_pattern, content_type):
                     continue
 
-                if filename_pattern and not self._match_regex(filename_pattern, filename):
+                if filename_pattern and not self._match_rule_pattern(filename_pattern, filename):
                     continue
 
                 payload = part.get_payload(decode=True)
@@ -1070,6 +1090,10 @@ class BackupProcessor:
                 )
 
         if not matched_files:
+            logger.info(
+                "📭 Письмо не соответствует правилам остатков поставщиков: %s",
+                subject[:80],
+            )
             return None
 
         return {"supplier_stock_files": matched_files}
