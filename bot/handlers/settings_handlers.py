@@ -2257,6 +2257,9 @@ def show_supplier_stock_settings(update, context):
     download = config.get("download", {})
     sources = download.get("sources", [])
     schedule = download.get("schedule", {})
+    mail_settings = config.get("mail", {})
+    mail_status = "🟢 Включено" if mail_settings.get("enabled") else "🔴 Выключено"
+    mail_rules = len(mail_settings.get("sources", []))
 
     schedule_state = "🟢 Включено" if schedule.get("enabled") else "🔴 Выключено"
     schedule_time = schedule.get("time", "не задано")
@@ -2265,6 +2268,9 @@ def show_supplier_stock_settings(update, context):
         "📦 *Остатки поставщиков*\n\n"
         f"Источников: {len(sources)}\n"
         f"Расписание: {schedule_state} ({schedule_time})\n\n"
+        "📧 *Почтовые сообщения (остатки)*\n\n"
+        f"Статус: {mail_status}\n"
+        f"Правил: {mail_rules}\n\n"
         "Выберите раздел:"
     )
 
