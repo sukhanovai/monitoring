@@ -13,16 +13,17 @@ Supplier stock files downloader
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
-import base64
 import re
 import ssl
 import threading
+from http import cookiejar
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, List
-from urllib.request import HTTPSHandler, Request, build_opener
+from urllib.request import HTTPCookieProcessor, HTTPSHandler, Request, build_opener
 
 from config.settings import DATA_DIR
 from extensions.extension_manager import extension_manager
@@ -148,6 +149,8 @@ def _download_http(
     password = auth.get("password") or ""
 
     handlers = []
+    cookie_handler = HTTPCookieProcessor(cookiejar.CookieJar())
+    handlers.append(cookie_handler)
     if username or password:
         auth_encoding = str(auth.get("encoding", "utf-8"))
         credentials = f"{username}:{password}".encode(auth_encoding)
@@ -155,8 +158,14 @@ def _download_http(
     if not verify_ssl:
         handlers.append(HTTPSHandler(context=ssl._create_unverified_context()))
 
-    request = Request(url, headers=headers)
     opener = build_opener(*handlers)
+    pre_request = source.get("pre_request")
+    if pre_request:
+        pre_result = _run_pre_request(pre_request, opener, now, render_context, timeout)
+        if not pre_result.get("success"):
+            return pre_result
+
+    request = Request(url, headers=headers)
     try:
         response = opener.open(request, timeout=timeout)
     except Exception as exc:
@@ -177,6 +186,40 @@ def _download_http(
             response.close()
         except Exception:
             pass
+
+
+def _run_pre_request(
+    pre_request: Dict[str, Any],
+    opener: Any,
+    now: datetime,
+    render_context: Dict[str, Any],
+    timeout: int,
+) -> Dict[str, Any]:
+    if not isinstance(pre_request, dict):
+        return {"success": False, "error": "Некорректные данные pre_request"}
+    url = _render_template(str(pre_request.get("url", "")), now, render_context)
+    if not url:
+        return {"success": False, "error": "pre_request: URL не задан"}
+    method = str(pre_request.get("method", "POST")).upper()
+    headers = dict(pre_request.get("headers") or {})
+    data_value = pre_request.get("data")
+    data_bytes: bytes | None
+    if data_value is None:
+        data_bytes = b"" if method in ("POST", "PUT", "PATCH") else None
+    else:
+        data_text = _render_template(str(data_value), now, render_context)
+        data_bytes = data_text.encode("utf-8")
+    if data_bytes is not None and "Content-Type" not in headers:
+        headers["Content-Type"] = "application/x-www-form-urlencoded"
+
+    request = Request(url, data=data_bytes, headers=headers, method=method)
+    try:
+        response = opener.open(request, timeout=timeout)
+        with response:
+            response.read()
+        return {"success": True}
+    except Exception as exc:
+        return {"success": False, "error": f"pre_request: {exc}"}
 
 
 def _run_shell_command(

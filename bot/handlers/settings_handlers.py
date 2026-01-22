@@ -2556,6 +2556,26 @@ def supplier_stock_handle_source_input(update, context):
             username, password = user_input.split(':', 1)
             source_data['auth'] = {'username': username, 'password': password}
 
+        context.user_data['supplier_stock_source_stage'] = 'pre_request'
+        context.user_data['supplier_stock_source_data'] = source_data
+        update.message.reply_text(
+            "Если нужен предварительный POST-запрос для авторизации, "
+            "введите URL и данные через '|'.\n"
+            "Пример: http://www.owen.ru/dealers | login=...&password=...&iTask=login\n"
+            "Введите '-' если не нужно:"
+        )
+        return None
+
+    if stage == 'pre_request':
+        if user_input not in ('-', ''):
+            pre_request = _parse_supplier_pre_request(user_input)
+            if pre_request is None:
+                update.message.reply_text(
+                    "❌ Формат должен быть URL | данные. Попробуйте снова или введите '-'."
+                )
+                return None
+            source_data['pre_request'] = pre_request
+
         source_data.setdefault('method', 'http')
         source_data.setdefault('enabled', True)
 
@@ -2669,6 +2689,31 @@ def supplier_stock_handle_source_edit_input(update, context):
 
         config["download"]["sources"] = sources
         save_supplier_stock_config(config)
+        context.user_data['supplier_stock_edit_source_stage'] = 'pre_request'
+        current_pre = source.get("pre_request") or {}
+        current_pre_url = current_pre.get("url", "-")
+        current_pre_data = current_pre.get("data", "-")
+        update.message.reply_text(
+            "Введите предварительный POST-запрос для авторизации в формате URL | данные, "
+            "'-' чтобы оставить текущее или 'none' чтобы очистить.\n"
+            f"Текущее значение: {current_pre_url} | {current_pre_data}"
+        )
+        return None
+
+    if stage == 'pre_request':
+        if user_input.lower() in ('none', 'нет'):
+            source.pop('pre_request', None)
+        elif user_input not in ('-',):
+            pre_request = _parse_supplier_pre_request(user_input)
+            if pre_request is None:
+                update.message.reply_text(
+                    "❌ Формат должен быть URL | данные, '-' или 'none'. Попробуйте снова:"
+                )
+                return None
+            source['pre_request'] = pre_request
+
+        config["download"]["sources"] = sources
+        save_supplier_stock_config(config)
 
         context.user_data.pop('supplier_stock_edit_source', None)
         context.user_data.pop('supplier_stock_edit_source_stage', None)
@@ -2716,6 +2761,23 @@ def _parse_supplier_vars(raw_value: str) -> dict | None:
             return None
         result[key] = value
     return result
+
+def _parse_supplier_pre_request(raw_value: str) -> dict | None:
+    if not raw_value:
+        return None
+    if '|' in raw_value:
+        url, data = raw_value.split('|', 1)
+    elif '\n' in raw_value:
+        url, data = raw_value.split('\n', 1)
+    else:
+        return None
+    url = url.strip()
+    data = data.strip()
+    if not url:
+        return None
+    if data in ('-', ''):
+        data = ''
+    return {"url": url, "data": data}
 
 def _enable_all_extensions_settings(query):
     enabled = 0
