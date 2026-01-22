@@ -1,11 +1,11 @@
 """
 /extensions/supplier_stock_files.py
-Server Monitoring System v8.1.18
+Server Monitoring System v8.0.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Supplier stock files downloader
 Система мониторинга серверов
-Версия: 8.1.18
+Версия: 8.0.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Получение файлов остатков поставщиков
@@ -23,6 +23,8 @@ from http import cookiejar
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, List
+from urllib.error import HTTPError
+from urllib.parse import urljoin
 from urllib.request import HTTPCookieProcessor, HTTPSHandler, Request, build_opener
 
 from config.settings import DATA_DIR
@@ -212,14 +214,28 @@ def _run_pre_request(
     if data_bytes is not None and "Content-Type" not in headers:
         headers["Content-Type"] = "application/x-www-form-urlencoded"
 
-    request = Request(url, data=data_bytes, headers=headers, method=method)
-    try:
-        response = opener.open(request, timeout=timeout)
-        with response:
-            response.read()
-        return {"success": True}
-    except Exception as exc:
-        return {"success": False, "error": f"pre_request: {exc}"}
+    max_redirects = 3
+    current_url = url
+    current_method = method
+    current_data = data_bytes
+    for _ in range(max_redirects + 1):
+        request = Request(current_url, data=current_data, headers=headers, method=current_method)
+        try:
+            response = opener.open(request, timeout=timeout)
+            with response:
+                response.read()
+            return {"success": True}
+        except HTTPError as exc:
+            if exc.code in (301, 302, 303, 307, 308) and exc.headers.get("Location"):
+                current_url = urljoin(current_url, exc.headers["Location"])
+                if exc.code == 303:
+                    current_method = "GET"
+                    current_data = None
+                continue
+            return {"success": False, "error": f"pre_request: {exc}"}
+        except Exception as exc:
+            return {"success": False, "error": f"pre_request: {exc}"}
+    return {"success": False, "error": "pre_request: слишком много перенаправлений"}
 
 
 def _run_shell_command(
