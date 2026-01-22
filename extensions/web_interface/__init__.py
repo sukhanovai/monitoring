@@ -14,9 +14,20 @@ Web interface
 from flask import Flask, jsonify, render_template_string, request
 from config.db_settings import WEB_PORT, WEB_HOST
 from config.settings import STATS_FILE
+from extensions.extension_manager import extension_manager
+from extensions.supplier_stock_files import (
+    SUPPLIER_STOCK_EXTENSION_ID,
+    get_supplier_stock_config,
+    get_supplier_stock_reports,
+    run_supplier_stock_fetch,
+    save_supplier_stock_config,
+    start_supplier_stock_scheduler,
+    summarize_supplier_stock_sources,
+)
 import threading
 from datetime import datetime
 import json
+import re
 import subprocess
 import sys
 
@@ -333,6 +344,9 @@ HTML_TEMPLATE = """
             <div class="tab" onclick="switchTab('servers')">🖥️ Сервера</div>
             <div class="tab" onclick="switchTab('server-management')">⚙️ Управление серверами</div>
             <div class="tab" onclick="switchTab('controls')">🎛️ Управление</div>
+            {% if supplier_stock_enabled %}
+            <div class="tab" onclick="switchTab('supplier-stock')">📦 Остатки поставщиков</div>
+            {% endif %}
         </div>
         
         <!-- Содержимое вкладки Обзор -->
@@ -523,6 +537,87 @@ HTML_TEMPLATE = """
                 </div>
             </div>
         </div>
+
+        {% if supplier_stock_enabled %}
+        <!-- Содержимое вкладки Остатки поставщиков -->
+        <div id="supplier-stock" class="tab-content">
+            <h2 style="margin-bottom: 20px;">📦 Остатки поставщиков</h2>
+
+            <div class="dashboard">
+                <div class="card">
+                    <h2>⏰ Расписание</h2>
+                    <div class="stat-item">
+                        <span>Статус:</span>
+                        <span class="stat-value">{{ supplier_stock.schedule_status }}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>Время:</span>
+                        <span class="stat-value">{{ supplier_stock.schedule_time }}</span>
+                    </div>
+                    <div class="controls" style="margin-top: 15px; gap: 10px; flex-wrap: wrap;">
+                        <input type="time" id="supplierScheduleTime" value="{{ supplier_stock.schedule_time_value }}"
+                               style="padding: 8px; border-radius: 6px; border: 1px solid #555; background: rgba(60,60,70,0.8); color: white;">
+                        <label style="display: flex; align-items: center; gap: 6px;">
+                            <input type="checkbox" id="supplierScheduleEnabled" {% if supplier_stock.schedule_enabled %}checked{% endif %}>
+                            Включено
+                        </label>
+                        <button class="btn btn-success" onclick="saveSupplierSchedule()">💾 Сохранить</button>
+                        <button class="btn btn-info" onclick="runSupplierFetch()">📥 Запустить сейчас</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>📦 Источники</h2>
+                    {% if supplier_stock.sources %}
+                    <div class="server-list">
+                        {% for source in supplier_stock.sources %}
+                        <div class="server-item">
+                            <div class="server-info">
+                                <div class="server-name">
+                                    {% if source.enabled %}🟢{% else %}🔴{% endif %}
+                                    {{ source.name or source.id }}
+                                </div>
+                                <div class="server-details">{{ source.url or 'URL не задан' }}</div>
+                                <div class="server-details">Файл: {{ source.output_name or 'не задан' }}</div>
+                                <div class="server-details">Метод: {{ source.method }}</div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="stat-item">Источники не настроены.</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card" style="margin-top: 20px;">
+                <h2>📋 Отчеты получения</h2>
+                {% if supplier_stock.reports %}
+                <div class="server-list">
+                    {% for report in supplier_stock.reports %}
+                    <div class="server-item {% if report.status == 'error' %}down{% endif %}">
+                        <div class="server-info">
+                            <div class="server-name">{{ report.source_name or report.source_id }}</div>
+                            <div class="server-details">{{ report.timestamp }}</div>
+                            <div class="server-details">
+                                Статус: {{ '✅' if report.status == 'success' else '❌' }} {{ report.status }}
+                            </div>
+                            {% if report.path %}
+                            <div class="server-details">Файл: {{ report.path }}</div>
+                            {% endif %}
+                            {% if report.error %}
+                            <div class="server-details">Ошибка: {{ report.error }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="stat-item">Отчеты пока не сформированы.</div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
         
         <button class="refresh-btn" onclick="location.reload()">🔄 Обновить данные</button>
         
@@ -587,6 +682,53 @@ HTML_TEMPLATE = """
         // Переключение тихого режима
         function toggleSilentMode() {
             runAction('toggle_silent');
+        }
+
+        // Запуск загрузки остатков поставщиков
+        function runSupplierFetch() {
+            addLog('📦 Запуск загрузки остатков поставщиков...');
+            fetch('/api/supplier_stock/run', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    addLog(data.message);
+                    if (data.success) {
+                        setTimeout(() => location.reload(), 1500);
+                    }
+                })
+                .catch(error => {
+                    addLog(`Ошибка: ${error}`);
+                });
+        }
+
+        // Сохранение расписания загрузки остатков
+        function saveSupplierSchedule() {
+            const timeInput = document.getElementById('supplierScheduleTime');
+            const enabledInput = document.getElementById('supplierScheduleEnabled');
+            if (!timeInput || !enabledInput) {
+                addLog('⚠️ Элементы расписания не найдены');
+                return;
+            }
+
+            const payload = {
+                time: timeInput.value,
+                enabled: enabledInput.checked
+            };
+
+            fetch('/api/supplier_stock/schedule', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    addLog(data.message);
+                    if (data.success) {
+                        setTimeout(() => location.reload(), 1500);
+                    }
+                })
+                .catch(error => {
+                    addLog(`Ошибка: ${error}`);
+                });
         }
         
         // Вспомогательные функции
@@ -863,12 +1005,29 @@ def index():
     """Главная страница веб-интерфейса"""
     try:
         stats, servers = get_monitoring_stats()
-        
+        supplier_stock_enabled = extension_manager.is_extension_enabled(SUPPLIER_STOCK_EXTENSION_ID)
+        supplier_stock = {}
+        if supplier_stock_enabled:
+            config = get_supplier_stock_config()
+            download = config.get("download", {})
+            schedule = download.get("schedule", {})
+            schedule_time = schedule.get("time", "")
+            supplier_stock = {
+                "schedule_status": "🟢 Включено" if schedule.get("enabled") else "🔴 Выключено",
+                "schedule_time": schedule_time or "не задано",
+                "schedule_time_value": schedule_time or "",
+                "schedule_enabled": bool(schedule.get("enabled")),
+                "sources": summarize_supplier_stock_sources(download.get("sources", [])),
+                "reports": get_supplier_stock_reports(20),
+            }
+
         return render_template_string(
             HTML_TEMPLATE,
             stats=stats,
             servers=servers,
-            last_update=datetime.now().strftime("%H:%M:%S")
+            last_update=datetime.now().strftime("%H:%M:%S"),
+            supplier_stock_enabled=supplier_stock_enabled,
+            supplier_stock=supplier_stock
         )
     except Exception as e:
         return f"❌ Ошибка загрузки веб-интерфейса: {e}"
@@ -951,6 +1110,54 @@ def api_run_action():
     except Exception as e:
         return jsonify({"success": False, "message": f"❌ Ошибка: {str(e)}"})
 
+@app.route('/api/supplier_stock/run', methods=['POST'])
+def api_supplier_stock_run():
+    """API для запуска загрузки остатков поставщиков."""
+    if not extension_manager.is_extension_enabled(SUPPLIER_STOCK_EXTENSION_ID):
+        return jsonify({"success": False, "message": "📦 Модуль остатков поставщиков отключен"})
+
+    def _run():
+        run_supplier_stock_fetch()
+
+    threading.Thread(target=_run, daemon=True).start()
+    return jsonify({"success": True, "message": "✅ Загрузка остатков поставщиков запущена"})
+
+@app.route('/api/supplier_stock/schedule', methods=['GET', 'POST'])
+def api_supplier_stock_schedule():
+    """API для управления расписанием загрузки остатков."""
+    if not extension_manager.is_extension_enabled(SUPPLIER_STOCK_EXTENSION_ID):
+        return jsonify({"success": False, "message": "📦 Модуль остатков поставщиков отключен"})
+
+    config = get_supplier_stock_config()
+    schedule = config.get("download", {}).get("schedule", {})
+
+    if request.method == 'GET':
+        return jsonify({"success": True, "schedule": schedule})
+
+    data = request.json or {}
+    time_value = str(data.get("time", "")).strip()
+    enabled_value = bool(data.get("enabled", False))
+
+    if time_value and not re.match(r'^\\d{1,2}:\\d{2}$', time_value):
+        return jsonify({"success": False, "message": "❌ Неверный формат времени. Используйте HH:MM"})
+
+    schedule["time"] = time_value or schedule.get("time", "")
+    schedule["enabled"] = enabled_value
+    config["download"]["schedule"] = schedule
+    save_supplier_stock_config(config)
+
+    return jsonify({"success": True, "message": "✅ Расписание обновлено", "schedule": schedule})
+
+@app.route('/api/supplier_stock/reports')
+def api_supplier_stock_reports():
+    """API для получения отчетов по остаткам поставщиков."""
+    if not extension_manager.is_extension_enabled(SUPPLIER_STOCK_EXTENSION_ID):
+        return jsonify({"success": False, "message": "📦 Модуль остатков поставщиков отключен"})
+
+    limit = int(request.args.get('limit', 20))
+    reports = get_supplier_stock_reports(limit)
+    return jsonify({"success": True, "reports": reports})
+
 @app.route('/api/status')
 def api_status():
     """API endpoint для получения статуса"""
@@ -1020,6 +1227,8 @@ def start_web_server():
     """Запускает веб-сервер"""
     print(f"🌐 Запуск веб-интерфейса на http://{WEB_HOST}:{WEB_PORT}")
     try:
+        if extension_manager.is_extension_enabled(SUPPLIER_STOCK_EXTENSION_ID):
+            start_supplier_stock_scheduler()
         app.run(host=WEB_HOST, port=WEB_PORT, debug=False, use_reloader=False)
     except Exception as e:
         print(f"❌ Ошибка запуска веб-сервера: {e}")
