@@ -20,6 +20,11 @@ from core.config_manager import config_manager as settings_manager
 from config.db_settings import BACKUP_DATABASE_CONFIG
 from config.settings import BACKUP_PATTERNS as DEFAULT_BACKUP_PATTERNS
 from extensions.extension_manager import extension_manager
+from extensions.supplier_stock_files import (
+    SUPPLIER_STOCK_EXTENSION_ID,
+    get_supplier_stock_config,
+    save_supplier_stock_config,
+)
 from lib.logging import debug_log
 import json
 import re
@@ -826,6 +831,8 @@ def settings_callback_handler(update, context):
             show_mail_backup_settings(update, context)
         elif data == 'settings_ext_stock_load':
             show_stock_load_settings(update, context)
+        elif data == 'settings_ext_supplier_stock':
+            show_supplier_stock_settings(update, context)
         elif data == 'settings_patterns_db':
             show_db_patterns_menu(update, context)
         elif data == 'settings_patterns_proxmox':
@@ -840,6 +847,70 @@ def settings_callback_handler(update, context):
             show_web_settings(update, context)
         elif data == 'settings_view_all':
             view_all_settings_handler(update, context)
+
+        elif data == 'supplier_stock_download':
+            show_supplier_stock_download_settings(update, context)
+        elif data == 'supplier_stock_mail':
+            not_implemented_handler(update, context, "Получение через почту")
+        elif data == 'supplier_stock_temp_dir':
+            context.user_data['supplier_stock_edit'] = 'temp_dir'
+            query.edit_message_text(
+                "Введите путь к временному каталогу:",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_download')]
+                ])
+            )
+        elif data == 'supplier_stock_schedule':
+            show_supplier_stock_schedule_menu(update, context)
+        elif data == 'supplier_stock_archive_dir':
+            context.user_data['supplier_stock_edit'] = 'archive_dir'
+            query.edit_message_text(
+                "Введите путь к каталогу архива:",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_download')]
+                ])
+            )
+        elif data == 'supplier_stock_schedule_toggle':
+            config = get_supplier_stock_config()
+            schedule = config.get("download", {}).get("schedule", {})
+            schedule["enabled"] = not schedule.get("enabled", False)
+            config["download"]["schedule"] = schedule
+            save_supplier_stock_config(config)
+            show_supplier_stock_schedule_menu(update, context)
+        elif data == 'supplier_stock_schedule_time':
+            context.user_data['supplier_stock_edit'] = 'schedule_time'
+            query.edit_message_text(
+                "Введите время запуска в формате HH:MM:",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_schedule')]
+                ])
+            )
+        elif data == 'supplier_stock_sources':
+            show_supplier_stock_sources_menu(update, context)
+        elif data == 'supplier_stock_source_add':
+            supplier_stock_start_source_wizard(update, context)
+        elif data.startswith('supplier_stock_source_edit_'):
+            source_id = data.replace('supplier_stock_source_edit_', '')
+            supplier_stock_start_edit_wizard(update, context, source_id)
+        elif data.startswith('supplier_stock_source_toggle_'):
+            source_id = data.replace('supplier_stock_source_toggle_', '')
+            config = get_supplier_stock_config()
+            sources = config.get("download", {}).get("sources", [])
+            for source in sources:
+                if str(source.get("id")) == source_id:
+                    source["enabled"] = not source.get("enabled", True)
+                    break
+            config["download"]["sources"] = sources
+            save_supplier_stock_config(config)
+            show_supplier_stock_sources_menu(update, context)
+        elif data.startswith('supplier_stock_source_delete_'):
+            source_id = data.replace('supplier_stock_source_delete_', '')
+            config = get_supplier_stock_config()
+            sources = config.get("download", {}).get("sources", [])
+            sources = [item for item in sources if str(item.get("id")) != source_id]
+            config["download"]["sources"] = sources
+            save_supplier_stock_config(config)
+            show_supplier_stock_sources_menu(update, context)
         
         # Подпункты
         elif data == 'backup_times':
@@ -1167,6 +1238,13 @@ def handle_setting_value(update, context):
     # Сначала проверяем, не добавляется ли Windows учетная запись
     if context.user_data.get('adding_windows_cred'):
         return handle_windows_credential_input(update, context)
+
+    if (
+        context.user_data.get('supplier_stock_edit')
+        or context.user_data.get('supplier_stock_add_source')
+        or context.user_data.get('supplier_stock_edit_source')
+    ):
+        return supplier_stock_handle_input(update, context)
     
     # Проверяем, не создается ли тип серверов
     if context.user_data.get('creating_server_type'):
@@ -1957,6 +2035,9 @@ def show_settings_extensions_menu(update, context):
     if extension_manager.is_extension_enabled('stock_load_monitor'):
         keyboard.append([InlineKeyboardButton("📦 Загрузка остатков 1С", callback_data='settings_ext_stock_load')])
 
+    if extension_manager.is_extension_enabled(SUPPLIER_STOCK_EXTENSION_ID):
+        keyboard.append([InlineKeyboardButton("📦 Остатки поставщиков", callback_data='settings_ext_supplier_stock')])
+
     if extension_manager.is_extension_enabled('zfs_monitor'):
         keyboard.append([InlineKeyboardButton("🧊 ZFS", callback_data='settings_zfs')])
 
@@ -2109,6 +2190,594 @@ def show_stock_load_settings(update, context):
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
+def show_supplier_stock_settings(update, context):
+    """Показать настройки получения файлов остатков поставщиков."""
+    query = update.callback_query
+    query.answer()
+
+    context.user_data.pop('supplier_stock_edit', None)
+    context.user_data.pop('supplier_stock_add_source', None)
+
+    config = get_supplier_stock_config()
+    download = config.get("download", {})
+    sources = download.get("sources", [])
+    schedule = download.get("schedule", {})
+
+    schedule_state = "🟢 Включено" if schedule.get("enabled") else "🔴 Выключено"
+    schedule_time = schedule.get("time", "не задано")
+
+    message = (
+        "📦 *Остатки поставщиков*\n\n"
+        f"Источников: {len(sources)}\n"
+        f"Расписание: {schedule_state} ({schedule_time})\n\n"
+        "Выберите раздел:"
+    )
+
+    keyboard = [
+        [InlineKeyboardButton("🌐 Скачивание файлов", callback_data='supplier_stock_download')],
+        [InlineKeyboardButton("📧 Почтовые сообщения", callback_data='supplier_stock_mail')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_extensions'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ]
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def show_supplier_stock_download_settings(update, context):
+    """Показать настройки скачивания файлов остатков поставщиков."""
+    query = update.callback_query
+    query.answer()
+
+    context.user_data.pop('supplier_stock_edit', None)
+
+    config = get_supplier_stock_config()
+    download = config.get("download", {})
+    temp_dir = download.get("temp_dir", "")
+    sources = download.get("sources", [])
+    schedule = download.get("schedule", {})
+
+    schedule_state = "🟢 Включено" if schedule.get("enabled") else "🔴 Выключено"
+    schedule_time = schedule.get("time", "не задано")
+
+    message = (
+        "📦 *Скачивание файлов остатков*\n\n"
+        f"Временный каталог: `{temp_dir}`\n"
+        f"Архив: `{download.get('archive_dir', '')}`\n"
+        f"Источников: {len(sources)}\n"
+        f"Расписание: {schedule_state} ({schedule_time})\n\n"
+        "Выберите действие:"
+    )
+
+    keyboard = [
+        [InlineKeyboardButton("📁 Временный каталог", callback_data='supplier_stock_temp_dir')],
+        [InlineKeyboardButton("🗄️ Каталог архива", callback_data='supplier_stock_archive_dir')],
+        [InlineKeyboardButton("⏰ Расписание", callback_data='supplier_stock_schedule')],
+        [InlineKeyboardButton("📦 Источники", callback_data='supplier_stock_sources')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_supplier_stock'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ]
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def show_supplier_stock_schedule_menu(update, context):
+    """Показать меню расписания загрузки остатков поставщиков."""
+    query = update.callback_query
+    query.answer()
+
+    context.user_data.pop('supplier_stock_edit', None)
+
+    config = get_supplier_stock_config()
+    schedule = config.get("download", {}).get("schedule", {})
+    schedule_state = "🟢 Включено" if schedule.get("enabled") else "🔴 Выключено"
+    schedule_time = schedule.get("time", "не задано")
+
+    message = (
+        "⏰ *Расписание загрузки остатков*\n\n"
+        f"Статус: {schedule_state}\n"
+        f"Время: {schedule_time}\n\n"
+        "Выберите действие:"
+    )
+
+    keyboard = [
+        [InlineKeyboardButton("🔁 Включить/выключить", callback_data='supplier_stock_schedule_toggle')],
+        [InlineKeyboardButton("🕒 Изменить время", callback_data='supplier_stock_schedule_time')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_download'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ]
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def show_supplier_stock_sources_menu(update, context):
+    """Показать список источников файлов остатков."""
+    query = update.callback_query
+    query.answer()
+
+    context.user_data.pop('supplier_stock_add_source', None)
+    context.user_data.pop('supplier_stock_source_stage', None)
+    context.user_data.pop('supplier_stock_source_data', None)
+    context.user_data.pop('supplier_stock_edit_source', None)
+    context.user_data.pop('supplier_stock_edit_source_stage', None)
+    context.user_data.pop('supplier_stock_edit_source_id', None)
+
+    config = get_supplier_stock_config()
+    sources = config.get("download", {}).get("sources", [])
+
+    if not sources:
+        message = "📦 *Источники файлов остатков*\n\n❌ Источники не настроены."
+    else:
+        message_lines = ["📦 *Источники файлов остатков*\n"]
+        for index, source in enumerate(sources, start=1):
+            name = _escape_pattern_text(source.get("name") or source.get("id") or f"Источник {index}")
+            url = _escape_pattern_text(source.get("url") or "URL не задан")
+            output_name = _escape_pattern_text(source.get("output_name") or "не задано")
+            method = _escape_pattern_text(source.get("method") or "http")
+            enabled = source.get("enabled", True)
+            status_icon = "🟢" if enabled else "🔴"
+            message_lines.append(
+                (
+                    f"{index}. {status_icon} *{name}*\n"
+                    f"   • URL: `{url}`\n"
+                    f"   • Файл: `{output_name}`\n"
+                    f"   • Метод: `{method}`\n"
+                )
+            )
+        message = "\n".join(message_lines)
+
+    keyboard = [
+        [InlineKeyboardButton("➕ Добавить источник", callback_data='supplier_stock_source_add')],
+    ]
+
+    for source in sources:
+        source_id = source.get("id") or ""
+        if not source_id:
+            continue
+        enabled = source.get("enabled", True)
+        toggle_text = "⛔️ Выключить" if enabled else "✅ Включить"
+        keyboard.append([
+            InlineKeyboardButton(
+                f"✏️ {source.get('name', source_id)}",
+                callback_data=f'supplier_stock_source_edit_{source_id}'
+            ),
+            InlineKeyboardButton(
+                f"{toggle_text}",
+                callback_data=f'supplier_stock_source_toggle_{source_id}'
+            ),
+            InlineKeyboardButton(
+                "🗑️",
+                callback_data=f'supplier_stock_source_delete_{source_id}'
+            ),
+        ])
+
+    keyboard.append([
+        InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_download'),
+        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+    ])
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def supplier_stock_start_source_wizard(update, context):
+    """Запуск мастера добавления источника остатков."""
+    query = update.callback_query
+    query.answer()
+
+    context.user_data['supplier_stock_source_stage'] = 'name'
+    context.user_data['supplier_stock_source_data'] = {}
+    context.user_data['supplier_stock_add_source'] = True
+
+    query.edit_message_text(
+        "➕ *Новый источник остатков*\n\nВведите название источника:",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_sources')]
+        ])
+    )
+
+def supplier_stock_start_edit_wizard(update, context, source_id: str):
+    """Запуск мастера редактирования источника остатков."""
+    query = update.callback_query
+    query.answer()
+
+    config = get_supplier_stock_config()
+    sources = config.get("download", {}).get("sources", [])
+    source = next((item for item in sources if str(item.get("id")) == source_id), None)
+
+    if not source:
+        query.edit_message_text(
+            "❌ Источник не найден.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources')]
+            ])
+        )
+        return
+
+    context.user_data['supplier_stock_edit_source'] = True
+    context.user_data['supplier_stock_edit_source_stage'] = 'name'
+    context.user_data['supplier_stock_edit_source_id'] = source_id
+
+    query.edit_message_text(
+        f"✏️ *Редактирование источника*\n\nТекущее имя: `{_escape_pattern_text(source.get('name'))}`\n"
+        "Введите новое имя (или '-' чтобы оставить текущее):",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_sources')]
+        ])
+    )
+
+def supplier_stock_handle_input(update, context):
+    """Обработчик ввода для настроек остатков поставщиков."""
+    if context.user_data.get('supplier_stock_edit'):
+        return supplier_stock_handle_edit_input(update, context)
+    if context.user_data.get('supplier_stock_edit_source'):
+        return supplier_stock_handle_source_edit_input(update, context)
+    if context.user_data.get('supplier_stock_add_source'):
+        return supplier_stock_handle_source_input(update, context)
+    return None
+
+def supplier_stock_handle_edit_input(update, context):
+    """Обработка ввода для изменения настроек остатков поставщиков."""
+    field = context.user_data.get('supplier_stock_edit')
+    if not field:
+        return None
+
+    user_input = update.message.text.strip()
+    config = get_supplier_stock_config()
+
+    if field == 'temp_dir':
+        if not user_input:
+            update.message.reply_text("❌ Путь не может быть пустым. Попробуйте снова:")
+            return None
+        config['download']['temp_dir'] = user_input
+        save_supplier_stock_config(config)
+        context.user_data.pop('supplier_stock_edit', None)
+        update.message.reply_text(
+            "✅ Временный каталог обновлен.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_download')]
+            ])
+        )
+        return None
+
+    if field == 'schedule_time':
+        if not re.match(r'^\d{1,2}:\d{2}$', user_input):
+            update.message.reply_text("❌ Неверный формат времени. Используйте HH:MM")
+            return None
+        config['download']['schedule']['time'] = user_input
+        save_supplier_stock_config(config)
+        context.user_data.pop('supplier_stock_edit', None)
+        update.message.reply_text(
+            "✅ Время расписания обновлено.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_schedule')]
+            ])
+        )
+        return None
+
+    if field == 'archive_dir':
+        if not user_input:
+            update.message.reply_text("❌ Путь не может быть пустым. Попробуйте снова:")
+            return None
+        config['download']['archive_dir'] = user_input
+        save_supplier_stock_config(config)
+        context.user_data.pop('supplier_stock_edit', None)
+        update.message.reply_text(
+            "✅ Каталог архива обновлен.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_download')]
+            ])
+        )
+        return None
+
+    return None
+
+def supplier_stock_handle_source_input(update, context):
+    """Обработка ввода в мастере добавления источника."""
+    stage = context.user_data.get('supplier_stock_source_stage')
+    source_data = context.user_data.get('supplier_stock_source_data', {})
+    user_input = update.message.text.strip()
+
+    if stage == 'name':
+        if not user_input:
+            update.message.reply_text("❌ Название не может быть пустым. Попробуйте снова:")
+            return None
+        source_data['name'] = user_input
+        source_data['id'] = _slugify_supplier_source_id(user_input)
+        context.user_data['supplier_stock_source_stage'] = 'url'
+        context.user_data['supplier_stock_source_data'] = source_data
+        update.message.reply_text(
+            "Введите URL для скачивания. "
+            "Можно использовать переменные формата подстановки вида {abc} "
+            "для дальнейшей подмены значений."
+        )
+        return None
+
+    if stage == 'url':
+        if not user_input:
+            update.message.reply_text("❌ URL не может быть пустым. Попробуйте снова:")
+            return None
+        source_data['url'] = user_input
+        context.user_data['supplier_stock_source_stage'] = 'vars'
+        context.user_data['supplier_stock_source_data'] = source_data
+        update.message.reply_text(
+            "Введите ранее указанные переменные подстановки в формате key=value через запятую "
+            "(пример: abc=DKC_Maga_Del_1200_$(date '%d.%m.%Y').zip). "
+            "Введите '-' если не нужно:"
+        )
+        return None
+
+    if stage == 'vars':
+        if user_input not in ('-', ''):
+            vars_map = _parse_supplier_vars(user_input)
+            if vars_map is None:
+                update.message.reply_text("❌ Формат должен быть key=value, разделители запятая/новая строка.")
+                return None
+            source_data['vars'] = vars_map
+
+        context.user_data['supplier_stock_source_stage'] = 'output_name'
+        context.user_data['supplier_stock_source_data'] = source_data
+        update.message.reply_text(
+            "Введите имя файла назначения (например: dkc_orig.zip):"
+        )
+        return None
+
+    if stage == 'output_name':
+        if not user_input:
+            update.message.reply_text("❌ Имя файла не может быть пустым. Попробуйте снова:")
+            return None
+        source_data['output_name'] = user_input
+        context.user_data['supplier_stock_source_stage'] = 'auth'
+        context.user_data['supplier_stock_source_data'] = source_data
+        update.message.reply_text(
+            "Введите логин и пароль через двоеточие (login:password) "
+            "или '-' чтобы пропустить и сохранить:"
+        )
+        return None
+
+    if stage == 'auth':
+        if user_input not in ('-', 'нет', 'Нет', 'none', 'None'):
+            if ':' not in user_input:
+                update.message.reply_text("❌ Формат должен быть login:password или '-'. Попробуйте снова:")
+                return None
+            username, password = user_input.split(':', 1)
+            source_data['auth'] = {'username': username, 'password': password}
+
+        context.user_data['supplier_stock_source_stage'] = 'pre_request'
+        context.user_data['supplier_stock_source_data'] = source_data
+        update.message.reply_text(
+            "Если нужен предварительный POST-запрос для авторизации, "
+            "введите URL и данные через '|'.\n"
+            "Пример: http://www.owen.ru/dealers | login=...&password=...&iTask=login\n"
+            "Введите '-' если не нужно:"
+        )
+        return None
+
+    if stage == 'pre_request':
+        if user_input not in ('-', ''):
+            pre_request = _parse_supplier_pre_request(user_input)
+            if pre_request is None:
+                update.message.reply_text(
+                    "❌ Формат должен быть URL | данные. Попробуйте снова или введите '-'."
+                )
+                return None
+            source_data['pre_request'] = pre_request
+
+        source_data.setdefault('method', 'http')
+        source_data.setdefault('enabled', True)
+
+        config = get_supplier_stock_config()
+        sources = config['download'].get('sources', [])
+        source_data['id'] = _unique_supplier_source_id(source_data.get('id', 'source'), sources)
+        sources.append(source_data)
+        config['download']['sources'] = sources
+        save_supplier_stock_config(config)
+
+        context.user_data.pop('supplier_stock_add_source', None)
+        context.user_data.pop('supplier_stock_source_stage', None)
+        context.user_data.pop('supplier_stock_source_data', None)
+
+        update.message.reply_text(
+            "✅ Источник добавлен.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources')]
+            ])
+        )
+        return None
+
+    update.message.reply_text("❌ Не удалось определить шаг мастера. Попробуйте снова.")
+    return None
+
+def supplier_stock_handle_source_edit_input(update, context):
+    """Обработка ввода при редактировании источника остатков."""
+    stage = context.user_data.get('supplier_stock_edit_source_stage')
+    source_id = context.user_data.get('supplier_stock_edit_source_id')
+    user_input = update.message.text.strip()
+
+    config = get_supplier_stock_config()
+    sources = config.get("download", {}).get("sources", [])
+    source = next((item for item in sources if str(item.get("id")) == source_id), None)
+
+    if not source:
+        update.message.reply_text("❌ Источник не найден.", reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources')]
+        ]))
+        return None
+
+    if stage == 'name':
+        if user_input and user_input not in ('-',):
+            source['name'] = user_input
+            config["download"]["sources"] = sources
+            save_supplier_stock_config(config)
+        context.user_data['supplier_stock_edit_source_stage'] = 'url'
+        update.message.reply_text(
+            "Введите новый URL (или '-' чтобы оставить текущее). "
+            "Можно использовать переменные формата подстановки вида {abc} "
+            "для дальнейшей подмены значений:\n"
+            f"{source.get('url')}"
+        )
+        return None
+
+    if stage == 'url':
+        if user_input and user_input not in ('-',):
+            source['url'] = user_input
+            config["download"]["sources"] = sources
+            save_supplier_stock_config(config)
+        context.user_data['supplier_stock_edit_source_stage'] = 'vars'
+        update.message.reply_text(
+            "Введите ранее указанные переменные подстановки в формате key=value через запятую "
+            "(пример: abc=DKC_Maga_Del_1200_$(date '%d.%m.%Y').zip). "
+            "'-' чтобы оставить текущее или 'none' чтобы очистить:"
+        )
+        return None
+
+    if stage == 'vars':
+        if user_input.lower() in ('none', 'нет'):
+            source.pop('vars', None)
+            config["download"]["sources"] = sources
+            save_supplier_stock_config(config)
+        elif user_input not in ('-',):
+            vars_map = _parse_supplier_vars(user_input)
+            if vars_map is None:
+                update.message.reply_text("❌ Формат должен быть key=value, разделители запятая/новая строка.")
+                return None
+            source['vars'] = vars_map
+            config["download"]["sources"] = sources
+            save_supplier_stock_config(config)
+
+        context.user_data['supplier_stock_edit_source_stage'] = 'output_name'
+        update.message.reply_text(
+            f"Текущий файл назначения: {source.get('output_name')}\n"
+            "Введите новое имя файла назначения (или '-' чтобы оставить текущее):"
+        )
+        return None
+
+    if stage == 'output_name':
+        if user_input and user_input not in ('-',):
+            source['output_name'] = user_input
+            config["download"]["sources"] = sources
+            save_supplier_stock_config(config)
+        context.user_data['supplier_stock_edit_source_stage'] = 'auth'
+        update.message.reply_text(
+            "Введите логин и пароль через двоеточие (login:password), "
+            "'-' чтобы оставить текущее или 'none' чтобы очистить:"
+        )
+        return None
+
+    if stage == 'auth':
+        if user_input.lower() in ('none', 'нет'):
+            source.pop('auth', None)
+        elif user_input not in ('-',):
+            if ':' not in user_input:
+                update.message.reply_text("❌ Формат должен быть login:password, '-' или 'none'. Попробуйте снова:")
+                return None
+            username, password = user_input.split(':', 1)
+            source['auth'] = {'username': username, 'password': password}
+
+        config["download"]["sources"] = sources
+        save_supplier_stock_config(config)
+        context.user_data['supplier_stock_edit_source_stage'] = 'pre_request'
+        current_pre = source.get("pre_request") or {}
+        current_pre_url = current_pre.get("url", "-")
+        current_pre_data = current_pre.get("data", "-")
+        update.message.reply_text(
+            "Введите предварительный POST-запрос для авторизации в формате URL | данные, "
+            "'-' чтобы оставить текущее или 'none' чтобы очистить.\n"
+            f"Текущее значение: {current_pre_url} | {current_pre_data}"
+        )
+        return None
+
+    if stage == 'pre_request':
+        if user_input.lower() in ('none', 'нет'):
+            source.pop('pre_request', None)
+        elif user_input not in ('-',):
+            pre_request = _parse_supplier_pre_request(user_input)
+            if pre_request is None:
+                update.message.reply_text(
+                    "❌ Формат должен быть URL | данные, '-' или 'none'. Попробуйте снова:"
+                )
+                return None
+            source['pre_request'] = pre_request
+
+        config["download"]["sources"] = sources
+        save_supplier_stock_config(config)
+
+        context.user_data.pop('supplier_stock_edit_source', None)
+        context.user_data.pop('supplier_stock_edit_source_stage', None)
+        context.user_data.pop('supplier_stock_edit_source_id', None)
+
+        update.message.reply_text(
+            "✅ Источник обновлен.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources')]
+            ])
+        )
+        return None
+
+    update.message.reply_text("❌ Не удалось определить шаг редактирования. Попробуйте снова.")
+    return None
+
+def _slugify_supplier_source_id(value: str) -> str:
+    raw = re.sub(r'[^a-zA-Z0-9]+', '_', value.strip().lower())
+    return raw.strip('_') or 'source'
+
+def _unique_supplier_source_id(source_id: str, sources: list[dict]) -> str:
+    existing = {str(item.get('id')) for item in sources if item.get('id')}
+    if source_id not in existing:
+        return source_id
+    index = 2
+    while f"{source_id}_{index}" in existing:
+        index += 1
+    return f"{source_id}_{index}"
+
+def _parse_supplier_vars(raw_value: str) -> dict | None:
+    if not raw_value:
+        return {}
+    parts = re.split(r'[,\n]+', raw_value)
+    result = {}
+    for part in parts:
+        part = part.strip()
+        if not part:
+            continue
+        if '=' not in part:
+            return None
+        key, value = part.split('=', 1)
+        key = key.strip()
+        value = value.strip()
+        if not key:
+            return None
+        result[key] = value
+    return result
+
+def _parse_supplier_pre_request(raw_value: str) -> dict | None:
+    if not raw_value:
+        return None
+    if '|' in raw_value:
+        url, data = raw_value.split('|', 1)
+    elif '\n' in raw_value:
+        url, data = raw_value.split('\n', 1)
+    else:
+        return None
+    url = url.strip()
+    data = data.strip()
+    if not url:
+        return None
+    if data in ('-', ''):
+        data = ''
+    return {"url": url, "data": data}
 
 def _enable_all_extensions_settings(query):
     enabled = 0
