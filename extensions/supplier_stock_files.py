@@ -1,11 +1,11 @@
 """
 /extensions/supplier_stock_files.py
-Server Monitoring System v8.1.21
+Server Monitoring System v8.0.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Supplier stock files downloader
 Система мониторинга серверов
-Версия: 8.1.21
+Версия: 8.0.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Получение файлов остатков поставщиков
@@ -25,7 +25,14 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List
 from urllib.error import HTTPError
 from urllib.parse import urljoin
-from urllib.request import HTTPCookieProcessor, HTTPSHandler, Request, build_opener
+from urllib.request import (
+    HTTPBasicAuthHandler,
+    HTTPCookieProcessor,
+    HTTPPasswordMgrWithDefaultRealm,
+    HTTPSHandler,
+    Request,
+    build_opener,
+)
 
 from config.settings import DATA_DIR
 from extensions.extension_manager import extension_manager
@@ -136,6 +143,14 @@ def _build_render_context(source: Dict[str, Any], now: datetime) -> Dict[str, An
     return context
 
 
+def _is_ascii(value: str) -> bool:
+    try:
+        value.encode("ascii")
+    except UnicodeEncodeError:
+        return False
+    return True
+
+
 def _download_http(
     source: Dict[str, Any],
     output_path: Path,
@@ -150,7 +165,8 @@ def _download_http(
     password = auth.get("password") or ""
 
     handlers = []
-    cookie_handler = HTTPCookieProcessor(cookiejar.CookieJar())
+    cookie_jar = cookiejar.CookieJar()
+    cookie_handler = HTTPCookieProcessor(cookie_jar)
     handlers.append(cookie_handler)
     if username or password:
         auth_encoding = str(auth.get("encoding", "utf-8"))
@@ -174,6 +190,12 @@ def _download_http(
         url = discover_result.get("url", "")
     else:
         url = _render_template(str(source.get("url", "")), now, render_context)
+
+    if (username or password) and _is_ascii(f"{username}{password}"):
+        password_mgr = HTTPPasswordMgrWithDefaultRealm()
+        password_mgr.add_password(None, url, username, password)
+        auth_handler = HTTPBasicAuthHandler(password_mgr)
+        opener = build_opener(*handlers, auth_handler)
 
     request = Request(url, headers=headers)
     try:
