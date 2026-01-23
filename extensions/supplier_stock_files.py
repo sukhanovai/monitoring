@@ -798,7 +798,7 @@ def _process_variant(
                 orc_items.append([f"{orc_prefix}{article}", stor, quant_value, date_text])
 
         output_path = _resolve_output_path(file_path.parent, output_name, output_format)
-        _write_output_file(output_path, output_format, ["Art.", "Quant."], items)
+        output_path = _write_output_file(output_path, output_format, ["Art.", "Quant."], items)
 
         orc_output = None
         orc_config = variant.get("orc", {}) if isinstance(variant.get("orc"), dict) else {}
@@ -808,7 +808,12 @@ def _process_variant(
                 _append_suffix_to_name(output_name, "_orc"),
                 output_format,
             )
-            _write_output_file(orc_output_path, output_format, ["Art", "Stor", "Quant", "Date"], orc_items)
+            orc_output_path = _write_output_file(
+                orc_output_path,
+                output_format,
+                ["Art", "Stor", "Quant", "Date"],
+                orc_items,
+            )
             orc_output = str(orc_output_path)
 
         outputs.append(
@@ -863,41 +868,46 @@ def _append_suffix_to_name(filename: str, suffix: str) -> str:
     return f"{path.stem}{suffix}{path.suffix}"
 
 
-def _write_output_file(path: Path, fmt: str, headers: list[str], rows: list[list[str]]) -> None:
+def _write_output_file(path: Path, fmt: str, headers: list[str], rows: list[list[str]]) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     if fmt == "csv":
         with path.open("w", encoding="utf-8", newline="") as file:
             writer = csv.writer(file, delimiter=";")
             writer.writerow(headers)
             writer.writerows(rows)
-        return
+        return path
     if fmt == "xlsx":
-        _write_xlsx(path, headers, rows)
-        return
+        if _write_xlsx(path, headers, rows):
+            return path
+        return _write_fallback_csv(path, headers, rows, fmt)
     if fmt == "xls":
-        _write_xls(path, headers, rows)
-        return
+        if _write_xls(path, headers, rows):
+            return path
+        return _write_fallback_csv(path, headers, rows, fmt)
     raise ValueError(f"Неизвестный формат выходного файла: {fmt}")
 
 
-def _write_xlsx(path: Path, headers: list[str], rows: list[list[str]]) -> None:
+def _write_xlsx(path: Path, headers: list[str], rows: list[list[str]]) -> bool:
     try:
         import openpyxl
     except ImportError as exc:
-        raise ImportError("openpyxl не установлен для записи xlsx") from exc
+        _logger.warning("openpyxl не установлен для записи xlsx (%s)", exc)
+        return False
     workbook = openpyxl.Workbook()
     sheet = workbook.active
     sheet.append(headers)
     for row in rows:
         sheet.append(row)
     workbook.save(path)
+    return True
 
 
-def _write_xls(path: Path, headers: list[str], rows: list[list[str]]) -> None:
+def _write_xls(path: Path, headers: list[str], rows: list[list[str]]) -> bool:
     try:
         import xlwt
     except ImportError as exc:
-        raise ImportError("xlwt не установлен для записи xls") from exc
+        _logger.warning("xlwt не установлен для записи xls (%s)", exc)
+        return False
     workbook = xlwt.Workbook()
     sheet = workbook.add_sheet("Sheet1")
     for col, header in enumerate(headers):
@@ -906,6 +916,13 @@ def _write_xls(path: Path, headers: list[str], rows: list[list[str]]) -> None:
         for col_index, value in enumerate(row):
             sheet.write(row_index, col_index, value)
     workbook.save(str(path))
+    return True
+
+
+def _write_fallback_csv(path: Path, headers: list[str], rows: list[list[str]], fmt: str) -> Path:
+    fallback_path = path.with_suffix(".csv")
+    _logger.warning("⚠️ Запись %s недоступна, сохранено как %s", fmt, fallback_path.name)
+    return _write_output_file(fallback_path, "csv", headers, rows)
 
 
 def _strip_archive_suffix(path: Path) -> str:
