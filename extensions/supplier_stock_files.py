@@ -883,6 +883,10 @@ def _write_output_file(path: Path, fmt: str, headers: list[str], rows: list[list
     if fmt == "xls":
         if _write_xls(path, headers, rows):
             return path
+        xlsx_path = path.with_suffix(".xlsx")
+        if _write_xlsx(xlsx_path, headers, rows):
+            _logger.warning("⚠️ Запись xls недоступна, сохранено как %s", xlsx_path.name)
+            return xlsx_path
         return _write_fallback_csv(path, headers, rows, fmt)
     raise ValueError(f"Неизвестный формат выходного файла: {fmt}")
 
