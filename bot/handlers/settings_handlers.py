@@ -2335,6 +2335,8 @@ def show_supplier_stock_download_settings(update, context):
     temp_dir = download.get("temp_dir", "")
     sources = download.get("sources", [])
     schedule = download.get("schedule", {})
+    unpack_enabled = sum(1 for source in sources if source.get("unpack_archive"))
+    unpack_state = f"{unpack_enabled}/{len(sources)}" if sources else "нет"
     schedule_state = "🟢 Включено" if schedule.get("enabled") else "🔴 Выключено"
     schedule_time = schedule.get("time", "не задано")
 
@@ -2342,7 +2344,7 @@ def show_supplier_stock_download_settings(update, context):
         "📦 *Скачивание файлов остатков*\n\n"
         f"Временный каталог: `{temp_dir}`\n"
         f"Архив: `{download.get('archive_dir', '')}`\n"
-        f"Распаковка архива: {unpack_state}\n"
+        f"Распаковка в источниках: {unpack_state}\n"
         f"Источников: {len(sources)}\n"
         f"Расписание: {schedule_state} ({schedule_time})\n\n"
         "Выберите действие:"
@@ -2383,12 +2385,14 @@ def show_supplier_stock_mail_settings(update, context):
     status_text = "🟢 Включено" if mail_settings.get("enabled") else "🔴 Выключено"
     temp_dir = mail_settings.get("temp_dir") or ""
     archive_dir = mail_settings.get("archive_dir") or ""
+    unpack_enabled = sum(1 for source in sources if source.get("unpack_archive"))
+    unpack_state = f"{unpack_enabled}/{len(sources)}" if sources else "нет"
     message = (
         "📧 *Почтовые сообщения (остатки)*\n\n"
         f"Статус: {status_text}\n"
         f"Временный каталог: `{_escape_pattern_text(temp_dir)}`\n"
         f"Архив: `{_escape_pattern_text(archive_dir)}`\n"
-        f"Распаковка архива: {unpack_state}\n"
+        f"Распаковка в правилах: {unpack_state}\n"
         f"Правил: {len(sources)}\n\n"
         "Выберите действие:"
     )
