@@ -2362,7 +2362,6 @@ def show_supplier_stock_download_settings(update, context):
     keyboard = [
         [InlineKeyboardButton("📁 Временный каталог", callback_data='supplier_stock_temp_dir')],
         [InlineKeyboardButton("🗄️ Каталог архива", callback_data='supplier_stock_archive_dir')],
-        [InlineKeyboardButton("📦 Распаковка архива", callback_data='supplier_stock_unpack_toggle')],
         [InlineKeyboardButton("⏰ Расписание", callback_data='supplier_stock_schedule')],
         [InlineKeyboardButton("📦 Источники", callback_data='supplier_stock_sources')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_supplier_stock'),
@@ -2410,7 +2409,6 @@ def show_supplier_stock_mail_settings(update, context):
         [InlineKeyboardButton("🔁 Включить/выключить", callback_data='supplier_stock_mail_toggle')],
         [InlineKeyboardButton("📁 Временный каталог", callback_data='supplier_stock_mail_temp_dir')],
         [InlineKeyboardButton("🗄️ Каталог архива", callback_data='supplier_stock_mail_archive_dir')],
-        [InlineKeyboardButton("📦 Распаковка архива", callback_data='supplier_stock_mail_unpack_toggle')],
         [InlineKeyboardButton("📎 Правила вложений", callback_data='supplier_stock_mail_sources')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_supplier_stock'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
