@@ -19,6 +19,8 @@ import logging
 import re
 import ssl
 import threading
+import tarfile
+import zipfile
 from http import cookiejar
 from datetime import datetime
 from pathlib import Path
@@ -48,12 +50,14 @@ DEFAULT_SUPPLIER_STOCK_CONFIG: Dict[str, Any] = {
         "archive_dir": str(DATA_DIR / "supplier_stock" / "archive"),
         "reports_file": str(DATA_DIR / "supplier_stock" / "reports.jsonl"),
         "schedule": {"enabled": False, "time": "06:00"},
+        "unpack_archive": False,
         "sources": [],
     },
     "mail": {
         "enabled": False,
         "temp_dir": str(DATA_DIR / "supplier_stock" / "mail_tmp"),
         "archive_dir": str(DATA_DIR / "supplier_stock" / "mail_archive"),
+        "unpack_archive": False,
         "sources": [],
     },
 }
@@ -476,6 +480,13 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
             entry["status"] = "success" if result.get("success") else "error"
 
             if entry["status"] == "success" and output_path.exists():
+                if download_config.get("unpack_archive"):
+                    unpacked_path = unpack_archive_file(output_path)
+                    if unpacked_path:
+                        entry["path"] = str(unpacked_path)
+                        entry["unpacked_path"] = str(unpacked_path)
+                        output_path = unpacked_path
+                        _log("📦 Остатки поставщиков: %s распакован в %s", entry["source_id"], unpacked_path)
                 archive_path = _archive_original_file(output_path, archive_dir, now)
                 if archive_path:
                     entry["archive_path"] = str(archive_path)
@@ -563,6 +574,52 @@ def _archive_original_file(source_path: Path, archive_dir: Path, now: datetime) 
 
         shutil.copy2(source_path, archive_path)
         return archive_path
+    except Exception:
+        return None
+
+
+def _strip_archive_suffix(path: Path) -> str:
+    name = path.name
+    for suffix in (".tar.gz", ".tar.bz2", ".tar.xz", ".tgz", ".zip", ".tar", ".gz", ".bz2", ".xz"):
+        if name.endswith(suffix):
+            return name[: -len(suffix)]
+    return path.stem
+
+
+def unpack_archive_file(archive_path: Path) -> Path | None:
+    if not archive_path.exists():
+        return None
+    extracted_path: Path | None = None
+    try:
+        if zipfile.is_zipfile(archive_path):
+            with zipfile.ZipFile(archive_path) as zip_file:
+                members = [name for name in zip_file.namelist() if name and not name.endswith("/")]
+                if not members:
+                    return None
+                member = members[0]
+                extracted_path = Path(zip_file.extract(member, path=archive_path.parent))
+        elif tarfile.is_tarfile(archive_path):
+            with tarfile.open(archive_path) as tar_file:
+                members = [member for member in tar_file.getmembers() if member.isfile()]
+                if not members:
+                    return None
+                member = members[0]
+                tar_file.extract(member, path=archive_path.parent)
+                extracted_path = archive_path.parent / member.name
+        else:
+            return None
+
+        if not extracted_path or not extracted_path.exists():
+            return None
+
+        base_name = _strip_archive_suffix(archive_path)
+        new_name = f"{base_name}{extracted_path.suffix}" if extracted_path.suffix else base_name
+        target_path = archive_path.with_name(new_name)
+        if target_path.exists():
+            target_path.unlink()
+        extracted_path.replace(target_path)
+        archive_path.unlink(missing_ok=True)
+        return target_path
     except Exception:
         return None
 

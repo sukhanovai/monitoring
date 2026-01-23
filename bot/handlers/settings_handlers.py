@@ -875,6 +875,13 @@ def settings_callback_handler(update, context):
                     [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_mail')]
                 ])
             )
+        elif data == 'supplier_stock_mail_unpack_toggle':
+            config = get_supplier_stock_config()
+            mail_settings = config.get("mail", {})
+            mail_settings["unpack_archive"] = not mail_settings.get("unpack_archive", False)
+            config["mail"] = mail_settings
+            save_supplier_stock_config(config)
+            show_supplier_stock_mail_settings(update, context)
         elif data == 'supplier_stock_mail_sources':
             show_supplier_stock_mail_sources_menu(update, context)
         elif data == 'supplier_stock_mail_source_add':
@@ -919,6 +926,13 @@ def settings_callback_handler(update, context):
                     [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_download')]
                 ])
             )
+        elif data == 'supplier_stock_unpack_toggle':
+            config = get_supplier_stock_config()
+            download_settings = config.get("download", {})
+            download_settings["unpack_archive"] = not download_settings.get("unpack_archive", False)
+            config["download"] = download_settings
+            save_supplier_stock_config(config)
+            show_supplier_stock_download_settings(update, context)
         elif data == 'supplier_stock_schedule_toggle':
             config = get_supplier_stock_config()
             schedule = config.get("download", {}).get("schedule", {})
@@ -2299,6 +2313,7 @@ def show_supplier_stock_download_settings(update, context):
     temp_dir = download.get("temp_dir", "")
     sources = download.get("sources", [])
     schedule = download.get("schedule", {})
+    unpack_state = "🟢 Включено" if download.get("unpack_archive") else "🔴 Выключено"
 
     schedule_state = "🟢 Включено" if schedule.get("enabled") else "🔴 Выключено"
     schedule_time = schedule.get("time", "не задано")
@@ -2307,6 +2322,7 @@ def show_supplier_stock_download_settings(update, context):
         "📦 *Скачивание файлов остатков*\n\n"
         f"Временный каталог: `{temp_dir}`\n"
         f"Архив: `{download.get('archive_dir', '')}`\n"
+        f"Распаковка архива: {unpack_state}\n"
         f"Источников: {len(sources)}\n"
         f"Расписание: {schedule_state} ({schedule_time})\n\n"
         "Выберите действие:"
@@ -2315,6 +2331,7 @@ def show_supplier_stock_download_settings(update, context):
     keyboard = [
         [InlineKeyboardButton("📁 Временный каталог", callback_data='supplier_stock_temp_dir')],
         [InlineKeyboardButton("🗄️ Каталог архива", callback_data='supplier_stock_archive_dir')],
+        [InlineKeyboardButton("📦 Распаковка архива", callback_data='supplier_stock_unpack_toggle')],
         [InlineKeyboardButton("⏰ Расписание", callback_data='supplier_stock_schedule')],
         [InlineKeyboardButton("📦 Источники", callback_data='supplier_stock_sources')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_supplier_stock'),
@@ -2346,12 +2363,14 @@ def show_supplier_stock_mail_settings(update, context):
     status_text = "🟢 Включено" if mail_settings.get("enabled") else "🔴 Выключено"
     temp_dir = mail_settings.get("temp_dir") or ""
     archive_dir = mail_settings.get("archive_dir") or ""
+    unpack_state = "🟢 Включено" if mail_settings.get("unpack_archive") else "🔴 Выключено"
 
     message = (
         "📧 *Почтовые сообщения (остатки)*\n\n"
         f"Статус: {status_text}\n"
         f"Временный каталог: `{_escape_pattern_text(temp_dir)}`\n"
         f"Архив: `{_escape_pattern_text(archive_dir)}`\n"
+        f"Распаковка архива: {unpack_state}\n"
         f"Правил: {len(sources)}\n\n"
         "Выберите действие:"
     )
@@ -2360,6 +2379,7 @@ def show_supplier_stock_mail_settings(update, context):
         [InlineKeyboardButton("🔁 Включить/выключить", callback_data='supplier_stock_mail_toggle')],
         [InlineKeyboardButton("📁 Временный каталог", callback_data='supplier_stock_mail_temp_dir')],
         [InlineKeyboardButton("🗄️ Каталог архива", callback_data='supplier_stock_mail_archive_dir')],
+        [InlineKeyboardButton("📦 Распаковка архива", callback_data='supplier_stock_mail_unpack_toggle')],
         [InlineKeyboardButton("📎 Правила вложений", callback_data='supplier_stock_mail_sources')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_supplier_stock'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
