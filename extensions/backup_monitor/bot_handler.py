@@ -101,6 +101,36 @@ class BackupMonitorBot(BackupBase):
         super().__init__(BACKUP_DATABASE_CONFIG['backups_db'])
         self.status_calc = StatusCalculator()
         self.formatters = DisplayFormatters()
+        self.backup_alert_hours, self.backup_stale_hours = self._get_backup_thresholds()
+
+    @staticmethod
+    def _get_backup_thresholds():
+        """Получает пороги свежести бэкапов из настроек."""
+        default_alert = 24
+        default_stale = 36
+        try:
+            from core.config_manager import config_manager
+
+            alert_hours = config_manager.get_setting("BACKUP_ALERT_HOURS", default_alert)
+            stale_hours = config_manager.get_setting("BACKUP_STALE_HOURS", default_stale)
+        except Exception:
+            alert_hours = default_alert
+            stale_hours = default_stale
+
+        try:
+            alert_hours = int(alert_hours)
+        except (TypeError, ValueError):
+            alert_hours = default_alert
+
+        try:
+            stale_hours = int(stale_hours)
+        except (TypeError, ValueError):
+            stale_hours = default_stale
+
+        if stale_hours <= alert_hours:
+            stale_hours = alert_hours + 1
+
+        return alert_hours, stale_hours
 
     # === БАЗОВЫЕ МЕТОДЫ ===
     
@@ -217,19 +247,27 @@ class BackupMonitorBot(BackupBase):
 
     def get_host_recent_status(self, host_name, hours=48):
         """Получает статус хоста за указанный период"""
-        since_time = (datetime.now() - timedelta(hours=hours)).strftime('%Y-%m-%d %H:%M:%S')
         query = '''
             SELECT backup_status, received_at
             FROM proxmox_backups
-            WHERE host_name = ? AND received_at >= ?
-            ORDER BY received_at DESC
+            WHERE host_name = ?
         '''
-        return self.execute_query(query, (host_name, since_time))
+        params = [host_name]
+        if hours is not None:
+            since_time = (datetime.now() - timedelta(hours=hours)).strftime('%Y-%m-%d %H:%M:%S')
+            query += " AND received_at >= ?"
+            params.append(since_time)
+        query += " ORDER BY received_at DESC"
+        return self.execute_query(query, tuple(params))
 
     def get_host_display_status(self, host_name):
         """Определяет отображаемый статус хоста"""
-        recent_backups = self.get_host_recent_status(host_name, 48)
-        return self.status_calc.calculate_host_status(recent_backups)
+        recent_backups = self.get_host_recent_status(host_name, None)
+        return self.status_calc.calculate_host_status(
+            recent_backups,
+            alert_hours=self.backup_alert_hours,
+            stale_hours=self.backup_stale_hours,
+        )
 
     # === МЕТОДЫ ДЛЯ БАЗ ДАННЫХ ===
     
