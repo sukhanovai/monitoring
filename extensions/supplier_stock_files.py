@@ -480,7 +480,7 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
             entry["status"] = "success" if result.get("success") else "error"
 
             if entry["status"] == "success" and output_path.exists():
-                if download_config.get("unpack_archive"):
+                if source.get("unpack_archive"):
                     unpacked_path = unpack_archive_file(output_path)
                     if unpacked_path:
                         entry["path"] = str(unpacked_path)

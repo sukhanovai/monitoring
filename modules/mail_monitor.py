@@ -1072,7 +1072,7 @@ class BackupProcessor:
                 archive_path = archive_dir / archive_name
                 archive_path.write_bytes(payload)
 
-                if mail_config.get("unpack_archive"):
+                if source.get("unpack_archive"):
                     unpacked_path = unpack_archive_file(output_path)
                     if unpacked_path:
                         output_path = unpacked_path
