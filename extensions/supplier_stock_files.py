@@ -1,11 +1,11 @@
 """
 /extensions/supplier_stock_files.py
-Server Monitoring System v8.1.30
+Server Monitoring System v8.1.33
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Supplier stock files downloader
 Система мониторинга серверов
-Версия: 8.1.30
+Версия: 8.1.33
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Получение файлов остатков поставщиков
@@ -50,12 +50,14 @@ DEFAULT_SUPPLIER_STOCK_CONFIG: Dict[str, Any] = {
         "archive_dir": str(DATA_DIR / "supplier_stock" / "archive"),
         "reports_file": str(DATA_DIR / "supplier_stock" / "reports.jsonl"),
         "schedule": {"enabled": False, "time": "06:00"},
+        "unpack_archive": False,
         "sources": [],
     },
     "mail": {
         "enabled": False,
         "temp_dir": str(DATA_DIR / "supplier_stock" / "mail_tmp"),
         "archive_dir": str(DATA_DIR / "supplier_stock" / "mail_archive"),
+        "unpack_archive": False,
         "sources": [],
     },
 }
