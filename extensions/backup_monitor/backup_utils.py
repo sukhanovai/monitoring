@@ -563,32 +563,32 @@ class BackupBase:
 
 class StatusCalculator:
     """Калькулятор статусов для хостов и БД"""
-    
+
     @staticmethod
-    def calculate_host_status(recent_backups, hours_threshold=48):
+    def calculate_host_status(recent_backups, alert_hours=24, stale_hours=48):
         """Рассчитывает статус хоста на основе recent_backups"""
         if not recent_backups:
             return "stale"
-        
+
         last_status, last_time = recent_backups[0]
-        
+
         # Последний бэкап неудачный
         if last_status == 'failed':
             return "failed"
-        
+
         # Есть неудачные бэкапы в истории
         recent_failed = any(status == 'failed' for status, _ in recent_backups[:3])
         if recent_failed:
             return "recent_failed"
-        
+
         # Проверяем свежесть
         try:
             last_backup_time = datetime.strptime(last_time, '%Y-%m-%d %H:%M:%S')
             hours_since_last = (datetime.now() - last_backup_time).total_seconds() / 3600
-            
-            if hours_since_last > hours_threshold:
+
+            if hours_since_last > stale_hours:
                 return "stale"
-            elif hours_since_last > 24:
+            elif hours_since_last > alert_hours:
                 return "old"
             else:
                 return "success"
