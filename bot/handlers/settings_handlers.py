@@ -876,11 +876,7 @@ def settings_callback_handler(update, context):
                 ])
             )
         elif data == 'supplier_stock_mail_unpack_toggle':
-            config = get_supplier_stock_config()
-            mail_settings = config.get("mail", {})
-            mail_settings["unpack_archive"] = not mail_settings.get("unpack_archive", False)
-            config["mail"] = mail_settings
-            save_supplier_stock_config(config)
+            query.answer("ℹ️ Распаковка теперь на уровне правил", show_alert=False)
             show_supplier_stock_mail_settings(update, context)
         elif data == 'supplier_stock_mail_sources':
             show_supplier_stock_mail_sources_menu(update, context)
@@ -934,6 +930,9 @@ def settings_callback_handler(update, context):
             )
         elif data == 'supplier_stock_schedule':
             show_supplier_stock_schedule_menu(update, context)
+        elif data == 'supplier_stock_unpack_toggle':
+            query.answer("ℹ️ Распаковка теперь на уровне источников", show_alert=False)
+            show_supplier_stock_download_settings(update, context)
         elif data == 'supplier_stock_archive_dir':
             context.user_data['supplier_stock_edit'] = 'archive_dir'
             query.edit_message_text(
