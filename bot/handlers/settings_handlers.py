@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.1.30
+Server Monitoring System v8.1.32
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.1.30
+Версия: 8.1.32
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -875,6 +875,13 @@ def settings_callback_handler(update, context):
                     [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_mail')]
                 ])
             )
+        elif data == 'supplier_stock_mail_unpack_toggle':
+            config = get_supplier_stock_config()
+            mail_settings = config.get("mail", {})
+            mail_settings["unpack_archive"] = not mail_settings.get("unpack_archive", False)
+            config["mail"] = mail_settings
+            save_supplier_stock_config(config)
+            show_supplier_stock_mail_settings(update, context)
         elif data == 'supplier_stock_mail_sources':
             show_supplier_stock_mail_sources_menu(update, context)
         elif data == 'supplier_stock_mail_source_add':
@@ -930,6 +937,13 @@ def settings_callback_handler(update, context):
                     [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_download')]
                 ])
             )
+        elif data == 'supplier_stock_unpack_toggle':
+            config = get_supplier_stock_config()
+            download_settings = config.get("download", {})
+            download_settings["unpack_archive"] = not download_settings.get("unpack_archive", False)
+            config["download"] = download_settings
+            save_supplier_stock_config(config)
+            show_supplier_stock_download_settings(update, context)
         elif data == 'supplier_stock_schedule_toggle':
             config = get_supplier_stock_config()
             schedule = config.get("download", {}).get("schedule", {})
@@ -2339,6 +2353,7 @@ def show_supplier_stock_download_settings(update, context):
     keyboard = [
         [InlineKeyboardButton("📁 Временный каталог", callback_data='supplier_stock_temp_dir')],
         [InlineKeyboardButton("🗄️ Каталог архива", callback_data='supplier_stock_archive_dir')],
+        [InlineKeyboardButton("📦 Распаковка архива", callback_data='supplier_stock_unpack_toggle')],
         [InlineKeyboardButton("⏰ Расписание", callback_data='supplier_stock_schedule')],
         [InlineKeyboardButton("📦 Источники", callback_data='supplier_stock_sources')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_supplier_stock'),
@@ -2386,6 +2401,7 @@ def show_supplier_stock_mail_settings(update, context):
         [InlineKeyboardButton("🔁 Включить/выключить", callback_data='supplier_stock_mail_toggle')],
         [InlineKeyboardButton("📁 Временный каталог", callback_data='supplier_stock_mail_temp_dir')],
         [InlineKeyboardButton("🗄️ Каталог архива", callback_data='supplier_stock_mail_archive_dir')],
+        [InlineKeyboardButton("📦 Распаковка архива", callback_data='supplier_stock_mail_unpack_toggle')],
         [InlineKeyboardButton("📎 Правила вложений", callback_data='supplier_stock_mail_sources')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_supplier_stock'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
@@ -4477,7 +4493,7 @@ def add_server_handler(update, context):
     message = (
         "➕ *Добавление сервера*\n\n"
         "Введите IP-адрес сервера:\n\n"
-        "_Пример: 192.168.1.3000_"
+        "_Пример: 192.168.1.3200_"
     )
     
     query.edit_message_text(
