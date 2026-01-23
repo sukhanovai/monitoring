@@ -60,6 +60,9 @@ DEFAULT_SUPPLIER_STOCK_CONFIG: Dict[str, Any] = {
         "unpack_archive": False,
         "sources": [],
     },
+    "processing": {
+        "rules": [],
+    },
 }
 
 _scheduler_lock = threading.Lock()
@@ -91,6 +94,11 @@ def normalize_supplier_stock_config(config: Dict[str, Any] | None) -> Dict[str, 
         for source in mail_sources:
             if isinstance(source, dict):
                 source.setdefault("enabled", True)
+    processing_rules = merged.get("processing", {}).get("rules", [])
+    if isinstance(processing_rules, list):
+        for rule in processing_rules:
+            if isinstance(rule, dict):
+                rule.setdefault("enabled", True)
     return merged
 
 
