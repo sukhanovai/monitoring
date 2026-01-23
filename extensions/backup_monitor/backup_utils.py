@@ -572,12 +572,12 @@ class StatusCalculator:
 
         last_status, last_time = recent_backups[0]
 
-        # Последний бэкап неудачный
-        if last_status == 'failed':
+        # Последний бэкап неуспешный
+        if last_status != 'success':
             return "failed"
 
         # Есть неудачные бэкапы в истории
-        recent_failed = any(status == 'failed' for status, _ in recent_backups[:3])
+        recent_failed = any(status != 'success' for status, _ in recent_backups[:3])
         if recent_failed:
             return "recent_failed"
 
