@@ -35,7 +35,7 @@ from config.db_settings import (
 )
 from core.config_manager import config_manager
 from extensions.extension_manager import extension_manager
-from extensions.supplier_stock_files import get_supplier_stock_config
+from extensions.supplier_stock_files import get_supplier_stock_config, unpack_archive_file
 from lib.logging import setup_logging
 
 LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -1071,6 +1071,16 @@ class BackupProcessor:
                 archive_name = self._append_date_suffix(output_name, now)
                 archive_path = archive_dir / archive_name
                 archive_path.write_bytes(payload)
+
+                if source.get("unpack_archive"):
+                    unpacked_path = unpack_archive_file(output_path)
+                    if unpacked_path:
+                        output_path = unpacked_path
+                        logger.info(
+                            "📦 Вложение поставщика распаковано: %s -> %s",
+                            filename,
+                            output_path,
+                        )
 
                 matched_files.append(str(output_path))
                 collected += 1
