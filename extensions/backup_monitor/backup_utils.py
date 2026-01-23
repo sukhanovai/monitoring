@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_utils.py
-Server Monitoring System v8.1.38
+Server Monitoring System v8.1.39
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Utilities for working with backups
 Система мониторинга серверов
-Версия: 8.1.38
+Версия: 8.1.39
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Утилиты для работы с бэкапами
@@ -575,7 +575,7 @@ class StatusCalculator:
         # Последний бэкап неуспешный
         if last_status != 'success':
             return "failed"
-        
+
         # Есть неудачные бэкапы в истории
         recent_failed = any(status != 'success' for status, _ in recent_backups[:3])
         if recent_failed:
