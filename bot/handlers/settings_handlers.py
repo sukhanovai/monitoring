@@ -882,6 +882,17 @@ def settings_callback_handler(update, context):
         elif data.startswith('supplier_stock_mail_source_edit_'):
             source_id = data.replace('supplier_stock_mail_source_edit_', '')
             supplier_stock_start_mail_edit_wizard(update, context, source_id)
+        elif data.startswith('supplier_stock_mail_source_unpack_toggle_'):
+            source_id = data.replace('supplier_stock_mail_source_unpack_toggle_', '')
+            config = get_supplier_stock_config()
+            sources = config.get("mail", {}).get("sources", [])
+            for source in sources:
+                if str(source.get("id")) == source_id:
+                    source["unpack_archive"] = not source.get("unpack_archive", False)
+                    break
+            config["mail"]["sources"] = sources
+            save_supplier_stock_config(config)
+            show_supplier_stock_mail_sources_menu(update, context)
         elif data.startswith('supplier_stock_mail_source_toggle_'):
             source_id = data.replace('supplier_stock_mail_source_toggle_', '')
             config = get_supplier_stock_config()
@@ -941,6 +952,17 @@ def settings_callback_handler(update, context):
         elif data.startswith('supplier_stock_source_edit_'):
             source_id = data.replace('supplier_stock_source_edit_', '')
             supplier_stock_start_edit_wizard(update, context, source_id)
+        elif data.startswith('supplier_stock_source_unpack_toggle_'):
+            source_id = data.replace('supplier_stock_source_unpack_toggle_', '')
+            config = get_supplier_stock_config()
+            sources = config.get("download", {}).get("sources", [])
+            for source in sources:
+                if str(source.get("id")) == source_id:
+                    source["unpack_archive"] = not source.get("unpack_archive", False)
+                    break
+            config["download"]["sources"] = sources
+            save_supplier_stock_config(config)
+            show_supplier_stock_sources_menu(update, context)
         elif data.startswith('supplier_stock_source_toggle_'):
             source_id = data.replace('supplier_stock_source_toggle_', '')
             config = get_supplier_stock_config()
@@ -2299,7 +2321,8 @@ def show_supplier_stock_download_settings(update, context):
     temp_dir = download.get("temp_dir", "")
     sources = download.get("sources", [])
     schedule = download.get("schedule", {})
-
+    unpack_enabled = sum(1 for source in sources if source.get("unpack_archive"))
+    unpack_state = f"{unpack_enabled}/{len(sources)}" if sources else "нет"
     schedule_state = "🟢 Включено" if schedule.get("enabled") else "🔴 Выключено"
     schedule_time = schedule.get("time", "не задано")
 
@@ -2307,6 +2330,7 @@ def show_supplier_stock_download_settings(update, context):
         "📦 *Скачивание файлов остатков*\n\n"
         f"Временный каталог: `{temp_dir}`\n"
         f"Архив: `{download.get('archive_dir', '')}`\n"
+        f"Распаковка в источниках: {unpack_state}\n"
         f"Источников: {len(sources)}\n"
         f"Расписание: {schedule_state} ({schedule_time})\n\n"
         "Выберите действие:"
@@ -2346,12 +2370,14 @@ def show_supplier_stock_mail_settings(update, context):
     status_text = "🟢 Включено" if mail_settings.get("enabled") else "🔴 Выключено"
     temp_dir = mail_settings.get("temp_dir") or ""
     archive_dir = mail_settings.get("archive_dir") or ""
-
+    unpack_enabled = sum(1 for source in sources if source.get("unpack_archive"))
+    unpack_state = f"{unpack_enabled}/{len(sources)}" if sources else "нет"
     message = (
         "📧 *Почтовые сообщения (остатки)*\n\n"
         f"Статус: {status_text}\n"
         f"Временный каталог: `{_escape_pattern_text(temp_dir)}`\n"
         f"Архив: `{_escape_pattern_text(archive_dir)}`\n"
+        f"Распаковка в правилах: {unpack_state}\n"
         f"Правил: {len(sources)}\n\n"
         "Выберите действие:"
     )
@@ -2399,7 +2425,9 @@ def show_supplier_stock_mail_sources_menu(update, context):
             expected = source.get("expected_attachments", 1)
             output_template = _escape_pattern_text(source.get("output_template") or "не задано")
             enabled = source.get("enabled", True)
+            unpack_enabled = source.get("unpack_archive", False)
             status_icon = "🟢" if enabled else "🔴"
+            unpack_text = "да" if unpack_enabled else "нет"
             message_lines.append(
                 (
                     f"{index}. {status_icon} *{name}*\n"
@@ -2409,6 +2437,7 @@ def show_supplier_stock_mail_sources_menu(update, context):
                     f"   • Имя файла: `{filename_pattern}`\n"
                     f"   • Ожидается: `{expected}`\n"
                     f"   • Шаблон: `{output_template}`\n"
+                    f"   • Распаковка: `{unpack_text}`\n"
                 )
             )
         message = "\n".join(message_lines)
@@ -2422,7 +2451,9 @@ def show_supplier_stock_mail_sources_menu(update, context):
         if not source_id:
             continue
         enabled = source.get("enabled", True)
+        unpack_enabled = source.get("unpack_archive", False)
         toggle_text = "⛔️ Выключить" if enabled else "✅ Включить"
+        unpack_text = "📦 Распаковка: вкл" if unpack_enabled else "📦 Распаковка: выкл"
         keyboard.append([
             InlineKeyboardButton(
                 f"✏️ {source.get('name', source_id)}",
@@ -2431,6 +2462,12 @@ def show_supplier_stock_mail_sources_menu(update, context):
             InlineKeyboardButton(
                 f"{toggle_text}",
                 callback_data=f'supplier_stock_mail_source_toggle_{source_id}'
+            ),
+        ])
+        keyboard.append([
+            InlineKeyboardButton(
+                unpack_text,
+                callback_data=f'supplier_stock_mail_source_unpack_toggle_{source_id}'
             ),
             InlineKeyboardButton(
                 "🗑️",
@@ -2506,13 +2543,16 @@ def show_supplier_stock_sources_menu(update, context):
             output_name = _escape_pattern_text(source.get("output_name") or "не задано")
             method = _escape_pattern_text(source.get("method") or "http")
             enabled = source.get("enabled", True)
+            unpack_enabled = source.get("unpack_archive", False)
             status_icon = "🟢" if enabled else "🔴"
+            unpack_text = "да" if unpack_enabled else "нет"
             message_lines.append(
                 (
                     f"{index}. {status_icon} *{name}*\n"
                     f"   • URL: `{url}`\n"
                     f"   • Файл: `{output_name}`\n"
                     f"   • Метод: `{method}`\n"
+                    f"   • Распаковка: `{unpack_text}`\n"
                 )
             )
         message = "\n".join(message_lines)
@@ -2526,7 +2566,9 @@ def show_supplier_stock_sources_menu(update, context):
         if not source_id:
             continue
         enabled = source.get("enabled", True)
+        unpack_enabled = source.get("unpack_archive", False)
         toggle_text = "⛔️ Выключить" if enabled else "✅ Включить"
+        unpack_text = "📦 Распаковка: вкл" if unpack_enabled else "📦 Распаковка: выкл"
         keyboard.append([
             InlineKeyboardButton(
                 f"✏️ {source.get('name', source_id)}",
@@ -2535,6 +2577,12 @@ def show_supplier_stock_sources_menu(update, context):
             InlineKeyboardButton(
                 f"{toggle_text}",
                 callback_data=f'supplier_stock_source_toggle_{source_id}'
+            ),
+        ])
+        keyboard.append([
+            InlineKeyboardButton(
+                unpack_text,
+                callback_data=f'supplier_stock_source_unpack_toggle_{source_id}'
             ),
             InlineKeyboardButton(
                 "🗑️",
@@ -2844,6 +2892,7 @@ def supplier_stock_handle_mail_source_input(update, context):
             return None
         source_data['output_template'] = user_input
         source_data.setdefault('enabled', True)
+        source_data.setdefault('unpack_archive', False)
 
         config = get_supplier_stock_config()
         sources = config['mail'].get('sources', [])
@@ -3125,6 +3174,7 @@ def supplier_stock_handle_source_input(update, context):
 
         source_data.setdefault('method', 'http')
         source_data.setdefault('enabled', True)
+        source_data.setdefault('unpack_archive', False)
 
         config = get_supplier_stock_config()
         sources = config['download'].get('sources', [])
