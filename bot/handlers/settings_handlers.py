@@ -893,10 +893,15 @@ def settings_callback_handler(update, context):
             source_id = data.replace('supplier_stock_mail_source_unpack_toggle_', '')
             config = get_supplier_stock_config()
             sources = config.get("mail", {}).get("sources", [])
+            updated = False
             for source in sources:
                 if str(source.get("id")) == source_id:
                     source["unpack_archive"] = not source.get("unpack_archive", False)
+                    updated = True
                     break
+            if not updated:
+                query.answer("⚠️ Правило не найдено", show_alert=False)
+                return
             config["mail"]["sources"] = sources
             save_supplier_stock_config(config)
             show_supplier_stock_mail_sources_menu(update, context)
@@ -970,10 +975,15 @@ def settings_callback_handler(update, context):
             source_id = data.replace('supplier_stock_source_unpack_toggle_', '')
             config = get_supplier_stock_config()
             sources = config.get("download", {}).get("sources", [])
+            updated = False
             for source in sources:
                 if str(source.get("id")) == source_id:
                     source["unpack_archive"] = not source.get("unpack_archive", False)
+                    updated = True
                     break
+            if not updated:
+                query.answer("⚠️ Источник не найден", show_alert=False)
+                return
             config["download"]["sources"] = sources
             save_supplier_stock_config(config)
             show_supplier_stock_sources_menu(update, context)
