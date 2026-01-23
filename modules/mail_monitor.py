@@ -35,7 +35,11 @@ from config.db_settings import (
 )
 from core.config_manager import config_manager
 from extensions.extension_manager import extension_manager
-from extensions.supplier_stock_files import get_supplier_stock_config, unpack_archive_file
+from extensions.supplier_stock_files import (
+    get_supplier_stock_config,
+    process_supplier_stock_file,
+    unpack_archive_file,
+)
 from lib.logging import setup_logging
 
 LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -1081,6 +1085,12 @@ class BackupProcessor:
                             filename,
                             output_path,
                         )
+                processing_result = process_supplier_stock_file(output_path, source.get("id") or source.get("name"))
+                if processing_result:
+                    logger.info(
+                        "🧩 Обработка остатков выполнена: %s",
+                        processing_result.get("rules"),
+                    )
 
                 matched_files.append(str(output_path))
                 collected += 1
