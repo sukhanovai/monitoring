@@ -2741,6 +2741,12 @@ def supplier_stock_start_processing_wizard(update, context):
     query = update.callback_query
     query.answer()
 
+    context.user_data.pop('supplier_stock_edit', None)
+    context.user_data.pop('supplier_stock_add_source', None)
+    context.user_data.pop('supplier_stock_edit_source', None)
+    context.user_data.pop('supplier_stock_mail_edit', None)
+    context.user_data.pop('supplier_stock_mail_add_source', None)
+    context.user_data.pop('supplier_stock_mail_edit_source', None)
     context.user_data['supplier_stock_processing_stage'] = 'name'
     context.user_data['supplier_stock_processing_data'] = {}
     context.user_data['supplier_stock_processing_add'] = True
@@ -2758,6 +2764,12 @@ def supplier_stock_start_processing_edit_wizard(update, context, rule_id: str):
     query = update.callback_query
     query.answer()
 
+    context.user_data.pop('supplier_stock_edit', None)
+    context.user_data.pop('supplier_stock_add_source', None)
+    context.user_data.pop('supplier_stock_edit_source', None)
+    context.user_data.pop('supplier_stock_mail_edit', None)
+    context.user_data.pop('supplier_stock_mail_add_source', None)
+    context.user_data.pop('supplier_stock_mail_edit_source', None)
     config = get_supplier_stock_config()
     rules = config.get("processing", {}).get("rules", [])
     rule = next((item for item in rules if str(item.get("id")) == rule_id), None)
