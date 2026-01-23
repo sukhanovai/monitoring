@@ -21,10 +21,13 @@ import ssl
 import threading
 import tarfile
 import zipfile
+import csv
+import math
 from http import cookiejar
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, List
+from fnmatch import fnmatch
 from urllib.error import HTTPError
 from urllib.parse import urljoin
 from urllib.request import (
@@ -60,6 +63,10 @@ DEFAULT_SUPPLIER_STOCK_CONFIG: Dict[str, Any] = {
         "unpack_archive": False,
         "sources": [],
     },
+    "processing": {
+        "rules": [],
+        "date_format": "%Y-%m-%d %H:%M",
+    },
 }
 
 _scheduler_lock = threading.Lock()
@@ -91,6 +98,11 @@ def normalize_supplier_stock_config(config: Dict[str, Any] | None) -> Dict[str, 
         for source in mail_sources:
             if isinstance(source, dict):
                 source.setdefault("enabled", True)
+    processing_rules = merged.get("processing", {}).get("rules", [])
+    if isinstance(processing_rules, list):
+        for rule in processing_rules:
+            if isinstance(rule, dict):
+                rule.setdefault("enabled", True)
     return merged
 
 
@@ -409,6 +421,16 @@ def get_supplier_stock_reports(limit: int = 20) -> List[Dict[str, Any]]:
     return entries[-limit:][::-1]
 
 
+def process_supplier_stock_file(
+    file_path: str | Path,
+    source_id: str | None = None,
+    now: datetime | None = None,
+) -> Dict[str, Any] | None:
+    config = get_supplier_stock_config()
+    path = Path(file_path)
+    return _process_supplier_stock_file(path, config, now or datetime.now(), source_id)
+
+
 def run_supplier_stock_fetch() -> Dict[str, Any]:
     config = get_supplier_stock_config()
     download_config = config.get("download", {})
@@ -487,6 +509,9 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
                         entry["unpacked_path"] = str(unpacked_path)
                         output_path = unpacked_path
                         _log("📦 Остатки поставщиков: %s распакован в %s", entry["source_id"], unpacked_path)
+                processing_result = _process_supplier_stock_file(output_path, config, now, source_id)
+                if processing_result:
+                    entry["processing"] = processing_result
                 archive_path = _archive_original_file(output_path, archive_dir, now)
                 if archive_path:
                     entry["archive_path"] = str(archive_path)
@@ -576,6 +601,328 @@ def _archive_original_file(source_path: Path, archive_dir: Path, now: datetime) 
         return archive_path
     except Exception:
         return None
+
+
+def _process_supplier_stock_file(
+    file_path: Path,
+    config: Dict[str, Any],
+    now: datetime,
+    source_id: str | None = None,
+) -> Dict[str, Any] | None:
+    processing = config.get("processing", {})
+    rules = processing.get("rules", [])
+    if not rules:
+        return None
+
+    matched_rules = []
+    results = []
+    for rule in rules:
+        if not isinstance(rule, dict):
+            continue
+        if not rule.get("enabled", True):
+            continue
+        if not _processing_rule_matches(rule, file_path):
+            continue
+        matched_rules.append(rule.get("id") or rule.get("name") or "rule")
+        try:
+            result = _run_processing_rule(file_path, rule, processing, now)
+            results.append(result)
+        except Exception as exc:
+            _logger.error("⚠️ Ошибка обработки %s: %s", file_path, exc)
+            results.append({"status": "error", "error": str(exc), "rule_id": rule.get("id")})
+
+    if not matched_rules:
+        return None
+
+    return {
+        "rules": matched_rules,
+        "results": results,
+        "source_id": source_id,
+        "file": str(file_path),
+    }
+
+
+def _processing_rule_matches(rule: Dict[str, Any], file_path: Path) -> bool:
+    source_file = str(rule.get("source_file") or "").strip()
+    if not source_file:
+        return False
+    target_name = file_path.name
+    if source_file == target_name:
+        return True
+    if any(char in source_file for char in ("*", "?", "[")):
+        return fnmatch(target_name, source_file)
+    return False
+
+
+def _run_processing_rule(
+    file_path: Path,
+    rule: Dict[str, Any],
+    processing: Dict[str, Any],
+    now: datetime,
+) -> Dict[str, Any]:
+    if not rule.get("requires_processing", True):
+        _logger.info("🧩 Обработка не требуется для %s (%s)", file_path, rule.get("name") or rule.get("id"))
+        return {"status": "skipped", "reason": "processing_disabled", "rule_id": rule.get("id")}
+
+    table = _read_supplier_table(file_path)
+    if not table:
+        return {"status": "error", "error": "empty_table", "rule_id": rule.get("id")}
+
+    data_row = int(rule.get("data_row") or 1)
+    variants = rule.get("variants", [])
+    results = []
+    for variant in variants:
+        variant_result = _process_variant(table, file_path, rule, variant, processing, now, data_row)
+        results.append(variant_result)
+
+    return {"status": "success", "rule_id": rule.get("id"), "variants": results}
+
+
+def _read_supplier_table(file_path: Path) -> list[list[str]]:
+    suffix = file_path.suffix.lower().lstrip(".")
+    if suffix == "csv":
+        return _read_csv_table(file_path)
+    if suffix in ("xlsx",):
+        return _read_xlsx_table(file_path)
+    if suffix in ("xls",):
+        return _read_xls_table(file_path)
+    raise ValueError(f"Неизвестный формат файла: {file_path.suffix}")
+
+
+def _read_csv_table(file_path: Path) -> list[list[str]]:
+    with file_path.open("r", encoding="utf-8", errors="ignore", newline="") as file:
+        sample = file.read(2048)
+        file.seek(0)
+        delimiter = _guess_csv_delimiter(sample)
+        reader = csv.reader(file, delimiter=delimiter)
+        return [[str(value).strip() for value in row] for row in reader]
+
+
+def _guess_csv_delimiter(sample: str) -> str:
+    if not sample:
+        return ","
+    comma = sample.count(",")
+    semicolon = sample.count(";")
+    tab = sample.count("\t")
+    if semicolon > comma and semicolon >= tab:
+        return ";"
+    if tab > comma and tab > semicolon:
+        return "\t"
+    return ","
+
+
+def _read_xlsx_table(file_path: Path) -> list[list[str]]:
+    try:
+        import openpyxl
+    except ImportError as exc:
+        raise ImportError("openpyxl не установлен для обработки xlsx") from exc
+    workbook = openpyxl.load_workbook(file_path, data_only=True)
+    sheet = workbook.active
+    rows: list[list[str]] = []
+    for row in sheet.iter_rows(values_only=True):
+        rows.append([_normalize_cell(value) for value in row])
+    return rows
+
+
+def _read_xls_table(file_path: Path) -> list[list[str]]:
+    try:
+        import xlrd
+    except ImportError as exc:
+        raise ImportError("xlrd не установлен для обработки xls") from exc
+    workbook = xlrd.open_workbook(file_path)
+    sheet = workbook.sheet_by_index(0)
+    rows: list[list[str]] = []
+    for row_index in range(sheet.nrows):
+        rows.append([_normalize_cell(sheet.cell_value(row_index, col)) for col in range(sheet.ncols)])
+    return rows
+
+
+def _normalize_cell(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, float):
+        if math.isfinite(value) and value.is_integer():
+            return str(int(value))
+    return str(value).strip()
+
+
+def _process_variant(
+    table: list[list[str]],
+    file_path: Path,
+    rule: Dict[str, Any],
+    variant: Dict[str, Any],
+    processing: Dict[str, Any],
+    now: datetime,
+    data_row: int,
+) -> Dict[str, Any]:
+    article_col = int(variant.get("article_col") or 0)
+    if article_col <= 0:
+        return {"status": "error", "error": "invalid_article_col"}
+    data_columns = variant.get("data_columns", [])
+    output_names = variant.get("output_names", [])
+    output_format = (variant.get("output_format") or "csv").lower()
+    article_filter = variant.get("article_filter") or ""
+    article_prefix = variant.get("article_prefix") or ""
+
+    if len(data_columns) != len(output_names):
+        return {"status": "error", "error": "columns_names_mismatch"}
+
+    compiled_filter = None
+    if article_filter:
+        try:
+            compiled_filter = re.compile(article_filter)
+        except re.error as exc:
+            return {"status": "error", "error": f"invalid_filter: {exc}"}
+
+    rows = table[data_row - 1:] if data_row > 1 else table
+    outputs: list[Dict[str, Any]] = []
+    for column_index, output_name in zip(data_columns, output_names):
+        items: list[list[str]] = []
+        orc_items: list[list[str]] = []
+        for row in rows:
+            article = _get_cell(row, article_col)
+            if not article:
+                continue
+            if compiled_filter and not compiled_filter.search(article):
+                continue
+            quant_raw = _get_cell(row, column_index)
+            quant_value = _parse_quantity(quant_raw)
+            if quant_value is None:
+                continue
+            items.append([f"{article_prefix}{article}", quant_value])
+            orc_config = variant.get("orc", {}) if isinstance(variant.get("orc"), dict) else {}
+            if orc_config.get("enabled"):
+                orc_prefix = orc_config.get("prefix", "")
+                stor = orc_config.get("stor", "")
+                date_text = now.strftime(processing.get("date_format", "%Y-%m-%d %H:%M"))
+                orc_items.append([f"{orc_prefix}{article}", stor, quant_value, date_text])
+
+        output_path = _resolve_output_path(file_path.parent, output_name, output_format)
+        output_path = _write_output_file(output_path, output_format, ["Art.", "Quant."], items)
+
+        orc_output = None
+        orc_config = variant.get("orc", {}) if isinstance(variant.get("orc"), dict) else {}
+        if orc_config.get("enabled"):
+            orc_output_path = _resolve_output_path(
+                file_path.parent,
+                _append_suffix_to_name(output_name, "_orc"),
+                output_format,
+            )
+            orc_output_path = _write_output_file(
+                orc_output_path,
+                output_format,
+                ["Art", "Stor", "Quant", "Date"],
+                orc_items,
+            )
+            orc_output = str(orc_output_path)
+
+        outputs.append(
+            {
+                "output": str(output_path),
+                "orc_output": orc_output,
+                "rows": len(items),
+            }
+        )
+
+    return {"status": "success", "outputs": outputs}
+
+
+def _get_cell(row: list[str], index: int) -> str:
+    if index <= 0:
+        return ""
+    if index - 1 >= len(row):
+        return ""
+    return str(row[index - 1]).strip()
+
+
+def _parse_quantity(value: str) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip().replace(" ", "")
+    if not text:
+        return None
+    text = text.replace(",", ".")
+    try:
+        number = float(text)
+    except ValueError:
+        return None
+    if number <= 0:
+        return None
+    if number.is_integer():
+        return str(int(number))
+    return str(number)
+
+
+def _resolve_output_path(folder: Path, output_name: str, output_format: str) -> Path:
+    name = output_name.strip()
+    suffix = f".{output_format}"
+    if not name:
+        name = f"output{suffix}"
+    if Path(name).suffix.lower() != suffix:
+        name = f"{name}{suffix}"
+    return folder / name
+
+
+def _append_suffix_to_name(filename: str, suffix: str) -> str:
+    path = Path(filename)
+    return f"{path.stem}{suffix}{path.suffix}"
+
+
+def _write_output_file(path: Path, fmt: str, headers: list[str], rows: list[list[str]]) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if fmt == "csv":
+        with path.open("w", encoding="utf-8", newline="") as file:
+            writer = csv.writer(file, delimiter=";")
+            writer.writerow(headers)
+            writer.writerows(rows)
+        return path
+    if fmt == "xlsx":
+        if _write_xlsx(path, headers, rows):
+            return path
+        return _write_fallback_csv(path, headers, rows, fmt)
+    if fmt == "xls":
+        if _write_xls(path, headers, rows):
+            return path
+        return _write_fallback_csv(path, headers, rows, fmt)
+    raise ValueError(f"Неизвестный формат выходного файла: {fmt}")
+
+
+def _write_xlsx(path: Path, headers: list[str], rows: list[list[str]]) -> bool:
+    try:
+        import openpyxl
+    except ImportError as exc:
+        _logger.warning("openpyxl не установлен для записи xlsx (%s)", exc)
+        return False
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    sheet.append(headers)
+    for row in rows:
+        sheet.append(row)
+    workbook.save(path)
+    return True
+
+
+def _write_xls(path: Path, headers: list[str], rows: list[list[str]]) -> bool:
+    try:
+        import xlwt
+    except ImportError as exc:
+        _logger.warning("xlwt не установлен для записи xls (%s)", exc)
+        return False
+    workbook = xlwt.Workbook()
+    sheet = workbook.add_sheet("Sheet1")
+    for col, header in enumerate(headers):
+        sheet.write(0, col, header)
+    for row_index, row in enumerate(rows, start=1):
+        for col_index, value in enumerate(row):
+            sheet.write(row_index, col_index, value)
+    workbook.save(str(path))
+    return True
+
+
+def _write_fallback_csv(path: Path, headers: list[str], rows: list[list[str]], fmt: str) -> Path:
+    fallback_path = path.with_suffix(".csv")
+    _logger.warning("⚠️ Запись %s недоступна, сохранено как %s", fmt, fallback_path.name)
+    return _write_output_file(fallback_path, "csv", headers, rows)
 
 
 def _strip_archive_suffix(path: Path) -> str:
