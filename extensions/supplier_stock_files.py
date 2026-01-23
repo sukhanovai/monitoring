@@ -910,7 +910,6 @@ def _write_xls(path: Path, headers: list[str], rows: list[list[str]]) -> bool:
     try:
         import xlwt
     except ImportError as exc:
-        _logger.warning("xlwt не установлен для записи xls (%s)", exc)
         return False
     workbook = xlwt.Workbook()
     sheet = workbook.add_sheet("Sheet1")
