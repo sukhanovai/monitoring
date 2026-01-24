@@ -886,6 +886,9 @@ def settings_callback_handler(update, context):
                 if _save_processing_rule_data(update, context):
                     back_callback = context.user_data.get('supplier_stock_processing_back', 'supplier_stock_processing')
                     _show_processing_rule_back_menu(update, context, back_callback)
+            elif action == 'back':
+                back_callback = context.user_data.get('supplier_stock_processing_back', 'supplier_stock_processing')
+                _show_processing_rule_back_menu(update, context, back_callback)
             elif action == 'toggle_processing':
                 data = context.user_data.get('supplier_stock_processing_rule_data', {})
                 data['requires_processing'] = not data.get('requires_processing', True)
@@ -959,6 +962,14 @@ def settings_callback_handler(update, context):
                 _sync_variant_columns(variant, columns_count + 1)
                 data['variants'][variant_index] = variant
                 context.user_data['supplier_stock_processing_rule_data'] = data
+                show_supplier_stock_processing_columns_menu(update, context, variant_index)
+            elif action == 'remove_column' and len(parts) > 3:
+                column_index = int(parts[3])
+                data = context.user_data.get('supplier_stock_processing_rule_data', {})
+                variant = _ensure_processing_variant(data, variant_index)
+                if _remove_variant_column(variant, column_index):
+                    data['variants'][variant_index] = variant
+                    context.user_data['supplier_stock_processing_rule_data'] = data
                 show_supplier_stock_processing_columns_menu(update, context, variant_index)
         elif data.startswith('supplier_stock_processing_orc|'):
             parts = data.split('|')
@@ -2792,6 +2803,24 @@ def _sync_variant_columns(variant: dict, count: int) -> None:
         names.append("")
     variant["output_names"] = names[:count]
 
+def _remove_variant_column(variant: dict, index: int) -> bool:
+    columns_count = variant.get("data_columns_count") or max(
+        len(variant.get("data_columns", [])),
+        len(variant.get("output_names", [])),
+    )
+    if index < 0 or index >= columns_count:
+        return False
+    columns = list(variant.get("data_columns", []))
+    names = list(variant.get("output_names", []))
+    if index < len(columns):
+        columns.pop(index)
+    if index < len(names):
+        names.pop(index)
+    variant["data_columns"] = columns
+    variant["output_names"] = names
+    _sync_variant_columns(variant, max(columns_count - 1, 0))
+    return True
+
 def _fill_processing_rule_from_source(data: dict) -> None:
     source_id = data.get("source_id")
     if not source_id:
@@ -2913,9 +2942,11 @@ def show_supplier_stock_processing_rule_menu(update, context) -> None:
             InlineKeyboardButton("📄 Имя файла на выходе", callback_data='supplier_stock_processing_rule|field|output_name')
         ])
 
-    back_callback = context.user_data.get('supplier_stock_processing_back', 'supplier_stock_processing')
     keyboard.append([
-        InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_processing_rule|save_back'),
+        InlineKeyboardButton("💾 Сохранить", callback_data='supplier_stock_processing_rule|save'),
+    ])
+    keyboard.append([
+        InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_processing_rule|back'),
         InlineKeyboardButton("✖️ Закрыть", callback_data='close')
     ])
 
@@ -3056,7 +3087,11 @@ def show_supplier_stock_processing_columns_menu(update, context, variant_index: 
                 InlineKeyboardButton(
                     f"📈 Колонка {idx + 1}: {value or 'не задано'}",
                     callback_data=f'supplier_stock_processing_variant|field|{variant_index}|data_column|{idx}'
-                )
+                ),
+                InlineKeyboardButton(
+                    "🗑️",
+                    callback_data=f'supplier_stock_processing_columns|remove_column|{variant_index}|{idx}'
+                ),
             ])
         keyboard.append([InlineKeyboardButton("— Имена файлов —", callback_data='supplier_stock_noop')])
         for idx in range(data_columns_count):
