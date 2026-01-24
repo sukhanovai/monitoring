@@ -796,8 +796,14 @@ def _process_variant(
             if orc_config.get("enabled"):
                 orc_prefix = orc_config.get("prefix", "")
                 stor = orc_config.get("stor", "")
+                orc_column = int(orc_config.get("column") or 0)
+                orc_column_index = orc_column if orc_column > 0 else column_index
+                orc_quant_raw = _get_cell(row, orc_column_index)
+                orc_quant_value = _parse_quantity(orc_quant_raw)
+                if orc_quant_value is None:
+                    continue
                 date_text = now.strftime(processing.get("date_format", "%Y-%m-%d %H:%M"))
-                orc_items.append([f"{orc_prefix}{article}", stor, quant_value, date_text])
+                orc_items.append([f"{orc_prefix}{article}", stor, orc_quant_value, date_text])
 
         output_path = _resolve_output_path(file_path.parent, output_name, output_format)
         output_path = _write_output_file(output_path, output_format, ["Art.", "Quant."], items)

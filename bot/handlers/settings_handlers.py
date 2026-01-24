@@ -882,9 +882,16 @@ def settings_callback_handler(update, context):
                 show_supplier_stock_processing_rule_menu(update, context)
             elif action == 'save':
                 supplier_stock_save_processing_rule(update, context)
+            elif action == 'save_back':
+                if _save_processing_rule_data(update, context):
+                    back_callback = context.user_data.get('supplier_stock_processing_back', 'supplier_stock_processing')
+                    _show_processing_rule_back_menu(update, context, back_callback)
             elif action == 'toggle_processing':
                 data = context.user_data.get('supplier_stock_processing_rule_data', {})
                 data['requires_processing'] = not data.get('requires_processing', True)
+                if data.get('requires_processing') and not data.get('variants'):
+                    _sync_processing_variants_count(data, 1)
+                    data['variants_count'] = 1
                 context.user_data['supplier_stock_processing_rule_data'] = data
                 show_supplier_stock_processing_rule_menu(update, context)
             elif action in ('add_variant', 'remove_variant'):
@@ -911,6 +918,14 @@ def settings_callback_handler(update, context):
             action = parts[1] if len(parts) > 1 else ''
             variant_index = int(parts[2]) if len(parts) > 2 else 0
             if action == 'menu':
+                show_supplier_stock_processing_variant_menu(update, context, variant_index)
+            elif action == 'add_column':
+                data = context.user_data.get('supplier_stock_processing_rule_data', {})
+                variant = _ensure_processing_variant(data, variant_index)
+                columns_count = variant.get("data_columns_count") or len(variant.get("data_columns", []))
+                _sync_variant_columns(variant, columns_count + 1)
+                data['variants'][variant_index] = variant
+                context.user_data['supplier_stock_processing_rule_data'] = data
                 show_supplier_stock_processing_variant_menu(update, context, variant_index)
             elif action == 'toggle_orc':
                 data = context.user_data.get('supplier_stock_processing_rule_data', {})
@@ -2730,7 +2745,7 @@ def _default_processing_variant() -> dict:
         "data_columns_count": 0,
         "output_names": [],
         "output_format": None,
-        "orc": {"enabled": False, "prefix": "", "stor": ""},
+        "orc": {"enabled": False, "prefix": "", "stor": "", "column": None},
     }
 
 def _ensure_processing_variant(data: dict, index: int) -> dict:
@@ -2807,6 +2822,11 @@ def show_supplier_stock_processing_rule_menu(update, context) -> None:
     requires_processing = data.get("requires_processing", True)
     variants = data.get("variants", [])
     variants_count = len(variants)
+    if requires_processing and not variants_count:
+        _sync_processing_variants_count(data, 1)
+        data["variants_count"] = 1
+        variants = data.get("variants", [])
+        variants_count = len(variants)
     message = _processing_rule_summary(data)
 
     toggle_text = "✅ Требуется обработка" if requires_processing else "⛔️ Обработка не требуется"
@@ -2819,10 +2839,7 @@ def show_supplier_stock_processing_rule_menu(update, context) -> None:
     if requires_processing:
         keyboard.extend([
             [InlineKeyboardButton("📍 Первая строка с данными", callback_data='supplier_stock_processing_rule|field|data_row')],
-            [InlineKeyboardButton("➕ Добавить файл", callback_data='supplier_stock_processing_rule|add_variant')],
         ])
-        if variants_count:
-            keyboard.append([InlineKeyboardButton("➖ Удалить файл", callback_data='supplier_stock_processing_rule|remove_variant')])
         keyboard.append([InlineKeyboardButton("— Настройка файлов —", callback_data='supplier_stock_noop')])
         for index in range(variants_count or 0):
             keyboard.append([
@@ -2836,10 +2853,9 @@ def show_supplier_stock_processing_rule_menu(update, context) -> None:
             InlineKeyboardButton("📄 Имя файла на выходе", callback_data='supplier_stock_processing_rule|field|output_name')
         ])
 
-    keyboard.append([InlineKeyboardButton("💾 Сохранить", callback_data='supplier_stock_processing_rule|save')])
     back_callback = context.user_data.get('supplier_stock_processing_back', 'supplier_stock_processing')
     keyboard.append([
-        InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+        InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_processing_rule|save_back'),
         InlineKeyboardButton("✖️ Закрыть", callback_data='close')
     ])
 
@@ -2860,32 +2876,43 @@ def show_supplier_stock_processing_variant_menu(update, context, variant_index: 
     article_col = variant.get("article_col") or "не задано"
     article_filter = _escape_pattern_text(variant.get("article_filter") or "не задано")
     article_prefix = _escape_pattern_text(variant.get("article_prefix") or "не задано")
-    data_columns_count = variant.get("data_columns_count") or len(variant.get("data_columns", []))
+    data_columns_count = variant.get("data_columns_count") or max(
+        len(variant.get("data_columns", [])),
+        len(variant.get("output_names", [])),
+    )
+    if data_columns_count:
+        _sync_variant_columns(variant, data_columns_count)
     output_format = variant.get("output_format") or "не задано"
     orc = variant.get("orc", {})
     orc_enabled = orc.get("enabled", False)
     orc_text = "да" if orc_enabled else "нет"
+    orc_column = orc.get("column") or "не задано"
 
     message = (
         "📦 *Настройка файла обработки*\n\n"
-        f"• Колонка артикула: `{article_col}`\n"
-        f"• Фильтр артикула: `{article_filter}`\n"
+        f"• Номер колонки с артикулом: `{article_col}`\n"
+        f"• Условия отбора артикулов: `{article_filter}`\n"
         f"• Префикс артикула: `{article_prefix}`\n"
-        f"• Кол-во колонок: `{data_columns_count or 'не задано'}`\n"
-        f"• Формат файла: `{output_format}`\n"
-        f"• Файл ОРК: `{orc_text}`"
+        f"• Колонки с данными: `{data_columns_count or 'не задано'}`\n"
+        f"• Формат файла на выходе: `{output_format}`\n"
+        f"• Файл для ОРК: `{orc_text}`"
     )
+    if orc_enabled:
+        message += f"\n• Колонка данных для ОРК: `{orc_column}`"
 
     keyboard = [
         [InlineKeyboardButton("— Настройки файла —", callback_data='supplier_stock_noop')],
-        [InlineKeyboardButton("🔎 Колонка артикула", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_col')],
-        [InlineKeyboardButton("🧪 Фильтр артикула", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_filter')],
-        [InlineKeyboardButton("🏷️ Префикс артикула", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_prefix')],
-        [InlineKeyboardButton("📊 Кол-во колонок данных", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|data_columns_count')],
+        [InlineKeyboardButton("🔎 Номер колонки с артикулом", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_col')],
+        [InlineKeyboardButton("🧪 Условия отбора артикулов", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_filter')],
+        [InlineKeyboardButton("🏷️ Префикс в артикуле", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_prefix')],
     ]
 
+    keyboard.append([InlineKeyboardButton("— Колонки с данными —", callback_data='supplier_stock_noop')])
+    keyboard.append([
+        InlineKeyboardButton("➕ Добавить колонку", callback_data=f'supplier_stock_processing_variant|add_column|{variant_index}')
+    ])
+
     if data_columns_count:
-        keyboard.append([InlineKeyboardButton("— Колонки данных —", callback_data='supplier_stock_noop')])
         for idx in range(data_columns_count):
             label = variant.get("data_columns", [])
             value = label[idx] if idx < len(label) else "не задано"
@@ -2907,14 +2934,16 @@ def show_supplier_stock_processing_variant_menu(update, context, variant_index: 
             ])
 
     keyboard.extend([
-        [InlineKeyboardButton("🧾 Формат файла", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|output_format')],
-        [InlineKeyboardButton(f"📦 Файл ОРК: {orc_text}", callback_data=f'supplier_stock_processing_variant|toggle_orc|{variant_index}')],
+        [InlineKeyboardButton("🧾 Формат файла на выходе", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|output_format')],
+        [InlineKeyboardButton(f"📦 Файл для ОРК: {orc_text}", callback_data=f'supplier_stock_processing_variant|toggle_orc|{variant_index}')],
     ])
 
     if orc_enabled:
         keyboard.extend([
-            [InlineKeyboardButton("🏷️ Префикс ОРК", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_prefix')],
-            [InlineKeyboardButton("📦 Stor ОРК", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_stor')],
+            [InlineKeyboardButton("— Файл для ОРК —", callback_data='supplier_stock_noop')],
+            [InlineKeyboardButton("🏷️ Префикс в артикуле", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_prefix')],
+            [InlineKeyboardButton("📦 Stor", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_stor')],
+            [InlineKeyboardButton("📈 Колонка с данными", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_column')],
         ])
 
     keyboard.append([
@@ -2997,16 +3026,25 @@ def supplier_stock_start_processing_field_edit(
         "data_row": "Введите номер первой строки с данными:",
         "output_name": "Введите имя файла на выходе:",
         "article_col": "Введите номер колонки с артикулом:",
-        "article_filter": "Введите фильтр артикула (regex) или '-' для всех:",
+        "article_filter": (
+            "Введите условия отбора артикулов (regex) или '-' для всех.\n\n"
+            "Примеры:\n"
+            "• $1 ~ /^[0-9]/ && $col+0 > 0\n"
+            "• $1 ~ /^[A-Z].*/ && $4 ~ /^[0-9]+$/\n"
+            "• grep -E '^DKS [0-9A-Z]{6,},'\n"
+            "• gsub(/^\\./, \"\", art); gsub(/[A-Za-z]+$/, \"\", art);\n"
+            "• ($3+0 > 0) && ($4 == \"Москва\")"
+        ),
         "article_prefix": "Введите префикс артикула (или '-' если не нужен):",
-        "data_columns_count": "Сколько колонок с данными нужно использовать? (число):",
         "data_column": "Введите номер колонки с данными:",
-        "output_name": "Введите имя выходного файла:",
         "output_format": "Введите формат выходного файла (xls, xlsx, csv):",
         "orc_prefix": "Введите префикс артикула для файла ОРК (или '-' если не нужен):",
         "orc_stor": "Введите параметр Stor для файла ОРК:",
+        "orc_column": "Введите номер колонки с данными для файла ОРК:",
     }
     prompt = prompts.get(field, "Введите значение:")
+    if field == "output_name" and variant_index is not None:
+        prompt = "Введите имя выходного файла:"
     back_callback = 'supplier_stock_processing_rule|menu'
     if variant_index is not None:
         back_callback = f'supplier_stock_processing_variant|menu|{variant_index}'
@@ -3030,7 +3068,10 @@ def _validate_processing_rule(data: dict) -> list[str]:
             variant = _ensure_processing_variant(data, idx)
             if not variant.get("article_col"):
                 missing.append(f"колонка артикула (файл {idx + 1})")
-            columns_count = variant.get("data_columns_count") or 0
+            columns_count = variant.get("data_columns_count") or max(
+                len(variant.get("data_columns", [])),
+                len(variant.get("output_names", [])),
+            )
             if not columns_count:
                 missing.append(f"кол-во колонок (файл {idx + 1})")
             columns = variant.get("data_columns", [])
@@ -3042,37 +3083,53 @@ def _validate_processing_rule(data: dict) -> list[str]:
             if not variant.get("output_format"):
                 missing.append(f"формат файла (файл {idx + 1})")
             orc = variant.get("orc", {})
-            if orc.get("enabled") and not orc.get("stor"):
-                missing.append(f"Stor ОРК (файл {idx + 1})")
+            if orc.get("enabled"):
+                if not orc.get("stor"):
+                    missing.append(f"Stor ОРК (файл {idx + 1})")
     return missing
 
-def supplier_stock_save_processing_rule(update, context) -> None:
+def _save_processing_rule_data(update, context) -> bool:
     query = update.callback_query
-    query.answer()
-
     data = context.user_data.get("supplier_stock_processing_rule_data", {})
     _fill_processing_rule_from_source(data)
     context.user_data["supplier_stock_processing_rule_data"] = data
     missing = _validate_processing_rule(data)
     if missing:
         query.answer("Заполните: " + ", ".join(missing), show_alert=True)
+        return False
+    edit_id = context.user_data.get('supplier_stock_processing_rule_edit_id')
+    _save_supplier_stock_processing_rule(context, data, edit_id=edit_id)
+    return True
+
+def _show_processing_rule_back_menu(update, context, back_callback: str) -> None:
+    if back_callback == 'settings_ext_supplier_stock':
+        show_supplier_stock_settings(update, context)
+        return
+    if back_callback == 'supplier_stock_processing':
+        show_supplier_stock_processing_menu(update, context, action_prefix="supplier_stock_processing")
+        return
+    if back_callback.startswith('supplier_stock_source_settings|'):
+        source_id = back_callback.split('|', 1)[1]
+        show_supplier_stock_source_settings(update, context, source_id)
+        return
+    if back_callback.startswith('supplier_stock_mail_source_settings|'):
+        source_id = back_callback.split('|', 1)[1]
+        show_supplier_stock_mail_source_settings(update, context, source_id)
         return
 
-    config = get_supplier_stock_config()
-    rules = config.get("processing", {}).get("rules", [])
-    edit_id = context.user_data.get('supplier_stock_processing_rule_edit_id')
-    if edit_id:
-        for idx, rule in enumerate(rules):
-            if str(rule.get("id")) == edit_id:
-                updated = dict(rule)
-                updated.update(data)
-                rules[idx] = updated
-                break
-    else:
-        data["id"] = data.get("id") or _slugify_supplier_source_id(data.get("name") or "rule")
-        rules.append(data)
-    config.setdefault("processing", {})["rules"] = rules
-    save_supplier_stock_config(config)
+    update.callback_query.edit_message_text(
+        "✅ Настройки сохранены.",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]
+        ])
+    )
+
+def supplier_stock_save_processing_rule(update, context) -> None:
+    query = update.callback_query
+    query.answer()
+
+    if not _save_processing_rule_data(update, context):
+        return
     back_callback = context.user_data.get('supplier_stock_processing_back', 'supplier_stock_processing')
     query.edit_message_text(
         "✅ Настройки сохранены.",
@@ -3767,6 +3824,14 @@ def supplier_stock_handle_processing_input(update, context):
                     return None
                 orc = variant.get("orc", {})
                 orc['stor'] = user_input
+                variant['orc'] = orc
+            elif field == 'orc_column':
+                col_value = _parse_positive_int(user_input)
+                if col_value is None:
+                    update.message.reply_text("❌ Введите целое число больше 0.")
+                    return None
+                orc = variant.get("orc", {})
+                orc['column'] = col_value
                 variant['orc'] = orc
             rule_data['variants'][variant_index] = variant
         context.user_data['supplier_stock_processing_rule_data'] = rule_data
