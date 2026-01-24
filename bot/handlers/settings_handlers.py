@@ -3980,31 +3980,19 @@ def supplier_stock_handle_processing_input(update, context):
         rule_data = context.user_data.get('supplier_stock_processing_rule_data', {})
         if source_id:
             rule_data['source_id'] = source_id
-        if field == 'name':
-            if not user_input:
-                update.message.reply_text("❌ Название не может быть пустым. Попробуйте снова:")
-                return None
-            rule_data['name'] = user_input
-        elif field == 'source_file':
-            if not user_input:
-                update.message.reply_text("❌ Имя файла не может быть пустым. Попробуйте снова:")
-                return None
-            rule_data['source_file'] = user_input
-        elif field == 'data_row':
-            data_row = _parse_positive_int(user_input)
-            if data_row is None:
-                update.message.reply_text("❌ Введите целое число больше 0.")
-                return None
-            rule_data['data_row'] = data_row
-        elif field == 'output_name':
-            if not user_input:
-                update.message.reply_text("❌ Имя файла не может быть пустым. Попробуйте снова:")
-                return None
-            rule_data['output_name'] = user_input
-        else:
-            if variant_index is None:
-                update.message.reply_text("❌ Не удалось определить вариант настройки.")
-                return None
+        variant_fields = {
+            'article_col',
+            'article_filter',
+            'article_prefix',
+            'data_columns_count',
+            'data_column',
+            'output_name',
+            'output_format',
+            'orc_prefix',
+            'orc_stor',
+            'orc_column',
+        }
+        if variant_index is not None and field in variant_fields:
             variant = _ensure_processing_variant(rule_data, variant_index)
             if field == 'article_col':
                 article_col = _parse_positive_int(user_input)
@@ -4078,6 +4066,31 @@ def supplier_stock_handle_processing_input(update, context):
                 orc['column'] = col_value
                 variant['orc'] = orc
             rule_data['variants'][variant_index] = variant
+        else:
+            if field == 'name':
+                if not user_input:
+                    update.message.reply_text("❌ Название не может быть пустым. Попробуйте снова:")
+                    return None
+                rule_data['name'] = user_input
+            elif field == 'source_file':
+                if not user_input:
+                    update.message.reply_text("❌ Имя файла не может быть пустым. Попробуйте снова:")
+                    return None
+                rule_data['source_file'] = user_input
+            elif field == 'data_row':
+                data_row = _parse_positive_int(user_input)
+                if data_row is None:
+                    update.message.reply_text("❌ Введите целое число больше 0.")
+                    return None
+                rule_data['data_row'] = data_row
+            elif field == 'output_name':
+                if not user_input:
+                    update.message.reply_text("❌ Имя файла не может быть пустым. Попробуйте снова:")
+                    return None
+                rule_data['output_name'] = user_input
+            else:
+                update.message.reply_text("❌ Не удалось определить вариант настройки.")
+                return None
         context.user_data['supplier_stock_processing_rule_data'] = rule_data
         if variant_index is None:
             update.message.reply_text(
