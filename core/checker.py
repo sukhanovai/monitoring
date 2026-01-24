@@ -14,7 +14,9 @@ Server Checker Module
 import time
 import subprocess
 import socket
+import logging
 import paramiko
+from contextlib import contextmanager
 from typing import Dict, List, Optional, Tuple
 from lib.logging import debug_log, error_log, setup_logging
 from lib.network import check_ping as net_check_ping, check_port as net_check_port
@@ -48,16 +50,17 @@ class ServerChecker:
             client = paramiko.SSHClient()
             client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
-            client.connect(
-                hostname=ip,
-                username=username,
-                key_filename=key_path,
-                timeout=self.ssh_timeout,
-                banner_timeout=self.ssh_timeout,
-                auth_timeout=self.ssh_timeout,
-                look_for_keys=False,
-                allow_agent=False,
-            )
+            with _suppress_paramiko_logging():
+                client.connect(
+                    hostname=ip,
+                    username=username,
+                    key_filename=key_path,
+                    timeout=self.ssh_timeout,
+                    banner_timeout=self.ssh_timeout,
+                    auth_timeout=self.ssh_timeout,
+                    look_for_keys=False,
+                    allow_agent=False,
+                )
 
             # Простая проверка
             stdin, stdout, stderr = client.exec_command('echo "test"', timeout=5)
@@ -98,3 +101,18 @@ class ServerChecker:
             return SERVER_TIMEOUTS.get(server_type, 15)
         except:
             return 15
+
+
+@contextmanager
+def _suppress_paramiko_logging():
+    """Временно подавляет шумные трассировки Paramiko при сбоях SSH."""
+    logger = logging.getLogger("paramiko.transport")
+    previous_level = logger.level
+    previous_propagate = logger.propagate
+    logger.setLevel(logging.CRITICAL)
+    logger.propagate = False
+    try:
+        yield
+    finally:
+        logger.setLevel(previous_level)
+        logger.propagate = previous_propagate
