@@ -4359,6 +4359,8 @@ def supplier_stock_handle_input(update, context):
         return supplier_stock_handle_source_field_input(update, context)
     if context.user_data.get('supplier_stock_mail_source_field'):
         return supplier_stock_handle_mail_source_field_input(update, context)
+    if context.user_data.get('supplier_stock_processing_field'):
+        return supplier_stock_handle_processing_input(update, context)
     if context.user_data.get('supplier_stock_edit'):
         return supplier_stock_handle_edit_input(update, context)
     if context.user_data.get('supplier_stock_processing_add') or context.user_data.get('supplier_stock_processing_edit'):
