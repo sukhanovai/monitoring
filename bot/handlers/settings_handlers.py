@@ -2745,15 +2745,37 @@ def _sync_variant_columns(variant: dict, count: int) -> None:
         names.append("")
     variant["output_names"] = names[:count]
 
+def _fill_processing_rule_from_source(data: dict) -> None:
+    source_id = data.get("source_id")
+    if not source_id:
+        return
+    config = get_supplier_stock_config()
+    source_name = None
+    source_output = None
+    download_sources = config.get("download", {}).get("sources", [])
+    download_source = next((item for item in download_sources if str(item.get("id")) == str(source_id)), None)
+    if download_source:
+        source_name = download_source.get("name") or source_id
+        source_output = download_source.get("output_name")
+    if not download_source:
+        mail_sources = config.get("mail", {}).get("sources", [])
+        mail_source = next((item for item in mail_sources if str(item.get("id")) == str(source_id)), None)
+        if mail_source:
+            source_name = mail_source.get("name") or source_id
+            source_output = mail_source.get("output_template")
+    if source_name and not data.get("name"):
+        data["name"] = source_name
+    if source_output and not data.get("source_file"):
+        data["source_file"] = source_output
+    if source_output and not data.get("output_name"):
+        data["output_name"] = source_output
+
 def _processing_rule_summary(data: dict) -> str:
-    name = _escape_pattern_text(data.get("name") or "не задано")
-    source_file = _escape_pattern_text(data.get("source_file") or "не задано")
     requires_processing = data.get("requires_processing", True)
     processing_text = "да" if requires_processing else "нет"
+    output_name = _escape_pattern_text(data.get("output_name") or "не задано")
     lines = [
         "🧩 *Настройка обработки*\n",
-        f"• Название: `{name}`",
-        f"• Файл источника: `{source_file}`",
         f"• Требуется обработка: `{processing_text}`",
     ]
     if requires_processing:
@@ -2761,6 +2783,8 @@ def _processing_rule_summary(data: dict) -> str:
         data_row = data.get("data_row")
         lines.append(f"• Кол-во целевых файлов: `{variants_count or 'не задано'}`")
         lines.append(f"• Первая строка с данными: `{data_row or 'не задано'}`")
+    else:
+        lines.append(f"• Имя файла на выходе: `{output_name}`")
     return "\n".join(lines)
 
 def show_supplier_stock_processing_rule_menu(update, context) -> None:
@@ -2768,16 +2792,16 @@ def show_supplier_stock_processing_rule_menu(update, context) -> None:
     query.answer()
 
     data = context.user_data.get("supplier_stock_processing_rule_data", {})
+    _fill_processing_rule_from_source(data)
+    context.user_data["supplier_stock_processing_rule_data"] = data
     requires_processing = data.get("requires_processing", True)
     variants_count = data.get("variants_count") or len(data.get("variants", []))
     message = _processing_rule_summary(data)
 
-    toggle_text = "✅ Требуется обработка" if requires_processing else "⛔️ Обработка отключена"
+    toggle_text = "✅ Требуется обработка" if requires_processing else "⛔️ Обработка не требуется"
 
     keyboard = [
         [InlineKeyboardButton("— Настройки правила —", callback_data='supplier_stock_noop')],
-        [InlineKeyboardButton("✏️ Название", callback_data='supplier_stock_processing_rule|field|name')],
-        [InlineKeyboardButton("📄 Файл источника", callback_data='supplier_stock_processing_rule|field|source_file')],
         [InlineKeyboardButton(toggle_text, callback_data='supplier_stock_processing_rule|toggle_processing')],
     ]
 
@@ -2794,6 +2818,10 @@ def show_supplier_stock_processing_rule_menu(update, context) -> None:
                     callback_data=f'supplier_stock_processing_rule|variant|{index}'
                 )
             ])
+    else:
+        keyboard.append([
+            InlineKeyboardButton("📄 Имя файла на выходе", callback_data='supplier_stock_processing_rule|field|output_name')
+        ])
 
     keyboard.append([InlineKeyboardButton("💾 Сохранить", callback_data='supplier_stock_processing_rule|save')])
     back_callback = context.user_data.get('supplier_stock_processing_back', 'supplier_stock_processing')
@@ -2924,6 +2952,7 @@ def supplier_stock_start_processing_rule_menu(
         data = {
             "name": "",
             "source_file": "",
+            "output_name": "",
             "enabled": True,
             "requires_processing": True,
             "variants_count": 0,
@@ -2932,6 +2961,7 @@ def supplier_stock_start_processing_rule_menu(
     if source_id:
         data['source_id'] = source_id
         context.user_data['supplier_stock_processing_source_id'] = source_id
+    _fill_processing_rule_from_source(data)
     context.user_data['supplier_stock_processing_rule_data'] = data
     context.user_data['supplier_stock_processing_back'] = back_callback
     show_supplier_stock_processing_rule_menu(update, context)
@@ -2951,10 +2981,9 @@ def supplier_stock_start_processing_field_edit(
     context.user_data['supplier_stock_processing_item_index'] = item_index
 
     prompts = {
-        "name": "Введите название правила:",
-        "source_file": "Введите файл источника (например: supplier_1_orig.xls):",
         "variants_count": "Сколько целевых файлов требуется? (число):",
         "data_row": "Введите номер первой строки с данными:",
+        "output_name": "Введите имя файла на выходе:",
         "article_col": "Введите номер колонки с артикулом:",
         "article_filter": "Введите фильтр артикула (regex) или '-' для всех:",
         "article_prefix": "Введите префикс артикула (или '-' если не нужен):",
@@ -2978,10 +3007,6 @@ def supplier_stock_start_processing_field_edit(
 
 def _validate_processing_rule(data: dict) -> list[str]:
     missing = []
-    if not data.get("name"):
-        missing.append("название")
-    if not data.get("source_file"):
-        missing.append("файл источника")
     if data.get("requires_processing", True):
         variants_count = data.get("variants_count") or 0
         if not variants_count:
@@ -3013,6 +3038,8 @@ def supplier_stock_save_processing_rule(update, context) -> None:
     query.answer()
 
     data = context.user_data.get("supplier_stock_processing_rule_data", {})
+    _fill_processing_rule_from_source(data)
+    context.user_data["supplier_stock_processing_rule_data"] = data
     missing = _validate_processing_rule(data)
     if missing:
         query.answer("Заполните: " + ", ".join(missing), show_alert=True)
@@ -3649,17 +3676,7 @@ def supplier_stock_handle_processing_input(update, context):
         rule_data = context.user_data.get('supplier_stock_processing_rule_data', {})
         if source_id:
             rule_data['source_id'] = source_id
-        if field == 'name':
-            if not user_input:
-                update.message.reply_text("❌ Название не может быть пустым. Попробуйте снова:")
-                return None
-            rule_data['name'] = user_input
-        elif field == 'source_file':
-            if not user_input:
-                update.message.reply_text("❌ Файл источника не может быть пустым. Попробуйте снова:")
-                return None
-            rule_data['source_file'] = user_input
-        elif field == 'variants_count':
+        if field == 'variants_count':
             variants_count = _parse_positive_int(user_input)
             if variants_count is None:
                 update.message.reply_text("❌ Введите целое число больше 0.")
@@ -3672,6 +3689,11 @@ def supplier_stock_handle_processing_input(update, context):
                 update.message.reply_text("❌ Введите целое число больше 0.")
                 return None
             rule_data['data_row'] = data_row
+        elif field == 'output_name':
+            if not user_input:
+                update.message.reply_text("❌ Имя файла не может быть пустым. Попробуйте снова:")
+                return None
+            rule_data['output_name'] = user_input
         else:
             if variant_index is None:
                 update.message.reply_text("❌ Не удалось определить вариант настройки.")
