@@ -887,6 +887,9 @@ def settings_callback_handler(update, context):
                     back_callback = context.user_data.get('supplier_stock_processing_back', 'supplier_stock_processing')
                     _show_processing_rule_back_menu(update, context, back_callback)
             elif action == 'back':
+                if context.user_data.get('supplier_stock_processing_rule_dirty'):
+                    _persist_processing_rule_data(context)
+                    context.user_data['supplier_stock_processing_rule_dirty'] = False
                 back_callback = context.user_data.get('supplier_stock_processing_back', 'supplier_stock_processing')
                 _show_processing_rule_back_menu(update, context, back_callback)
             elif action == 'toggle_processing':
@@ -896,6 +899,7 @@ def settings_callback_handler(update, context):
                     _sync_processing_variants_count(data, 1)
                     data['variants_count'] = 1
                 context.user_data['supplier_stock_processing_rule_data'] = data
+                context.user_data['supplier_stock_processing_rule_dirty'] = True
                 _persist_processing_rule_data(context)
                 show_supplier_stock_processing_rule_menu(update, context)
             elif action in ('add_variant', 'remove_variant'):
@@ -909,6 +913,7 @@ def settings_callback_handler(update, context):
                 _sync_processing_variants_count(data, new_count)
                 data['variants_count'] = new_count
                 context.user_data['supplier_stock_processing_rule_data'] = data
+                context.user_data['supplier_stock_processing_rule_dirty'] = True
                 _persist_processing_rule_data(context)
                 show_supplier_stock_processing_rule_menu(update, context)
             elif action == 'variant' and len(parts) > 2:
@@ -931,6 +936,7 @@ def settings_callback_handler(update, context):
                 _sync_variant_columns(variant, columns_count + 1)
                 data['variants'][variant_index] = variant
                 context.user_data['supplier_stock_processing_rule_data'] = data
+                context.user_data['supplier_stock_processing_rule_dirty'] = True
                 _persist_processing_rule_data(context)
                 show_supplier_stock_processing_variant_menu(update, context, variant_index)
             elif action == 'toggle_orc':
@@ -941,6 +947,7 @@ def settings_callback_handler(update, context):
                 variant['orc'] = orc
                 data['variants'][variant_index] = variant
                 context.user_data['supplier_stock_processing_rule_data'] = data
+                context.user_data['supplier_stock_processing_rule_dirty'] = True
                 _persist_processing_rule_data(context)
                 show_supplier_stock_processing_rule_menu(update, context)
             elif action == 'field' and len(parts) > 3:
@@ -966,6 +973,7 @@ def settings_callback_handler(update, context):
                 _sync_variant_columns(variant, columns_count + 1)
                 data['variants'][variant_index] = variant
                 context.user_data['supplier_stock_processing_rule_data'] = data
+                context.user_data['supplier_stock_processing_rule_dirty'] = True
                 _persist_processing_rule_data(context)
                 show_supplier_stock_processing_columns_menu(update, context, variant_index)
             elif action == 'remove_column' and len(parts) > 3:
@@ -975,6 +983,7 @@ def settings_callback_handler(update, context):
                 if _remove_variant_column(variant, column_index):
                     data['variants'][variant_index] = variant
                     context.user_data['supplier_stock_processing_rule_data'] = data
+                    context.user_data['supplier_stock_processing_rule_dirty'] = True
                     _persist_processing_rule_data(context)
                 show_supplier_stock_processing_columns_menu(update, context, variant_index)
         elif data.startswith('supplier_stock_processing_orc|'):
@@ -1590,11 +1599,14 @@ def handle_setting_value(update, context):
         context.user_data.get('supplier_stock_edit')
         or context.user_data.get('supplier_stock_add_source')
         or context.user_data.get('supplier_stock_edit_source')
+        or context.user_data.get('supplier_stock_source_field')
         or context.user_data.get('supplier_stock_processing_add')
         or context.user_data.get('supplier_stock_processing_edit')
+        or context.user_data.get('supplier_stock_processing_field')
         or context.user_data.get('supplier_stock_mail_edit')
         or context.user_data.get('supplier_stock_mail_add_source')
         or context.user_data.get('supplier_stock_mail_edit_source')
+        or context.user_data.get('supplier_stock_mail_source_field')
     ):
         return supplier_stock_handle_input(update, context)
     
@@ -2708,6 +2720,7 @@ def show_supplier_stock_processing_menu(
     context.user_data.pop('supplier_stock_processing_data_columns', None)
     context.user_data.pop('supplier_stock_processing_output_names_expected', None)
     context.user_data.pop('supplier_stock_processing_output_names', None)
+    context.user_data.pop('supplier_stock_processing_rule_dirty', None)
     context.user_data['supplier_stock_processing_source_id'] = source_id
     context.user_data['supplier_stock_processing_back'] = back_callback
     context.user_data['supplier_stock_processing_action_prefix'] = action_prefix
@@ -3210,6 +3223,7 @@ def supplier_stock_start_processing_rule_menu(
     _fill_processing_rule_from_source(data)
     context.user_data['supplier_stock_processing_rule_data'] = data
     context.user_data['supplier_stock_processing_back'] = back_callback
+    context.user_data['supplier_stock_processing_rule_dirty'] = False
     show_supplier_stock_processing_rule_menu(update, context)
 
 def supplier_stock_start_processing_field_edit(
@@ -3364,6 +3378,7 @@ def supplier_stock_save_processing_rule(update, context) -> None:
 
     if not _save_processing_rule_data(update, context):
         return
+    context.user_data['supplier_stock_processing_rule_dirty'] = False
     back_callback = context.user_data.get('supplier_stock_processing_back', 'supplier_stock_processing')
     query.edit_message_text(
         "✅ Настройки сохранены.",
@@ -4092,6 +4107,7 @@ def supplier_stock_handle_processing_input(update, context):
                 update.message.reply_text("❌ Не удалось определить вариант настройки.")
                 return None
         context.user_data['supplier_stock_processing_rule_data'] = rule_data
+        context.user_data['supplier_stock_processing_rule_dirty'] = True
         if variant_index is None:
             update.message.reply_text(
                 "✅ Готово.",
