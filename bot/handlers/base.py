@@ -1,11 +1,11 @@
 """
 /bot/handlers/base.py
-Server Monitoring System v8.2.8
+Server Monitoring System v8.2.9
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Basic functions: access, universal responses, general checks
 Система мониторинга серверов
-Версия: 8.2.8
+Версия: 8.2.9
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Базовые функции: доступ, универсальные ответы, общие проверки
