@@ -859,9 +859,9 @@ def settings_callback_handler(update, context):
             action = parts[1] if len(parts) > 1 else ''
             rule_id = parts[2] if len(parts) > 2 else ''
             if action == 'add':
-                supplier_stock_start_processing_wizard(update, context)
+                supplier_stock_start_processing_rule_menu(update, context)
             elif action == 'edit' and rule_id:
-                supplier_stock_start_processing_edit_wizard(update, context, rule_id)
+                supplier_stock_start_processing_rule_menu(update, context, rule_id=rule_id)
             elif action in ('toggle', 'delete') and rule_id:
                 config = get_supplier_stock_config()
                 rules = config.get("processing", {}).get("rules", [])
@@ -875,6 +875,50 @@ def settings_callback_handler(update, context):
                 config.setdefault("processing", {})["rules"] = rules
                 save_supplier_stock_config(config)
                 show_supplier_stock_processing_menu(update, context, action_prefix="supplier_stock_processing")
+        elif data.startswith('supplier_stock_processing_rule|'):
+            parts = data.split('|')
+            action = parts[1] if len(parts) > 1 else ''
+            if action == 'menu':
+                show_supplier_stock_processing_rule_menu(update, context)
+            elif action == 'save':
+                supplier_stock_save_processing_rule(update, context)
+            elif action == 'toggle_processing':
+                data = context.user_data.get('supplier_stock_processing_rule_data', {})
+                data['requires_processing'] = not data.get('requires_processing', True)
+                context.user_data['supplier_stock_processing_rule_data'] = data
+                show_supplier_stock_processing_rule_menu(update, context)
+            elif action == 'variant' and len(parts) > 2:
+                variant_index = int(parts[2])
+                context.user_data['supplier_stock_processing_variant_index'] = variant_index
+                show_supplier_stock_processing_variant_menu(update, context, variant_index)
+            elif action == 'field' and len(parts) > 2:
+                field = parts[2]
+                supplier_stock_start_processing_field_edit(update, context, field)
+        elif data.startswith('supplier_stock_processing_variant|'):
+            parts = data.split('|')
+            action = parts[1] if len(parts) > 1 else ''
+            variant_index = int(parts[2]) if len(parts) > 2 else 0
+            if action == 'menu':
+                show_supplier_stock_processing_variant_menu(update, context, variant_index)
+            elif action == 'toggle_orc':
+                data = context.user_data.get('supplier_stock_processing_rule_data', {})
+                variant = _ensure_processing_variant(data, variant_index)
+                orc = variant.get('orc', {})
+                orc['enabled'] = not orc.get('enabled', False)
+                variant['orc'] = orc
+                data['variants'][variant_index] = variant
+                context.user_data['supplier_stock_processing_rule_data'] = data
+                show_supplier_stock_processing_variant_menu(update, context, variant_index)
+            elif action == 'field' and len(parts) > 3:
+                field = parts[3]
+                item_index = int(parts[4]) if len(parts) > 4 else None
+                supplier_stock_start_processing_field_edit(
+                    update,
+                    context,
+                    field,
+                    variant_index=variant_index,
+                    item_index=item_index,
+                )
         elif data.startswith('supplier_stock_processing_source|'):
             parts = data.split('|')
             source_id = parts[1] if len(parts) > 1 else ''
@@ -892,9 +936,14 @@ def settings_callback_handler(update, context):
                     title="🧩 *Обработка файлов (источник)*",
                 )
             elif action == 'add':
-                supplier_stock_start_processing_wizard(update, context, source_id=source_id, back_callback=back_callback)
+                supplier_stock_start_processing_rule_menu(
+                    update,
+                    context,
+                    source_id=source_id,
+                    back_callback=back_callback,
+                )
             elif action == 'edit' and rule_id:
-                supplier_stock_start_processing_edit_wizard(
+                supplier_stock_start_processing_rule_menu(
                     update,
                     context,
                     rule_id,
@@ -938,9 +987,14 @@ def settings_callback_handler(update, context):
                     title="🧩 *Обработка файлов (почта)*",
                 )
             elif action == 'add':
-                supplier_stock_start_processing_wizard(update, context, source_id=source_id, back_callback=back_callback)
+                supplier_stock_start_processing_rule_menu(
+                    update,
+                    context,
+                    source_id=source_id,
+                    back_callback=back_callback,
+                )
             elif action == 'edit' and rule_id:
-                supplier_stock_start_processing_edit_wizard(
+                supplier_stock_start_processing_rule_menu(
                     update,
                     context,
                     rule_id,
@@ -2655,6 +2709,365 @@ def show_supplier_stock_processing_menu(
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
+def _default_processing_variant() -> dict:
+    return {
+        "article_col": None,
+        "article_filter": None,
+        "article_prefix": "",
+        "data_columns": [],
+        "data_columns_count": 0,
+        "output_names": [],
+        "output_format": None,
+        "orc": {"enabled": False, "prefix": "", "stor": ""},
+    }
+
+def _ensure_processing_variant(data: dict, index: int) -> dict:
+    variants = data.setdefault("variants", [])
+    while len(variants) <= index:
+        variants.append(_default_processing_variant())
+    return variants[index]
+
+def _sync_processing_variants_count(data: dict, count: int) -> None:
+    variants = data.setdefault("variants", [])
+    if count < len(variants):
+        data["variants"] = variants[:count]
+    while len(data["variants"]) < count:
+        data["variants"].append(_default_processing_variant())
+
+def _sync_variant_columns(variant: dict, count: int) -> None:
+    variant["data_columns_count"] = count
+    columns = list(variant.get("data_columns", []))
+    while len(columns) < count:
+        columns.append(None)
+    variant["data_columns"] = columns[:count]
+    names = list(variant.get("output_names", []))
+    while len(names) < count:
+        names.append("")
+    variant["output_names"] = names[:count]
+
+def _fill_processing_rule_from_source(data: dict) -> None:
+    source_id = data.get("source_id")
+    if not source_id:
+        return
+    config = get_supplier_stock_config()
+    source_name = None
+    source_output = None
+    download_sources = config.get("download", {}).get("sources", [])
+    download_source = next((item for item in download_sources if str(item.get("id")) == str(source_id)), None)
+    if download_source:
+        source_name = download_source.get("name") or source_id
+        source_output = download_source.get("output_name")
+    if not download_source:
+        mail_sources = config.get("mail", {}).get("sources", [])
+        mail_source = next((item for item in mail_sources if str(item.get("id")) == str(source_id)), None)
+        if mail_source:
+            source_name = mail_source.get("name") or source_id
+            source_output = mail_source.get("output_template")
+    if source_name and not data.get("name"):
+        data["name"] = source_name
+    if source_output and not data.get("source_file"):
+        data["source_file"] = source_output
+    if source_output and not data.get("output_name"):
+        data["output_name"] = source_output
+
+def _processing_rule_summary(data: dict) -> str:
+    requires_processing = data.get("requires_processing", True)
+    processing_text = "да" if requires_processing else "нет"
+    output_name = _escape_pattern_text(data.get("output_name") or "не задано")
+    lines = [
+        "🧩 *Настройка обработки*\n",
+        f"• Требуется обработка: `{processing_text}`",
+    ]
+    if requires_processing:
+        variants_count = data.get("variants_count") or len(data.get("variants", []))
+        data_row = data.get("data_row")
+        lines.append(f"• Кол-во целевых файлов: `{variants_count or 'не задано'}`")
+        lines.append(f"• Первая строка с данными: `{data_row or 'не задано'}`")
+    else:
+        lines.append(f"• Имя файла на выходе: `{output_name}`")
+    return "\n".join(lines)
+
+def show_supplier_stock_processing_rule_menu(update, context) -> None:
+    query = update.callback_query
+    query.answer()
+
+    data = context.user_data.get("supplier_stock_processing_rule_data", {})
+    _fill_processing_rule_from_source(data)
+    context.user_data["supplier_stock_processing_rule_data"] = data
+    requires_processing = data.get("requires_processing", True)
+    variants_count = data.get("variants_count") or len(data.get("variants", []))
+    message = _processing_rule_summary(data)
+
+    toggle_text = "✅ Требуется обработка" if requires_processing else "⛔️ Обработка не требуется"
+
+    keyboard = [
+        [InlineKeyboardButton("— Настройки правила —", callback_data='supplier_stock_noop')],
+        [InlineKeyboardButton(toggle_text, callback_data='supplier_stock_processing_rule|toggle_processing')],
+    ]
+
+    if requires_processing:
+        keyboard.extend([
+            [InlineKeyboardButton("🔢 Кол-во целевых файлов", callback_data='supplier_stock_processing_rule|field|variants_count')],
+            [InlineKeyboardButton("📍 Первая строка с данными", callback_data='supplier_stock_processing_rule|field|data_row')],
+            [InlineKeyboardButton("— Настройка файлов —", callback_data='supplier_stock_noop')],
+        ])
+        for index in range(variants_count or 0):
+            keyboard.append([
+                InlineKeyboardButton(
+                    f"📦 Файл {index + 1}",
+                    callback_data=f'supplier_stock_processing_rule|variant|{index}'
+                )
+            ])
+    else:
+        keyboard.append([
+            InlineKeyboardButton("📄 Имя файла на выходе", callback_data='supplier_stock_processing_rule|field|output_name')
+        ])
+
+    keyboard.append([InlineKeyboardButton("💾 Сохранить", callback_data='supplier_stock_processing_rule|save')])
+    back_callback = context.user_data.get('supplier_stock_processing_back', 'supplier_stock_processing')
+    keyboard.append([
+        InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+    ])
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def show_supplier_stock_processing_variant_menu(update, context, variant_index: int) -> None:
+    query = update.callback_query
+    query.answer()
+
+    data = context.user_data.get("supplier_stock_processing_rule_data", {})
+    variant = _ensure_processing_variant(data, variant_index)
+    context.user_data['supplier_stock_processing_rule_data'] = data
+
+    article_col = variant.get("article_col") or "не задано"
+    article_filter = _escape_pattern_text(variant.get("article_filter") or "не задано")
+    article_prefix = _escape_pattern_text(variant.get("article_prefix") or "не задано")
+    data_columns_count = variant.get("data_columns_count") or len(variant.get("data_columns", []))
+    output_format = variant.get("output_format") or "не задано"
+    orc = variant.get("orc", {})
+    orc_enabled = orc.get("enabled", False)
+    orc_text = "да" if orc_enabled else "нет"
+
+    message = (
+        "📦 *Настройка файла обработки*\n\n"
+        f"• Колонка артикула: `{article_col}`\n"
+        f"• Фильтр артикула: `{article_filter}`\n"
+        f"• Префикс артикула: `{article_prefix}`\n"
+        f"• Кол-во колонок: `{data_columns_count or 'не задано'}`\n"
+        f"• Формат файла: `{output_format}`\n"
+        f"• Файл ОРК: `{orc_text}`"
+    )
+
+    keyboard = [
+        [InlineKeyboardButton("— Настройки файла —", callback_data='supplier_stock_noop')],
+        [InlineKeyboardButton("🔎 Колонка артикула", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_col')],
+        [InlineKeyboardButton("🧪 Фильтр артикула", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_filter')],
+        [InlineKeyboardButton("🏷️ Префикс артикула", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_prefix')],
+        [InlineKeyboardButton("📊 Кол-во колонок данных", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|data_columns_count')],
+    ]
+
+    if data_columns_count:
+        keyboard.append([InlineKeyboardButton("— Колонки данных —", callback_data='supplier_stock_noop')])
+        for idx in range(data_columns_count):
+            label = variant.get("data_columns", [])
+            value = label[idx] if idx < len(label) else "не задано"
+            keyboard.append([
+                InlineKeyboardButton(
+                    f"📈 Колонка {idx + 1}: {value or 'не задано'}",
+                    callback_data=f'supplier_stock_processing_variant|field|{variant_index}|data_column|{idx}'
+                )
+            ])
+        keyboard.append([InlineKeyboardButton("— Имена файлов —", callback_data='supplier_stock_noop')])
+        for idx in range(data_columns_count):
+            names = variant.get("output_names", [])
+            name_value = names[idx] if idx < len(names) else "не задано"
+            keyboard.append([
+                InlineKeyboardButton(
+                    f"📄 Имя файла {idx + 1}: {name_value or 'не задано'}",
+                    callback_data=f'supplier_stock_processing_variant|field|{variant_index}|output_name|{idx}'
+                )
+            ])
+
+    keyboard.extend([
+        [InlineKeyboardButton("🧾 Формат файла", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|output_format')],
+        [InlineKeyboardButton(f"📦 Файл ОРК: {orc_text}", callback_data=f'supplier_stock_processing_variant|toggle_orc|{variant_index}')],
+    ])
+
+    if orc_enabled:
+        keyboard.extend([
+            [InlineKeyboardButton("🏷️ Префикс ОРК", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_prefix')],
+            [InlineKeyboardButton("📦 Stor ОРК", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_stor')],
+        ])
+
+    keyboard.append([
+        InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_processing_rule|menu'),
+        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+    ])
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def supplier_stock_start_processing_rule_menu(
+    update,
+    context,
+    rule_id: str | None = None,
+    source_id: str | None = None,
+    back_callback: str = "settings_ext_supplier_stock",
+) -> None:
+    query = update.callback_query
+    query.answer()
+
+    context.user_data.pop('supplier_stock_processing_stage', None)
+    context.user_data.pop('supplier_stock_processing_data', None)
+    context.user_data.pop('supplier_stock_processing_add', None)
+    context.user_data.pop('supplier_stock_processing_edit', None)
+
+    config = get_supplier_stock_config()
+    rules = config.get("processing", {}).get("rules", [])
+    rule = None
+    if rule_id:
+        rule = next((item for item in rules if str(item.get("id")) == rule_id), None)
+        if not rule:
+            query.edit_message_text(
+                "❌ Правило не найдено.",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]
+                ])
+            )
+            return
+        context.user_data['supplier_stock_processing_rule_edit_id'] = rule_id
+        context.user_data['supplier_stock_processing_rule_add'] = False
+        data = dict(rule)
+    else:
+        context.user_data['supplier_stock_processing_rule_edit_id'] = None
+        context.user_data['supplier_stock_processing_rule_add'] = True
+        data = {
+            "name": "",
+            "source_file": "",
+            "output_name": "",
+            "enabled": True,
+            "requires_processing": True,
+            "variants_count": 0,
+            "variants": [],
+        }
+    if source_id:
+        data['source_id'] = source_id
+        context.user_data['supplier_stock_processing_source_id'] = source_id
+    _fill_processing_rule_from_source(data)
+    context.user_data['supplier_stock_processing_rule_data'] = data
+    context.user_data['supplier_stock_processing_back'] = back_callback
+    show_supplier_stock_processing_rule_menu(update, context)
+
+def supplier_stock_start_processing_field_edit(
+    update,
+    context,
+    field: str,
+    variant_index: int | None = None,
+    item_index: int | None = None,
+) -> None:
+    query = update.callback_query
+    query.answer()
+
+    context.user_data['supplier_stock_processing_field'] = field
+    context.user_data['supplier_stock_processing_variant_index'] = variant_index
+    context.user_data['supplier_stock_processing_item_index'] = item_index
+
+    prompts = {
+        "variants_count": "Сколько целевых файлов требуется? (число):",
+        "data_row": "Введите номер первой строки с данными:",
+        "output_name": "Введите имя файла на выходе:",
+        "article_col": "Введите номер колонки с артикулом:",
+        "article_filter": "Введите фильтр артикула (regex) или '-' для всех:",
+        "article_prefix": "Введите префикс артикула (или '-' если не нужен):",
+        "data_columns_count": "Сколько колонок с данными нужно использовать? (число):",
+        "data_column": "Введите номер колонки с данными:",
+        "output_name": "Введите имя выходного файла:",
+        "output_format": "Введите формат выходного файла (xls, xlsx, csv):",
+        "orc_prefix": "Введите префикс артикула для файла ОРК (или '-' если не нужен):",
+        "orc_stor": "Введите параметр Stor для файла ОРК:",
+    }
+    prompt = prompts.get(field, "Введите значение:")
+    back_callback = 'supplier_stock_processing_rule|menu'
+    if variant_index is not None:
+        back_callback = f'supplier_stock_processing_variant|menu|{variant_index}'
+    query.edit_message_text(
+        prompt,
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]
+        ])
+    )
+
+def _validate_processing_rule(data: dict) -> list[str]:
+    missing = []
+    if data.get("requires_processing", True):
+        variants_count = data.get("variants_count") or 0
+        if not variants_count:
+            missing.append("кол-во целевых файлов")
+        if not data.get("data_row"):
+            missing.append("первая строка с данными")
+        for idx in range(variants_count):
+            variant = _ensure_processing_variant(data, idx)
+            if not variant.get("article_col"):
+                missing.append(f"колонка артикула (файл {idx + 1})")
+            columns_count = variant.get("data_columns_count") or 0
+            if not columns_count:
+                missing.append(f"кол-во колонок (файл {idx + 1})")
+            columns = variant.get("data_columns", [])
+            if any(col is None for col in columns) or len(columns) < columns_count:
+                missing.append(f"колонки данных (файл {idx + 1})")
+            names = variant.get("output_names", [])
+            if len(names) < columns_count or any(not name for name in names):
+                missing.append(f"имена файлов (файл {idx + 1})")
+            if not variant.get("output_format"):
+                missing.append(f"формат файла (файл {idx + 1})")
+            orc = variant.get("orc", {})
+            if orc.get("enabled") and not orc.get("stor"):
+                missing.append(f"Stor ОРК (файл {idx + 1})")
+    return missing
+
+def supplier_stock_save_processing_rule(update, context) -> None:
+    query = update.callback_query
+    query.answer()
+
+    data = context.user_data.get("supplier_stock_processing_rule_data", {})
+    _fill_processing_rule_from_source(data)
+    context.user_data["supplier_stock_processing_rule_data"] = data
+    missing = _validate_processing_rule(data)
+    if missing:
+        query.answer("Заполните: " + ", ".join(missing), show_alert=True)
+        return
+
+    config = get_supplier_stock_config()
+    rules = config.get("processing", {}).get("rules", [])
+    edit_id = context.user_data.get('supplier_stock_processing_rule_edit_id')
+    if edit_id:
+        for idx, rule in enumerate(rules):
+            if str(rule.get("id")) == edit_id:
+                updated = dict(rule)
+                updated.update(data)
+                rules[idx] = updated
+                break
+    else:
+        data["id"] = data.get("id") or _slugify_supplier_source_id(data.get("name") or "rule")
+        rules.append(data)
+    config.setdefault("processing", {})["rules"] = rules
+    save_supplier_stock_config(config)
+    back_callback = context.user_data.get('supplier_stock_processing_back', 'supplier_stock_processing')
+    query.edit_message_text(
+        "✅ Настройки сохранены.",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]
+        ])
+    )
+
 def show_supplier_stock_mail_sources_menu(update, context):
     """Показать список правил вложений для почты."""
     query = update.callback_query
@@ -3255,6 +3668,117 @@ def supplier_stock_handle_processing_input(update, context):
     if source_id:
         data['source_id'] = source_id
     back_callback = context.user_data.get('supplier_stock_processing_back', 'supplier_stock_processing')
+
+    if context.user_data.get('supplier_stock_processing_field'):
+        field = context.user_data.pop('supplier_stock_processing_field')
+        variant_index = context.user_data.pop('supplier_stock_processing_variant_index', None)
+        item_index = context.user_data.pop('supplier_stock_processing_item_index', None)
+        rule_data = context.user_data.get('supplier_stock_processing_rule_data', {})
+        if source_id:
+            rule_data['source_id'] = source_id
+        if field == 'variants_count':
+            variants_count = _parse_positive_int(user_input)
+            if variants_count is None:
+                update.message.reply_text("❌ Введите целое число больше 0.")
+                return None
+            rule_data['variants_count'] = variants_count
+            _sync_processing_variants_count(rule_data, variants_count)
+        elif field == 'data_row':
+            data_row = _parse_positive_int(user_input)
+            if data_row is None:
+                update.message.reply_text("❌ Введите целое число больше 0.")
+                return None
+            rule_data['data_row'] = data_row
+        elif field == 'output_name':
+            if not user_input:
+                update.message.reply_text("❌ Имя файла не может быть пустым. Попробуйте снова:")
+                return None
+            rule_data['output_name'] = user_input
+        else:
+            if variant_index is None:
+                update.message.reply_text("❌ Не удалось определить вариант настройки.")
+                return None
+            variant = _ensure_processing_variant(rule_data, variant_index)
+            if field == 'article_col':
+                article_col = _parse_positive_int(user_input)
+                if article_col is None:
+                    update.message.reply_text("❌ Введите целое число больше 0.")
+                    return None
+                variant['article_col'] = article_col
+            elif field == 'article_filter':
+                if user_input not in ('-', ''):
+                    variant['article_filter'] = user_input
+                else:
+                    variant.pop('article_filter', None)
+            elif field == 'article_prefix':
+                if user_input in ('-', ''):
+                    variant['article_prefix'] = ""
+                else:
+                    variant['article_prefix'] = raw_input.rstrip("\n")
+            elif field == 'data_columns_count':
+                columns_count = _parse_positive_int(user_input)
+                if columns_count is None:
+                    update.message.reply_text("❌ Введите целое число больше 0.")
+                    return None
+                _sync_variant_columns(variant, columns_count)
+            elif field == 'data_column':
+                col_value = _parse_positive_int(user_input)
+                if col_value is None:
+                    update.message.reply_text("❌ Введите целое число больше 0.")
+                    return None
+                columns = list(variant.get("data_columns", []))
+                if item_index is None or item_index >= len(columns):
+                    update.message.reply_text("❌ Неверный индекс колонки.")
+                    return None
+                columns[item_index] = col_value
+                variant['data_columns'] = columns
+            elif field == 'output_name':
+                if not user_input:
+                    update.message.reply_text("❌ Имя файла не может быть пустым. Попробуйте снова:")
+                    return None
+                names = list(variant.get("output_names", []))
+                if item_index is None or item_index >= len(names):
+                    update.message.reply_text("❌ Неверный индекс файла.")
+                    return None
+                names[item_index] = user_input
+                variant['output_names'] = names
+            elif field == 'output_format':
+                format_value = user_input.lower()
+                if format_value not in ('xls', 'xlsx', 'csv'):
+                    update.message.reply_text("❌ Допустимые форматы: xls, xlsx, csv.")
+                    return None
+                variant['output_format'] = format_value
+            elif field == 'orc_prefix':
+                orc = variant.get("orc", {})
+                if user_input in ('-', ''):
+                    orc['prefix'] = ""
+                else:
+                    orc['prefix'] = raw_input.rstrip("\n")
+                variant['orc'] = orc
+            elif field == 'orc_stor':
+                if not user_input:
+                    update.message.reply_text("❌ Stor не может быть пустым. Попробуйте снова:")
+                    return None
+                orc = variant.get("orc", {})
+                orc['stor'] = user_input
+                variant['orc'] = orc
+            rule_data['variants'][variant_index] = variant
+        context.user_data['supplier_stock_processing_rule_data'] = rule_data
+        if variant_index is None:
+            update.message.reply_text(
+                "✅ Готово.",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_processing_rule|menu')]
+                ])
+            )
+        else:
+            update.message.reply_text(
+                "✅ Готово.",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_processing_variant|menu|{variant_index}')]
+                ])
+            )
+        return None
 
     if stage == 'name':
         if not user_input:
