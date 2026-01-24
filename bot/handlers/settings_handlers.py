@@ -2855,9 +2855,13 @@ def _fill_processing_rule_from_source(data: dict) -> None:
 def _processing_rule_summary(data: dict) -> str:
     requires_processing = data.get("requires_processing", True)
     processing_text = "да" if requires_processing else "нет"
+    name = _escape_pattern_text(data.get("name") or "не задано")
+    source_file = _escape_pattern_text(data.get("source_file") or "не задано")
     output_name = _escape_pattern_text(data.get("output_name") or "не задано")
     lines = [
         "🧩 *Настройка обработки*\n",
+        f"• Название: `{name}`",
+        f"• Файл источника: `{source_file}`",
         f"• Требуется обработка: `{processing_text}`",
     ]
     if requires_processing:
@@ -2889,6 +2893,8 @@ def show_supplier_stock_processing_rule_menu(update, context) -> None:
 
     keyboard = [
         [InlineKeyboardButton("— Настройки правила —", callback_data='supplier_stock_noop')],
+        [InlineKeyboardButton("✏️ Название", callback_data='supplier_stock_processing_rule|field|name')],
+        [InlineKeyboardButton("📄 Файл источника", callback_data='supplier_stock_processing_rule|field|source_file')],
         [InlineKeyboardButton(toggle_text, callback_data='supplier_stock_processing_rule|toggle_processing')],
     ]
 
@@ -3220,6 +3226,8 @@ def supplier_stock_start_processing_field_edit(
     context.user_data['supplier_stock_processing_item_index'] = item_index
 
     prompts = {
+        "name": "Введите название правила:",
+        "source_file": "Введите имя файла источника:",
         "data_row": "Введите номер первой строки с данными:",
         "output_name": "Введите имя файла на выходе:",
         "article_col": "Введите номер колонки с артикулом:",
@@ -3955,7 +3963,17 @@ def supplier_stock_handle_processing_input(update, context):
         rule_data = context.user_data.get('supplier_stock_processing_rule_data', {})
         if source_id:
             rule_data['source_id'] = source_id
-        if field == 'data_row':
+        if field == 'name':
+            if not user_input:
+                update.message.reply_text("❌ Название не может быть пустым. Попробуйте снова:")
+                return None
+            rule_data['name'] = user_input
+        elif field == 'source_file':
+            if not user_input:
+                update.message.reply_text("❌ Имя файла не может быть пустым. Попробуйте снова:")
+                return None
+            rule_data['source_file'] = user_input
+        elif field == 'data_row':
             data_row = _parse_positive_int(user_input)
             if data_row is None:
                 update.message.reply_text("❌ Введите целое число больше 0.")
