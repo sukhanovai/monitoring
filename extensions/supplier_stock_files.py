@@ -621,6 +621,8 @@ def _process_supplier_stock_file(
             continue
         if not rule.get("enabled", True):
             continue
+        if source_id and rule.get("source_id") and str(rule.get("source_id")) != str(source_id):
+            continue
         if not _processing_rule_matches(rule, file_path):
             continue
         matched_rules.append(rule.get("id") or rule.get("name") or "rule")
