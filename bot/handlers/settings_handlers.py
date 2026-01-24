@@ -887,6 +887,18 @@ def settings_callback_handler(update, context):
                 data['requires_processing'] = not data.get('requires_processing', True)
                 context.user_data['supplier_stock_processing_rule_data'] = data
                 show_supplier_stock_processing_rule_menu(update, context)
+            elif action in ('add_variant', 'remove_variant'):
+                data = context.user_data.get('supplier_stock_processing_rule_data', {})
+                variants = data.get('variants', [])
+                current_count = len(variants)
+                if action == 'add_variant':
+                    new_count = current_count + 1
+                else:
+                    new_count = max(current_count - 1, 0)
+                _sync_processing_variants_count(data, new_count)
+                data['variants_count'] = new_count
+                context.user_data['supplier_stock_processing_rule_data'] = data
+                show_supplier_stock_processing_rule_menu(update, context)
             elif action == 'variant' and len(parts) > 2:
                 variant_index = int(parts[2])
                 context.user_data['supplier_stock_processing_variant_index'] = variant_index
@@ -2779,9 +2791,7 @@ def _processing_rule_summary(data: dict) -> str:
         f"• Требуется обработка: `{processing_text}`",
     ]
     if requires_processing:
-        variants_count = data.get("variants_count") or len(data.get("variants", []))
         data_row = data.get("data_row")
-        lines.append(f"• Кол-во целевых файлов: `{variants_count or 'не задано'}`")
         lines.append(f"• Первая строка с данными: `{data_row or 'не задано'}`")
     else:
         lines.append(f"• Имя файла на выходе: `{output_name}`")
@@ -2795,7 +2805,8 @@ def show_supplier_stock_processing_rule_menu(update, context) -> None:
     _fill_processing_rule_from_source(data)
     context.user_data["supplier_stock_processing_rule_data"] = data
     requires_processing = data.get("requires_processing", True)
-    variants_count = data.get("variants_count") or len(data.get("variants", []))
+    variants = data.get("variants", [])
+    variants_count = len(variants)
     message = _processing_rule_summary(data)
 
     toggle_text = "✅ Требуется обработка" if requires_processing else "⛔️ Обработка не требуется"
@@ -2807,10 +2818,12 @@ def show_supplier_stock_processing_rule_menu(update, context) -> None:
 
     if requires_processing:
         keyboard.extend([
-            [InlineKeyboardButton("🔢 Кол-во целевых файлов", callback_data='supplier_stock_processing_rule|field|variants_count')],
             [InlineKeyboardButton("📍 Первая строка с данными", callback_data='supplier_stock_processing_rule|field|data_row')],
-            [InlineKeyboardButton("— Настройка файлов —", callback_data='supplier_stock_noop')],
+            [InlineKeyboardButton("➕ Добавить файл", callback_data='supplier_stock_processing_rule|add_variant')],
         ])
+        if variants_count:
+            keyboard.append([InlineKeyboardButton("➖ Удалить файл", callback_data='supplier_stock_processing_rule|remove_variant')])
+        keyboard.append([InlineKeyboardButton("— Настройка файлов —", callback_data='supplier_stock_noop')])
         for index in range(variants_count or 0):
             keyboard.append([
                 InlineKeyboardButton(
@@ -2981,7 +2994,6 @@ def supplier_stock_start_processing_field_edit(
     context.user_data['supplier_stock_processing_item_index'] = item_index
 
     prompts = {
-        "variants_count": "Сколько целевых файлов требуется? (число):",
         "data_row": "Введите номер первой строки с данными:",
         "output_name": "Введите имя файла на выходе:",
         "article_col": "Введите номер колонки с артикулом:",
@@ -3008,9 +3020,10 @@ def supplier_stock_start_processing_field_edit(
 def _validate_processing_rule(data: dict) -> list[str]:
     missing = []
     if data.get("requires_processing", True):
-        variants_count = data.get("variants_count") or 0
+        variants = data.get("variants", [])
+        variants_count = len(variants)
         if not variants_count:
-            missing.append("кол-во целевых файлов")
+            missing.append("файлы обработки")
         if not data.get("data_row"):
             missing.append("первая строка с данными")
         for idx in range(variants_count):
@@ -3676,14 +3689,7 @@ def supplier_stock_handle_processing_input(update, context):
         rule_data = context.user_data.get('supplier_stock_processing_rule_data', {})
         if source_id:
             rule_data['source_id'] = source_id
-        if field == 'variants_count':
-            variants_count = _parse_positive_int(user_input)
-            if variants_count is None:
-                update.message.reply_text("❌ Введите целое число больше 0.")
-                return None
-            rule_data['variants_count'] = variants_count
-            _sync_processing_variants_count(rule_data, variants_count)
-        elif field == 'data_row':
+        if field == 'data_row':
             data_row = _parse_positive_int(user_input)
             if data_row is None:
                 update.message.reply_text("❌ Введите целое число больше 0.")
