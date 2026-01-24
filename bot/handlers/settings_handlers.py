@@ -3294,18 +3294,20 @@ def _save_processing_rule_data(update, context) -> bool:
     if missing:
         query.answer("Заполните: " + ", ".join(missing), show_alert=True)
         return False
-    edit_id = context.user_data.get('supplier_stock_processing_rule_edit_id')
+    edit_id = context.user_data.get('supplier_stock_processing_rule_edit_id') or data.get("id")
     _save_supplier_stock_processing_rule(context, data, edit_id=edit_id)
     return True
 
 def _persist_processing_rule_data(context) -> None:
     data = context.user_data.get("supplier_stock_processing_rule_data", {})
     _fill_processing_rule_from_source(data)
-    edit_id = context.user_data.get('supplier_stock_processing_rule_edit_id')
+    edit_id = context.user_data.get('supplier_stock_processing_rule_edit_id') or data.get("id")
     _save_supplier_stock_processing_rule(context, data, edit_id=edit_id, keep_context=True)
     if not edit_id:
         context.user_data['supplier_stock_processing_rule_edit_id'] = data.get('id')
         context.user_data['supplier_stock_processing_rule_add'] = False
+    elif data.get("id"):
+        context.user_data['supplier_stock_processing_rule_edit_id'] = data.get("id")
     context.user_data['supplier_stock_processing_rule_data'] = data
 
 def _show_processing_rule_back_menu(update, context, back_callback: str) -> None:
