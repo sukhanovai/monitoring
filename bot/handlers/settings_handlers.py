@@ -896,6 +896,7 @@ def settings_callback_handler(update, context):
                     _sync_processing_variants_count(data, 1)
                     data['variants_count'] = 1
                 context.user_data['supplier_stock_processing_rule_data'] = data
+                _persist_processing_rule_data(context)
                 show_supplier_stock_processing_rule_menu(update, context)
             elif action in ('add_variant', 'remove_variant'):
                 data = context.user_data.get('supplier_stock_processing_rule_data', {})
@@ -908,6 +909,7 @@ def settings_callback_handler(update, context):
                 _sync_processing_variants_count(data, new_count)
                 data['variants_count'] = new_count
                 context.user_data['supplier_stock_processing_rule_data'] = data
+                _persist_processing_rule_data(context)
                 show_supplier_stock_processing_rule_menu(update, context)
             elif action == 'variant' and len(parts) > 2:
                 variant_index = int(parts[2])
@@ -929,6 +931,7 @@ def settings_callback_handler(update, context):
                 _sync_variant_columns(variant, columns_count + 1)
                 data['variants'][variant_index] = variant
                 context.user_data['supplier_stock_processing_rule_data'] = data
+                _persist_processing_rule_data(context)
                 show_supplier_stock_processing_variant_menu(update, context, variant_index)
             elif action == 'toggle_orc':
                 data = context.user_data.get('supplier_stock_processing_rule_data', {})
@@ -938,6 +941,7 @@ def settings_callback_handler(update, context):
                 variant['orc'] = orc
                 data['variants'][variant_index] = variant
                 context.user_data['supplier_stock_processing_rule_data'] = data
+                _persist_processing_rule_data(context)
                 show_supplier_stock_processing_rule_menu(update, context)
             elif action == 'field' and len(parts) > 3:
                 field = parts[3]
@@ -962,6 +966,7 @@ def settings_callback_handler(update, context):
                 _sync_variant_columns(variant, columns_count + 1)
                 data['variants'][variant_index] = variant
                 context.user_data['supplier_stock_processing_rule_data'] = data
+                _persist_processing_rule_data(context)
                 show_supplier_stock_processing_columns_menu(update, context, variant_index)
             elif action == 'remove_column' and len(parts) > 3:
                 column_index = int(parts[3])
@@ -970,6 +975,7 @@ def settings_callback_handler(update, context):
                 if _remove_variant_column(variant, column_index):
                     data['variants'][variant_index] = variant
                     context.user_data['supplier_stock_processing_rule_data'] = data
+                    _persist_processing_rule_data(context)
                 show_supplier_stock_processing_columns_menu(update, context, variant_index)
         elif data.startswith('supplier_stock_processing_orc|'):
             parts = data.split('|')
@@ -2943,9 +2949,6 @@ def show_supplier_stock_processing_rule_menu(update, context) -> None:
         ])
 
     keyboard.append([
-        InlineKeyboardButton("💾 Сохранить", callback_data='supplier_stock_processing_rule|save'),
-    ])
-    keyboard.append([
         InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_processing_rule|back'),
         InlineKeyboardButton("✖️ Закрыть", callback_data='close')
     ])
@@ -3294,6 +3297,16 @@ def _save_processing_rule_data(update, context) -> bool:
     edit_id = context.user_data.get('supplier_stock_processing_rule_edit_id')
     _save_supplier_stock_processing_rule(context, data, edit_id=edit_id)
     return True
+
+def _persist_processing_rule_data(context) -> None:
+    data = context.user_data.get("supplier_stock_processing_rule_data", {})
+    _fill_processing_rule_from_source(data)
+    edit_id = context.user_data.get('supplier_stock_processing_rule_edit_id')
+    _save_supplier_stock_processing_rule(context, data, edit_id=edit_id, keep_context=True)
+    if not edit_id:
+        context.user_data['supplier_stock_processing_rule_edit_id'] = data.get('id')
+        context.user_data['supplier_stock_processing_rule_add'] = False
+    context.user_data['supplier_stock_processing_rule_data'] = data
 
 def _show_processing_rule_back_menu(update, context, back_callback: str) -> None:
     if back_callback == 'settings_ext_supplier_stock':
@@ -4043,6 +4056,7 @@ def supplier_stock_handle_processing_input(update, context):
                     [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_processing_variant|menu|{variant_index}')]
                 ])
             )
+        _persist_processing_rule_data(context)
         return None
 
     if stage == 'name':
@@ -5336,7 +5350,12 @@ def _parse_positive_int(value: str) -> int | None:
         return None
     return parsed if parsed > 0 else None
 
-def _save_supplier_stock_processing_rule(context, data: dict, edit_id: str | None = None) -> None:
+def _save_supplier_stock_processing_rule(
+    context,
+    data: dict,
+    edit_id: str | None = None,
+    keep_context: bool = False,
+) -> None:
     config = get_supplier_stock_config()
     rules = config.get("processing", {}).get("rules", [])
     if edit_id:
@@ -5358,17 +5377,18 @@ def _save_supplier_stock_processing_rule(context, data: dict, edit_id: str | Non
         rules.append(data)
     config.setdefault("processing", {})["rules"] = rules
     save_supplier_stock_config(config)
-    context.user_data.pop('supplier_stock_processing_add', None)
-    context.user_data.pop('supplier_stock_processing_edit', None)
-    context.user_data.pop('supplier_stock_processing_stage', None)
-    context.user_data.pop('supplier_stock_processing_data', None)
-    context.user_data.pop('supplier_stock_processing_edit_id', None)
-    context.user_data.pop('supplier_stock_processing_variant_index', None)
-    context.user_data.pop('supplier_stock_processing_data_columns_expected', None)
-    context.user_data.pop('supplier_stock_processing_data_columns', None)
-    context.user_data.pop('supplier_stock_processing_output_names_expected', None)
-    context.user_data.pop('supplier_stock_processing_output_names', None)
-    context.user_data.pop('supplier_stock_processing_current_variant', None)
+    if not keep_context:
+        context.user_data.pop('supplier_stock_processing_add', None)
+        context.user_data.pop('supplier_stock_processing_edit', None)
+        context.user_data.pop('supplier_stock_processing_stage', None)
+        context.user_data.pop('supplier_stock_processing_data', None)
+        context.user_data.pop('supplier_stock_processing_edit_id', None)
+        context.user_data.pop('supplier_stock_processing_variant_index', None)
+        context.user_data.pop('supplier_stock_processing_data_columns_expected', None)
+        context.user_data.pop('supplier_stock_processing_data_columns', None)
+        context.user_data.pop('supplier_stock_processing_output_names_expected', None)
+        context.user_data.pop('supplier_stock_processing_output_names', None)
+        context.user_data.pop('supplier_stock_processing_current_variant', None)
 
 def _supplier_stock_finish_variant(update, context, data: dict):
     variant = context.user_data.get('supplier_stock_processing_current_variant', {})
