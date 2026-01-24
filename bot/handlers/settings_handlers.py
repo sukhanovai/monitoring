@@ -853,31 +853,122 @@ def settings_callback_handler(update, context):
         elif data == 'supplier_stock_mail':
             show_supplier_stock_mail_settings(update, context)
         elif data == 'supplier_stock_processing':
-            show_supplier_stock_processing_menu(update, context)
-        elif data == 'supplier_stock_processing_add':
-            supplier_stock_start_processing_wizard(update, context)
-        elif data.startswith('supplier_stock_processing_edit_'):
-            rule_id = data.replace('supplier_stock_processing_edit_', '')
-            supplier_stock_start_processing_edit_wizard(update, context, rule_id)
-        elif data.startswith('supplier_stock_processing_toggle_'):
-            rule_id = data.replace('supplier_stock_processing_toggle_', '')
-            config = get_supplier_stock_config()
-            rules = config.get("processing", {}).get("rules", [])
-            for rule in rules:
-                if str(rule.get("id")) == rule_id:
-                    rule["enabled"] = not rule.get("enabled", True)
-                    break
-            config.setdefault("processing", {})["rules"] = rules
-            save_supplier_stock_config(config)
-            show_supplier_stock_processing_menu(update, context)
-        elif data.startswith('supplier_stock_processing_delete_'):
-            rule_id = data.replace('supplier_stock_processing_delete_', '')
-            config = get_supplier_stock_config()
-            rules = config.get("processing", {}).get("rules", [])
-            rules = [item for item in rules if str(item.get("id")) != rule_id]
-            config.setdefault("processing", {})["rules"] = rules
-            save_supplier_stock_config(config)
-            show_supplier_stock_processing_menu(update, context)
+            show_supplier_stock_processing_menu(update, context, action_prefix="supplier_stock_processing")
+        elif data.startswith('supplier_stock_processing|'):
+            parts = data.split('|')
+            action = parts[1] if len(parts) > 1 else ''
+            rule_id = parts[2] if len(parts) > 2 else ''
+            if action == 'add':
+                supplier_stock_start_processing_wizard(update, context)
+            elif action == 'edit' and rule_id:
+                supplier_stock_start_processing_edit_wizard(update, context, rule_id)
+            elif action in ('toggle', 'delete') and rule_id:
+                config = get_supplier_stock_config()
+                rules = config.get("processing", {}).get("rules", [])
+                if action == 'toggle':
+                    for rule in rules:
+                        if str(rule.get("id")) == rule_id:
+                            rule["enabled"] = not rule.get("enabled", True)
+                            break
+                elif action == 'delete':
+                    rules = [item for item in rules if str(item.get("id")) != rule_id]
+                config.setdefault("processing", {})["rules"] = rules
+                save_supplier_stock_config(config)
+                show_supplier_stock_processing_menu(update, context, action_prefix="supplier_stock_processing")
+        elif data.startswith('supplier_stock_processing_source|'):
+            parts = data.split('|')
+            source_id = parts[1] if len(parts) > 1 else ''
+            action = parts[2] if len(parts) > 2 else ''
+            rule_id = parts[3] if len(parts) > 3 else ''
+            back_callback = f'supplier_stock_source_settings|{source_id}'
+            action_prefix = f'supplier_stock_processing_source|{source_id}'
+            if action == 'menu':
+                show_supplier_stock_processing_menu(
+                    update,
+                    context,
+                    source_id=source_id,
+                    back_callback=back_callback,
+                    action_prefix=action_prefix,
+                    title="🧩 *Обработка файлов (источник)*",
+                )
+            elif action == 'add':
+                supplier_stock_start_processing_wizard(update, context, source_id=source_id, back_callback=back_callback)
+            elif action == 'edit' and rule_id:
+                supplier_stock_start_processing_edit_wizard(
+                    update,
+                    context,
+                    rule_id,
+                    source_id=source_id,
+                    back_callback=back_callback,
+                )
+            elif action in ('toggle', 'delete') and rule_id:
+                config = get_supplier_stock_config()
+                rules = config.get("processing", {}).get("rules", [])
+                if action == 'toggle':
+                    for rule in rules:
+                        if str(rule.get("id")) == rule_id:
+                            rule["enabled"] = not rule.get("enabled", True)
+                            break
+                elif action == 'delete':
+                    rules = [item for item in rules if str(item.get("id")) != rule_id]
+                config.setdefault("processing", {})["rules"] = rules
+                save_supplier_stock_config(config)
+                show_supplier_stock_processing_menu(
+                    update,
+                    context,
+                    source_id=source_id,
+                    back_callback=back_callback,
+                    action_prefix=action_prefix,
+                    title="🧩 *Обработка файлов (источник)*",
+                )
+        elif data.startswith('supplier_stock_processing_mail|'):
+            parts = data.split('|')
+            source_id = parts[1] if len(parts) > 1 else ''
+            action = parts[2] if len(parts) > 2 else ''
+            rule_id = parts[3] if len(parts) > 3 else ''
+            back_callback = f'supplier_stock_mail_source_settings|{source_id}'
+            action_prefix = f'supplier_stock_processing_mail|{source_id}'
+            if action == 'menu':
+                show_supplier_stock_processing_menu(
+                    update,
+                    context,
+                    source_id=source_id,
+                    back_callback=back_callback,
+                    action_prefix=action_prefix,
+                    title="🧩 *Обработка файлов (почта)*",
+                )
+            elif action == 'add':
+                supplier_stock_start_processing_wizard(update, context, source_id=source_id, back_callback=back_callback)
+            elif action == 'edit' and rule_id:
+                supplier_stock_start_processing_edit_wizard(
+                    update,
+                    context,
+                    rule_id,
+                    source_id=source_id,
+                    back_callback=back_callback,
+                )
+            elif action in ('toggle', 'delete') and rule_id:
+                config = get_supplier_stock_config()
+                rules = config.get("processing", {}).get("rules", [])
+                if action == 'toggle':
+                    for rule in rules:
+                        if str(rule.get("id")) == rule_id:
+                            rule["enabled"] = not rule.get("enabled", True)
+                            break
+                elif action == 'delete':
+                    rules = [item for item in rules if str(item.get("id")) != rule_id]
+                config.setdefault("processing", {})["rules"] = rules
+                save_supplier_stock_config(config)
+                show_supplier_stock_processing_menu(
+                    update,
+                    context,
+                    source_id=source_id,
+                    back_callback=back_callback,
+                    action_prefix=action_prefix,
+                    title="🧩 *Обработка файлов (почта)*",
+                )
+        elif data == 'supplier_stock_noop':
+            query.answer(" ", show_alert=False)
         elif data == 'supplier_stock_mail_toggle':
             config = get_supplier_stock_config()
             mail_settings = config.get("mail", {})
@@ -908,9 +999,12 @@ def settings_callback_handler(update, context):
             show_supplier_stock_mail_sources_menu(update, context)
         elif data == 'supplier_stock_mail_source_add':
             supplier_stock_start_mail_source_wizard(update, context)
-        elif data.startswith('supplier_stock_mail_source_edit_'):
-            source_id = data.replace('supplier_stock_mail_source_edit_', '')
-            supplier_stock_start_mail_edit_wizard(update, context, source_id)
+        elif data.startswith('supplier_stock_mail_source_settings|'):
+            source_id = data.split('|', 1)[1]
+            show_supplier_stock_mail_source_settings(update, context, source_id)
+        elif data.startswith('supplier_stock_mail_field|'):
+            _, source_id, field = data.split('|', 2)
+            supplier_stock_start_mail_source_field_edit(update, context, source_id, field)
         elif data.startswith('supplier_stock_mail_source_unpack_toggle_'):
             source_id = data.replace('supplier_stock_mail_source_unpack_toggle_', '')
             config = get_supplier_stock_config()
@@ -926,7 +1020,10 @@ def settings_callback_handler(update, context):
                 return
             config["mail"]["sources"] = sources
             save_supplier_stock_config(config)
-            show_supplier_stock_mail_sources_menu(update, context)
+            if context.user_data.get('supplier_stock_mail_source_settings_id') == source_id:
+                show_supplier_stock_mail_source_settings(update, context, source_id)
+            else:
+                show_supplier_stock_mail_sources_menu(update, context)
         elif data.startswith('supplier_stock_mail_source_toggle_'):
             source_id = data.replace('supplier_stock_mail_source_toggle_', '')
             config = get_supplier_stock_config()
@@ -937,7 +1034,10 @@ def settings_callback_handler(update, context):
                     break
             config["mail"]["sources"] = sources
             save_supplier_stock_config(config)
-            show_supplier_stock_mail_sources_menu(update, context)
+            if context.user_data.get('supplier_stock_mail_source_settings_id') == source_id:
+                show_supplier_stock_mail_source_settings(update, context, source_id)
+            else:
+                show_supplier_stock_mail_sources_menu(update, context)
         elif data.startswith('supplier_stock_mail_source_delete_'):
             source_id = data.replace('supplier_stock_mail_source_delete_', '')
             config = get_supplier_stock_config()
@@ -993,9 +1093,12 @@ def settings_callback_handler(update, context):
             show_supplier_stock_sources_menu(update, context)
         elif data == 'supplier_stock_source_add':
             supplier_stock_start_source_wizard(update, context)
-        elif data.startswith('supplier_stock_source_edit_'):
-            source_id = data.replace('supplier_stock_source_edit_', '')
-            supplier_stock_start_edit_wizard(update, context, source_id)
+        elif data.startswith('supplier_stock_source_settings|'):
+            source_id = data.split('|', 1)[1]
+            show_supplier_stock_source_settings(update, context, source_id)
+        elif data.startswith('supplier_stock_source_field|'):
+            _, source_id, field = data.split('|', 2)
+            supplier_stock_start_source_field_edit(update, context, source_id, field)
         elif data.startswith('supplier_stock_source_unpack_toggle_'):
             source_id = data.replace('supplier_stock_source_unpack_toggle_', '')
             config = get_supplier_stock_config()
@@ -1011,7 +1114,10 @@ def settings_callback_handler(update, context):
                 return
             config["download"]["sources"] = sources
             save_supplier_stock_config(config)
-            show_supplier_stock_sources_menu(update, context)
+            if context.user_data.get('supplier_stock_source_settings_id') == source_id:
+                show_supplier_stock_source_settings(update, context, source_id)
+            else:
+                show_supplier_stock_sources_menu(update, context)
         elif data.startswith('supplier_stock_source_toggle_'):
             source_id = data.replace('supplier_stock_source_toggle_', '')
             config = get_supplier_stock_config()
@@ -1022,7 +1128,10 @@ def settings_callback_handler(update, context):
                     break
             config["download"]["sources"] = sources
             save_supplier_stock_config(config)
-            show_supplier_stock_sources_menu(update, context)
+            if context.user_data.get('supplier_stock_source_settings_id') == source_id:
+                show_supplier_stock_source_settings(update, context, source_id)
+            else:
+                show_supplier_stock_sources_menu(update, context)
         elif data.startswith('supplier_stock_source_delete_'):
             source_id = data.replace('supplier_stock_source_delete_', '')
             config = get_supplier_stock_config()
@@ -2330,14 +2439,18 @@ def show_supplier_stock_settings(update, context):
     context.user_data.pop('supplier_stock_processing_data', None)
     context.user_data.pop('supplier_stock_processing_edit', None)
     context.user_data.pop('supplier_stock_processing_edit_id', None)
+    context.user_data.pop('supplier_stock_source_settings_id', None)
+    context.user_data.pop('supplier_stock_mail_source_settings_id', None)
+    context.user_data.pop('supplier_stock_source_field', None)
+    context.user_data.pop('supplier_stock_source_field_id', None)
+    context.user_data.pop('supplier_stock_mail_source_field', None)
+    context.user_data.pop('supplier_stock_mail_source_field_id', None)
 
     config = get_supplier_stock_config()
     download = config.get("download", {})
     sources = download.get("sources", [])
     schedule = download.get("schedule", {})
     mail_settings = config.get("mail", {})
-    processing_settings = config.get("processing", {})
-    processing_rules = processing_settings.get("rules", [])
     mail_status = "🟢 Включено" if mail_settings.get("enabled") else "🔴 Выключено"
     mail_rules = len(mail_settings.get("sources", []))
 
@@ -2351,15 +2464,12 @@ def show_supplier_stock_settings(update, context):
         "📧 *Почтовые сообщения (остатки)*\n\n"
         f"Статус: {mail_status}\n"
         f"Правил: {mail_rules}\n\n"
-        "🧩 *Обработка файлов*\n\n"
-        f"Правил: {len(processing_rules)}\n\n"
         "Выберите раздел:"
     )
 
     keyboard = [
         [InlineKeyboardButton("🌐 Скачивание файлов", callback_data='supplier_stock_download')],
         [InlineKeyboardButton("📧 Почтовые сообщения", callback_data='supplier_stock_mail')],
-        [InlineKeyboardButton("🧩 Обработка файлов", callback_data='supplier_stock_processing')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_extensions'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
@@ -2458,7 +2568,14 @@ def show_supplier_stock_mail_settings(update, context):
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
-def show_supplier_stock_processing_menu(update, context):
+def show_supplier_stock_processing_menu(
+    update,
+    context,
+    source_id: str | None = None,
+    back_callback: str = "settings_ext_supplier_stock",
+    action_prefix: str = "supplier_stock_processing",
+    title: str = "🧩 *Обработка файлов остатков*",
+):
     """Показать настройки обработки полученных файлов остатков."""
     query = update.callback_query
     query.answer()
@@ -2473,14 +2590,20 @@ def show_supplier_stock_processing_menu(update, context):
     context.user_data.pop('supplier_stock_processing_data_columns', None)
     context.user_data.pop('supplier_stock_processing_output_names_expected', None)
     context.user_data.pop('supplier_stock_processing_output_names', None)
+    context.user_data['supplier_stock_processing_source_id'] = source_id
+    context.user_data['supplier_stock_processing_back'] = back_callback
+    context.user_data['supplier_stock_processing_action_prefix'] = action_prefix
+    context.user_data['supplier_stock_processing_title'] = title
 
     config = get_supplier_stock_config()
     rules = config.get("processing", {}).get("rules", [])
+    if source_id is not None:
+        rules = [rule for rule in rules if str(rule.get("source_id")) == str(source_id)]
 
     if not rules:
-        message = "🧩 *Обработка файлов остатков*\n\n❌ Правила обработки не настроены."
+        message = f"{title}\n\n❌ Правила обработки не настроены."
     else:
-        message_lines = ["🧩 *Обработка файлов остатков*\n"]
+        message_lines = [f"{title}\n"]
         for index, rule in enumerate(rules, start=1):
             name = _escape_pattern_text(rule.get("name") or rule.get("id") or f"Правило {index}")
             source_file = _escape_pattern_text(rule.get("source_file") or "не задано")
@@ -2497,7 +2620,7 @@ def show_supplier_stock_processing_menu(update, context):
         message = "\n".join(message_lines)
 
     keyboard = [
-        [InlineKeyboardButton("➕ Добавить правило", callback_data='supplier_stock_processing_add')],
+        [InlineKeyboardButton("➕ Добавить правило", callback_data=f'{action_prefix}|add')],
     ]
 
     for rule in rules:
@@ -2509,20 +2632,20 @@ def show_supplier_stock_processing_menu(update, context):
         keyboard.append([
             InlineKeyboardButton(
                 f"✏️ {rule.get('name', rule_id)}",
-                callback_data=f'supplier_stock_processing_edit_{rule_id}'
+                callback_data=f'{action_prefix}|edit|{rule_id}'
             ),
             InlineKeyboardButton(
                 f"{toggle_text}",
-                callback_data=f'supplier_stock_processing_toggle_{rule_id}'
+                callback_data=f'{action_prefix}|toggle|{rule_id}'
             ),
             InlineKeyboardButton(
                 "🗑️",
-                callback_data=f'supplier_stock_processing_delete_{rule_id}'
+                callback_data=f'{action_prefix}|delete|{rule_id}'
             ),
         ])
 
     keyboard.append([
-        InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_supplier_stock'),
+        InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
         InlineKeyboardButton("✖️ Закрыть", callback_data='close')
     ])
 
@@ -2537,6 +2660,7 @@ def show_supplier_stock_mail_sources_menu(update, context):
     query = update.callback_query
     query.answer()
 
+    context.user_data.pop('supplier_stock_mail_source_settings_id', None)
     context.user_data.pop('supplier_stock_mail_add_source', None)
     context.user_data.pop('supplier_stock_mail_source_stage', None)
     context.user_data.pop('supplier_stock_mail_source_data', None)
@@ -2591,8 +2715,8 @@ def show_supplier_stock_mail_sources_menu(update, context):
         unpack_text = "📦 Распаковка: вкл" if unpack_enabled else "📦 Распаковка: выкл"
         keyboard.append([
             InlineKeyboardButton(
-                f"✏️ {source.get('name', source_id)}",
-                callback_data=f'supplier_stock_mail_source_edit_{source_id}'
+                f"⚙️ {source.get('name', source_id)}",
+                callback_data=f'supplier_stock_mail_source_settings|{source_id}'
             ),
             InlineKeyboardButton(
                 f"{toggle_text}",
@@ -2658,6 +2782,7 @@ def show_supplier_stock_sources_menu(update, context):
     query = update.callback_query
     query.answer()
 
+    context.user_data.pop('supplier_stock_source_settings_id', None)
     context.user_data.pop('supplier_stock_add_source', None)
     context.user_data.pop('supplier_stock_source_stage', None)
     context.user_data.pop('supplier_stock_source_data', None)
@@ -2706,8 +2831,8 @@ def show_supplier_stock_sources_menu(update, context):
         unpack_text = "📦 Распаковка: вкл" if unpack_enabled else "📦 Распаковка: выкл"
         keyboard.append([
             InlineKeyboardButton(
-                f"✏️ {source.get('name', source_id)}",
-                callback_data=f'supplier_stock_source_edit_{source_id}'
+                f"⚙️ {source.get('name', source_id)}",
+                callback_data=f'supplier_stock_source_settings|{source_id}'
             ),
             InlineKeyboardButton(
                 f"{toggle_text}",
@@ -2736,7 +2861,313 @@ def show_supplier_stock_sources_menu(update, context):
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
-def supplier_stock_start_processing_wizard(update, context):
+def show_supplier_stock_source_settings(update, context, source_id: str):
+    """Показать настройки конкретного источника остатков."""
+    query = update.callback_query
+    query.answer()
+
+    context.user_data['supplier_stock_source_settings_id'] = source_id
+    context.user_data.pop('supplier_stock_source_field', None)
+    context.user_data.pop('supplier_stock_source_field_id', None)
+
+    config = get_supplier_stock_config()
+    sources = config.get("download", {}).get("sources", [])
+    source = next((item for item in sources if str(item.get("id")) == source_id), None)
+
+    if not source:
+        query.edit_message_text(
+            "❌ Источник не найден.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources')]
+            ])
+        )
+        return
+
+    name = _escape_pattern_text(source.get("name") or source_id)
+    url = _escape_pattern_text(source.get("url") or "не задан")
+    output_name = _escape_pattern_text(source.get("output_name") or "не задано")
+    method = _escape_pattern_text(source.get("method") or "http")
+    discover = source.get("discover")
+    discover_text = "не задано"
+    if isinstance(discover, dict):
+        discover_text = _escape_pattern_text(
+            f"{discover.get('url', '')} | {discover.get('pattern', '')} | {discover.get('prefix', '')}"
+        )
+    vars_map = source.get("vars") or {}
+    vars_text = ", ".join([f"{key}={value}" for key, value in vars_map.items()]) if vars_map else "не задано"
+    auth_state = "задано" if source.get("auth") else "не задано"
+    pre_request = source.get("pre_request") or {}
+    pre_request_text = "не задано"
+    if pre_request:
+        pre_request_text = _escape_pattern_text(f"{pre_request.get('url', '')} | {pre_request.get('data', '')}")
+    options = []
+    if source.get("include_headers"):
+        options.append("headers")
+    if source.get("append"):
+        options.append("append")
+    options_text = ", ".join(options) if options else "не задано"
+    status_icon = "🟢" if source.get("enabled", True) else "🔴"
+    unpack_text = "вкл" if source.get("unpack_archive", False) else "выкл"
+
+    rules = config.get("processing", {}).get("rules", [])
+    matched_rules = [rule for rule in rules if str(rule.get("source_id")) == str(source_id)]
+
+    message_lines = [
+        f"⚙️ *Источник остатков*\n",
+        f"{status_icon} *{name}*",
+        f"• URL: `{url}`",
+        f"• Файл: `{output_name}`",
+        f"• Метод: `{method}`",
+        f"• Поиск ссылки: `{discover_text}`",
+        f"• Переменные: `{_escape_pattern_text(vars_text)}`",
+        f"• Авторизация: `{auth_state}`",
+        f"• Предзапрос: `{pre_request_text}`",
+        f"• Опции: `{_escape_pattern_text(options_text)}`",
+        f"• Распаковка: `{unpack_text}`\n",
+        "🧩 *Обработка файлов*",
+        f"Правил: {len(matched_rules)}",
+    ]
+    if matched_rules:
+        for index, rule in enumerate(matched_rules, start=1):
+            rule_name = _escape_pattern_text(rule.get("name") or rule.get("id") or f"Правило {index}")
+            source_file = _escape_pattern_text(rule.get("source_file") or "не задано")
+            enabled = rule.get("enabled", True)
+            status = "🟢" if enabled else "🔴"
+            message_lines.append(f"{index}. {status} *{rule_name}* (`{source_file}`)")
+
+    message_lines.append("\nВыберите настройку:")
+    message = "\n".join(message_lines)
+
+    keyboard = [
+        [InlineKeyboardButton("— Настройки источника —", callback_data='supplier_stock_noop')],
+        [InlineKeyboardButton("✏️ Название", callback_data=f'supplier_stock_source_field|{source_id}|name')],
+        [InlineKeyboardButton("🔗 URL", callback_data=f'supplier_stock_source_field|{source_id}|url')],
+        [InlineKeyboardButton("🔎 Поиск ссылки", callback_data=f'supplier_stock_source_field|{source_id}|discover')],
+        [InlineKeyboardButton("🧩 Переменные", callback_data=f'supplier_stock_source_field|{source_id}|vars')],
+        [InlineKeyboardButton("📄 Имя файла", callback_data=f'supplier_stock_source_field|{source_id}|output_name')],
+        [InlineKeyboardButton("🔐 Авторизация", callback_data=f'supplier_stock_source_field|{source_id}|auth')],
+        [InlineKeyboardButton("📬 Предзапрос", callback_data=f'supplier_stock_source_field|{source_id}|pre_request')],
+        [InlineKeyboardButton("⚙️ Опции", callback_data=f'supplier_stock_source_field|{source_id}|options')],
+        [
+            InlineKeyboardButton("🔁 Включить/выключить", callback_data=f'supplier_stock_source_toggle_{source_id}'),
+            InlineKeyboardButton(f"📦 Распаковка: {unpack_text}", callback_data=f'supplier_stock_source_unpack_toggle_{source_id}')
+        ],
+        [InlineKeyboardButton("— Обработка файлов —", callback_data='supplier_stock_noop')],
+        [InlineKeyboardButton("📋 Правила обработки", callback_data=f'supplier_stock_processing_source|{source_id}|menu')],
+        [InlineKeyboardButton("➕ Добавить правило", callback_data=f'supplier_stock_processing_source|{source_id}|add')],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources'),
+            InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+        ],
+    ]
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def show_supplier_stock_mail_source_settings(update, context, source_id: str):
+    """Показать настройки правила вложений."""
+    query = update.callback_query
+    query.answer()
+
+    context.user_data['supplier_stock_mail_source_settings_id'] = source_id
+    context.user_data.pop('supplier_stock_mail_source_field', None)
+    context.user_data.pop('supplier_stock_mail_source_field_id', None)
+
+    config = get_supplier_stock_config()
+    sources = config.get("mail", {}).get("sources", [])
+    source = next((item for item in sources if str(item.get("id")) == source_id), None)
+
+    if not source:
+        query.edit_message_text(
+            "❌ Правило не найдено.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail_sources')]
+            ])
+        )
+        return
+
+    name = _escape_pattern_text(source.get("name") or source_id)
+    sender = _escape_pattern_text(source.get("sender_pattern") or "любой")
+    subject = _escape_pattern_text(source.get("subject_pattern") or "любой")
+    mime_pattern = _escape_pattern_text(source.get("mime_pattern") or "application/.*")
+    filename_pattern = _escape_pattern_text(source.get("filename_pattern") or "любой")
+    expected = source.get("expected_attachments", 1)
+    output_template = _escape_pattern_text(source.get("output_template") or "не задано")
+    enabled = source.get("enabled", True)
+    unpack_enabled = source.get("unpack_archive", False)
+    status_icon = "🟢" if enabled else "🔴"
+    unpack_text = "вкл" if unpack_enabled else "выкл"
+
+    rules = config.get("processing", {}).get("rules", [])
+    matched_rules = [rule for rule in rules if str(rule.get("source_id")) == str(source_id)]
+
+    message_lines = [
+        "📎 *Правило вложений*\n",
+        f"{status_icon} *{name}*",
+        f"• Отправитель: `{sender}`",
+        f"• Тема: `{subject}`",
+        f"• MIME: `{mime_pattern}`",
+        f"• Имя файла: `{filename_pattern}`",
+        f"• Ожидается: `{expected}`",
+        f"• Шаблон: `{output_template}`",
+        f"• Распаковка: `{unpack_text}`\n",
+        "🧩 *Обработка файлов*",
+        f"Правил: {len(matched_rules)}",
+    ]
+    if matched_rules:
+        for index, rule in enumerate(matched_rules, start=1):
+            rule_name = _escape_pattern_text(rule.get("name") or rule.get("id") or f"Правило {index}")
+            source_file = _escape_pattern_text(rule.get("source_file") or "не задано")
+            enabled_rule = rule.get("enabled", True)
+            status = "🟢" if enabled_rule else "🔴"
+            message_lines.append(f"{index}. {status} *{rule_name}* (`{source_file}`)")
+
+    message_lines.append("\nВыберите настройку:")
+    message = "\n".join(message_lines)
+
+    keyboard = [
+        [InlineKeyboardButton("— Настройки правила —", callback_data='supplier_stock_noop')],
+        [InlineKeyboardButton("✏️ Название", callback_data=f'supplier_stock_mail_field|{source_id}|name')],
+        [InlineKeyboardButton("👤 Отправитель", callback_data=f'supplier_stock_mail_field|{source_id}|sender')],
+        [InlineKeyboardButton("📝 Тема", callback_data=f'supplier_stock_mail_field|{source_id}|subject')],
+        [InlineKeyboardButton("🧾 MIME", callback_data=f'supplier_stock_mail_field|{source_id}|mime')],
+        [InlineKeyboardButton("📄 Имя файла", callback_data=f'supplier_stock_mail_field|{source_id}|filename')],
+        [InlineKeyboardButton("🔢 Кол-во вложений", callback_data=f'supplier_stock_mail_field|{source_id}|expected')],
+        [InlineKeyboardButton("📦 Шаблон файла", callback_data=f'supplier_stock_mail_field|{source_id}|output')],
+        [
+            InlineKeyboardButton("🔁 Включить/выключить", callback_data=f'supplier_stock_mail_source_toggle_{source_id}'),
+            InlineKeyboardButton(f"📦 Распаковка: {unpack_text}", callback_data=f'supplier_stock_mail_source_unpack_toggle_{source_id}')
+        ],
+        [InlineKeyboardButton("— Обработка файлов —", callback_data='supplier_stock_noop')],
+        [InlineKeyboardButton("📋 Правила обработки", callback_data=f'supplier_stock_processing_mail|{source_id}|menu')],
+        [InlineKeyboardButton("➕ Добавить правило", callback_data=f'supplier_stock_processing_mail|{source_id}|add')],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail_sources'),
+            InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+        ],
+    ]
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def supplier_stock_start_source_field_edit(update, context, source_id: str, field: str) -> None:
+    """Запросить изменение конкретного поля источника."""
+    query = update.callback_query
+    query.answer()
+
+    config = get_supplier_stock_config()
+    sources = config.get("download", {}).get("sources", [])
+    source = next((item for item in sources if str(item.get("id")) == source_id), None)
+
+    if not source:
+        query.edit_message_text(
+            "❌ Источник не найден.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources')]
+            ])
+        )
+        return
+
+    context.user_data['supplier_stock_source_field'] = field
+    context.user_data['supplier_stock_source_field_id'] = source_id
+
+    prompts = {
+        "name": "Введите название источника (или '-' чтобы оставить):",
+        "url": "Введите URL для скачивания (или '-' чтобы оставить):",
+        "discover": "Введите параметры поиска URL (URL | regex | prefix), '-' чтобы оставить или 'none' чтобы очистить:",
+        "vars": "Введите переменные подстановки key=value через запятую, '-' чтобы оставить или 'none' чтобы очистить:",
+        "output_name": "Введите имя файла назначения (или '-' чтобы оставить):",
+        "auth": "Введите login:password, '-' чтобы оставить или 'none' чтобы очистить:",
+        "pre_request": "Введите URL | данные для предзапроса, '-' чтобы оставить или 'none' чтобы очистить:",
+        "options": "Введите опции (headers, append) через запятую, '-' чтобы оставить или 'none' чтобы очистить:",
+    }
+
+    current_values = {
+        "name": source.get("name") or source_id,
+        "url": source.get("url") or "-",
+        "discover": source.get("discover") or "-",
+        "vars": source.get("vars") or "-",
+        "output_name": source.get("output_name") or "-",
+        "auth": "задано" if source.get("auth") else "-",
+        "pre_request": source.get("pre_request") or "-",
+        "options": "headers/append" if (source.get("include_headers") or source.get("append")) else "-",
+    }
+
+    prompt = prompts.get(field, "Введите значение:")
+    current_value = current_values.get(field, "-")
+    if isinstance(current_value, dict):
+        current_value = json.dumps(current_value, ensure_ascii=False)
+    query.edit_message_text(
+        f"{prompt}\n\nТекущее значение: `{_escape_pattern_text(str(current_value))}`",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("❌ Отмена", callback_data=f'supplier_stock_source_settings|{source_id}')]
+        ])
+    )
+
+def supplier_stock_start_mail_source_field_edit(update, context, source_id: str, field: str) -> None:
+    """Запросить изменение конкретного поля правила вложений."""
+    query = update.callback_query
+    query.answer()
+
+    config = get_supplier_stock_config()
+    sources = config.get("mail", {}).get("sources", [])
+    source = next((item for item in sources if str(item.get("id")) == source_id), None)
+
+    if not source:
+        query.edit_message_text(
+            "❌ Правило не найдено.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail_sources')]
+            ])
+        )
+        return
+
+    context.user_data['supplier_stock_mail_source_field'] = field
+    context.user_data['supplier_stock_mail_source_field_id'] = source_id
+
+    prompts = {
+        "name": "Введите название правила (или '-' чтобы оставить):",
+        "sender": "Введите regex/адрес отправителя, '-' чтобы оставить или 'none' чтобы очистить:",
+        "subject": "Введите regex темы письма, '-' чтобы оставить или 'none' чтобы очистить:",
+        "mime": "Введите MIME-фильтр, '-' чтобы оставить или 'none' чтобы очистить:",
+        "filename": "Введите regex имени вложения, '-' чтобы оставить или 'none' чтобы очистить:",
+        "expected": "Введите количество ожидаемых вложений (или '-' чтобы оставить):",
+        "output": "Введите шаблон имени выходного файла (или '-' чтобы оставить):",
+    }
+
+    current_values = {
+        "name": source.get("name") or source_id,
+        "sender": source.get("sender_pattern") or "-",
+        "subject": source.get("subject_pattern") or "-",
+        "mime": source.get("mime_pattern") or "application/.*",
+        "filename": source.get("filename_pattern") or "-",
+        "expected": source.get("expected_attachments", 1),
+        "output": source.get("output_template") or "-",
+    }
+
+    prompt = prompts.get(field, "Введите значение:")
+    current_value = current_values.get(field, "-")
+    query.edit_message_text(
+        f"{prompt}\n\nТекущее значение: `{_escape_pattern_text(str(current_value))}`",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("❌ Отмена", callback_data=f'supplier_stock_mail_source_settings|{source_id}')]
+        ])
+    )
+
+def supplier_stock_start_processing_wizard(
+    update,
+    context,
+    source_id: str | None = None,
+    back_callback: str = "settings_ext_supplier_stock",
+) -> None:
     """Запуск мастера добавления правила обработки."""
     query = update.callback_query
     query.answer()
@@ -2750,16 +3181,27 @@ def supplier_stock_start_processing_wizard(update, context):
     context.user_data['supplier_stock_processing_stage'] = 'name'
     context.user_data['supplier_stock_processing_data'] = {}
     context.user_data['supplier_stock_processing_add'] = True
+    context.user_data['supplier_stock_processing_source_id'] = source_id
+    context.user_data['supplier_stock_processing_back'] = back_callback
+
+    if source_id:
+        context.user_data['supplier_stock_processing_data']['source_id'] = source_id
 
     query.edit_message_text(
         "➕ *Новое правило обработки*\n\nВведите название правила:",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_processing')]
+            [InlineKeyboardButton("❌ Отмена", callback_data=back_callback)]
         ])
     )
 
-def supplier_stock_start_processing_edit_wizard(update, context, rule_id: str):
+def supplier_stock_start_processing_edit_wizard(
+    update,
+    context,
+    rule_id: str,
+    source_id: str | None = None,
+    back_callback: str = "settings_ext_supplier_stock",
+) -> None:
     """Запуск мастера редактирования правила обработки."""
     query = update.callback_query
     query.answer()
@@ -2778,7 +3220,7 @@ def supplier_stock_start_processing_edit_wizard(update, context, rule_id: str):
         query.edit_message_text(
             "❌ Правило не найдено.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_processing')]
+                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]
             ])
         )
         return
@@ -2787,6 +3229,11 @@ def supplier_stock_start_processing_edit_wizard(update, context, rule_id: str):
     context.user_data['supplier_stock_processing_edit_id'] = rule_id
     context.user_data['supplier_stock_processing_data'] = dict(rule)
     context.user_data['supplier_stock_processing_stage'] = 'edit_name'
+    context.user_data['supplier_stock_processing_source_id'] = source_id
+    context.user_data['supplier_stock_processing_back'] = back_callback
+
+    if source_id:
+        context.user_data['supplier_stock_processing_data']['source_id'] = source_id
 
     query.edit_message_text(
         f"✏️ *Редактирование правила обработки*\n\n"
@@ -2794,7 +3241,7 @@ def supplier_stock_start_processing_edit_wizard(update, context, rule_id: str):
         "Введите новое имя (или '-' чтобы оставить текущее):",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_processing')]
+            [InlineKeyboardButton("❌ Отмена", callback_data=back_callback)]
         ])
     )
 
@@ -2804,6 +3251,10 @@ def supplier_stock_handle_processing_input(update, context):
     data = context.user_data.get('supplier_stock_processing_data', {})
     raw_input = update.message.text or ""
     user_input = raw_input.strip()
+    source_id = context.user_data.get('supplier_stock_processing_source_id')
+    if source_id:
+        data['source_id'] = source_id
+    back_callback = context.user_data.get('supplier_stock_processing_back', 'supplier_stock_processing')
 
     if stage == 'name':
         if not user_input:
@@ -2847,7 +3298,7 @@ def supplier_stock_handle_processing_input(update, context):
             update.message.reply_text(
                 "✅ Правило обновлено.",
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_processing')]
+                    [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]
                 ])
             )
             return None
@@ -2883,7 +3334,7 @@ def supplier_stock_handle_processing_input(update, context):
             update.message.reply_text(
                 done_text,
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_processing')]
+                    [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]
                 ])
             )
             return None
@@ -3115,6 +3566,10 @@ def supplier_stock_start_edit_wizard(update, context, source_id: str):
 
 def supplier_stock_handle_input(update, context):
     """Обработчик ввода для настроек остатков поставщиков."""
+    if context.user_data.get('supplier_stock_source_field'):
+        return supplier_stock_handle_source_field_input(update, context)
+    if context.user_data.get('supplier_stock_mail_source_field'):
+        return supplier_stock_handle_mail_source_field_input(update, context)
     if context.user_data.get('supplier_stock_edit'):
         return supplier_stock_handle_edit_input(update, context)
     if context.user_data.get('supplier_stock_processing_add') or context.user_data.get('supplier_stock_processing_edit'):
@@ -3507,6 +3962,219 @@ def supplier_stock_handle_mail_source_edit_input(update, context):
         return None
 
     update.message.reply_text("❌ Не удалось определить шаг редактирования. Попробуйте снова.")
+    return None
+
+def supplier_stock_handle_source_field_input(update, context):
+    """Обработка ввода при редактировании отдельного поля источника."""
+    field = context.user_data.get('supplier_stock_source_field')
+    source_id = context.user_data.get('supplier_stock_source_field_id')
+    user_input = (update.message.text or "").strip()
+
+    if not field or not source_id:
+        return None
+
+    config = get_supplier_stock_config()
+    sources = config.get("download", {}).get("sources", [])
+    source = next((item for item in sources if str(item.get("id")) == source_id), None)
+
+    if not source:
+        update.message.reply_text("❌ Источник не найден.", reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources')]
+        ]))
+        return None
+
+    if field == 'name':
+        if user_input in ('-', ''):
+            pass
+        elif not user_input:
+            update.message.reply_text("❌ Название не может быть пустым. Попробуйте снова:")
+            return None
+        else:
+            source['name'] = user_input
+    elif field == 'url':
+        if user_input in ('-', ''):
+            pass
+        elif not user_input:
+            update.message.reply_text("❌ URL не может быть пустым. Попробуйте снова:")
+            return None
+        else:
+            source['url'] = user_input
+    elif field == 'discover':
+        if user_input in ('-', ''):
+            pass
+        elif user_input.lower() in ('none', 'нет'):
+            source.pop('discover', None)
+        else:
+            discover = _parse_supplier_discover(user_input)
+            if discover is None:
+                update.message.reply_text(
+                    "❌ Формат должен быть URL | regex | prefix, '-' или 'none'. Попробуйте снова:"
+                )
+                return None
+            source['discover'] = discover
+    elif field == 'vars':
+        if user_input in ('-', ''):
+            pass
+        elif user_input.lower() in ('none', 'нет'):
+            source.pop('vars', None)
+        else:
+            vars_map = _parse_supplier_vars(user_input)
+            if vars_map is None:
+                update.message.reply_text("❌ Формат должен быть key=value, разделители запятая/новая строка.")
+                return None
+            source['vars'] = vars_map
+    elif field == 'output_name':
+        if user_input in ('-', ''):
+            pass
+        elif not user_input:
+            update.message.reply_text("❌ Имя файла не может быть пустым. Попробуйте снова:")
+            return None
+        else:
+            source['output_name'] = user_input
+    elif field == 'auth':
+        if user_input in ('-', ''):
+            pass
+        elif user_input.lower() in ('none', 'нет'):
+            source.pop('auth', None)
+        else:
+            if ':' not in user_input:
+                update.message.reply_text("❌ Формат должен быть login:password или 'none'. Попробуйте снова:")
+                return None
+            username, password = user_input.split(':', 1)
+            source['auth'] = {'username': username, 'password': password}
+    elif field == 'pre_request':
+        if user_input in ('-', ''):
+            pass
+        elif user_input.lower() in ('none', 'нет'):
+            source.pop('pre_request', None)
+        else:
+            pre_request = _parse_supplier_pre_request(user_input)
+            if pre_request is None:
+                update.message.reply_text(
+                    "❌ Формат должен быть URL | данные, '-' или 'none'. Попробуйте снова:"
+                )
+                return None
+            source['pre_request'] = pre_request
+    elif field == 'options':
+        if user_input in ('-', ''):
+            pass
+        elif user_input.lower() in ('none', 'нет'):
+            source.pop('include_headers', None)
+            source.pop('append', None)
+        else:
+            options = _parse_supplier_options(user_input)
+            if options is None:
+                update.message.reply_text(
+                    "❌ Формат должен быть списком через запятую (headers, append), '-' или 'none'."
+                )
+                return None
+            source.update(options)
+    else:
+        update.message.reply_text("❌ Не удалось определить поле настройки.")
+        return None
+
+    config["download"]["sources"] = sources
+    save_supplier_stock_config(config)
+
+    context.user_data.pop('supplier_stock_source_field', None)
+    context.user_data.pop('supplier_stock_source_field_id', None)
+
+    update.message.reply_text(
+        "✅ Настройка обновлена.",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_source_settings|{source_id}')]
+        ])
+    )
+    return None
+
+def supplier_stock_handle_mail_source_field_input(update, context):
+    """Обработка ввода при редактировании отдельного поля правила вложений."""
+    field = context.user_data.get('supplier_stock_mail_source_field')
+    source_id = context.user_data.get('supplier_stock_mail_source_field_id')
+    user_input = (update.message.text or "").strip()
+
+    if not field or not source_id:
+        return None
+
+    config = get_supplier_stock_config()
+    sources = config.get("mail", {}).get("sources", [])
+    source = next((item for item in sources if str(item.get("id")) == source_id), None)
+
+    if not source:
+        update.message.reply_text("❌ Правило не найдено.", reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail_sources')]
+        ]))
+        return None
+
+    if field == 'name':
+        if user_input in ('-', ''):
+            pass
+        elif not user_input:
+            update.message.reply_text("❌ Название не может быть пустым. Попробуйте снова:")
+            return None
+        else:
+            source['name'] = user_input
+    elif field == 'sender':
+        if user_input in ('-', ''):
+            pass
+        elif user_input.lower() in ('none', 'нет'):
+            source.pop('sender_pattern', None)
+        else:
+            source['sender_pattern'] = user_input
+    elif field == 'subject':
+        if user_input in ('-', ''):
+            pass
+        elif user_input.lower() in ('none', 'нет'):
+            source.pop('subject_pattern', None)
+        else:
+            source['subject_pattern'] = user_input
+    elif field == 'mime':
+        if user_input in ('-', ''):
+            pass
+        elif user_input.lower() in ('none', 'нет'):
+            source.pop('mime_pattern', None)
+        else:
+            source['mime_pattern'] = user_input
+    elif field == 'filename':
+        if user_input in ('-', ''):
+            pass
+        elif user_input.lower() in ('none', 'нет'):
+            source.pop('filename_pattern', None)
+        else:
+            source['filename_pattern'] = user_input
+    elif field == 'expected':
+        if user_input in ('-', ''):
+            pass
+        else:
+            expected = _parse_expected_attachments(user_input)
+            if expected is None:
+                update.message.reply_text("❌ Введите целое число больше 0.")
+                return None
+            source['expected_attachments'] = expected
+    elif field == 'output':
+        if user_input in ('-', ''):
+            pass
+        elif not user_input:
+            update.message.reply_text("❌ Шаблон не может быть пустым. Попробуйте снова:")
+            return None
+        else:
+            source['output_template'] = user_input
+    else:
+        update.message.reply_text("❌ Не удалось определить поле настройки.")
+        return None
+
+    config["mail"]["sources"] = sources
+    save_supplier_stock_config(config)
+
+    context.user_data.pop('supplier_stock_mail_source_field', None)
+    context.user_data.pop('supplier_stock_mail_source_field_id', None)
+
+    update.message.reply_text(
+        "✅ Настройка обновлена.",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_mail_source_settings|{source_id}')]
+        ])
+    )
     return None
 
 def supplier_stock_handle_source_input(update, context):
@@ -3932,10 +4600,11 @@ def _supplier_stock_finish_variant(update, context, data: dict):
 
     edit_id = data.get("id") if context.user_data.get('supplier_stock_processing_edit') else None
     _save_supplier_stock_processing_rule(context, data, edit_id=edit_id)
+    back_callback = context.user_data.get('supplier_stock_processing_back', 'supplier_stock_processing')
     update.message.reply_text(
         "✅ Правило обработки сохранено.",
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_processing')]
+            [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]
         ])
     )
     return None
