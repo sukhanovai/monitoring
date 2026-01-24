@@ -1,11 +1,11 @@
 """
 /lib/__init__.py
-Server Monitoring System v8.2.12
+Server Monitoring System v8.2.13
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Utility library package
 Система мониторинга серверов
-Версия: 8.2.12
+Версия: 8.2.13
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Пакет библиотеки утилит
