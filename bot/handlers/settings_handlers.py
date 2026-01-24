@@ -2845,9 +2845,9 @@ def _fill_processing_rule_from_source(data: dict) -> None:
         if mail_source:
             source_name = mail_source.get("name") or source_id
             source_output = mail_source.get("output_template")
-    if source_name and not data.get("name"):
+    if source_name:
         data["name"] = source_name
-    if source_output and not data.get("source_file"):
+    if source_output:
         data["source_file"] = source_output
     if source_output and not data.get("output_name"):
         data["output_name"] = source_output
@@ -2891,12 +2891,13 @@ def show_supplier_stock_processing_rule_menu(update, context) -> None:
 
     toggle_text = "✅ Требуется обработка" if requires_processing else "⛔️ Обработка не требуется"
 
-    keyboard = [
-        [InlineKeyboardButton("— Настройки правила —", callback_data='supplier_stock_noop')],
-        [InlineKeyboardButton("✏️ Название", callback_data='supplier_stock_processing_rule|field|name')],
-        [InlineKeyboardButton("📄 Файл источника", callback_data='supplier_stock_processing_rule|field|source_file')],
-        [InlineKeyboardButton(toggle_text, callback_data='supplier_stock_processing_rule|toggle_processing')],
-    ]
+    keyboard = [[InlineKeyboardButton("— Настройки правила —", callback_data='supplier_stock_noop')]]
+    if not data.get("source_id"):
+        keyboard.extend([
+            [InlineKeyboardButton("✏️ Название", callback_data='supplier_stock_processing_rule|field|name')],
+            [InlineKeyboardButton("📄 Файл источника", callback_data='supplier_stock_processing_rule|field|source_file')],
+        ])
+    keyboard.append([InlineKeyboardButton(toggle_text, callback_data='supplier_stock_processing_rule|toggle_processing')])
 
     if requires_processing:
         variant = _ensure_processing_variant(data, variant_index or 0)
@@ -3221,6 +3222,16 @@ def supplier_stock_start_processing_field_edit(
     query = update.callback_query
     query.answer()
 
+    rule_data = context.user_data.get("supplier_stock_processing_rule_data", {})
+    if rule_data.get("source_id") and field in ("name", "source_file"):
+        query.edit_message_text(
+            "ℹ️ Название и файл источника берутся из настроек источника.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_processing_rule|menu')]
+            ])
+        )
+        return
+
     context.user_data['supplier_stock_processing_field'] = field
     context.user_data['supplier_stock_processing_variant_index'] = variant_index
     context.user_data['supplier_stock_processing_item_index'] = item_index
@@ -3296,6 +3307,9 @@ def _validate_processing_rule(data: dict) -> list[str]:
 def _save_processing_rule_data(update, context) -> bool:
     query = update.callback_query
     data = context.user_data.get("supplier_stock_processing_rule_data", {})
+    source_id = context.user_data.get("supplier_stock_processing_source_id")
+    if source_id:
+        data["source_id"] = source_id
     _fill_processing_rule_from_source(data)
     context.user_data["supplier_stock_processing_rule_data"] = data
     missing = _validate_processing_rule(data)
@@ -3308,6 +3322,9 @@ def _save_processing_rule_data(update, context) -> bool:
 
 def _persist_processing_rule_data(context) -> None:
     data = context.user_data.get("supplier_stock_processing_rule_data", {})
+    source_id = context.user_data.get("supplier_stock_processing_source_id")
+    if source_id:
+        data["source_id"] = source_id
     _fill_processing_rule_from_source(data)
     edit_id = context.user_data.get('supplier_stock_processing_rule_edit_id') or data.get("id")
     _save_supplier_stock_processing_rule(context, data, edit_id=edit_id, keep_context=True)
