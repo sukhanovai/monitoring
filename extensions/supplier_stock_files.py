@@ -103,7 +103,24 @@ def normalize_supplier_stock_config(config: Dict[str, Any] | None) -> Dict[str, 
         for rule in processing_rules:
             if isinstance(rule, dict):
                 rule.setdefault("enabled", True)
+                rule["requires_processing"] = _normalize_requires_processing(rule.get("requires_processing", True))
     return merged
+
+
+def _normalize_requires_processing(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return True
+    if isinstance(value, (int, float)):
+        return bool(value)
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in ("false", "0", "no", "нет", "off"):
+            return False
+        if lowered in ("true", "1", "yes", "да", "on"):
+            return True
+    return bool(value)
 
 
 def get_supplier_stock_config() -> Dict[str, Any]:
@@ -662,7 +679,7 @@ def _run_processing_rule(
     processing: Dict[str, Any],
     now: datetime,
 ) -> Dict[str, Any]:
-    if not rule.get("requires_processing", True):
+    if not _normalize_requires_processing(rule.get("requires_processing", True)):
         _logger.info("🧩 Обработка не требуется для %s (%s)", file_path, rule.get("name") or rule.get("id"))
         return {"status": "skipped", "reason": "processing_disabled", "rule_id": rule.get("id")}
 
