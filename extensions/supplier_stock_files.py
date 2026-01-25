@@ -730,13 +730,39 @@ def _read_xls_table(file_path: Path) -> list[list[str]]:
     try:
         import xlrd
     except ImportError as exc:
-        raise ImportError("xlrd не установлен для обработки xls") from exc
-    workbook = xlrd.open_workbook(file_path)
+        if _looks_like_xlsx(file_path):
+            _logger.warning(
+                "⚠️ Файл %s имеет расширение .xls, но похож на xlsx. Используем openpyxl.",
+                file_path.name,
+            )
+            return _read_xlsx_table(file_path)
+        raise ImportError(
+            "xlrd не установлен для обработки xls. Установите пакет xlrd или сохраните файл в формате xlsx."
+        ) from exc
+    try:
+        workbook = xlrd.open_workbook(file_path)
+    except xlrd.biffh.XLRDError:
+        if _looks_like_xlsx(file_path):
+            _logger.warning(
+                "⚠️ Файл %s имеет расширение .xls, но похож на xlsx. Используем openpyxl.",
+                file_path.name,
+            )
+            return _read_xlsx_table(file_path)
+        raise
     sheet = workbook.sheet_by_index(0)
     rows: list[list[str]] = []
     for row_index in range(sheet.nrows):
         rows.append([_normalize_cell(sheet.cell_value(row_index, col)) for col in range(sheet.ncols)])
     return rows
+
+
+def _looks_like_xlsx(file_path: Path) -> bool:
+    try:
+        with file_path.open("rb") as file:
+            signature = file.read(4)
+    except OSError:
+        return False
+    return signature in (b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08")
 
 
 def _normalize_cell(value: Any) -> str:
