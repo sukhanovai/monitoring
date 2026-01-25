@@ -4463,7 +4463,12 @@ def supplier_stock_handle_edit_input(update, context):
     if not field:
         return None
 
-    user_input = update.message.text.strip()
+    message = update.message
+    if not message or not message.text:
+        debug_logger("⚠️ supplier_stock_handle_edit_input: получено пустое сообщение.")
+        return None
+
+    user_input = message.text.strip()
     config = get_supplier_stock_config()
 
     if field == 'temp_dir':
