@@ -106,7 +106,7 @@ python -m modules.improved_mail_monitor
 ```bash
 python main.py --check availability
 python main.py --check resources
-python main.py --check targeted_checks --server 192.168.2.300 --mode resources
+python main.py --check targeted_checks --server 192.168.2.310 --mode resources
 ```
 
 Дополнительно:
