@@ -798,6 +798,7 @@ def _process_variant(
         use_article_filter_columns.extend([True] * (len(data_columns) - len(use_article_filter_columns)))
     use_article_filter_columns = use_article_filter_columns[:len(data_columns)]
     article_prefix = variant.get("article_prefix") or ""
+    article_postfix = variant.get("article_postfix") or ""
     orc_config = variant.get("orc", {}) if isinstance(variant.get("orc"), dict) else {}
     orc_enabled = bool(orc_config.get("enabled"))
     orc_column = int(orc_config.get("column") or 0)
@@ -832,7 +833,7 @@ def _process_variant(
             quant_value = _parse_quantity(quant_raw)
             if quant_value is None:
                 continue
-            items.append([f"{article_prefix}{article}", quant_value])
+            items.append([f"{article_prefix}{article}{article_postfix}", quant_value])
             if orc_active:
                 orc_prefix = orc_config.get("prefix", "")
                 stor = orc_config.get("stor", "")
