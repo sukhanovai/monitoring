@@ -453,7 +453,8 @@ def show_extensions_menu(update, context):
     keyboard.extend([
         [InlineKeyboardButton("📊 Включить все", callback_data='ext_enable_all')],
         [InlineKeyboardButton("📋 Отключить все", callback_data='ext_disable_all')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='monitor_status'),
+        [InlineKeyboardButton("↩️ Назад", callback_data='monitor_status')],
+        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ])
     
@@ -1453,7 +1454,10 @@ def handle_single_check(update, context, server_id):
         keyboard.append(row_actions)
     
     keyboard.append([
-        InlineKeyboardButton("🔍 Выбрать другой", callback_data="show_availability_menu"),
+        InlineKeyboardButton("🔍 Выбрать другой", callback_data="show_availability_menu")
+    ])
+    keyboard.append([
+        InlineKeyboardButton("🏠 На главную", callback_data="main_menu"),
         InlineKeyboardButton("✖️ Закрыть", callback_data="close")
     ])
     
@@ -1488,7 +1492,10 @@ def handle_single_resources(update, context, server_id):
         ])
     
     keyboard.append([
-        InlineKeyboardButton("🔍 Выбрать другой", callback_data="show_resources_menu"),
+        InlineKeyboardButton("🔍 Выбрать другой", callback_data="show_resources_menu")
+    ])
+    keyboard.append([
+        InlineKeyboardButton("🏠 На главную", callback_data="main_menu"),
         InlineKeyboardButton("✖️ Закрыть", callback_data="close")
     ])
     
