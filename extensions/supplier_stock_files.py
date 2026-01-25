@@ -790,6 +790,9 @@ def _process_variant(
     output_names = variant.get("output_names", [])
     output_format = (variant.get("output_format") or "csv").lower()
     article_filter = variant.get("article_filter") or ""
+    use_article_filter = variant.get("use_article_filter")
+    if use_article_filter is None:
+        use_article_filter = bool(article_filter)
     article_prefix = variant.get("article_prefix") or ""
     orc_config = variant.get("orc", {}) if isinstance(variant.get("orc"), dict) else {}
     orc_enabled = bool(orc_config.get("enabled"))
@@ -800,7 +803,7 @@ def _process_variant(
         return {"status": "error", "error": "columns_names_mismatch"}
 
     compiled_filter = None
-    if article_filter:
+    if use_article_filter and article_filter:
         try:
             compiled_filter = re.compile(article_filter)
         except re.error as exc:

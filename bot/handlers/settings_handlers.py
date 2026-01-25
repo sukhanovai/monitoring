@@ -966,6 +966,18 @@ def settings_callback_handler(update, context):
             variant_index = int(parts[2]) if len(parts) > 2 else 0
             if action == 'menu':
                 show_supplier_stock_processing_columns_menu(update, context, variant_index)
+            elif action == 'toggle_article_filter':
+                data = context.user_data.get('supplier_stock_processing_rule_data', {})
+                variant = _ensure_processing_variant(data, variant_index)
+                current_value = variant.get("use_article_filter")
+                if current_value is None:
+                    current_value = bool(variant.get("article_filter"))
+                variant["use_article_filter"] = not current_value
+                data['variants'][variant_index] = variant
+                context.user_data['supplier_stock_processing_rule_data'] = data
+                context.user_data['supplier_stock_processing_rule_dirty'] = True
+                _persist_processing_rule_data(context)
+                show_supplier_stock_processing_columns_menu(update, context, variant_index)
             elif action == 'add_column':
                 data = context.user_data.get('supplier_stock_processing_rule_data', {})
                 variant = _ensure_processing_variant(data, variant_index)
@@ -2790,6 +2802,7 @@ def _default_processing_variant() -> dict:
     return {
         "article_col": None,
         "article_filter": None,
+        "use_article_filter": None,
         "article_prefix": "",
         "data_columns": [],
         "data_columns_count": 0,
@@ -3110,9 +3123,14 @@ def show_supplier_stock_processing_columns_menu(update, context, variant_index: 
     columns = variant.get("data_columns", [])
     names = variant.get("output_names", [])
 
+    use_article_filter = variant.get("use_article_filter")
+    if use_article_filter is None:
+        use_article_filter = bool(variant.get("article_filter"))
+    filter_text = "да" if use_article_filter else "нет"
     message_lines = [
         "📊 *Колонки с данными*\n",
         f"Количество колонок: `{data_columns_count or 0}`",
+        f"Использовать условия отбора артикулов: `{filter_text}`",
     ]
     for idx in range(data_columns_count or 0):
         col_value = columns[idx] if idx < len(columns) else "не задано"
@@ -3120,8 +3138,14 @@ def show_supplier_stock_processing_columns_menu(update, context, variant_index: 
         message_lines.append(f"{idx + 1}. Колонка: `{col_value or 'не задано'}` → файл: `{_escape_pattern_text(name_value)}`")
     message = "\n".join(message_lines)
 
+    toggle_text = (
+        "✅ Использовать условия отбора артикулов"
+        if use_article_filter
+        else "⛔️ Не использовать условия отбора артикулов"
+    )
     keyboard = [
         [InlineKeyboardButton("— Колонки с данными —", callback_data='supplier_stock_noop')],
+        [InlineKeyboardButton(toggle_text, callback_data=f'supplier_stock_processing_columns|toggle_article_filter|{variant_index}')],
         [InlineKeyboardButton("➕ Добавить колонку", callback_data=f'supplier_stock_processing_columns|add_column|{variant_index}')],
     ]
 
@@ -4060,6 +4084,8 @@ def supplier_stock_handle_processing_input(update, context):
             elif field == 'article_filter':
                 if user_input not in ('-', ''):
                     variant['article_filter'] = user_input
+                    if variant.get("use_article_filter") is None:
+                        variant["use_article_filter"] = True
                 else:
                     variant.pop('article_filter', None)
             elif field == 'article_prefix':
