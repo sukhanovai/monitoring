@@ -793,6 +793,10 @@ def _process_variant(
     use_article_filter = variant.get("use_article_filter")
     if use_article_filter is None:
         use_article_filter = bool(article_filter)
+    use_article_filter_columns = list(variant.get("use_article_filter_columns", []))
+    if len(use_article_filter_columns) < len(data_columns):
+        use_article_filter_columns.extend([True] * (len(data_columns) - len(use_article_filter_columns)))
+    use_article_filter_columns = use_article_filter_columns[:len(data_columns)]
     article_prefix = variant.get("article_prefix") or ""
     orc_config = variant.get("orc", {}) if isinstance(variant.get("orc"), dict) else {}
     orc_enabled = bool(orc_config.get("enabled"))
@@ -811,15 +815,18 @@ def _process_variant(
 
     rows = table[data_row - 1:] if data_row > 1 else table
     outputs: list[Dict[str, Any]] = []
-    for column_index, output_name in zip(data_columns, output_names):
+    for idx, (column_index, output_name) in enumerate(zip(data_columns, output_names)):
         items: list[list[str]] = []
         orc_items: list[list[str]] = []
         orc_active = orc_enabled and column_index == orc_target_column
+        use_filter_for_column = use_article_filter and (
+            use_article_filter_columns[idx] if idx < len(use_article_filter_columns) else True
+        )
         for row in rows:
             article = _get_cell(row, article_col)
             if not article:
                 continue
-            if compiled_filter and not compiled_filter.search(article):
+            if compiled_filter and use_filter_for_column and not compiled_filter.search(article):
                 continue
             quant_raw = _get_cell(row, column_index)
             quant_value = _parse_quantity(quant_raw)
