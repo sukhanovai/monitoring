@@ -3379,7 +3379,7 @@ def supplier_stock_start_processing_field_edit(
             "• ($3+0 > 0) && ($4 == \"Москва\")"
         ),
         "article_prefix": "Введите префикс артикула (или '-' если не нужен):",
-        "article_postfix": "Введите постфикс артикула (или '-' если не нужен):",
+        "article_postfix": "Введите постфикс артикула (или '-' если не нужен). Пробелы в конце сохраняются:",
         "data_column": "Введите номер колонки с данными:",
         "output_format": "Введите формат выходного файла (xls, xlsx, csv):",
         "orc_prefix": "Введите префикс артикула для файла ОРК (или '-' если не нужен):",
@@ -4148,10 +4148,13 @@ def supplier_stock_handle_processing_input(update, context):
                 else:
                     variant['article_prefix'] = raw_input.rstrip("\n")
             elif field == 'article_postfix':
-                if user_input in ('-', ''):
+                raw_value = raw_input.rstrip("\n")
+                if raw_value == "":
+                    variant['article_postfix'] = ""
+                elif raw_value.strip() == "-":
                     variant['article_postfix'] = ""
                 else:
-                    variant['article_postfix'] = raw_input.rstrip("\n")
+                    variant['article_postfix'] = raw_value
             elif field == 'data_columns_count':
                 columns_count = _parse_positive_int(user_input)
                 if columns_count is None:
@@ -4424,10 +4427,13 @@ def supplier_stock_handle_processing_input(update, context):
 
     if stage == 'variant_postfix':
         variant = context.user_data.get('supplier_stock_processing_current_variant', {})
-        if user_input in ('-', ''):
+        raw_value = raw_input.rstrip("\n")
+        if raw_value == "":
+            variant['article_postfix'] = ""
+        elif raw_value.strip() == "-":
             variant['article_postfix'] = ""
         else:
-            variant['article_postfix'] = raw_input.rstrip("\n")
+            variant['article_postfix'] = raw_value
         context.user_data['supplier_stock_processing_current_variant'] = variant
         context.user_data['supplier_stock_processing_stage'] = 'data_columns_count'
         update.message.reply_text("Сколько колонок с данными нужно использовать? (число):")
