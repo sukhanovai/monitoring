@@ -791,6 +791,10 @@ def _process_variant(
     output_format = (variant.get("output_format") or "csv").lower()
     article_filter = variant.get("article_filter") or ""
     article_prefix = variant.get("article_prefix") or ""
+    orc_config = variant.get("orc", {}) if isinstance(variant.get("orc"), dict) else {}
+    orc_enabled = bool(orc_config.get("enabled"))
+    orc_column = int(orc_config.get("column") or 0)
+    orc_target_column = orc_column if orc_column > 0 else (data_columns[0] if data_columns else 0)
 
     if len(data_columns) != len(output_names):
         return {"status": "error", "error": "columns_names_mismatch"}
@@ -807,6 +811,7 @@ def _process_variant(
     for column_index, output_name in zip(data_columns, output_names):
         items: list[list[str]] = []
         orc_items: list[list[str]] = []
+        orc_active = orc_enabled and column_index == orc_target_column
         for row in rows:
             article = _get_cell(row, article_col)
             if not article:
@@ -818,11 +823,9 @@ def _process_variant(
             if quant_value is None:
                 continue
             items.append([f"{article_prefix}{article}", quant_value])
-            orc_config = variant.get("orc", {}) if isinstance(variant.get("orc"), dict) else {}
-            if orc_config.get("enabled"):
+            if orc_active:
                 orc_prefix = orc_config.get("prefix", "")
                 stor = orc_config.get("stor", "")
-                orc_column = int(orc_config.get("column") or 0)
                 orc_column_index = orc_column if orc_column > 0 else column_index
                 orc_quant_raw = _get_cell(row, orc_column_index)
                 orc_quant_value = _parse_quantity(orc_quant_raw)
@@ -835,8 +838,7 @@ def _process_variant(
         output_path = _write_output_file(output_path, output_format, ["Art.", "Quant."], items)
 
         orc_output = None
-        orc_config = variant.get("orc", {}) if isinstance(variant.get("orc"), dict) else {}
-        if orc_config.get("enabled"):
+        if orc_active:
             orc_output_format = (orc_config.get("output_format") or output_format).lower()
             orc_output_path = _resolve_output_path(
                 file_path.parent,
