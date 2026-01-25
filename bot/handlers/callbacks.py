@@ -70,7 +70,8 @@ def handle_check_single_callback(update, context, server_ip):
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("📊 Проверить ресурсы", callback_data=f'check_resources_{server_ip}')],
             [InlineKeyboardButton("🔄 Проверить снова", callback_data=f'check_single_{server_ip}')],
-            [InlineKeyboardButton("↩️ Выбрать другой", callback_data='check_single_menu'),
+            [InlineKeyboardButton("↩️ Выбрать другой", callback_data='check_single_menu')],
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
     )
@@ -94,7 +95,8 @@ def handle_check_resources_callback(update, context, server_ip):
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("🔄 Обновить", callback_data=f'check_resources_{server_ip}')],
             [InlineKeyboardButton("📡 Проверить доступность", callback_data=f'check_single_{server_ip}')],
-            [InlineKeyboardButton("↩️ Выбрать другой", callback_data='check_resources_menu'),
+            [InlineKeyboardButton("↩️ Выбрать другой", callback_data='check_resources_menu')],
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
     )

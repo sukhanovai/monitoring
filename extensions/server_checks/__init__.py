@@ -127,7 +127,10 @@ def servers_command(update, context):
     
     keyboard = [
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers')],
-        [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [
+            InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
+            InlineKeyboardButton("✖️ Закрыть", callback_data='close'),
+        ],
     ]
     
     if hasattr(update, 'callback_query'):
