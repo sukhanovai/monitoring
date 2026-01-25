@@ -100,11 +100,12 @@ class MorningReport:
             show_mail = extension_manager.is_extension_enabled('mail_backup_monitor')
             show_backups = show_proxmox or show_databases or show_mail
             if show_backups:
-                unavailable_hosts = {
-                    server.get("name")
-                    for server in status.get("failed", [])
-                    if server.get("name")
-                }
+                unavailable_hosts = set()
+                for server in status.get("failed", []):
+                    if server.get("name"):
+                        unavailable_hosts.add(server.get("name"))
+                    if server.get("ip"):
+                        unavailable_hosts.add(server.get("ip"))
                 backup_summary, backup_has_issues = self.get_backup_summary_for_report(
                     24 if is_manual else 16,
                     include_proxmox=show_proxmox,
