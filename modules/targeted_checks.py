@@ -172,7 +172,7 @@ class TargetedChecks:
         ])
         
         keyboard.append([
-            InlineKeyboardButton("↩️ Назад в меню", callback_data="main_menu"),
+            InlineKeyboardButton("🏠 На главную", callback_data="main_menu"),
             InlineKeyboardButton("✖️ Закрыть", callback_data="close")
         ])
         

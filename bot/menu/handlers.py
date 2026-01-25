@@ -236,7 +236,7 @@ def show_about_bot(update, context):
     )
 
     reply_markup = InlineKeyboardMarkup([
-        [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
         [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
     ])
 
@@ -588,7 +588,7 @@ def show_debug_menu(update, context):
         [InlineKeyboardButton("🗑️ Очистить логи", callback_data='debug_clear_logs')],
         [InlineKeyboardButton("📋 Диагностика", callback_data='debug_diagnose')],
         [InlineKeyboardButton("🔧 Расширенная отладка", callback_data='debug_advanced')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='main_menu'),
+        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
     
@@ -659,7 +659,7 @@ def enable_debug_mode(query):
                 [InlineKeyboardButton("🔴 Выключить", callback_data='debug_disable')],
                 [InlineKeyboardButton("🔧 Расширенная", callback_data='debug_advanced')],
                 [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu')],
-                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')]
+                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')]
             ])
         )
     except Exception as e:
@@ -689,7 +689,7 @@ def disable_debug_mode(query):
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("🟢 Включить", callback_data='debug_enable')],
                 [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu')],
-                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')]
+                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')]
             ])
         )
     except Exception as e:
@@ -781,7 +781,7 @@ def show_debug_status(query):
                 [InlineKeyboardButton("🔄 Обновить", callback_data='debug_status')],
                 [InlineKeyboardButton("🗑️ Очистить логи", callback_data='debug_clear_logs')],
                 [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu')],
-                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu'),
+                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
                  InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
         )
@@ -835,7 +835,7 @@ def clear_debug_logs(query):
                 [InlineKeyboardButton("🔄 Обновить", callback_data='debug_clear_logs')],
                 [InlineKeyboardButton("📊 Статус системы", callback_data='debug_status')],
                 [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu')],
-                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu'),
+                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
                  InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
         )
@@ -929,7 +929,7 @@ def run_diagnostic(query):
                 [InlineKeyboardButton("🔄 Перезапустить", callback_data='debug_diagnose')],
                 [InlineKeyboardButton("🔧 Расширенная", callback_data='debug_advanced')],
                 [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu')],
-                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu'),
+                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
                  InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
         )
@@ -980,7 +980,7 @@ def show_advanced_debug(query):
         keyboard = [
             [InlineKeyboardButton("🔄 Обновить", callback_data='debug_advanced')],
             [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu')],
-            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu'),
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ]
 
@@ -998,7 +998,7 @@ def show_advanced_debug(query):
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("↩️ Назад", callback_data='debug_menu')],
-                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu'),
+                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
                  InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
         )
@@ -1507,7 +1507,7 @@ def add_quick_check_buttons(keyboard, server_ip=None):
         keyboard.append(row_actions)
     
     keyboard.append([
-        InlineKeyboardButton("🎛️ Главное меню", callback_data='main_menu'),
+        InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
         InlineKeyboardButton("✖️ Закрыть", callback_data='close')
     ])
     
@@ -1526,7 +1526,7 @@ def create_quick_actions_menu(server_ip):
     keyboard.extend([
         [InlineKeyboardButton("📋 Информация о сервере", callback_data=f'server_info_{server_ip}')],
         [InlineKeyboardButton("🔄 Проверить снова", callback_data=f'check_availability_{server_ip}')],
-        [InlineKeyboardButton("🎛️ Главное меню", callback_data='main_menu'),
+        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ])
     

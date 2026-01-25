@@ -439,7 +439,7 @@ def settings_command(update, context):
         keyboard.append([InlineKeyboardButton("🌐 Веб-интерфейс", callback_data='settings_web')])
 
     keyboard.extend([
-        [InlineKeyboardButton("↩️ Назад", callback_data='main_menu'),
+        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ])
     
@@ -5954,7 +5954,7 @@ def show_backup_proxmox_settings(update, context):
     keyboard = [
         [InlineKeyboardButton("📋 Список хостов", callback_data='settings_proxmox_list')],
         [InlineKeyboardButton("➕ Добавить хост", callback_data='settings_proxmox_add')],
-        [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_backup_proxmox'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
@@ -6011,7 +6011,7 @@ def show_proxmox_hosts_list(update, context):
         ])
 
     keyboard.append([
-        InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu'),
+        InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
         InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox'),
         InlineKeyboardButton("✖️ Закрыть", callback_data='close')
     ])
@@ -6034,7 +6034,7 @@ def add_proxmox_host_handler(update, context):
         "Введите имя хоста (как в письмах бэкапов):",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
             [InlineKeyboardButton("❌ Отмена", callback_data='settings_backup_proxmox'),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
@@ -6053,7 +6053,7 @@ def delete_proxmox_host(update, context, host_name):
         query.edit_message_text(
             "❌ Хост не найден.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
                 [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox'),
                  InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
@@ -6067,7 +6067,7 @@ def delete_proxmox_host(update, context, host_name):
         f"✅ Хост `{host_name}` удалён.",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
             [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox'),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
@@ -6098,7 +6098,7 @@ def handle_proxmox_host_input(update, context):
         f"✅ Хост `{host_name}` добавлен.",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
             [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox'),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
@@ -6119,7 +6119,7 @@ def edit_proxmox_host_handler(update, context, host_name):
         query.edit_message_text(
             "❌ Хост не найден.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
                 [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox'),
                  InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
@@ -6135,7 +6135,7 @@ def edit_proxmox_host_handler(update, context, host_name):
         "Введите новое имя хоста:",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
             [InlineKeyboardButton("❌ Отмена", callback_data='settings_backup_proxmox'),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
@@ -6176,7 +6176,7 @@ def handle_proxmox_host_edit_input(update, context):
         f"✅ Хост обновлён: `{new_host_name}`",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
             [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox'),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
@@ -6198,7 +6198,7 @@ def toggle_proxmox_host(update, context, host_name):
         query.edit_message_text(
             "❌ Хост не найден.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
                 [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox'),
                  InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
@@ -6221,7 +6221,7 @@ def toggle_proxmox_host(update, context, host_name):
         f"✅ Мониторинг хоста `{host_name}` {status_text}.",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
             [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox'),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
@@ -6242,7 +6242,7 @@ def show_zfs_main_menu(update, context):
     keyboard = [
         [InlineKeyboardButton("📋 Хосты", callback_data='settings_zfs_list')],
         [InlineKeyboardButton("🔍 Паттерны", callback_data='settings_patterns_zfs')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='main_menu'),
+        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
 
@@ -6273,7 +6273,7 @@ def show_zfs_status_summary(update, context):
             "🧊 *ZFS статусы*\n\n❌ База бэкапов не настроена.",
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='main_menu')],
+                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
                 [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
         )
@@ -6305,7 +6305,7 @@ def show_zfs_status_summary(update, context):
                 "Дождитесь первого письма или перезапустите мониторинг.",
                 parse_mode='Markdown',
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("↩️ Назад", callback_data='main_menu')],
+                    [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
                     [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
                 ])
             )
@@ -6339,7 +6339,7 @@ def show_zfs_status_summary(update, context):
             )
 
     keyboard = [
-        [InlineKeyboardButton("↩️ Назад", callback_data='main_menu')],
+        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
         [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
 
@@ -6399,7 +6399,7 @@ def show_zfs_servers_list(update, context):
     ])
 
     keyboard.append([
-        InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu'),
+        InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
         InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs'),
         InlineKeyboardButton("✖️ Закрыть", callback_data='close')
     ])
@@ -6423,7 +6423,7 @@ def add_zfs_server_handler(update, context):
         "Введите имя сервера (как приходит в теме письма):",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
             [InlineKeyboardButton("❌ Отмена", callback_data='settings_zfs'),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
@@ -6442,7 +6442,7 @@ def delete_zfs_server(update, context, server_name):
         query.edit_message_text(
             "❌ Сервер не найден.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
                 [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs'),
                  InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
@@ -6457,7 +6457,7 @@ def delete_zfs_server(update, context, server_name):
         f"✅ Сервер `{server_name}` удалён.",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
             [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs'),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
@@ -6498,7 +6498,7 @@ def handle_zfs_server_input(update, context):
             f"Имя: `{user_input}`",
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
                 [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs'),
                  InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
@@ -6520,7 +6520,7 @@ def edit_zfs_server_name_handler(update, context, server_name):
         query.edit_message_text(
             "❌ Сервер не найден.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
                 [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs'),
                  InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
@@ -6536,7 +6536,7 @@ def edit_zfs_server_name_handler(update, context, server_name):
         "Введите новое имя сервера:",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
             [InlineKeyboardButton("❌ Отмена", callback_data='settings_zfs'),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
@@ -6578,7 +6578,7 @@ def handle_zfs_server_name_edit_input(update, context):
         f"✅ Сервер обновлён: `{new_name}`",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
             [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs'),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
@@ -6600,7 +6600,7 @@ def toggle_zfs_server(update, context, server_name):
         query.edit_message_text(
             "❌ Сервер не найден.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
                 [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs'),
                  InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
@@ -6623,7 +6623,7 @@ def toggle_zfs_server(update, context, server_name):
         f"✅ Мониторинг сервера `{server_name}` {status_text}.",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
             [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs'),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
@@ -8211,7 +8211,7 @@ def add_pattern_handler(update, context):
         "`Backup db; company_main; completed`",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
             [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
@@ -8236,7 +8236,7 @@ def add_zfs_pattern_handler(update, context):
         "`ZFS alert; zfs01; state:`",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
             [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
@@ -8259,7 +8259,7 @@ def add_proxmox_pattern_handler(update, context):
         "`vzdump backup status`",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
             [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
@@ -8284,7 +8284,7 @@ def add_mail_pattern_handler(update, context):
         "`Бэкап Zimbra; /backups/zimbra`",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
             [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
@@ -8393,7 +8393,7 @@ def stock_pattern_select_handler(update, context, pattern_type: str):
         prompt,
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
             [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
@@ -8450,7 +8450,7 @@ def stock_pattern_confirm_handler(update, context):
             f"Паттерн: `{pattern}`",
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
                 [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
                  InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
@@ -8487,7 +8487,7 @@ def edit_mail_default_pattern_handler(update, context):
         "Введите новый regex паттерн темы письма:",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
             [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
@@ -8510,7 +8510,7 @@ def mail_pattern_retry_handler(update, context):
         "Фрагменты учитываются в указанном порядке.",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
             [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
@@ -8555,7 +8555,7 @@ def mail_pattern_confirm_handler(update, context):
             f"Паттерн: `{pattern}`",
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
                 [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
                  InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
@@ -8591,7 +8591,7 @@ def db_pattern_retry_handler(update, context):
         "Во фрагментах обязательно укажите имя БД из настроек.",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
             [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
@@ -8716,7 +8716,7 @@ def db_pattern_confirm_handler(update, context):
             f"Паттерн: `{pattern}`",
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
                 [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
                  InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
@@ -8764,7 +8764,7 @@ def edit_default_db_pattern_handler(update, context, category: str, index_value:
         "Введите новый regex паттерн темы письма:",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
             [InlineKeyboardButton("❌ Отмена", callback_data=back_callback),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
@@ -8799,7 +8799,7 @@ def delete_default_db_pattern_handler(update, context, category: str, index_valu
     query.edit_message_text(
         "✅ Дефолтный паттерн удалён.",
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
             [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
@@ -8822,7 +8822,7 @@ def zfs_pattern_retry_handler(update, context):
         "Во фрагментах обязательно укажите имя ZFS сервера из настроек.",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
             [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
@@ -8867,7 +8867,7 @@ def zfs_pattern_confirm_handler(update, context):
             f"Паттерн: `{pattern}`",
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
                 [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
                  InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
@@ -8901,7 +8901,7 @@ def proxmox_pattern_retry_handler(update, context):
         "Фрагменты учитываются в указанном порядке.",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
             [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
@@ -8946,7 +8946,7 @@ def proxmox_pattern_confirm_handler(update, context):
             f"Паттерн: `{pattern}`",
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
                 [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
                  InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
@@ -9155,7 +9155,7 @@ def view_patterns_handler(update, context):
 
     back_callback = context.user_data.get('patterns_back', 'settings_backup')
     keyboard.append([
-        InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu'),
+        InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
         InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
         InlineKeyboardButton("✖️ Закрыть", callback_data='close')
     ])
@@ -9199,7 +9199,7 @@ def delete_pattern_handler(update, context, pattern_id):
     query.edit_message_text(
         "✅ Паттерн удалён.",
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
             [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
@@ -9233,7 +9233,7 @@ def edit_pattern_handler(update, context, pattern_id):
         query.edit_message_text(
             "❌ Паттерн не найден.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
                 [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
                  InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
@@ -9277,7 +9277,7 @@ def edit_pattern_handler(update, context, pattern_id):
         f"{prompt}",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
             [InlineKeyboardButton("❌ Отмена", callback_data=back_callback),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
@@ -9698,7 +9698,7 @@ def handle_backup_pattern_input(update, context):
                 f"Паттерн: `{pattern}`",
                 parse_mode='Markdown',
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+                    [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
                     [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
                      InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
                 ])
@@ -9763,7 +9763,7 @@ def handle_backup_pattern_input(update, context):
                 f"Паттерн: `{pattern}`",
                 parse_mode='Markdown',
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+                    [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
                     [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
                      InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
                 ])
@@ -9829,7 +9829,7 @@ def handle_backup_pattern_edit_input(update, context):
                 f"Паттерн: `{new_pattern}`",
                 parse_mode='Markdown',
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+                    [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
                     [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
                      InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
                 ])
@@ -9902,7 +9902,7 @@ def handle_backup_pattern_edit_input(update, context):
                 f"Паттерн: `{new_pattern}`",
                 parse_mode='Markdown',
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+                    [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
                     [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
                      InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
                 ])
@@ -9950,7 +9950,7 @@ def handle_default_db_pattern_edit_input(update, context):
         f"Паттерн: `{new_pattern}`",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
             [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])

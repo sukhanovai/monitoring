@@ -46,7 +46,7 @@ def create_main_menu():
         keyboard.append([InlineKeyboardButton("📦 Остатки 1С", callback_data='backup_stock_loads')])
 
     keyboard.extend([
-        [InlineKeyboardButton("↩️ Назад", callback_data='main_menu')],
+        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
         [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ])
 
@@ -60,7 +60,7 @@ def create_proxmox_menu():
         keyboard.append([InlineKeyboardButton("🖥️ По хостам", callback_data='backup_hosts')])
 
     keyboard.extend([
-        [InlineKeyboardButton("↩️ Назад", callback_data='main_menu')],
+        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
         [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ])
 
@@ -74,7 +74,7 @@ def create_navigation_buttons(back_button='backup_main', refresh_button=None, cl
         buttons.append([InlineKeyboardButton("🔄 Обновить", callback_data=refresh_button)])
     
     buttons.append([InlineKeyboardButton("↩️ Назад", callback_data=back_button)])
-    buttons.append([InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')])
+    buttons.append([InlineKeyboardButton("🏠 На главную", callback_data='main_menu')])
     
     if close:
         buttons.append([InlineKeyboardButton("✖️ Закрыть", callback_data='close')])
@@ -130,7 +130,7 @@ def create_hosts_keyboard(
     
     keyboard.append([
         InlineKeyboardButton("↩️ Назад", callback_data=back_button),
-        InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu'),
+        InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
         InlineKeyboardButton("✖️ Закрыть", callback_data='close')
     ])
     
@@ -176,7 +176,7 @@ def create_databases_keyboard(databases_by_type, problem_db_count=0):
     # Кнопки управления
     keyboard.extend([
         [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')],
-        [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
         [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ])
     
@@ -416,7 +416,7 @@ def show_stale_hosts(query, backup_bot):
         
         keyboard.extend([
             [InlineKeyboardButton("📋 Все хосты", callback_data='backup_hosts')],
-            [InlineKeyboardButton("↩️ Назад", callback_data='main_menu')]
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')]
         ])
         
         query.edit_message_text(
@@ -557,7 +557,7 @@ def show_database_backups_menu(query, backup_bot):
         if not db_by_type:
             message = "🗃️ *Бэкапы баз данных*\n\n❌ Нет данных о бэкапах БД."
             keyboard = [
-                [InlineKeyboardButton("↩️ Назад", callback_data='main_menu')],
+                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
                 [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ]
             try:
@@ -608,7 +608,7 @@ def show_database_backups_menu(query, backup_bot):
                 keyboard.append(current_row)
 
         keyboard.extend([
-            [InlineKeyboardButton("↩️ Назад", callback_data='main_menu'),
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
 
