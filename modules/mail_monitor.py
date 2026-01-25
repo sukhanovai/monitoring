@@ -1085,7 +1085,11 @@ class BackupProcessor:
                             filename,
                             output_path,
                         )
-                processing_result = process_supplier_stock_file(output_path, source.get("id") or source.get("name"))
+                processing_result = process_supplier_stock_file(
+                    output_path,
+                    source.get("id") or source.get("name"),
+                    "mail",
+                )
                 if processing_result:
                     logger.info(
                         "🧩 Обработка остатков выполнена: %s",

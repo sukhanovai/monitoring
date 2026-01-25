@@ -1035,6 +1035,7 @@ def settings_callback_handler(update, context):
                     update,
                     context,
                     source_id=source_id,
+                    source_kind="download",
                     back_callback=back_callback,
                     action_prefix=action_prefix,
                     title="🧩 *Обработка файлов (источник)*",
@@ -1044,6 +1045,7 @@ def settings_callback_handler(update, context):
                     update,
                     context,
                     source_id=source_id,
+                    source_kind="download",
                     back_callback=back_callback,
                 )
             elif action == 'edit' and rule_id:
@@ -1052,6 +1054,7 @@ def settings_callback_handler(update, context):
                     context,
                     rule_id,
                     source_id=source_id,
+                    source_kind="download",
                     back_callback=back_callback,
                 )
             elif action in ('toggle', 'delete', 'activate') and rule_id:
@@ -1065,7 +1068,12 @@ def settings_callback_handler(update, context):
                                 rule["active"] = False
                             break
                 elif action == 'activate':
-                    _set_supplier_stock_processing_active_rule(rules, rule_id, source_id=source_id)
+                    _set_supplier_stock_processing_active_rule(
+                        rules,
+                        rule_id,
+                        source_id=source_id,
+                        source_kind="download",
+                    )
                 elif action == 'delete':
                     rules = [item for item in rules if str(item.get("id")) != rule_id]
                 config.setdefault("processing", {})["rules"] = rules
@@ -1074,6 +1082,7 @@ def settings_callback_handler(update, context):
                     update,
                     context,
                     source_id=source_id,
+                    source_kind="download",
                     back_callback=back_callback,
                     action_prefix=action_prefix,
                     title="🧩 *Обработка файлов (источник)*",
@@ -1090,6 +1099,7 @@ def settings_callback_handler(update, context):
                     update,
                     context,
                     source_id=source_id,
+                    source_kind="mail",
                     back_callback=back_callback,
                     action_prefix=action_prefix,
                     title="🧩 *Обработка файлов (почта)*",
@@ -1099,6 +1109,7 @@ def settings_callback_handler(update, context):
                     update,
                     context,
                     source_id=source_id,
+                    source_kind="mail",
                     back_callback=back_callback,
                 )
             elif action == 'edit' and rule_id:
@@ -1107,6 +1118,7 @@ def settings_callback_handler(update, context):
                     context,
                     rule_id,
                     source_id=source_id,
+                    source_kind="mail",
                     back_callback=back_callback,
                 )
             elif action in ('toggle', 'delete', 'activate') and rule_id:
@@ -1120,7 +1132,12 @@ def settings_callback_handler(update, context):
                                 rule["active"] = False
                             break
                 elif action == 'activate':
-                    _set_supplier_stock_processing_active_rule(rules, rule_id, source_id=source_id)
+                    _set_supplier_stock_processing_active_rule(
+                        rules,
+                        rule_id,
+                        source_id=source_id,
+                        source_kind="mail",
+                    )
                 elif action == 'delete':
                     rules = [item for item in rules if str(item.get("id")) != rule_id]
                 config.setdefault("processing", {})["rules"] = rules
@@ -1129,6 +1146,7 @@ def settings_callback_handler(update, context):
                     update,
                     context,
                     source_id=source_id,
+                    source_kind="mail",
                     back_callback=back_callback,
                     action_prefix=action_prefix,
                     title="🧩 *Обработка файлов (почта)*",
@@ -2741,6 +2759,7 @@ def show_supplier_stock_processing_menu(
     update,
     context,
     source_id: str | None = None,
+    source_kind: str | None = None,
     back_callback: str = "settings_ext_supplier_stock",
     action_prefix: str = "supplier_stock_processing",
     title: str = "🧩 *Обработка файлов остатков*",
@@ -2761,6 +2780,7 @@ def show_supplier_stock_processing_menu(
     context.user_data.pop('supplier_stock_processing_output_names', None)
     context.user_data.pop('supplier_stock_processing_rule_dirty', None)
     context.user_data['supplier_stock_processing_source_id'] = source_id
+    context.user_data['supplier_stock_processing_source_kind'] = source_kind
     context.user_data['supplier_stock_processing_back'] = back_callback
     context.user_data['supplier_stock_processing_action_prefix'] = action_prefix
     context.user_data['supplier_stock_processing_title'] = title
@@ -2768,7 +2788,10 @@ def show_supplier_stock_processing_menu(
     config = get_supplier_stock_config()
     rules = config.get("processing", {}).get("rules", [])
     if source_id is not None:
-        rules = [rule for rule in rules if str(rule.get("source_id")) == str(source_id)]
+        rules = [
+            rule for rule in rules
+            if _processing_rule_matches_source(rule, source_id, source_kind, config)
+        ]
 
     if not rules:
         message = f"{title}\n\n❌ Правила обработки не настроены."
@@ -2867,10 +2890,14 @@ def _set_supplier_stock_processing_active_rule(
     rules: list[dict],
     rule_id: str,
     source_id: str | None = None,
+    source_kind: str | None = None,
 ) -> None:
+    config = get_supplier_stock_config()
     target_active = None
     for rule in rules:
         if source_id is not None and str(rule.get("source_id")) != str(source_id):
+            continue
+        if source_kind and not _processing_rule_matches_source(rule, source_id, source_kind, config):
             continue
         if str(rule.get("id")) == str(rule_id):
             target_active = not rule.get("active", False)
@@ -2929,25 +2956,69 @@ def _fill_processing_rule_from_source(data: dict) -> None:
     if not source_id:
         return
     config = get_supplier_stock_config()
+    source_kind, source = _resolve_processing_rule_source(data, config)
     source_name = None
     source_output = None
-    download_sources = config.get("download", {}).get("sources", [])
-    download_source = next((item for item in download_sources if str(item.get("id")) == str(source_id)), None)
-    if download_source:
-        source_name = download_source.get("name") or source_id
-        source_output = download_source.get("output_name")
-    if not download_source:
-        mail_sources = config.get("mail", {}).get("sources", [])
-        mail_source = next((item for item in mail_sources if str(item.get("id")) == str(source_id)), None)
-        if mail_source:
-            source_name = mail_source.get("name") or source_id
-            source_output = mail_source.get("output_template")
+    if source_kind == "download" and source:
+        source_name = source.get("name") or source_id
+        source_output = source.get("output_name")
+    elif source_kind == "mail" and source:
+        source_name = source.get("name") or source_id
+        source_output = source.get("output_template")
     if source_name:
         data["name"] = source_name
     if source_output:
         data["source_file"] = source_output
     if source_output and not data.get("output_name"):
         data["output_name"] = source_output
+    if source_kind and not data.get("source_kind"):
+        data["source_kind"] = source_kind
+
+def _find_supplier_source(sources: list[dict], source_id: str) -> dict | None:
+    return next((item for item in sources if str(item.get("id")) == str(source_id)), None)
+
+def _resolve_processing_rule_source(data: dict, config: dict) -> tuple[str | None, dict | None]:
+    source_id = data.get("source_id")
+    if not source_id:
+        return None, None
+    download_sources = config.get("download", {}).get("sources", [])
+    mail_sources = config.get("mail", {}).get("sources", [])
+    download_source = _find_supplier_source(download_sources, source_id)
+    mail_source = _find_supplier_source(mail_sources, source_id)
+    rule_kind = data.get("source_kind")
+    if rule_kind == "download" and download_source:
+        return "download", download_source
+    if rule_kind == "mail" and mail_source:
+        return "mail", mail_source
+    if download_source and not mail_source:
+        return "download", download_source
+    if mail_source and not download_source:
+        return "mail", mail_source
+    if download_source and mail_source:
+        source_file = str(data.get("source_file") or "")
+        if source_file and source_file == str(download_source.get("output_name") or ""):
+            return "download", download_source
+        if source_file and source_file == str(mail_source.get("output_template") or ""):
+            return "mail", mail_source
+        rule_name = str(data.get("name") or "")
+        if rule_name and rule_name == str(download_source.get("name") or ""):
+            return "download", download_source
+        if rule_name and rule_name == str(mail_source.get("name") or ""):
+            return "mail", mail_source
+    return None, None
+
+def _processing_rule_matches_source(
+    rule: dict,
+    source_id: str | None,
+    source_kind: str | None,
+    config: dict,
+) -> bool:
+    if source_id is not None and str(rule.get("source_id")) != str(source_id):
+        return False
+    if not source_kind:
+        return True
+    resolved_kind, _ = _resolve_processing_rule_source(rule, config)
+    return resolved_kind == source_kind
 
 def _processing_rule_summary(data: dict) -> str:
     requires_processing = data.get("requires_processing", True)
@@ -3332,6 +3403,7 @@ def supplier_stock_start_processing_rule_menu(
     context,
     rule_id: str | None = None,
     source_id: str | None = None,
+    source_kind: str | None = None,
     back_callback: str = "settings_ext_supplier_stock",
 ) -> None:
     query = update.callback_query
@@ -3373,6 +3445,9 @@ def supplier_stock_start_processing_rule_menu(
     if source_id:
         data['source_id'] = source_id
         context.user_data['supplier_stock_processing_source_id'] = source_id
+    if source_kind:
+        data['source_kind'] = source_kind
+        context.user_data['supplier_stock_processing_source_kind'] = source_kind
     _fill_processing_rule_from_source(data)
     context.user_data['supplier_stock_processing_rule_data'] = data
     context.user_data['supplier_stock_processing_back'] = back_callback
@@ -3800,7 +3875,10 @@ def show_supplier_stock_source_settings(update, context, source_id: str):
     unpack_text = "вкл" if source.get("unpack_archive", False) else "выкл"
 
     rules = config.get("processing", {}).get("rules", [])
-    matched_rules = [rule for rule in rules if str(rule.get("source_id")) == str(source_id)]
+    matched_rules = [
+        rule for rule in rules
+        if _processing_rule_matches_source(rule, source_id, "download", config)
+    ]
 
     message_lines = [
         f"⚙️ *Источник остатков*\n",
@@ -3900,7 +3978,10 @@ def show_supplier_stock_mail_source_settings(update, context, source_id: str):
     unpack_text = "вкл" if unpack_enabled else "выкл"
 
     rules = config.get("processing", {}).get("rules", [])
-    matched_rules = [rule for rule in rules if str(rule.get("source_id")) == str(source_id)]
+    matched_rules = [
+        rule for rule in rules
+        if _processing_rule_matches_source(rule, source_id, "mail", config)
+    ]
 
     message_lines = [
         "📎 *Правило вложений*\n",
@@ -4072,6 +4153,7 @@ def supplier_stock_start_processing_wizard(
     update,
     context,
     source_id: str | None = None,
+    source_kind: str | None = None,
     back_callback: str = "settings_ext_supplier_stock",
 ) -> None:
     """Запуск мастера добавления правила обработки."""
@@ -4088,10 +4170,13 @@ def supplier_stock_start_processing_wizard(
     context.user_data['supplier_stock_processing_data'] = {}
     context.user_data['supplier_stock_processing_add'] = True
     context.user_data['supplier_stock_processing_source_id'] = source_id
+    context.user_data['supplier_stock_processing_source_kind'] = source_kind
     context.user_data['supplier_stock_processing_back'] = back_callback
 
     if source_id:
         context.user_data['supplier_stock_processing_data']['source_id'] = source_id
+    if source_kind:
+        context.user_data['supplier_stock_processing_data']['source_kind'] = source_kind
 
     query.edit_message_text(
         "➕ *Новое правило обработки*\n\nВведите название правила:",
@@ -4106,6 +4191,7 @@ def supplier_stock_start_processing_edit_wizard(
     context,
     rule_id: str,
     source_id: str | None = None,
+    source_kind: str | None = None,
     back_callback: str = "settings_ext_supplier_stock",
 ) -> None:
     """Запуск мастера редактирования правила обработки."""
@@ -4136,10 +4222,13 @@ def supplier_stock_start_processing_edit_wizard(
     context.user_data['supplier_stock_processing_data'] = dict(rule)
     context.user_data['supplier_stock_processing_stage'] = 'edit_name'
     context.user_data['supplier_stock_processing_source_id'] = source_id
+    context.user_data['supplier_stock_processing_source_kind'] = source_kind
     context.user_data['supplier_stock_processing_back'] = back_callback
 
     if source_id:
         context.user_data['supplier_stock_processing_data']['source_id'] = source_id
+    if source_kind:
+        context.user_data['supplier_stock_processing_data']['source_kind'] = source_kind
 
     query.edit_message_text(
         f"✏️ *Редактирование правила обработки*\n\n"
@@ -4158,8 +4247,11 @@ def supplier_stock_handle_processing_input(update, context):
     raw_input = update.message.text or ""
     user_input = raw_input.strip()
     source_id = context.user_data.get('supplier_stock_processing_source_id')
+    source_kind = context.user_data.get('supplier_stock_processing_source_kind')
     if source_id:
         data['source_id'] = source_id
+    if source_kind:
+        data['source_kind'] = source_kind
     back_callback = context.user_data.get('supplier_stock_processing_back', 'supplier_stock_processing')
 
     if context.user_data.get('supplier_stock_processing_field'):
@@ -4169,6 +4261,8 @@ def supplier_stock_handle_processing_input(update, context):
         rule_data = context.user_data.get('supplier_stock_processing_rule_data', {})
         if source_id:
             rule_data['source_id'] = source_id
+        if source_kind:
+            rule_data['source_kind'] = source_kind
         variant_fields = {
             'article_col',
             'article_filter',
