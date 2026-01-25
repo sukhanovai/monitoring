@@ -3830,14 +3830,22 @@ def show_supplier_stock_source_settings(update, context, source_id: str):
 
     keyboard = [
         [InlineKeyboardButton("— Настройки источника —", callback_data='supplier_stock_noop')],
-        [InlineKeyboardButton("✏️ Название", callback_data=f'supplier_stock_source_field|{source_id}|name')],
-        [InlineKeyboardButton("🔗 URL", callback_data=f'supplier_stock_source_field|{source_id}|url')],
-        [InlineKeyboardButton("🔎 Поиск ссылки", callback_data=f'supplier_stock_source_field|{source_id}|discover')],
-        [InlineKeyboardButton("🧩 Переменные", callback_data=f'supplier_stock_source_field|{source_id}|vars')],
-        [InlineKeyboardButton("📄 Имя файла", callback_data=f'supplier_stock_source_field|{source_id}|output_name')],
-        [InlineKeyboardButton("🔐 Авторизация", callback_data=f'supplier_stock_source_field|{source_id}|auth')],
-        [InlineKeyboardButton("📬 Предзапрос", callback_data=f'supplier_stock_source_field|{source_id}|pre_request')],
-        [InlineKeyboardButton("⚙️ Опции", callback_data=f'supplier_stock_source_field|{source_id}|options')],
+        [
+            InlineKeyboardButton("✏️ Название", callback_data=f'supplier_stock_source_field|{source_id}|name'),
+            InlineKeyboardButton("🔗 URL", callback_data=f'supplier_stock_source_field|{source_id}|url'),
+        ],
+        [
+            InlineKeyboardButton("🔎 Поиск ссылки", callback_data=f'supplier_stock_source_field|{source_id}|discover'),
+            InlineKeyboardButton("🧩 Переменные", callback_data=f'supplier_stock_source_field|{source_id}|vars'),
+        ],
+        [
+            InlineKeyboardButton("📄 Имя файла", callback_data=f'supplier_stock_source_field|{source_id}|output_name'),
+            InlineKeyboardButton("🔐 Авторизация", callback_data=f'supplier_stock_source_field|{source_id}|auth'),
+        ],
+        [
+            InlineKeyboardButton("📬 Предзапрос", callback_data=f'supplier_stock_source_field|{source_id}|pre_request'),
+            InlineKeyboardButton("⚙️ Опции", callback_data=f'supplier_stock_source_field|{source_id}|options'),
+        ],
         [
             InlineKeyboardButton("🔁 Включить/выключить", callback_data=f'supplier_stock_source_toggle_{source_id}'),
             InlineKeyboardButton(f"📦 Распаковка: {unpack_text}", callback_data=f'supplier_stock_source_unpack_toggle_{source_id}')
@@ -3920,13 +3928,21 @@ def show_supplier_stock_mail_source_settings(update, context, source_id: str):
 
     keyboard = [
         [InlineKeyboardButton("— Настройки правила —", callback_data='supplier_stock_noop')],
-        [InlineKeyboardButton("✏️ Название", callback_data=f'supplier_stock_mail_field|{source_id}|name')],
-        [InlineKeyboardButton("👤 Отправитель", callback_data=f'supplier_stock_mail_field|{source_id}|sender')],
-        [InlineKeyboardButton("📝 Тема", callback_data=f'supplier_stock_mail_field|{source_id}|subject')],
-        [InlineKeyboardButton("🧾 MIME", callback_data=f'supplier_stock_mail_field|{source_id}|mime')],
-        [InlineKeyboardButton("📄 Имя файла", callback_data=f'supplier_stock_mail_field|{source_id}|filename')],
-        [InlineKeyboardButton("🔢 Кол-во вложений", callback_data=f'supplier_stock_mail_field|{source_id}|expected')],
-        [InlineKeyboardButton("📦 Шаблон файла", callback_data=f'supplier_stock_mail_field|{source_id}|output')],
+        [
+            InlineKeyboardButton("✏️ Название", callback_data=f'supplier_stock_mail_field|{source_id}|name'),
+            InlineKeyboardButton("👤 Отправитель", callback_data=f'supplier_stock_mail_field|{source_id}|sender'),
+        ],
+        [
+            InlineKeyboardButton("📝 Тема", callback_data=f'supplier_stock_mail_field|{source_id}|subject'),
+            InlineKeyboardButton("🧾 MIME", callback_data=f'supplier_stock_mail_field|{source_id}|mime'),
+        ],
+        [
+            InlineKeyboardButton("📄 Имя файла", callback_data=f'supplier_stock_mail_field|{source_id}|filename'),
+            InlineKeyboardButton("🔢 Кол-во вложений", callback_data=f'supplier_stock_mail_field|{source_id}|expected'),
+        ],
+        [
+            InlineKeyboardButton("📦 Шаблон файла", callback_data=f'supplier_stock_mail_field|{source_id}|output'),
+        ],
         [
             InlineKeyboardButton("🔁 Включить/выключить", callback_data=f'supplier_stock_mail_source_toggle_{source_id}'),
             InlineKeyboardButton(f"📦 Распаковка: {unpack_text}", callback_data=f'supplier_stock_mail_source_unpack_toggle_{source_id}')
