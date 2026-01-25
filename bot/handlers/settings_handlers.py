@@ -978,6 +978,21 @@ def settings_callback_handler(update, context):
                 context.user_data['supplier_stock_processing_rule_dirty'] = True
                 _persist_processing_rule_data(context)
                 show_supplier_stock_processing_columns_menu(update, context, variant_index)
+            elif action == 'toggle_article_filter_column' and len(parts) > 3:
+                column_index = int(parts[3])
+                data = context.user_data.get('supplier_stock_processing_rule_data', {})
+                variant = _ensure_processing_variant(data, variant_index)
+                columns_count = variant.get("data_columns_count") or len(variant.get("data_columns", []))
+                _sync_variant_columns(variant, columns_count)
+                filters = list(variant.get("use_article_filter_columns", []))
+                if 0 <= column_index < len(filters):
+                    filters[column_index] = not filters[column_index]
+                    variant["use_article_filter_columns"] = filters
+                    data['variants'][variant_index] = variant
+                    context.user_data['supplier_stock_processing_rule_data'] = data
+                    context.user_data['supplier_stock_processing_rule_dirty'] = True
+                    _persist_processing_rule_data(context)
+                show_supplier_stock_processing_columns_menu(update, context, variant_index)
             elif action == 'add_column':
                 data = context.user_data.get('supplier_stock_processing_rule_data', {})
                 variant = _ensure_processing_variant(data, variant_index)
@@ -2803,6 +2818,7 @@ def _default_processing_variant() -> dict:
         "article_col": None,
         "article_filter": None,
         "use_article_filter": None,
+        "use_article_filter_columns": [],
         "article_prefix": "",
         "data_columns": [],
         "data_columns_count": 0,
@@ -2840,6 +2856,10 @@ def _sync_variant_columns(variant: dict, count: int) -> None:
     while len(names) < count:
         names.append("")
     variant["output_names"] = names[:count]
+    filters = list(variant.get("use_article_filter_columns", []))
+    while len(filters) < count:
+        filters.append(True)
+    variant["use_article_filter_columns"] = filters[:count]
 
 def _remove_variant_column(variant: dict, index: int) -> bool:
     columns_count = variant.get("data_columns_count") or max(
@@ -2850,12 +2870,16 @@ def _remove_variant_column(variant: dict, index: int) -> bool:
         return False
     columns = list(variant.get("data_columns", []))
     names = list(variant.get("output_names", []))
+    filters = list(variant.get("use_article_filter_columns", []))
     if index < len(columns):
         columns.pop(index)
     if index < len(names):
         names.pop(index)
+    if index < len(filters):
+        filters.pop(index)
     variant["data_columns"] = columns
     variant["output_names"] = names
+    variant["use_article_filter_columns"] = filters
     _sync_variant_columns(variant, max(columns_count - 1, 0))
     return True
 
@@ -3122,6 +3146,7 @@ def show_supplier_stock_processing_columns_menu(update, context, variant_index: 
         _sync_variant_columns(variant, data_columns_count)
     columns = variant.get("data_columns", [])
     names = variant.get("output_names", [])
+    column_filters = variant.get("use_article_filter_columns", [])
 
     use_article_filter = variant.get("use_article_filter")
     if use_article_filter is None:
@@ -3135,7 +3160,12 @@ def show_supplier_stock_processing_columns_menu(update, context, variant_index: 
     for idx in range(data_columns_count or 0):
         col_value = columns[idx] if idx < len(columns) else "не задано"
         name_value = names[idx] if idx < len(names) else "не задано"
-        message_lines.append(f"{idx + 1}. Колонка: `{col_value or 'не задано'}` → файл: `{_escape_pattern_text(name_value)}`")
+        filter_enabled = column_filters[idx] if idx < len(column_filters) else True
+        filter_text_line = "да" if filter_enabled else "нет"
+        message_lines.append(
+            f"{idx + 1}. Колонка: `{col_value or 'не задано'}` → файл: `{_escape_pattern_text(name_value)}`"
+            f" (фильтр: `{filter_text_line}`)"
+        )
     message = "\n".join(message_lines)
 
     toggle_text = (
@@ -3161,6 +3191,18 @@ def show_supplier_stock_processing_columns_menu(update, context, variant_index: 
                     "🗑️",
                     callback_data=f'supplier_stock_processing_columns|remove_column|{variant_index}|{idx}'
                 ),
+            ])
+            filter_enabled = column_filters[idx] if idx < len(column_filters) else True
+            filter_toggle_text = (
+                f"✅ Фильтр артикулов {idx + 1}"
+                if filter_enabled
+                else f"⛔️ Фильтр артикулов {idx + 1}"
+            )
+            keyboard.append([
+                InlineKeyboardButton(
+                    filter_toggle_text,
+                    callback_data=f'supplier_stock_processing_columns|toggle_article_filter_column|{variant_index}|{idx}'
+                )
             ])
         keyboard.append([InlineKeyboardButton("— Имена файлов —", callback_data='supplier_stock_noop')])
         for idx in range(data_columns_count):
