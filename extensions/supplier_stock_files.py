@@ -841,7 +841,7 @@ def _process_variant(
             use_article_filter_columns[idx] if idx < len(use_article_filter_columns) else True
         )
         for row in rows:
-            article = _get_cell(row, article_col)
+            article = _get_cell(row, article_col, preserve_whitespace=True)
             if not article:
                 continue
             if compiled_filter and use_filter_for_column and not compiled_filter.search(article):
@@ -892,12 +892,18 @@ def _process_variant(
     return {"status": "success", "outputs": outputs}
 
 
-def _get_cell(row: list[str], index: int) -> str:
+def _get_cell(row: list[str], index: int, *, preserve_whitespace: bool = False) -> str:
     if index <= 0:
         return ""
     if index - 1 >= len(row):
         return ""
-    return str(row[index - 1]).strip()
+    value = row[index - 1]
+    if value is None:
+        return ""
+    text = str(value)
+    if preserve_whitespace:
+        return text
+    return text.strip()
 
 
 def _parse_quantity(value: str) -> str | None:
