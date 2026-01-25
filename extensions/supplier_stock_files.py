@@ -697,7 +697,7 @@ def _read_csv_table(file_path: Path) -> list[list[str]]:
         file.seek(0)
         delimiter = _guess_csv_delimiter(sample)
         reader = csv.reader(file, delimiter=delimiter)
-        return [[str(value).strip() for value in row] for row in reader]
+        return [[str(value) for value in row] for row in reader]
 
 
 def _guess_csv_delimiter(sample: str) -> str:
@@ -771,7 +771,7 @@ def _normalize_cell(value: Any) -> str:
     if isinstance(value, float):
         if math.isfinite(value) and value.is_integer():
             return str(int(value))
-    return str(value).strip()
+    return str(value)
 
 
 def _process_variant(
@@ -798,6 +798,7 @@ def _process_variant(
         use_article_filter_columns.extend([True] * (len(data_columns) - len(use_article_filter_columns)))
     use_article_filter_columns = use_article_filter_columns[:len(data_columns)]
     article_prefix = variant.get("article_prefix") or ""
+    article_postfix = variant.get("article_postfix") or ""
     orc_config = variant.get("orc", {}) if isinstance(variant.get("orc"), dict) else {}
     orc_enabled = bool(orc_config.get("enabled"))
     orc_column = int(orc_config.get("column") or 0)
@@ -823,7 +824,8 @@ def _process_variant(
             use_article_filter_columns[idx] if idx < len(use_article_filter_columns) else True
         )
         for row in rows:
-            article = _get_cell(row, article_col)
+            article_raw = _get_cell(row, article_col, preserve_whitespace=True)
+            article = article_raw.strip()
             if not article:
                 continue
             if compiled_filter and use_filter_for_column and not compiled_filter.search(article):
@@ -832,7 +834,7 @@ def _process_variant(
             quant_value = _parse_quantity(quant_raw)
             if quant_value is None:
                 continue
-            items.append([f"{article_prefix}{article}", quant_value])
+            items.append([f"{article_prefix}{article_raw}{article_postfix}", quant_value])
             if orc_active:
                 orc_prefix = orc_config.get("prefix", "")
                 stor = orc_config.get("stor", "")
@@ -842,7 +844,7 @@ def _process_variant(
                 if orc_quant_value is None:
                     continue
                 date_text = now.strftime(processing.get("date_format", "%Y-%m-%d %H:%M"))
-                orc_items.append([f"{orc_prefix}{article}", stor, orc_quant_value, date_text])
+                orc_items.append([f"{orc_prefix}{article_raw}", stor, orc_quant_value, date_text])
 
         output_path = _resolve_output_path(file_path.parent, output_name, output_format)
         output_path = _write_output_file(output_path, output_format, ["Art.", "Quant."], items)
@@ -874,12 +876,18 @@ def _process_variant(
     return {"status": "success", "outputs": outputs}
 
 
-def _get_cell(row: list[str], index: int) -> str:
+def _get_cell(row: list[str], index: int, *, preserve_whitespace: bool = False) -> str:
     if index <= 0:
         return ""
     if index - 1 >= len(row):
         return ""
-    return str(row[index - 1]).strip()
+    value = row[index - 1]
+    if value is None:
+        return ""
+    text = str(value)
+    if preserve_whitespace:
+        return text
+    return text.strip()
 
 
 def _parse_quantity(value: str) -> str | None:
