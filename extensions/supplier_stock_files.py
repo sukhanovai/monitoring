@@ -441,11 +441,12 @@ def get_supplier_stock_reports(limit: int = 20) -> List[Dict[str, Any]]:
 def process_supplier_stock_file(
     file_path: str | Path,
     source_id: str | None = None,
+    source_kind: str | None = None,
     now: datetime | None = None,
 ) -> Dict[str, Any] | None:
     config = get_supplier_stock_config()
     path = Path(file_path)
-    return _process_supplier_stock_file(path, config, now or datetime.now(), source_id)
+    return _process_supplier_stock_file(path, config, now or datetime.now(), source_id, source_kind)
 
 
 def run_supplier_stock_fetch() -> Dict[str, Any]:
@@ -526,7 +527,13 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
                         entry["unpacked_path"] = str(unpacked_path)
                         output_path = unpacked_path
                         _log("📦 Остатки поставщиков: %s распакован в %s", entry["source_id"], unpacked_path)
-                processing_result = _process_supplier_stock_file(output_path, config, now, source_id)
+                processing_result = _process_supplier_stock_file(
+                    output_path,
+                    config,
+                    now,
+                    source_id,
+                    "download",
+                )
                 if processing_result:
                     entry["processing"] = processing_result
                 archive_path = _archive_original_file(output_path, archive_dir, now)
@@ -625,6 +632,7 @@ def _process_supplier_stock_file(
     config: Dict[str, Any],
     now: datetime,
     source_id: str | None = None,
+    source_kind: str | None = None,
 ) -> Dict[str, Any] | None:
     processing = config.get("processing", {})
     rules = processing.get("rules", [])
@@ -638,6 +646,11 @@ def _process_supplier_stock_file(
         candidate_rules = [
             rule for rule in candidate_rules
             if not rule.get("source_id") or str(rule.get("source_id")) == str(source_id)
+        ]
+    if source_kind:
+        candidate_rules = [
+            rule for rule in candidate_rules
+            if _processing_rule_matches_kind(rule, source_kind, config)
         ]
     active_rules = [rule for rule in candidate_rules if rule.get("active")]
     if active_rules:
@@ -664,8 +677,56 @@ def _process_supplier_stock_file(
         "rules": matched_rules,
         "results": results,
         "source_id": source_id,
+        "source_kind": source_kind,
         "file": str(file_path),
     }
+
+
+def _processing_rule_matches_kind(
+    rule: Dict[str, Any],
+    source_kind: str,
+    config: Dict[str, Any],
+) -> bool:
+    rule_kind = rule.get("source_kind")
+    if rule_kind:
+        return rule_kind == source_kind
+    resolved_kind = _resolve_processing_rule_source_kind(rule, config)
+    return resolved_kind == source_kind
+
+
+def _resolve_processing_rule_source_kind(
+    rule: Dict[str, Any],
+    config: Dict[str, Any],
+) -> str | None:
+    source_id = rule.get("source_id")
+    if not source_id:
+        return None
+    download_sources = config.get("download", {}).get("sources", [])
+    mail_sources = config.get("mail", {}).get("sources", [])
+    download_source = next(
+        (item for item in download_sources if str(item.get("id")) == str(source_id)),
+        None,
+    )
+    mail_source = next(
+        (item for item in mail_sources if str(item.get("id")) == str(source_id)),
+        None,
+    )
+    if download_source and not mail_source:
+        return "download"
+    if mail_source and not download_source:
+        return "mail"
+    if download_source and mail_source:
+        source_file = str(rule.get("source_file") or "")
+        if source_file and source_file == str(download_source.get("output_name") or ""):
+            return "download"
+        if source_file and source_file == str(mail_source.get("output_template") or ""):
+            return "mail"
+        rule_name = str(rule.get("name") or "")
+        if rule_name and rule_name == str(download_source.get("name") or ""):
+            return "download"
+        if rule_name and rule_name == str(mail_source.get("name") or ""):
+            return "mail"
+    return None
 
 
 def _processing_rule_matches(rule: Dict[str, Any], file_path: Path) -> bool:
