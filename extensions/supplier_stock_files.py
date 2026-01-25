@@ -851,7 +851,8 @@ def _process_variant(
             quant_value = _parse_quantity(quant_raw)
             if quant_value is None:
                 continue
-            items.append([f"{article_prefix}{article_raw}{article_postfix}", quant_value])
+            article_value = _apply_article_postfix(f"{article_prefix}{article_raw}", article_postfix)
+            items.append([article_value, quant_value])
             if orc_active:
                 orc_prefix = orc_config.get("prefix", "")
                 stor = orc_config.get("stor", "")
@@ -923,6 +924,14 @@ def _parse_quantity(value: str) -> str | None:
     if number.is_integer():
         return str(int(number))
     return str(number)
+
+
+def _apply_article_postfix(article: str, postfix: str) -> str:
+    if not postfix:
+        return article
+    if postfix[0].isspace() or article.endswith((" ", "\t")):
+        return f"{article}{postfix}"
+    return f"{article} {postfix}"
 
 
 def _resolve_output_path(folder: Path, output_name: str, output_format: str) -> Path:
