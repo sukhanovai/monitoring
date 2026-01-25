@@ -1,11 +1,11 @@
 """
 /bot/handlers/callbacks.py
-Server Monitoring System v8.2.30
+Server Monitoring System v8.2.31
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 A single router for callbacks.
 Система мониторинга серверов
-Версия: 8.2.30
+Версия: 8.2.31
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единый router callback’ов.
