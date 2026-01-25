@@ -837,14 +837,15 @@ def _process_variant(
         orc_output = None
         orc_config = variant.get("orc", {}) if isinstance(variant.get("orc"), dict) else {}
         if orc_config.get("enabled"):
+            orc_output_format = (orc_config.get("output_format") or output_format).lower()
             orc_output_path = _resolve_output_path(
                 file_path.parent,
                 _append_suffix_to_name(output_name, "_orc"),
-                output_format,
+                orc_output_format,
             )
             orc_output_path = _write_output_file(
                 orc_output_path,
-                output_format,
+                orc_output_format,
                 ["Art", "Stor", "Quant", "Date"],
                 orc_items,
             )
