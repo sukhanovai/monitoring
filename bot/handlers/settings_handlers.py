@@ -2795,7 +2795,13 @@ def _default_processing_variant() -> dict:
         "data_columns_count": 0,
         "output_names": [],
         "output_format": None,
-        "orc": {"enabled": False, "prefix": "", "stor": "", "column": None},
+        "orc": {
+            "enabled": False,
+            "prefix": "",
+            "stor": "",
+            "column": None,
+            "output_format": None,
+        },
     }
 
 def _ensure_processing_variant(data: dict, index: int) -> dict:
@@ -3001,6 +3007,13 @@ def show_supplier_stock_processing_variant_menu(update, context, variant_index: 
     orc_enabled = orc.get("enabled", False)
     orc_text = "да" if orc_enabled else "нет"
     orc_column = orc.get("column") or "не задано"
+    orc_output_format = orc.get("output_format")
+    if orc_output_format:
+        orc_output_text = orc_output_format
+    elif output_format != "не задано":
+        orc_output_text = f"как основной ({output_format})"
+    else:
+        orc_output_text = "не задано"
 
     message = (
         "📦 *Настройка файла обработки*\n\n"
@@ -3012,7 +3025,10 @@ def show_supplier_stock_processing_variant_menu(update, context, variant_index: 
         f"• Файл для ОРК: `{orc_text}`"
     )
     if orc_enabled:
-        message += f"\n• Колонка данных для ОРК: `{orc_column}`"
+        message += (
+            f"\n• Колонка данных для ОРК: `{orc_column}`"
+            f"\n• Формат файла ОРК на выходе: `{_escape_pattern_text(orc_output_text)}`"
+        )
 
     keyboard = [
         [InlineKeyboardButton("— Настройки файла —", callback_data='supplier_stock_noop')],
@@ -3058,6 +3074,12 @@ def show_supplier_stock_processing_variant_menu(update, context, variant_index: 
             [InlineKeyboardButton("🏷️ Префикс в артикуле", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_prefix')],
             [InlineKeyboardButton("📦 Stor", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_stor')],
             [InlineKeyboardButton("📈 Колонка с данными", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_column')],
+            [
+                InlineKeyboardButton(
+                    "🧾 Формат файла ОРК на выходе",
+                    callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_output_format'
+                )
+            ],
         ])
 
     keyboard.append([
@@ -3149,12 +3171,21 @@ def show_supplier_stock_processing_orc_menu(update, context, variant_index: int)
     orc_prefix = _escape_pattern_text(orc.get("prefix") or "не задано")
     orc_stor = _escape_pattern_text(orc.get("stor") or "не задано")
     orc_column = orc.get("column") or "не задано"
+    base_output_format = variant.get("output_format")
+    orc_output_format = orc.get("output_format")
+    if orc_output_format:
+        orc_output_text = orc_output_format
+    elif base_output_format:
+        orc_output_text = f"как основной ({base_output_format})"
+    else:
+        orc_output_text = "не задано"
 
     message = (
         "📦 *Файл для ОРК*\n\n"
         f"• Префикс в артикуле: `{orc_prefix}`\n"
         f"• Stor: `{orc_stor}`\n"
-        f"• Колонка с данными: `{orc_column}`"
+        f"• Колонка с данными: `{orc_column}`\n"
+        f"• Формат файла ОРК на выходе: `{_escape_pattern_text(orc_output_text)}`"
     )
 
     keyboard = [
@@ -3162,6 +3193,12 @@ def show_supplier_stock_processing_orc_menu(update, context, variant_index: int)
         [InlineKeyboardButton("🏷️ Префикс в артикуле", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_prefix')],
         [InlineKeyboardButton("📦 Stor", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_stor')],
         [InlineKeyboardButton("📈 Колонка с данными", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_column')],
+        [
+            InlineKeyboardButton(
+                "🧾 Формат файла ОРК на выходе",
+                callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_output_format'
+            )
+        ],
         [
             InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_processing_rule|menu'),
             InlineKeyboardButton("✖️ Закрыть", callback_data='close')
@@ -3271,6 +3308,10 @@ def supplier_stock_start_processing_field_edit(
         "orc_prefix": "Введите префикс артикула для файла ОРК (или '-' если не нужен):",
         "orc_stor": "Введите параметр Stor для файла ОРК:",
         "orc_column": "Введите номер колонки с данными для файла ОРК:",
+        "orc_output_format": (
+            "Введите формат файла ОРК на выходе (xls, xlsx, csv) "
+            "или '-' чтобы использовать формат основного файла:"
+        ),
     }
     prompt = prompts.get(field, "Введите значение:")
     if field == "output_name" and variant_index is not None:
@@ -4006,6 +4047,7 @@ def supplier_stock_handle_processing_input(update, context):
             'orc_prefix',
             'orc_stor',
             'orc_column',
+            'orc_output_format',
         }
         if variant_index is not None and field in variant_fields:
             variant = _ensure_processing_variant(rule_data, variant_index)
@@ -4080,6 +4122,19 @@ def supplier_stock_handle_processing_input(update, context):
                 orc = variant.get("orc", {})
                 orc['column'] = col_value
                 variant['orc'] = orc
+            elif field == 'orc_output_format':
+                if user_input in ('-', ''):
+                    orc = variant.get("orc", {})
+                    orc.pop('output_format', None)
+                    variant['orc'] = orc
+                else:
+                    format_value = user_input.lower()
+                    if format_value not in ('xls', 'xlsx', 'csv'):
+                        update.message.reply_text("❌ Допустимые форматы: xls, xlsx, csv.")
+                        return None
+                    orc = variant.get("orc", {})
+                    orc['output_format'] = format_value
+                    variant['orc'] = orc
             rule_data['variants'][variant_index] = variant
         else:
             if field == 'name':
