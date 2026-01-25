@@ -100,11 +100,18 @@ class MorningReport:
             show_mail = extension_manager.is_extension_enabled('mail_backup_monitor')
             show_backups = show_proxmox or show_databases or show_mail
             if show_backups:
+                unavailable_hosts = set()
+                for server in status.get("failed", []):
+                    if server.get("name"):
+                        unavailable_hosts.add(server.get("name"))
+                    if server.get("ip"):
+                        unavailable_hosts.add(server.get("ip"))
                 backup_summary, backup_has_issues = self.get_backup_summary_for_report(
                     24 if is_manual else 16,
                     include_proxmox=show_proxmox,
                     include_databases=show_databases,
                     include_mail=show_mail,
+                    unavailable_hosts=unavailable_hosts,
                 )
                 backup_header_icon = "🔴" if backup_has_issues else "🟢"
                 message += (
@@ -158,6 +165,7 @@ class MorningReport:
         include_proxmox=True,
         include_databases=True,
         include_mail=False,
+        unavailable_hosts=None,
     ):
         """Получает сводку по бэкапам"""
         try:
@@ -168,6 +176,7 @@ class MorningReport:
                 include_proxmox=include_proxmox,
                 include_databases=include_databases,
                 include_mail=include_mail,
+                unavailable_hosts=unavailable_hosts,
             )
         except Exception as e:
             debug_log(f"❌ Ошибка получения сводки по бэкапам: {e}")

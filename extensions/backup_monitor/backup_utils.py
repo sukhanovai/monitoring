@@ -28,6 +28,10 @@ def _normalize_backup_type(backup_type: str, db_name: str) -> str:
     return backup_type
 
 
+def _normalize_host_key(value: object) -> str:
+    return str(value or "").strip().lower()
+
+
 def _is_proxmox_host_enabled(host_value: object) -> bool:
     """Проверяет, включен ли мониторинг хоста Proxmox."""
     if isinstance(host_value, dict):
@@ -40,6 +44,7 @@ def get_backup_summary(
     include_proxmox=True,
     include_databases=True,
     include_mail=False,
+    unavailable_hosts=None,
 ):
     """Возвращает текстовую сводку по бэкапам за период."""
     try:
@@ -59,6 +64,7 @@ def get_backup_summary(
         proxmox_results = []
         stale_hosts = []
         all_hosts = []
+        unavailable_hosts_norm = {_normalize_host_key(host) for host in (unavailable_hosts or [])}
         if include_proxmox:
             cursor.execute('''
                 SELECT DISTINCT host_name
@@ -153,9 +159,32 @@ def get_backup_summary(
         conn.close()
 
         allowed_hosts = set(all_hosts)
+        unavailable_hosts_set = set()
+        if include_proxmox and PROXMOX_HOSTS and unavailable_hosts_norm:
+            for host_name, host_value in PROXMOX_HOSTS.items():
+                if host_name not in allowed_hosts:
+                    continue
+                aliases = {_normalize_host_key(host_name)}
+                if isinstance(host_value, dict):
+                    for key in ("ip", "host", "hostname", "name", "address", "addr"):
+                        value = host_value.get(key)
+                        if isinstance(value, (list, tuple, set)):
+                            aliases.update(_normalize_host_key(item) for item in value)
+                        elif value:
+                            aliases.add(_normalize_host_key(value))
+                elif host_value:
+                    aliases.add(_normalize_host_key(host_value))
+                if aliases & unavailable_hosts_norm:
+                    unavailable_hosts_set.add(host_name)
+        if unavailable_hosts_norm and not unavailable_hosts_set:
+            unavailable_hosts_set = {
+                host_name for host_name in allowed_hosts
+                if _normalize_host_key(host_name) in unavailable_hosts_norm
+            }
         hosts_with_success = len([
             r for r in proxmox_results
             if r[1] == 'success' and r[0] in allowed_hosts
+            and r[0] not in unavailable_hosts_set
         ])
 
         def _get_db_config(config: dict, *keys: str) -> dict:
@@ -232,6 +261,21 @@ def get_backup_summary(
             for backup_type, db_name, last_backup in stale_databases
             if (backup_type, db_name) not in recent_db_keys
         ]
+        stale_databases_unique = {}
+        for backup_type, db_name, last_backup in stale_databases:
+            key = (backup_type, db_name)
+            current_last = stale_databases_unique.get(key)
+            if current_last is None or last_backup > current_last:
+                stale_databases_unique[key] = last_backup
+        stale_databases = [
+            (backup_type, db_name, last_backup)
+            for (backup_type, db_name), last_backup in stale_databases_unique.items()
+        ]
+        stale_databases = [
+            (backup_type, db_name, last_backup)
+            for backup_type, db_name, last_backup in stale_databases
+            if (backup_type, db_name) not in missing_recent_db_keys
+        ]
 
         for category, databases in config_databases.items():
             total_in_config = len(databases)
@@ -257,7 +301,11 @@ def get_backup_summary(
         if include_proxmox:
             if len(all_hosts) > 0:
                 success_rate = (hosts_with_success / len(all_hosts)) * 100
-                proxmox_has_issues = bool(stale_hosts) or hosts_with_success < len(all_hosts)
+                proxmox_has_issues = (
+                    bool(stale_hosts)
+                    or bool(unavailable_hosts_set)
+                    or hosts_with_success < len(all_hosts)
+                )
                 proxmox_icon = "🔴" if proxmox_has_issues else "🟢"
                 message += (
                     f"• {proxmox_icon} Proxmox: {hosts_with_success}/{len(all_hosts)} успешно "
@@ -265,6 +313,8 @@ def get_backup_summary(
                 )
                 if stale_hosts:
                     message += f" ⚠️ {len(stale_hosts)} хостов без бэкапов >24ч"
+                if unavailable_hosts_set:
+                    message += f" ⚠️ {len(unavailable_hosts_set)} хостов недоступны"
                 message += "\n"
             else:
                 message += "• 🟡 Proxmox: нет данных\n"
@@ -352,6 +402,7 @@ def get_backup_summary(
             total_stale += len(stale_hosts)
         if include_databases:
             total_stale += len(stale_databases)
+        total_unavailable = len(unavailable_hosts_set) if include_proxmox else 0
 
         total_missing_recent = 0
         if include_databases:
@@ -359,14 +410,26 @@ def get_backup_summary(
                 stats.get('missing_recent', 0) for stats in db_stats.values()
             )
 
-        total_issues = total_stale + total_missing_recent
+        total_issues = total_stale + total_missing_recent + total_unavailable
         if total_issues > 0:
+            stale_by_category = {}
+            if include_databases:
+                for backup_type, db_name, _ in stale_databases:
+                    stale_by_category.setdefault(backup_type, []).append(db_name)
+
+            missing_recent_by_category = {}
+            if include_databases:
+                for backup_type, db_name in sorted(missing_recent_db_keys):
+                    missing_recent_by_category.setdefault(backup_type, []).append(db_name)
+
             message += f"\n🚨 Внимание: {total_issues} проблем:\n"
             if include_proxmox and stale_hosts:
                 message += f"• {len(stale_hosts)} хостов без бэкапов >24ч\n"
-            if include_databases and stale_databases:
+            if include_proxmox and unavailable_hosts_set:
+                message += f"• {len(unavailable_hosts_set)} хостов недоступны\n"
+            if include_databases and stale_databases and not stale_by_category:
                 message += f"• {len(stale_databases)} БД без бэкапов >24ч\n"
-            if include_databases and total_missing_recent > 0:
+            if include_databases and total_missing_recent > 0 and not missing_recent_by_category:
                 message += (
                     f"• {total_missing_recent} БД без бэкапов за последние {period_hours}ч\n"
                 )
@@ -376,34 +439,25 @@ def get_backup_summary(
                 stale_host_list = ", ".join(stale_host_names)
                 message += f"• Проблемные хосты (>24ч): {stale_host_list}\n"
 
-            if include_databases:
-                stale_by_category = {}
-                for backup_type, db_name, _ in stale_databases:
-                    stale_by_category.setdefault(backup_type, []).append(db_name)
+            if include_databases and stale_by_category:
+                message += "• Проблемные БД (>24ч):\n"
+                for category in ['company_database', 'barnaul', 'client', 'yandex']:
+                    if category not in stale_by_category:
+                        continue
+                    db_list = ", ".join(sorted(stale_by_category[category]))
+                    type_name = category_names.get(category, category)
+                    message += f"  - {type_name}: {db_list}\n"
 
-                if stale_by_category:
-                    message += "• Проблемные БД (>24ч):\n"
-                    for category in ['company_database', 'barnaul', 'client', 'yandex']:
-                        if category not in stale_by_category:
-                            continue
-                        db_list = ", ".join(sorted(stale_by_category[category]))
-                        type_name = category_names.get(category, category)
-                        message += f"  - {type_name}: {db_list}\n"
-
-                missing_recent_by_category = {}
-                for backup_type, db_name in sorted(missing_recent_db_keys):
-                    missing_recent_by_category.setdefault(backup_type, []).append(db_name)
-
-                if missing_recent_by_category:
-                    message += (
-                        f"• Нет бэкапов за последние {period_hours}ч:\n"
-                    )
-                    for category in ['company_database', 'barnaul', 'client', 'yandex']:
-                        if category not in missing_recent_by_category:
-                            continue
-                        db_list = ", ".join(sorted(missing_recent_by_category[category]))
-                        type_name = category_names.get(category, category)
-                        message += f"  - {type_name}: {db_list}\n"
+            if include_databases and missing_recent_by_category:
+                message += (
+                    f"• Нет бэкапов за последние {period_hours}ч:\n"
+                )
+                for category in ['company_database', 'barnaul', 'client', 'yandex']:
+                    if category not in missing_recent_by_category:
+                        continue
+                    db_list = ", ".join(sorted(missing_recent_by_category[category]))
+                    type_name = category_names.get(category, category)
+                    message += f"  - {type_name}: {db_list}\n"
 
         if include_mail:
             def _mail_time_ago(received_at):
@@ -442,6 +496,8 @@ def get_backup_summary(
 
         has_issues = total_issues > 0
         if include_proxmox and all_hosts and hosts_with_success < len(all_hosts):
+            has_issues = True
+        if include_proxmox and unavailable_hosts_set:
             has_issues = True
         if include_mail and mail_latest and mail_recent is None:
             has_issues = True
