@@ -633,12 +633,19 @@ def _process_supplier_stock_file(
 
     matched_rules = []
     results = []
-    for rule in rules:
+    candidate_rules = [rule for rule in rules if isinstance(rule, dict)]
+    if source_id:
+        candidate_rules = [
+            rule for rule in candidate_rules
+            if not rule.get("source_id") or str(rule.get("source_id")) == str(source_id)
+        ]
+    active_rules = [rule for rule in candidate_rules if rule.get("active")]
+    if active_rules:
+        candidate_rules = active_rules
+    for rule in candidate_rules:
         if not isinstance(rule, dict):
             continue
         if not rule.get("enabled", True):
-            continue
-        if source_id and rule.get("source_id") and str(rule.get("source_id")) != str(source_id):
             continue
         if not _processing_rule_matches(rule, file_path):
             continue

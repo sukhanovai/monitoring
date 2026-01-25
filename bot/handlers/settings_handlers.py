@@ -862,14 +862,18 @@ def settings_callback_handler(update, context):
                 supplier_stock_start_processing_rule_menu(update, context)
             elif action == 'edit' and rule_id:
                 supplier_stock_start_processing_rule_menu(update, context, rule_id=rule_id)
-            elif action in ('toggle', 'delete') and rule_id:
+            elif action in ('toggle', 'delete', 'activate') and rule_id:
                 config = get_supplier_stock_config()
                 rules = config.get("processing", {}).get("rules", [])
                 if action == 'toggle':
                     for rule in rules:
                         if str(rule.get("id")) == rule_id:
                             rule["enabled"] = not rule.get("enabled", True)
+                            if not rule.get("enabled", True):
+                                rule["active"] = False
                             break
+                elif action == 'activate':
+                    _set_supplier_stock_processing_active_rule(rules, rule_id)
                 elif action == 'delete':
                     rules = [item for item in rules if str(item.get("id")) != rule_id]
                 config.setdefault("processing", {})["rules"] = rules
@@ -1050,14 +1054,18 @@ def settings_callback_handler(update, context):
                     source_id=source_id,
                     back_callback=back_callback,
                 )
-            elif action in ('toggle', 'delete') and rule_id:
+            elif action in ('toggle', 'delete', 'activate') and rule_id:
                 config = get_supplier_stock_config()
                 rules = config.get("processing", {}).get("rules", [])
                 if action == 'toggle':
                     for rule in rules:
                         if str(rule.get("id")) == rule_id:
                             rule["enabled"] = not rule.get("enabled", True)
+                            if not rule.get("enabled", True):
+                                rule["active"] = False
                             break
+                elif action == 'activate':
+                    _set_supplier_stock_processing_active_rule(rules, rule_id, source_id=source_id)
                 elif action == 'delete':
                     rules = [item for item in rules if str(item.get("id")) != rule_id]
                 config.setdefault("processing", {})["rules"] = rules
@@ -1101,14 +1109,18 @@ def settings_callback_handler(update, context):
                     source_id=source_id,
                     back_callback=back_callback,
                 )
-            elif action in ('toggle', 'delete') and rule_id:
+            elif action in ('toggle', 'delete', 'activate') and rule_id:
                 config = get_supplier_stock_config()
                 rules = config.get("processing", {}).get("rules", [])
                 if action == 'toggle':
                     for rule in rules:
                         if str(rule.get("id")) == rule_id:
                             rule["enabled"] = not rule.get("enabled", True)
+                            if not rule.get("enabled", True):
+                                rule["active"] = False
                             break
+                elif action == 'activate':
+                    _set_supplier_stock_processing_active_rule(rules, rule_id, source_id=source_id)
                 elif action == 'delete':
                     rules = [item for item in rules if str(item.get("id")) != rule_id]
                 config.setdefault("processing", {})["rules"] = rules
@@ -2766,13 +2778,16 @@ def show_supplier_stock_processing_menu(
             name = _escape_pattern_text(rule.get("name") or rule.get("id") or f"Правило {index}")
             source_file = _escape_pattern_text(rule.get("source_file") or "не задано")
             enabled = rule.get("enabled", True)
+            active = rule.get("active", False)
             status_icon = "🟢" if enabled else "🔴"
             processing_text = "обработка" if rule.get("requires_processing", True) else "без обработки"
+            active_text = "да" if active else "нет"
             message_lines.append(
                 (
-                    f"{index}. {status_icon} *{name}*\n"
+                    f"{index}. {status_icon}{'⭐' if active else ''} *{name}*\n"
                     f"   • Файл источника: `{source_file}`\n"
                     f"   • Режим: `{processing_text}`\n"
+                    f"   • Активно: `{active_text}`\n"
                 )
             )
         message = "\n".join(message_lines)
@@ -2786,7 +2801,9 @@ def show_supplier_stock_processing_menu(
         if not rule_id:
             continue
         enabled = rule.get("enabled", True)
+        active = rule.get("active", False)
         toggle_text = "⛔️ Выключить" if enabled else "✅ Включить"
+        active_text = "⭐ Активно" if active else "☆ Сделать активным"
         keyboard.append([
             InlineKeyboardButton(
                 f"✏️ {rule.get('name', rule_id)}",
@@ -2799,6 +2816,12 @@ def show_supplier_stock_processing_menu(
             InlineKeyboardButton(
                 "🗑️",
                 callback_data=f'{action_prefix}|delete|{rule_id}'
+            ),
+        ])
+        keyboard.append([
+            InlineKeyboardButton(
+                active_text,
+                callback_data=f'{action_prefix}|activate|{rule_id}'
             ),
         ])
 
@@ -2839,6 +2862,23 @@ def _ensure_processing_variant(data: dict, index: int) -> dict:
     while len(variants) <= index:
         variants.append(_default_processing_variant())
     return variants[index]
+
+def _set_supplier_stock_processing_active_rule(
+    rules: list[dict],
+    rule_id: str,
+    source_id: str | None = None,
+) -> None:
+    target_active = None
+    for rule in rules:
+        if source_id is not None and str(rule.get("source_id")) != str(source_id):
+            continue
+        if str(rule.get("id")) == str(rule_id):
+            target_active = not rule.get("active", False)
+            rule["active"] = target_active
+            if target_active:
+                rule["enabled"] = True
+        else:
+            rule["active"] = False
 
 def _sync_processing_variants_count(data: dict, count: int) -> None:
     variants = data.setdefault("variants", [])
@@ -5595,15 +5635,18 @@ def _save_supplier_stock_processing_rule(
             if str(rule.get("id")) == str(edit_id):
                 data['id'] = edit_id
                 data.setdefault('enabled', rule.get('enabled', True))
+                data.setdefault('active', rule.get('active', False))
                 rules[index] = data
                 updated = True
                 break
         if not updated:
             data['id'] = edit_id
             data.setdefault('enabled', True)
+            data.setdefault('active', False)
             rules.append(data)
     else:
         data.setdefault('enabled', True)
+        data.setdefault('active', False)
         data['id'] = _unique_supplier_source_id(data.get('id', 'rule'), rules)
         rules.append(data)
     config.setdefault("processing", {})["rules"] = rules
