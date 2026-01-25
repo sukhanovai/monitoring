@@ -51,7 +51,7 @@ def show_extensions_menu(update, context):
         [InlineKeyboardButton("📊 Включить все", callback_data='ext_enable_all')],
         [InlineKeyboardButton("📋 Отключить все", callback_data='ext_disable_all')],
         [
-            InlineKeyboardButton("↩️ Назад", callback_data='main_menu'),
+            InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
             InlineKeyboardButton("✖️ Закрыть", callback_data='close')
         ]
     ])

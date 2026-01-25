@@ -186,7 +186,7 @@ def create_server_selection_keyboard(server_type=None, action="check_single"):
                 current_row = []
 
         keyboard.append([
-            InlineKeyboardButton("↩️ Назад", callback_data='main_menu'),
+            InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
             InlineKeyboardButton("✖️ Закрыть", callback_data='close')
         ])
 

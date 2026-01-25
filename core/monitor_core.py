@@ -376,7 +376,7 @@ def monitor_status(update, context):
                     [InlineKeyboardButton("🔇 Управление режимом", callback_data='silent_status')],
                     [InlineKeyboardButton("📋 Список серверов", callback_data='servers_list')],
                     [InlineKeyboardButton("🎛️ Управление", callback_data='control_panel')],
-                    [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')],
+                    [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
                     [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
                 ])
             )
@@ -447,7 +447,7 @@ def silent_status_handler(update, context):
         [InlineKeyboardButton("🔊 Включить принудительно громкий", callback_data='force_loud')],
         [InlineKeyboardButton("🔄 Вернуть автоматический режим", callback_data='auto_mode')],
         [InlineKeyboardButton("↩️ Назад в управление", callback_data='control_panel')],
-        [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu'),
+        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
     query.edit_message_text(
@@ -522,7 +522,7 @@ def control_panel_handler(update, context):
         [monitoring_button],
         [InlineKeyboardButton("📊 Утренний отчет", callback_data='full_report')],
         [InlineKeyboardButton("🔇 Управление тихим режимом", callback_data='silent_status')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='main_menu'),
+        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
 
@@ -564,7 +564,7 @@ def pause_monitoring_handler(update, context):
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("▶️ Возобновить", callback_data='resume_monitoring')],
             [InlineKeyboardButton("🎛️ Панель управления", callback_data='control_panel')],
-            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')]
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')]
         ])
     )
 
@@ -579,7 +579,7 @@ def resume_monitoring_handler(update, context):
         "▶️ Мониторинг возобновлен",
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("🎛️ Панель управления", callback_data='control_panel')],
-            [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu')]
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')]
         ])
     )
 
@@ -623,7 +623,7 @@ def check_resources_handler(update, context):
         [InlineKeyboardButton("🐧 Linux серверы", callback_data='check_linux')],
         [InlineKeyboardButton("🪟 Windows серверы", callback_data='check_windows')],
         [InlineKeyboardButton("📡 Другие серверы", callback_data='check_other')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='main_menu'),
+        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
 
@@ -875,7 +875,7 @@ def perform_cpu_check(context, chat_id, progress_message_id):
                 [InlineKeyboardButton("🔄 Обновить", callback_data='check_cpu')],
                 [InlineKeyboardButton("🧠 Проверить RAM", callback_data='check_ram')],
                 [InlineKeyboardButton("💾 Проверить Disk", callback_data='check_disk')],
-                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu'),
+                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
                  InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
         )
@@ -1016,7 +1016,7 @@ def perform_ram_check(context, chat_id, progress_message_id):
                 [InlineKeyboardButton("🔄 Обновить", callback_data='check_ram')],
                 [InlineKeyboardButton("💻 Проверить CPU", callback_data='check_cpu')],
                 [InlineKeyboardButton("💾 Проверить Disk", callback_data='check_disk')],
-                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu'),
+                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
                  InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
         )
@@ -1157,7 +1157,7 @@ def perform_disk_check(context, chat_id, progress_message_id):
                 [InlineKeyboardButton("🔄 Обновить", callback_data='check_disk')],
                 [InlineKeyboardButton("💻 Проверить CPU", callback_data='check_cpu')],
                 [InlineKeyboardButton("🧠 Проверить RAM", callback_data='check_ram')],
-                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu'),
+                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
                  InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
         )
@@ -1248,7 +1248,7 @@ def perform_linux_check(context, chat_id, progress_message_id):
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("🔄 Обновить", callback_data='check_linux')],
-                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu'),
+                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
                  InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
         )
@@ -1407,7 +1407,7 @@ def perform_windows_check(context, chat_id, progress_message_id):
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("🔄 Обновить", callback_data='check_windows')],
-                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu'),
+                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
         )
@@ -1487,7 +1487,7 @@ def perform_other_check(context, chat_id, progress_message_id):
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("🔄 Обновить", callback_data='check_other')],
-                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu'),
+                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
         )
@@ -1573,7 +1573,7 @@ def perform_full_check(context, chat_id, progress_message_id):
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("🔄 Обновить", callback_data='check_all_resources')],
                 [InlineKeyboardButton("↩️ Назад", callback_data='check_resources')],
-                [InlineKeyboardButton("🏠 Главное меню", callback_data='main_menu'),
+                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
                  InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
         )
