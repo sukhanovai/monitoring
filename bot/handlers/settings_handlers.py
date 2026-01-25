@@ -2820,6 +2820,7 @@ def _default_processing_variant() -> dict:
         "use_article_filter": None,
         "use_article_filter_columns": [],
         "article_prefix": "",
+        "article_postfix": "",
         "data_columns": [],
         "data_columns_count": 0,
         "output_names": [],
@@ -2982,6 +2983,12 @@ def show_supplier_stock_processing_rule_menu(update, context) -> None:
             ],
             [
                 InlineKeyboardButton(
+                    "🏷️ Постфикс артикула",
+                    callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_postfix'
+                )
+            ],
+            [
+                InlineKeyboardButton(
                     "📊 Колонки с данными",
                     callback_data=f'supplier_stock_processing_columns|menu|{variant_index}'
                 )
@@ -3033,6 +3040,7 @@ def show_supplier_stock_processing_variant_menu(update, context, variant_index: 
     article_col = variant.get("article_col") or "не задано"
     article_filter = _escape_pattern_text(variant.get("article_filter") or "не задано")
     article_prefix = _escape_pattern_text(variant.get("article_prefix") or "не задано")
+    article_postfix = _escape_pattern_text(variant.get("article_postfix") or "не задано")
     data_columns_count = variant.get("data_columns_count") or max(
         len(variant.get("data_columns", [])),
         len(variant.get("output_names", [])),
@@ -3057,6 +3065,7 @@ def show_supplier_stock_processing_variant_menu(update, context, variant_index: 
         f"• Номер колонки с артикулом: `{article_col}`\n"
         f"• Условия отбора артикулов: `{article_filter}`\n"
         f"• Префикс артикула: `{article_prefix}`\n"
+        f"• Постфикс артикула: `{article_postfix}`\n"
         f"• Колонки с данными: `{data_columns_count or 'не задано'}`\n"
         f"• Формат файла на выходе: `{output_format}`\n"
         f"• Файл для ОРК: `{orc_text}`"
@@ -3072,6 +3081,7 @@ def show_supplier_stock_processing_variant_menu(update, context, variant_index: 
         [InlineKeyboardButton("🔎 Номер колонки с артикулом", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_col')],
         [InlineKeyboardButton("🧪 Условия отбора артикулов", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_filter')],
         [InlineKeyboardButton("🏷️ Префикс в артикуле", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_prefix')],
+        [InlineKeyboardButton("🏷️ Постфикс артикула", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_postfix')],
     ]
 
     keyboard.append([InlineKeyboardButton("— Колонки с данными —", callback_data='supplier_stock_noop')])
@@ -3369,6 +3379,7 @@ def supplier_stock_start_processing_field_edit(
             "• ($3+0 > 0) && ($4 == \"Москва\")"
         ),
         "article_prefix": "Введите префикс артикула (или '-' если не нужен):",
+        "article_postfix": "Введите постфикс артикула (или '-' если не нужен):",
         "data_column": "Введите номер колонки с данными:",
         "output_format": "Введите формат выходного файла (xls, xlsx, csv):",
         "orc_prefix": "Введите префикс артикула для файла ОРК (или '-' если не нужен):",
@@ -4106,6 +4117,7 @@ def supplier_stock_handle_processing_input(update, context):
             'article_col',
             'article_filter',
             'article_prefix',
+            'article_postfix',
             'data_columns_count',
             'data_column',
             'output_name',
@@ -4135,6 +4147,11 @@ def supplier_stock_handle_processing_input(update, context):
                     variant['article_prefix'] = ""
                 else:
                     variant['article_prefix'] = raw_input.rstrip("\n")
+            elif field == 'article_postfix':
+                if user_input in ('-', ''):
+                    variant['article_postfix'] = ""
+                else:
+                    variant['article_postfix'] = raw_input.rstrip("\n")
             elif field == 'data_columns_count':
                 columns_count = _parse_positive_int(user_input)
                 if columns_count is None:
@@ -4397,6 +4414,20 @@ def supplier_stock_handle_processing_input(update, context):
             variant['article_prefix'] = ""
         else:
             variant['article_prefix'] = raw_input.rstrip("\n")
+        context.user_data['supplier_stock_processing_current_variant'] = variant
+        context.user_data['supplier_stock_processing_stage'] = 'variant_postfix'
+        update.message.reply_text(
+            "Введите постфикс артикула (или '-' если не нужен). "
+            "Пробелы в конце сохраняются."
+        )
+        return None
+
+    if stage == 'variant_postfix':
+        variant = context.user_data.get('supplier_stock_processing_current_variant', {})
+        if user_input in ('-', ''):
+            variant['article_postfix'] = ""
+        else:
+            variant['article_postfix'] = raw_input.rstrip("\n")
         context.user_data['supplier_stock_processing_current_variant'] = variant
         context.user_data['supplier_stock_processing_stage'] = 'data_columns_count'
         update.message.reply_text("Сколько колонок с данными нужно использовать? (число):")
