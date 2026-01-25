@@ -978,7 +978,7 @@ def settings_callback_handler(update, context):
                 context.user_data['supplier_stock_processing_rule_dirty'] = True
                 _persist_processing_rule_data(context)
                 show_supplier_stock_processing_columns_menu(update, context, variant_index)
-            elif action == 'toggle_article_filter_column' and len(parts) > 3:
+            elif action in ('tac', 'toggle_article_filter_column') and len(parts) > 3:
                 column_index = int(parts[3])
                 data = context.user_data.get('supplier_stock_processing_rule_data', {})
                 variant = _ensure_processing_variant(data, variant_index)
@@ -3201,7 +3201,7 @@ def show_supplier_stock_processing_columns_menu(update, context, variant_index: 
             keyboard.append([
                 InlineKeyboardButton(
                     filter_toggle_text,
-                    callback_data=f'supplier_stock_processing_columns|toggle_article_filter_column|{variant_index}|{idx}'
+                    callback_data=f'supplier_stock_processing_columns|tac|{variant_index}|{idx}'
                 )
             ])
         keyboard.append([InlineKeyboardButton("— Имена файлов —", callback_data='supplier_stock_noop')])
