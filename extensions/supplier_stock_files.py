@@ -952,7 +952,10 @@ def _process_variant(
     rows = table[data_row - 1:] if data_row > 1 else table
     outputs: list[Dict[str, Any]] = []
     orc_output_written = False
+    limit_output_index = orc_output_index if 1 <= orc_output_index <= len(data_columns) else 0
     for idx, (column_index, output_name) in enumerate(zip(data_columns, output_names)):
+        if limit_output_index and idx + 1 != limit_output_index:
+            continue
         rendered_output_name = _render_output_name_template(output_name, file_path, input_index)
         rendered_output_name = _apply_input_index_to_output_name(
             rendered_output_name,
