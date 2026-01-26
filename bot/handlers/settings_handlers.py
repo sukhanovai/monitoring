@@ -1031,6 +1031,52 @@ def settings_callback_handler(update, context):
             variant_index = int(parts[2]) if len(parts) > 2 else 0
             if action == 'menu':
                 show_supplier_stock_processing_orc_menu(update, context, variant_index)
+            elif action == 'set_input' and len(parts) > 3:
+                input_index = int(parts[3])
+                data = context.user_data.get('supplier_stock_processing_rule_data', {})
+                variant = _ensure_processing_variant(data, variant_index)
+                orc = variant.get('orc', {})
+                orc['input_index'] = input_index
+                variant['orc'] = orc
+                data['variants'][variant_index] = variant
+                context.user_data['supplier_stock_processing_rule_data'] = data
+                context.user_data['supplier_stock_processing_rule_dirty'] = True
+                _persist_processing_rule_data(context)
+                show_supplier_stock_processing_orc_menu(update, context, variant_index)
+            elif action == 'clear_input':
+                data = context.user_data.get('supplier_stock_processing_rule_data', {})
+                variant = _ensure_processing_variant(data, variant_index)
+                orc = variant.get('orc', {})
+                orc.pop('input_index', None)
+                variant['orc'] = orc
+                data['variants'][variant_index] = variant
+                context.user_data['supplier_stock_processing_rule_data'] = data
+                context.user_data['supplier_stock_processing_rule_dirty'] = True
+                _persist_processing_rule_data(context)
+                show_supplier_stock_processing_orc_menu(update, context, variant_index)
+            elif action == 'set_output' and len(parts) > 3:
+                output_index = int(parts[3])
+                data = context.user_data.get('supplier_stock_processing_rule_data', {})
+                variant = _ensure_processing_variant(data, variant_index)
+                orc = variant.get('orc', {})
+                orc['output_index'] = output_index
+                variant['orc'] = orc
+                data['variants'][variant_index] = variant
+                context.user_data['supplier_stock_processing_rule_data'] = data
+                context.user_data['supplier_stock_processing_rule_dirty'] = True
+                _persist_processing_rule_data(context)
+                show_supplier_stock_processing_orc_menu(update, context, variant_index)
+            elif action == 'clear_output':
+                data = context.user_data.get('supplier_stock_processing_rule_data', {})
+                variant = _ensure_processing_variant(data, variant_index)
+                orc = variant.get('orc', {})
+                orc.pop('output_index', None)
+                variant['orc'] = orc
+                data['variants'][variant_index] = variant
+                context.user_data['supplier_stock_processing_rule_data'] = data
+                context.user_data['supplier_stock_processing_rule_dirty'] = True
+                _persist_processing_rule_data(context)
+                show_supplier_stock_processing_orc_menu(update, context, variant_index)
         elif data.startswith('supplier_stock_processing_source|'):
             parts = data.split('|')
             source_id = parts[1] if len(parts) > 1 else ''
@@ -2901,6 +2947,8 @@ def _default_processing_variant() -> dict:
             "prefix": "",
             "stor": "",
             "column": None,
+            "input_index": None,
+            "output_index": None,
             "output_format": None,
         },
     }
@@ -3188,6 +3236,8 @@ def show_supplier_stock_processing_variant_menu(update, context, variant_index: 
     orc_enabled = orc.get("enabled", False)
     orc_text = "да" if orc_enabled else "нет"
     orc_column = orc.get("column") or "не задано"
+    orc_input_index = orc.get("input_index")
+    orc_output_index = orc.get("output_index")
     orc_output_format = orc.get("output_format")
     if orc_output_format:
         orc_output_text = orc_output_format
@@ -3211,6 +3261,16 @@ def show_supplier_stock_processing_variant_menu(update, context, variant_index: 
             f"\n• Колонка данных для ОРК: `{orc_column}`"
             f"\n• Формат файла ОРК на выходе: `{_escape_pattern_text(orc_output_text)}`"
         )
+        if orc_input_index:
+            message += f"\n• Файл источника (вход): `№{orc_input_index}`"
+        if orc_output_index:
+            output_label = f"№{orc_output_index}"
+            if data_columns_count and orc_output_index <= data_columns_count:
+                names = variant.get("output_names", [])
+                name_value = names[orc_output_index - 1] if orc_output_index - 1 < len(names) else ""
+                if name_value:
+                    output_label = f"{orc_output_index}. {_escape_pattern_text(name_value)}"
+            message += f"\n• Файл источника (выход): `{output_label}`"
 
     keyboard = [
         [InlineKeyboardButton("— Настройки файла —", callback_data='supplier_stock_noop')],
@@ -3383,6 +3443,8 @@ def show_supplier_stock_processing_orc_menu(update, context, variant_index: int)
     orc_prefix = _escape_pattern_text(orc.get("prefix") or "не задано")
     orc_stor = _escape_pattern_text(orc.get("stor") or "не задано")
     orc_column = orc.get("column") or "не задано"
+    orc_input_index = orc.get("input_index")
+    orc_output_index = orc.get("output_index")
     base_output_format = variant.get("output_format")
     orc_output_format = orc.get("output_format")
     if orc_output_format:
@@ -3392,13 +3454,40 @@ def show_supplier_stock_processing_orc_menu(update, context, variant_index: int)
     else:
         orc_output_text = "не задано"
 
-    message = (
-        "📦 *Файл для ОРК*\n\n"
-        f"• Префикс в артикуле: `{orc_prefix}`\n"
-        f"• Stor: `{orc_stor}`\n"
-        f"• Колонка с данными: `{orc_column}`\n"
-        f"• Формат файла ОРК на выходе: `{_escape_pattern_text(orc_output_text)}`"
+    config = get_supplier_stock_config()
+    source_kind, source = _resolve_processing_rule_source(data, config)
+    input_count = 0
+    if source_kind == "mail" and source:
+        input_count = int(source.get("expected_attachments") or 1)
+
+    data_columns_count = variant.get("data_columns_count") or max(
+        len(variant.get("data_columns", [])),
+        len(variant.get("output_names", [])),
     )
+    if data_columns_count:
+        _sync_variant_columns(variant, data_columns_count)
+    output_names = variant.get("output_names", [])
+
+    message_lines = [
+        "📦 *Файл для ОРК*\n",
+        f"• Префикс в артикуле: `{orc_prefix}`",
+        f"• Stor: `{orc_stor}`",
+        f"• Колонка с данными: `{orc_column}`",
+        f"• Формат файла ОРК на выходе: `{_escape_pattern_text(orc_output_text)}`",
+    ]
+    if input_count > 1:
+        input_label = f"№{orc_input_index}" if orc_input_index else "не задано"
+        message_lines.append(f"• Файл источника (вход): `{input_label}`")
+    if data_columns_count > 1:
+        output_label = "не задано"
+        if orc_output_index:
+            output_label = f"№{orc_output_index}"
+            if orc_output_index <= data_columns_count:
+                name_value = output_names[orc_output_index - 1] if orc_output_index - 1 < len(output_names) else ""
+                if name_value:
+                    output_label = f"{orc_output_index}. {_escape_pattern_text(name_value)}"
+        message_lines.append(f"• Файл источника (выход): `{output_label}`")
+    message = "\n".join(message_lines)
 
     keyboard = [
         [InlineKeyboardButton("— Файл для ОРК —", callback_data='supplier_stock_noop')],
@@ -3411,11 +3500,52 @@ def show_supplier_stock_processing_orc_menu(update, context, variant_index: int)
                 callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_output_format'
             )
         ],
-        [
-            InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_processing_rule|menu'),
-            InlineKeyboardButton("✖️ Закрыть", callback_data='close')
-        ],
     ]
+
+    if input_count > 1:
+        keyboard.append([InlineKeyboardButton("— Файл источника (вход) —", callback_data='supplier_stock_noop')])
+        for idx in range(1, input_count + 1):
+            selected = "✅" if orc_input_index == idx else "📥"
+            keyboard.append([
+                InlineKeyboardButton(
+                    f"{selected} Вход {idx}",
+                    callback_data=f'supplier_stock_processing_orc|set_input|{variant_index}|{idx}'
+                )
+            ])
+        if orc_input_index:
+            keyboard.append([
+                InlineKeyboardButton(
+                    "🚫 Сбросить выбор входа",
+                    callback_data=f'supplier_stock_processing_orc|clear_input|{variant_index}'
+                )
+            ])
+
+    if data_columns_count > 1:
+        keyboard.append([InlineKeyboardButton("— Файл источника (выход) —", callback_data='supplier_stock_noop')])
+        for idx in range(1, data_columns_count + 1):
+            name_value = output_names[idx - 1] if idx - 1 < len(output_names) else ""
+            label = f"Выход {idx}"
+            if name_value:
+                label = f"{idx}. {name_value}"
+            selected = "✅" if orc_output_index == idx else "📤"
+            keyboard.append([
+                InlineKeyboardButton(
+                    f"{selected} {label}",
+                    callback_data=f'supplier_stock_processing_orc|set_output|{variant_index}|{idx}'
+                )
+            ])
+        if orc_output_index:
+            keyboard.append([
+                InlineKeyboardButton(
+                    "🚫 Сбросить выбор выхода",
+                    callback_data=f'supplier_stock_processing_orc|clear_output|{variant_index}'
+                )
+            ])
+
+    keyboard.append([
+        InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_processing_rule|menu'),
+        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+    ])
 
     query.edit_message_text(
         message,
