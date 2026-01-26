@@ -1,11 +1,11 @@
 """
 /config/debug.py
-Server Monitoring System v8.2.51
+Server Monitoring System v8.2.52
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring system debug configuration
 Система мониторинга серверов
-Версия: 8.2.51
+Версия: 8.2.52
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Конфигурация отладки системы мониторинга
