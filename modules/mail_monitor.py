@@ -14,6 +14,7 @@ Mailbox monitoring
 from __future__ import annotations
 
 import email.policy
+import fnmatch
 import re
 import shutil
 import sqlite3
@@ -937,7 +938,17 @@ class BackupProcessor:
         if not fragments:
             return True
         haystack = self._normalize_match_text(value)
-        return any(self._normalize_match_text(fragment) in haystack for fragment in fragments)
+        for fragment in fragments:
+            needle = self._normalize_match_text(fragment)
+            if not needle:
+                continue
+            if any(char in needle for char in ("*", "?")):
+                if fnmatch.fnmatch(haystack, needle):
+                    return True
+                continue
+            if needle in haystack:
+                return True
+        return False
 
     def _get_sender_candidates(self, msg) -> list[str]:
         from_header = msg.get("from", "") or ""
