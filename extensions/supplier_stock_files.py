@@ -753,6 +753,8 @@ def _processing_rule_matches(
     rendered_source = _render_output_name_template(source_file, file_path, input_index)
     if rendered_source and rendered_source == target_name:
         return True
+    if _processing_rule_matches_unpacked_archive(rendered_source or source_file, file_path):
+        return True
     template_pattern = _processing_rule_template_to_glob(source_file)
     if template_pattern != source_file and fnmatch(target_name, template_pattern):
         return True
@@ -769,6 +771,18 @@ def _processing_rule_template_to_glob(source_file: str) -> str:
         return match.group(0)
 
     return re.sub(r"\{(?P<key>[A-Za-z_][A-Za-z0-9_]*)(?::[^}]*)?\}", _replace, source_file)
+
+
+def _processing_rule_matches_unpacked_archive(source_name: str, file_path: Path) -> bool:
+    if not source_name:
+        return False
+    name = Path(str(source_name)).name
+    if not _is_archive_name(name):
+        return False
+    base_name = _strip_archive_suffix(Path(name))
+    if not base_name:
+        return False
+    return file_path.stem == base_name or file_path.name == base_name
 
 
 def _run_processing_rule(
@@ -1184,6 +1198,10 @@ def _strip_archive_suffix(path: Path) -> str:
         if name.endswith(suffix):
             return name[: -len(suffix)]
     return path.stem
+
+
+def _is_archive_name(name: str) -> bool:
+    return name.endswith((".tar.gz", ".tar.bz2", ".tar.xz", ".tgz", ".zip", ".tar", ".gz", ".bz2", ".xz"))
 
 
 def unpack_archive_file(archive_path: Path) -> Path | None:
