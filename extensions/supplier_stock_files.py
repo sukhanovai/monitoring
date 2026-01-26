@@ -670,7 +670,7 @@ def _process_supplier_stock_file(
             continue
         if not rule.get("enabled", True):
             continue
-        if not _processing_rule_matches(rule, file_path):
+        if not _processing_rule_matches(rule, file_path, input_index):
             continue
         matched_rules.append(rule.get("id") or rule.get("name") or "rule")
         try:
@@ -739,12 +739,19 @@ def _resolve_processing_rule_source_kind(
     return None
 
 
-def _processing_rule_matches(rule: Dict[str, Any], file_path: Path) -> bool:
+def _processing_rule_matches(
+    rule: Dict[str, Any],
+    file_path: Path,
+    input_index: int | None,
+) -> bool:
     source_file = str(rule.get("source_file") or "").strip()
     if not source_file:
         return False
     target_name = file_path.name
     if source_file == target_name:
+        return True
+    rendered_source = _render_output_name_template(source_file, file_path, input_index)
+    if rendered_source and rendered_source == target_name:
         return True
     template_pattern = _processing_rule_template_to_glob(source_file)
     if template_pattern != source_file and fnmatch(target_name, template_pattern):
@@ -757,7 +764,7 @@ def _processing_rule_matches(rule: Dict[str, Any], file_path: Path) -> bool:
 def _processing_rule_template_to_glob(source_file: str) -> str:
     def _replace(match: re.Match[str]) -> str:
         key = match.group("key")
-        if key in ("index", "name"):
+        if key in ("index", "name", "filename"):
             return "*"
         return match.group(0)
 
