@@ -2938,6 +2938,10 @@ def _default_processing_variant() -> dict:
         "use_article_filter_columns": [],
         "article_prefix": "",
         "article_postfix": "",
+        "article_transform": {
+            "pattern": "",
+            "replacement": "",
+        },
         "data_columns": [],
         "data_columns_count": 0,
         "output_names": [],
@@ -3173,6 +3177,12 @@ def show_supplier_stock_processing_rule_menu(update, context) -> None:
             ],
             [
                 InlineKeyboardButton(
+                    "🧹 Изменение входящего артикула",
+                    callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_transform'
+                )
+            ],
+            [
+                InlineKeyboardButton(
                     "📊 Колонки с данными",
                     callback_data=f'supplier_stock_processing_columns|menu|{variant_index}'
                 )
@@ -3225,6 +3235,13 @@ def show_supplier_stock_processing_variant_menu(update, context, variant_index: 
     article_filter = _escape_pattern_text(variant.get("article_filter") or "не задано")
     article_prefix = _escape_pattern_text(variant.get("article_prefix") or "не задано")
     article_postfix = _escape_pattern_text(variant.get("article_postfix") or "не задано")
+    article_transform = variant.get("article_transform") or {}
+    transform_pattern = article_transform.get("pattern") or ""
+    transform_replacement = article_transform.get("replacement") or ""
+    if transform_pattern:
+        transform_text = f"{_escape_pattern_text(transform_pattern)} => {_escape_pattern_text(transform_replacement)}"
+    else:
+        transform_text = "не задано"
     data_columns_count = variant.get("data_columns_count") or max(
         len(variant.get("data_columns", [])),
         len(variant.get("output_names", [])),
@@ -3252,6 +3269,7 @@ def show_supplier_stock_processing_variant_menu(update, context, variant_index: 
         f"• Условия отбора артикулов: `{article_filter}`\n"
         f"• Префикс артикула: `{article_prefix}`\n"
         f"• Постфикс артикула: `{article_postfix}`\n"
+        f"• Изменение входящего артикула: `{transform_text}`\n"
         f"• Колонки с данными: `{data_columns_count or 'не задано'}`\n"
         f"• Формат файла на выходе: `{output_format}`\n"
         f"• Файл для ОРК: `{orc_text}`"
@@ -3278,6 +3296,7 @@ def show_supplier_stock_processing_variant_menu(update, context, variant_index: 
         [InlineKeyboardButton("🧪 Условия отбора артикулов", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_filter')],
         [InlineKeyboardButton("🏷️ Префикс в артикуле", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_prefix')],
         [InlineKeyboardButton("🏷️ Постфикс артикула", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_postfix')],
+        [InlineKeyboardButton("🧹 Изменение входящего артикула", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_transform')],
     ]
 
     keyboard.append([InlineKeyboardButton("— Колонки с данными —", callback_data='supplier_stock_noop')])
@@ -3650,6 +3669,14 @@ def supplier_stock_start_processing_field_edit(
         ),
         "article_prefix": "Введите префикс артикула (или '-' если не нужен):",
         "article_postfix": "Введите постфикс артикула (или '-' если не нужен). Пробелы в конце сохраняются:",
+        "article_transform": (
+            "Введите правило изменения артикула (regex) или '-' чтобы отключить.\n\n"
+            "Формат: паттерн => замена (замена может быть пустой).\n"
+            "Примеры:\n"
+            "• ^0+ =>\n"
+            "• [^0-9A-Za-z]+ =>\n"
+            "• \\s+ => -"
+        ),
         "data_column": "Введите номер колонки с данными:",
         "output_format": "Введите формат выходного файла (xls, xlsx, csv):",
         "orc_prefix": "Введите префикс артикула для файла ОРК (или '-' если не нужен):",
@@ -3675,6 +3702,14 @@ def supplier_stock_start_processing_field_edit(
             current_value = variant.get("article_prefix")
         elif field == "article_postfix":
             current_value = variant.get("article_postfix")
+        elif field == "article_transform":
+            article_transform = variant.get("article_transform") or {}
+            pattern = article_transform.get("pattern") or ""
+            replacement = article_transform.get("replacement") or ""
+            if pattern:
+                current_value = f"{pattern} => {replacement}"
+            else:
+                current_value = None
         elif field == "data_column":
             columns = variant.get("data_columns", [])
             if item_index is not None and item_index < len(columns):
@@ -4469,6 +4504,7 @@ def supplier_stock_handle_processing_input(update, context):
             'article_filter',
             'article_prefix',
             'article_postfix',
+            'article_transform',
             'data_columns_count',
             'data_column',
             'output_name',
@@ -4506,6 +4542,28 @@ def supplier_stock_handle_processing_input(update, context):
                     variant['article_postfix'] = ""
                 else:
                     variant['article_postfix'] = raw_value
+            elif field == 'article_transform':
+                raw_value = raw_input.rstrip("\n")
+                if raw_value.strip() in ('', '-'):
+                    variant['article_transform'] = {
+                        "pattern": "",
+                        "replacement": "",
+                    }
+                else:
+                    if "=>" in raw_value:
+                        pattern_part, replacement_part = raw_value.split("=>", 1)
+                        pattern_value = pattern_part.strip()
+                        replacement_value = replacement_part
+                    else:
+                        pattern_value = raw_value.strip()
+                        replacement_value = ""
+                    if not pattern_value:
+                        update.message.reply_text("❌ Укажите regex-паттерн для изменения артикула.")
+                        return None
+                    variant['article_transform'] = {
+                        "pattern": pattern_value,
+                        "replacement": replacement_value,
+                    }
             elif field == 'data_columns_count':
                 columns_count = _parse_positive_int(user_input)
                 if columns_count is None:
