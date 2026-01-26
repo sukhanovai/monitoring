@@ -14,12 +14,14 @@ Mailbox monitoring
 from __future__ import annotations
 
 import email.policy
+import fnmatch
 import re
 import shutil
 import sqlite3
 import time
 from datetime import datetime
 from email import message_from_bytes
+from email.header import decode_header
 from email.utils import getaddresses, parsedate_to_datetime
 from pathlib import Path
 
@@ -927,6 +929,25 @@ class BackupProcessor:
     def _normalize_match_text(self, value: str) -> str:
         return re.sub(r"\s+", " ", str(value or "").strip()).lower()
 
+    def _decode_header_value(self, value: str | None) -> str:
+        if not value:
+            return ""
+        try:
+            parts = decode_header(value)
+        except Exception:
+            return str(value)
+        decoded = []
+        for payload, encoding in parts:
+            if isinstance(payload, bytes):
+                decoded.append(payload.decode(encoding or "utf-8", errors="ignore"))
+            else:
+                decoded.append(str(payload))
+        return "".join(decoded).strip()
+
+    def _get_attachment_filename(self, part) -> str:
+        filename = part.get_filename() or part.get_param("name", header="content-type")
+        return self._decode_header_value(filename)
+
     def _match_rule_pattern(self, pattern: str, value: str) -> bool:
         cleaned = self._normalize_rule_pattern(pattern)
         if not cleaned:
@@ -937,7 +958,17 @@ class BackupProcessor:
         if not fragments:
             return True
         haystack = self._normalize_match_text(value)
-        return any(self._normalize_match_text(fragment) in haystack for fragment in fragments)
+        for fragment in fragments:
+            needle = self._normalize_match_text(fragment)
+            if not needle:
+                continue
+            if any(char in needle for char in ("*", "?")):
+                if fnmatch.fnmatch(haystack, needle):
+                    return True
+                continue
+            if needle in haystack:
+                return True
+        return False
 
     def _get_sender_candidates(self, msg) -> list[str]:
         from_header = msg.get("from", "") or ""
@@ -973,7 +1004,7 @@ class BackupProcessor:
             return matched
 
         for part in msg.walk():
-            filename = part.get_filename()
+            filename = self._get_attachment_filename(part)
             if not filename:
                 continue
             if filename_patterns and not self._match_subject_patterns(
@@ -1049,7 +1080,7 @@ class BackupProcessor:
                 continue
 
             for part in msg.walk():
-                filename = part.get_filename() or ""
+                filename = self._get_attachment_filename(part)
                 if not filename:
                     continue
 
