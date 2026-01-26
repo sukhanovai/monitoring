@@ -944,6 +944,11 @@ def _process_variant(
     outputs: list[Dict[str, Any]] = []
     for idx, (column_index, output_name) in enumerate(zip(data_columns, output_names)):
         rendered_output_name = _render_output_name_template(output_name, file_path, input_index)
+        rendered_output_name = _apply_input_index_to_output_name(
+            rendered_output_name,
+            str(output_name),
+            input_index,
+        )
         items: list[list[str]] = []
         orc_items: list[list[str]] = []
         orc_active = orc_enabled and column_index == orc_target_column
@@ -1075,6 +1080,21 @@ def _render_output_name_template(
         return template.format(**values)
     except Exception:
         return template
+
+
+def _apply_input_index_to_output_name(
+    rendered_name: str,
+    template: str,
+    input_index: int | None,
+) -> str:
+    if not rendered_name or not input_index or input_index <= 1:
+        return rendered_name
+    if re.search(r"\{(?:index|name|filename)(?::[^}]*)?\}", template):
+        return rendered_name
+    match = re.search(r"\d+$", rendered_name)
+    if match:
+        return f"{rendered_name[:match.start()]}{input_index}"
+    return f"{rendered_name}{input_index}"
 
 
 def _write_output_file(path: Path, fmt: str, headers: list[str], rows: list[list[str]]) -> Path:
