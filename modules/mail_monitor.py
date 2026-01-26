@@ -1120,6 +1120,7 @@ class BackupProcessor:
                     output_path,
                     source.get("id") or source.get("name"),
                     "mail",
+                    collected + 1,
                 )
                 if processing_result:
                     logger.info(
