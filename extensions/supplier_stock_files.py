@@ -939,6 +939,12 @@ def _process_variant(
     use_article_filter_columns = use_article_filter_columns[:len(data_columns)]
     article_prefix = variant.get("article_prefix") or ""
     article_postfix = variant.get("article_postfix") or ""
+    article_transform = variant.get("article_transform") or {}
+    transform_pattern = ""
+    transform_replacement = ""
+    if isinstance(article_transform, dict):
+        transform_pattern = article_transform.get("pattern") or ""
+        transform_replacement = article_transform.get("replacement") or ""
     orc_config = variant.get("orc", {}) if isinstance(variant.get("orc"), dict) else {}
     orc_enabled = bool(orc_config.get("enabled"))
     orc_column = int(orc_config.get("column") or 0)
@@ -962,6 +968,12 @@ def _process_variant(
             compiled_filter = re.compile(article_filter)
         except re.error as exc:
             return {"status": "error", "error": f"invalid_filter: {exc}"}
+    compiled_transform = None
+    if transform_pattern:
+        try:
+            compiled_transform = re.compile(transform_pattern)
+        except re.error as exc:
+            return {"status": "error", "error": f"invalid_article_transform: {exc}"}
 
     rows = table[data_row - 1:] if data_row > 1 else table
     outputs: list[Dict[str, Any]] = []
@@ -990,7 +1002,12 @@ def _process_variant(
         )
         for row in rows:
             article_raw = _get_cell(row, article_col, preserve_whitespace=True)
-            article = article_raw.strip()
+            article_transformed = (
+                compiled_transform.sub(transform_replacement, article_raw)
+                if compiled_transform
+                else article_raw
+            )
+            article = article_transformed.strip()
             if not article:
                 continue
             if compiled_filter and use_filter_for_column and not compiled_filter.search(article):
@@ -999,7 +1016,7 @@ def _process_variant(
             quant_value = _parse_quantity(quant_raw)
             if quant_value is None:
                 continue
-            article_value = _apply_article_postfix(f"{article_prefix}{article_raw}", article_postfix)
+            article_value = _apply_article_postfix(f"{article_prefix}{article_transformed}", article_postfix)
             items.append([article_value, quant_value])
             if orc_active:
                 orc_prefix = orc_config.get("prefix", "")
@@ -1010,7 +1027,7 @@ def _process_variant(
                 if orc_quant_value is None:
                     continue
                 date_text = now.strftime(processing.get("date_format", "%Y-%m-%d %H:%M"))
-                orc_items.append([f"{orc_prefix}{article_raw}", stor, orc_quant_value, date_text])
+                orc_items.append([f"{orc_prefix}{article_transformed}", stor, orc_quant_value, date_text])
 
         output_path = _resolve_output_path(file_path.parent, rendered_output_name, output_format)
         output_path = _write_output_file(output_path, output_format, ["Art.", "Quant."], items)
