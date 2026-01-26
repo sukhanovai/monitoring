@@ -442,11 +442,19 @@ def process_supplier_stock_file(
     file_path: str | Path,
     source_id: str | None = None,
     source_kind: str | None = None,
+    input_index: int | None = None,
     now: datetime | None = None,
 ) -> Dict[str, Any] | None:
     config = get_supplier_stock_config()
     path = Path(file_path)
-    return _process_supplier_stock_file(path, config, now or datetime.now(), source_id, source_kind)
+    return _process_supplier_stock_file(
+        path,
+        config,
+        now or datetime.now(),
+        source_id,
+        source_kind,
+        input_index,
+    )
 
 
 def run_supplier_stock_fetch() -> Dict[str, Any]:
@@ -533,6 +541,7 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
                     now,
                     source_id,
                     "download",
+                    1,
                 )
                 if processing_result:
                     entry["processing"] = processing_result
@@ -633,6 +642,7 @@ def _process_supplier_stock_file(
     now: datetime,
     source_id: str | None = None,
     source_kind: str | None = None,
+    input_index: int | None = None,
 ) -> Dict[str, Any] | None:
     processing = config.get("processing", {})
     rules = processing.get("rules", [])
@@ -664,7 +674,7 @@ def _process_supplier_stock_file(
             continue
         matched_rules.append(rule.get("id") or rule.get("name") or "rule")
         try:
-            result = _run_processing_rule(file_path, rule, processing, now)
+            result = _run_processing_rule(file_path, rule, processing, now, input_index)
             results.append(result)
         except Exception as exc:
             _logger.error("⚠️ Ошибка обработки %s: %s", file_path, exc)
@@ -759,6 +769,7 @@ def _run_processing_rule(
     rule: Dict[str, Any],
     processing: Dict[str, Any],
     now: datetime,
+    input_index: int | None,
 ) -> Dict[str, Any]:
     if not _normalize_requires_processing(rule.get("requires_processing", True)):
         _logger.info("🧩 Обработка не требуется для %s (%s)", file_path, rule.get("name") or rule.get("id"))
@@ -772,7 +783,16 @@ def _run_processing_rule(
     variants = rule.get("variants", [])
     results = []
     for variant in variants:
-        variant_result = _process_variant(table, file_path, rule, variant, processing, now, data_row)
+        variant_result = _process_variant(
+            table,
+            file_path,
+            rule,
+            variant,
+            processing,
+            now,
+            data_row,
+            input_index,
+        )
         results.append(variant_result)
 
     return {"status": "success", "rule_id": rule.get("id"), "variants": results}
@@ -880,6 +900,7 @@ def _process_variant(
     processing: Dict[str, Any],
     now: datetime,
     data_row: int,
+    input_index: int | None,
 ) -> Dict[str, Any]:
     article_col = int(variant.get("article_col") or 0)
     if article_col <= 0:
@@ -915,6 +936,7 @@ def _process_variant(
     rows = table[data_row - 1:] if data_row > 1 else table
     outputs: list[Dict[str, Any]] = []
     for idx, (column_index, output_name) in enumerate(zip(data_columns, output_names)):
+        rendered_output_name = _render_output_name_template(output_name, file_path, input_index)
         items: list[list[str]] = []
         orc_items: list[list[str]] = []
         orc_active = orc_enabled and column_index == orc_target_column
@@ -945,7 +967,7 @@ def _process_variant(
                 date_text = now.strftime(processing.get("date_format", "%Y-%m-%d %H:%M"))
                 orc_items.append([f"{orc_prefix}{article_raw}", stor, orc_quant_value, date_text])
 
-        output_path = _resolve_output_path(file_path.parent, output_name, output_format)
+        output_path = _resolve_output_path(file_path.parent, rendered_output_name, output_format)
         output_path = _write_output_file(output_path, output_format, ["Art.", "Quant."], items)
 
         orc_output = None
@@ -953,7 +975,7 @@ def _process_variant(
             orc_output_format = (orc_config.get("output_format") or output_format).lower()
             orc_output_path = _resolve_output_path(
                 file_path.parent,
-                _append_suffix_to_name(output_name, "_orc"),
+                _append_suffix_to_name(rendered_output_name, "_orc"),
                 orc_output_format,
             )
             orc_output_path = _write_output_file(
@@ -1028,6 +1050,24 @@ def _resolve_output_path(folder: Path, output_name: str, output_format: str) -> 
 def _append_suffix_to_name(filename: str, suffix: str) -> str:
     path = Path(filename)
     return f"{path.stem}{suffix}{path.suffix}"
+
+
+def _render_output_name_template(
+    template: str,
+    file_path: Path,
+    input_index: int | None,
+) -> str:
+    if not template:
+        return template
+    values = {
+        "index": input_index or 1,
+        "name": file_path.stem,
+        "filename": file_path.name,
+    }
+    try:
+        return template.format(**values)
+    except Exception:
+        return template
 
 
 def _write_output_file(path: Path, fmt: str, headers: list[str], rows: list[list[str]]) -> Path:
