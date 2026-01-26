@@ -2897,7 +2897,7 @@ def show_supplier_stock_processing_menu(
         enabled = rule.get("enabled", True)
         active = rule.get("active", False)
         toggle_text = "⛔️ Выключить" if enabled else "✅ Включить"
-        active_text = "⭐ Активно" if active else "☆ Сделать активным"
+        active_text = "⛔️ Отключить активность" if active else "⭐ Включить активность"
         keyboard.append([
             InlineKeyboardButton(
                 f"✏️ {rule.get('name', rule_id)}",
@@ -2970,19 +2970,15 @@ def _set_supplier_stock_processing_active_rule(
     source_kind: str | None = None,
 ) -> None:
     config = get_supplier_stock_config()
-    target_active = None
     for rule in rules:
         if source_id is not None and str(rule.get("source_id")) != str(source_id):
             continue
         if source_kind and not _processing_rule_matches_source(rule, source_id, source_kind, config):
             continue
         if str(rule.get("id")) == str(rule_id):
-            target_active = not rule.get("active", False)
-            rule["active"] = target_active
-            if target_active:
+            rule["active"] = not rule.get("active", False)
+            if rule["active"]:
                 rule["enabled"] = True
-        else:
-            rule["active"] = False
 
 def _sync_processing_variants_count(data: dict, count: int) -> None:
     variants = data.setdefault("variants", [])
