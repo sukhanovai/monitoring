@@ -1115,6 +1115,48 @@ def _append_suffix_to_name(filename: str, suffix: str) -> str:
     return f"{path.stem}{suffix}{path.suffix}"
 
 
+def _match_template_filename(template: str, filename: str) -> Dict[str, str]:
+    if not template:
+        return {}
+    placeholder_pattern = r"\{(?P<key>name|index|filename)(?::[^}]*)?\}"
+    if not re.search(placeholder_pattern, template):
+        return {}
+
+    def _replace(match: re.Match[str]) -> str:
+        key = match.group("key")
+        if key == "index":
+            return r"(?P<index>\d+)"
+        return rf"(?P<{key}>.+?)"
+
+    pattern = re.escape(template)
+    pattern = re.sub(placeholder_pattern, _replace, pattern)
+    match = re.match(rf"^{pattern}$", filename)
+    return match.groupdict() if match else {}
+
+
+def _resolve_output_name_values(
+    template: str,
+    file_path: Path,
+    input_index: int | None,
+) -> Dict[str, Any]:
+    values: Dict[str, Any] = {
+        "index": input_index or 1,
+        "name": file_path.stem,
+        "filename": file_path.name,
+    }
+    extracted = _match_template_filename(template, file_path.name)
+    if "name" in extracted:
+        values["name"] = extracted["name"]
+    if "filename" in extracted:
+        values["filename"] = extracted["filename"]
+    if "index" in extracted:
+        try:
+            values["index"] = int(extracted["index"])
+        except ValueError:
+            values["index"] = extracted["index"]
+    return values
+
+
 def _render_output_name_template(
     template: str,
     file_path: Path,
@@ -1122,11 +1164,7 @@ def _render_output_name_template(
 ) -> str:
     if not template:
         return template
-    values = {
-        "index": input_index or 1,
-        "name": file_path.stem,
-        "filename": file_path.name,
-    }
+    values = _resolve_output_name_values(template, file_path, input_index)
     try:
         return template.format(**values)
     except Exception:
