@@ -929,10 +929,12 @@ def _process_variant(
     orc_enabled = bool(orc_config.get("enabled"))
     orc_column = int(orc_config.get("column") or 0)
     orc_output_index = int(orc_config.get("output_index") or 0)
-    if orc_output_index > 0 and orc_output_index <= len(data_columns):
-        orc_target_column = data_columns[orc_output_index - 1]
+    if 1 <= orc_output_index <= len(data_columns):
+        orc_output_index_effective = orc_output_index
+    elif data_columns:
+        orc_output_index_effective = 1
     else:
-        orc_target_column = orc_column if orc_column > 0 else (data_columns[0] if data_columns else 0)
+        orc_output_index_effective = 0
     orc_input_index = int(orc_config.get("input_index") or 0)
     input_index_value = input_index or 1
     orc_input_match = orc_input_index <= 0 or orc_input_index == input_index_value
@@ -958,7 +960,12 @@ def _process_variant(
         )
         items: list[list[str]] = []
         orc_items: list[list[str]] = []
-        orc_active = orc_enabled and orc_input_match and column_index == orc_target_column
+        orc_active = (
+            orc_enabled
+            and orc_input_match
+            and orc_output_index_effective
+            and idx + 1 == orc_output_index_effective
+        )
         use_filter_for_column = use_article_filter and (
             use_article_filter_columns[idx] if idx < len(use_article_filter_columns) else True
         )
