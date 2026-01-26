@@ -97,6 +97,14 @@ def _escape_pattern_text(text: str) -> str:
     """Экранирует текст для Markdown."""
     return escape_markdown(str(text or ""), version=1)
 
+def _format_current_hint(value, default: str = "не задано") -> str:
+    """Сформировать подсказку для текущего значения."""
+    if value is None:
+        return default
+    if isinstance(value, str) and value.strip() == "":
+        return default
+    return str(value)
+
 def _build_mail_pattern_from_subject(subject: str) -> str:
     """Собрать regex паттерн по теме письма."""
     if not subject:
@@ -1162,16 +1170,22 @@ def settings_callback_handler(update, context):
             show_supplier_stock_mail_settings(update, context)
         elif data == 'supplier_stock_mail_temp_dir':
             context.user_data['supplier_stock_mail_edit'] = 'temp_dir'
+            config = get_supplier_stock_config()
+            current_temp_dir = _format_current_hint(config.get("mail", {}).get("temp_dir"))
             query.edit_message_text(
-                "Введите путь к временному каталогу для почтовых файлов:",
+                "Введите путь к временному каталогу для почтовых файлов:\n"
+                f"Текущее значение: {current_temp_dir}",
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_mail')]
                 ])
             )
         elif data == 'supplier_stock_mail_archive_dir':
             context.user_data['supplier_stock_mail_edit'] = 'archive_dir'
+            config = get_supplier_stock_config()
+            current_archive_dir = _format_current_hint(config.get("mail", {}).get("archive_dir"))
             query.edit_message_text(
-                "Введите путь к каталогу архива для почтовых файлов:",
+                "Введите путь к каталогу архива для почтовых файлов:\n"
+                f"Текущее значение: {current_archive_dir}",
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_mail')]
                 ])
@@ -1232,8 +1246,11 @@ def settings_callback_handler(update, context):
             show_supplier_stock_mail_sources_menu(update, context)
         elif data == 'supplier_stock_temp_dir':
             context.user_data['supplier_stock_edit'] = 'temp_dir'
+            config = get_supplier_stock_config()
+            current_temp_dir = _format_current_hint(config.get("download", {}).get("temp_dir"))
             query.edit_message_text(
-                "Введите путь к временному каталогу:",
+                "Введите путь к временному каталогу:\n"
+                f"Текущее значение: {current_temp_dir}",
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_download')]
                 ])
@@ -1245,8 +1262,11 @@ def settings_callback_handler(update, context):
             show_supplier_stock_download_settings(update, context)
         elif data == 'supplier_stock_archive_dir':
             context.user_data['supplier_stock_edit'] = 'archive_dir'
+            config = get_supplier_stock_config()
+            current_archive_dir = _format_current_hint(config.get("download", {}).get("archive_dir"))
             query.edit_message_text(
-                "Введите путь к каталогу архива:",
+                "Введите путь к каталогу архива:\n"
+                f"Текущее значение: {current_archive_dir}",
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_download')]
                 ])
@@ -1267,8 +1287,13 @@ def settings_callback_handler(update, context):
             show_supplier_stock_schedule_menu(update, context)
         elif data == 'supplier_stock_schedule_time':
             context.user_data['supplier_stock_edit'] = 'schedule_time'
+            config = get_supplier_stock_config()
+            current_time = _format_current_hint(
+                config.get("download", {}).get("schedule", {}).get("time")
+            )
             query.edit_message_text(
-                "Введите время запуска в формате HH:MM:",
+                "Введите время запуска в формате HH:MM:\n"
+                f"Текущее значение: {current_time}",
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_schedule')]
                 ])
@@ -3508,11 +3533,57 @@ def supplier_stock_start_processing_field_edit(
     prompt = prompts.get(field, "Введите значение:")
     if field == "output_name" and variant_index is not None:
         prompt = "Введите имя выходного файла:"
+
+    current_value = None
+    if variant_index is not None:
+        variant = _ensure_processing_variant(rule_data, variant_index)
+        if field == "article_col":
+            current_value = variant.get("article_col")
+        elif field == "article_filter":
+            current_value = variant.get("article_filter")
+        elif field == "article_prefix":
+            current_value = variant.get("article_prefix")
+        elif field == "article_postfix":
+            current_value = variant.get("article_postfix")
+        elif field == "data_column":
+            columns = variant.get("data_columns", [])
+            if item_index is not None and item_index < len(columns):
+                current_value = columns[item_index]
+        elif field == "output_name":
+            names = variant.get("output_names", [])
+            if item_index is not None and item_index < len(names):
+                current_value = names[item_index]
+        elif field == "output_format":
+            current_value = variant.get("output_format")
+        elif field in ("orc_prefix", "orc_stor", "orc_column", "orc_output_format"):
+            orc = variant.get("orc", {})
+            if field == "orc_prefix":
+                current_value = orc.get("prefix")
+            elif field == "orc_stor":
+                current_value = orc.get("stor")
+            elif field == "orc_column":
+                current_value = orc.get("column")
+            elif field == "orc_output_format":
+                if orc.get("output_format"):
+                    current_value = orc.get("output_format")
+                elif variant.get("output_format"):
+                    current_value = f"как основной ({variant.get('output_format')})"
+    else:
+        if field == "name":
+            current_value = rule_data.get("name")
+        elif field == "source_file":
+            current_value = rule_data.get("source_file")
+        elif field == "data_row":
+            current_value = rule_data.get("data_row")
+        elif field == "output_name":
+            current_value = rule_data.get("output_name")
+
+    current_hint = _format_current_hint(current_value)
     back_callback = 'supplier_stock_processing_rule|menu'
     if variant_index is not None:
         back_callback = f'supplier_stock_processing_variant|menu|{variant_index}'
     query.edit_message_text(
-        prompt,
+        f"{prompt}\n\nТекущее значение: {current_hint}",
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]
         ])
