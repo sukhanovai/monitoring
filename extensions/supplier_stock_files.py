@@ -736,9 +736,22 @@ def _processing_rule_matches(rule: Dict[str, Any], file_path: Path) -> bool:
     target_name = file_path.name
     if source_file == target_name:
         return True
+    template_pattern = _processing_rule_template_to_glob(source_file)
+    if template_pattern != source_file and fnmatch(target_name, template_pattern):
+        return True
     if any(char in source_file for char in ("*", "?", "[")):
         return fnmatch(target_name, source_file)
     return False
+
+
+def _processing_rule_template_to_glob(source_file: str) -> str:
+    def _replace(match: re.Match[str]) -> str:
+        key = match.group("key")
+        if key in ("index", "name"):
+            return "*"
+        return match.group(0)
+
+    return re.sub(r"\{(?P<key>[A-Za-z_][A-Za-z0-9_]*)(?::[^}]*)?\}", _replace, source_file)
 
 
 def _run_processing_rule(
