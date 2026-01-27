@@ -3683,7 +3683,7 @@ def supplier_stock_start_processing_field_edit(
         "name": "Введите название правила:",
         "source_file": "Введите имя файла источника:",
         "data_row": "Введите номер первой строки с данными:",
-        "output_name": "Введите имя файла на выходе:",
+        "output_name": "Введите имя файла на выходе (можно использовать {index}, {name}, {filename}):",
         "article_col": "Введите номер колонки с артикулом:",
         "article_filter": (
             "Введите условия отбора артикулов (regex) или '-' для всех.\n\n"
@@ -3724,7 +3724,7 @@ def supplier_stock_start_processing_field_edit(
     }
     prompt = prompts.get(field, "Введите значение:")
     if field == "output_name" and variant_index is not None:
-        prompt = "Введите имя выходного файла:"
+        prompt = "Введите имя выходного файла (можно использовать {index}, {name}, {filename}):"
 
     current_value = None
     if variant_index is not None:
@@ -4947,7 +4947,10 @@ def supplier_stock_handle_processing_input(update, context):
         context.user_data['supplier_stock_processing_output_names_expected'] = expected
         context.user_data['supplier_stock_processing_output_names'] = []
         context.user_data['supplier_stock_processing_stage'] = 'output_name'
-        update.message.reply_text("Введите имя выходного файла для колонки 1 из %d:" % expected)
+        update.message.reply_text(
+            "Введите имя выходного файла для колонки 1 из %d "
+            "(можно использовать {index}, {name}, {filename}):" % expected
+        )
         return None
 
     if stage == 'output_name':
@@ -4960,7 +4963,8 @@ def supplier_stock_handle_processing_input(update, context):
         expected = context.user_data.get('supplier_stock_processing_output_names_expected', 0)
         if len(names) < expected:
             update.message.reply_text(
-                "Введите имя выходного файла для колонки %d из %d:" % (len(names) + 1, expected)
+                "Введите имя выходного файла для колонки %d из %d "
+                "(можно использовать {index}, {name}, {filename}):" % (len(names) + 1, expected)
             )
             return None
         variant = context.user_data.get('supplier_stock_processing_current_variant', {})
