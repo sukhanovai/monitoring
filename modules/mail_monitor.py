@@ -190,9 +190,10 @@ def get_stock_load_patterns_from_config() -> dict[str, list[str]]:
 
         def _normalize_list(value: object) -> list[str]:
             if isinstance(value, list):
-                return [item for item in value if isinstance(item, str)]
+                return [item.strip() for item in value if isinstance(item, str) and item.strip()]
             if isinstance(value, str):
-                return [value]
+                stripped = value.strip()
+                return [stripped] if stripped else []
             return []
 
         def _strip_named_groups(patterns: list[str]) -> list[str]:
