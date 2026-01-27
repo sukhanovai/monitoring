@@ -1002,10 +1002,11 @@ def _process_variant(
         )
         for row in rows:
             article_raw = _get_cell(row, article_col, preserve_whitespace=True)
+            article_source = article_raw.lstrip()
             article_transformed = (
-                compiled_transform.sub(transform_replacement, article_raw)
+                compiled_transform.sub(transform_replacement, article_source)
                 if compiled_transform
-                else article_raw
+                else article_source
             )
             article = article_transformed.strip()
             if not article:
