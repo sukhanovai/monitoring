@@ -3273,6 +3273,7 @@ def show_supplier_stock_processing_variant_menu(update, context, variant_index: 
     orc_input_index = orc.get("input_index")
     orc_output_index = orc.get("output_index")
     orc_output_format = orc.get("output_format")
+    orc_output_name = _escape_pattern_text(orc.get("output_name") or "")
     if orc_output_format:
         orc_output_text = orc_output_format
     elif output_format != "не задано":
@@ -3296,6 +3297,7 @@ def show_supplier_stock_processing_variant_menu(update, context, variant_index: 
         message += (
             f"\n• Колонка данных для ОРК: `{orc_column}`"
             f"\n• Формат файла ОРК на выходе: `{_escape_pattern_text(orc_output_text)}`"
+            f"\n• Имя выходного файла ОРК: `{orc_output_name or 'по умолчанию (_orc)'}`"
         )
         if orc_input_index:
             message += f"\n• Файл источника (вход): `№{orc_input_index}`"
@@ -3492,6 +3494,7 @@ def show_supplier_stock_processing_orc_menu(update, context, variant_index: int)
     orc_output_index = orc.get("output_index")
     base_output_format = variant.get("output_format")
     orc_output_format = orc.get("output_format")
+    orc_output_name = _escape_pattern_text(orc.get("output_name") or "")
     if orc_output_format:
         orc_output_text = orc_output_format
     elif base_output_format:
@@ -3519,6 +3522,7 @@ def show_supplier_stock_processing_orc_menu(update, context, variant_index: int)
         f"• Stor: `{orc_stor}`",
         f"• Колонка с данными: `{orc_column}`",
         f"• Формат файла ОРК на выходе: `{_escape_pattern_text(orc_output_text)}`",
+        f"• Имя выходного файла ОРК: `{orc_output_name or 'по умолчанию (_orc)'}`",
     ]
     if input_count > 1:
         input_label = f"№{orc_input_index}" if orc_input_index else "не задано"
@@ -3539,6 +3543,12 @@ def show_supplier_stock_processing_orc_menu(update, context, variant_index: int)
         [InlineKeyboardButton("🏷️ Префикс в артикуле", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_prefix')],
         [InlineKeyboardButton("📦 Stor", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_stor')],
         [InlineKeyboardButton("📈 Колонка с данными", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_column')],
+        [
+            InlineKeyboardButton(
+                "📄 Имя выходного файла ОРК",
+                callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_output_name'
+            )
+        ],
         [
             InlineKeyboardButton(
                 "🧾 Формат файла ОРК на выходе",
@@ -3717,6 +3727,11 @@ def supplier_stock_start_processing_field_edit(
         "orc_prefix": "Введите префикс артикула для файла ОРК (или '-' если не нужен):",
         "orc_stor": "Введите параметр Stor для файла ОРК:",
         "orc_column": "Введите номер колонки с данными для файла ОРК:",
+        "orc_output_name": (
+            "Введите имя выходного файла ОРК "
+            "(можно использовать {index}, {name}, {filename}) "
+            "или '-' чтобы использовать добавление _orc:"
+        ),
         "orc_output_format": (
             "Введите формат файла ОРК на выходе (xls, xlsx, csv) "
             "или '-' чтобы использовать формат основного файла:"
@@ -3762,7 +3777,7 @@ def supplier_stock_start_processing_field_edit(
                 current_value = names[item_index]
         elif field == "output_format":
             current_value = variant.get("output_format")
-        elif field in ("orc_prefix", "orc_stor", "orc_column", "orc_output_format"):
+        elif field in ("orc_prefix", "orc_stor", "orc_column", "orc_output_name", "orc_output_format"):
             orc = variant.get("orc", {})
             if field == "orc_prefix":
                 current_value = orc.get("prefix")
@@ -3770,6 +3785,8 @@ def supplier_stock_start_processing_field_edit(
                 current_value = orc.get("stor")
             elif field == "orc_column":
                 current_value = orc.get("column")
+            elif field == "orc_output_name":
+                current_value = orc.get("output_name")
             elif field == "orc_output_format":
                 if orc.get("output_format"):
                     current_value = orc.get("output_format")
@@ -4561,6 +4578,7 @@ def supplier_stock_handle_processing_input(update, context):
             'orc_prefix',
             'orc_stor',
             'orc_column',
+            'orc_output_name',
             'orc_output_format',
         }
         if variant_index is not None and field in variant_fields:
@@ -4686,6 +4704,13 @@ def supplier_stock_handle_processing_input(update, context):
                     return None
                 orc = variant.get("orc", {})
                 orc['column'] = col_value
+                variant['orc'] = orc
+            elif field == 'orc_output_name':
+                orc = variant.get("orc", {})
+                if user_input_stripped in ('-', ''):
+                    orc.pop('output_name', None)
+                else:
+                    orc['output_name'] = user_input_stripped
                 variant['orc'] = orc
             elif field == 'orc_output_format':
                 if user_input_stripped in ('-', ''):
