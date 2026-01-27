@@ -13,6 +13,7 @@ Mailbox monitoring
 
 from __future__ import annotations
 
+import ast
 import email.policy
 import json
 import fnmatch
@@ -1000,13 +1001,20 @@ class BackupProcessor:
         aliases = source.get("filename_aliases")
         if isinstance(aliases, dict):
             return aliases, filename_pattern
+        if isinstance(filename_pattern, dict):
+            return filename_pattern, ""
         if isinstance(filename_pattern, str):
             trimmed = filename_pattern.strip()
             if trimmed.startswith("{") and trimmed.endswith("}"):
                 try:
                     parsed = json.loads(trimmed)
                 except json.JSONDecodeError:
-                    return None, filename_pattern
+                    parsed = None
+                if not isinstance(parsed, dict):
+                    try:
+                        parsed = ast.literal_eval(trimmed)
+                    except (ValueError, SyntaxError):
+                        parsed = None
                 if isinstance(parsed, dict):
                     return parsed, ""
         return None, filename_pattern
