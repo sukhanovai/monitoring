@@ -648,6 +648,7 @@ def show_backup_settings(update, context):
         keyboard.append([InlineKeyboardButton("🧊 ZFS", callback_data='settings_zfs')])
 
     keyboard.extend([
+        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ])
@@ -2537,6 +2538,7 @@ def show_settings_extensions_menu(update, context):
         keyboard.append([InlineKeyboardButton("💻 Ресурсы", callback_data='settings_resources')])
 
     keyboard.extend([
+        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ])
@@ -2728,6 +2730,7 @@ def show_supplier_stock_settings(update, context):
     keyboard = [
         [InlineKeyboardButton("🌐 Скачивание файлов", callback_data='supplier_stock_download')],
         [InlineKeyboardButton("📧 Почтовые сообщения", callback_data='supplier_stock_mail')],
+        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_extensions'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
@@ -2770,6 +2773,7 @@ def show_supplier_stock_download_settings(update, context):
         [InlineKeyboardButton("🗄️ Каталог архива", callback_data='supplier_stock_archive_dir')],
         [InlineKeyboardButton("⏰ Расписание", callback_data='supplier_stock_schedule')],
         [InlineKeyboardButton("📦 Источники", callback_data='supplier_stock_sources')],
+        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_supplier_stock'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
@@ -2816,6 +2820,7 @@ def show_supplier_stock_mail_settings(update, context):
         [InlineKeyboardButton("📁 Временный каталог", callback_data='supplier_stock_mail_temp_dir')],
         [InlineKeyboardButton("🗄️ Каталог архива", callback_data='supplier_stock_mail_archive_dir')],
         [InlineKeyboardButton("📎 Правила вложений", callback_data='supplier_stock_mail_sources')],
+        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_supplier_stock'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
@@ -2919,6 +2924,7 @@ def show_supplier_stock_processing_menu(
             ),
         ])
 
+    keyboard.append([InlineKeyboardButton("🏠 На главную", callback_data='main_menu')])
     keyboard.append([
         InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
         InlineKeyboardButton("✖️ Закрыть", callback_data='close')
@@ -3208,6 +3214,7 @@ def show_supplier_stock_processing_rule_menu(update, context) -> None:
             InlineKeyboardButton("📄 Имя файла на выходе", callback_data='supplier_stock_processing_rule|field|output_name')
         ])
 
+    keyboard.append([InlineKeyboardButton("🏠 На главную", callback_data='main_menu')])
     keyboard.append([
         InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_processing_rule|back'),
         InlineKeyboardButton("✖️ Закрыть", callback_data='close')
@@ -3340,6 +3347,7 @@ def show_supplier_stock_processing_variant_menu(update, context, variant_index: 
             ],
         ])
 
+    keyboard.append([InlineKeyboardButton("🏠 На главную", callback_data='main_menu')])
     keyboard.append([
         InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_processing_rule|menu'),
         InlineKeyboardButton("✖️ Закрыть", callback_data='close')
@@ -3435,6 +3443,7 @@ def show_supplier_stock_processing_columns_menu(update, context, variant_index: 
                 )
             ])
 
+    keyboard.append([InlineKeyboardButton("🏠 На главную", callback_data='main_menu')])
     keyboard.append([
         InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_processing_rule|menu'),
         InlineKeyboardButton("✖️ Закрыть", callback_data='close')
@@ -3557,6 +3566,7 @@ def show_supplier_stock_processing_orc_menu(update, context, variant_index: int)
                 )
             ])
 
+    keyboard.append([InlineKeyboardButton("🏠 На главную", callback_data='main_menu')])
     keyboard.append([
         InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_processing_rule|menu'),
         InlineKeyboardButton("✖️ Закрыть", callback_data='close')
@@ -3931,6 +3941,7 @@ def show_supplier_stock_mail_sources_menu(update, context):
             ),
         ])
 
+    keyboard.append([InlineKeyboardButton("🏠 На главную", callback_data='main_menu')])
     keyboard.append([
         InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail'),
         InlineKeyboardButton("✖️ Закрыть", callback_data='close')
@@ -3964,6 +3975,7 @@ def show_supplier_stock_schedule_menu(update, context):
     keyboard = [
         [InlineKeyboardButton("🔁 Включить/выключить", callback_data='supplier_stock_schedule_toggle')],
         [InlineKeyboardButton("🕒 Изменить время", callback_data='supplier_stock_schedule_time')],
+        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
         [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_download'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
@@ -4047,6 +4059,7 @@ def show_supplier_stock_sources_menu(update, context):
             ),
         ])
 
+    keyboard.append([InlineKeyboardButton("🏠 На главную", callback_data='main_menu')])
     keyboard.append([
         InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_download'),
         InlineKeyboardButton("✖️ Закрыть", callback_data='close')
@@ -4163,6 +4176,7 @@ def show_supplier_stock_source_settings(update, context, source_id: str):
         [InlineKeyboardButton("— Обработка файлов —", callback_data='supplier_stock_noop')],
         [InlineKeyboardButton("📋 Правила обработки", callback_data=f'supplier_stock_processing_source|{source_id}|menu')],
         [InlineKeyboardButton("➕ Добавить правило", callback_data=f'supplier_stock_processing_source|{source_id}|add')],
+        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
         [
             InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources'),
             InlineKeyboardButton("✖️ Закрыть", callback_data='close')
@@ -4263,6 +4277,7 @@ def show_supplier_stock_mail_source_settings(update, context, source_id: str):
         [InlineKeyboardButton("— Обработка файлов —", callback_data='supplier_stock_noop')],
         [InlineKeyboardButton("📋 Правила обработки", callback_data=f'supplier_stock_processing_mail|{source_id}|menu')],
         [InlineKeyboardButton("➕ Добавить правило", callback_data=f'supplier_stock_processing_mail|{source_id}|add')],
+        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
         [
             InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail_sources'),
             InlineKeyboardButton("✖️ Закрыть", callback_data='close')
