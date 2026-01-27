@@ -4492,7 +4492,8 @@ def supplier_stock_handle_processing_input(update, context):
     stage = context.user_data.get('supplier_stock_processing_stage')
     data = context.user_data.get('supplier_stock_processing_data', {})
     raw_input = update.message.text or ""
-    user_input = raw_input.strip()
+    user_input = raw_input.rstrip("\n")
+    user_input_stripped = user_input.strip()
     source_id = context.user_data.get('supplier_stock_processing_source_id')
     source_kind = context.user_data.get('supplier_stock_processing_source_kind')
     if source_id:
@@ -4528,25 +4529,25 @@ def supplier_stock_handle_processing_input(update, context):
         if variant_index is not None and field in variant_fields:
             variant = _ensure_processing_variant(rule_data, variant_index)
             if field == 'article_col':
-                article_col = _parse_positive_int(user_input)
+                article_col = _parse_positive_int(user_input_stripped)
                 if article_col is None:
                     update.message.reply_text("❌ Введите целое число больше 0.")
                     return None
                 variant['article_col'] = article_col
             elif field == 'article_filter':
-                if user_input not in ('-', ''):
-                    variant['article_filter'] = user_input
+                if user_input_stripped not in ('-', ''):
+                    variant['article_filter'] = user_input_stripped
                     if variant.get("use_article_filter") is None:
                         variant["use_article_filter"] = True
                 else:
                     variant.pop('article_filter', None)
             elif field == 'article_prefix':
-                if user_input in ('-', ''):
+                if user_input_stripped in ('-', ''):
                     variant['article_prefix'] = ""
                 else:
-                    variant['article_prefix'] = raw_input.rstrip("\n")
+                    variant['article_prefix'] = user_input
             elif field == 'article_postfix':
-                raw_value = raw_input.rstrip("\n")
+                raw_value = user_input
                 if raw_value == "":
                     variant['article_postfix'] = ""
                 elif raw_value.strip() == "-":
@@ -4554,7 +4555,7 @@ def supplier_stock_handle_processing_input(update, context):
                 else:
                     variant['article_postfix'] = raw_value
             elif field == 'article_transform':
-                raw_value = raw_input.rstrip("\n")
+                raw_value = user_input
                 if raw_value.strip() in ('', '-'):
                     variant['article_transform'] = {
                         "pattern": "",
@@ -4576,13 +4577,13 @@ def supplier_stock_handle_processing_input(update, context):
                         "replacement": replacement_value,
                     }
             elif field == 'data_columns_count':
-                columns_count = _parse_positive_int(user_input)
+                columns_count = _parse_positive_int(user_input_stripped)
                 if columns_count is None:
                     update.message.reply_text("❌ Введите целое число больше 0.")
                     return None
                 _sync_variant_columns(variant, columns_count)
             elif field == 'data_column':
-                col_value = _parse_positive_int(user_input)
+                col_value = _parse_positive_int(user_input_stripped)
                 if col_value is None:
                     update.message.reply_text("❌ Введите целое число больше 0.")
                     return None
@@ -4593,37 +4594,37 @@ def supplier_stock_handle_processing_input(update, context):
                 columns[item_index] = col_value
                 variant['data_columns'] = columns
             elif field == 'output_name':
-                if not user_input:
+                if not user_input_stripped:
                     update.message.reply_text("❌ Имя файла не может быть пустым. Попробуйте снова:")
                     return None
                 names = list(variant.get("output_names", []))
                 if item_index is None or item_index >= len(names):
                     update.message.reply_text("❌ Неверный индекс файла.")
                     return None
-                names[item_index] = user_input
+                names[item_index] = user_input_stripped
                 variant['output_names'] = names
             elif field == 'output_format':
-                format_value = user_input.lower()
+                format_value = user_input_stripped.lower()
                 if format_value not in ('xls', 'xlsx', 'csv'):
                     update.message.reply_text("❌ Допустимые форматы: xls, xlsx, csv.")
                     return None
                 variant['output_format'] = format_value
             elif field == 'orc_prefix':
                 orc = variant.get("orc", {})
-                if user_input in ('-', ''):
+                if user_input_stripped in ('-', ''):
                     orc['prefix'] = ""
                 else:
-                    orc['prefix'] = raw_input.rstrip("\n")
+                    orc['prefix'] = user_input
                 variant['orc'] = orc
             elif field == 'orc_stor':
-                if not user_input:
+                if not user_input_stripped:
                     update.message.reply_text("❌ Stor не может быть пустым. Попробуйте снова:")
                     return None
                 orc = variant.get("orc", {})
-                orc['stor'] = user_input
+                orc['stor'] = user_input_stripped
                 variant['orc'] = orc
             elif field == 'orc_column':
-                col_value = _parse_positive_int(user_input)
+                col_value = _parse_positive_int(user_input_stripped)
                 if col_value is None:
                     update.message.reply_text("❌ Введите целое число больше 0.")
                     return None
@@ -4631,12 +4632,12 @@ def supplier_stock_handle_processing_input(update, context):
                 orc['column'] = col_value
                 variant['orc'] = orc
             elif field == 'orc_output_format':
-                if user_input in ('-', ''):
+                if user_input_stripped in ('-', ''):
                     orc = variant.get("orc", {})
                     orc.pop('output_format', None)
                     variant['orc'] = orc
                 else:
-                    format_value = user_input.lower()
+                    format_value = user_input_stripped.lower()
                     if format_value not in ('xls', 'xlsx', 'csv'):
                         update.message.reply_text("❌ Допустимые форматы: xls, xlsx, csv.")
                         return None
@@ -4646,26 +4647,26 @@ def supplier_stock_handle_processing_input(update, context):
             rule_data['variants'][variant_index] = variant
         else:
             if field == 'name':
-                if not user_input:
+                if not user_input_stripped:
                     update.message.reply_text("❌ Название не может быть пустым. Попробуйте снова:")
                     return None
-                rule_data['name'] = user_input
+                rule_data['name'] = user_input_stripped
             elif field == 'source_file':
-                if not user_input:
+                if not user_input_stripped:
                     update.message.reply_text("❌ Имя файла не может быть пустым. Попробуйте снова:")
                     return None
-                rule_data['source_file'] = user_input
+                rule_data['source_file'] = user_input_stripped
             elif field == 'data_row':
-                data_row = _parse_positive_int(user_input)
+                data_row = _parse_positive_int(user_input_stripped)
                 if data_row is None:
                     update.message.reply_text("❌ Введите целое число больше 0.")
                     return None
                 rule_data['data_row'] = data_row
             elif field == 'output_name':
-                if not user_input:
+                if not user_input_stripped:
                     update.message.reply_text("❌ Имя файла не может быть пустым. Попробуйте снова:")
                     return None
-                rule_data['output_name'] = user_input
+                rule_data['output_name'] = user_input_stripped
             else:
                 update.message.reply_text("❌ Не удалось определить вариант настройки.")
                 return None
@@ -4689,19 +4690,19 @@ def supplier_stock_handle_processing_input(update, context):
         return None
 
     if stage == 'name':
-        if not user_input:
+        if not user_input_stripped:
             update.message.reply_text("❌ Название не может быть пустым. Попробуйте снова:")
             return None
-        data['name'] = user_input
-        data['id'] = _slugify_supplier_source_id(user_input)
+        data['name'] = user_input_stripped
+        data['id'] = _slugify_supplier_source_id(user_input_stripped)
         context.user_data['supplier_stock_processing_stage'] = 'source_file'
         context.user_data['supplier_stock_processing_data'] = data
         update.message.reply_text("Введите файл источника (например: supplier_1_orig.xls):")
         return None
 
     if stage == 'edit_name':
-        if user_input and user_input not in ('-',):
-            data['name'] = user_input
+        if user_input_stripped and user_input_stripped not in ('-',):
+            data['name'] = user_input_stripped
         context.user_data['supplier_stock_processing_stage'] = 'edit_source_file'
         context.user_data['supplier_stock_processing_data'] = data
         update.message.reply_text(
@@ -4711,8 +4712,8 @@ def supplier_stock_handle_processing_input(update, context):
         return None
 
     if stage == 'edit_source_file':
-        if user_input and user_input not in ('-',):
-            data['source_file'] = user_input
+        if user_input_stripped and user_input_stripped not in ('-',):
+            data['source_file'] = user_input_stripped
         context.user_data['supplier_stock_processing_stage'] = 'edit_reconfigure'
         context.user_data['supplier_stock_processing_data'] = data
         update.message.reply_text(
@@ -4721,7 +4722,7 @@ def supplier_stock_handle_processing_input(update, context):
         return None
 
     if stage == 'edit_reconfigure':
-        reconfigure = _parse_yes_no(user_input)
+        reconfigure = _parse_yes_no(user_input_stripped)
         if reconfigure is None:
             update.message.reply_text("❌ Ответьте 'да' или 'нет'.")
             return None
@@ -4744,17 +4745,17 @@ def supplier_stock_handle_processing_input(update, context):
         return None
 
     if stage == 'source_file':
-        if not user_input:
+        if not user_input_stripped:
             update.message.reply_text("❌ Файл источника не может быть пустым. Попробуйте снова:")
             return None
-        data['source_file'] = user_input
+        data['source_file'] = user_input_stripped
         context.user_data['supplier_stock_processing_stage'] = 'needs_processing'
         context.user_data['supplier_stock_processing_data'] = data
         update.message.reply_text("Требуется обработка файла? (да/нет):")
         return None
 
     if stage == 'needs_processing':
-        needs_processing = _parse_yes_no(user_input)
+        needs_processing = _parse_yes_no(user_input_stripped)
         if needs_processing is None:
             update.message.reply_text("❌ Ответьте 'да' или 'нет'.")
             return None
@@ -4776,7 +4777,7 @@ def supplier_stock_handle_processing_input(update, context):
         return None
 
     if stage == 'variants_count':
-        variants_count = _parse_positive_int(user_input)
+        variants_count = _parse_positive_int(user_input_stripped)
         if variants_count is None:
             update.message.reply_text("❌ Введите целое число больше 0.")
             return None
@@ -4789,7 +4790,7 @@ def supplier_stock_handle_processing_input(update, context):
         return None
 
     if stage == 'data_row':
-        data_row = _parse_positive_int(user_input)
+        data_row = _parse_positive_int(user_input_stripped)
         if data_row is None:
             update.message.reply_text("❌ Введите целое число больше 0.")
             return None
@@ -4800,7 +4801,7 @@ def supplier_stock_handle_processing_input(update, context):
         return None
 
     if stage == 'variant_article_col':
-        article_col = _parse_positive_int(user_input)
+        article_col = _parse_positive_int(user_input_stripped)
         if article_col is None:
             update.message.reply_text("❌ Введите целое число больше 0.")
             return None
@@ -4821,8 +4822,8 @@ def supplier_stock_handle_processing_input(update, context):
 
     if stage == 'variant_article_filter':
         variant = context.user_data.get('supplier_stock_processing_current_variant', {})
-        if user_input not in ('-', ''):
-            variant['article_filter'] = user_input
+        if user_input_stripped not in ('-', ''):
+            variant['article_filter'] = user_input_stripped
         context.user_data['supplier_stock_processing_current_variant'] = variant
         context.user_data['supplier_stock_processing_stage'] = 'variant_prefix'
         update.message.reply_text(
@@ -4833,10 +4834,10 @@ def supplier_stock_handle_processing_input(update, context):
 
     if stage == 'variant_prefix':
         variant = context.user_data.get('supplier_stock_processing_current_variant', {})
-        if user_input in ('-', ''):
+        if user_input_stripped in ('-', ''):
             variant['article_prefix'] = ""
         else:
-            variant['article_prefix'] = raw_input.rstrip("\n")
+            variant['article_prefix'] = user_input
         context.user_data['supplier_stock_processing_current_variant'] = variant
         context.user_data['supplier_stock_processing_stage'] = 'variant_postfix'
         update.message.reply_text(
@@ -4847,7 +4848,7 @@ def supplier_stock_handle_processing_input(update, context):
 
     if stage == 'variant_postfix':
         variant = context.user_data.get('supplier_stock_processing_current_variant', {})
-        raw_value = raw_input.rstrip("\n")
+        raw_value = user_input
         if raw_value == "":
             variant['article_postfix'] = ""
         elif raw_value.strip() == "-":
@@ -4860,7 +4861,7 @@ def supplier_stock_handle_processing_input(update, context):
         return None
 
     if stage == 'data_columns_count':
-        columns_count = _parse_positive_int(user_input)
+        columns_count = _parse_positive_int(user_input_stripped)
         if columns_count is None:
             update.message.reply_text("❌ Введите целое число больше 0.")
             return None
@@ -4871,7 +4872,7 @@ def supplier_stock_handle_processing_input(update, context):
         return None
 
     if stage == 'data_column':
-        col_value = _parse_positive_int(user_input)
+        col_value = _parse_positive_int(user_input_stripped)
         if col_value is None:
             update.message.reply_text("❌ Введите целое число больше 0.")
             return None
@@ -4894,11 +4895,11 @@ def supplier_stock_handle_processing_input(update, context):
         return None
 
     if stage == 'output_name':
-        if not user_input:
+        if not user_input_stripped:
             update.message.reply_text("❌ Имя файла не может быть пустым. Попробуйте снова:")
             return None
         names = context.user_data.get('supplier_stock_processing_output_names', [])
-        names.append(user_input)
+        names.append(user_input_stripped)
         context.user_data['supplier_stock_processing_output_names'] = names
         expected = context.user_data.get('supplier_stock_processing_output_names_expected', 0)
         if len(names) < expected:
@@ -4914,7 +4915,7 @@ def supplier_stock_handle_processing_input(update, context):
         return None
 
     if stage == 'output_format':
-        format_value = user_input.lower()
+        format_value = user_input_stripped.lower()
         if format_value not in ('xls', 'xlsx', 'csv'):
             update.message.reply_text("❌ Допустимые форматы: xls, xlsx, csv.")
             return None
@@ -4926,7 +4927,7 @@ def supplier_stock_handle_processing_input(update, context):
         return None
 
     if stage == 'orc_required':
-        orc_required = _parse_yes_no(user_input)
+        orc_required = _parse_yes_no(user_input_stripped)
         if orc_required is None:
             update.message.reply_text("❌ Ответьте 'да' или 'нет'.")
             return None
@@ -4944,21 +4945,21 @@ def supplier_stock_handle_processing_input(update, context):
 
     if stage == 'orc_prefix':
         variant = context.user_data.get('supplier_stock_processing_current_variant', {})
-        if user_input in ('-', ''):
+        if user_input_stripped in ('-', ''):
             variant['orc']['prefix'] = ""
         else:
-            variant['orc']['prefix'] = raw_input.rstrip("\n")
+            variant['orc']['prefix'] = user_input
         context.user_data['supplier_stock_processing_current_variant'] = variant
         context.user_data['supplier_stock_processing_stage'] = 'orc_stor'
         update.message.reply_text("Введите параметр Stor для файла ОРК:")
         return None
 
     if stage == 'orc_stor':
-        if not user_input:
+        if not user_input_stripped:
             update.message.reply_text("❌ Stor не может быть пустым. Попробуйте снова:")
             return None
         variant = context.user_data.get('supplier_stock_processing_current_variant', {})
-        variant['orc']['stor'] = user_input
+        variant['orc']['stor'] = user_input_stripped
         context.user_data['supplier_stock_processing_current_variant'] = variant
         return _supplier_stock_finish_variant(update, context, data)
 
