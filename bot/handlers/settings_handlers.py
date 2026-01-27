@@ -3673,7 +3673,10 @@ def supplier_stock_start_processing_field_edit(
             "• gsub(/^\\./, \"\", art); gsub(/[A-Za-z]+$/, \"\", art);\n"
             "• ($3+0 > 0) && ($4 == \"Москва\")"
         ),
-        "article_prefix": "Введите префикс артикула (или '-' если не нужен):",
+        "article_prefix": (
+            "Введите префикс артикула (или '-' если не нужен). "
+            "Если нужен пробел в конце, можно указать \\s:"
+        ),
         "article_postfix": "Введите постфикс артикула (или '-' если не нужен). Пробелы в конце сохраняются:",
         "article_transform": (
             "Введите правило изменения артикула (regex) или '-' чтобы отключить.\n\n"
@@ -4828,7 +4831,7 @@ def supplier_stock_handle_processing_input(update, context):
         context.user_data['supplier_stock_processing_stage'] = 'variant_prefix'
         update.message.reply_text(
             "Введите префикс артикула (или '-' если не нужен). "
-            "Пробелы в конце сохраняются."
+            "Пробелы в конце сохраняются, либо используйте \\s."
         )
         return None
 

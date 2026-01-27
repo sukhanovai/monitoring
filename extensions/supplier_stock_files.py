@@ -958,6 +958,12 @@ def _normalize_cell(value: Any) -> str:
     return str(value)
 
 
+def _normalize_spacing_tokens(value: str) -> str:
+    if not value:
+        return ""
+    return value.replace("\\s", " ").replace("\\t", "\t")
+
+
 def _process_variant(
     table: list[list[str]],
     file_path: Path,
@@ -982,7 +988,7 @@ def _process_variant(
     if len(use_article_filter_columns) < len(data_columns):
         use_article_filter_columns.extend([True] * (len(data_columns) - len(use_article_filter_columns)))
     use_article_filter_columns = use_article_filter_columns[:len(data_columns)]
-    article_prefix = variant.get("article_prefix") or ""
+    article_prefix = _normalize_spacing_tokens(variant.get("article_prefix") or "")
     article_postfix = variant.get("article_postfix") or ""
     article_transform = variant.get("article_transform") or {}
     transform_pattern = ""
@@ -1062,7 +1068,7 @@ def _process_variant(
             article_value = _apply_article_postfix(f"{article_prefix}{article_transformed}", article_postfix)
             items.append([article_value, quant_value])
             if orc_active:
-                orc_prefix = orc_config.get("prefix", "")
+                orc_prefix = _normalize_spacing_tokens(orc_config.get("prefix", ""))
                 stor = orc_config.get("stor", "")
                 orc_column_index = orc_column if orc_column > 0 else column_index
                 orc_quant_raw = _get_cell(row, orc_column_index)
