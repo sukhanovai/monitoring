@@ -2940,6 +2940,8 @@ def _default_processing_variant() -> dict:
     return {
         "article_col": None,
         "article_filter": None,
+        "extra_filter_col": None,
+        "extra_filter": None,
         "use_article_filter": None,
         "use_article_filter_columns": [],
         "article_prefix": "",
@@ -3167,6 +3169,12 @@ def show_supplier_stock_processing_rule_menu(update, context) -> None:
             ],
             [
                 InlineKeyboardButton(
+                    "🧪 Условия отбора по еще одной колонке",
+                    callback_data=f'supplier_stock_processing_variant|field|{variant_index}|extra_filter'
+                )
+            ],
+            [
+                InlineKeyboardButton(
                     "🏷️ Префикс в артикуле",
                     callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_prefix'
                 )
@@ -3236,6 +3244,12 @@ def show_supplier_stock_processing_variant_menu(update, context, variant_index: 
 
     article_col = variant.get("article_col") or "не задано"
     article_filter = _escape_pattern_text(variant.get("article_filter") or "не задано")
+    extra_filter_col = variant.get("extra_filter_col")
+    extra_filter = variant.get("extra_filter")
+    if extra_filter_col and extra_filter:
+        extra_filter_text = f"№{extra_filter_col}: {_escape_pattern_text(extra_filter)}"
+    else:
+        extra_filter_text = "не задано"
     article_prefix = _escape_pattern_text(variant.get("article_prefix") or "не задано")
     article_postfix = _escape_pattern_text(variant.get("article_postfix") or "не задано")
     article_transform = variant.get("article_transform") or {}
@@ -3270,6 +3284,7 @@ def show_supplier_stock_processing_variant_menu(update, context, variant_index: 
         "📦 *Настройка файла обработки*\n\n"
         f"• Номер колонки с артикулом: `{article_col}`\n"
         f"• Условия отбора артикулов: `{article_filter}`\n"
+        f"• Условия отбора по доп. колонке: `{extra_filter_text}`\n"
         f"• Префикс артикула: `{article_prefix}`\n"
         f"• Постфикс артикула: `{article_postfix}`\n"
         f"• Изменение входящего артикула: `{transform_text}`\n"
@@ -3297,6 +3312,12 @@ def show_supplier_stock_processing_variant_menu(update, context, variant_index: 
         [InlineKeyboardButton("— Настройки файла —", callback_data='supplier_stock_noop')],
         [InlineKeyboardButton("🔎 Номер колонки с артикулом", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_col')],
         [InlineKeyboardButton("🧪 Условия отбора артикулов", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_filter')],
+        [
+            InlineKeyboardButton(
+                "🧪 Условия отбора по еще одной колонке",
+                callback_data=f'supplier_stock_processing_variant|field|{variant_index}|extra_filter'
+            )
+        ],
         [InlineKeyboardButton("🏷️ Префикс в артикуле", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_prefix')],
         [InlineKeyboardButton("🏷️ Постфикс артикула", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_postfix')],
         [InlineKeyboardButton("🧹 Изменение входящего артикула", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_transform')],
@@ -3673,6 +3694,11 @@ def supplier_stock_start_processing_field_edit(
             "• gsub(/^\\./, \"\", art); gsub(/[A-Za-z]+$/, \"\", art);\n"
             "• ($3+0 > 0) && ($4 == \"Москва\")"
         ),
+        "extra_filter": (
+            "Введите номер колонки и условие отбора (regex) через ';'.\n"
+            "Пример: 4;^Москва$\n"
+            "Или '-' чтобы отключить дополнительный фильтр."
+        ),
         "article_prefix": (
             "Введите префикс артикула (или '-' если не нужен). "
             "Если нужен пробел в конце, можно указать \\s:"
@@ -3707,6 +3733,13 @@ def supplier_stock_start_processing_field_edit(
             current_value = variant.get("article_col")
         elif field == "article_filter":
             current_value = variant.get("article_filter")
+        elif field == "extra_filter":
+            extra_filter_col = variant.get("extra_filter_col")
+            extra_filter = variant.get("extra_filter")
+            if extra_filter_col and extra_filter:
+                current_value = f"{extra_filter_col}; {extra_filter}"
+            else:
+                current_value = None
         elif field == "article_prefix":
             current_value = variant.get("article_prefix")
         elif field == "article_postfix":
@@ -4517,6 +4550,7 @@ def supplier_stock_handle_processing_input(update, context):
         variant_fields = {
             'article_col',
             'article_filter',
+            'extra_filter',
             'article_prefix',
             'article_postfix',
             'article_transform',
@@ -4544,6 +4578,25 @@ def supplier_stock_handle_processing_input(update, context):
                         variant["use_article_filter"] = True
                 else:
                     variant.pop('article_filter', None)
+            elif field == 'extra_filter':
+                if user_input_stripped in ('-', ''):
+                    variant.pop('extra_filter', None)
+                    variant.pop('extra_filter_col', None)
+                else:
+                    if ';' not in user_input_stripped:
+                        update.message.reply_text("❌ Укажите номер колонки и условие через ';'.")
+                        return None
+                    col_part, filter_part = user_input_stripped.split(';', 1)
+                    extra_filter_col = _parse_positive_int(col_part.strip())
+                    extra_filter_value = filter_part.strip()
+                    if extra_filter_col is None:
+                        update.message.reply_text("❌ Номер колонки должен быть целым числом больше 0.")
+                        return None
+                    if not extra_filter_value:
+                        update.message.reply_text("❌ Укажите условие отбора после ';'.")
+                        return None
+                    variant['extra_filter_col'] = extra_filter_col
+                    variant['extra_filter'] = extra_filter_value
             elif field == 'article_prefix':
                 if user_input_stripped in ('-', ''):
                     variant['article_prefix'] = ""

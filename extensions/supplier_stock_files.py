@@ -981,6 +981,8 @@ def _process_variant(
     output_names = variant.get("output_names", [])
     output_format = (variant.get("output_format") or "csv").lower()
     article_filter = variant.get("article_filter") or ""
+    extra_filter = variant.get("extra_filter") or ""
+    extra_filter_col = int(variant.get("extra_filter_col") or 0)
     use_article_filter = variant.get("use_article_filter")
     if use_article_filter is None:
         use_article_filter = bool(article_filter)
@@ -1019,6 +1021,14 @@ def _process_variant(
             compiled_filter = re.compile(article_filter)
         except re.error as exc:
             return {"status": "error", "error": f"invalid_filter: {exc}"}
+    compiled_extra_filter = None
+    if extra_filter and extra_filter_col > 0:
+        try:
+            compiled_extra_filter = re.compile(extra_filter)
+        except re.error as exc:
+            return {"status": "error", "error": f"invalid_extra_filter: {exc}"}
+    elif extra_filter:
+        return {"status": "error", "error": "invalid_extra_filter_col"}
     compiled_transform = None
     if transform_pattern:
         try:
@@ -1061,6 +1071,10 @@ def _process_variant(
                 continue
             if compiled_filter and use_filter_for_column and not compiled_filter.search(article_trimmed):
                 continue
+            if compiled_extra_filter:
+                extra_value = _get_cell(row, extra_filter_col, preserve_whitespace=True).strip()
+                if not compiled_extra_filter.search(extra_value):
+                    continue
             quant_raw = _get_cell(row, column_index)
             quant_value = _parse_quantity(quant_raw)
             if quant_value is None:
