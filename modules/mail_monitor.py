@@ -14,6 +14,7 @@ Mailbox monitoring
 from __future__ import annotations
 
 import email.policy
+import json
 import fnmatch
 import re
 import shutil
@@ -981,15 +982,46 @@ class BackupProcessor:
         stamp = timestamp.strftime("%Y%m%d_%H%M%S")
         return f"{path.stem}_{stamp}{path.suffix}"
 
+    def _resolve_attachment_name(self, source: dict, filename: str) -> str:
+        base_name = Path(filename).stem if filename else "attachment"
+        aliases = source.get("filename_aliases") or {}
+        if isinstance(aliases, dict):
+            for pattern, alias in aliases.items():
+                if not pattern:
+                    continue
+                if self._match_rule_pattern(str(pattern), filename) or self._match_rule_pattern(
+                    str(pattern),
+                    base_name,
+                ):
+                    return str(alias)
+        return base_name
+
+    def _resolve_filename_aliases(self, source: dict, filename_pattern: str) -> tuple[dict | None, str]:
+        aliases = source.get("filename_aliases")
+        if isinstance(aliases, dict):
+            return aliases, filename_pattern
+        if isinstance(filename_pattern, str):
+            trimmed = filename_pattern.strip()
+            if trimmed.startswith("{") and trimmed.endswith("}"):
+                try:
+                    parsed = json.loads(trimmed)
+                except json.JSONDecodeError:
+                    return None, filename_pattern
+                if isinstance(parsed, dict):
+                    return parsed, ""
+        return None, filename_pattern
+
     def _build_attachment_output_name(
         self,
         template: str,
         filename: str,
         index: int,
+        name_override: str | None = None,
     ) -> str:
         base_name = Path(filename).stem if filename else "attachment"
+        name_value = name_override or base_name
         try:
-            return template.format(index=index, name=base_name)
+            return template.format(index=index, name=name_value, filename=filename, stem=base_name)
         except Exception:
             return template or filename or f"attachment_{index}"
 
@@ -1072,8 +1104,15 @@ class BackupProcessor:
 
             expected = int(source.get("expected_attachments") or 1)
             mime_pattern = source.get("mime_pattern") or "application/"
-            filename_pattern = source.get("filename_pattern") or ""
+            raw_filename_pattern = source.get("filename_pattern") or ""
+            filename_aliases, filename_pattern = self._resolve_filename_aliases(
+                source,
+                str(raw_filename_pattern),
+            )
             output_template = str(source.get("output_template") or "").strip()
+            source_context = dict(source)
+            if filename_aliases:
+                source_context["filename_aliases"] = filename_aliases
 
             collected = 0
             if not msg.is_multipart():
@@ -1095,11 +1134,15 @@ class BackupProcessor:
                 if not payload:
                     continue
 
-                output_name = (
-                    self._build_attachment_output_name(output_template, filename, collected + 1)
-                    if output_template
-                    else filename
-                )
+                output_name = filename
+                if output_template:
+                    name_override = self._resolve_attachment_name(source_context, filename)
+                    output_name = self._build_attachment_output_name(
+                        output_template,
+                        filename,
+                        collected + 1,
+                        name_override,
+                    )
                 output_path = temp_dir / output_name
                 output_path.write_bytes(payload)
 
