@@ -1201,14 +1201,20 @@ def _match_template_filename(template: str, filename: str) -> Dict[str, str]:
     if not re.search(placeholder_pattern, template):
         return {}
 
-    def _replace(match: re.Match[str]) -> str:
+    def _group_for_placeholder(match: re.Match[str]) -> str:
         key = match.group("key")
         if key == "index":
             return r"(?P<index>\d+)"
         return rf"(?P<{key}>.+?)"
 
-    pattern = re.escape(template)
-    pattern = re.sub(placeholder_pattern, _replace, pattern)
+    pattern_parts = []
+    last_index = 0
+    for match in re.finditer(placeholder_pattern, template):
+        pattern_parts.append(re.escape(template[last_index:match.start()]))
+        pattern_parts.append(_group_for_placeholder(match))
+        last_index = match.end()
+    pattern_parts.append(re.escape(template[last_index:]))
+    pattern = "".join(pattern_parts)
     match = re.match(rf"^{pattern}$", filename)
     return match.groupdict() if match else {}
 
