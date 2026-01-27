@@ -981,15 +981,31 @@ class BackupProcessor:
         stamp = timestamp.strftime("%Y%m%d_%H%M%S")
         return f"{path.stem}_{stamp}{path.suffix}"
 
+    def _resolve_attachment_name(self, source: dict, filename: str) -> str:
+        base_name = Path(filename).stem if filename else "attachment"
+        aliases = source.get("filename_aliases") or {}
+        if isinstance(aliases, dict):
+            for pattern, alias in aliases.items():
+                if not pattern:
+                    continue
+                if self._match_rule_pattern(str(pattern), filename) or self._match_rule_pattern(
+                    str(pattern),
+                    base_name,
+                ):
+                    return str(alias)
+        return base_name
+
     def _build_attachment_output_name(
         self,
         template: str,
         filename: str,
         index: int,
+        name_override: str | None = None,
     ) -> str:
         base_name = Path(filename).stem if filename else "attachment"
+        name_value = name_override or base_name
         try:
-            return template.format(index=index, name=base_name)
+            return template.format(index=index, name=name_value, filename=filename, stem=base_name)
         except Exception:
             return template or filename or f"attachment_{index}"
 
@@ -1095,11 +1111,15 @@ class BackupProcessor:
                 if not payload:
                     continue
 
-                output_name = (
-                    self._build_attachment_output_name(output_template, filename, collected + 1)
-                    if output_template
-                    else filename
-                )
+                output_name = filename
+                if output_template:
+                    name_override = self._resolve_attachment_name(source, filename)
+                    output_name = self._build_attachment_output_name(
+                        output_template,
+                        filename,
+                        collected + 1,
+                        name_override,
+                    )
                 output_path = temp_dir / output_name
                 output_path.write_bytes(payload)
 

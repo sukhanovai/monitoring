@@ -1040,7 +1040,13 @@ def _process_variant(
     outputs: list[Dict[str, Any]] = []
     orc_output_written = False
     for idx, (column_index, output_name) in enumerate(zip(data_columns, output_names)):
-        rendered_output_name = _render_output_name_template(output_name, file_path, input_index)
+        input_template = str(rule.get("source_file") or "").strip() or None
+        rendered_output_name = _render_output_name_template(
+            output_name,
+            file_path,
+            input_index,
+            input_template,
+        )
         rendered_output_name = _apply_input_index_to_output_name(
             rendered_output_name,
             str(output_name),
@@ -1098,9 +1104,19 @@ def _process_variant(
         orc_output = None
         if orc_active:
             orc_output_format = (orc_config.get("output_format") or output_format).lower()
+            orc_output_name = str(orc_config.get("output_name") or "").strip()
+            if orc_output_name:
+                rendered_orc_name = _render_output_name_template(
+                    orc_output_name,
+                    file_path,
+                    input_index,
+                    input_template,
+                )
+            else:
+                rendered_orc_name = _append_suffix_to_name(rendered_output_name, "_orc")
             orc_output_path = _resolve_output_path(
                 file_path.parent,
-                _append_suffix_to_name(rendered_output_name, "_orc"),
+                rendered_orc_name,
                 orc_output_format,
             )
             orc_output_path = _write_output_file(
@@ -1201,12 +1217,23 @@ def _resolve_output_name_values(
     template: str,
     file_path: Path,
     input_index: int | None,
+    input_template: str | None = None,
 ) -> Dict[str, Any]:
     values: Dict[str, Any] = {
         "index": input_index or 1,
         "name": file_path.stem,
         "filename": file_path.name,
     }
+    extracted_from_input = _match_template_filename(str(input_template or ""), file_path.name)
+    if "name" in extracted_from_input:
+        values["name"] = extracted_from_input["name"]
+    if "filename" in extracted_from_input:
+        values["filename"] = extracted_from_input["filename"]
+    if "index" in extracted_from_input:
+        try:
+            values["index"] = int(extracted_from_input["index"])
+        except ValueError:
+            values["index"] = extracted_from_input["index"]
     extracted = _match_template_filename(template, file_path.name)
     if "name" in extracted:
         values["name"] = extracted["name"]
@@ -1224,10 +1251,11 @@ def _render_output_name_template(
     template: str,
     file_path: Path,
     input_index: int | None,
+    input_template: str | None = None,
 ) -> str:
     if not template:
         return template
-    values = _resolve_output_name_values(template, file_path, input_index)
+    values = _resolve_output_name_values(template, file_path, input_index, input_template)
     try:
         return template.format(**values)
     except Exception:
