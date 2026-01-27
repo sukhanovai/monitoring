@@ -74,6 +74,22 @@ _scheduler_started = False
 _last_run_marker: str | None = None
 
 
+def _log_processing(message: str, *args: object) -> None:
+    try:
+        debug_log(message, *args)
+    except Exception:
+        formatted = message % args if args else message
+        debug_log(formatted)
+    try:
+        _logger.info(message, *args)
+    except Exception:
+        pass
+    try:
+        _monitor_logger.info(message, *args)
+    except Exception:
+        pass
+
+
 def _merge_dicts(defaults: Dict[str, Any], current: Dict[str, Any]) -> Dict[str, Any]:
     result = dict(defaults)
     for key, value in current.items():
@@ -649,6 +665,13 @@ def _process_supplier_stock_file(
     if not rules:
         return None
 
+    _log_processing(
+        "🧩 Остатки поставщиков: проверка правил обработки для %s (источник=%s, тип=%s)",
+        file_path.name,
+        source_id or "не указан",
+        source_kind or "не указан",
+    )
+
     matched_rules = []
     results = []
     candidate_rules = [rule for rule in rules if isinstance(rule, dict)]
@@ -672,15 +695,37 @@ def _process_supplier_stock_file(
             continue
         if not _processing_rule_matches(rule, file_path, input_index):
             continue
-        matched_rules.append(rule.get("id") or rule.get("name") or "rule")
+        rule_label = rule.get("id") or rule.get("name") or "rule"
+        matched_rules.append(rule_label)
+        _log_processing(
+            "🧩 Остатки поставщиков: запуск правила обработки %s для %s",
+            rule_label,
+            file_path.name,
+        )
         try:
             result = _run_processing_rule(file_path, rule, processing, now, input_index)
+            _log_processing(
+                "🧩 Остатки поставщиков: результат правила %s для %s -> %s",
+                rule_label,
+                file_path.name,
+                result.get("status"),
+            )
             results.append(result)
         except Exception as exc:
             _logger.error("⚠️ Ошибка обработки %s: %s", file_path, exc)
+            _log_processing(
+                "🧩 Остатки поставщиков: ошибка правила %s для %s -> %s",
+                rule_label,
+                file_path.name,
+                exc,
+            )
             results.append({"status": "error", "error": str(exc), "rule_id": rule.get("id")})
 
     if not matched_rules:
+        _log_processing(
+            "🧩 Остатки поставщиков: подходящие правила обработки не найдены для %s",
+            file_path.name,
+        )
         return None
 
     return {
