@@ -696,6 +696,7 @@ def _process_supplier_stock_file(
     input_index: int | None = None,
     original_path: Path | None = None,
 ) -> Dict[str, Any] | None:
+    source_name = _resolve_source_name(config, source_id, source_kind)
     processing = config.get("processing", {})
     rules = processing.get("rules", [])
     if not rules:
@@ -760,7 +761,7 @@ def _process_supplier_stock_file(
             file_path.name,
         )
         try:
-            result = _run_processing_rule(file_path, rule, processing, now, input_index)
+            result = _run_processing_rule(file_path, rule, processing, now, input_index, source_name)
             _log_processing(
                 "🧩 Остатки поставщиков: результат правила %s для %s -> %s",
                 rule_label,
@@ -1066,7 +1067,7 @@ def _transfer_files_to_targets(
 ) -> Dict[str, Any]:
     transfer_entries: list[Dict[str, Any]] = []
     status_map: Dict[str, bool] = {}
-    effective_subdir = _build_upload_subdir(upload_subdir, label)
+    effective_subdir = _build_upload_subdir(upload_subdir)
     for file_path in files:
         if not file_path.exists():
             transfer_entries.append(
@@ -1144,11 +1145,32 @@ def _transfer_files_to_targets(
     return {"items": transfer_entries, "status_map": status_map}
 
 
-def _build_upload_subdir(base_subdir: str, label: str) -> str:
-    cleaned_base = str(base_subdir or "").strip().strip("/\\")
-    cleaned_label = str(label or "").strip().strip("/\\")
-    parts = [part for part in (cleaned_base, cleaned_label) if part]
-    return "/".join(parts)
+def _build_upload_subdir(base_subdir: str) -> str:
+    return str(base_subdir or "").strip().strip("/\\")
+
+
+def _resolve_source_name(
+    config: Dict[str, Any],
+    source_id: str | None,
+    source_kind: str | None,
+) -> str | None:
+    if not source_id:
+        return None
+    sources: list[Dict[str, Any]] = []
+    if source_kind == "download":
+        sources = config.get("download", {}).get("sources", [])
+    elif source_kind == "mail":
+        sources = config.get("mail", {}).get("sources", [])
+    else:
+        sources = [
+            *config.get("download", {}).get("sources", []),
+            *config.get("mail", {}).get("sources", []),
+        ]
+    for item in sources:
+        if str(item.get("id")) == str(source_id) or str(item.get("name")) == str(source_id):
+            name = str(item.get("name") or "").strip()
+            return name or None
+    return None
 
 
 def _resolve_archive_dir(config: Dict[str, Any], source_kind: str | None) -> Path | None:
@@ -1430,6 +1452,7 @@ def _run_processing_rule(
     processing: Dict[str, Any],
     now: datetime,
     input_index: int | None,
+    source_name: str | None = None,
 ) -> Dict[str, Any]:
     if not _normalize_requires_processing(rule.get("requires_processing", True)):
         _logger.info("🧩 Обработка не требуется для %s (%s)", file_path, rule.get("name") or rule.get("id"))
@@ -1452,6 +1475,7 @@ def _run_processing_rule(
             now,
             data_row,
             input_index,
+            source_name,
         )
         results.append(variant_result)
 
@@ -1567,6 +1591,7 @@ def _process_variant(
     now: datetime,
     data_row: int,
     input_index: int | None,
+    source_name: str | None,
 ) -> Dict[str, Any]:
     article_col = int(variant.get("article_col") or 0)
     if article_col <= 0:
@@ -1635,11 +1660,18 @@ def _process_variant(
     orc_output_written = False
     for idx, (column_index, output_name) in enumerate(zip(data_columns, output_names)):
         input_template = str(rule.get("source_file") or "").strip() or None
+        render_context = {
+            "source_id": rule.get("source_id"),
+            "source_name": source_name,
+        }
+        if source_name:
+            render_context["name"] = source_name
         rendered_output_name = _render_output_name_template(
             output_name,
             file_path,
             input_index,
             input_template,
+            render_context,
         )
         rendered_output_name = _apply_input_index_to_output_name(
             rendered_output_name,
@@ -1705,6 +1737,7 @@ def _process_variant(
                     file_path,
                     input_index,
                     input_template,
+                    render_context,
                 )
             else:
                 rendered_orc_name = _append_suffix_to_name(rendered_output_name, "_orc")
@@ -1818,6 +1851,7 @@ def _resolve_output_name_values(
     file_path: Path,
     input_index: int | None,
     input_template: str | None = None,
+    extra_values: Dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
     values: Dict[str, Any] = {
         "index": input_index or 1,
@@ -1844,6 +1878,11 @@ def _resolve_output_name_values(
             values["index"] = int(extracted["index"])
         except ValueError:
             values["index"] = extracted["index"]
+    if isinstance(extra_values, dict):
+        for key, value in extra_values.items():
+            if value is None:
+                continue
+            values[key] = value
     return values
 
 
@@ -1852,10 +1891,11 @@ def _render_output_name_template(
     file_path: Path,
     input_index: int | None,
     input_template: str | None = None,
+    extra_values: Dict[str, Any] | None = None,
 ) -> str:
     if not template:
         return template
-    values = _resolve_output_name_values(template, file_path, input_index, input_template)
+    values = _resolve_output_name_values(template, file_path, input_index, input_template, extra_values)
     try:
         return template.format(**values)
     except Exception:
