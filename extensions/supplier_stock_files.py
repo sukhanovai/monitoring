@@ -888,13 +888,21 @@ def _collect_processing_outputs(results: list[Dict[str, Any]]) -> tuple[list[Pat
     for result in results:
         if result.get("status") != "success":
             continue
-        for output_info in result.get("outputs", []) or []:
-            output_path = output_info.get("output")
-            if output_path:
-                outputs.append(Path(output_path))
-            orc_output = output_info.get("orc_output")
-            if orc_output:
-                orc_outputs.append(Path(orc_output))
+        output_groups: list[dict[str, Any]] = []
+        if isinstance(result.get("outputs"), list):
+            output_groups.append({"outputs": result.get("outputs")})
+        if isinstance(result.get("variants"), list):
+            output_groups.extend(result.get("variants") or [])
+        for group in output_groups:
+            if group.get("status") and group.get("status") != "success":
+                continue
+            for output_info in group.get("outputs", []) or []:
+                output_path = output_info.get("output")
+                if output_path:
+                    outputs.append(Path(output_path))
+                orc_output = output_info.get("orc_output")
+                if orc_output:
+                    orc_outputs.append(Path(orc_output))
     return _unique_paths(outputs), _unique_paths(orc_outputs)
 
 
