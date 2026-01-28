@@ -716,7 +716,28 @@ def _process_supplier_stock_file(
     processing = config.get("processing", {})
     rules = processing.get("rules", [])
     if not rules:
-        return None
+        _log_processing(
+            "🧩 Остатки поставщиков: правила обработки не настроены для %s, выполняем выгрузку оригинала",
+            file_path.name,
+        )
+        transfer_result = _transfer_processed_outputs(
+            [],
+            config,
+            source_id,
+            source_kind,
+            original_path,
+            now,
+        )
+        return {
+            "rules": [],
+            "results": [],
+            "transfer": transfer_result,
+            "source_id": source_id,
+            "source_kind": source_kind,
+            "file": str(file_path),
+            "status": "skipped",
+            "reason": "no_rules",
+        }
 
     _log_processing(
         "🧩 Остатки поставщиков: проверка правил обработки для %s (источник=%s, тип=%s)",
@@ -779,7 +800,24 @@ def _process_supplier_stock_file(
             "🧩 Остатки поставщиков: подходящие правила обработки не найдены для %s",
             file_path.name,
         )
-        return None
+        transfer_result = _transfer_processed_outputs(
+            [],
+            config,
+            source_id,
+            source_kind,
+            original_path,
+            now,
+        )
+        return {
+            "rules": [],
+            "results": [],
+            "transfer": transfer_result,
+            "source_id": source_id,
+            "source_kind": source_kind,
+            "file": str(file_path),
+            "status": "skipped",
+            "reason": "no_matching_rules",
+        }
 
     transfer_result = _transfer_processed_outputs(
         results,
@@ -810,10 +848,26 @@ def _transfer_processed_outputs(
 ) -> Dict[str, Any]:
     outputs, orc_outputs = _collect_processing_outputs(results)
     if not outputs and not original_path:
+        _log_processing(
+            "🧩 Выгрузка остатков пропущена: нет файлов для передачи (источник=%s, тип=%s)",
+            source_id or "не указан",
+            source_kind or "не указан",
+        )
         return {"status": "skipped", "reason": "no_outputs"}
     targets, upload_subdir = _resolve_transfer_targets(config, source_id, source_kind)
     if not targets and not orc_outputs:
+        _log_processing(
+            "🧩 Выгрузка остатков пропущена: не заданы ресурсы выгрузки и нет ОРК файлов",
+        )
         return {"status": "skipped", "reason": "no_targets"}
+    _log_processing(
+        "🧩 Старт выгрузки остатков: выходных=%s, ОРК=%s, оригинал=%s, ресурсов=%s, подкаталог=%s",
+        len(outputs),
+        len(orc_outputs),
+        original_path.name if original_path else "нет",
+        len(targets),
+        upload_subdir or "не задан",
+    )
     smbclient_path = _resolve_smbclient_path(config)
     transfer_entries = []
     output_transfer = _transfer_files_to_targets(outputs, targets, upload_subdir, "output", smbclient_path)
@@ -1076,9 +1130,11 @@ def _resolve_archive_dir(config: Dict[str, Any], source_kind: str | None) -> Pat
 
 def _upload_orc_outputs_to_ftp(orc_outputs: list[Path], ftp_config: Dict[str, Any]) -> Dict[str, Any]:
     if not orc_outputs:
+        _log_processing("🧩 FTP ОРК: выгрузка пропущена (нет файлов)")
         return {"status": "skipped", "reason": "no_orc_files", "items": []}
     host_raw = str(ftp_config.get("host") or "").strip()
     if not host_raw:
+        _log_processing("🧩 FTP ОРК: выгрузка пропущена (хост не задан)")
         return {"status": "skipped", "reason": "no_host", "items": []}
     host, port = _parse_ftp_host(host_raw)
     login = str(ftp_config.get("login") or "").strip() or None
