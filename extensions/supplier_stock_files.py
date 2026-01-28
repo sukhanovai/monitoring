@@ -45,7 +45,6 @@ from urllib.request import (
 
 from config.settings import DATA_DIR
 from extensions.extension_manager import extension_manager
-from lib.logging import debug_log
 
 SUPPLIER_STOCK_EXTENSION_ID = "supplier_stock_files"
 _logger = logging.getLogger("supplier_stock_files")
@@ -88,18 +87,10 @@ _smbclient_missing_logged = False
 
 def _log_processing(message: str, *args: object) -> None:
     try:
-        debug_log(message, *args)
-    except Exception:
-        formatted = message % args if args else message
-        debug_log(formatted)
-    try:
-        _logger.info(message, *args)
-    except Exception:
-        pass
-    try:
         _monitor_logger.info(message, *args)
     except Exception:
-        pass
+        formatted = message % args if args else message
+        _monitor_logger.info(formatted)
 
 
 def _merge_dicts(defaults: Dict[str, Any], current: Dict[str, Any]) -> Dict[str, Any]:
@@ -519,18 +510,10 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
     results: List[Dict[str, Any]] = []
     def _log(message: str, *args: object) -> None:
         try:
-            debug_log(message, *args)
-        except Exception:
-            formatted = message % args if args else message
-            debug_log(formatted)
-        try:
-            _logger.info(message, *args)
-        except Exception:
-            pass
-        try:
             _monitor_logger.info(message, *args)
         except Exception:
-            pass
+            formatted = message % args if args else message
+            _monitor_logger.info(formatted)
 
     _log("📦 Остатки поставщиков: источников к обработке %s", len(sources))
 
