@@ -14,16 +14,17 @@ Supplier stock files downloader
 from __future__ import annotations
 
 import base64
+import csv
+import ftplib
 import json
 import logging
+import math
 import re
 import shutil
 import ssl
-import threading
 import tarfile
+import threading
 import zipfile
-import csv
-import math
 from http import cookiejar
 from datetime import datetime
 from pathlib import Path
@@ -485,6 +486,7 @@ def process_supplier_stock_file(
     source_id: str | None = None,
     source_kind: str | None = None,
     input_index: int | None = None,
+    original_path: str | Path | None = None,
     now: datetime | None = None,
 ) -> Dict[str, Any] | None:
     config = get_supplier_stock_config()
@@ -496,6 +498,7 @@ def process_supplier_stock_file(
         source_id,
         source_kind,
         input_index,
+        Path(original_path) if original_path else None,
     )
 
 
@@ -585,12 +588,14 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
                     source_id,
                     "download",
                     1,
+                    original_path,
                 )
                 if processing_result:
                     entry["processing"] = processing_result
-                archive_path = _archive_original_file(original_path, archive_dir, now)
-                if archive_path:
-                    entry["archive_path"] = str(archive_path)
+                else:
+                    archive_path = _archive_original_file(original_path, archive_dir, now)
+                    if archive_path:
+                        entry["archive_path"] = str(archive_path)
         except Exception as exc:
             entry.update({"status": "error", "error": str(exc)})
 
@@ -702,6 +707,7 @@ def _process_supplier_stock_file(
     source_id: str | None = None,
     source_kind: str | None = None,
     input_index: int | None = None,
+    original_path: Path | None = None,
 ) -> Dict[str, Any] | None:
     processing = config.get("processing", {})
     rules = processing.get("rules", [])
@@ -776,6 +782,8 @@ def _process_supplier_stock_file(
         config,
         source_id,
         source_kind,
+        original_path,
+        now,
     )
 
     return {
@@ -793,26 +801,89 @@ def _transfer_processed_outputs(
     config: Dict[str, Any],
     source_id: str | None,
     source_kind: str | None,
+    original_path: Path | None,
+    now: datetime,
 ) -> Dict[str, Any]:
-    outputs = _collect_processing_outputs(results)
-    if not outputs:
+    outputs, orc_outputs = _collect_processing_outputs(results)
+    if not outputs and not original_path:
         return {"status": "skipped", "reason": "no_outputs"}
     targets, upload_subdir = _resolve_transfer_targets(config, source_id, source_kind)
-    if not targets:
+    if not targets and not orc_outputs:
         return {"status": "skipped", "reason": "no_targets"}
     transfer_entries = []
-    for output_path in outputs:
-        if not output_path.exists():
+    output_transfer = _transfer_files_to_targets(outputs, targets, upload_subdir, "output")
+    transfer_entries.extend(output_transfer["items"])
+    ftp_result = _upload_orc_outputs_to_ftp(orc_outputs, config.get("ftp_ork", {}))
+    _cleanup_output_files(outputs, orc_outputs, output_transfer["status_map"], ftp_result)
+
+    original_transfer = None
+    archive_path = None
+    if original_path and original_path.exists():
+        original_transfer = _transfer_files_to_targets([original_path], targets, upload_subdir, "original")
+        transfer_entries.extend(original_transfer["items"])
+        if original_transfer["status_map"].get(str(original_path)):
+            archive_dir = _resolve_archive_dir(config, source_kind)
+            if archive_dir:
+                archive_path = _archive_original_file(original_path, archive_dir, now)
+
+    return {
+        "status": "success",
+        "items": transfer_entries,
+        "ftp_ork": ftp_result,
+        "archive_path": str(archive_path) if archive_path else None,
+    }
+
+
+def _collect_processing_outputs(results: list[Dict[str, Any]]) -> tuple[list[Path], list[Path]]:
+    outputs: list[Path] = []
+    orc_outputs: list[Path] = []
+    for result in results:
+        if result.get("status") != "success":
+            continue
+        for output_info in result.get("outputs", []) or []:
+            output_path = output_info.get("output")
+            if output_path:
+                outputs.append(Path(output_path))
+            orc_output = output_info.get("orc_output")
+            if orc_output:
+                orc_outputs.append(Path(orc_output))
+                outputs.append(Path(orc_output))
+    return _unique_paths(outputs), _unique_paths(orc_outputs)
+
+
+def _unique_paths(paths: Iterable[Path]) -> list[Path]:
+    seen = set()
+    result: list[Path] = []
+    for item in paths:
+        key = str(item)
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(item)
+    return result
+
+
+def _transfer_files_to_targets(
+    files: list[Path],
+    targets: list[Dict[str, Any]],
+    upload_subdir: str,
+    label: str,
+) -> Dict[str, Any]:
+    transfer_entries: list[Dict[str, Any]] = []
+    status_map: Dict[str, bool] = {}
+    for file_path in files:
+        if not file_path.exists():
             transfer_entries.append(
                 {
-                    "file": str(output_path),
+                    "file": str(file_path),
                     "status": "error",
                     "error": "file_not_found",
+                    "label": label,
                 }
             )
+            status_map[str(file_path)] = False
             continue
         target_results = []
-        multi_target = len(targets) > 1
         for target in targets:
             target_dir = _compose_target_dir(target.get("unc_path") or "", upload_subdir)
             if not target_dir:
@@ -826,11 +897,8 @@ def _transfer_processed_outputs(
                 continue
             try:
                 target_dir.mkdir(parents=True, exist_ok=True)
-                target_file = target_dir / output_path.name
-                if multi_target:
-                    shutil.copy2(output_path, target_file)
-                else:
-                    shutil.move(str(output_path), str(target_file))
+                target_file = target_dir / file_path.name
+                shutil.copy2(file_path, target_file)
                 target_results.append(
                     {
                         "target": str(target_dir),
@@ -840,7 +908,7 @@ def _transfer_processed_outputs(
             except Exception as exc:
                 _log_processing(
                     "🧩 Ошибка переноса файла %s в %s: %s",
-                    output_path.name,
+                    file_path.name,
                     target_dir,
                     exc,
                 )
@@ -851,37 +919,96 @@ def _transfer_processed_outputs(
                         "error": str(exc),
                     }
                 )
-        if multi_target and target_results and all(item["status"] == "success" for item in target_results):
-            try:
-                output_path.unlink()
-            except Exception as exc:
-                _log_processing(
-                    "🧩 Не удалось удалить исходный файл %s после копирования: %s",
-                    output_path.name,
-                    exc,
-                )
+        success = bool(target_results) and all(item["status"] == "success" for item in target_results)
+        status_map[str(file_path)] = success
         transfer_entries.append(
             {
-                "file": str(output_path),
+                "file": str(file_path),
                 "targets": target_results,
+                "label": label,
             }
         )
-    return {"status": "success", "items": transfer_entries}
+    return {"items": transfer_entries, "status_map": status_map}
 
 
-def _collect_processing_outputs(results: list[Dict[str, Any]]) -> list[Path]:
-    outputs: list[Path] = []
-    for result in results:
-        if result.get("status") != "success":
+def _resolve_archive_dir(config: Dict[str, Any], source_kind: str | None) -> Path | None:
+    if source_kind == "download":
+        archive_dir = config.get("download", {}).get("archive_dir", DEFAULT_SUPPLIER_STOCK_CONFIG["download"]["archive_dir"])
+    elif source_kind == "mail":
+        archive_dir = config.get("mail", {}).get("archive_dir", DEFAULT_SUPPLIER_STOCK_CONFIG["mail"]["archive_dir"])
+    else:
+        return None
+    return Path(archive_dir)
+
+
+def _upload_orc_outputs_to_ftp(orc_outputs: list[Path], ftp_config: Dict[str, Any]) -> Dict[str, Any]:
+    if not orc_outputs:
+        return {"status": "skipped", "reason": "no_orc_files", "items": []}
+    host_raw = str(ftp_config.get("host") or "").strip()
+    if not host_raw:
+        return {"status": "skipped", "reason": "no_host", "items": []}
+    host, port = _parse_ftp_host(host_raw)
+    login = str(ftp_config.get("login") or "").strip() or None
+    password = str(ftp_config.get("password") or "") if ftp_config.get("password") is not None else ""
+    results: list[Dict[str, Any]] = []
+    try:
+        with ftplib.FTP() as ftp:
+            ftp.connect(host, port, timeout=30)
+            if login:
+                ftp.login(login, password)
+            else:
+                ftp.login()
+            for orc_path in orc_outputs:
+                if not orc_path.exists():
+                    results.append({"file": str(orc_path), "status": "error", "error": "file_not_found"})
+                    continue
+                try:
+                    with orc_path.open("rb") as handle:
+                        ftp.storbinary(f"STOR {orc_path.name}", handle)
+                    results.append({"file": str(orc_path), "status": "success"})
+                except Exception as exc:
+                    _log_processing("🧩 Ошибка выгрузки ОРК %s по FTP: %s", orc_path.name, exc)
+                    results.append({"file": str(orc_path), "status": "error", "error": str(exc)})
+    except Exception as exc:
+        _log_processing("🧩 Ошибка подключения к FTP ОРК: %s", exc)
+        return {"status": "error", "error": str(exc), "items": results}
+    return {"status": "success", "items": results}
+
+
+def _parse_ftp_host(host_raw: str) -> tuple[str, int]:
+    host_raw = host_raw.strip()
+    if ":" in host_raw:
+        host, port_text = host_raw.rsplit(":", 1)
+        if port_text.isdigit():
+            return host, int(port_text)
+    return host_raw, 21
+
+
+def _cleanup_output_files(
+    outputs: list[Path],
+    orc_outputs: list[Path],
+    status_map: Dict[str, bool],
+    ftp_result: Dict[str, Any],
+) -> None:
+    ftp_status_map = {}
+    if ftp_result.get("status") == "success":
+        for item in ftp_result.get("items", []):
+            ftp_status_map[str(item.get("file"))] = item.get("status") == "success"
+    for output_path in outputs:
+        output_key = str(output_path)
+        if not status_map.get(output_key):
             continue
-        for output_info in result.get("outputs", []) or []:
-            output_path = output_info.get("output")
-            if output_path:
-                outputs.append(Path(output_path))
-            orc_output = output_info.get("orc_output")
-            if orc_output:
-                outputs.append(Path(orc_output))
-    return outputs
+        if output_path in orc_outputs:
+            if not ftp_status_map.get(output_key):
+                continue
+        try:
+            output_path.unlink()
+        except Exception as exc:
+            _log_processing(
+                "🧩 Не удалось удалить исходный файл %s после выгрузки: %s",
+                output_path.name,
+                exc,
+            )
 
 
 def _resolve_transfer_targets(

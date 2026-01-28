@@ -39,12 +39,7 @@ from config.db_settings import (
 )
 from core.config_manager import config_manager
 from extensions.extension_manager import extension_manager
-from extensions.supplier_stock_files import (
-    archive_supplier_stock_original,
-    get_supplier_stock_config,
-    process_supplier_stock_file,
-    unpack_archive_file,
-)
+from extensions.supplier_stock_files import get_supplier_stock_config, process_supplier_stock_file, unpack_archive_file
 from lib.logging import setup_logging
 
 LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -1086,9 +1081,7 @@ class BackupProcessor:
 
         now = email_date or datetime.now()
         temp_dir = Path(mail_config.get("temp_dir") or "")
-        archive_dir = Path(mail_config.get("archive_dir") or "")
         temp_dir.mkdir(parents=True, exist_ok=True)
-        archive_dir.mkdir(parents=True, exist_ok=True)
 
         sender_candidates = self._get_sender_candidates(msg)
         matched_files: list[str] = []
@@ -1170,16 +1163,13 @@ class BackupProcessor:
                     source.get("id") or source.get("name"),
                     "mail",
                     collected + 1,
+                    original_path,
                 )
                 if processing_result:
                     logger.info(
                         "🧩 Обработка остатков выполнена: %s",
                         processing_result.get("rules"),
                     )
-
-                archive_path = archive_supplier_stock_original(original_path, archive_dir, now)
-                if archive_path:
-                    logger.info("🧾 Файл исходника перемещен в архив: %s", archive_path)
 
                 matched_files.append(str(output_path))
                 collected += 1
