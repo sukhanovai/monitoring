@@ -895,7 +895,6 @@ def _collect_processing_outputs(results: list[Dict[str, Any]]) -> tuple[list[Pat
             orc_output = output_info.get("orc_output")
             if orc_output:
                 orc_outputs.append(Path(orc_output))
-                outputs.append(Path(orc_output))
     return _unique_paths(outputs), _unique_paths(orc_outputs)
 
 
@@ -1167,13 +1166,13 @@ def _cleanup_output_files(
     if ftp_result.get("status") == "success":
         for item in ftp_result.get("items", []):
             ftp_status_map[str(item.get("file"))] = item.get("status") == "success"
-    for output_path in outputs:
+    for output_path in _unique_paths(outputs + orc_outputs):
         output_key = str(output_path)
-        if not status_map.get(output_key):
-            continue
         if output_path in orc_outputs:
             if not ftp_status_map.get(output_key):
                 continue
+        elif not status_map.get(output_key):
+            continue
         try:
             output_path.unlink()
         except Exception as exc:
