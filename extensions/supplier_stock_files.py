@@ -1013,6 +1013,7 @@ def _transfer_files_to_targets(
 ) -> Dict[str, Any]:
     transfer_entries: list[Dict[str, Any]] = []
     status_map: Dict[str, bool] = {}
+    effective_subdir = _build_upload_subdir(upload_subdir, label)
     for file_path in files:
         if not file_path.exists():
             transfer_entries.append(
@@ -1048,7 +1049,7 @@ def _transfer_files_to_targets(
                     _upload_file_via_smbclient(
                         file_path=file_path,
                         unc_path=unc_path,
-                        upload_subdir=upload_subdir,
+                        upload_subdir=effective_subdir,
                         target_name=target_name,
                         login=target.get("login"),
                         password=target.get("password"),
@@ -1056,7 +1057,7 @@ def _transfer_files_to_targets(
                     )
                 )
                 continue
-            target_dir = _compose_target_dir(unc_path, upload_subdir)
+            target_dir = _compose_target_dir(unc_path, effective_subdir)
             if not target_dir:
                 _log_processing(
                     "🧩 Пропуск выгрузки %s: не удалось определить UNC путь для ресурса %s",
@@ -1106,6 +1107,13 @@ def _transfer_files_to_targets(
             }
         )
     return {"items": transfer_entries, "status_map": status_map}
+
+
+def _build_upload_subdir(base_subdir: str, label: str) -> str:
+    cleaned_base = str(base_subdir or "").strip().strip("/\\")
+    cleaned_label = str(label or "").strip().strip("/\\")
+    parts = [part for part in (cleaned_base, cleaned_label) if part]
+    return "/".join(parts)
 
 
 def _resolve_archive_dir(config: Dict[str, Any], source_kind: str | None) -> Path | None:
