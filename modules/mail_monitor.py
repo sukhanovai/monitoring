@@ -40,6 +40,7 @@ from config.db_settings import (
 from core.config_manager import config_manager
 from extensions.extension_manager import extension_manager
 from extensions.supplier_stock_files import (
+    archive_supplier_stock_original,
     get_supplier_stock_config,
     process_supplier_stock_file,
     unpack_archive_file,
@@ -1153,10 +1154,7 @@ class BackupProcessor:
                     )
                 output_path = temp_dir / output_name
                 output_path.write_bytes(payload)
-
-                archive_name = self._append_date_suffix(output_name, now)
-                archive_path = archive_dir / archive_name
-                archive_path.write_bytes(payload)
+                original_path = output_path
 
                 if source.get("unpack_archive"):
                     unpacked_path = unpack_archive_file(output_path)
@@ -1178,6 +1176,10 @@ class BackupProcessor:
                         "🧩 Обработка остатков выполнена: %s",
                         processing_result.get("rules"),
                     )
+
+                archive_path = archive_supplier_stock_original(original_path, archive_dir, now)
+                if archive_path:
+                    logger.info("🧾 Файл исходника перемещен в архив: %s", archive_path)
 
                 matched_files.append(str(output_path))
                 collected += 1

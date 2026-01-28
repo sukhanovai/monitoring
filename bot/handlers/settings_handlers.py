@@ -1242,14 +1242,33 @@ def settings_callback_handler(update, context):
             show_supplier_stock_mail_settings(update, context)
         elif data == 'supplier_stock_mail_sources':
             show_supplier_stock_mail_sources_menu(update, context)
+        elif data == 'supplier_stock_resources':
+            show_supplier_stock_resources_menu(update, context)
+        elif data == 'supplier_stock_ftp':
+            show_supplier_stock_ftp_settings(update, context)
         elif data == 'supplier_stock_mail_source_add':
             supplier_stock_start_mail_source_wizard(update, context)
         elif data.startswith('supplier_stock_mail_source_settings|'):
             source_id = data.split('|', 1)[1]
             show_supplier_stock_mail_source_settings(update, context, source_id)
+        elif data.startswith('supplier_stock_mail_source_individual|'):
+            source_id = data.split('|', 1)[1]
+            show_supplier_stock_mail_source_individual_settings(update, context, source_id)
         elif data.startswith('supplier_stock_mail_field|'):
             _, source_id, field = data.split('|', 2)
             supplier_stock_start_mail_source_field_edit(update, context, source_id, field)
+        elif data.startswith('supplier_stock_mail_source_individual_toggle_'):
+            source_id = data.replace('supplier_stock_mail_source_individual_toggle_', '')
+            config = get_supplier_stock_config()
+            sources = config.get("mail", {}).get("sources", [])
+            for source in sources:
+                if str(source.get("id")) == source_id:
+                    individual_dir = source.setdefault("individual_directory", {})
+                    individual_dir["enabled"] = not individual_dir.get("enabled", False)
+                    break
+            config["mail"]["sources"] = sources
+            save_supplier_stock_config(config)
+            show_supplier_stock_mail_source_individual_settings(update, context, source_id)
         elif data.startswith('supplier_stock_mail_source_unpack_toggle_'):
             source_id = data.replace('supplier_stock_mail_source_unpack_toggle_', '')
             config = get_supplier_stock_config()
@@ -1291,6 +1310,35 @@ def settings_callback_handler(update, context):
             config["mail"]["sources"] = sources
             save_supplier_stock_config(config)
             show_supplier_stock_mail_sources_menu(update, context)
+        elif data.startswith('supplier_stock_resource_settings|'):
+            resource_id = data.split('|', 1)[1]
+            show_supplier_stock_resource_settings(update, context, resource_id)
+        elif data.startswith('supplier_stock_resource_field|'):
+            _, resource_id, field = data.split('|', 2)
+            supplier_stock_start_resource_field_edit(update, context, resource_id, field)
+        elif data == 'supplier_stock_resource_add':
+            supplier_stock_start_resource_wizard(update, context)
+        elif data.startswith('supplier_stock_resource_toggle_'):
+            resource_id = data.replace('supplier_stock_resource_toggle_', '')
+            config = get_supplier_stock_config()
+            resources = config.get("resources", [])
+            for resource in resources:
+                if str(resource.get("id")) == resource_id:
+                    resource["enabled"] = not resource.get("enabled", True)
+                    break
+            config["resources"] = resources
+            save_supplier_stock_config(config)
+            show_supplier_stock_resources_menu(update, context)
+        elif data.startswith('supplier_stock_resource_delete_'):
+            resource_id = data.replace('supplier_stock_resource_delete_', '')
+            config = get_supplier_stock_config()
+            resources = [item for item in config.get("resources", []) if str(item.get("id")) != resource_id]
+            config["resources"] = resources
+            save_supplier_stock_config(config)
+            show_supplier_stock_resources_menu(update, context)
+        elif data.startswith('supplier_stock_ftp_field|'):
+            _, field = data.split('|', 1)
+            supplier_stock_start_ftp_field_edit(update, context, field)
         elif data == 'supplier_stock_temp_dir':
             context.user_data['supplier_stock_edit'] = 'temp_dir'
             config = get_supplier_stock_config()
@@ -1352,9 +1400,24 @@ def settings_callback_handler(update, context):
         elif data.startswith('supplier_stock_source_settings|'):
             source_id = data.split('|', 1)[1]
             show_supplier_stock_source_settings(update, context, source_id)
+        elif data.startswith('supplier_stock_source_individual|'):
+            source_id = data.split('|', 1)[1]
+            show_supplier_stock_source_individual_settings(update, context, source_id)
         elif data.startswith('supplier_stock_source_field|'):
             _, source_id, field = data.split('|', 2)
             supplier_stock_start_source_field_edit(update, context, source_id, field)
+        elif data.startswith('supplier_stock_source_individual_toggle_'):
+            source_id = data.replace('supplier_stock_source_individual_toggle_', '')
+            config = get_supplier_stock_config()
+            sources = config.get("download", {}).get("sources", [])
+            for source in sources:
+                if str(source.get("id")) == source_id:
+                    individual_dir = source.setdefault("individual_directory", {})
+                    individual_dir["enabled"] = not individual_dir.get("enabled", False)
+                    break
+            config["download"]["sources"] = sources
+            save_supplier_stock_config(config)
+            show_supplier_stock_source_individual_settings(update, context, source_id)
         elif data.startswith('supplier_stock_source_unpack_toggle_'):
             source_id = data.replace('supplier_stock_source_unpack_toggle_', '')
             config = get_supplier_stock_config()
@@ -2705,6 +2768,13 @@ def show_supplier_stock_settings(update, context):
     context.user_data.pop('supplier_stock_source_field_id', None)
     context.user_data.pop('supplier_stock_mail_source_field', None)
     context.user_data.pop('supplier_stock_mail_source_field_id', None)
+    context.user_data.pop('supplier_stock_resource_settings_id', None)
+    context.user_data.pop('supplier_stock_resource_field', None)
+    context.user_data.pop('supplier_stock_resource_field_id', None)
+    context.user_data.pop('supplier_stock_resource_add', None)
+    context.user_data.pop('supplier_stock_resource_stage', None)
+    context.user_data.pop('supplier_stock_resource_data', None)
+    context.user_data.pop('supplier_stock_ftp_field', None)
 
     config = get_supplier_stock_config()
     download = config.get("download", {})
@@ -2773,6 +2843,8 @@ def show_supplier_stock_download_settings(update, context):
         [InlineKeyboardButton("🗄️ Каталог архива", callback_data='supplier_stock_archive_dir')],
         [InlineKeyboardButton("⏰ Расписание", callback_data='supplier_stock_schedule')],
         [InlineKeyboardButton("📦 Источники", callback_data='supplier_stock_sources')],
+        [InlineKeyboardButton("📤 Ресурсы выгрузки", callback_data='supplier_stock_resources')],
+        [InlineKeyboardButton("📡 FTP ОРК", callback_data='supplier_stock_ftp')],
         [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_supplier_stock'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
@@ -2820,9 +2892,175 @@ def show_supplier_stock_mail_settings(update, context):
         [InlineKeyboardButton("📁 Временный каталог", callback_data='supplier_stock_mail_temp_dir')],
         [InlineKeyboardButton("🗄️ Каталог архива", callback_data='supplier_stock_mail_archive_dir')],
         [InlineKeyboardButton("📎 Правила вложений", callback_data='supplier_stock_mail_sources')],
+        [InlineKeyboardButton("📤 Ресурсы выгрузки", callback_data='supplier_stock_resources')],
+        [InlineKeyboardButton("📡 FTP ОРК", callback_data='supplier_stock_ftp')],
         [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_supplier_stock'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ]
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+
+def show_supplier_stock_resources_menu(update, context):
+    """Показать список ресурсов выгрузки по умолчанию."""
+    query = update.callback_query
+    query.answer()
+
+    context.user_data.pop('supplier_stock_resource_settings_id', None)
+    context.user_data.pop('supplier_stock_resource_field', None)
+    context.user_data.pop('supplier_stock_resource_field_id', None)
+    context.user_data.pop('supplier_stock_resource_add', None)
+    context.user_data.pop('supplier_stock_resource_stage', None)
+    context.user_data.pop('supplier_stock_resource_data', None)
+
+    config = get_supplier_stock_config()
+    resources = config.get("resources", [])
+
+    if not resources:
+        message = "📤 *Ресурсы выгрузки*\n\n❌ Ресурсы не настроены."
+    else:
+        message_lines = ["📤 *Ресурсы выгрузки*\n"]
+        for index, resource in enumerate(resources, start=1):
+            name = _escape_pattern_text(resource.get("name") or resource.get("id") or f"Ресурс {index}")
+            unc_path = _escape_pattern_text(resource.get("unc_path") or "не задано")
+            login = _escape_pattern_text(resource.get("login") or "не задано")
+            enabled = resource.get("enabled", True)
+            status_icon = "🟢" if enabled else "🔴"
+            message_lines.append(
+                (
+                    f"{index}. {status_icon} *{name}*\n"
+                    f"   • UNC: `{unc_path}`\n"
+                    f"   • Логин: `{login}`\n"
+                )
+            )
+        message = "\n".join(message_lines)
+
+    keyboard = [
+        [InlineKeyboardButton("➕ Добавить ресурс", callback_data='supplier_stock_resource_add')],
+    ]
+
+    for resource in resources:
+        resource_id = resource.get("id") or ""
+        if not resource_id:
+            continue
+        enabled = resource.get("enabled", True)
+        toggle_text = "⛔️ Выключить" if enabled else "✅ Включить"
+        keyboard.append([
+            InlineKeyboardButton(
+                f"⚙️ {resource.get('name', resource_id)}",
+                callback_data=f'supplier_stock_resource_settings|{resource_id}'
+            ),
+            InlineKeyboardButton(
+                toggle_text,
+                callback_data=f'supplier_stock_resource_toggle_{resource_id}'
+            ),
+        ])
+        keyboard.append([
+            InlineKeyboardButton(
+                "🗑️",
+                callback_data=f'supplier_stock_resource_delete_{resource_id}'
+            ),
+        ])
+
+    keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_supplier_stock')])
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+
+def show_supplier_stock_resource_settings(update, context, resource_id: str) -> None:
+    """Показать настройки конкретного ресурса выгрузки."""
+    query = update.callback_query
+    query.answer()
+
+    context.user_data['supplier_stock_resource_settings_id'] = resource_id
+    context.user_data.pop('supplier_stock_resource_field', None)
+    context.user_data.pop('supplier_stock_resource_field_id', None)
+
+    config = get_supplier_stock_config()
+    resources = config.get("resources", [])
+    resource = next((item for item in resources if str(item.get("id")) == resource_id), None)
+
+    if not resource:
+        query.edit_message_text(
+            "❌ Ресурс не найден.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_resources')]
+            ])
+        )
+        return
+
+    name = _escape_pattern_text(resource.get("name") or resource_id)
+    unc_path = _escape_pattern_text(resource.get("unc_path") or "не задано")
+    login = _escape_pattern_text(resource.get("login") or "не задано")
+    password = "задано" if resource.get("password") else "не задано"
+    status_icon = "🟢" if resource.get("enabled", True) else "🔴"
+
+    message = (
+        "⚙️ *Ресурс выгрузки*\n\n"
+        f"{status_icon} *{name}*\n"
+        f"• UNC путь: `{unc_path}`\n"
+        f"• Логин: `{login}`\n"
+        f"• Пароль: `{password}`\n\n"
+        "Выберите настройку:"
+    )
+
+    keyboard = [
+        [
+            InlineKeyboardButton("✏️ Название", callback_data=f'supplier_stock_resource_field|{resource_id}|name'),
+            InlineKeyboardButton("📂 UNC путь", callback_data=f'supplier_stock_resource_field|{resource_id}|unc_path'),
+        ],
+        [
+            InlineKeyboardButton("👤 Логин", callback_data=f'supplier_stock_resource_field|{resource_id}|login'),
+            InlineKeyboardButton("🔐 Пароль", callback_data=f'supplier_stock_resource_field|{resource_id}|password'),
+        ],
+        [InlineKeyboardButton("🔁 Включить/выключить", callback_data=f'supplier_stock_resource_toggle_{resource_id}')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_resources')],
+    ]
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+
+def show_supplier_stock_ftp_settings(update, context) -> None:
+    """Показать настройки FTP ОРК."""
+    query = update.callback_query
+    query.answer()
+
+    context.user_data.pop('supplier_stock_ftp_field', None)
+
+    config = get_supplier_stock_config()
+    ftp_settings = config.get("ftp_ork", {})
+    host = _escape_pattern_text(ftp_settings.get("host") or "не задано")
+    login = _escape_pattern_text(ftp_settings.get("login") or "не задано")
+    password = "задано" if ftp_settings.get("password") else "не задано"
+
+    message = (
+        "📡 *FTP ОРК*\n\n"
+        f"HOST FTP: `{host}`\n"
+        f"Логин FTP: `{login}`\n"
+        f"Пароль FTP: `{password}`\n\n"
+        "Выберите параметр:"
+    )
+
+    keyboard = [
+        [
+            InlineKeyboardButton("🌐 HOST FTP", callback_data='supplier_stock_ftp_field|host'),
+            InlineKeyboardButton("👤 Логин FTP", callback_data='supplier_stock_ftp_field|login'),
+        ],
+        [InlineKeyboardButton("🔐 Пароль FTP", callback_data='supplier_stock_ftp_field|password')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_supplier_stock')],
     ]
 
     query.edit_message_text(
@@ -4169,6 +4407,11 @@ def show_supplier_stock_source_settings(update, context, source_id: str):
     if source.get("append"):
         options.append("append")
     options_text = ", ".join(options) if options else "не задано"
+    upload_subdir = _escape_pattern_text(source.get("upload_subdir") or "не задано")
+    individual_dir = source.get("individual_directory") or {}
+    individual_enabled = individual_dir.get("enabled", False)
+    individual_status = "вкл" if individual_enabled else "выкл"
+    individual_path = _escape_pattern_text(individual_dir.get("unc_path") or "не задано")
     status_icon = "🟢" if source.get("enabled", True) else "🔴"
     unpack_text = "вкл" if source.get("unpack_archive", False) else "выкл"
 
@@ -4189,6 +4432,9 @@ def show_supplier_stock_source_settings(update, context, source_id: str):
         f"• Авторизация: `{auth_state}`",
         f"• Предзапрос: `{pre_request_text}`",
         f"• Опции: `{_escape_pattern_text(options_text)}`",
+        f"• Подкаталог выгрузки: `{upload_subdir}`",
+        f"• Индивидуальный каталог: `{individual_status}`",
+        f"• UNC индивидуального каталога: `{individual_path}`",
         f"• Распаковка: `{unpack_text}`\n",
         "🧩 *Обработка файлов*",
         f"Правил: {len(matched_rules)}",
@@ -4223,6 +4469,10 @@ def show_supplier_stock_source_settings(update, context, source_id: str):
             InlineKeyboardButton("⚙️ Опции", callback_data=f'supplier_stock_source_field|{source_id}|options'),
         ],
         [
+            InlineKeyboardButton("📂 Подкаталог выгрузки", callback_data=f'supplier_stock_source_field|{source_id}|upload_subdir'),
+            InlineKeyboardButton("📁 Индивидуальный каталог", callback_data=f'supplier_stock_source_individual|{source_id}'),
+        ],
+        [
             InlineKeyboardButton("🔁 Включить/выключить", callback_data=f'supplier_stock_source_toggle_{source_id}'),
             InlineKeyboardButton(f"📦 Распаковка: {unpack_text}", callback_data=f'supplier_stock_source_unpack_toggle_{source_id}')
         ],
@@ -4234,6 +4484,57 @@ def show_supplier_stock_source_settings(update, context, source_id: str):
             InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources'),
             InlineKeyboardButton("✖️ Закрыть", callback_data='close')
         ],
+    ]
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+
+def show_supplier_stock_source_individual_settings(update, context, source_id: str) -> None:
+    """Показать настройки индивидуального каталога источника."""
+    query = update.callback_query
+    query.answer()
+
+    config = get_supplier_stock_config()
+    sources = config.get("download", {}).get("sources", [])
+    source = next((item for item in sources if str(item.get("id")) == source_id), None)
+
+    if not source:
+        query.edit_message_text(
+            "❌ Источник не найден.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources')]
+            ])
+        )
+        return
+
+    individual_dir = source.get("individual_directory") or {}
+    enabled = individual_dir.get("enabled", False)
+    status_text = "🟢 Включено" if enabled else "🔴 Выключено"
+    unc_path = _escape_pattern_text(individual_dir.get("unc_path") or "не задано")
+    login = _escape_pattern_text(individual_dir.get("login") or "не задано")
+    password = "задано" if individual_dir.get("password") else "не задано"
+
+    message = (
+        "📁 *Индивидуальный каталог*\n\n"
+        f"Статус: {status_text}\n"
+        f"UNC путь: `{unc_path}`\n"
+        f"Логин: `{login}`\n"
+        f"Пароль: `{password}`\n\n"
+        "Выберите действие:"
+    )
+
+    keyboard = [
+        [InlineKeyboardButton("🔁 Включить/выключить", callback_data=f'supplier_stock_source_individual_toggle_{source_id}')],
+        [
+            InlineKeyboardButton("📂 UNC путь", callback_data=f'supplier_stock_source_field|{source_id}|individual_path'),
+            InlineKeyboardButton("👤 Логин", callback_data=f'supplier_stock_source_field|{source_id}|individual_login'),
+        ],
+        [InlineKeyboardButton("🔐 Пароль", callback_data=f'supplier_stock_source_field|{source_id}|individual_password')],
+        [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_source_settings|{source_id}')],
     ]
 
     query.edit_message_text(
@@ -4275,6 +4576,11 @@ def show_supplier_stock_mail_source_settings(update, context, source_id: str):
     unpack_enabled = source.get("unpack_archive", False)
     status_icon = "🟢" if enabled else "🔴"
     unpack_text = "вкл" if unpack_enabled else "выкл"
+    upload_subdir = _escape_pattern_text(source.get("upload_subdir") or "не задано")
+    individual_dir = source.get("individual_directory") or {}
+    individual_enabled = individual_dir.get("enabled", False)
+    individual_status = "вкл" if individual_enabled else "выкл"
+    individual_path = _escape_pattern_text(individual_dir.get("unc_path") or "не задано")
 
     rules = config.get("processing", {}).get("rules", [])
     matched_rules = [
@@ -4291,6 +4597,9 @@ def show_supplier_stock_mail_source_settings(update, context, source_id: str):
         f"• Имя файла: `{filename_pattern}`",
         f"• Ожидается: `{expected}`",
         f"• Шаблон: `{output_template}`",
+        f"• Подкаталог выгрузки: `{upload_subdir}`",
+        f"• Индивидуальный каталог: `{individual_status}`",
+        f"• UNC индивидуального каталога: `{individual_path}`",
         f"• Распаковка: `{unpack_text}`\n",
         "🧩 *Обработка файлов*",
         f"Правил: {len(matched_rules)}",
@@ -4324,6 +4633,10 @@ def show_supplier_stock_mail_source_settings(update, context, source_id: str):
             InlineKeyboardButton("📦 Шаблон файла", callback_data=f'supplier_stock_mail_field|{source_id}|output'),
         ],
         [
+            InlineKeyboardButton("📂 Подкаталог выгрузки", callback_data=f'supplier_stock_mail_field|{source_id}|upload_subdir'),
+            InlineKeyboardButton("📁 Индивидуальный каталог", callback_data=f'supplier_stock_mail_source_individual|{source_id}'),
+        ],
+        [
             InlineKeyboardButton("🔁 Включить/выключить", callback_data=f'supplier_stock_mail_source_toggle_{source_id}'),
             InlineKeyboardButton(f"📦 Распаковка: {unpack_text}", callback_data=f'supplier_stock_mail_source_unpack_toggle_{source_id}')
         ],
@@ -4335,6 +4648,57 @@ def show_supplier_stock_mail_source_settings(update, context, source_id: str):
             InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail_sources'),
             InlineKeyboardButton("✖️ Закрыть", callback_data='close')
         ],
+    ]
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+
+def show_supplier_stock_mail_source_individual_settings(update, context, source_id: str) -> None:
+    """Показать настройки индивидуального каталога правила вложений."""
+    query = update.callback_query
+    query.answer()
+
+    config = get_supplier_stock_config()
+    sources = config.get("mail", {}).get("sources", [])
+    source = next((item for item in sources if str(item.get("id")) == source_id), None)
+
+    if not source:
+        query.edit_message_text(
+            "❌ Правило не найдено.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail_sources')]
+            ])
+        )
+        return
+
+    individual_dir = source.get("individual_directory") or {}
+    enabled = individual_dir.get("enabled", False)
+    status_text = "🟢 Включено" if enabled else "🔴 Выключено"
+    unc_path = _escape_pattern_text(individual_dir.get("unc_path") or "не задано")
+    login = _escape_pattern_text(individual_dir.get("login") or "не задано")
+    password = "задано" if individual_dir.get("password") else "не задано"
+
+    message = (
+        "📁 *Индивидуальный каталог*\n\n"
+        f"Статус: {status_text}\n"
+        f"UNC путь: `{unc_path}`\n"
+        f"Логин: `{login}`\n"
+        f"Пароль: `{password}`\n\n"
+        "Выберите действие:"
+    )
+
+    keyboard = [
+        [InlineKeyboardButton("🔁 Включить/выключить", callback_data=f'supplier_stock_mail_source_individual_toggle_{source_id}')],
+        [
+            InlineKeyboardButton("📂 UNC путь", callback_data=f'supplier_stock_mail_field|{source_id}|individual_path'),
+            InlineKeyboardButton("👤 Логин", callback_data=f'supplier_stock_mail_field|{source_id}|individual_login'),
+        ],
+        [InlineKeyboardButton("🔐 Пароль", callback_data=f'supplier_stock_mail_field|{source_id}|individual_password')],
+        [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_mail_source_settings|{source_id}')],
     ]
 
     query.edit_message_text(
@@ -4373,6 +4737,10 @@ def supplier_stock_start_source_field_edit(update, context, source_id: str, fiel
         "auth": "Введите login:password, '-' чтобы оставить или 'none' чтобы очистить:",
         "pre_request": "Введите URL | данные для предзапроса, '-' чтобы оставить или 'none' чтобы очистить:",
         "options": "Введите опции (headers, append) через запятую, '-' чтобы оставить или 'none' чтобы очистить:",
+        "upload_subdir": "Введите подкаталог для выгрузки (или '-' чтобы оставить, 'none' чтобы очистить):",
+        "individual_path": "Введите UNC путь индивидуального каталога (или '-' чтобы оставить, 'none' чтобы очистить):",
+        "individual_login": "Введите логин индивидуального каталога (или '-' чтобы оставить, 'none' чтобы очистить):",
+        "individual_password": "Введите пароль индивидуального каталога (или '-' чтобы оставить, 'none' чтобы очистить):",
     }
 
     current_values = {
@@ -4384,6 +4752,10 @@ def supplier_stock_start_source_field_edit(update, context, source_id: str, fiel
         "auth": "задано" if source.get("auth") else "-",
         "pre_request": source.get("pre_request") or "-",
         "options": "headers/append" if (source.get("include_headers") or source.get("append")) else "-",
+        "upload_subdir": source.get("upload_subdir") or "-",
+        "individual_path": (source.get("individual_directory") or {}).get("unc_path") or "-",
+        "individual_login": (source.get("individual_directory") or {}).get("login") or "-",
+        "individual_password": "задано" if (source.get("individual_directory") or {}).get("password") else "-",
     }
 
     prompt = prompts.get(field, "Введите значение:")
@@ -4427,6 +4799,10 @@ def supplier_stock_start_mail_source_field_edit(update, context, source_id: str,
         "filename": "Введите regex имени вложения, '-' чтобы оставить или 'none' чтобы очистить:",
         "expected": "Введите количество ожидаемых вложений (или '-' чтобы оставить):",
         "output": "Введите шаблон имени выходного файла (или '-' чтобы оставить):",
+        "upload_subdir": "Введите подкаталог для выгрузки (или '-' чтобы оставить, 'none' чтобы очистить):",
+        "individual_path": "Введите UNC путь индивидуального каталога (или '-' чтобы оставить, 'none' чтобы очистить):",
+        "individual_login": "Введите логин индивидуального каталога (или '-' чтобы оставить, 'none' чтобы очистить):",
+        "individual_password": "Введите пароль индивидуального каталога (или '-' чтобы оставить, 'none' чтобы очистить):",
     }
 
     current_values = {
@@ -4437,6 +4813,10 @@ def supplier_stock_start_mail_source_field_edit(update, context, source_id: str,
         "filename": source.get("filename_pattern") or "-",
         "expected": source.get("expected_attachments", 1),
         "output": source.get("output_template") or "-",
+        "upload_subdir": source.get("upload_subdir") or "-",
+        "individual_path": (source.get("individual_directory") or {}).get("unc_path") or "-",
+        "individual_login": (source.get("individual_directory") or {}).get("login") or "-",
+        "individual_password": "задано" if (source.get("individual_directory") or {}).get("password") else "-",
     }
 
     prompt = prompts.get(field, "Введите значение:")
@@ -4446,6 +4826,100 @@ def supplier_stock_start_mail_source_field_edit(update, context, source_id: str,
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("❌ Отмена", callback_data=f'supplier_stock_mail_source_settings|{source_id}')]
+        ])
+    )
+
+
+def supplier_stock_start_resource_wizard(update, context) -> None:
+    """Запуск мастера добавления ресурса выгрузки."""
+    query = update.callback_query
+    query.answer()
+
+    context.user_data['supplier_stock_resource_stage'] = 'name'
+    context.user_data['supplier_stock_resource_data'] = {}
+    context.user_data['supplier_stock_resource_add'] = True
+
+    query.edit_message_text(
+        "➕ *Новый ресурс выгрузки*\n\nВведите название ресурса:",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_resources')]
+        ])
+    )
+
+
+def supplier_stock_start_resource_field_edit(update, context, resource_id: str, field: str) -> None:
+    """Запросить изменение поля ресурса выгрузки."""
+    query = update.callback_query
+    query.answer()
+
+    config = get_supplier_stock_config()
+    resources = config.get("resources", [])
+    resource = next((item for item in resources if str(item.get("id")) == resource_id), None)
+
+    if not resource:
+        query.edit_message_text(
+            "❌ Ресурс не найден.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_resources')]
+            ])
+        )
+        return
+
+    context.user_data['supplier_stock_resource_field'] = field
+    context.user_data['supplier_stock_resource_field_id'] = resource_id
+
+    prompts = {
+        "name": "Введите название ресурса (или '-' чтобы оставить):",
+        "unc_path": "Введите UNC путь корневого каталога (или '-' чтобы оставить):",
+        "login": "Введите логин ресурса (или '-' чтобы оставить, 'none' чтобы очистить):",
+        "password": "Введите пароль ресурса (или '-' чтобы оставить, 'none' чтобы очистить):",
+    }
+
+    current_values = {
+        "name": resource.get("name") or resource_id,
+        "unc_path": resource.get("unc_path") or "-",
+        "login": resource.get("login") or "-",
+        "password": "задано" if resource.get("password") else "-",
+    }
+
+    prompt = prompts.get(field, "Введите значение:")
+    current_value = current_values.get(field, "-")
+    query.edit_message_text(
+        f"{prompt}\n\nТекущее значение: `{_escape_pattern_text(str(current_value))}`",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("❌ Отмена", callback_data=f'supplier_stock_resource_settings|{resource_id}')]
+        ])
+    )
+
+
+def supplier_stock_start_ftp_field_edit(update, context, field: str) -> None:
+    """Запросить изменение параметра FTP."""
+    query = update.callback_query
+    query.answer()
+
+    context.user_data['supplier_stock_ftp_field'] = field
+    prompts = {
+        "host": "Введите HOST FTP (или '-' чтобы оставить):",
+        "login": "Введите логин FTP (или '-' чтобы оставить, 'none' чтобы очистить):",
+        "password": "Введите пароль FTP (или '-' чтобы оставить, 'none' чтобы очистить):",
+    }
+
+    config = get_supplier_stock_config()
+    ftp_settings = config.get("ftp_ork", {})
+    current_values = {
+        "host": ftp_settings.get("host") or "-",
+        "login": ftp_settings.get("login") or "-",
+        "password": "задано" if ftp_settings.get("password") else "-",
+    }
+    prompt = prompts.get(field, "Введите значение:")
+    current_value = current_values.get(field, "-")
+    query.edit_message_text(
+        f"{prompt}\n\nТекущее значение: `{_escape_pattern_text(str(current_value))}`",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_ftp')]
         ])
     )
 
@@ -5101,6 +5575,12 @@ def supplier_stock_start_edit_wizard(update, context, source_id: str):
 
 def supplier_stock_handle_input(update, context):
     """Обработчик ввода для настроек остатков поставщиков."""
+    if context.user_data.get('supplier_stock_resource_field'):
+        return supplier_stock_handle_resource_field_input(update, context)
+    if context.user_data.get('supplier_stock_resource_add'):
+        return supplier_stock_handle_resource_input(update, context)
+    if context.user_data.get('supplier_stock_ftp_field'):
+        return supplier_stock_handle_ftp_input(update, context)
     if context.user_data.get('supplier_stock_source_field'):
         return supplier_stock_handle_source_field_input(update, context)
     if context.user_data.get('supplier_stock_mail_source_field'):
@@ -5611,6 +6091,37 @@ def supplier_stock_handle_source_field_input(update, context):
                 )
                 return None
             source.update(options)
+    elif field == 'upload_subdir':
+        if user_input in ('-', ''):
+            pass
+        elif user_input.lower() in ('none', 'нет'):
+            source.pop('upload_subdir', None)
+        else:
+            source['upload_subdir'] = user_input
+    elif field == 'individual_path':
+        individual_dir = source.setdefault('individual_directory', {})
+        if user_input in ('-', ''):
+            pass
+        elif user_input.lower() in ('none', 'нет'):
+            individual_dir.pop('unc_path', None)
+        else:
+            individual_dir['unc_path'] = user_input
+    elif field == 'individual_login':
+        individual_dir = source.setdefault('individual_directory', {})
+        if user_input in ('-', ''):
+            pass
+        elif user_input.lower() in ('none', 'нет'):
+            individual_dir.pop('login', None)
+        else:
+            individual_dir['login'] = user_input
+    elif field == 'individual_password':
+        individual_dir = source.setdefault('individual_directory', {})
+        if user_input in ('-', ''):
+            pass
+        elif user_input.lower() in ('none', 'нет'):
+            individual_dir.pop('password', None)
+        else:
+            individual_dir['password'] = user_input
     else:
         update.message.reply_text("❌ Не удалось определить поле настройки.")
         return None
@@ -5701,6 +6212,37 @@ def supplier_stock_handle_mail_source_field_input(update, context):
             return None
         else:
             source['output_template'] = user_input
+    elif field == 'upload_subdir':
+        if user_input in ('-', ''):
+            pass
+        elif user_input.lower() in ('none', 'нет'):
+            source.pop('upload_subdir', None)
+        else:
+            source['upload_subdir'] = user_input
+    elif field == 'individual_path':
+        individual_dir = source.setdefault('individual_directory', {})
+        if user_input in ('-', ''):
+            pass
+        elif user_input.lower() in ('none', 'нет'):
+            individual_dir.pop('unc_path', None)
+        else:
+            individual_dir['unc_path'] = user_input
+    elif field == 'individual_login':
+        individual_dir = source.setdefault('individual_directory', {})
+        if user_input in ('-', ''):
+            pass
+        elif user_input.lower() in ('none', 'нет'):
+            individual_dir.pop('login', None)
+        else:
+            individual_dir['login'] = user_input
+    elif field == 'individual_password':
+        individual_dir = source.setdefault('individual_directory', {})
+        if user_input in ('-', ''):
+            pass
+        elif user_input.lower() in ('none', 'нет'):
+            individual_dir.pop('password', None)
+        else:
+            individual_dir['password'] = user_input
     else:
         update.message.reply_text("❌ Не удалось определить поле настройки.")
         return None
@@ -5715,6 +6257,187 @@ def supplier_stock_handle_mail_source_field_input(update, context):
         "✅ Настройка обновлена.",
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_mail_source_settings|{source_id}')]
+        ])
+    )
+    return None
+
+
+def supplier_stock_handle_resource_input(update, context):
+    """Обработка ввода в мастере добавления ресурса выгрузки."""
+    stage = context.user_data.get('supplier_stock_resource_stage')
+    resource_data = context.user_data.get('supplier_stock_resource_data', {})
+    user_input = (update.message.text or "").strip()
+
+    if stage == 'name':
+        if not user_input:
+            update.message.reply_text("❌ Название не может быть пустым. Попробуйте снова:")
+            return None
+        resource_data['name'] = user_input
+        resource_data['id'] = _slugify_supplier_source_id(user_input)
+        context.user_data['supplier_stock_resource_stage'] = 'unc_path'
+        context.user_data['supplier_stock_resource_data'] = resource_data
+        update.message.reply_text("Введите UNC путь корневого каталога:")
+        return None
+
+    if stage == 'unc_path':
+        if not user_input:
+            update.message.reply_text("❌ UNC путь не может быть пустым. Попробуйте снова:")
+            return None
+        resource_data['unc_path'] = user_input
+        context.user_data['supplier_stock_resource_stage'] = 'login'
+        context.user_data['supplier_stock_resource_data'] = resource_data
+        update.message.reply_text("Введите логин ресурса (или '-' чтобы пропустить):")
+        return None
+
+    if stage == 'login':
+        if user_input not in ('-', ''):
+            resource_data['login'] = user_input
+        context.user_data['supplier_stock_resource_stage'] = 'password'
+        context.user_data['supplier_stock_resource_data'] = resource_data
+        update.message.reply_text("Введите пароль ресурса (или '-' чтобы пропустить):")
+        return None
+
+    if stage == 'password':
+        if user_input not in ('-', ''):
+            resource_data['password'] = user_input
+        resource_data.setdefault('enabled', True)
+        config = get_supplier_stock_config()
+        resources = config.get("resources", [])
+        resource_data['id'] = _unique_supplier_source_id(resource_data.get('id', 'resource'), resources)
+        resources.append(resource_data)
+        config["resources"] = resources
+        save_supplier_stock_config(config)
+
+        context.user_data.pop('supplier_stock_resource_add', None)
+        context.user_data.pop('supplier_stock_resource_stage', None)
+        context.user_data.pop('supplier_stock_resource_data', None)
+
+        update.message.reply_text(
+            "✅ Ресурс добавлен.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_resources')]
+            ])
+        )
+        return None
+
+    update.message.reply_text("❌ Не удалось определить шаг мастера. Попробуйте снова.")
+    return None
+
+
+def supplier_stock_handle_resource_field_input(update, context):
+    """Обработка ввода при редактировании ресурса выгрузки."""
+    field = context.user_data.get('supplier_stock_resource_field')
+    resource_id = context.user_data.get('supplier_stock_resource_field_id')
+    user_input = (update.message.text or "").strip()
+
+    if not field or not resource_id:
+        return None
+
+    config = get_supplier_stock_config()
+    resources = config.get("resources", [])
+    resource = next((item for item in resources if str(item.get("id")) == resource_id), None)
+
+    if not resource:
+        update.message.reply_text("❌ Ресурс не найден.", reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_resources')]
+        ]))
+        return None
+
+    if field == 'name':
+        if user_input in ('-', ''):
+            pass
+        elif not user_input:
+            update.message.reply_text("❌ Название не может быть пустым. Попробуйте снова:")
+            return None
+        else:
+            resource['name'] = user_input
+    elif field == 'unc_path':
+        if user_input in ('-', ''):
+            pass
+        elif not user_input:
+            update.message.reply_text("❌ UNC путь не может быть пустым. Попробуйте снова:")
+            return None
+        else:
+            resource['unc_path'] = user_input
+    elif field == 'login':
+        if user_input in ('-', ''):
+            pass
+        elif user_input.lower() in ('none', 'нет'):
+            resource.pop('login', None)
+        else:
+            resource['login'] = user_input
+    elif field == 'password':
+        if user_input in ('-', ''):
+            pass
+        elif user_input.lower() in ('none', 'нет'):
+            resource.pop('password', None)
+        else:
+            resource['password'] = user_input
+    else:
+        update.message.reply_text("❌ Не удалось определить поле настройки.")
+        return None
+
+    config["resources"] = resources
+    save_supplier_stock_config(config)
+
+    context.user_data.pop('supplier_stock_resource_field', None)
+    context.user_data.pop('supplier_stock_resource_field_id', None)
+
+    update.message.reply_text(
+        "✅ Настройка обновлена.",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_resource_settings|{resource_id}')]
+        ])
+    )
+    return None
+
+
+def supplier_stock_handle_ftp_input(update, context):
+    """Обработка ввода для настроек FTP ОРК."""
+    field = context.user_data.get('supplier_stock_ftp_field')
+    user_input = (update.message.text or "").strip()
+
+    if not field:
+        return None
+
+    config = get_supplier_stock_config()
+    ftp_settings = config.get("ftp_ork", {})
+
+    if field == 'host':
+        if user_input in ('-', ''):
+            pass
+        elif not user_input:
+            update.message.reply_text("❌ HOST FTP не может быть пустым. Попробуйте снова:")
+            return None
+        else:
+            ftp_settings['host'] = user_input
+    elif field == 'login':
+        if user_input in ('-', ''):
+            pass
+        elif user_input.lower() in ('none', 'нет'):
+            ftp_settings.pop('login', None)
+        else:
+            ftp_settings['login'] = user_input
+    elif field == 'password':
+        if user_input in ('-', ''):
+            pass
+        elif user_input.lower() in ('none', 'нет'):
+            ftp_settings.pop('password', None)
+        else:
+            ftp_settings['password'] = user_input
+    else:
+        update.message.reply_text("❌ Не удалось определить поле настройки.")
+        return None
+
+    config["ftp_ork"] = ftp_settings
+    save_supplier_stock_config(config)
+
+    context.user_data.pop('supplier_stock_ftp_field', None)
+
+    update.message.reply_text(
+        "✅ Настройка обновлена.",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_ftp')]
         ])
     )
     return None

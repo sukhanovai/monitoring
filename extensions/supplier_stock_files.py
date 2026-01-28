@@ -17,6 +17,7 @@ import base64
 import json
 import logging
 import re
+import shutil
 import ssl
 import threading
 import tarfile
@@ -48,6 +49,12 @@ _logger = logging.getLogger("supplier_stock_files")
 _monitor_logger = logging.getLogger("monitoring")
 
 DEFAULT_SUPPLIER_STOCK_CONFIG: Dict[str, Any] = {
+    "resources": [],
+    "ftp_ork": {
+        "host": "",
+        "login": "",
+        "password": "",
+    },
     "download": {
         "temp_dir": str(DATA_DIR / "supplier_stock" / "tmp"),
         "archive_dir": str(DATA_DIR / "supplier_stock" / "archive"),
@@ -104,16 +111,35 @@ def normalize_supplier_stock_config(config: Dict[str, Any] | None) -> Dict[str, 
     if not isinstance(config, dict):
         return dict(DEFAULT_SUPPLIER_STOCK_CONFIG)
     merged = _merge_dicts(DEFAULT_SUPPLIER_STOCK_CONFIG, config)
+    resources = merged.get("resources", [])
+    if isinstance(resources, list):
+        for resource in resources:
+            if isinstance(resource, dict):
+                resource.setdefault("enabled", True)
     sources = merged.get("download", {}).get("sources", [])
     if isinstance(sources, list):
         for source in sources:
             if isinstance(source, dict):
                 source.setdefault("enabled", True)
+                source.setdefault("upload_subdir", "")
+                if not isinstance(source.get("individual_directory"), dict):
+                    source["individual_directory"] = {}
+                source["individual_directory"].setdefault("enabled", False)
+                source["individual_directory"].setdefault("unc_path", "")
+                source["individual_directory"].setdefault("login", "")
+                source["individual_directory"].setdefault("password", "")
     mail_sources = merged.get("mail", {}).get("sources", [])
     if isinstance(mail_sources, list):
         for source in mail_sources:
             if isinstance(source, dict):
                 source.setdefault("enabled", True)
+                source.setdefault("upload_subdir", "")
+                if not isinstance(source.get("individual_directory"), dict):
+                    source["individual_directory"] = {}
+                source["individual_directory"].setdefault("enabled", False)
+                source["individual_directory"].setdefault("unc_path", "")
+                source["individual_directory"].setdefault("login", "")
+                source["individual_directory"].setdefault("password", "")
     processing_rules = merged.get("processing", {}).get("rules", [])
     if isinstance(processing_rules, list):
         for rule in processing_rules:
@@ -531,6 +557,7 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
                 output_path = temp_dir / output_name
             else:
                 output_path = temp_dir / f"{source_id}_orig"
+            original_path = output_path
 
             entry.update({"url": rendered_url, "output_name": output_name})
             _log("📦 Остатки поставщиков: %s -> старт (%s)", entry["source_id"], rendered_url)
@@ -561,7 +588,7 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
                 )
                 if processing_result:
                     entry["processing"] = processing_result
-                archive_path = _archive_original_file(output_path, archive_dir, now)
+                archive_path = _archive_original_file(original_path, archive_dir, now)
                 if archive_path:
                     entry["archive_path"] = str(archive_path)
         except Exception as exc:
@@ -637,19 +664,35 @@ def _archive_original_file(source_path: Path, archive_dir: Path, now: datetime) 
     if not source_path.exists():
         return None
     archive_dir.mkdir(parents=True, exist_ok=True)
-    date_stamp = now.strftime("%Y-%m-%d")
+    date_stamp = now.strftime("%Y-%m-%d_%H-%M-%S")
     if source_path.suffix:
         archive_name = f"{source_path.stem}_{date_stamp}{source_path.suffix}"
     else:
         archive_name = f"{source_path.name}_{date_stamp}"
-    archive_path = archive_dir / archive_name
+    archive_path = _unique_archive_path(archive_dir / archive_name)
     try:
-        import shutil
-
-        shutil.copy2(source_path, archive_path)
+        shutil.move(str(source_path), str(archive_path))
         return archive_path
     except Exception:
         return None
+
+
+def archive_supplier_stock_original(source_path: Path, archive_dir: Path, now: datetime) -> Path | None:
+    return _archive_original_file(source_path, archive_dir, now)
+
+
+def _unique_archive_path(path: Path) -> Path:
+    if not path.exists():
+        return path
+    stem = path.stem
+    suffix = path.suffix
+    parent = path.parent
+    index = 2
+    while True:
+        candidate = parent / f"{stem}_{index}{suffix}"
+        if not candidate.exists():
+            return candidate
+        index += 1
 
 
 def _process_supplier_stock_file(
@@ -728,13 +771,188 @@ def _process_supplier_stock_file(
         )
         return None
 
+    transfer_result = _transfer_processed_outputs(
+        results,
+        config,
+        source_id,
+        source_kind,
+    )
+
     return {
         "rules": matched_rules,
         "results": results,
+        "transfer": transfer_result,
         "source_id": source_id,
         "source_kind": source_kind,
         "file": str(file_path),
     }
+
+
+def _transfer_processed_outputs(
+    results: list[Dict[str, Any]],
+    config: Dict[str, Any],
+    source_id: str | None,
+    source_kind: str | None,
+) -> Dict[str, Any]:
+    outputs = _collect_processing_outputs(results)
+    if not outputs:
+        return {"status": "skipped", "reason": "no_outputs"}
+    targets, upload_subdir = _resolve_transfer_targets(config, source_id, source_kind)
+    if not targets:
+        return {"status": "skipped", "reason": "no_targets"}
+    transfer_entries = []
+    for output_path in outputs:
+        if not output_path.exists():
+            transfer_entries.append(
+                {
+                    "file": str(output_path),
+                    "status": "error",
+                    "error": "file_not_found",
+                }
+            )
+            continue
+        target_results = []
+        multi_target = len(targets) > 1
+        for target in targets:
+            target_dir = _compose_target_dir(target.get("unc_path") or "", upload_subdir)
+            if not target_dir:
+                target_results.append(
+                    {
+                        "target": target.get("name") or target.get("id") or "resource",
+                        "status": "error",
+                        "error": "empty_target",
+                    }
+                )
+                continue
+            try:
+                target_dir.mkdir(parents=True, exist_ok=True)
+                target_file = target_dir / output_path.name
+                if multi_target:
+                    shutil.copy2(output_path, target_file)
+                else:
+                    shutil.move(str(output_path), str(target_file))
+                target_results.append(
+                    {
+                        "target": str(target_dir),
+                        "status": "success",
+                    }
+                )
+            except Exception as exc:
+                _log_processing(
+                    "🧩 Ошибка переноса файла %s в %s: %s",
+                    output_path.name,
+                    target_dir,
+                    exc,
+                )
+                target_results.append(
+                    {
+                        "target": str(target_dir),
+                        "status": "error",
+                        "error": str(exc),
+                    }
+                )
+        if multi_target and target_results and all(item["status"] == "success" for item in target_results):
+            try:
+                output_path.unlink()
+            except Exception as exc:
+                _log_processing(
+                    "🧩 Не удалось удалить исходный файл %s после копирования: %s",
+                    output_path.name,
+                    exc,
+                )
+        transfer_entries.append(
+            {
+                "file": str(output_path),
+                "targets": target_results,
+            }
+        )
+    return {"status": "success", "items": transfer_entries}
+
+
+def _collect_processing_outputs(results: list[Dict[str, Any]]) -> list[Path]:
+    outputs: list[Path] = []
+    for result in results:
+        if result.get("status") != "success":
+            continue
+        for output_info in result.get("outputs", []) or []:
+            output_path = output_info.get("output")
+            if output_path:
+                outputs.append(Path(output_path))
+            orc_output = output_info.get("orc_output")
+            if orc_output:
+                outputs.append(Path(orc_output))
+    return outputs
+
+
+def _resolve_transfer_targets(
+    config: Dict[str, Any],
+    source_id: str | None,
+    source_kind: str | None,
+) -> tuple[list[Dict[str, Any]], str]:
+    sources: list[Dict[str, Any]] = []
+    source = None
+    if source_kind == "download":
+        sources = config.get("download", {}).get("sources", [])
+    elif source_kind == "mail":
+        sources = config.get("mail", {}).get("sources", [])
+    else:
+        sources = [
+            *config.get("download", {}).get("sources", []),
+            *config.get("mail", {}).get("sources", []),
+        ]
+    if source_id:
+        for item in sources:
+            if str(item.get("id")) == str(source_id) or str(item.get("name")) == str(source_id):
+                source = item
+                break
+    upload_subdir = str(source.get("upload_subdir") or "").strip() if source else ""
+    individual = source.get("individual_directory", {}) if source else {}
+    if isinstance(individual, dict) and individual.get("enabled"):
+        individual_path = str(individual.get("unc_path") or "").strip()
+        if individual_path:
+            return (
+                [
+                    {
+                        "id": "individual",
+                        "name": "Индивидуальный каталог",
+                        "unc_path": individual_path,
+                        "login": individual.get("login"),
+                        "password": individual.get("password"),
+                    }
+                ],
+                upload_subdir,
+            )
+    resources = config.get("resources", [])
+    targets = []
+    if isinstance(resources, list):
+        for resource in resources:
+            if not isinstance(resource, dict):
+                continue
+            if not resource.get("enabled", True):
+                continue
+            unc_path = str(resource.get("unc_path") or "").strip()
+            if not unc_path:
+                continue
+            targets.append(
+                {
+                    "id": resource.get("id") or resource.get("name"),
+                    "name": resource.get("name") or resource.get("id"),
+                    "unc_path": unc_path,
+                    "login": resource.get("login"),
+                    "password": resource.get("password"),
+                }
+            )
+    return targets, upload_subdir
+
+
+def _compose_target_dir(base_path: str, subdir: str) -> Path | None:
+    base_path = str(base_path or "").strip()
+    if not base_path:
+        return None
+    cleaned_subdir = str(subdir or "").strip().lstrip("/\\")
+    if cleaned_subdir:
+        return Path(base_path) / cleaned_subdir
+    return Path(base_path)
 
 
 def _processing_rule_matches_kind(
@@ -1388,7 +1606,6 @@ def unpack_archive_file(archive_path: Path) -> Path | None:
         if target_path.exists():
             target_path.unlink()
         extracted_path.replace(target_path)
-        archive_path.unlink(missing_ok=True)
         return target_path
     except Exception:
         return None
