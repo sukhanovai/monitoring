@@ -640,12 +640,12 @@ def start_supplier_stock_scheduler() -> None:
         _scheduler_started = True
 
     def _loop() -> None:
-        debug_log("⏰ Запуск планировщика загрузки остатков поставщиков")
+        _log_processing("⏰ Запуск планировщика загрузки остатков поставщиков")
         while True:
             now = datetime.now()
             schedule = get_supplier_stock_config().get("download", {}).get("schedule", {})
             if _should_run_schedule(schedule, now):
-                debug_log("📦 Плановая загрузка остатков поставщиков")
+                _log_processing("📦 Плановая загрузка остатков поставщиков")
                 run_supplier_stock_fetch()
             threading.Event().wait(30)
 
