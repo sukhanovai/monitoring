@@ -23,6 +23,7 @@ import math
 import re
 import shutil
 import ssl
+import subprocess
 import tarfile
 import threading
 import zipfile
@@ -52,6 +53,7 @@ _monitor_logger = logging.getLogger("monitoring")
 
 DEFAULT_SUPPLIER_STOCK_CONFIG: Dict[str, Any] = {
     "resources": [],
+    "smbclient_path": "",
     "ftp_ork": {
         "host": "",
         "login": "",
@@ -81,6 +83,7 @@ DEFAULT_SUPPLIER_STOCK_CONFIG: Dict[str, Any] = {
 _scheduler_lock = threading.Lock()
 _scheduler_started = False
 _last_run_marker: str | None = None
+_smbclient_missing_logged = False
 
 
 def _log_processing(message: str, *args: object) -> None:
@@ -811,8 +814,9 @@ def _transfer_processed_outputs(
     targets, upload_subdir = _resolve_transfer_targets(config, source_id, source_kind)
     if not targets and not orc_outputs:
         return {"status": "skipped", "reason": "no_targets"}
+    smbclient_path = _resolve_smbclient_path(config)
     transfer_entries = []
-    output_transfer = _transfer_files_to_targets(outputs, targets, upload_subdir, "output")
+    output_transfer = _transfer_files_to_targets(outputs, targets, upload_subdir, "output", smbclient_path)
     transfer_entries.extend(output_transfer["items"])
     ftp_result = _upload_orc_outputs_to_ftp(orc_outputs, config.get("ftp_ork", {}))
     _cleanup_output_files(outputs, orc_outputs, output_transfer["status_map"], ftp_result)
@@ -820,7 +824,13 @@ def _transfer_processed_outputs(
     original_transfer = None
     archive_path = None
     if original_path and original_path.exists():
-        original_transfer = _transfer_files_to_targets([original_path], targets, upload_subdir, "original")
+        original_transfer = _transfer_files_to_targets(
+            [original_path],
+            targets,
+            upload_subdir,
+            "original",
+            smbclient_path,
+        )
         transfer_entries.extend(original_transfer["items"])
         if original_transfer["status_map"].get(str(original_path)):
             archive_dir = _resolve_archive_dir(config, source_kind)
@@ -869,11 +879,100 @@ def _is_unc_path(path: str) -> bool:
     return path.startswith("\\\\") or path.startswith("//")
 
 
+def _resolve_smbclient_path(config: Dict[str, Any]) -> str | None:
+    raw_path = str(config.get("smbclient_path") or "").strip()
+    if raw_path:
+        return raw_path
+    return shutil.which("smbclient")
+
+
+def _split_unc_path(unc_path: str) -> tuple[str, str, str] | None:
+    unc_path = str(unc_path or "").strip()
+    if not _is_unc_path(unc_path):
+        return None
+    windows_path = PureWindowsPath(unc_path)
+    anchor = windows_path.anchor.strip("\\")
+    if "\\" not in anchor:
+        return None
+    server, share = anchor.split("\\", 1)
+    subdir = "/".join(windows_path.parts[1:])
+    return server, share, subdir
+
+
+def _upload_file_via_smbclient(
+    file_path: Path,
+    unc_path: str,
+    upload_subdir: str,
+    target_name: str,
+    login: str | None,
+    password: str | None,
+    smbclient_path: str | None,
+) -> Dict[str, Any]:
+    global _smbclient_missing_logged
+    if not smbclient_path:
+        if not _smbclient_missing_logged:
+            _log_processing(
+                "🧩 Не найден smbclient для выгрузки %s (установите пакет или укажите путь в конфигурации)",
+                file_path.name,
+            )
+            _smbclient_missing_logged = True
+        return {"target": target_name, "status": "error", "error": "smbclient_not_found"}
+    parsed = _split_unc_path(unc_path)
+    if not parsed:
+        _log_processing("🧩 Некорректный UNC путь %s для выгрузки %s", unc_path, file_path.name)
+        return {"target": target_name, "status": "error", "error": "invalid_unc_path"}
+    server, share, base_subdir = parsed
+    cleaned_subdir = str(upload_subdir or "").strip().lstrip("/\\")
+    target_subdir = "/".join(filter(None, [base_subdir, cleaned_subdir]))
+    commands = []
+    if target_subdir:
+        commands.append(f'cd "{target_subdir}"')
+    commands.append(f'put "{file_path}" "{file_path.name}"')
+    command_text = "; ".join(commands)
+    args = [smbclient_path, f"//{server}/{share}"]
+    if login:
+        auth = f"{login}%{password or ''}"
+        args.extend(["-U", auth])
+    else:
+        args.append("-N")
+    args.extend(["-c", command_text])
+    try:
+        result = subprocess.run(args, capture_output=True, text=True, check=False)
+    except Exception as exc:
+        _log_processing("🧩 Ошибка запуска smbclient для %s: %s", file_path.name, exc)
+        return {"target": target_name, "status": "error", "error": str(exc)}
+    if result.returncode != 0:
+        _log_processing(
+            "🧩 Ошибка выгрузки %s через smbclient в //%s/%s: %s",
+            file_path.name,
+            server,
+            share,
+            (result.stderr or result.stdout).strip(),
+        )
+        return {
+            "target": f"//{server}/{share}/{target_subdir}".rstrip("/"),
+            "status": "error",
+            "error": (result.stderr or result.stdout).strip(),
+        }
+    _log_processing(
+        "🧩 Выгружен файл %s через smbclient в //%s/%s/%s",
+        file_path.name,
+        server,
+        share,
+        target_subdir,
+    )
+    return {
+        "target": f"//{server}/{share}/{target_subdir}".rstrip("/"),
+        "status": "success",
+    }
+
+
 def _transfer_files_to_targets(
     files: list[Path],
     targets: list[Dict[str, Any]],
     upload_subdir: str,
     label: str,
+    smbclient_path: str | None,
 ) -> Dict[str, Any]:
     transfer_entries: list[Dict[str, Any]] = []
     status_map: Dict[str, bool] = {}
@@ -891,9 +990,23 @@ def _transfer_files_to_targets(
             continue
         target_results = []
         for target in targets:
-            target_dir = _compose_target_dir(target.get("unc_path") or "", upload_subdir)
+            unc_path = target.get("unc_path") or ""
+            target_name = target.get("name") or target.get("id") or "resource"
+            if _is_unc_path(unc_path) and os.name != "nt":
+                target_results.append(
+                    _upload_file_via_smbclient(
+                        file_path=file_path,
+                        unc_path=unc_path,
+                        upload_subdir=upload_subdir,
+                        target_name=target_name,
+                        login=target.get("login"),
+                        password=target.get("password"),
+                        smbclient_path=smbclient_path,
+                    )
+                )
+                continue
+            target_dir = _compose_target_dir(unc_path, upload_subdir)
             if not target_dir:
-                target_name = target.get("name") or target.get("id") or "resource"
                 _log_processing(
                     "🧩 Пропуск выгрузки %s: не удалось определить UNC путь для ресурса %s",
                     file_path.name,
