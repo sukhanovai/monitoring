@@ -1,11 +1,11 @@
 """
 /extensions/supplier_stock_files.py
-Server Monitoring System v8.3.3
+Server Monitoring System v8.3.5
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Supplier stock files downloader
 Система мониторинга серверов
-Версия: 8.3.3
+Версия: 8.3.5
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Получение файлов остатков поставщиков
@@ -83,6 +83,7 @@ DEFAULT_SUPPLIER_STOCK_CONFIG: Dict[str, Any] = {
 _scheduler_lock = threading.Lock()
 _scheduler_started = False
 _last_run_marker: str | None = None
+_smbclient_missing_logged = False
 
 
 def _log_processing(message: str, *args: object) -> None:

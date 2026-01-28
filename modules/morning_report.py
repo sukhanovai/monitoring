@@ -1,11 +1,11 @@
 """
 /app/modules/morning_report.py
-Server Monitoring System v8.3.3
+Server Monitoring System v8.3.5
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Morning Report Module
 Система мониторинга серверов
-Версия: 8.3.3
+Версия: 8.3.5
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль утреннего отчета
