@@ -963,7 +963,10 @@ def _upload_file_via_smbclient(
     target_subdir = "/".join(filter(None, [base_subdir, cleaned_subdir]))
     commands = []
     if target_subdir:
-        commands.append(f'cd "{target_subdir}"')
+        subdir_parts = [part for part in target_subdir.split("/") if part]
+        for part in subdir_parts:
+            commands.append(f'mkdir "{part}"')
+            commands.append(f'cd "{part}"')
     commands.append(f'put "{file_path}" "{file_path.name}"')
     command_text = "; ".join(commands)
     args = [smbclient_path, f"//{server}/{share}"]
@@ -978,18 +981,33 @@ def _upload_file_via_smbclient(
     except Exception as exc:
         _log_processing("🧩 Ошибка запуска smbclient для %s: %s", file_path.name, exc)
         return {"target": target_name, "status": "error", "error": str(exc)}
-    if result.returncode != 0:
+    output_text = "\n".join(filter(None, [result.stdout, result.stderr])).strip()
+    smbclient_error = None
+    if output_text:
+        error_lines = []
+        for line in output_text.splitlines():
+            normalized = line.strip()
+            if not normalized:
+                continue
+            if "NT_STATUS" in normalized and "NT_STATUS_OBJECT_NAME_COLLISION" not in normalized:
+                error_lines.append(normalized)
+                continue
+            if re.search(r"\b(error|failed|fail)\b", normalized, re.IGNORECASE):
+                error_lines.append(normalized)
+        if error_lines:
+            smbclient_error = "; ".join(error_lines)
+    if result.returncode != 0 or smbclient_error:
         _log_processing(
             "🧩 Ошибка выгрузки %s через smbclient в //%s/%s: %s",
             file_path.name,
             server,
             share,
-            (result.stderr or result.stdout).strip(),
+            smbclient_error or output_text or "unknown_error",
         )
         return {
             "target": f"//{server}/{share}/{target_subdir}".rstrip("/"),
             "status": "error",
-            "error": (result.stderr or result.stdout).strip(),
+            "error": smbclient_error or output_text or "unknown_error",
         }
     _log_processing(
         "🧩 Выгружен файл %s через smbclient в //%s/%s/%s",
