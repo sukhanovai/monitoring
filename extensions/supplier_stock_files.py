@@ -53,6 +53,7 @@ _monitor_logger = logging.getLogger("monitoring")
 
 DEFAULT_SUPPLIER_STOCK_CONFIG: Dict[str, Any] = {
     "resources": [],
+    "smbclient_path": "",
     "ftp_ork": {
         "host": "",
         "login": "",
@@ -82,6 +83,7 @@ DEFAULT_SUPPLIER_STOCK_CONFIG: Dict[str, Any] = {
 _scheduler_lock = threading.Lock()
 _scheduler_started = False
 _last_run_marker: str | None = None
+_smbclient_missing_logged = False
 
 
 def _log_processing(message: str, *args: object) -> None:
@@ -812,8 +814,9 @@ def _transfer_processed_outputs(
     targets, upload_subdir = _resolve_transfer_targets(config, source_id, source_kind)
     if not targets and not orc_outputs:
         return {"status": "skipped", "reason": "no_targets"}
+    smbclient_path = _resolve_smbclient_path(config)
     transfer_entries = []
-    output_transfer = _transfer_files_to_targets(outputs, targets, upload_subdir, "output")
+    output_transfer = _transfer_files_to_targets(outputs, targets, upload_subdir, "output", smbclient_path)
     transfer_entries.extend(output_transfer["items"])
     ftp_result = _upload_orc_outputs_to_ftp(orc_outputs, config.get("ftp_ork", {}))
     _cleanup_output_files(outputs, orc_outputs, output_transfer["status_map"], ftp_result)
@@ -821,7 +824,13 @@ def _transfer_processed_outputs(
     original_transfer = None
     archive_path = None
     if original_path and original_path.exists():
-        original_transfer = _transfer_files_to_targets([original_path], targets, upload_subdir, "original")
+        original_transfer = _transfer_files_to_targets(
+            [original_path],
+            targets,
+            upload_subdir,
+            "original",
+            smbclient_path,
+        )
         transfer_entries.extend(original_transfer["items"])
         if original_transfer["status_map"].get(str(original_path)):
             archive_dir = _resolve_archive_dir(config, source_kind)
@@ -870,6 +879,13 @@ def _is_unc_path(path: str) -> bool:
     return path.startswith("\\\\") or path.startswith("//")
 
 
+def _resolve_smbclient_path(config: Dict[str, Any]) -> str | None:
+    raw_path = str(config.get("smbclient_path") or "").strip()
+    if raw_path:
+        return raw_path
+    return shutil.which("smbclient")
+
+
 def _split_unc_path(unc_path: str) -> tuple[str, str, str] | None:
     unc_path = str(unc_path or "").strip()
     if not _is_unc_path(unc_path):
@@ -890,10 +906,16 @@ def _upload_file_via_smbclient(
     target_name: str,
     login: str | None,
     password: str | None,
+    smbclient_path: str | None,
 ) -> Dict[str, Any]:
-    smbclient_path = shutil.which("smbclient")
+    global _smbclient_missing_logged
     if not smbclient_path:
-        _log_processing("🧩 Не найден smbclient для выгрузки %s", file_path.name)
+        if not _smbclient_missing_logged:
+            _log_processing(
+                "🧩 Не найден smbclient для выгрузки %s (установите пакет или укажите путь в конфигурации)",
+                file_path.name,
+            )
+            _smbclient_missing_logged = True
         return {"target": target_name, "status": "error", "error": "smbclient_not_found"}
     parsed = _split_unc_path(unc_path)
     if not parsed:
@@ -950,6 +972,7 @@ def _transfer_files_to_targets(
     targets: list[Dict[str, Any]],
     upload_subdir: str,
     label: str,
+    smbclient_path: str | None,
 ) -> Dict[str, Any]:
     transfer_entries: list[Dict[str, Any]] = []
     status_map: Dict[str, bool] = {}
@@ -978,6 +1001,7 @@ def _transfer_files_to_targets(
                         target_name=target_name,
                         login=target.get("login"),
                         password=target.get("password"),
+                        smbclient_path=smbclient_path,
                     )
                 )
                 continue
