@@ -33,7 +33,7 @@ from pathlib import Path, PureWindowsPath
 from typing import Any, Dict, Iterable, List
 from fnmatch import fnmatch
 from urllib.error import HTTPError
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 from urllib.request import (
     HTTPBasicAuthHandler,
     HTTPCookieProcessor,
@@ -1004,6 +1004,41 @@ def _upload_file_via_smbclient(
     }
 
 
+def _copy_file_to_target_dir(
+    file_path: Path,
+    target_dir: Path,
+) -> Dict[str, Any]:
+    try:
+        target_dir.mkdir(parents=True, exist_ok=True)
+        target_file = target_dir / file_path.name
+        shutil.copy2(file_path, target_file)
+        _log_processing("🧩 Выгружен файл %s в %s", file_path.name, target_dir)
+        return {
+            "target": str(target_dir),
+            "status": "success",
+        }
+    except Exception as exc:
+        _log_processing(
+            "🧩 Ошибка переноса файла %s в %s: %s",
+            file_path.name,
+            target_dir,
+            exc,
+        )
+        return {
+            "target": str(target_dir),
+            "status": "error",
+            "error": str(exc),
+        }
+
+
+def _resolve_local_path_from_unc(unc_path: str) -> Path | None:
+    cleaned = str(unc_path or "").replace("\\", "/")
+    local_path = Path(cleaned)
+    if local_path.exists():
+        return local_path
+    return None
+
+
 def _transfer_files_to_targets(
     files: list[Path],
     targets: list[Dict[str, Any]],
@@ -1031,30 +1066,36 @@ def _transfer_files_to_targets(
             unc_path = target.get("unc_path") or ""
             target_name = target.get("name") or target.get("id") or "resource"
             if _is_unc_path(unc_path) and os.name != "nt":
-                if not smbclient_path:
-                    _log_processing(
-                        "🧩 Пропуск выгрузки %s: не найден smbclient для ресурса %s",
-                        file_path.name,
-                        target_name,
-                    )
+                if smbclient_path:
                     target_results.append(
-                        {
-                            "target": target_name,
-                            "status": "error",
-                            "error": "smbclient_not_found",
-                        }
+                        _upload_file_via_smbclient(
+                            file_path=file_path,
+                            unc_path=unc_path,
+                            upload_subdir=effective_subdir,
+                            target_name=target_name,
+                            login=target.get("login"),
+                            password=target.get("password"),
+                            smbclient_path=smbclient_path,
+                        )
                     )
                     continue
+                local_unc_path = _resolve_local_path_from_unc(unc_path)
+                if local_unc_path:
+                    cleaned_subdir = str(effective_subdir or "").strip().lstrip("/\\")
+                    target_dir = local_unc_path / cleaned_subdir if cleaned_subdir else local_unc_path
+                    target_results.append(_copy_file_to_target_dir(file_path, target_dir))
+                    continue
+                _log_processing(
+                    "🧩 Пропуск выгрузки %s: не найден smbclient для ресурса %s",
+                    file_path.name,
+                    target_name,
+                )
                 target_results.append(
-                    _upload_file_via_smbclient(
-                        file_path=file_path,
-                        unc_path=unc_path,
-                        upload_subdir=effective_subdir,
-                        target_name=target_name,
-                        login=target.get("login"),
-                        password=target.get("password"),
-                        smbclient_path=smbclient_path,
-                    )
+                    {
+                        "target": target_name,
+                        "status": "error",
+                        "error": "smbclient_not_found",
+                    }
                 )
                 continue
             target_dir = _compose_target_dir(unc_path, effective_subdir)
@@ -1072,31 +1113,7 @@ def _transfer_files_to_targets(
                     }
                 )
                 continue
-            try:
-                target_dir.mkdir(parents=True, exist_ok=True)
-                target_file = target_dir / file_path.name
-                shutil.copy2(file_path, target_file)
-                _log_processing("🧩 Выгружен файл %s в %s", file_path.name, target_dir)
-                target_results.append(
-                    {
-                        "target": str(target_dir),
-                        "status": "success",
-                    }
-                )
-            except Exception as exc:
-                _log_processing(
-                    "🧩 Ошибка переноса файла %s в %s: %s",
-                    file_path.name,
-                    target_dir,
-                    exc,
-                )
-                target_results.append(
-                    {
-                        "target": str(target_dir),
-                        "status": "error",
-                        "error": str(exc),
-                    }
-                )
+            target_results.append(_copy_file_to_target_dir(file_path, target_dir))
         success = bool(target_results) and all(item["status"] == "success" for item in target_results)
         status_map[str(file_path)] = success
         transfer_entries.append(
@@ -1134,7 +1151,7 @@ def _upload_orc_outputs_to_ftp(orc_outputs: list[Path], ftp_config: Dict[str, An
     if not host_raw:
         _log_processing("🧩 FTP ОРК: выгрузка пропущена (хост не задан)")
         return {"status": "skipped", "reason": "no_host", "items": []}
-    host, port = _parse_ftp_host(host_raw)
+    host, port, base_dir = _parse_ftp_host(host_raw)
     login = str(ftp_config.get("login") or "").strip() or None
     password = str(ftp_config.get("password") or "") if ftp_config.get("password") is not None else ""
     results: list[Dict[str, Any]] = []
@@ -1145,6 +1162,12 @@ def _upload_orc_outputs_to_ftp(orc_outputs: list[Path], ftp_config: Dict[str, An
                 ftp.login(login, password)
             else:
                 ftp.login()
+            if base_dir:
+                try:
+                    ftp.cwd(base_dir)
+                except Exception as exc:
+                    _log_processing("🧩 Ошибка перехода в каталог FTP ОРК %s: %s", base_dir, exc)
+                    return {"status": "error", "error": str(exc), "items": results}
             for orc_path in orc_outputs:
                 if not orc_path.exists():
                     results.append({"file": str(orc_path), "status": "error", "error": "file_not_found"})
@@ -1163,13 +1186,22 @@ def _upload_orc_outputs_to_ftp(orc_outputs: list[Path], ftp_config: Dict[str, An
     return {"status": "success", "items": results}
 
 
-def _parse_ftp_host(host_raw: str) -> tuple[str, int]:
+def _parse_ftp_host(host_raw: str) -> tuple[str, int, str | None]:
     host_raw = host_raw.strip()
+    base_dir = None
+    if "://" in host_raw:
+        parsed = urlparse(host_raw)
+        if parsed.hostname:
+            base_dir = parsed.path.strip("/") or None
+            return parsed.hostname, parsed.port or 21, base_dir
+    if "/" in host_raw:
+        host_raw, base_dir = host_raw.split("/", 1)
+        base_dir = base_dir.strip("/") or None
     if ":" in host_raw:
         host, port_text = host_raw.rsplit(":", 1)
         if port_text.isdigit():
-            return host, int(port_text)
-    return host_raw, 21
+            return host, int(port_text), base_dir
+    return host_raw, 21, base_dir
 
 
 def _cleanup_output_files(
