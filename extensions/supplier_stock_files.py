@@ -908,14 +908,7 @@ def _upload_file_via_smbclient(
     password: str | None,
     smbclient_path: str | None,
 ) -> Dict[str, Any]:
-    global _smbclient_missing_logged
     if not smbclient_path:
-        if not _smbclient_missing_logged:
-            _log_processing(
-                "🧩 Не найден smbclient для выгрузки %s (установите пакет или укажите путь в конфигурации)",
-                file_path.name,
-            )
-            _smbclient_missing_logged = True
         return {"target": target_name, "status": "error", "error": "smbclient_not_found"}
     parsed = _split_unc_path(unc_path)
     if not parsed:
@@ -993,6 +986,20 @@ def _transfer_files_to_targets(
             unc_path = target.get("unc_path") or ""
             target_name = target.get("name") or target.get("id") or "resource"
             if _is_unc_path(unc_path) and os.name != "nt":
+                if not smbclient_path:
+                    _log_processing(
+                        "🧩 Пропуск выгрузки %s: не найден smbclient для ресурса %s",
+                        file_path.name,
+                        target_name,
+                    )
+                    target_results.append(
+                        {
+                            "target": target_name,
+                            "status": "error",
+                            "error": "smbclient_not_found",
+                        }
+                    )
+                    continue
                 target_results.append(
                     _upload_file_via_smbclient(
                         file_path=file_path,
