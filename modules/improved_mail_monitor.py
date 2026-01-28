@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
 /modules/improved_mail_monitor.py
-Server Monitoring System v8.3.12
+Server Monitoring System v8.3.13
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Mailbox monitoring
 Система мониторинга серверов
-Версия: 8.3.12
+Версия: 8.3.13
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг почтового ящика
