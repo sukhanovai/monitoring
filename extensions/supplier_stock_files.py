@@ -17,6 +17,7 @@ import base64
 import csv
 import ftplib
 import json
+import os
 import logging
 import math
 import re
@@ -27,7 +28,7 @@ import threading
 import zipfile
 from http import cookiejar
 from datetime import datetime
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Any, Dict, Iterable, List
 from fnmatch import fnmatch
 from urllib.error import HTTPError
@@ -863,6 +864,11 @@ def _unique_paths(paths: Iterable[Path]) -> list[Path]:
     return result
 
 
+def _is_unc_path(path: str) -> bool:
+    path = str(path or "")
+    return path.startswith("\\\\") or path.startswith("//")
+
+
 def _transfer_files_to_targets(
     files: list[Path],
     targets: list[Dict[str, Any]],
@@ -887,9 +893,15 @@ def _transfer_files_to_targets(
         for target in targets:
             target_dir = _compose_target_dir(target.get("unc_path") or "", upload_subdir)
             if not target_dir:
+                target_name = target.get("name") or target.get("id") or "resource"
+                _log_processing(
+                    "🧩 Пропуск выгрузки %s: не удалось определить UNC путь для ресурса %s",
+                    file_path.name,
+                    target_name,
+                )
                 target_results.append(
                     {
-                        "target": target.get("name") or target.get("id") or "resource",
+                        "target": target_name,
                         "status": "error",
                         "error": "empty_target",
                     }
@@ -899,6 +911,7 @@ def _transfer_files_to_targets(
                 target_dir.mkdir(parents=True, exist_ok=True)
                 target_file = target_dir / file_path.name
                 shutil.copy2(file_path, target_file)
+                _log_processing("🧩 Выгружен файл %s в %s", file_path.name, target_dir)
                 target_results.append(
                     {
                         "target": str(target_dir),
@@ -965,6 +978,7 @@ def _upload_orc_outputs_to_ftp(orc_outputs: list[Path], ftp_config: Dict[str, An
                 try:
                     with orc_path.open("rb") as handle:
                         ftp.storbinary(f"STOR {orc_path.name}", handle)
+                    _log_processing("🧩 Выгружен ОРК файл %s на FTP %s", orc_path.name, host)
                     results.append({"file": str(orc_path), "status": "success"})
                 except Exception as exc:
                     _log_processing("🧩 Ошибка выгрузки ОРК %s по FTP: %s", orc_path.name, exc)
@@ -1077,6 +1091,17 @@ def _compose_target_dir(base_path: str, subdir: str) -> Path | None:
     if not base_path:
         return None
     cleaned_subdir = str(subdir or "").strip().lstrip("/\\")
+    if _is_unc_path(base_path):
+        if os.name != "nt":
+            _log_processing(
+                "🧩 UNC путь %s задан, но текущая ОС не Windows. Выгрузка пропущена.",
+                base_path,
+            )
+            return None
+        unc_path = PureWindowsPath(base_path)
+        if cleaned_subdir:
+            return Path(unc_path / cleaned_subdir)
+        return Path(unc_path)
     if cleaned_subdir:
         return Path(base_path) / cleaned_subdir
     return Path(base_path)
