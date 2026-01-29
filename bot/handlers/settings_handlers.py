@@ -2937,7 +2937,6 @@ def show_supplier_stock_reports(update, context) -> None:
     mail_sources = len(config.get("mail", {}).get("sources", []))
     total_reports = get_supplier_stock_reports_total()
     reports = get_supplier_stock_reports(total_reports or 0)
-    shown_reports = total_reports
     message_lines = [
         "📦 *Остатки поставщиков — результаты*",
         "",
@@ -2946,16 +2945,16 @@ def show_supplier_stock_reports(update, context) -> None:
         "",
     ]
     if total_reports:
-        message_lines.append(
-            f"Все {shown_reports} запусков (загрузка/обработка/выгрузка):"
-        )
+        message_lines.append(f"Всего запусков: {total_reports}")
     else:
         message_lines.append("Запуски (загрузка/обработка/выгрузка):")
 
-    if not reports:
-        message_lines.append("\n⚪️ Отчетов пока нет.")
-    else:
-        for entry in reports:
+    def _append_report_section(title: str, entries: list[dict]) -> None:
+        message_lines.extend(["", f"*{title}*"])
+        if not entries:
+            message_lines.append("⚪️ Записей пока нет.")
+            return
+        for entry in entries:
             source_name = entry.get("source_name") or entry.get("source_id") or "неизвестный источник"
             time_label = _format_supplier_stock_timestamp(entry.get("timestamp"))
             download_status = _supplier_stock_status_label(entry.get("status"))
@@ -2976,6 +2975,14 @@ def show_supplier_stock_reports(update, context) -> None:
             ])
             if entry.get("error"):
                 message_lines.append(f"  ❗ Ошибка: {_escape_pattern_text(entry.get('error'))}")
+
+    if not reports:
+        message_lines.append("\n⚪️ Отчетов пока нет.")
+    else:
+        download_reports = [entry for entry in reports if entry.get("source_kind") != "mail"]
+        mail_reports = [entry for entry in reports if entry.get("source_kind") == "mail"]
+        _append_report_section("Скачанные файлы", download_reports)
+        _append_report_section("Полученные по почте", mail_reports)
 
     keyboard = [
         [InlineKeyboardButton("🔄 Обновить", callback_data='supplier_stock_reports')],

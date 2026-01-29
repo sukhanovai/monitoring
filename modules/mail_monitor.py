@@ -40,6 +40,7 @@ from config.db_settings import (
 from core.config_manager import config_manager
 from extensions.extension_manager import extension_manager
 from extensions.supplier_stock_files import (
+    append_supplier_stock_report,
     cleanup_supplier_stock_archives,
     get_supplier_stock_config,
     process_supplier_stock_file,
@@ -1170,6 +1171,21 @@ class BackupProcessor:
                     collected + 1,
                     original_path,
                 )
+                source_id = source.get("id") or source.get("name") or "unknown"
+                source_name = source.get("name") or source_id
+                report_entry = {
+                    "timestamp": now.isoformat(),
+                    "source_id": source_id,
+                    "source_name": source_name,
+                    "source_kind": "mail",
+                    "status": "success",
+                    "filename": filename,
+                    "output_name": output_name,
+                    "path": str(output_path),
+                }
+                if processing_result:
+                    report_entry["processing"] = processing_result
+                append_supplier_stock_report(report_entry)
                 if processing_result:
                     logger.info(
                         "🧩 Обработка остатков выполнена: %s",

@@ -561,6 +561,7 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
             "source_id": source_id,
             "source_name": name,
             "method": source.get("method", "http"),
+            "source_kind": "download",
         }
 
         try:
