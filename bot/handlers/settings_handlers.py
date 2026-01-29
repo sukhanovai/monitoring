@@ -25,6 +25,7 @@ from extensions.supplier_stock_files import (
     SUPPLIER_STOCK_EXTENSION_ID,
     get_supplier_stock_config,
     get_supplier_stock_reports,
+    get_supplier_stock_reports_total,
     save_supplier_stock_config,
 )
 from lib.logging import debug_log
@@ -2931,12 +2932,27 @@ def show_supplier_stock_reports(update, context) -> None:
         )
         return
 
-    reports = get_supplier_stock_reports(10)
+    config = get_supplier_stock_config()
+    download_sources = len(config.get("download", {}).get("sources", []))
+    mail_sources = len(config.get("mail", {}).get("sources", []))
+    limit = 10
+    total_reports = get_supplier_stock_reports_total()
+    reports = get_supplier_stock_reports(limit)
+    shown_reports = min(limit, total_reports) if total_reports else 0
     message_lines = [
         "📦 *Остатки поставщиков — результаты*",
         "",
-        "Последние 10 запусков (загрузка/обработка/выгрузка):",
+        f"Источников скачивания: {download_sources}",
+        f"Почтовых правил: {mail_sources}",
+        "",
     ]
+    if total_reports:
+        message_lines.append(
+            f"Последние {shown_reports} из {total_reports} запусков "
+            "(загрузка/обработка/выгрузка):"
+        )
+    else:
+        message_lines.append("Последние 10 запусков (загрузка/обработка/выгрузка):")
 
     if not reports:
         message_lines.append("\n⚪️ Отчетов пока нет.")
