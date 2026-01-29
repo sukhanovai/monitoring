@@ -2935,10 +2935,9 @@ def show_supplier_stock_reports(update, context) -> None:
     config = get_supplier_stock_config()
     download_sources = len(config.get("download", {}).get("sources", []))
     mail_sources = len(config.get("mail", {}).get("sources", []))
-    limit = 10
     total_reports = get_supplier_stock_reports_total()
-    reports = get_supplier_stock_reports(limit)
-    shown_reports = min(limit, total_reports) if total_reports else 0
+    reports = get_supplier_stock_reports(total_reports or 0)
+    shown_reports = total_reports
     message_lines = [
         "📦 *Остатки поставщиков — результаты*",
         "",
@@ -2948,11 +2947,10 @@ def show_supplier_stock_reports(update, context) -> None:
     ]
     if total_reports:
         message_lines.append(
-            f"Последние {shown_reports} из {total_reports} запусков "
-            "(загрузка/обработка/выгрузка):"
+            f"Все {shown_reports} запусков (загрузка/обработка/выгрузка):"
         )
     else:
-        message_lines.append("Последние 10 запусков (загрузка/обработка/выгрузка):")
+        message_lines.append("Запуски (загрузка/обработка/выгрузка):")
 
     if not reports:
         message_lines.append("\n⚪️ Отчетов пока нет.")
