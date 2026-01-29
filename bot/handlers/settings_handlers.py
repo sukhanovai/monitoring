@@ -15,6 +15,7 @@ import sqlite3
 from datetime import datetime
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.error import BadRequest, TelegramError
 from telegram.utils.helpers import escape_markdown
 from telegram.ext import CommandHandler, CallbackQueryHandler, MessageHandler, Filters
 from core.config_manager import config_manager as settings_manager
@@ -25,6 +26,7 @@ from extensions.supplier_stock_files import (
     SUPPLIER_STOCK_EXTENSION_ID,
     get_supplier_stock_config,
     get_supplier_stock_reports,
+    get_supplier_stock_reports_total,
     save_supplier_stock_config,
 )
 from lib.logging import debug_log
@@ -55,6 +57,15 @@ BACKUP_SETTINGS_CALLBACKS = {
 }
 
 debug_logger = debug_log
+
+def _safe_query_answer(query, text: str | None = None, **kwargs) -> None:
+    try:
+        if text is None:
+            query.answer(**kwargs)
+        else:
+            query.answer(text, **kwargs)
+    except (BadRequest, TelegramError):
+        pass
 
 def _get_mail_fallback_patterns() -> list:
     """Получить запасные паттерны для бэкапов почты."""
@@ -814,11 +825,11 @@ def settings_callback_handler(update, context):
         and data not in BACKUP_SETTINGS_CALLBACKS
         and not data.startswith('db_default_')
     ):
-        query.answer("⚙️ Перенаправление к модулю бэкапов...")
+        _safe_query_answer(query, "⚙️ Перенаправление к модулю бэкапов...")
         # Передаем обработку дальше по цепочке
         return
     if data.startswith('backup_') and data not in BACKUP_SETTINGS_CALLBACKS:
-        query.answer("⚙️ Перенаправление к модулю бэкапов...")
+        _safe_query_answer(query, "⚙️ Перенаправление к модулю бэкапов...")
         # Передаем обработку дальше по цепочке
         return
 
@@ -1623,10 +1634,10 @@ def settings_callback_handler(update, context):
             extension_id = data.replace('settings_ext_toggle_', '')
             success, message = extension_manager.toggle_extension(extension_id)
             if success:
-                query.answer(message)
+                _safe_query_answer(query, message)
                 show_extensions_settings_menu(update, context)
             else:
-                query.answer(message, show_alert=True)
+                _safe_query_answer(query, message, show_alert=True)
         elif data.startswith('delete_pattern_'):
             pattern_id = data.replace('delete_pattern_', '')
             delete_pattern_handler(update, context, pattern_id)
@@ -1763,14 +1774,14 @@ def settings_callback_handler(update, context):
                 query.edit_message_text("✅ Меню закрыто")
         
         else:
-            query.answer("⚙️ Этот раздел в разработке")
+            _safe_query_answer(query, "⚙️ Этот раздел в разработке")
     
     except Exception as e:
         print(f"❌ Ошибка в settings_callback_handler: {e}")
         debug_logger(f"Ошибка в settings_callback_handler: {e}")
-        query.answer("❌ Произошла ошибка при обработке запроса")
+        _safe_query_answer(query, "❌ Произошла ошибка при обработке запроса")
     
-    query.answer()
+    _safe_query_answer(query)
 
 def handle_setting_input(update, context, setting_key):
     """Обработчик ввода значений настроек - ОБНОВЛЕННАЯ ВЕРСИЯ"""
@@ -2931,17 +2942,29 @@ def show_supplier_stock_reports(update, context) -> None:
         )
         return
 
-    reports = get_supplier_stock_reports(10)
+    config = get_supplier_stock_config()
+    download_sources = len(config.get("download", {}).get("sources", []))
+    mail_sources = len(config.get("mail", {}).get("sources", []))
+    total_reports = get_supplier_stock_reports_total()
+    reports = get_supplier_stock_reports(total_reports or 0)
     message_lines = [
         "📦 *Остатки поставщиков — результаты*",
         "",
-        "Последние 10 запусков (загрузка/обработка/выгрузка):",
+        f"Источников скачивания: {download_sources}",
+        f"Почтовых правил: {mail_sources}",
+        "",
     ]
-
-    if not reports:
-        message_lines.append("\n⚪️ Отчетов пока нет.")
+    if total_reports:
+        message_lines.append(f"Всего запусков: {total_reports}")
     else:
-        for entry in reports:
+        message_lines.append("Запуски (загрузка/обработка/выгрузка):")
+
+    def _append_report_section(title: str, entries: list[dict]) -> None:
+        message_lines.extend(["", f"*{title}*"])
+        if not entries:
+            message_lines.append("⚪️ Записей пока нет.")
+            return
+        for entry in entries:
             source_name = entry.get("source_name") or entry.get("source_id") or "неизвестный источник"
             time_label = _format_supplier_stock_timestamp(entry.get("timestamp"))
             download_status = _supplier_stock_status_label(entry.get("status"))
@@ -2963,6 +2986,32 @@ def show_supplier_stock_reports(update, context) -> None:
             if entry.get("error"):
                 message_lines.append(f"  ❗ Ошибка: {_escape_pattern_text(entry.get('error'))}")
 
+    if not reports:
+        message_lines.append("\n⚪️ Отчетов пока нет.")
+    else:
+        download_reports = [entry for entry in reports if entry.get("source_kind") != "mail"]
+        mail_reports = [entry for entry in reports if entry.get("source_kind") == "mail"]
+        _append_report_section("Скачанные файлы", download_reports)
+        _append_report_section("Полученные по почте", mail_reports)
+
+    def _split_message(lines: list[str], max_length: int = 3500) -> list[str]:
+        chunks: list[str] = []
+        current: list[str] = []
+        current_len = 0
+        for line in lines:
+            candidate_len = current_len + len(line) + (1 if current else 0)
+            if current and candidate_len > max_length:
+                chunks.append("\n".join(current))
+                current = [line]
+                current_len = len(line)
+            else:
+                current.append(line)
+                current_len = candidate_len
+        if current:
+            chunks.append("\n".join(current))
+        return chunks
+
+    message_chunks = _split_message(message_lines)
     keyboard = [
         [InlineKeyboardButton("🔄 Обновить", callback_data='supplier_stock_reports')],
         [InlineKeyboardButton("🛠️ Настройки", callback_data='settings_ext_supplier_stock')],
@@ -2971,10 +3020,16 @@ def show_supplier_stock_reports(update, context) -> None:
     ]
 
     query.edit_message_text(
-        "\n".join(message_lines),
+        message_chunks[0] if message_chunks else "\n".join(message_lines),
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
+    for chunk in message_chunks[1:]:
+        context.bot.send_message(
+            chat_id=query.message.chat_id,
+            text=chunk,
+            parse_mode='Markdown',
+        )
 
 def show_supplier_stock_download_settings(update, context):
     """Показать настройки скачивания файлов остатков поставщиков."""
