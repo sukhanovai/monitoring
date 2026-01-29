@@ -2970,7 +2970,11 @@ def show_supplier_stock_resources_menu(update, context):
             ),
         ])
 
-    keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_supplier_stock')])
+    keyboard.append([InlineKeyboardButton("🏠 На главную", callback_data='main_menu')])
+    keyboard.append([
+        InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_supplier_stock'),
+        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+    ])
 
     query.edit_message_text(
         message,
@@ -3026,7 +3030,11 @@ def show_supplier_stock_resource_settings(update, context, resource_id: str) -> 
             InlineKeyboardButton("🔐 Пароль", callback_data=f'supplier_stock_resource_field|{resource_id}|password'),
         ],
         [InlineKeyboardButton("🔁 Включить/выключить", callback_data=f'supplier_stock_resource_toggle_{resource_id}')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_resources')],
+        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_resources'),
+            InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+        ],
     ]
 
     query.edit_message_text(
@@ -3063,7 +3071,11 @@ def show_supplier_stock_ftp_settings(update, context) -> None:
             InlineKeyboardButton("👤 Логин FTP", callback_data='supplier_stock_ftp_field|login'),
         ],
         [InlineKeyboardButton("🔐 Пароль FTP", callback_data='supplier_stock_ftp_field|password')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_supplier_stock')],
+        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_supplier_stock'),
+            InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+        ],
     ]
 
     query.edit_message_text(
