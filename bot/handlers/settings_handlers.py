@@ -12,6 +12,7 @@ Handlers for managing settings via a bot
 """
 
 import sqlite3
+from datetime import datetime
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.utils.helpers import escape_markdown
@@ -23,6 +24,7 @@ from extensions.extension_manager import extension_manager
 from extensions.supplier_stock_files import (
     SUPPLIER_STOCK_EXTENSION_ID,
     get_supplier_stock_config,
+    get_supplier_stock_reports,
     save_supplier_stock_config,
 )
 from lib.logging import debug_log
@@ -871,6 +873,8 @@ def settings_callback_handler(update, context):
             show_supplier_stock_download_settings(update, context)
         elif data == 'supplier_stock_mail':
             show_supplier_stock_mail_settings(update, context)
+        elif data == 'supplier_stock_reports':
+            show_supplier_stock_reports(update, context)
         elif data == 'supplier_stock_processing':
             show_supplier_stock_processing_menu(update, context, action_prefix="supplier_stock_processing")
         elif data.startswith('supplier_stock_processing|'):
@@ -2848,6 +2852,128 @@ def show_supplier_stock_settings(update, context):
         message,
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def _format_supplier_stock_timestamp(value: str | None) -> str:
+    """Сформировать читаемое время запуска."""
+    if not value:
+        return "неизвестно"
+    try:
+        return datetime.fromisoformat(value).strftime("%Y-%m-%d %H:%M")
+    except ValueError:
+        return str(value)
+
+def _supplier_stock_status_label(status: str | None, fallback: str = "неизвестно") -> str:
+    """Сформировать короткую метку статуса."""
+    if status == "success":
+        return "🟢 успешно"
+    if status == "error":
+        return "🔴 ошибка"
+    if status == "skipped":
+        return "⚪️ пропущено"
+    return f"🟡 {fallback}"
+
+def _supplier_stock_processing_status(processing: dict | None) -> str:
+    """Определить статус обработки."""
+    if not processing:
+        return "⏭️ не запускалась"
+    if processing.get("status") == "skipped":
+        return "⚪️ пропущено"
+    results = processing.get("results") or []
+    if not results:
+        return "🟡 нет результатов"
+    statuses = [item.get("status") for item in results if isinstance(item, dict)]
+    if not statuses:
+        return "🟡 нет результатов"
+    if all(status == "success" for status in statuses):
+        return "🟢 успешно"
+    if any(status == "error" for status in statuses):
+        return "🔴 ошибка"
+    if all(status == "skipped" for status in statuses):
+        return "⚪️ пропущено"
+    return "🟡 частично"
+
+def _supplier_stock_transfer_status(transfer: dict | None) -> str:
+    """Определить статус выгрузки."""
+    if not transfer:
+        return "⏭️ не запускалась"
+    status = transfer.get("status")
+    if status == "skipped":
+        return "⚪️ пропущено"
+    if status and status != "success":
+        return "🔴 ошибка"
+    items = transfer.get("items") or []
+    ftp_items = transfer.get("ftp_ork", {}).get("items") or []
+    statuses = [
+        item.get("status")
+        for item in list(items) + list(ftp_items)
+        if isinstance(item, dict)
+    ]
+    if not statuses:
+        return "🟡 нет файлов"
+    if all(status == "success" for status in statuses):
+        return "🟢 успешно"
+    if any(status == "error" for status in statuses):
+        return "🔴 ошибка"
+    return "🟡 частично"
+
+def show_supplier_stock_reports(update, context) -> None:
+    """Показать результаты загрузки, обработки и выгрузки остатков поставщиков."""
+    query = update.callback_query
+    query.answer()
+
+    if not extension_manager.is_extension_enabled(SUPPLIER_STOCK_EXTENSION_ID):
+        query.edit_message_text(
+            "📦 Остатки поставщиков отключены в настройках.",
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("🏠 На главную", callback_data='main_menu')]]
+            ),
+        )
+        return
+
+    reports = get_supplier_stock_reports(10)
+    message_lines = [
+        "📦 *Остатки поставщиков — результаты*",
+        "",
+        "Последние 10 запусков (загрузка/обработка/выгрузка):",
+    ]
+
+    if not reports:
+        message_lines.append("\n⚪️ Отчетов пока нет.")
+    else:
+        for entry in reports:
+            source_name = entry.get("source_name") or entry.get("source_id") or "неизвестный источник"
+            time_label = _format_supplier_stock_timestamp(entry.get("timestamp"))
+            download_status = _supplier_stock_status_label(entry.get("status"))
+            processing_info = entry.get("processing") if entry.get("status") == "success" else None
+            processing_status = _supplier_stock_processing_status(processing_info)
+            transfer_status = _supplier_stock_transfer_status(
+                processing_info.get("transfer") if processing_info else None
+            )
+            if entry.get("status") != "success":
+                processing_status = "⏭️ не запускалась"
+                transfer_status = "⏭️ не запускалась"
+            message_lines.extend([
+                "",
+                f"• *{_escape_pattern_text(source_name)}* ({_escape_pattern_text(time_label)})",
+                f"  📥 Загрузка: {download_status}",
+                f"  🧩 Обработка: {processing_status}",
+                f"  📤 Выгрузка: {transfer_status}",
+            ])
+            if entry.get("error"):
+                message_lines.append(f"  ❗ Ошибка: {_escape_pattern_text(entry.get('error'))}")
+
+    keyboard = [
+        [InlineKeyboardButton("🔄 Обновить", callback_data='supplier_stock_reports')],
+        [InlineKeyboardButton("🛠️ Настройки", callback_data='settings_ext_supplier_stock')],
+        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
+        [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
+    ]
+
+    query.edit_message_text(
+        "\n".join(message_lines),
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
 def show_supplier_stock_download_settings(update, context):
