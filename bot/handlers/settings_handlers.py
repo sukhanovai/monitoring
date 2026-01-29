@@ -15,6 +15,7 @@ import sqlite3
 from datetime import datetime
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.error import BadRequest, TelegramError
 from telegram.utils.helpers import escape_markdown
 from telegram.ext import CommandHandler, CallbackQueryHandler, MessageHandler, Filters
 from core.config_manager import config_manager as settings_manager
@@ -56,6 +57,15 @@ BACKUP_SETTINGS_CALLBACKS = {
 }
 
 debug_logger = debug_log
+
+def _safe_query_answer(query, text: str | None = None, **kwargs) -> None:
+    try:
+        if text is None:
+            query.answer(**kwargs)
+        else:
+            query.answer(text, **kwargs)
+    except (BadRequest, TelegramError):
+        pass
 
 def _get_mail_fallback_patterns() -> list:
     """Получить запасные паттерны для бэкапов почты."""
@@ -815,11 +825,11 @@ def settings_callback_handler(update, context):
         and data not in BACKUP_SETTINGS_CALLBACKS
         and not data.startswith('db_default_')
     ):
-        query.answer("⚙️ Перенаправление к модулю бэкапов...")
+        _safe_query_answer(query, "⚙️ Перенаправление к модулю бэкапов...")
         # Передаем обработку дальше по цепочке
         return
     if data.startswith('backup_') and data not in BACKUP_SETTINGS_CALLBACKS:
-        query.answer("⚙️ Перенаправление к модулю бэкапов...")
+        _safe_query_answer(query, "⚙️ Перенаправление к модулю бэкапов...")
         # Передаем обработку дальше по цепочке
         return
 
@@ -1624,10 +1634,10 @@ def settings_callback_handler(update, context):
             extension_id = data.replace('settings_ext_toggle_', '')
             success, message = extension_manager.toggle_extension(extension_id)
             if success:
-                query.answer(message)
+                _safe_query_answer(query, message)
                 show_extensions_settings_menu(update, context)
             else:
-                query.answer(message, show_alert=True)
+                _safe_query_answer(query, message, show_alert=True)
         elif data.startswith('delete_pattern_'):
             pattern_id = data.replace('delete_pattern_', '')
             delete_pattern_handler(update, context, pattern_id)
@@ -1764,14 +1774,14 @@ def settings_callback_handler(update, context):
                 query.edit_message_text("✅ Меню закрыто")
         
         else:
-            query.answer("⚙️ Этот раздел в разработке")
+            _safe_query_answer(query, "⚙️ Этот раздел в разработке")
     
     except Exception as e:
         print(f"❌ Ошибка в settings_callback_handler: {e}")
         debug_logger(f"Ошибка в settings_callback_handler: {e}")
-        query.answer("❌ Произошла ошибка при обработке запроса")
+        _safe_query_answer(query, "❌ Произошла ошибка при обработке запроса")
     
-    query.answer()
+    _safe_query_answer(query)
 
 def handle_setting_input(update, context, setting_key):
     """Обработчик ввода значений настроек - ОБНОВЛЕННАЯ ВЕРСИЯ"""
