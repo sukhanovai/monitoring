@@ -43,6 +43,11 @@ def main_menu(extension_manager):
             [InlineKeyboardButton("📦 Остатки 1С", callback_data='backup_stock_loads')]
         )
 
+    if extension_manager.is_extension_enabled('supplier_stock_files'):
+        keyboard.append(
+            [InlineKeyboardButton("📦 Результаты остатков поставщиков", callback_data='supplier_stock_reports')]
+        )
+
     if extension_manager.is_extension_enabled('zfs_monitor'):
         keyboard.append(
             [InlineKeyboardButton("🧊 ZFS", callback_data='zfs_menu')]
