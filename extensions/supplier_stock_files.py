@@ -26,6 +26,7 @@ import ssl
 import subprocess
 import tarfile
 import threading
+import tempfile
 import zipfile
 from http import cookiejar
 from datetime import datetime
@@ -1000,9 +1001,12 @@ def _upload_file_via_smbclient(
     commands.append(f'put "{file_path}" "{file_path.name}"')
     command_text = "; ".join(commands)
     args = [smbclient_path, f"//{server}/{share}"]
+    auth_file = None
     if login:
-        auth = f"{login}%{password or ''}"
-        args.extend(["-U", auth])
+        domain, user = _split_smb_login(login)
+        auth_user = user or login
+        auth_file = _create_smbclient_auth_file(auth_user, password, domain)
+        args.extend(["-A", auth_file])
     else:
         args.append("-N")
     args.extend(["-c", command_text])
@@ -1011,6 +1015,12 @@ def _upload_file_via_smbclient(
     except Exception as exc:
         _log_processing("🧩 Ошибка запуска smbclient для %s: %s", file_path.name, exc)
         return {"target": target_name, "status": "error", "error": str(exc)}
+    finally:
+        if auth_file:
+            try:
+                Path(auth_file).unlink()
+            except Exception:
+                pass
     output_text = "\n".join(filter(None, [result.stdout, result.stderr])).strip()
     smbclient_error = None
     if output_text:
@@ -1085,6 +1095,36 @@ def _resolve_local_path_from_unc(unc_path: str) -> Path | None:
     if local_path.exists():
         return local_path
     return None
+
+
+def _split_smb_login(login: str) -> tuple[str | None, str | None]:
+    normalized = str(login or "").strip()
+    if not normalized:
+        return None, None
+    if "\\" in normalized:
+        domain, user = normalized.split("\\", 1)
+        return domain or None, user or None
+    if "/" in normalized:
+        domain, user = normalized.split("/", 1)
+        return domain or None, user or None
+    if "@" in normalized:
+        user, domain = normalized.split("@", 1)
+        return domain or None, user or None
+    return None, normalized
+
+
+def _create_smbclient_auth_file(
+    login: str,
+    password: str | None,
+    domain: str | None,
+) -> str:
+    password_text = "" if password is None else str(password)
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False) as handle:
+        handle.write(f"username={login}\n")
+        handle.write(f"password={password_text}\n")
+        if domain:
+            handle.write(f"domain={domain}\n")
+    return handle.name
 
 
 def _transfer_files_to_targets(
