@@ -1001,7 +1001,11 @@ def _upload_file_via_smbclient(
     command_text = "; ".join(commands)
     args = [smbclient_path, f"//{server}/{share}"]
     if login:
-        auth = f"{login}%{password or ''}"
+        domain, user = _split_smb_login(login)
+        if domain:
+            args.extend(["-W", domain])
+        auth_user = user or login
+        auth = f"{auth_user}%{password or ''}"
         args.extend(["-U", auth])
     else:
         args.append("-N")
@@ -1085,6 +1089,22 @@ def _resolve_local_path_from_unc(unc_path: str) -> Path | None:
     if local_path.exists():
         return local_path
     return None
+
+
+def _split_smb_login(login: str) -> tuple[str | None, str | None]:
+    normalized = str(login or "").strip()
+    if not normalized:
+        return None, None
+    if "\\" in normalized:
+        domain, user = normalized.split("\\", 1)
+        return domain or None, user or None
+    if "/" in normalized:
+        domain, user = normalized.split("/", 1)
+        return domain or None, user or None
+    if "@" in normalized:
+        user, domain = normalized.split("@", 1)
+        return domain or None, user or None
+    return None, normalized
 
 
 def _transfer_files_to_targets(
