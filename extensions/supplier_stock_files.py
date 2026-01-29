@@ -29,7 +29,7 @@ import threading
 import tempfile
 import zipfile
 from http import cookiejar
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path, PureWindowsPath
 from typing import Any, Dict, Iterable, List
 from fnmatch import fnmatch
@@ -54,6 +54,7 @@ _monitor_logger = logging.getLogger("monitoring")
 DEFAULT_SUPPLIER_STOCK_CONFIG: Dict[str, Any] = {
     "resources": [],
     "smbclient_path": "",
+    "archive_cleanup_days": 0,
     "ftp_ork": {
         "host": "",
         "login": "",
@@ -108,6 +109,14 @@ def normalize_supplier_stock_config(config: Dict[str, Any] | None) -> Dict[str, 
     if not isinstance(config, dict):
         return dict(DEFAULT_SUPPLIER_STOCK_CONFIG)
     merged = _merge_dicts(DEFAULT_SUPPLIER_STOCK_CONFIG, config)
+    cleanup_days = merged.get("archive_cleanup_days", 0)
+    try:
+        cleanup_days_value = int(str(cleanup_days).strip())
+    except (TypeError, ValueError):
+        cleanup_days_value = 0
+    if cleanup_days_value < 0:
+        cleanup_days_value = 0
+    merged["archive_cleanup_days"] = cleanup_days_value
     resources = merged.get("resources", [])
     if isinstance(resources, list):
         for resource in resources:
@@ -599,6 +608,7 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
             _log("📦 Остатки поставщиков: %s -> %s", entry["source_id"], entry["status"])
 
     success_count = sum(1 for item in results if item.get("status") == "success")
+    cleanup_supplier_stock_archives(config, now)
     return {
         "total": len(results),
         "success": success_count,
@@ -686,6 +696,65 @@ def _unique_archive_path(path: Path) -> Path:
         if not candidate.exists():
             return candidate
         index += 1
+
+
+def _parse_archive_cleanup_days(config: Dict[str, Any]) -> int:
+    raw_value = config.get("archive_cleanup_days", 0)
+    try:
+        days = int(str(raw_value).strip())
+    except (TypeError, ValueError):
+        return 0
+    return max(days, 0)
+
+
+def cleanup_supplier_stock_archives(
+    config: Dict[str, Any] | None = None,
+    now: datetime | None = None,
+) -> Dict[str, int]:
+    config = config or get_supplier_stock_config()
+    cleanup_days = _parse_archive_cleanup_days(config)
+    if cleanup_days <= 0:
+        return {"removed": 0, "errors": 0, "days": cleanup_days}
+
+    current_time = now or datetime.now()
+    cutoff = current_time - timedelta(days=cleanup_days)
+    removed = 0
+    errors = 0
+
+    archive_dirs = [
+        config.get("download", {}).get("archive_dir", DEFAULT_SUPPLIER_STOCK_CONFIG["download"]["archive_dir"]),
+        config.get("mail", {}).get("archive_dir", DEFAULT_SUPPLIER_STOCK_CONFIG["mail"]["archive_dir"]),
+    ]
+
+    for archive_dir in archive_dirs:
+        if not archive_dir:
+            continue
+        archive_path = Path(archive_dir)
+        if not archive_path.exists():
+            continue
+        for item in archive_path.rglob("*"):
+            if not item.is_file():
+                continue
+            try:
+                modified = datetime.fromtimestamp(item.stat().st_mtime)
+            except Exception:
+                errors += 1
+                continue
+            if modified <= cutoff:
+                try:
+                    item.unlink()
+                    removed += 1
+                except Exception:
+                    errors += 1
+
+    if removed or errors:
+        _log_processing(
+            "🗑️ Очистка архива остатков: удалено %s файлов, ошибок %s",
+            removed,
+            errors,
+        )
+
+    return {"removed": removed, "errors": errors, "days": cleanup_days}
 
 
 def _process_supplier_stock_file(

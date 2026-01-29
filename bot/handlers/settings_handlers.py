@@ -105,6 +105,16 @@ def _format_current_hint(value, default: str = "не задано") -> str:
         return default
     return str(value)
 
+def _format_archive_cleanup_days(value) -> str:
+    """Сформировать отображение периода очистки архива."""
+    try:
+        days = int(str(value).strip())
+    except (TypeError, ValueError):
+        days = 0
+    if days <= 0:
+        return "выключено"
+    return f"{days} дн."
+
 def _build_mail_pattern_from_subject(subject: str) -> str:
     """Собрать regex паттерн по теме письма."""
     if not subject:
@@ -1237,6 +1247,18 @@ def settings_callback_handler(update, context):
                     [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_mail')]
                 ])
             )
+        elif data == 'supplier_stock_archive_cleanup_mail':
+            context.user_data['supplier_stock_edit'] = 'archive_cleanup_days'
+            context.user_data['supplier_stock_archive_cleanup_back'] = 'supplier_stock_mail'
+            config = get_supplier_stock_config()
+            current_value = _format_archive_cleanup_days(config.get("archive_cleanup_days"))
+            query.edit_message_text(
+                "Введите период очистки архива в днях (0 — отключить):\n"
+                f"Текущее значение: {current_value}",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_mail')]
+                ])
+            )
         elif data == 'supplier_stock_mail_unpack_toggle':
             query.answer("ℹ️ Распаковка теперь на уровне правил", show_alert=False)
             show_supplier_stock_mail_settings(update, context)
@@ -1362,6 +1384,18 @@ def settings_callback_handler(update, context):
             query.edit_message_text(
                 "Введите путь к каталогу архива:\n"
                 f"Текущее значение: {current_archive_dir}",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_download')]
+                ])
+            )
+        elif data == 'supplier_stock_archive_cleanup_download':
+            context.user_data['supplier_stock_edit'] = 'archive_cleanup_days'
+            context.user_data['supplier_stock_archive_cleanup_back'] = 'supplier_stock_download'
+            config = get_supplier_stock_config()
+            current_value = _format_archive_cleanup_days(config.get("archive_cleanup_days"))
+            query.edit_message_text(
+                "Введите период очистки архива в днях (0 — отключить):\n"
+                f"Текущее значение: {current_value}",
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_download')]
                 ])
@@ -2757,6 +2791,8 @@ def show_supplier_stock_settings(update, context):
     query.answer()
 
     context.user_data.pop('supplier_stock_edit', None)
+    context.user_data.pop('supplier_stock_archive_cleanup_back', None)
+    context.user_data.pop('supplier_stock_archive_cleanup_back', None)
     context.user_data.pop('supplier_stock_add_source', None)
     context.user_data.pop('supplier_stock_mail_edit', None)
     context.user_data.pop('supplier_stock_mail_add_source', None)
@@ -2830,11 +2866,13 @@ def show_supplier_stock_download_settings(update, context):
     unpack_state = f"{unpack_enabled}/{len(sources)}" if sources else "нет"
     schedule_state = "🟢 Включено" if schedule.get("enabled") else "🔴 Выключено"
     schedule_time = schedule.get("time", "не задано")
+    archive_cleanup = _format_archive_cleanup_days(config.get("archive_cleanup_days"))
 
     message = (
         "📦 *Скачивание файлов остатков*\n\n"
         f"Временный каталог: `{temp_dir}`\n"
         f"Архив: `{download.get('archive_dir', '')}`\n"
+        f"Очистка архива: {archive_cleanup}\n"
         f"Распаковка в источниках: {unpack_state}\n"
         f"Источников: {len(sources)}\n"
         f"Расписание: {schedule_state} ({schedule_time})\n\n"
@@ -2844,6 +2882,7 @@ def show_supplier_stock_download_settings(update, context):
     keyboard = [
         [InlineKeyboardButton("📁 Временный каталог", callback_data='supplier_stock_temp_dir')],
         [InlineKeyboardButton("🗄️ Каталог архива", callback_data='supplier_stock_archive_dir')],
+        [InlineKeyboardButton("🧹 Период очистки архива", callback_data='supplier_stock_archive_cleanup_download')],
         [InlineKeyboardButton("⏰ Расписание", callback_data='supplier_stock_schedule')],
         [InlineKeyboardButton("📦 Источники", callback_data='supplier_stock_sources')],
         [InlineKeyboardButton("📤 Ресурсы выгрузки", callback_data='supplier_stock_resources')],
@@ -2865,6 +2904,7 @@ def show_supplier_stock_mail_settings(update, context):
     query.answer()
 
     context.user_data.pop('supplier_stock_mail_edit', None)
+    context.user_data.pop('supplier_stock_archive_cleanup_back', None)
     context.user_data.pop('supplier_stock_mail_add_source', None)
     context.user_data.pop('supplier_stock_mail_source_stage', None)
     context.user_data.pop('supplier_stock_mail_source_data', None)
@@ -2880,11 +2920,13 @@ def show_supplier_stock_mail_settings(update, context):
     archive_dir = mail_settings.get("archive_dir") or ""
     unpack_enabled = sum(1 for source in sources if source.get("unpack_archive"))
     unpack_state = f"{unpack_enabled}/{len(sources)}" if sources else "нет"
+    archive_cleanup = _format_archive_cleanup_days(config.get("archive_cleanup_days"))
     message = (
         "📧 *Почтовые сообщения (остатки)*\n\n"
         f"Статус: {status_text}\n"
         f"Временный каталог: `{_escape_pattern_text(temp_dir)}`\n"
         f"Архив: `{_escape_pattern_text(archive_dir)}`\n"
+        f"Очистка архива: {archive_cleanup}\n"
         f"Распаковка в правилах: {unpack_state}\n"
         f"Правил: {len(sources)}\n\n"
         "Выберите действие:"
@@ -2894,6 +2936,7 @@ def show_supplier_stock_mail_settings(update, context):
         [InlineKeyboardButton("🔁 Включить/выключить", callback_data='supplier_stock_mail_toggle')],
         [InlineKeyboardButton("📁 Временный каталог", callback_data='supplier_stock_mail_temp_dir')],
         [InlineKeyboardButton("🗄️ Каталог архива", callback_data='supplier_stock_mail_archive_dir')],
+        [InlineKeyboardButton("🧹 Период очистки архива", callback_data='supplier_stock_archive_cleanup_mail')],
         [InlineKeyboardButton("📎 Правила вложений", callback_data='supplier_stock_mail_sources')],
         [InlineKeyboardButton("📤 Ресурсы выгрузки", callback_data='supplier_stock_resources')],
         [InlineKeyboardButton("📡 FTP ОРК", callback_data='supplier_stock_ftp')],
@@ -5658,6 +5701,27 @@ def supplier_stock_handle_edit_input(update, context):
             "✅ Время расписания обновлено.",
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_schedule')]
+            ])
+        )
+        return None
+
+    if field == 'archive_cleanup_days':
+        try:
+            cleanup_days = int(user_input)
+        except ValueError:
+            update.message.reply_text("❌ Введите целое число дней (0 — отключить).")
+            return None
+        if cleanup_days < 0:
+            update.message.reply_text("❌ Период не может быть отрицательным.")
+            return None
+        config["archive_cleanup_days"] = cleanup_days
+        save_supplier_stock_config(config)
+        context.user_data.pop('supplier_stock_edit', None)
+        back_callback = context.user_data.pop('supplier_stock_archive_cleanup_back', 'supplier_stock_download')
+        update.message.reply_text(
+            "✅ Период очистки архива обновлен.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]
             ])
         )
         return None
