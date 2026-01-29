@@ -2984,6 +2984,24 @@ def show_supplier_stock_reports(update, context) -> None:
         _append_report_section("Скачанные файлы", download_reports)
         _append_report_section("Полученные по почте", mail_reports)
 
+    def _split_message(lines: list[str], max_length: int = 3500) -> list[str]:
+        chunks: list[str] = []
+        current: list[str] = []
+        current_len = 0
+        for line in lines:
+            candidate_len = current_len + len(line) + (1 if current else 0)
+            if current and candidate_len > max_length:
+                chunks.append("\n".join(current))
+                current = [line]
+                current_len = len(line)
+            else:
+                current.append(line)
+                current_len = candidate_len
+        if current:
+            chunks.append("\n".join(current))
+        return chunks
+
+    message_chunks = _split_message(message_lines)
     keyboard = [
         [InlineKeyboardButton("🔄 Обновить", callback_data='supplier_stock_reports')],
         [InlineKeyboardButton("🛠️ Настройки", callback_data='settings_ext_supplier_stock')],
@@ -2992,10 +3010,16 @@ def show_supplier_stock_reports(update, context) -> None:
     ]
 
     query.edit_message_text(
-        "\n".join(message_lines),
+        message_chunks[0] if message_chunks else "\n".join(message_lines),
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
+    for chunk in message_chunks[1:]:
+        context.bot.send_message(
+            chat_id=query.message.chat_id,
+            text=chunk,
+            parse_mode='Markdown',
+        )
 
 def show_supplier_stock_download_settings(update, context):
     """Показать настройки скачивания файлов остатков поставщиков."""
