@@ -486,6 +486,27 @@ def get_supplier_stock_reports(limit: int = 20) -> List[Dict[str, Any]]:
     return entries[-limit:][::-1]
 
 
+def get_supplier_stock_reports_total() -> int:
+    config = get_supplier_stock_config()
+    reports_file = Path(config["download"]["reports_file"])
+    if not reports_file.exists():
+        return 0
+
+    total = 0
+    with reports_file.open("r", encoding="utf-8") as file:
+        for line in file:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            total += 1
+
+    return total
+
+
 def process_supplier_stock_file(
     file_path: str | Path,
     source_id: str | None = None,
@@ -540,6 +561,7 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
             "source_id": source_id,
             "source_name": name,
             "method": source.get("method", "http"),
+            "source_kind": "download",
         }
 
         try:

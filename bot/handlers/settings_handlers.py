@@ -25,6 +25,7 @@ from extensions.supplier_stock_files import (
     SUPPLIER_STOCK_EXTENSION_ID,
     get_supplier_stock_config,
     get_supplier_stock_reports,
+    get_supplier_stock_reports_total,
     save_supplier_stock_config,
 )
 from lib.logging import debug_log
@@ -2931,17 +2932,29 @@ def show_supplier_stock_reports(update, context) -> None:
         )
         return
 
-    reports = get_supplier_stock_reports(10)
+    config = get_supplier_stock_config()
+    download_sources = len(config.get("download", {}).get("sources", []))
+    mail_sources = len(config.get("mail", {}).get("sources", []))
+    total_reports = get_supplier_stock_reports_total()
+    reports = get_supplier_stock_reports(total_reports or 0)
     message_lines = [
         "📦 *Остатки поставщиков — результаты*",
         "",
-        "Последние 10 запусков (загрузка/обработка/выгрузка):",
+        f"Источников скачивания: {download_sources}",
+        f"Почтовых правил: {mail_sources}",
+        "",
     ]
-
-    if not reports:
-        message_lines.append("\n⚪️ Отчетов пока нет.")
+    if total_reports:
+        message_lines.append(f"Всего запусков: {total_reports}")
     else:
-        for entry in reports:
+        message_lines.append("Запуски (загрузка/обработка/выгрузка):")
+
+    def _append_report_section(title: str, entries: list[dict]) -> None:
+        message_lines.extend(["", f"*{title}*"])
+        if not entries:
+            message_lines.append("⚪️ Записей пока нет.")
+            return
+        for entry in entries:
             source_name = entry.get("source_name") or entry.get("source_id") or "неизвестный источник"
             time_label = _format_supplier_stock_timestamp(entry.get("timestamp"))
             download_status = _supplier_stock_status_label(entry.get("status"))
@@ -2962,6 +2975,14 @@ def show_supplier_stock_reports(update, context) -> None:
             ])
             if entry.get("error"):
                 message_lines.append(f"  ❗ Ошибка: {_escape_pattern_text(entry.get('error'))}")
+
+    if not reports:
+        message_lines.append("\n⚪️ Отчетов пока нет.")
+    else:
+        download_reports = [entry for entry in reports if entry.get("source_kind") != "mail"]
+        mail_reports = [entry for entry in reports if entry.get("source_kind") == "mail"]
+        _append_report_section("Скачанные файлы", download_reports)
+        _append_report_section("Полученные по почте", mail_reports)
 
     keyboard = [
         [InlineKeyboardButton("🔄 Обновить", callback_data='supplier_stock_reports')],
