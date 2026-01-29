@@ -904,6 +904,35 @@ def _collect_processing_outputs(results: list[Dict[str, Any]]) -> tuple[list[Pat
                 orc_output = output_info.get("orc_output")
                 if orc_output:
                     orc_outputs.append(Path(orc_output))
+
+    if outputs and orc_outputs:
+        return _unique_paths(outputs), _unique_paths(orc_outputs)
+
+    fallback_outputs: list[Path] = []
+    fallback_orc_outputs: list[Path] = []
+
+    def _walk(value: Any) -> None:
+        if isinstance(value, dict):
+            for key, item in value.items():
+                if isinstance(item, str) and item:
+                    if key in ("output", "output_path", "output_file"):
+                        fallback_outputs.append(Path(item))
+                        continue
+                    if key in ("orc_output", "orc_output_path", "orc_output_file"):
+                        fallback_orc_outputs.append(Path(item))
+                        continue
+                _walk(item)
+        elif isinstance(value, list):
+            for item in value:
+                _walk(item)
+
+    _walk(results)
+
+    if fallback_outputs:
+        outputs.extend(fallback_outputs)
+    if fallback_orc_outputs:
+        orc_outputs.extend(fallback_orc_outputs)
+
     return _unique_paths(outputs), _unique_paths(orc_outputs)
 
 
