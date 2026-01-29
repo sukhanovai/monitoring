@@ -39,7 +39,12 @@ from config.db_settings import (
 )
 from core.config_manager import config_manager
 from extensions.extension_manager import extension_manager
-from extensions.supplier_stock_files import get_supplier_stock_config, process_supplier_stock_file, unpack_archive_file
+from extensions.supplier_stock_files import (
+    cleanup_supplier_stock_archives,
+    get_supplier_stock_config,
+    process_supplier_stock_file,
+    unpack_archive_file,
+)
 from lib.logging import setup_logging
 
 LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -1198,6 +1203,7 @@ class BackupProcessor:
             )
             return None
 
+        cleanup_supplier_stock_archives(config, now)
         return {"supplier_stock_files": matched_files}
 
     def _match_stock_load_source(self, subject: str, patterns: dict[str, list[str]]) -> str:
