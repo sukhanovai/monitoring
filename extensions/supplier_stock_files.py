@@ -99,9 +99,9 @@ DEFAULT_IEK_JSON_SETTINGS: Dict[str, Any] = {
     ],
     "prefix": "IEK\\",
     "outputs": {
-        "orig": "{source_id}_orig.xlsx",
-        "msk": "{source_id}_msk.xls",
-        "nsk": "{source_id}_nsk.xls",
+        "orig": "Остатки ИЭК.xlsx",
+        "msk": "РЦ и МСК/Остатки МСК.xls",
+        "nsk": "РЦ и МСК/Остатки РЦ.xls",
         "orc": "{source_id}_orc.csv",
     },
 }
@@ -1042,10 +1042,13 @@ def _process_iek_json_file(
         ])
 
         msk_value = sum(_get_residue(row, key) for key in msk_keys)
-        msk_rows.append([sku, str(msk_value)])
+        if msk_value > 0:
+            msk_rows.append([sku, str(msk_value)])
 
         if nsk_key:
-            nsk_rows.append([sku, str(_get_residue(row, nsk_key))])
+            nsk_value = _get_residue(row, nsk_key)
+            if nsk_value > 0:
+                nsk_rows.append([sku, str(nsk_value)])
 
         for entry in orc_stores:
             if not isinstance(entry, dict):
