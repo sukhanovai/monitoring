@@ -24,10 +24,12 @@ from config.settings import BACKUP_PATTERNS as DEFAULT_BACKUP_PATTERNS
 from extensions.extension_manager import extension_manager
 from extensions.supplier_stock_files import (
     SUPPLIER_STOCK_EXTENSION_ID,
+    build_supplier_stock_source_stats,
     get_supplier_stock_config,
     get_supplier_stock_reports,
     get_supplier_stock_reports_total,
     save_supplier_stock_config,
+    summarize_supplier_stock_reports,
 )
 from lib.logging import debug_log
 import json
@@ -885,7 +887,18 @@ def settings_callback_handler(update, context):
         elif data == 'supplier_stock_mail':
             show_supplier_stock_mail_settings(update, context)
         elif data == 'supplier_stock_reports':
-            show_supplier_stock_reports(update, context)
+            show_supplier_stock_reports(update, context, source_kind='download')
+        elif data == 'supplier_stock_reports_download':
+            show_supplier_stock_reports(update, context, source_kind='download')
+        elif data == 'supplier_stock_reports_mail':
+            show_supplier_stock_reports(update, context, source_kind='mail')
+        elif data == 'supplier_stock_reports_sources_download':
+            show_supplier_stock_report_sources(update, context, source_kind='download')
+        elif data == 'supplier_stock_reports_sources_mail':
+            show_supplier_stock_report_sources(update, context, source_kind='mail')
+        elif data.startswith('supplier_stock_report_source|'):
+            _, source_kind, source_id = data.split('|', 2)
+            show_supplier_stock_report_source_stats(update, context, source_id, source_kind)
         elif data == 'supplier_stock_processing':
             show_supplier_stock_processing_menu(update, context, action_prefix="supplier_stock_processing")
         elif data.startswith('supplier_stock_processing|'):
@@ -1272,6 +1285,17 @@ def settings_callback_handler(update, context):
                 f"Текущее значение: {current_value}",
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_mail')]
+                ])
+            )
+        elif data == 'supplier_stock_report_period':
+            context.user_data['supplier_stock_edit'] = 'report_period_days'
+            config = get_supplier_stock_config()
+            current_value = config.get("reporting", {}).get("period_days", 7)
+            query.edit_message_text(
+                "Введите период отчётов в днях (минимум 1):\n"
+                f"Текущее значение: {current_value}",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("❌ Отмена", callback_data='settings_ext_supplier_stock')]
                 ])
             )
         elif data == 'supplier_stock_mail_unpack_toggle':
@@ -2848,6 +2872,7 @@ def show_supplier_stock_settings(update, context):
     schedule_state = "🟢 Включено" if schedule.get("enabled") else "🔴 Выключено"
     schedule_time = schedule.get("time", "не задано")
 
+    reporting_days = config.get("reporting", {}).get("period_days", 7)
     message = (
         "📦 *Остатки поставщиков*\n\n"
         f"Источников: {len(sources)}\n"
@@ -2855,12 +2880,15 @@ def show_supplier_stock_settings(update, context):
         "📧 *Почтовые сообщения (остатки)*\n\n"
         f"Статус: {mail_status}\n"
         f"Правил: {mail_rules}\n\n"
+        "🗓 *Отчёты*\n"
+        f"Период: {reporting_days} дн.\n\n"
         "Выберите раздел:"
     )
 
     keyboard = [
         [InlineKeyboardButton("🌐 Скачивание файлов", callback_data='supplier_stock_download')],
         [InlineKeyboardButton("📧 Почтовые сообщения", callback_data='supplier_stock_mail')],
+        [InlineKeyboardButton("🗓 Период отчётов", callback_data='supplier_stock_report_period')],
         [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_extensions'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
@@ -2942,7 +2970,7 @@ def _supplier_stock_processing_mode_label(value: str | None) -> str:
         return "IEK JSON"
     return "Табличный"
 
-def show_supplier_stock_reports(update, context) -> None:
+def show_supplier_stock_reports(update, context, source_kind: str = "download") -> None:
     """Показать результаты загрузки, обработки и выгрузки остатков поставщиков."""
     query = update.callback_query
     query.answer()
@@ -2959,10 +2987,15 @@ def show_supplier_stock_reports(update, context) -> None:
     config = get_supplier_stock_config()
     download_sources = len(config.get("download", {}).get("sources", []))
     mail_sources = len(config.get("mail", {}).get("sources", []))
+    reporting_days = config.get("reporting", {}).get("period_days", 7)
     total_reports = get_supplier_stock_reports_total()
-    reports = get_supplier_stock_reports(total_reports or 0)
+    reports = get_supplier_stock_reports(limit=None, period_days=reporting_days, source_kind=source_kind)
+    title = "полученные скачиванием" if source_kind == "download" else "полученные по почте"
     message_lines = [
         "📦 *Остатки поставщиков — результаты*",
+        "",
+        f"Группа: {title}",
+        f"Период: {reporting_days} дн.",
         "",
         f"Источников скачивания: {download_sources}",
         f"Почтовых правил: {mail_sources}",
@@ -3003,10 +3036,8 @@ def show_supplier_stock_reports(update, context) -> None:
     if not reports:
         message_lines.append("\n⚪️ Отчетов пока нет.")
     else:
-        download_reports = [entry for entry in reports if entry.get("source_kind") != "mail"]
-        mail_reports = [entry for entry in reports if entry.get("source_kind") == "mail"]
-        _append_report_section("Скачанные файлы", download_reports)
-        _append_report_section("Полученные по почте", mail_reports)
+        section_title = "Скачанные файлы" if source_kind == "download" else "Полученные по почте"
+        _append_report_section(section_title, reports)
 
     def _split_message(lines: list[str], max_length: int = 3500) -> list[str]:
         chunks: list[str] = []
@@ -3027,7 +3058,21 @@ def show_supplier_stock_reports(update, context) -> None:
 
     message_chunks = _split_message(message_lines)
     keyboard = [
-        [InlineKeyboardButton("🔄 Обновить", callback_data='supplier_stock_reports')],
+        [
+            InlineKeyboardButton("⬇️ Скачивание", callback_data='supplier_stock_reports_download'),
+            InlineKeyboardButton("📧 Почта", callback_data='supplier_stock_reports_mail'),
+        ],
+        [
+            InlineKeyboardButton(
+                "📊 Источники",
+                callback_data=(
+                    'supplier_stock_reports_sources_download'
+                    if source_kind == "download"
+                    else 'supplier_stock_reports_sources_mail'
+                ),
+            )
+        ],
+        [InlineKeyboardButton("🔄 Обновить", callback_data=f'supplier_stock_reports_{source_kind}')],
         [InlineKeyboardButton("🛠️ Настройки", callback_data='settings_ext_supplier_stock')],
         [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
         [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
@@ -3044,6 +3089,143 @@ def show_supplier_stock_reports(update, context) -> None:
             text=chunk,
             parse_mode='Markdown',
         )
+
+
+def show_supplier_stock_report_sources(update, context, source_kind: str = "download") -> None:
+    """Показать список источников остатков с текущими статусами."""
+    query = update.callback_query
+    query.answer()
+
+    config = get_supplier_stock_config()
+    reporting_days = config.get("reporting", {}).get("period_days", 7)
+    grouped = summarize_supplier_stock_reports(period_days=reporting_days)
+    sources = grouped.get(source_kind, [])
+    group_label = "полученные скачиванием" if source_kind == "download" else "полученные по почте"
+
+    message_lines = [
+        "📦 *Остатки поставщиков — источники*",
+        "",
+        f"Группа: {group_label}",
+        f"Период: {reporting_days} дн.",
+        "",
+    ]
+
+    if not sources:
+        message_lines.append("⚪️ Источников за период нет.")
+    else:
+        for entry in sources:
+            source_name = entry.get("source_name") or entry.get("source_id") or "неизвестный источник"
+            time_label = _format_supplier_stock_timestamp(entry.get("timestamp"))
+            message_lines.extend([
+                "",
+                f"• *{_escape_pattern_text(source_name)}* ({_escape_pattern_text(time_label)})",
+                f"  📥 Загрузка: {entry.get('receive', {}).get('icon', '⚪️')}",
+                f"  🧩 Обработка: {entry.get('processing', {}).get('icon', '⚪️')}",
+                f"  📤 Выгрузка: {entry.get('transfer', {}).get('icon', '⚪️')}",
+            ])
+
+    keyboard = [
+        [
+            InlineKeyboardButton("⬇️ Скачивание", callback_data='supplier_stock_reports_sources_download'),
+            InlineKeyboardButton("📧 Почта", callback_data='supplier_stock_reports_sources_mail'),
+        ],
+    ]
+    if sources:
+        row: list[InlineKeyboardButton] = []
+        for entry in sources:
+            source_id = str(entry.get("source_id") or entry.get("source_name") or "")
+            if not source_id:
+                continue
+            row.append(
+                InlineKeyboardButton(
+                    f"📊 {source_id}",
+                    callback_data=f'supplier_stock_report_source|{source_kind}|{source_id}',
+                )
+            )
+            if len(row) == 2:
+                keyboard.append(row)
+                row = []
+        if row:
+            keyboard.append(row)
+    keyboard.extend([
+        [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_reports_{source_kind}')],
+        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
+        [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
+    ])
+
+    query.edit_message_text(
+        "\n".join(message_lines),
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+
+
+def show_supplier_stock_report_source_stats(
+    update,
+    context,
+    source_id: str,
+    source_kind: str = "download",
+) -> None:
+    """Показать подробную статистику по источнику остатков."""
+    query = update.callback_query
+    query.answer()
+
+    if not source_id:
+        query.edit_message_text(
+            "⚪️ Источник не выбран.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_reports_sources_{source_kind}')],
+            ]),
+        )
+        return
+
+    config = get_supplier_stock_config()
+    reporting_days = config.get("reporting", {}).get("period_days", 7)
+    stats = build_supplier_stock_source_stats(source_id, source_kind, reporting_days)
+    summary = stats.get("summary", {})
+    entries = stats.get("entries", [])
+
+    message_lines = [
+        "📦 *Остатки поставщиков — статистика источника*",
+        "",
+        f"Источник: {_escape_pattern_text(source_id)}",
+        f"Группа: {'полученные скачиванием' if source_kind == 'download' else 'полученные по почте'}",
+        f"Период: {reporting_days} дн.",
+        "",
+        f"Всего запусков: {summary.get('total', 0)}",
+        f"📥 Успешно: {summary.get('receive_success', 0)} | Ошибок: {summary.get('receive_error', 0)}",
+        f"🧩 Успешно: {summary.get('processing_success', 0)} | Ошибок: {summary.get('processing_error', 0)}",
+        f"📤 Успешно: {summary.get('transfer_success', 0)} | Ошибок: {summary.get('transfer_error', 0)}",
+        "",
+        "*Последние события:*",
+    ]
+
+    if not entries:
+        message_lines.append("⚪️ Записей пока нет.")
+    else:
+        for entry in entries[:10]:
+            time_label = _format_supplier_stock_timestamp(entry.get("timestamp"))
+            message_lines.extend([
+                "",
+                f"• {_escape_pattern_text(time_label)}",
+                f"  📥 {entry.get('receive', {}).get('icon', '⚪️')}",
+                f"  🧩 {entry.get('processing', {}).get('icon', '⚪️')}",
+                f"  📤 {entry.get('transfer', {}).get('icon', '⚪️')}",
+            ])
+            if entry.get("error"):
+                message_lines.append(f"  ❗ Ошибка: {_escape_pattern_text(entry.get('error'))}")
+
+    keyboard = [
+        [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_reports_sources_{source_kind}')],
+        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
+        [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
+    ]
+
+    query.edit_message_text(
+        "\n".join(message_lines),
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
 
 def show_supplier_stock_download_settings(update, context):
     """Показать настройки скачивания файлов остатков поставщиков."""
@@ -6093,6 +6275,26 @@ def supplier_stock_handle_edit_input(update, context):
             "✅ Период очистки архива обновлен.",
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]
+            ])
+        )
+        return None
+
+    if field == 'report_period_days':
+        try:
+            period_days = int(user_input)
+        except ValueError:
+            update.message.reply_text("❌ Введите целое число дней (минимум 1).")
+            return None
+        if period_days < 1:
+            update.message.reply_text("❌ Период должен быть минимум 1 день.")
+            return None
+        config.setdefault("reporting", {})["period_days"] = period_days
+        save_supplier_stock_config(config)
+        context.user_data.pop('supplier_stock_edit', None)
+        update.message.reply_text(
+            "✅ Период отчётов обновлён.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_supplier_stock')]
             ])
         )
         return None
