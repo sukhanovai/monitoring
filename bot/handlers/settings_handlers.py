@@ -27,7 +27,6 @@ from extensions.supplier_stock_files import (
     build_supplier_stock_source_stats,
     get_supplier_stock_config,
     get_supplier_stock_reports,
-    get_supplier_stock_reports_total,
     save_supplier_stock_config,
     summarize_supplier_stock_reports,
 )
@@ -896,9 +895,15 @@ def settings_callback_handler(update, context):
             show_supplier_stock_report_sources(update, context, source_kind='download')
         elif data == 'supplier_stock_reports_sources_mail':
             show_supplier_stock_report_sources(update, context, source_kind='mail')
+        elif data.startswith('supplier_stock_report_source_day|'):
+            _, source_kind, source_id = data.split('|', 2)
+            show_supplier_stock_report_source_stats(update, context, source_id, source_kind, period_days=1)
         elif data.startswith('supplier_stock_report_source|'):
             _, source_kind, source_id = data.split('|', 2)
             show_supplier_stock_report_source_stats(update, context, source_id, source_kind)
+        elif data.startswith('supplier_stock_report_entry|'):
+            _, entry_key = data.split('|', 1)
+            show_supplier_stock_report_entry_details(update, context, entry_key)
         elif data == 'supplier_stock_processing':
             show_supplier_stock_processing_menu(update, context, action_prefix="supplier_stock_processing")
         elif data.startswith('supplier_stock_processing|'):
@@ -2963,6 +2968,65 @@ def _supplier_stock_transfer_status(transfer: dict | None) -> str:
         return "🔴 ошибка"
     return "🟡 частично"
 
+def _supplier_stock_stage_label(is_ok: bool) -> str:
+    return "ОК" if is_ok else "не ОК"
+
+def _supplier_stock_processing_ok(processing: dict | None) -> bool:
+    if not processing:
+        return False
+    if processing.get("status") == "skipped":
+        return False
+    results = processing.get("results") or []
+    statuses = [item.get("status") for item in results if isinstance(item, dict)]
+    if not statuses:
+        return False
+    return all(status == "success" for status in statuses)
+
+def _supplier_stock_transfer_ok(transfer: dict | None) -> bool:
+    if not transfer:
+        return False
+    status = transfer.get("status")
+    if status == "skipped":
+        return False
+    items = transfer.get("items") or []
+    ftp_items = transfer.get("ftp_ork", {}).get("items") or []
+    statuses = [
+        item.get("status")
+        for item in list(items) + list(ftp_items)
+        if isinstance(item, dict)
+    ]
+    if not statuses:
+        return False
+    return status == "success" and all(item_status == "success" for item_status in statuses)
+
+def _build_supplier_stock_daily_summary(
+    reports: list[dict],
+    source_kind: str,
+) -> list[dict]:
+    summary: list[dict] = []
+    seen_sources: set[str] = set()
+    for entry in reports:
+        source_id = str(entry.get("source_id") or entry.get("source_name") or "unknown")
+        if source_id in seen_sources:
+            continue
+        seen_sources.add(source_id)
+        processing_info = entry.get("processing") if entry.get("status") == "success" else None
+        receive_ok = entry.get("status") == "success"
+        processing_ok = _supplier_stock_processing_ok(processing_info)
+        transfer_ok = _supplier_stock_transfer_ok(
+            processing_info.get("transfer") if processing_info else None
+        )
+        summary.append({
+            "entry": entry,
+            "source_id": source_id,
+            "source_name": entry.get("source_name") or source_id,
+            "source_kind": source_kind,
+            "receive_ok": receive_ok,
+            "processing_ok": processing_ok,
+            "transfer_ok": transfer_ok,
+        })
+    return summary
+
 def _supplier_stock_processing_mode_label(value: str | None) -> str:
     """Сформировать читаемую метку режима обработки."""
     mode = (value or "table").strip().lower()
@@ -2984,60 +3048,33 @@ def show_supplier_stock_reports(update, context, source_kind: str = "download") 
         )
         return
 
-    config = get_supplier_stock_config()
-    download_sources = len(config.get("download", {}).get("sources", []))
-    mail_sources = len(config.get("mail", {}).get("sources", []))
-    reporting_days = config.get("reporting", {}).get("period_days", 7)
-    total_reports = get_supplier_stock_reports_total()
+    reporting_days = 1
     reports = get_supplier_stock_reports(limit=None, period_days=reporting_days, source_kind=source_kind)
     title = "полученные скачиванием" if source_kind == "download" else "полученные по почте"
     message_lines = [
         "📦 *Остатки поставщиков — результаты*",
         "",
         f"Группа: {title}",
-        f"Период: {reporting_days} дн.",
-        "",
-        f"Источников скачивания: {download_sources}",
-        f"Почтовых правил: {mail_sources}",
+        "Период: последние 24 часа",
         "",
     ]
-    if total_reports:
-        message_lines.append(f"Всего запусков: {total_reports}")
+    summary = _build_supplier_stock_daily_summary(reports, source_kind)
+    if not summary:
+        message_lines.append("⚪️ За сутки данных нет.")
     else:
-        message_lines.append("Запуски (загрузка/обработка/выгрузка):")
-
-    def _append_report_section(title: str, entries: list[dict]) -> None:
-        message_lines.extend(["", f"*{title}*"])
-        if not entries:
-            message_lines.append("⚪️ Записей пока нет.")
-            return
-        for entry in entries:
-            source_name = entry.get("source_name") or entry.get("source_id") or "неизвестный источник"
-            time_label = _format_supplier_stock_timestamp(entry.get("timestamp"))
-            download_status = _supplier_stock_status_label(entry.get("status"))
-            processing_info = entry.get("processing") if entry.get("status") == "success" else None
-            processing_status = _supplier_stock_processing_status(processing_info)
-            transfer_status = _supplier_stock_transfer_status(
-                processing_info.get("transfer") if processing_info else None
-            )
-            if entry.get("status") != "success":
-                processing_status = "⏭️ не запускалась"
-                transfer_status = "⏭️ не запускалась"
+        message_lines.append("Кликни источник, чтобы открыть историю за сутки.")
+        for entry in summary:
+            source_name = _escape_pattern_text(entry.get("source_name") or "неизвестный источник")
+            receive_label = _supplier_stock_stage_label(entry["receive_ok"])
+            processing_label = _supplier_stock_stage_label(entry["processing_ok"])
+            transfer_label = _supplier_stock_stage_label(entry["transfer_ok"])
             message_lines.extend([
                 "",
-                f"• *{_escape_pattern_text(source_name)}* ({_escape_pattern_text(time_label)})",
-                f"  📥 Загрузка: {download_status}",
-                f"  🧩 Обработка: {processing_status}",
-                f"  📤 Выгрузка: {transfer_status}",
+                f"• *{source_name}*",
+                f"  📥 Загрузка: {receive_label}",
+                f"  🧩 Обработка: {processing_label}",
+                f"  📤 Выгрузка: {transfer_label}",
             ])
-            if entry.get("error"):
-                message_lines.append(f"  ❗ Ошибка: {_escape_pattern_text(entry.get('error'))}")
-
-    if not reports:
-        message_lines.append("\n⚪️ Отчетов пока нет.")
-    else:
-        section_title = "Скачанные файлы" if source_kind == "download" else "Полученные по почте"
-        _append_report_section(section_title, reports)
 
     def _split_message(lines: list[str], max_length: int = 3500) -> list[str]:
         chunks: list[str] = []
@@ -3062,21 +3099,37 @@ def show_supplier_stock_reports(update, context, source_kind: str = "download") 
             InlineKeyboardButton("⬇️ Скачивание", callback_data='supplier_stock_reports_download'),
             InlineKeyboardButton("📧 Почта", callback_data='supplier_stock_reports_mail'),
         ],
-        [
-            InlineKeyboardButton(
-                "📊 Источники",
-                callback_data=(
-                    'supplier_stock_reports_sources_download'
-                    if source_kind == "download"
-                    else 'supplier_stock_reports_sources_mail'
-                ),
-            )
-        ],
+    ]
+    entry_map: dict[str, dict] = {}
+    if summary:
+        for index, item in enumerate(summary, start=1):
+            entry_key = str(index)
+            entry_map[entry_key] = item
+            source_id = str(item.get("source_id") or "")
+            source_name = str(item.get("source_name") or source_id)
+            source_label = source_name[:24]
+            row = [
+                InlineKeyboardButton(
+                    f"📊 {source_label}",
+                    callback_data=f'supplier_stock_report_source_day|{source_kind}|{source_id}',
+                )
+            ]
+            if not (item.get("receive_ok") and item.get("processing_ok") and item.get("transfer_ok")):
+                row.append(
+                    InlineKeyboardButton(
+                        "❗ Детали",
+                        callback_data=f'supplier_stock_report_entry|{entry_key}',
+                    )
+                )
+            keyboard.append(row)
+        context.user_data["supplier_stock_report_entries"] = entry_map
+        context.user_data["supplier_stock_report_entries_kind"] = source_kind
+    keyboard.extend([
         [InlineKeyboardButton("🔄 Обновить", callback_data=f'supplier_stock_reports_{source_kind}')],
         [InlineKeyboardButton("🛠️ Настройки", callback_data='settings_ext_supplier_stock')],
         [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
         [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
-    ]
+    ])
 
     query.edit_message_text(
         message_chunks[0] if message_chunks else "\n".join(message_lines),
@@ -3165,6 +3218,7 @@ def show_supplier_stock_report_source_stats(
     context,
     source_id: str,
     source_kind: str = "download",
+    period_days: int | None = None,
 ) -> None:
     """Показать подробную статистику по источнику остатков."""
     query = update.callback_query
@@ -3179,8 +3233,11 @@ def show_supplier_stock_report_source_stats(
         )
         return
 
-    config = get_supplier_stock_config()
-    reporting_days = config.get("reporting", {}).get("period_days", 7)
+    if period_days is None:
+        config = get_supplier_stock_config()
+        reporting_days = config.get("reporting", {}).get("period_days", 7)
+    else:
+        reporting_days = period_days
     stats = build_supplier_stock_source_stats(source_id, source_kind, reporting_days)
     summary = stats.get("summary", {})
     entries = stats.get("entries", [])
@@ -3217,6 +3274,68 @@ def show_supplier_stock_report_source_stats(
 
     keyboard = [
         [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_reports_sources_{source_kind}')],
+        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
+        [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
+    ]
+
+    query.edit_message_text(
+        "\n".join(message_lines),
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+
+
+def show_supplier_stock_report_entry_details(update, context, entry_key: str) -> None:
+    """Показать детали последнего запуска по источнику."""
+    query = update.callback_query
+    query.answer()
+
+    entry_map = context.user_data.get("supplier_stock_report_entries", {})
+    source_kind = context.user_data.get("supplier_stock_report_entries_kind", "download")
+    summary = entry_map.get(entry_key)
+    if not summary:
+        query.edit_message_text(
+            "⚪️ Детали недоступны, обновите результаты.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_reports_{source_kind}')],
+            ]),
+        )
+        return
+
+    entry = summary.get("entry", {})
+    source_id = summary.get("source_id") or entry.get("source_id") or "неизвестно"
+    source_name = entry.get("source_name") or source_id
+    time_label = _format_supplier_stock_timestamp(entry.get("timestamp"))
+    download_status = _supplier_stock_status_label(entry.get("status"))
+    processing_info = entry.get("processing") if entry.get("status") == "success" else None
+    processing_status = _supplier_stock_processing_status(processing_info)
+    transfer_status = _supplier_stock_transfer_status(
+        processing_info.get("transfer") if processing_info else None
+    )
+    if entry.get("status") != "success":
+        processing_status = "⏭️ не запускалась"
+        transfer_status = "⏭️ не запускалась"
+
+    message_lines = [
+        "📦 *Остатки поставщиков — подробности*",
+        "",
+        f"Источник: {_escape_pattern_text(source_name)}",
+        f"Группа: {'полученные скачиванием' if source_kind == 'download' else 'полученные по почте'}",
+        f"Запуск: {_escape_pattern_text(time_label)}",
+        "",
+        f"📥 Загрузка: {download_status}",
+        f"🧩 Обработка: {processing_status}",
+        f"📤 Выгрузка: {transfer_status}",
+    ]
+    if entry.get("error"):
+        message_lines.append(f"\n❗ Ошибка: {_escape_pattern_text(entry.get('error'))}")
+
+    keyboard = [
+        [InlineKeyboardButton(
+            "📊 История источника",
+            callback_data=f'supplier_stock_report_source_day|{source_kind}|{source_id}',
+        )],
+        [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_reports_{source_kind}')],
         [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
         [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
     ]
