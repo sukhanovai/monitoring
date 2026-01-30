@@ -4900,7 +4900,11 @@ def show_supplier_stock_source_iek_settings(update, context, source_id: str) -> 
         [InlineKeyboardButton("🧾 ORK stor", callback_data=f'supplier_stock_source_iek_field|{source_id}|orc_stores')],
         [InlineKeyboardButton("🏷️ Префикс артикула", callback_data=f'supplier_stock_source_iek_field|{source_id}|prefix')],
         [InlineKeyboardButton("📄 Файлы", callback_data=f'supplier_stock_source_iek_field|{source_id}|outputs')],
-        [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_source_settings|{source_id}')],
+        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
+        [
+            InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_source_settings|{source_id}'),
+            InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+        ],
     ]
 
     query.edit_message_text(
@@ -5187,7 +5191,9 @@ def supplier_stock_start_source_iek_field_edit(update, context, source_id: str, 
         f"{prompt}\n\nТекущее значение: `{_escape_pattern_text(str(current_value))}`",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data=f'supplier_stock_source_iek_settings|{source_id}')]
+            [InlineKeyboardButton("❌ Отмена", callback_data=f'supplier_stock_source_iek_settings|{source_id}')],
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
+            [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
         ])
     )
 
@@ -6624,7 +6630,9 @@ def supplier_stock_handle_source_iek_field_input(update, context):
         update.message.reply_text(
             "✅ Настройка обновлена.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_source_iek_settings|{source_id}')]
+                [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_source_iek_settings|{source_id}')],
+                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
+                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
             ])
         )
         return None
@@ -6687,7 +6695,9 @@ def supplier_stock_handle_source_iek_field_input(update, context):
     update.message.reply_text(
         "✅ Настройка обновлена.",
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_source_iek_settings|{source_id}')]
+            [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_source_iek_settings|{source_id}')],
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
+            [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
         ])
     )
     return None
