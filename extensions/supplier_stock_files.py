@@ -105,6 +105,12 @@ DEFAULT_IEK_JSON_SETTINGS: Dict[str, Any] = {
         "orc": "{source_id}_orc.csv",
     },
 }
+_LEGACY_IEK_OUTPUT_TEMPLATES = {
+    "orig": "{source_id}_orig.xlsx",
+    "msk": "{source_id}_msk.xls",
+    "nsk": "{source_id}_nsk.xls",
+    "orc": "{source_id}_orc.csv",
+}
 
 _scheduler_lock = threading.Lock()
 _scheduler_started = False
@@ -212,6 +218,12 @@ def _normalize_iek_json_settings(value: Any) -> Dict[str, Any]:
         normalized["orc_stores"] = list(DEFAULT_IEK_JSON_SETTINGS["orc_stores"])
     if not isinstance(normalized.get("outputs"), dict):
         normalized["outputs"] = dict(DEFAULT_IEK_JSON_SETTINGS["outputs"])
+    else:
+        outputs = dict(normalized["outputs"])
+        for key, legacy_template in _LEGACY_IEK_OUTPUT_TEMPLATES.items():
+            if outputs.get(key) == legacy_template:
+                outputs[key] = DEFAULT_IEK_JSON_SETTINGS["outputs"][key]
+        normalized["outputs"] = outputs
     return normalized
 
 
