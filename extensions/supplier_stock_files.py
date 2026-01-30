@@ -102,7 +102,7 @@ DEFAULT_IEK_JSON_SETTINGS: Dict[str, Any] = {
         "orig": "Остатки ИЭК.xlsx",
         "msk": "МСК/Остатки МСК.xls",
         "nsk": "РЦ/Остатки РЦ.xls",
-        "orc": "iek_4ork.csv",
+        "orc": "iek.csv",
     },
 }
 _LEGACY_IEK_OUTPUT_TEMPLATES = {
