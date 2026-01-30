@@ -1336,8 +1336,8 @@ def _upload_file_via_smbclient(
         _log_processing("🧩 Некорректный UNC путь %s для выгрузки %s", unc_path, file_path.name)
         return {"target": target_name, "status": "error", "error": "invalid_unc_path"}
     server, share, base_subdir = parsed
-    cleaned_subdir = str(upload_subdir or "").strip().lstrip("/\\")
-    target_subdir = "/".join(filter(None, [base_subdir, cleaned_subdir]))
+    cleaned_subdir = _normalize_subdir(upload_subdir)
+    target_subdir = _normalize_subdir("/".join(filter(None, [base_subdir, cleaned_subdir])))
     commands = []
     if target_subdir:
         subdir_parts = [part for part in target_subdir.split("/") if part]
@@ -1500,10 +1500,10 @@ def _transfer_files_to_targets(
         relative_subdir = ""
         if base_dir:
             try:
-                relative_subdir = str(file_path.parent.relative_to(base_dir)).strip().strip("/\\")
+                relative_subdir = _normalize_subdir(str(file_path.parent.relative_to(base_dir)))
             except ValueError:
                 relative_subdir = ""
-        combined_subdir = "/".join(filter(None, [effective_subdir, relative_subdir]))
+        combined_subdir = _normalize_subdir("/".join(filter(None, [effective_subdir, relative_subdir])))
         for target in targets:
             unc_path = target.get("unc_path") or ""
             target_name = target.get("name") or target.get("id") or "resource"
@@ -1576,8 +1576,16 @@ def _resolve_transfer_base_dir(config: Dict[str, Any], source_kind: str | None) 
     return None
 
 
+def _normalize_subdir(raw_subdir: str) -> str:
+    cleaned = str(raw_subdir or "").strip().strip("/\\")
+    if not cleaned:
+        return ""
+    parts = [part for part in re.split(r"[\\/]+", cleaned) if part and part != "."]
+    return "/".join(parts)
+
+
 def _build_upload_subdir(base_subdir: str) -> str:
-    return str(base_subdir or "").strip().strip("/\\")
+    return _normalize_subdir(base_subdir)
 
 
 def _resolve_source_name(
