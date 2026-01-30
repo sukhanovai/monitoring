@@ -1847,6 +1847,7 @@ def handle_setting_value(update, context):
         or context.user_data.get('supplier_stock_add_source')
         or context.user_data.get('supplier_stock_edit_source')
         or context.user_data.get('supplier_stock_source_field')
+        or context.user_data.get('supplier_stock_source_iek_field')
         or context.user_data.get('supplier_stock_resource_add')
         or context.user_data.get('supplier_stock_resource_field')
         or context.user_data.get('supplier_stock_ftp_field')
