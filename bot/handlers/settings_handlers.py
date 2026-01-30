@@ -4678,6 +4678,35 @@ def show_supplier_stock_source_settings(update, context, source_id: str):
         rule for rule in rules
         if _processing_rule_matches_source(rule, source_id, "download", config)
     ]
+    iek_section: list[str] = []
+    if processing_mode == "iek_json":
+        iek_settings = source.get("iek_json") or {}
+        stores = iek_settings.get("stores", {})
+        orc_stores = iek_settings.get("orc_stores", [])
+        outputs = iek_settings.get("outputs", {})
+        stores_text = _escape_pattern_text(
+            ", ".join([f"{key}={value}" for key, value in stores.items()]) or "не задано"
+        )
+        orc_text = _escape_pattern_text(
+            ", ".join([f"{item.get('key')}={item.get('stor')}" for item in orc_stores if isinstance(item, dict)])
+            or "не задано"
+        )
+        outputs_text = _escape_pattern_text(
+            ", ".join([f"{key}={value}" for key, value in outputs.items()]) or "не задано"
+        )
+        prefix_text = _escape_pattern_text(iek_settings.get("prefix") or "не задано")
+        msk_stores = iek_settings.get("msk_stores", [])
+        msk_text = _escape_pattern_text(", ".join(msk_stores) or "не задано")
+        nsk_text = _escape_pattern_text(iek_settings.get("nsk_store") or "не задано")
+        iek_section = [
+            "⚙️ *IEK JSON*",
+            f"• Склады: `{stores_text}`",
+            f"• МСК склады: `{msk_text}`",
+            f"• НСК склад: `{nsk_text}`",
+            f"• ORK stor: `{orc_text}`",
+            f"• Префикс артикула: `{prefix_text}`",
+            f"• Файлы: `{outputs_text}`",
+        ]
 
     message_lines = [
         f"⚙️ *Источник остатков*\n",
@@ -4694,10 +4723,14 @@ def show_supplier_stock_source_settings(update, context, source_id: str):
         f"• Подкаталог выгрузки: `{upload_subdir}`",
         f"• Индивидуальный каталог: `{individual_status}`",
         f"• UNC индивидуального каталога: `{individual_path}`",
-        f"• Распаковка: `{unpack_text}`\n",
-        "🧩 *Обработка файлов*",
-        f"Правил: {len(matched_rules)}",
+        f"• Распаковка: `{unpack_text}`",
     ]
+    if iek_section:
+        message_lines.extend(["", *iek_section])
+    message_lines.extend([
+        "\n🧩 *Обработка файлов*",
+        f"Правил: {len(matched_rules)}",
+    ])
     if matched_rules:
         for index, rule in enumerate(matched_rules, start=1):
             rule_name = _escape_pattern_text(rule.get("name") or rule.get("id") or f"Правило {index}")
@@ -4731,15 +4764,15 @@ def show_supplier_stock_source_settings(update, context, source_id: str):
             InlineKeyboardButton("🧩 Тип обработки", callback_data=f'supplier_stock_source_field|{source_id}|processing_mode'),
             InlineKeyboardButton("📂 Подкаталог выгрузки", callback_data=f'supplier_stock_source_field|{source_id}|upload_subdir'),
         ],
-        [
-            InlineKeyboardButton("📁 Индивидуальный каталог", callback_data=f'supplier_stock_source_individual|{source_id}'),
-        ],
     ]
     if processing_mode == "iek_json":
         keyboard.append([
             InlineKeyboardButton("⚙️ IEK JSON", callback_data=f'supplier_stock_source_iek_settings|{source_id}')
         ])
     keyboard.extend([
+        [
+            InlineKeyboardButton("📁 Индивидуальный каталог", callback_data=f'supplier_stock_source_individual|{source_id}'),
+        ],
         [
             InlineKeyboardButton("🔁 Включить/выключить", callback_data=f'supplier_stock_source_toggle_{source_id}'),
             InlineKeyboardButton(f"📦 Распаковка: {unpack_text}", callback_data=f'supplier_stock_source_unpack_toggle_{source_id}')
