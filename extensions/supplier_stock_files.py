@@ -212,6 +212,14 @@ def _normalize_iek_json_settings(value: Any) -> Dict[str, Any]:
     normalized = _merge_dicts(DEFAULT_IEK_JSON_SETTINGS, settings)
     if isinstance(settings.get("stores"), dict):
         normalized["stores"] = dict(settings["stores"])
+    if isinstance(settings.get("msk_stores"), list):
+        normalized["msk_stores"] = list(settings["msk_stores"])
+    if isinstance(settings.get("orc_stores"), list):
+        normalized["orc_stores"] = list(settings["orc_stores"])
+    if isinstance(settings.get("prefix"), str):
+        normalized["prefix"] = settings["prefix"]
+    if isinstance(settings.get("nsk_store"), str):
+        normalized["nsk_store"] = settings["nsk_store"]
     if isinstance(settings.get("outputs"), dict):
         normalized["outputs"] = dict(settings["outputs"])
     if not isinstance(normalized.get("stores"), dict):
