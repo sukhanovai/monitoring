@@ -210,6 +210,10 @@ def _normalize_iek_json_settings(value: Any) -> Dict[str, Any]:
     if isinstance(value, dict):
         settings = dict(value)
     normalized = _merge_dicts(DEFAULT_IEK_JSON_SETTINGS, settings)
+    if isinstance(settings.get("stores"), dict):
+        normalized["stores"] = dict(settings["stores"])
+    if isinstance(settings.get("outputs"), dict):
+        normalized["outputs"] = dict(settings["outputs"])
     if not isinstance(normalized.get("stores"), dict):
         normalized["stores"] = dict(DEFAULT_IEK_JSON_SETTINGS["stores"])
     if not isinstance(normalized.get("msk_stores"), list):
