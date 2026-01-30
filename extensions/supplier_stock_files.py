@@ -100,9 +100,9 @@ DEFAULT_IEK_JSON_SETTINGS: Dict[str, Any] = {
     "prefix": "IEK\\",
     "outputs": {
         "orig": "Остатки ИЭК.xlsx",
-        "msk": "РЦ и МСК/Остатки МСК.xls",
-        "nsk": "РЦ и МСК/Остатки РЦ.xls",
-        "orc": "{source_id}_orc.csv",
+        "msk": "МСК/Остатки МСК.xls",
+        "nsk": "РЦ/Остатки РЦ.xls",
+        "orc": "iek_4ork.csv",
     },
 }
 _LEGACY_IEK_OUTPUT_TEMPLATES = {
@@ -1118,10 +1118,24 @@ def _process_iek_json_file(
             ["Art", "Stor", "Quant", "Date"],
             orc_rows,
         )
-        outputs.append({"output": str(output_path), "orc_output": str(output_path), "rows": len(orc_rows)})
+        outputs.append({"orc_output": str(output_path), "rows": len(orc_rows)})
 
     results = [{"status": "success", "outputs": outputs}]
-    transfer_result = _transfer_processed_outputs(results, config, source_id, source_kind, original_path, now)
+    transfer_result = _transfer_processed_outputs(
+        results,
+        config,
+        source_id,
+        source_kind,
+        original_path,
+        now,
+        skip_original_transfer=True,
+    )
+    if original_path and original_path.exists():
+        archive_dir = _resolve_archive_dir(config, source_kind)
+        if archive_dir:
+            archive_path = _archive_original_file(original_path, archive_dir, now)
+            if archive_path:
+                transfer_result["archive_path"] = str(archive_path)
     return {
         "status": "success",
         "processor": "iek_json",
@@ -1140,6 +1154,7 @@ def _transfer_processed_outputs(
     source_kind: str | None,
     original_path: Path | None,
     now: datetime,
+    skip_original_transfer: bool = False,
 ) -> Dict[str, Any]:
     outputs, orc_outputs = _collect_processing_outputs(results)
     if not outputs and not original_path:
@@ -1165,20 +1180,29 @@ def _transfer_processed_outputs(
     )
     smbclient_path = _resolve_smbclient_path(config)
     transfer_entries = []
-    output_transfer = _transfer_files_to_targets(outputs, targets, upload_subdir, "output", smbclient_path)
+    transfer_base_dir = _resolve_transfer_base_dir(config, source_kind)
+    output_transfer = _transfer_files_to_targets(
+        outputs,
+        targets,
+        upload_subdir,
+        "output",
+        smbclient_path,
+        transfer_base_dir,
+    )
     transfer_entries.extend(output_transfer["items"])
     ftp_result = _upload_orc_outputs_to_ftp(orc_outputs, config.get("ftp_ork", {}))
     _cleanup_output_files(outputs, orc_outputs, output_transfer["status_map"], ftp_result)
 
     original_transfer = None
     archive_path = None
-    if original_path and original_path.exists():
+    if original_path and original_path.exists() and not skip_original_transfer:
         original_transfer = _transfer_files_to_targets(
             [original_path],
             targets,
             upload_subdir,
             "original",
             smbclient_path,
+            transfer_base_dir,
         )
         transfer_entries.extend(original_transfer["items"])
         if original_transfer["status_map"].get(str(original_path)):
@@ -1443,6 +1467,7 @@ def _transfer_files_to_targets(
     upload_subdir: str,
     label: str,
     smbclient_path: str | None,
+    base_dir: Path | None = None,
 ) -> Dict[str, Any]:
     transfer_entries: list[Dict[str, Any]] = []
     status_map: Dict[str, bool] = {}
@@ -1460,6 +1485,13 @@ def _transfer_files_to_targets(
             status_map[str(file_path)] = False
             continue
         target_results = []
+        relative_subdir = ""
+        if base_dir:
+            try:
+                relative_subdir = str(file_path.parent.relative_to(base_dir)).strip().strip("/\\")
+            except ValueError:
+                relative_subdir = ""
+        combined_subdir = "/".join(filter(None, [effective_subdir, relative_subdir]))
         for target in targets:
             unc_path = target.get("unc_path") or ""
             target_name = target.get("name") or target.get("id") or "resource"
@@ -1469,7 +1501,7 @@ def _transfer_files_to_targets(
                         _upload_file_via_smbclient(
                             file_path=file_path,
                             unc_path=unc_path,
-                            upload_subdir=effective_subdir,
+                            upload_subdir=combined_subdir,
                             target_name=target_name,
                             login=target.get("login"),
                             password=target.get("password"),
@@ -1479,7 +1511,7 @@ def _transfer_files_to_targets(
                     continue
                 local_unc_path = _resolve_local_path_from_unc(unc_path)
                 if local_unc_path:
-                    cleaned_subdir = str(effective_subdir or "").strip().lstrip("/\\")
+                    cleaned_subdir = str(combined_subdir or "").strip().lstrip("/\\")
                     target_dir = local_unc_path / cleaned_subdir if cleaned_subdir else local_unc_path
                     target_results.append(_copy_file_to_target_dir(file_path, target_dir))
                     continue
@@ -1496,7 +1528,7 @@ def _transfer_files_to_targets(
                     }
                 )
                 continue
-            target_dir = _compose_target_dir(unc_path, effective_subdir)
+            target_dir = _compose_target_dir(unc_path, combined_subdir)
             if not target_dir:
                 _log_processing(
                     "🧩 Пропуск выгрузки %s: не удалось определить UNC путь для ресурса %s",
@@ -1522,6 +1554,14 @@ def _transfer_files_to_targets(
             }
         )
     return {"items": transfer_entries, "status_map": status_map}
+
+
+def _resolve_transfer_base_dir(config: Dict[str, Any], source_kind: str | None) -> Path | None:
+    if source_kind == "download":
+        return Path(config.get("download", {}).get("temp_dir", DEFAULT_SUPPLIER_STOCK_CONFIG["download"]["temp_dir"]))
+    if source_kind == "mail":
+        return Path(config.get("mail", {}).get("temp_dir", DEFAULT_SUPPLIER_STOCK_CONFIG["mail"]["temp_dir"]))
+    return None
 
 
 def _build_upload_subdir(base_subdir: str) -> str:
