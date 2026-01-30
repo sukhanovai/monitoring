@@ -1661,9 +1661,10 @@ def _is_passive_mode_denied_error(exc: Exception) -> bool:
     message = str(exc).lower()
     return "passive mode denied" in message or "pasv" in message or message.startswith("451 ")
 
-def _upload_file_to_ftp(ftp: ftplib.FTP, orc_path: Path) -> None:
+def _upload_file_to_ftp(ftp: ftplib.FTP, orc_path: Path, remote_name: str | None = None) -> None:
+    target_name = remote_name or orc_path.name
     with orc_path.open("rb") as handle:
-        ftp.storbinary(f"STOR {orc_path.name}", handle)
+        ftp.storbinary(f"STOR {target_name}", handle)
 
 def _upload_orc_outputs_to_ftp(orc_outputs: list[Path], ftp_config: Dict[str, Any]) -> Dict[str, Any]:
     if not orc_outputs:
@@ -1696,31 +1697,32 @@ def _upload_orc_outputs_to_ftp(orc_outputs: list[Path], ftp_config: Dict[str, An
                 if not orc_path.exists():
                     results.append({"file": str(orc_path), "status": "error", "error": "file_not_found"})
                     continue
+                remote_name = "iek.csv" if orc_path.name == "iek_4ork.csv" else orc_path.name
                 try:
-                    _upload_file_to_ftp(ftp, orc_path)
-                    _log_processing("🧩 Выгружен ОРК файл %s на FTP %s", orc_path.name, host)
-                    results.append({"file": str(orc_path), "status": "success"})
+                    _upload_file_to_ftp(ftp, orc_path, remote_name)
+                    _log_processing("🧩 Выгружен ОРК файл %s на FTP %s", remote_name, host)
+                    results.append({"file": str(orc_path), "status": "success", "remote_name": remote_name})
                 except Exception as exc:
                     if passive and _is_passive_mode_denied_error(exc):
                         _log_processing(
                             "🧩 Пассивный режим FTP запрещен, повторяем в активном режиме для %s",
-                            orc_path.name,
+                            remote_name,
                         )
                         passive = False
                         ftp.set_pasv(False)
                         try:
-                            _upload_file_to_ftp(ftp, orc_path)
+                            _upload_file_to_ftp(ftp, orc_path, remote_name)
                             _log_processing(
                                 "🧩 Выгружен ОРК файл %s на FTP %s (активный режим)",
-                                orc_path.name,
+                                remote_name,
                                 host,
                             )
-                            results.append({"file": str(orc_path), "status": "success"})
+                            results.append({"file": str(orc_path), "status": "success", "remote_name": remote_name})
                         except Exception as retry_exc:
-                            _log_processing("🧩 Ошибка выгрузки ОРК %s по FTP: %s", orc_path.name, retry_exc)
+                            _log_processing("🧩 Ошибка выгрузки ОРК %s по FTP: %s", remote_name, retry_exc)
                             results.append({"file": str(orc_path), "status": "error", "error": str(retry_exc)})
                     else:
-                        _log_processing("🧩 Ошибка выгрузки ОРК %s по FTP: %s", orc_path.name, exc)
+                        _log_processing("🧩 Ошибка выгрузки ОРК %s по FTP: %s", remote_name, exc)
                         results.append({"file": str(orc_path), "status": "error", "error": str(exc)})
     except Exception as exc:
         _log_processing("🧩 Ошибка подключения к FTP ОРК: %s", exc)
