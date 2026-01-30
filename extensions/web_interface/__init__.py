@@ -17,11 +17,13 @@ from config.settings import STATS_FILE
 from extensions.extension_manager import extension_manager
 from extensions.supplier_stock_files import (
     SUPPLIER_STOCK_EXTENSION_ID,
+    build_supplier_stock_source_stats,
     get_supplier_stock_config,
     get_supplier_stock_reports,
     run_supplier_stock_fetch,
     save_supplier_stock_config,
     start_supplier_stock_scheduler,
+    summarize_supplier_stock_reports,
     summarize_supplier_stock_sources,
 )
 import threading
@@ -182,6 +184,85 @@ HTML_TEMPLATE = """
         .server-item.warning {
             border-left-color: #FFC107;
             background: rgba(80, 70, 40, 0.8);
+        }
+        .supplier-report-tabs {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+        .supplier-report-tabs .btn.active {
+            background: #667eea;
+            color: #fff;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.4);
+        }
+        .supplier-report-group {
+            display: none;
+        }
+        .supplier-report-group.active {
+            display: block;
+        }
+        .status-flags {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+            font-size: 0.9em;
+            color: #ccc;
+        }
+        .status-flag {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(20, 20, 30, 0.4);
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+        .supplier-details {
+            font-size: 0.85em;
+            color: #9fa6b2;
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .modal {
+            background: rgba(30, 30, 40, 0.95);
+            padding: 20px;
+            border-radius: 12px;
+            width: min(720px, 90vw);
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 1px solid #555;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .modal-list {
+            margin-top: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .modal-item {
+            padding: 10px;
+            border-radius: 8px;
+            background: rgba(50, 50, 60, 0.7);
+            border-left: 3px solid #667eea;
         }
         .server-info {
             flex: 1;
@@ -558,6 +639,12 @@ HTML_TEMPLATE = """
                         <input type="time" id="supplierScheduleTime" value="{{ supplier_stock.schedule_time_value }}"
                                style="padding: 8px; border-radius: 6px; border: 1px solid #555; background: rgba(60,60,70,0.8); color: white;">
                         <label style="display: flex; align-items: center; gap: 6px;">
+                            Период (дней):
+                            <input type="number" id="supplierReportPeriod" min="1" value="{{ supplier_stock.report_period_days }}"
+                                   style="padding: 8px; border-radius: 6px; border: 1px solid #555; background: rgba(60,60,70,0.8); color: white; width: 110px;"
+                                   title="Период отчетов (дней)" placeholder="Дней">
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px;">
                             <input type="checkbox" id="supplierScheduleEnabled" {% if supplier_stock.schedule_enabled %}checked{% endif %}>
                             Включено
                         </label>
@@ -591,34 +678,76 @@ HTML_TEMPLATE = """
             </div>
 
             <div class="card" style="margin-top: 20px;">
-                <h2>📋 Отчеты получения</h2>
-                {% if supplier_stock.reports %}
-                <div class="server-list">
-                    {% for report in supplier_stock.reports %}
-                    <div class="server-item {% if report.status == 'error' %}down{% endif %}">
-                        <div class="server-info">
-                            <div class="server-name">{{ report.source_name or report.source_id }}</div>
-                            <div class="server-details">{{ report.timestamp }}</div>
-                            <div class="server-details">
-                                Статус: {{ '✅' if report.status == 'success' else '❌' }} {{ report.status }}
-                            </div>
-                            {% if report.path %}
-                            <div class="server-details">Файл: {{ report.path }}</div>
-                            {% endif %}
-                            {% if report.error %}
-                            <div class="server-details">Ошибка: {{ report.error }}</div>
-                            {% endif %}
-                        </div>
-                    </div>
-                    {% endfor %}
+                <h2>📋 Результаты остатков поставщиков</h2>
+                <div class="supplier-details" style="margin-bottom: 10px;">
+                    Период: {{ supplier_stock.report_period_days }} дн.
                 </div>
-                {% else %}
-                <div class="stat-item">Отчеты пока не сформированы.</div>
-                {% endif %}
+                <div class="supplier-report-tabs">
+                    <button class="btn btn-info active" onclick="switchSupplierReports('download')">⬇️ Полученные скачиванием</button>
+                    <button class="btn btn-info" onclick="switchSupplierReports('mail')">✉️ Полученные по почте</button>
+                </div>
+                <div id="supplier-report-download" class="supplier-report-group active">
+                    {% if supplier_stock.report_groups.download %}
+                    <div class="server-list">
+                        {% for report in supplier_stock.report_groups.download %}
+                        <div class="server-item">
+                            <div class="server-info">
+                                <div class="server-name">{{ report.source_name }}</div>
+                                <div class="supplier-details">Последнее обновление: {{ report.timestamp or 'нет данных' }}</div>
+                                {% if report.method %}
+                                <div class="supplier-details">Метод: {{ report.method }}</div>
+                                {% endif %}
+                                <div class="status-flags">
+                                    <div class="status-flag">{{ report.receive.icon }} Получение</div>
+                                    <div class="status-flag">{{ report.processing.icon }} Обработка</div>
+                                    <div class="status-flag">{{ report.transfer.icon }} Выгрузка</div>
+                                </div>
+                            </div>
+                            <button class="btn btn-info" onclick="showSupplierSourceStats('{{ report.source_id }}', '{{ report.source_kind }}')">📊 Детали</button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="stat-item">Нет данных за период по скачиванию.</div>
+                    {% endif %}
+                </div>
+                <div id="supplier-report-mail" class="supplier-report-group">
+                    {% if supplier_stock.report_groups.mail %}
+                    <div class="server-list">
+                        {% for report in supplier_stock.report_groups.mail %}
+                        <div class="server-item">
+                            <div class="server-info">
+                                <div class="server-name">{{ report.source_name }}</div>
+                                <div class="supplier-details">Последнее обновление: {{ report.timestamp or 'нет данных' }}</div>
+                                <div class="status-flags">
+                                    <div class="status-flag">{{ report.receive.icon }} Получение</div>
+                                    <div class="status-flag">{{ report.processing.icon }} Обработка</div>
+                                    <div class="status-flag">{{ report.transfer.icon }} Выгрузка</div>
+                                </div>
+                            </div>
+                            <button class="btn btn-info" onclick="showSupplierSourceStats('{{ report.source_id }}', '{{ report.source_kind }}')">📊 Детали</button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="stat-item">Нет данных за период по почте.</div>
+                    {% endif %}
+                </div>
             </div>
         </div>
         {% endif %}
         
+        <div id="supplierStatsModal" class="modal-overlay" onclick="closeSupplierSourceStats(event)">
+            <div class="modal" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h3 id="supplierStatsTitle">Статистика источника</h3>
+                    <button class="btn btn-danger" onclick="closeSupplierSourceStats()">✖</button>
+                </div>
+                <div id="supplierStatsSummary" class="supplier-details"></div>
+                <div id="supplierStatsEntries" class="modal-list"></div>
+            </div>
+        </div>
+
         <button class="refresh-btn" onclick="location.reload()">🔄 Обновить данные</button>
         
         <div class="last-update">
@@ -704,6 +833,7 @@ HTML_TEMPLATE = """
         function saveSupplierSchedule() {
             const timeInput = document.getElementById('supplierScheduleTime');
             const enabledInput = document.getElementById('supplierScheduleEnabled');
+            const periodInput = document.getElementById('supplierReportPeriod');
             if (!timeInput || !enabledInput) {
                 addLog('⚠️ Элементы расписания не найдены');
                 return;
@@ -713,6 +843,9 @@ HTML_TEMPLATE = """
                 time: timeInput.value,
                 enabled: enabledInput.checked
             };
+            if (periodInput) {
+                payload.report_period_days = parseInt(periodInput.value, 10);
+            }
 
             fetch('/api/supplier_stock/schedule', {
                 method: 'POST',
@@ -729,6 +862,87 @@ HTML_TEMPLATE = """
                 .catch(error => {
                     addLog(`Ошибка: ${error}`);
                 });
+        }
+
+        function switchSupplierReports(kind) {
+            document.querySelectorAll('.supplier-report-group').forEach(group => {
+                group.classList.remove('active');
+            });
+            document.querySelectorAll('.supplier-report-tabs .btn').forEach(button => {
+                button.classList.remove('active');
+            });
+            const target = document.getElementById(`supplier-report-${kind}`);
+            if (target) {
+                target.classList.add('active');
+            }
+            const button = document.querySelector(`.supplier-report-tabs .btn[onclick*="${kind}"]`);
+            if (button) {
+                button.classList.add('active');
+            }
+        }
+
+        function showSupplierSourceStats(sourceId, sourceKind) {
+            const modal = document.getElementById('supplierStatsModal');
+            const title = document.getElementById('supplierStatsTitle');
+            const summary = document.getElementById('supplierStatsSummary');
+            const entriesContainer = document.getElementById('supplierStatsEntries');
+            if (!modal || !title || !summary || !entriesContainer) {
+                addLog('⚠️ Окно статистики недоступно');
+                return;
+            }
+            title.textContent = `Статистика: ${sourceId}`;
+            summary.textContent = 'Загрузка...';
+            entriesContainer.innerHTML = '';
+            modal.classList.add('active');
+
+            const params = new URLSearchParams({
+                source_id: sourceId,
+                source_kind: sourceKind
+            });
+            fetch(`/api/supplier_stock/source_stats?${params.toString()}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.success) {
+                        summary.textContent = data.message || 'Ошибка загрузки статистики';
+                        return;
+                    }
+                    const stats = data.stats || {};
+                    summary.innerHTML = `
+                        Период: ${data.period_days} дн. • Всего: ${stats.total || 0}
+                        • Получено ✅ ${stats.receive_success || 0} / ❌ ${stats.receive_error || 0}
+                        • Обработка ✅ ${stats.processing_success || 0} / ❌ ${stats.processing_error || 0}
+                        • Выгрузка ✅ ${stats.transfer_success || 0} / ❌ ${stats.transfer_error || 0}
+                    `;
+                    const entries = data.entries || [];
+                    if (!entries.length) {
+                        entriesContainer.innerHTML = '<div class="stat-item">Нет записей за период.</div>';
+                        return;
+                    }
+                    entriesContainer.innerHTML = entries.map(entry => `
+                        <div class="modal-item">
+                            <div class="server-details">${entry.timestamp || '—'}</div>
+                            <div class="status-flags">
+                                <div class="status-flag">${entry.receive.icon} Получение</div>
+                                <div class="status-flag">${entry.processing.icon} Обработка</div>
+                                <div class="status-flag">${entry.transfer.icon} Выгрузка</div>
+                            </div>
+                            ${entry.error ? `<div class="server-details">Ошибка: ${entry.error}</div>` : ''}
+                        </div>
+                    `).join('');
+                })
+                .catch(error => {
+                    summary.textContent = `Ошибка: ${error}`;
+                });
+        }
+
+        function closeSupplierSourceStats(event) {
+            if (event && event.target !== event.currentTarget) {
+                return;
+            }
+            const modal = document.getElementById('supplierStatsModal');
+            if (modal) {
+                modal.classList.remove('active');
+            }
         }
         
         // Вспомогательные функции
@@ -1012,13 +1226,15 @@ def index():
             download = config.get("download", {})
             schedule = download.get("schedule", {})
             schedule_time = schedule.get("time", "")
+            period_days = config.get("reporting", {}).get("period_days", 7)
             supplier_stock = {
                 "schedule_status": "🟢 Включено" if schedule.get("enabled") else "🔴 Выключено",
                 "schedule_time": schedule_time or "не задано",
                 "schedule_time_value": schedule_time or "",
                 "schedule_enabled": bool(schedule.get("enabled")),
+                "report_period_days": period_days,
                 "sources": summarize_supplier_stock_sources(download.get("sources", [])),
-                "reports": get_supplier_stock_reports(20),
+                "report_groups": summarize_supplier_stock_reports(period_days),
             }
 
         return render_template_string(
@@ -1137,6 +1353,7 @@ def api_supplier_stock_schedule():
     data = request.json or {}
     time_value = str(data.get("time", "")).strip()
     enabled_value = bool(data.get("enabled", False))
+    report_period_days = data.get("report_period_days")
 
     if time_value and not re.match(r'^\\d{1,2}:\\d{2}$', time_value):
         return jsonify({"success": False, "message": "❌ Неверный формат времени. Используйте HH:MM"})
@@ -1144,6 +1361,11 @@ def api_supplier_stock_schedule():
     schedule["time"] = time_value or schedule.get("time", "")
     schedule["enabled"] = enabled_value
     config["download"]["schedule"] = schedule
+    if report_period_days is not None:
+        try:
+            config.setdefault("reporting", {})["period_days"] = int(str(report_period_days).strip())
+        except (TypeError, ValueError):
+            pass
     save_supplier_stock_config(config)
 
     return jsonify({"success": True, "message": "✅ Расписание обновлено", "schedule": schedule})
@@ -1154,9 +1376,45 @@ def api_supplier_stock_reports():
     if not extension_manager.is_extension_enabled(SUPPLIER_STOCK_EXTENSION_ID):
         return jsonify({"success": False, "message": "📦 Модуль остатков поставщиков отключен"})
 
-    limit = int(request.args.get('limit', 20))
-    reports = get_supplier_stock_reports(limit)
+    limit = request.args.get('limit')
+    try:
+        limit_value = int(limit) if limit is not None else 20
+    except ValueError:
+        limit_value = 20
+    period_days = request.args.get('period_days')
+    try:
+        period_value = int(period_days) if period_days else None
+    except ValueError:
+        period_value = None
+    source_id = request.args.get('source_id')
+    source_kind = request.args.get('source_kind')
+    reports = get_supplier_stock_reports(
+        limit_value,
+        period_value,
+        source_id=source_id,
+        source_kind=source_kind,
+    )
     return jsonify({"success": True, "reports": reports})
+
+@app.route('/api/supplier_stock/source_stats')
+def api_supplier_stock_source_stats():
+    """API для получения детальной статистики по источнику остатков."""
+    if not extension_manager.is_extension_enabled(SUPPLIER_STOCK_EXTENSION_ID):
+        return jsonify({"success": False, "message": "📦 Модуль остатков поставщиков отключен"})
+
+    source_id = request.args.get("source_id")
+    source_kind = request.args.get("source_kind")
+    if not source_id:
+        return jsonify({"success": False, "message": "❌ Не указан источник"})
+    config = get_supplier_stock_config()
+    period_days = config.get("reporting", {}).get("period_days", 7)
+    stats = build_supplier_stock_source_stats(source_id, source_kind, period_days)
+    return jsonify({
+        "success": True,
+        "period_days": period_days,
+        "stats": stats.get("summary", {}),
+        "entries": stats.get("entries", []),
+    })
 
 @app.route('/api/status')
 def api_status():

@@ -79,6 +79,9 @@ DEFAULT_SUPPLIER_STOCK_CONFIG: Dict[str, Any] = {
         "rules": [],
         "date_format": "%Y-%m-%d %H:%M",
     },
+    "reporting": {
+        "period_days": 7,
+    },
 }
 
 DEFAULT_IEK_JSON_SETTINGS: Dict[str, Any] = {
@@ -186,6 +189,11 @@ def normalize_supplier_stock_config(config: Dict[str, Any] | None) -> Dict[str, 
             if isinstance(rule, dict):
                 rule.setdefault("enabled", True)
                 rule["requires_processing"] = _normalize_requires_processing(rule.get("requires_processing", True))
+    reporting = merged.get("reporting", {})
+    if not isinstance(reporting, dict):
+        reporting = {}
+    reporting["period_days"] = _normalize_report_period_days(reporting.get("period_days", 7))
+    merged["reporting"] = reporting
     return merged
 
 
@@ -203,6 +211,14 @@ def _normalize_requires_processing(value: Any) -> bool:
         if lowered in ("true", "1", "yes", "да", "on"):
             return True
     return bool(value)
+
+
+def _normalize_report_period_days(value: Any) -> int:
+    try:
+        period = int(str(value).strip())
+    except (TypeError, ValueError):
+        return 7
+    return 1 if period < 1 else period
 
 
 def _normalize_iek_json_settings(value: Any) -> Dict[str, Any]:
@@ -546,7 +562,7 @@ def append_supplier_stock_report(entry: Dict[str, Any]) -> None:
         file.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
 
-def get_supplier_stock_reports(limit: int = 20) -> List[Dict[str, Any]]:
+def _load_supplier_stock_reports() -> List[Dict[str, Any]]:
     config = get_supplier_stock_config()
     reports_file = Path(config["download"]["reports_file"])
     if not reports_file.exists():
@@ -562,8 +578,51 @@ def get_supplier_stock_reports(limit: int = 20) -> List[Dict[str, Any]]:
                 entries.append(json.loads(line))
             except json.JSONDecodeError:
                 continue
+    return entries
 
-    return entries[-limit:][::-1]
+def _parse_report_timestamp(entry: Dict[str, Any]) -> datetime | None:
+    raw = entry.get("timestamp")
+    if not raw:
+        return None
+    if isinstance(raw, datetime):
+        return raw
+    try:
+        return datetime.fromisoformat(str(raw))
+    except ValueError:
+        return None
+
+
+def _filter_supplier_stock_reports(
+    entries: List[Dict[str, Any]],
+    period_days: int | None = None,
+    source_id: str | None = None,
+    source_kind: str | None = None,
+) -> List[Dict[str, Any]]:
+    filtered = entries
+    if source_id:
+        filtered = [entry for entry in filtered if str(entry.get("source_id")) == str(source_id)]
+    if source_kind:
+        filtered = [entry for entry in filtered if str(entry.get("source_kind")) == str(source_kind)]
+    if period_days and period_days > 0:
+        cutoff = datetime.now() - timedelta(days=period_days)
+        filtered = [
+            entry for entry in filtered
+            if (_parse_report_timestamp(entry) or datetime.min) >= cutoff
+        ]
+    return filtered
+
+
+def get_supplier_stock_reports(
+    limit: int | None = 20,
+    period_days: int | None = None,
+    source_id: str | None = None,
+    source_kind: str | None = None,
+) -> List[Dict[str, Any]]:
+    entries = _load_supplier_stock_reports()
+    filtered = _filter_supplier_stock_reports(entries, period_days, source_id, source_kind)
+    if limit is None:
+        return filtered[::-1]
+    return filtered[-limit:][::-1]
 
 
 def get_supplier_stock_reports_total() -> int:
@@ -585,6 +644,129 @@ def get_supplier_stock_reports_total() -> int:
             total += 1
 
     return total
+
+
+def _map_stage_status(value: str | None) -> Dict[str, str]:
+    status = (value or "").lower()
+    if status in ("success", "ok", "done"):
+        return {"status": "success", "icon": "🟢"}
+    if status in ("error", "failed", "fail"):
+        return {"status": "error", "icon": "🔴"}
+    if status in ("skipped", "skip", "warning"):
+        return {"status": "warning", "icon": "🟡"}
+    return {"status": "unknown", "icon": "⚪️"}
+
+
+def _extract_processing_status(processing: Dict[str, Any] | None) -> str | None:
+    if not isinstance(processing, dict):
+        return None
+    status = processing.get("status")
+    if status:
+        return str(status)
+    if processing.get("results") or processing.get("rules") or processing.get("processor"):
+        return "success"
+    return None
+
+
+def _extract_transfer_status(processing: Dict[str, Any] | None) -> str | None:
+    if not isinstance(processing, dict):
+        return None
+    transfer = processing.get("transfer")
+    if not isinstance(transfer, dict):
+        return None
+    status = transfer.get("status")
+    return str(status) if status else None
+
+
+def summarize_supplier_stock_reports(period_days: int | None = None) -> Dict[str, List[Dict[str, Any]]]:
+    entries = get_supplier_stock_reports(limit=None, period_days=period_days)
+    grouped: Dict[str, Dict[str, Dict[str, Any]]] = {
+        "download": {},
+        "mail": {},
+    }
+    for entry in entries:
+        source_id = entry.get("source_id") or entry.get("source_name") or "unknown"
+        source_kind = entry.get("source_kind") or "download"
+        if source_kind not in grouped:
+            grouped[source_kind] = {}
+        if source_id in grouped[source_kind]:
+            continue
+        processing = entry.get("processing") if isinstance(entry.get("processing"), dict) else None
+        receive_status = _map_stage_status(str(entry.get("status") or ""))
+        processing_status = _map_stage_status(_extract_processing_status(processing))
+        transfer_status = _map_stage_status(_extract_transfer_status(processing))
+        grouped[source_kind][source_id] = {
+            "source_id": source_id,
+            "source_name": entry.get("source_name") or source_id,
+            "source_kind": source_kind,
+            "method": entry.get("method"),
+            "timestamp": entry.get("timestamp"),
+            "receive": receive_status,
+            "processing": processing_status,
+            "transfer": transfer_status,
+        }
+    return {kind: list(items.values()) for kind, items in grouped.items()}
+
+
+def build_supplier_stock_source_stats(
+    source_id: str,
+    source_kind: str | None,
+    period_days: int | None = None,
+    limit: int = 50,
+) -> Dict[str, Any]:
+    entries = get_supplier_stock_reports(
+        limit=None,
+        period_days=period_days,
+        source_id=source_id,
+        source_kind=source_kind,
+    )
+    summary = {
+        "total": len(entries),
+        "receive_success": 0,
+        "receive_error": 0,
+        "processing_success": 0,
+        "processing_error": 0,
+        "transfer_success": 0,
+        "transfer_error": 0,
+    }
+    for entry in entries:
+        processing = entry.get("processing") if isinstance(entry.get("processing"), dict) else None
+        receive_status = _map_stage_status(str(entry.get("status") or ""))
+        processing_status = _map_stage_status(_extract_processing_status(processing))
+        transfer_status = _map_stage_status(_extract_transfer_status(processing))
+        if receive_status["status"] == "success":
+            summary["receive_success"] += 1
+        if receive_status["status"] == "error":
+            summary["receive_error"] += 1
+        if processing_status["status"] == "success":
+            summary["processing_success"] += 1
+        if processing_status["status"] == "error":
+            summary["processing_error"] += 1
+        if transfer_status["status"] == "success":
+            summary["transfer_success"] += 1
+        if transfer_status["status"] == "error":
+            summary["transfer_error"] += 1
+    detailed = []
+    limited_entries = entries[:limit]
+    for entry in limited_entries:
+        processing = entry.get("processing") if isinstance(entry.get("processing"), dict) else None
+        receive_status = _map_stage_status(str(entry.get("status") or ""))
+        processing_status = _map_stage_status(_extract_processing_status(processing))
+        transfer_status = _map_stage_status(_extract_transfer_status(processing))
+        detailed.append(
+            {
+                "timestamp": entry.get("timestamp"),
+                "receive": receive_status,
+                "processing": processing_status,
+                "transfer": transfer_status,
+                "path": entry.get("path"),
+                "error": entry.get("error"),
+            }
+        )
+    return {
+        "summary": summary,
+        "entries": detailed,
+    }
 
 
 def process_supplier_stock_file(
