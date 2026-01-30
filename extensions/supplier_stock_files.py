@@ -81,6 +81,31 @@ DEFAULT_SUPPLIER_STOCK_CONFIG: Dict[str, Any] = {
     },
 }
 
+DEFAULT_IEK_JSON_SETTINGS: Dict[str, Any] = {
+    "stores": {
+        "sherbinka": "47585e53-0113-11e0-8255-003048d2334c",
+        "chehov": "238cf439-2a81-11ec-a958-00155d04ac08",
+        "novosibirsk": "d664f8a2-7edb-11e5-80d6-00155d0047b0",
+        "yasnogorsky": "aeef2063-c1e7-11d9-b0d7-00001a1a02c3",
+        "dmd": "d8879932-a371-11ec-b3de-3c7c3fd5bba6",
+    },
+    "msk_stores": ["sherbinka", "chehov", "yasnogorsky", "dmd"],
+    "nsk_store": "novosibirsk",
+    "orc_stores": [
+        {"key": "novosibirsk", "stor": "IE01"},
+        {"key": "dmd", "stor": "IE02"},
+        {"key": "yasnogorsky", "stor": "IE03"},
+        {"key": "sherbinka", "stor": "IE04"},
+    ],
+    "prefix": "IEK\\",
+    "outputs": {
+        "orig": "{source_id}_orig.xlsx",
+        "msk": "{source_id}_msk.xls",
+        "nsk": "{source_id}_nsk.xls",
+        "orc": "{source_id}_orc.csv",
+    },
+}
+
 _scheduler_lock = threading.Lock()
 _scheduler_started = False
 _last_run_marker: str | None = None
@@ -128,12 +153,15 @@ def normalize_supplier_stock_config(config: Dict[str, Any] | None) -> Dict[str, 
             if isinstance(source, dict):
                 source.setdefault("enabled", True)
                 source.setdefault("upload_subdir", "")
+                source.setdefault("processing_mode", "table")
                 if not isinstance(source.get("individual_directory"), dict):
                     source["individual_directory"] = {}
                 source["individual_directory"].setdefault("enabled", False)
                 source["individual_directory"].setdefault("unc_path", "")
                 source["individual_directory"].setdefault("login", "")
                 source["individual_directory"].setdefault("password", "")
+                if source.get("processing_mode") == "iek_json":
+                    source["iek_json"] = _normalize_iek_json_settings(source.get("iek_json"))
     mail_sources = merged.get("mail", {}).get("sources", [])
     if isinstance(mail_sources, list):
         for source in mail_sources:
@@ -169,6 +197,22 @@ def _normalize_requires_processing(value: Any) -> bool:
         if lowered in ("true", "1", "yes", "да", "on"):
             return True
     return bool(value)
+
+
+def _normalize_iek_json_settings(value: Any) -> Dict[str, Any]:
+    settings: Dict[str, Any] = {}
+    if isinstance(value, dict):
+        settings = dict(value)
+    normalized = _merge_dicts(DEFAULT_IEK_JSON_SETTINGS, settings)
+    if not isinstance(normalized.get("stores"), dict):
+        normalized["stores"] = dict(DEFAULT_IEK_JSON_SETTINGS["stores"])
+    if not isinstance(normalized.get("msk_stores"), list):
+        normalized["msk_stores"] = list(DEFAULT_IEK_JSON_SETTINGS["msk_stores"])
+    if not isinstance(normalized.get("orc_stores"), list):
+        normalized["orc_stores"] = list(DEFAULT_IEK_JSON_SETTINGS["orc_stores"])
+    if not isinstance(normalized.get("outputs"), dict):
+        normalized["outputs"] = dict(DEFAULT_IEK_JSON_SETTINGS["outputs"])
+    return normalized
 
 
 def get_supplier_stock_config() -> Dict[str, Any]:
@@ -225,6 +269,18 @@ def _render_template(value: str, now: datetime, extra_context: Dict[str, Any] | 
         lambda m: str(context.get(m.group("key"), m.group(0))),
         rendered,
     )
+
+
+def _render_iek_output_template(value: str, now: datetime, source_id: str | None) -> str:
+    context = {"source_id": source_id or ""}
+    return _render_template(value, now, context)
+
+
+def _detect_output_format(filename: str) -> str:
+    suffix = Path(filename).suffix.lower().lstrip(".")
+    if suffix in ("xls", "xlsx", "csv"):
+        return suffix
+    return "csv"
 
 
 def _build_render_context(source: Dict[str, Any], now: datetime) -> Dict[str, Any]:
@@ -600,15 +656,25 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
                         entry["unpacked_path"] = str(unpacked_path)
                         output_path = unpacked_path
                         _log("📦 Остатки поставщиков: %s распакован в %s", entry["source_id"], unpacked_path)
-                processing_result = _process_supplier_stock_file(
-                    output_path,
-                    config,
-                    now,
-                    source_id,
-                    "download",
-                    1,
-                    original_path,
-                )
+                if source.get("processing_mode") == "iek_json":
+                    processing_result = _process_iek_json_file(
+                        output_path,
+                        config,
+                        now,
+                        source_id,
+                        "download",
+                        original_path,
+                    )
+                else:
+                    processing_result = _process_supplier_stock_file(
+                        output_path,
+                        config,
+                        now,
+                        source_id,
+                        "download",
+                        1,
+                        original_path,
+                    )
                 if processing_result:
                     entry["processing"] = processing_result
                 else:
@@ -906,6 +972,144 @@ def _process_supplier_stock_file(
 
     return {
         "rules": matched_rules,
+        "results": results,
+        "transfer": transfer_result,
+        "source_id": source_id,
+        "source_kind": source_kind,
+        "file": str(file_path),
+    }
+
+
+def _process_iek_json_file(
+    file_path: Path,
+    config: Dict[str, Any],
+    now: datetime,
+    source_id: str | None,
+    source_kind: str | None,
+    original_path: Path | None,
+) -> Dict[str, Any] | None:
+    source = _resolve_source_entry(config, source_id, source_kind)
+    iek_settings = _normalize_iek_json_settings((source or {}).get("iek_json"))
+    store_map = iek_settings.get("stores", {})
+    if not store_map:
+        return {"status": "error", "error": "iek_json: stores не заданы"}
+
+    try:
+        payload = json.loads(file_path.read_text(encoding="utf-8", errors="ignore"))
+    except json.JSONDecodeError as exc:
+        return {"status": "error", "error": f"iek_json: invalid_json ({exc})"}
+
+    items = payload.get("shopItems", [])
+    if not isinstance(items, list):
+        return {"status": "error", "error": "iek_json: shopItems не найден"}
+
+    def _get_residue(row: dict, key: str) -> int:
+        store_id = store_map.get(key)
+        if not store_id:
+            return 0
+        residues = row.get("residues", {}) if isinstance(row, dict) else {}
+        value = residues.get(store_id, 0) if isinstance(residues, dict) else 0
+        return _parse_iek_quantity(value)
+
+    orig_rows: list[list[str]] = []
+    msk_rows: list[list[str]] = []
+    nsk_rows: list[list[str]] = []
+    orc_rows: list[list[str]] = []
+    msk_keys = list(iek_settings.get("msk_stores", []))
+    nsk_key = iek_settings.get("nsk_store")
+    orc_stores = list(iek_settings.get("orc_stores", []))
+    prefix = str(iek_settings.get("prefix", ""))
+    date_text = now.strftime(config.get("processing", {}).get("date_format", "%Y-%m-%d %H:%M"))
+
+    for row in items:
+        if not isinstance(row, dict):
+            continue
+        sku = str(row.get("sku") or "").strip()
+        if not sku:
+            continue
+        sherbinka = _get_residue(row, "sherbinka")
+        chehov = _get_residue(row, "chehov")
+        novosibirsk = _get_residue(row, "novosibirsk")
+        yasnogorsky = _get_residue(row, "yasnogorsky")
+        dmd = _get_residue(row, "dmd")
+        orig_rows.append([
+            sku,
+            str(sherbinka),
+            str(chehov),
+            str(novosibirsk),
+            str(yasnogorsky),
+            str(dmd),
+        ])
+
+        msk_value = sum(_get_residue(row, key) for key in msk_keys)
+        msk_rows.append([sku, str(msk_value)])
+
+        if nsk_key:
+            nsk_rows.append([sku, str(_get_residue(row, nsk_key))])
+
+        for entry in orc_stores:
+            if not isinstance(entry, dict):
+                continue
+            orc_key = entry.get("key")
+            stor = entry.get("stor")
+            if not orc_key or not stor:
+                continue
+            quantity = _get_residue(row, orc_key)
+            if quantity <= 0:
+                continue
+            orc_rows.append([f"{prefix}{sku}", str(stor), str(quantity), date_text])
+
+    outputs: list[Dict[str, Any]] = []
+    output_names = iek_settings.get("outputs", {})
+    orig_output = _render_iek_output_template(str(output_names.get("orig", "")), now, source_id)
+    if orig_output:
+        output_path = _resolve_output_path(file_path.parent, orig_output, _detect_output_format(orig_output))
+        _write_output_file(
+            output_path,
+            output_path.suffix.lstrip(".").lower(),
+            ["Art", "sherbinka", "chehov", "novosibirsk", "yasnogorsky", "dmd"],
+            orig_rows,
+        )
+        outputs.append({"output": str(output_path), "rows": len(orig_rows)})
+
+    msk_output = _render_iek_output_template(str(output_names.get("msk", "")), now, source_id)
+    if msk_output:
+        output_path = _resolve_output_path(file_path.parent, msk_output, _detect_output_format(msk_output))
+        _write_output_file(
+            output_path,
+            output_path.suffix.lstrip(".").lower(),
+            ["Art.", "Quant."],
+            msk_rows,
+        )
+        outputs.append({"output": str(output_path), "rows": len(msk_rows)})
+
+    nsk_output = _render_iek_output_template(str(output_names.get("nsk", "")), now, source_id)
+    if nsk_output:
+        output_path = _resolve_output_path(file_path.parent, nsk_output, _detect_output_format(nsk_output))
+        _write_output_file(
+            output_path,
+            output_path.suffix.lstrip(".").lower(),
+            ["Art.", "Quant."],
+            nsk_rows,
+        )
+        outputs.append({"output": str(output_path), "rows": len(nsk_rows)})
+
+    orc_output = _render_iek_output_template(str(output_names.get("orc", "")), now, source_id)
+    if orc_output:
+        output_path = _resolve_output_path(file_path.parent, orc_output, _detect_output_format(orc_output))
+        _write_output_file(
+            output_path,
+            output_path.suffix.lstrip(".").lower(),
+            ["Art", "Stor", "Quant", "Date"],
+            orc_rows,
+        )
+        outputs.append({"output": str(output_path), "orc_output": str(output_path), "rows": len(orc_rows)})
+
+    results = [{"status": "success", "outputs": outputs}]
+    transfer_result = _transfer_processed_outputs(results, config, source_id, source_kind, original_path, now)
+    return {
+        "status": "success",
+        "processor": "iek_json",
         "results": results,
         "transfer": transfer_result,
         "source_id": source_id,
@@ -1330,6 +1534,29 @@ def _resolve_source_name(
         if str(item.get("id")) == str(source_id) or str(item.get("name")) == str(source_id):
             name = str(item.get("name") or "").strip()
             return name or None
+    return None
+
+
+def _resolve_source_entry(
+    config: Dict[str, Any],
+    source_id: str | None,
+    source_kind: str | None,
+) -> Dict[str, Any] | None:
+    if not source_id:
+        return None
+    sources: list[Dict[str, Any]] = []
+    if source_kind == "download":
+        sources = config.get("download", {}).get("sources", [])
+    elif source_kind == "mail":
+        sources = config.get("mail", {}).get("sources", [])
+    else:
+        sources = [
+            *config.get("download", {}).get("sources", []),
+            *config.get("mail", {}).get("sources", []),
+        ]
+    for item in sources:
+        if str(item.get("id")) == str(source_id) or str(item.get("name")) == str(source_id):
+            return item
     return None
 
 
@@ -1956,6 +2183,29 @@ def _parse_quantity(value: str) -> str | None:
     if number.is_integer():
         return str(int(number))
     return str(number)
+
+
+def _parse_iek_quantity(value: Any) -> int:
+    if value is None:
+        return 0
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, int):
+        return max(0, value)
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            return 0
+        return max(0, int(value))
+    text = str(value).strip().replace(" ", "").replace(",", ".")
+    if not text:
+        return 0
+    try:
+        number = float(text)
+    except ValueError:
+        return 0
+    if not math.isfinite(number) or number <= 0:
+        return 0
+    return int(number)
 
 
 def _apply_article_postfix(article: str, postfix: str) -> str:

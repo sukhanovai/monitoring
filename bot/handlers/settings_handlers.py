@@ -1455,6 +1455,12 @@ def settings_callback_handler(update, context):
         elif data.startswith('supplier_stock_source_field|'):
             _, source_id, field = data.split('|', 2)
             supplier_stock_start_source_field_edit(update, context, source_id, field)
+        elif data.startswith('supplier_stock_source_iek_settings|'):
+            source_id = data.split('|', 1)[1]
+            show_supplier_stock_source_iek_settings(update, context, source_id)
+        elif data.startswith('supplier_stock_source_iek_field|'):
+            _, source_id, field = data.split('|', 2)
+            supplier_stock_start_source_iek_field_edit(update, context, source_id, field)
         elif data.startswith('supplier_stock_source_individual_toggle_'):
             source_id = data.replace('supplier_stock_source_individual_toggle_', '')
             config = get_supplier_stock_config()
@@ -2927,6 +2933,13 @@ def _supplier_stock_transfer_status(transfer: dict | None) -> str:
     if any(status == "error" for status in statuses):
         return "🔴 ошибка"
     return "🟡 частично"
+
+def _supplier_stock_processing_mode_label(value: str | None) -> str:
+    """Сформировать читаемую метку режима обработки."""
+    mode = (value or "table").strip().lower()
+    if mode == "iek_json":
+        return "IEK JSON"
+    return "Табличный"
 
 def show_supplier_stock_reports(update, context) -> None:
     """Показать результаты загрузки, обработки и выгрузки остатков поставщиков."""
@@ -4541,6 +4554,7 @@ def show_supplier_stock_sources_menu(update, context):
             url = _escape_pattern_text(source.get("url") or "URL не задан")
             output_name = _escape_pattern_text(source.get("output_name") or "не задано")
             method = _escape_pattern_text(source.get("method") or "http")
+            processing_mode = _escape_pattern_text(_supplier_stock_processing_mode_label(source.get("processing_mode")))
             enabled = source.get("enabled", True)
             unpack_enabled = source.get("unpack_archive", False)
             status_icon = "🟢" if enabled else "🔴"
@@ -4551,6 +4565,7 @@ def show_supplier_stock_sources_menu(update, context):
                     f"   • URL: `{url}`\n"
                     f"   • Файл: `{output_name}`\n"
                     f"   • Метод: `{method}`\n"
+                    f"   • Обработка: `{processing_mode}`\n"
                     f"   • Распаковка: `{unpack_text}`\n"
                 )
             )
@@ -4609,6 +4624,8 @@ def show_supplier_stock_source_settings(update, context, source_id: str):
     context.user_data['supplier_stock_source_settings_id'] = source_id
     context.user_data.pop('supplier_stock_source_field', None)
     context.user_data.pop('supplier_stock_source_field_id', None)
+    context.user_data.pop('supplier_stock_source_iek_field', None)
+    context.user_data.pop('supplier_stock_source_iek_field_id', None)
 
     config = get_supplier_stock_config()
     sources = config.get("download", {}).get("sources", [])
@@ -4627,6 +4644,8 @@ def show_supplier_stock_source_settings(update, context, source_id: str):
     url = _escape_pattern_text(source.get("url") or "не задан")
     output_name = _escape_pattern_text(source.get("output_name") or "не задано")
     method = _escape_pattern_text(source.get("method") or "http")
+    processing_mode = source.get("processing_mode") or "table"
+    processing_label = _escape_pattern_text(_supplier_stock_processing_mode_label(processing_mode))
     discover = source.get("discover")
     discover_text = "не задано"
     if isinstance(discover, dict):
@@ -4666,6 +4685,7 @@ def show_supplier_stock_source_settings(update, context, source_id: str):
         f"• URL: `{url}`",
         f"• Файл: `{output_name}`",
         f"• Метод: `{method}`",
+        f"• Обработка: `{processing_label}`",
         f"• Поиск ссылки: `{discover_text}`",
         f"• Переменные: `{_escape_pattern_text(vars_text)}`",
         f"• Авторизация: `{auth_state}`",
@@ -4708,9 +4728,18 @@ def show_supplier_stock_source_settings(update, context, source_id: str):
             InlineKeyboardButton("⚙️ Опции", callback_data=f'supplier_stock_source_field|{source_id}|options'),
         ],
         [
+            InlineKeyboardButton("🧩 Тип обработки", callback_data=f'supplier_stock_source_field|{source_id}|processing_mode'),
             InlineKeyboardButton("📂 Подкаталог выгрузки", callback_data=f'supplier_stock_source_field|{source_id}|upload_subdir'),
+        ],
+        [
             InlineKeyboardButton("📁 Индивидуальный каталог", callback_data=f'supplier_stock_source_individual|{source_id}'),
         ],
+    ]
+    if processing_mode == "iek_json":
+        keyboard.append([
+            InlineKeyboardButton("⚙️ IEK JSON", callback_data=f'supplier_stock_source_iek_settings|{source_id}')
+        ])
+    keyboard.extend([
         [
             InlineKeyboardButton("🔁 Включить/выключить", callback_data=f'supplier_stock_source_toggle_{source_id}'),
             InlineKeyboardButton(f"📦 Распаковка: {unpack_text}", callback_data=f'supplier_stock_source_unpack_toggle_{source_id}')
@@ -4723,7 +4752,7 @@ def show_supplier_stock_source_settings(update, context, source_id: str):
             InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources'),
             InlineKeyboardButton("✖️ Закрыть", callback_data='close')
         ],
-    ]
+    ])
 
     query.edit_message_text(
         message,
@@ -4773,6 +4802,70 @@ def show_supplier_stock_source_individual_settings(update, context, source_id: s
             InlineKeyboardButton("👤 Логин", callback_data=f'supplier_stock_source_field|{source_id}|individual_login'),
         ],
         [InlineKeyboardButton("🔐 Пароль", callback_data=f'supplier_stock_source_field|{source_id}|individual_password')],
+        [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_source_settings|{source_id}')],
+    ]
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+
+def show_supplier_stock_source_iek_settings(update, context, source_id: str) -> None:
+    """Показать настройки обработки IEK JSON."""
+    query = update.callback_query
+    query.answer()
+
+    config = get_supplier_stock_config()
+    sources = config.get("download", {}).get("sources", [])
+    source = next((item for item in sources if str(item.get("id")) == source_id), None)
+
+    if not source:
+        query.edit_message_text(
+            "❌ Источник не найден.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources')]
+            ])
+        )
+        return
+
+    iek_settings = source.get("iek_json") or {}
+    stores = iek_settings.get("stores", {})
+    orc_stores = iek_settings.get("orc_stores", [])
+    outputs = iek_settings.get("outputs", {})
+
+    stores_text = _escape_pattern_text(", ".join([f"{key}={value}" for key, value in stores.items()]) or "не задано")
+    orc_text = _escape_pattern_text(
+        ", ".join([f"{item.get('key')}={item.get('stor')}" for item in orc_stores if isinstance(item, dict)])
+        or "не задано"
+    )
+    outputs_text = _escape_pattern_text(
+        ", ".join([f"{key}={value}" for key, value in outputs.items()]) or "не задано"
+    )
+    prefix_text = _escape_pattern_text(iek_settings.get("prefix") or "не задано")
+    msk_stores = iek_settings.get("msk_stores", [])
+    msk_text = _escape_pattern_text(", ".join(msk_stores) or "не задано")
+    nsk_text = _escape_pattern_text(iek_settings.get("nsk_store") or "не задано")
+
+    message = (
+        "⚙️ *IEK JSON*\n\n"
+        f"Склады: `{stores_text}`\n"
+        f"МСК склады: `{msk_text}`\n"
+        f"НСК склад: `{nsk_text}`\n"
+        f"ОРК stor: `{orc_text}`\n"
+        f"Префикс артикула: `{prefix_text}`\n"
+        f"Файлы: `{outputs_text}`\n\n"
+        "Выберите действие:"
+    )
+
+    keyboard = [
+        [InlineKeyboardButton("🗺️ Склады", callback_data=f'supplier_stock_source_iek_field|{source_id}|stores')],
+        [InlineKeyboardButton("📍 МСК склады", callback_data=f'supplier_stock_source_iek_field|{source_id}|msk_stores')],
+        [InlineKeyboardButton("📍 НСК склад", callback_data=f'supplier_stock_source_iek_field|{source_id}|nsk_store')],
+        [InlineKeyboardButton("🧾 ORK stor", callback_data=f'supplier_stock_source_iek_field|{source_id}|orc_stores')],
+        [InlineKeyboardButton("🏷️ Префикс артикула", callback_data=f'supplier_stock_source_iek_field|{source_id}|prefix')],
+        [InlineKeyboardButton("📄 Файлы", callback_data=f'supplier_stock_source_iek_field|{source_id}|outputs')],
         [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_source_settings|{source_id}')],
     ]
 
@@ -4976,6 +5069,7 @@ def supplier_stock_start_source_field_edit(update, context, source_id: str, fiel
         "auth": "Введите login:password, '-' чтобы оставить или 'none' чтобы очистить:",
         "pre_request": "Введите URL | данные для предзапроса, '-' чтобы оставить или 'none' чтобы очистить:",
         "options": "Введите опции (headers, append) через запятую, '-' чтобы оставить или 'none' чтобы очистить:",
+        "processing_mode": "Введите тип обработки (`table` или `iek\\_json`), '-' чтобы оставить:",
         "upload_subdir": "Введите подкаталог для выгрузки (или '-' чтобы оставить, 'none' чтобы очистить):",
         "individual_path": "Введите UNC путь индивидуального каталога (или '-' чтобы оставить, 'none' чтобы очистить):",
         "individual_login": "Введите логин индивидуального каталога (или '-' чтобы оставить, 'none' чтобы очистить):",
@@ -4991,6 +5085,7 @@ def supplier_stock_start_source_field_edit(update, context, source_id: str, fiel
         "auth": "задано" if source.get("auth") else "-",
         "pre_request": source.get("pre_request") or "-",
         "options": "headers/append" if (source.get("include_headers") or source.get("append")) else "-",
+        "processing_mode": source.get("processing_mode") or "table",
         "upload_subdir": source.get("upload_subdir") or "-",
         "individual_path": (source.get("individual_directory") or {}).get("unc_path") or "-",
         "individual_login": (source.get("individual_directory") or {}).get("login") or "-",
@@ -5006,6 +5101,59 @@ def supplier_stock_start_source_field_edit(update, context, source_id: str, fiel
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("❌ Отмена", callback_data=f'supplier_stock_source_settings|{source_id}')]
+        ])
+    )
+
+def supplier_stock_start_source_iek_field_edit(update, context, source_id: str, field: str) -> None:
+    """Запросить изменение параметров IEK JSON."""
+    query = update.callback_query
+    query.answer()
+
+    config = get_supplier_stock_config()
+    sources = config.get("download", {}).get("sources", [])
+    source = next((item for item in sources if str(item.get("id")) == source_id), None)
+
+    if not source:
+        query.edit_message_text(
+            "❌ Источник не найден.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources')]
+            ])
+        )
+        return
+
+    context.user_data['supplier_stock_source_iek_field'] = field
+    context.user_data['supplier_stock_source_iek_field_id'] = source_id
+
+    prompts = {
+        "stores": "Введите склады в формате key=uuid через запятую:",
+        "msk_stores": "Введите список складов МСК через запятую (например: sherbinka, chehov):",
+        "nsk_store": "Введите ключ склада НСК (например: novosibirsk):",
+        "orc_stores": "Введите ORK stor в формате key=stor через запятую:",
+        "prefix": "Введите префикс артикула для ORK (или 'none' чтобы очистить):",
+        "outputs": "Введите имена файлов в формате orig=..., msk=..., nsk=..., orc=... через запятую:",
+    }
+
+    iek_settings = source.get("iek_json") or {}
+    current_values = {
+        "stores": iek_settings.get("stores") or "-",
+        "msk_stores": iek_settings.get("msk_stores") or "-",
+        "nsk_store": iek_settings.get("nsk_store") or "-",
+        "orc_stores": iek_settings.get("orc_stores") or "-",
+        "prefix": iek_settings.get("prefix") or "-",
+        "outputs": iek_settings.get("outputs") or "-",
+    }
+
+    prompt = prompts.get(field, "Введите значение:")
+    current_value = current_values.get(field, "-")
+    if isinstance(current_value, (dict, list)):
+        current_value = json.dumps(current_value, ensure_ascii=False)
+
+    query.edit_message_text(
+        f"{prompt}\n\nТекущее значение: `{_escape_pattern_text(str(current_value))}`",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("❌ Отмена", callback_data=f'supplier_stock_source_iek_settings|{source_id}')]
         ])
     )
 
@@ -5814,6 +5962,8 @@ def supplier_stock_start_edit_wizard(update, context, source_id: str):
 
 def supplier_stock_handle_input(update, context):
     """Обработчик ввода для настроек остатков поставщиков."""
+    if context.user_data.get('supplier_stock_source_iek_field'):
+        return supplier_stock_handle_source_iek_field_input(update, context)
     if context.user_data.get('supplier_stock_resource_field'):
         return supplier_stock_handle_resource_field_input(update, context)
     if context.user_data.get('supplier_stock_resource_add'):
@@ -6351,6 +6501,17 @@ def supplier_stock_handle_source_field_input(update, context):
                 )
                 return None
             source.update(options)
+    elif field == 'processing_mode':
+        if user_input in ('-', ''):
+            pass
+        else:
+            mode = _normalize_supplier_processing_mode(user_input)
+            if not mode:
+                update.message.reply_text("❌ Допустимые значения: table, iek_json.")
+                return None
+            source['processing_mode'] = mode
+            if mode == "iek_json":
+                source.setdefault("iek_json", {})
     elif field == 'upload_subdir':
         if user_input in ('-', ''):
             pass
@@ -6396,6 +6557,103 @@ def supplier_stock_handle_source_field_input(update, context):
         "✅ Настройка обновлена.",
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_source_settings|{source_id}')]
+        ])
+    )
+    return None
+
+def supplier_stock_handle_source_iek_field_input(update, context):
+    """Обработка ввода при редактировании параметров IEK JSON."""
+    field = context.user_data.get('supplier_stock_source_iek_field')
+    source_id = context.user_data.get('supplier_stock_source_iek_field_id')
+    user_input = (update.message.text or "").strip()
+
+    if not field or not source_id:
+        return None
+
+    config = get_supplier_stock_config()
+    sources = config.get("download", {}).get("sources", [])
+    source = next((item for item in sources if str(item.get("id")) == source_id), None)
+
+    if not source:
+        update.message.reply_text("❌ Источник не найден.", reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources')]
+        ]))
+        return None
+
+    iek_settings = source.setdefault("iek_json", {})
+
+    if user_input in ("-", ""):
+        config["download"]["sources"] = sources
+        save_supplier_stock_config(config)
+        context.user_data.pop('supplier_stock_source_iek_field', None)
+        context.user_data.pop('supplier_stock_source_iek_field_id', None)
+        update.message.reply_text(
+            "✅ Настройка обновлена.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_source_iek_settings|{source_id}')]
+            ])
+        )
+        return None
+    if field == "stores":
+        if user_input.lower() in ("none", "нет"):
+            iek_settings["stores"] = {}
+        else:
+            parsed = _parse_supplier_vars(user_input)
+            if parsed is None:
+                update.message.reply_text("❌ Формат должен быть key=uuid через запятую/новую строку.")
+                return None
+            iek_settings["stores"] = parsed
+    elif field == "msk_stores":
+        if user_input.lower() in ("none", "нет"):
+            iek_settings["msk_stores"] = []
+        else:
+            if not user_input:
+                update.message.reply_text("❌ Список не может быть пустым.")
+                return None
+            iek_settings["msk_stores"] = [item.strip() for item in re.split(r"[,\n]+", user_input) if item.strip()]
+    elif field == "nsk_store":
+        if user_input.lower() in ("none", "нет"):
+            iek_settings["nsk_store"] = ""
+        else:
+            if not user_input:
+                update.message.reply_text("❌ Значение не может быть пустым.")
+                return None
+            iek_settings["nsk_store"] = user_input
+    elif field == "orc_stores":
+        if user_input.lower() in ("none", "нет"):
+            iek_settings["orc_stores"] = []
+        else:
+            parsed = _parse_supplier_vars(user_input)
+            if parsed is None:
+                update.message.reply_text("❌ Формат должен быть key=stor через запятую/новую строку.")
+                return None
+            iek_settings["orc_stores"] = [{"key": key, "stor": value} for key, value in parsed.items()]
+    elif field == "prefix":
+        iek_settings["prefix"] = "" if user_input.lower() in ("none", "нет") else user_input
+    elif field == "outputs":
+        if user_input.lower() in ("none", "нет"):
+            iek_settings["outputs"] = {}
+        else:
+            parsed = _parse_supplier_vars(user_input)
+            if parsed is None:
+                update.message.reply_text("❌ Формат должен быть orig=..., msk=..., nsk=..., orc=... через запятую.")
+                return None
+            iek_settings["outputs"] = parsed
+    else:
+        update.message.reply_text("❌ Не удалось определить поле настройки.")
+        return None
+
+    source["iek_json"] = iek_settings
+    config["download"]["sources"] = sources
+    save_supplier_stock_config(config)
+
+    context.user_data.pop('supplier_stock_source_iek_field', None)
+    context.user_data.pop('supplier_stock_source_iek_field_id', None)
+
+    update.message.reply_text(
+        "✅ Настройка обновлена.",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_source_iek_settings|{source_id}')]
         ])
     )
     return None
@@ -7061,6 +7319,16 @@ def _parse_yes_no(value: str) -> bool | None:
         return True
     if lowered in ('нет', 'no', 'n', 'false', '0'):
         return False
+    return None
+
+def _normalize_supplier_processing_mode(value: str) -> str | None:
+    if not value:
+        return None
+    lowered = value.strip().lower()
+    if lowered in ("table", "табличный", "таблица"):
+        return "table"
+    if lowered in ("iek_json", "iek", "json"):
+        return "iek_json"
     return None
 
 def _parse_positive_int(value: str) -> int | None:
