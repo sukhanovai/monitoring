@@ -1644,6 +1644,26 @@ def _resolve_archive_dir(config: Dict[str, Any], source_kind: str | None) -> Pat
         return None
     return Path(archive_dir)
 
+def _parse_bool_config(value: Any, default: bool) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"1", "true", "yes", "y", "on", "да"}:
+            return True
+        if normalized in {"0", "false", "no", "n", "off", "нет"}:
+            return False
+    return bool(value)
+
+def _is_passive_mode_denied_error(exc: Exception) -> bool:
+    message = str(exc).lower()
+    return "passive mode denied" in message or "pasv" in message or message.startswith("451 ")
+
+def _upload_file_to_ftp(ftp: ftplib.FTP, orc_path: Path) -> None:
+    with orc_path.open("rb") as handle:
+        ftp.storbinary(f"STOR {orc_path.name}", handle)
 
 def _upload_orc_outputs_to_ftp(orc_outputs: list[Path], ftp_config: Dict[str, Any]) -> Dict[str, Any]:
     if not orc_outputs:
@@ -1656,6 +1676,7 @@ def _upload_orc_outputs_to_ftp(orc_outputs: list[Path], ftp_config: Dict[str, An
     host, port, base_dir = _parse_ftp_host(host_raw)
     login = str(ftp_config.get("login") or "").strip() or None
     password = str(ftp_config.get("password") or "") if ftp_config.get("password") is not None else ""
+    passive = _parse_bool_config(ftp_config.get("passive"), True)
     results: list[Dict[str, Any]] = []
     try:
         with ftplib.FTP() as ftp:
@@ -1664,6 +1685,7 @@ def _upload_orc_outputs_to_ftp(orc_outputs: list[Path], ftp_config: Dict[str, An
                 ftp.login(login, password)
             else:
                 ftp.login()
+            ftp.set_pasv(passive)
             if base_dir:
                 try:
                     ftp.cwd(base_dir)
@@ -1675,13 +1697,31 @@ def _upload_orc_outputs_to_ftp(orc_outputs: list[Path], ftp_config: Dict[str, An
                     results.append({"file": str(orc_path), "status": "error", "error": "file_not_found"})
                     continue
                 try:
-                    with orc_path.open("rb") as handle:
-                        ftp.storbinary(f"STOR {orc_path.name}", handle)
+                    _upload_file_to_ftp(ftp, orc_path)
                     _log_processing("🧩 Выгружен ОРК файл %s на FTP %s", orc_path.name, host)
                     results.append({"file": str(orc_path), "status": "success"})
                 except Exception as exc:
-                    _log_processing("🧩 Ошибка выгрузки ОРК %s по FTP: %s", orc_path.name, exc)
-                    results.append({"file": str(orc_path), "status": "error", "error": str(exc)})
+                    if passive and _is_passive_mode_denied_error(exc):
+                        _log_processing(
+                            "🧩 Пассивный режим FTP запрещен, повторяем в активном режиме для %s",
+                            orc_path.name,
+                        )
+                        passive = False
+                        ftp.set_pasv(False)
+                        try:
+                            _upload_file_to_ftp(ftp, orc_path)
+                            _log_processing(
+                                "🧩 Выгружен ОРК файл %s на FTP %s (активный режим)",
+                                orc_path.name,
+                                host,
+                            )
+                            results.append({"file": str(orc_path), "status": "success"})
+                        except Exception as retry_exc:
+                            _log_processing("🧩 Ошибка выгрузки ОРК %s по FTP: %s", orc_path.name, retry_exc)
+                            results.append({"file": str(orc_path), "status": "error", "error": str(retry_exc)})
+                    else:
+                        _log_processing("🧩 Ошибка выгрузки ОРК %s по FTP: %s", orc_path.name, exc)
+                        results.append({"file": str(orc_path), "status": "error", "error": str(exc)})
     except Exception as exc:
         _log_processing("🧩 Ошибка подключения к FTP ОРК: %s", exc)
         return {"status": "error", "error": str(exc), "items": results}
