@@ -1,11 +1,11 @@
 """
 /extensions/server_checks/__init__.py
-Server Monitoring System v8.3.43
+Server Monitoring System v8.3.44
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Unified server checks: resources, availability, list
 Система мониторинга серверов
-Версия: 8.3.43
+Версия: 8.3.44
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Унифицированные проверки серверов: ресурсы, доступность, список
