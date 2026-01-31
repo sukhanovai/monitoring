@@ -1825,6 +1825,8 @@ def handle_setting_input(update, context, setting_key):
     
     # Сохраняем какое настройку меняем
     context.user_data['editing_setting'] = setting_key
+    context.user_data['editing_setting_message_id'] = query.message.message_id
+    context.user_data['editing_setting_chat_id'] = query.message.chat_id
     
     setting_descriptions = {
         # Существующие настройки...
@@ -1990,6 +1992,13 @@ def handle_setting_value(update, context):
         
         # Очищаем контекст
         del context.user_data['editing_setting']
+        prompt_message_id = context.user_data.pop('editing_setting_message_id', None)
+        prompt_chat_id = context.user_data.pop('editing_setting_chat_id', None)
+        if prompt_message_id and prompt_chat_id:
+            try:
+                context.bot.delete_message(chat_id=prompt_chat_id, message_id=prompt_message_id)
+            except Exception:
+                pass
         
         update.message.reply_text(
             f"✅ Настройка {db_key} успешно обновлена!",
@@ -8648,6 +8657,8 @@ def handle_setting_input(update, context, setting_key):
     
     # Сохраняем какое настройку меняем
     context.user_data['editing_setting'] = setting_key
+    context.user_data['editing_setting_message_id'] = query.message.message_id
+    context.user_data['editing_setting_chat_id'] = query.message.chat_id
     
     setting_descriptions = {
         'telegram_token': 'Введите новый токен Telegram бота:',
