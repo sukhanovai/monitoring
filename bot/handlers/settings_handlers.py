@@ -1262,6 +1262,7 @@ def settings_callback_handler(update, context):
             context.user_data['supplier_stock_mail_edit'] = 'temp_dir'
             config = get_supplier_stock_config()
             current_temp_dir = _format_current_hint(config.get("mail", {}).get("temp_dir"))
+            _supplier_stock_remember_prompt_message(context, query)
             query.edit_message_text(
                 "Введите путь к временному каталогу для почтовых файлов:\n"
                 f"Текущее значение: {current_temp_dir}",
@@ -1273,6 +1274,7 @@ def settings_callback_handler(update, context):
             context.user_data['supplier_stock_mail_edit'] = 'archive_dir'
             config = get_supplier_stock_config()
             current_archive_dir = _format_current_hint(config.get("mail", {}).get("archive_dir"))
+            _supplier_stock_remember_prompt_message(context, query)
             query.edit_message_text(
                 "Введите путь к каталогу архива для почтовых файлов:\n"
                 f"Текущее значение: {current_archive_dir}",
@@ -1285,6 +1287,7 @@ def settings_callback_handler(update, context):
             context.user_data['supplier_stock_archive_cleanup_back'] = 'supplier_stock_mail'
             config = get_supplier_stock_config()
             current_value = _format_archive_cleanup_days(config.get("archive_cleanup_days"))
+            _supplier_stock_remember_prompt_message(context, query)
             query.edit_message_text(
                 "Введите период очистки архива в днях (0 — отключить):\n"
                 f"Текущее значение: {current_value}",
@@ -1296,6 +1299,7 @@ def settings_callback_handler(update, context):
             context.user_data['supplier_stock_edit'] = 'report_period_days'
             config = get_supplier_stock_config()
             current_value = config.get("reporting", {}).get("period_days", 7)
+            _supplier_stock_remember_prompt_message(context, query)
             query.edit_message_text(
                 "Введите период отчётов в днях (минимум 1):\n"
                 f"Текущее значение: {current_value}",
@@ -1409,6 +1413,7 @@ def settings_callback_handler(update, context):
             context.user_data['supplier_stock_edit'] = 'temp_dir'
             config = get_supplier_stock_config()
             current_temp_dir = _format_current_hint(config.get("download", {}).get("temp_dir"))
+            _supplier_stock_remember_prompt_message(context, query)
             query.edit_message_text(
                 "Введите путь к временному каталогу:\n"
                 f"Текущее значение: {current_temp_dir}",
@@ -1425,6 +1430,7 @@ def settings_callback_handler(update, context):
             context.user_data['supplier_stock_edit'] = 'archive_dir'
             config = get_supplier_stock_config()
             current_archive_dir = _format_current_hint(config.get("download", {}).get("archive_dir"))
+            _supplier_stock_remember_prompt_message(context, query)
             query.edit_message_text(
                 "Введите путь к каталогу архива:\n"
                 f"Текущее значение: {current_archive_dir}",
@@ -1437,6 +1443,7 @@ def settings_callback_handler(update, context):
             context.user_data['supplier_stock_archive_cleanup_back'] = 'supplier_stock_download'
             config = get_supplier_stock_config()
             current_value = _format_archive_cleanup_days(config.get("archive_cleanup_days"))
+            _supplier_stock_remember_prompt_message(context, query)
             query.edit_message_text(
                 "Введите период очистки архива в днях (0 — отключить):\n"
                 f"Текущее значение: {current_value}",
@@ -1464,6 +1471,7 @@ def settings_callback_handler(update, context):
             current_time = _format_current_hint(
                 config.get("download", {}).get("schedule", {}).get("time")
             )
+            _supplier_stock_remember_prompt_message(context, query)
             query.edit_message_text(
                 "Введите время запуска в формате HH:MM:\n"
                 f"Текущее значение: {current_time}",
@@ -1825,6 +1833,8 @@ def handle_setting_input(update, context, setting_key):
     
     # Сохраняем какое настройку меняем
     context.user_data['editing_setting'] = setting_key
+    context.user_data['editing_setting_message_id'] = query.message.message_id
+    context.user_data['editing_setting_chat_id'] = query.message.chat_id
     
     setting_descriptions = {
         # Существующие настройки...
@@ -1990,6 +2000,13 @@ def handle_setting_value(update, context):
         
         # Очищаем контекст
         del context.user_data['editing_setting']
+        prompt_message_id = context.user_data.pop('editing_setting_message_id', None)
+        prompt_chat_id = context.user_data.pop('editing_setting_chat_id', None)
+        if prompt_message_id and prompt_chat_id:
+            try:
+                context.bot.delete_message(chat_id=prompt_chat_id, message_id=prompt_message_id)
+            except Exception:
+                pass
         
         update.message.reply_text(
             f"✅ Настройка {db_key} успешно обновлена!",
@@ -4598,6 +4615,7 @@ def supplier_stock_start_processing_field_edit(
     back_callback = 'supplier_stock_processing_rule|menu'
     if variant_index is not None:
         back_callback = f'supplier_stock_processing_variant|menu|{variant_index}'
+    _supplier_stock_remember_prompt_message(context, query)
     query.edit_message_text(
         f"{prompt}\n\nТекущее значение: {current_hint}",
         reply_markup=InlineKeyboardMarkup([
@@ -5435,6 +5453,7 @@ def supplier_stock_start_source_field_edit(update, context, source_id: str, fiel
     current_value = current_values.get(field, "-")
     if isinstance(current_value, dict):
         current_value = json.dumps(current_value, ensure_ascii=False)
+    _supplier_stock_remember_prompt_message(context, query)
     query.edit_message_text(
         f"{prompt}\n\nТекущее значение: `{_escape_pattern_text(str(current_value))}`",
         parse_mode='Markdown',
@@ -5488,6 +5507,7 @@ def supplier_stock_start_source_iek_field_edit(update, context, source_id: str, 
     if isinstance(current_value, (dict, list)):
         current_value = json.dumps(current_value, ensure_ascii=False)
 
+    _supplier_stock_remember_prompt_message(context, query)
     query.edit_message_text(
         f"{prompt}\n\nТекущее значение: `{_escape_pattern_text(str(current_value))}`",
         parse_mode='Markdown',
@@ -5549,6 +5569,7 @@ def supplier_stock_start_mail_source_field_edit(update, context, source_id: str,
 
     prompt = prompts.get(field, "Введите значение:")
     current_value = current_values.get(field, "-")
+    _supplier_stock_remember_prompt_message(context, query)
     query.edit_message_text(
         f"{prompt}\n\nТекущее значение: `{_escape_pattern_text(str(current_value))}`",
         parse_mode='Markdown',
@@ -5613,6 +5634,7 @@ def supplier_stock_start_resource_field_edit(update, context, resource_id: str, 
 
     prompt = prompts.get(field, "Введите значение:")
     current_value = current_values.get(field, "-")
+    _supplier_stock_remember_prompt_message(context, query)
     query.edit_message_text(
         f"{prompt}\n\nТекущее значение: `{_escape_pattern_text(str(current_value))}`",
         parse_mode='Markdown',
@@ -5643,6 +5665,7 @@ def supplier_stock_start_ftp_field_edit(update, context, field: str) -> None:
     }
     prompt = prompts.get(field, "Введите значение:")
     current_value = current_values.get(field, "-")
+    _supplier_stock_remember_prompt_message(context, query)
     query.edit_message_text(
         f"{prompt}\n\nТекущее значение: `{_escape_pattern_text(str(current_value))}`",
         parse_mode='Markdown',
@@ -5955,6 +5978,7 @@ def supplier_stock_handle_processing_input(update, context):
                 return None
         context.user_data['supplier_stock_processing_rule_data'] = rule_data
         context.user_data['supplier_stock_processing_rule_dirty'] = True
+        _supplier_stock_close_prompt_message(context)
         if variant_index is None:
             update.message.reply_text(
                 "✅ Готово.",
@@ -6333,6 +6357,24 @@ def supplier_stock_handle_input(update, context):
         return supplier_stock_handle_source_input(update, context)
     return None
 
+def _supplier_stock_remember_prompt_message(context, query):
+    """Запомнить сообщение с запросом ввода параметра."""
+    if not query or not query.message:
+        return
+    context.user_data['supplier_stock_prompt_message_id'] = query.message.message_id
+    context.user_data['supplier_stock_prompt_chat_id'] = query.message.chat_id
+
+def _supplier_stock_close_prompt_message(context):
+    """Удалить сообщение с запросом ввода параметра."""
+    message_id = context.user_data.pop('supplier_stock_prompt_message_id', None)
+    chat_id = context.user_data.pop('supplier_stock_prompt_chat_id', None)
+    if not message_id or not chat_id:
+        return
+    try:
+        context.bot.delete_message(chat_id=chat_id, message_id=message_id)
+    except Exception:
+        pass
+
 def supplier_stock_handle_edit_input(update, context):
     """Обработка ввода для изменения настроек остатков поставщиков."""
     field = context.user_data.get('supplier_stock_edit')
@@ -6354,6 +6396,7 @@ def supplier_stock_handle_edit_input(update, context):
         config['download']['temp_dir'] = user_input
         save_supplier_stock_config(config)
         context.user_data.pop('supplier_stock_edit', None)
+        _supplier_stock_close_prompt_message(context)
         update.message.reply_text(
             "✅ Временный каталог обновлен.",
             reply_markup=InlineKeyboardMarkup([
@@ -6369,6 +6412,7 @@ def supplier_stock_handle_edit_input(update, context):
         config['download']['schedule']['time'] = user_input
         save_supplier_stock_config(config)
         context.user_data.pop('supplier_stock_edit', None)
+        _supplier_stock_close_prompt_message(context)
         update.message.reply_text(
             "✅ Время расписания обновлено.",
             reply_markup=InlineKeyboardMarkup([
@@ -6390,6 +6434,7 @@ def supplier_stock_handle_edit_input(update, context):
         save_supplier_stock_config(config)
         context.user_data.pop('supplier_stock_edit', None)
         back_callback = context.user_data.pop('supplier_stock_archive_cleanup_back', 'supplier_stock_download')
+        _supplier_stock_close_prompt_message(context)
         update.message.reply_text(
             "✅ Период очистки архива обновлен.",
             reply_markup=InlineKeyboardMarkup([
@@ -6410,6 +6455,7 @@ def supplier_stock_handle_edit_input(update, context):
         config.setdefault("reporting", {})["period_days"] = period_days
         save_supplier_stock_config(config)
         context.user_data.pop('supplier_stock_edit', None)
+        _supplier_stock_close_prompt_message(context)
         update.message.reply_text(
             "✅ Период отчётов обновлён.",
             reply_markup=InlineKeyboardMarkup([
@@ -6425,6 +6471,7 @@ def supplier_stock_handle_edit_input(update, context):
         config['download']['archive_dir'] = user_input
         save_supplier_stock_config(config)
         context.user_data.pop('supplier_stock_edit', None)
+        _supplier_stock_close_prompt_message(context)
         update.message.reply_text(
             "✅ Каталог архива обновлен.",
             reply_markup=InlineKeyboardMarkup([
@@ -6451,6 +6498,7 @@ def supplier_stock_handle_mail_edit_input(update, context):
         config["mail"]["temp_dir"] = user_input
         save_supplier_stock_config(config)
         context.user_data.pop('supplier_stock_mail_edit', None)
+        _supplier_stock_close_prompt_message(context)
         update.message.reply_text(
             "✅ Временный каталог обновлен.",
             reply_markup=InlineKeyboardMarkup([
@@ -6466,6 +6514,7 @@ def supplier_stock_handle_mail_edit_input(update, context):
         config["mail"]["archive_dir"] = user_input
         save_supplier_stock_config(config)
         context.user_data.pop('supplier_stock_mail_edit', None)
+        _supplier_stock_close_prompt_message(context)
         update.message.reply_text(
             "✅ Каталог архива обновлен.",
             reply_markup=InlineKeyboardMarkup([
@@ -6913,6 +6962,7 @@ def supplier_stock_handle_source_field_input(update, context):
 
     context.user_data.pop('supplier_stock_source_field', None)
     context.user_data.pop('supplier_stock_source_field_id', None)
+    _supplier_stock_close_prompt_message(context)
 
     update.message.reply_text(
         "✅ Настройка обновлена.",
@@ -6948,6 +6998,7 @@ def supplier_stock_handle_source_iek_field_input(update, context):
         save_supplier_stock_config(config)
         context.user_data.pop('supplier_stock_source_iek_field', None)
         context.user_data.pop('supplier_stock_source_iek_field_id', None)
+        _supplier_stock_close_prompt_message(context)
         update.message.reply_text(
             "✅ Настройка обновлена.",
             reply_markup=InlineKeyboardMarkup([
@@ -7012,6 +7063,7 @@ def supplier_stock_handle_source_iek_field_input(update, context):
 
     context.user_data.pop('supplier_stock_source_iek_field', None)
     context.user_data.pop('supplier_stock_source_iek_field_id', None)
+    _supplier_stock_close_prompt_message(context)
 
     update.message.reply_text(
         "✅ Настройка обновлена.",
@@ -7135,6 +7187,7 @@ def supplier_stock_handle_mail_source_field_input(update, context):
 
     context.user_data.pop('supplier_stock_mail_source_field', None)
     context.user_data.pop('supplier_stock_mail_source_field_id', None)
+    _supplier_stock_close_prompt_message(context)
 
     update.message.reply_text(
         "✅ Настройка обновлена.",
@@ -7265,6 +7318,7 @@ def supplier_stock_handle_resource_field_input(update, context):
 
     context.user_data.pop('supplier_stock_resource_field', None)
     context.user_data.pop('supplier_stock_resource_field_id', None)
+    _supplier_stock_close_prompt_message(context)
 
     update.message.reply_text(
         "✅ Настройка обновлена.",
@@ -7316,6 +7370,7 @@ def supplier_stock_handle_ftp_input(update, context):
     save_supplier_stock_config(config)
 
     context.user_data.pop('supplier_stock_ftp_field', None)
+    _supplier_stock_close_prompt_message(context)
 
     update.message.reply_text(
         "✅ Настройка обновлена.",
@@ -8648,6 +8703,8 @@ def handle_setting_input(update, context, setting_key):
     
     # Сохраняем какое настройку меняем
     context.user_data['editing_setting'] = setting_key
+    context.user_data['editing_setting_message_id'] = query.message.message_id
+    context.user_data['editing_setting_chat_id'] = query.message.chat_id
     
     setting_descriptions = {
         'telegram_token': 'Введите новый токен Telegram бота:',
