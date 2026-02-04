@@ -1,11 +1,11 @@
 """
 /extensions/supplier_stock_files.py
-Server Monitoring System v8.3.45
+Server Monitoring System v8.3.46
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Supplier stock files downloader
 Система мониторинга серверов
-Версия: 8.3.45
+Версия: 8.3.46
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Получение файлов остатков поставщиков
@@ -2567,29 +2567,38 @@ def _resolve_output_name_values(
         "name": file_path.stem,
         "filename": file_path.name,
     }
+    locked_keys: set[str] = set()
     extracted_from_input = _match_template_filename(str(input_template or ""), file_path.name)
     if "name" in extracted_from_input:
         values["name"] = extracted_from_input["name"]
+        locked_keys.add("name")
     if "filename" in extracted_from_input:
         values["filename"] = extracted_from_input["filename"]
+        locked_keys.add("filename")
     if "index" in extracted_from_input:
         try:
             values["index"] = int(extracted_from_input["index"])
         except ValueError:
             values["index"] = extracted_from_input["index"]
+        locked_keys.add("index")
     extracted = _match_template_filename(template, file_path.name)
     if "name" in extracted:
         values["name"] = extracted["name"]
+        locked_keys.add("name")
     if "filename" in extracted:
         values["filename"] = extracted["filename"]
+        locked_keys.add("filename")
     if "index" in extracted:
         try:
             values["index"] = int(extracted["index"])
         except ValueError:
             values["index"] = extracted["index"]
+        locked_keys.add("index")
     if isinstance(extra_values, dict):
         for key, value in extra_values.items():
             if value is None:
+                continue
+            if key in locked_keys:
                 continue
             values[key] = value
     return values
