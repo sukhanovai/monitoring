@@ -24,6 +24,7 @@ from core.monitor_core import (
 )
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.error import BadRequest
 from bot.handlers.base import check_access, deny_access
 from modules.targeted_checks import targeted_checks
 from extensions.extension_manager import extension_manager
@@ -33,6 +34,18 @@ from bot.handlers.extensions import (
 )
 
 from lib.logging import debug_log
+
+
+def _safe_answer_callback(query) -> bool:
+    """Безопасно подтверждает callback, чтобы не падать на просроченных query."""
+    try:
+        query.answer()
+        return True
+    except BadRequest as exc:
+        if "Query is too old" in str(exc) or "query id is invalid" in str(exc):
+            debug_log(f"⚠️ callback query устарел: {exc}")
+            return False
+        raise
 
 def _server_result_keyboard(server_ip: str) -> InlineKeyboardMarkup:
     row_actions = [
@@ -59,7 +72,7 @@ def _server_result_keyboard(server_ip: str) -> InlineKeyboardMarkup:
 def handle_check_single_callback(update, context, server_ip):
     """Обработка callback проверки одного сервера"""
     query = update.callback_query
-    query.answer()
+    _safe_answer_callback(query)
 
     from bot.handlers.commands import handle_check_single_server
     result = handle_check_single_server(update, context, server_ip)
@@ -79,7 +92,7 @@ def handle_check_single_callback(update, context, server_ip):
 def handle_check_resources_callback(update, context, server_ip):
     """Обработка callback проверки ресурсов сервера"""
     query = update.callback_query
-    query.answer()
+    _safe_answer_callback(query)
 
     if not extension_manager.is_extension_enabled("resource_monitor"):
         query.edit_message_text("📊 Мониторинг ресурсов отключён")
@@ -103,7 +116,7 @@ def handle_check_resources_callback(update, context, server_ip):
 def handle_server_selection_menu(update, context, action="check_single"):
     """Показывает меню выбора сервера"""
     query = update.callback_query
-    query.answer()
+    _safe_answer_callback(query)
 
     from bot.handlers.commands import create_server_selection_keyboard
 
@@ -153,7 +166,7 @@ def callback_router(update, context):
         deny_access(update)
         return
 
-    query.answer()
+    _safe_answer_callback(query)
 
     # ------------------------------------------------
     # Главное меню
