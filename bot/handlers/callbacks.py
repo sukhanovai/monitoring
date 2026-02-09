@@ -1,17 +1,19 @@
 """
 /bot/handlers/callbacks.py
-Server Monitoring System v8.3.46
+Server Monitoring System v8.3.47
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 A single router for callbacks.
 Система мониторинга серверов
-Версия: 8.3.46
+Версия: 8.3.47
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единый router callback’ов.
 """
 
 import traceback
+
+from telegram.error import BadRequest
 
 from bot.menu.handlers import show_main_menu
 from bot.handlers.settings_handlers import settings_callback_handler, BACKUP_SETTINGS_CALLBACKS
@@ -33,6 +35,14 @@ from bot.handlers.extensions import (
 )
 
 from lib.logging import debug_log
+
+
+def _safe_answer(query, **kwargs):
+    try:
+        query.answer(**kwargs)
+    except BadRequest as e:
+        # Callback query can be too old or already answered; ignore.
+        debug_log(f"⚠️ callback answer skipped: {e}")
 
 def _server_result_keyboard(server_ip: str) -> InlineKeyboardMarkup:
     row_actions = [
@@ -59,7 +69,7 @@ def _server_result_keyboard(server_ip: str) -> InlineKeyboardMarkup:
 def handle_check_single_callback(update, context, server_ip):
     """Обработка callback проверки одного сервера"""
     query = update.callback_query
-    query.answer()
+    _safe_answer(query)
 
     from bot.handlers.commands import handle_check_single_server
     result = handle_check_single_server(update, context, server_ip)
@@ -80,7 +90,7 @@ def handle_check_single_callback(update, context, server_ip):
 def handle_check_resources_callback(update, context, server_ip):
     """Обработка callback проверки ресурсов сервера"""
     query = update.callback_query
-    query.answer()
+    _safe_answer(query)
 
     if not extension_manager.is_extension_enabled("resource_monitor"):
         query.edit_message_text("📊 Мониторинг ресурсов отключён")
@@ -105,7 +115,7 @@ def handle_check_resources_callback(update, context, server_ip):
 def handle_server_selection_menu(update, context, action="check_single"):
     """Показывает меню выбора сервера"""
     query = update.callback_query
-    query.answer()
+    _safe_answer(query)
 
     from bot.handlers.commands import create_server_selection_keyboard
 
@@ -142,7 +152,7 @@ def callback_router(update, context):
         # Фоллбек пользователю (чтобы видеть проблему в Telegram)
         try:
             if update.callback_query:
-                update.callback_query.answer("❌ Ошибка обработчика. Подробности в логах.", show_alert=True)
+                _safe_answer(update.callback_query, text="❌ Ошибка обработчика. Подробности в логах.", show_alert=True)
         except Exception:
             pass
         
@@ -155,7 +165,7 @@ def callback_router(update, context):
         deny_access(update)
         return
 
-    query.answer()
+    _safe_answer(query)
 
     # ------------------------------------------------
     # Главное меню
@@ -335,7 +345,7 @@ def callback_router(update, context):
 
     # (по желанию) QUICK SEARCH / REFRESH можно просто гасить
     elif data.startswith(('quick_search_', 'refresh_')):
-        query.answer("Функция отключена", show_alert=False)
+        _safe_answer(query, text="Функция отключена", show_alert=False)
 
     # ------------------------------------------------
     # БЭКАПЫ
