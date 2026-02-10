@@ -290,6 +290,30 @@ License: MIT
 
 Для каждого `P0` заполни шаблон:
 
+##### Готовые черновики **Request** для всех P0-сценариев
+
+| ID | Сценарий | Метод + endpoint | Обязательные параметры | Обязательные заголовки |
+|---|---|---|---|---|
+| 1 | Проверка доступности всех серверов | `GET /v1/monitoring/availability` | `scope=all` (query) | `Authorization`, `X-Request-ID` |
+| 2 | Проверка доступности одного сервера | `GET /v1/monitoring/availability/{server_id}` | `server_id` (path) | `Authorization`, `X-Request-ID` |
+| 5 | Просмотр бэкапов Proxmox | `GET /v1/backups/proxmox` | `from`, `to` (query, ISO8601) | `Authorization`, `X-Request-ID` |
+| 6 | Просмотр бэкапов БД | `GET /v1/backups/db` | `from`, `to` (query, ISO8601) | `Authorization`, `X-Request-ID` |
+| 12 | Операции из раздела «Управление» | `POST /v1/control/actions` | `action` (body: `pause_monitoring`/`resume_monitoring`/`send_morning_report`/`force_quiet`/`force_loud`/`auto_mode`) | `Authorization`, `X-Request-ID`, `Content-Type: application/json` |
+| 13 | Изменение настроек бота | `PATCH /v1/settings/bot` | `telegram_bot_token`, `telegram_chat_id` (body; минимум одно поле) | `Authorization`, `X-Request-ID`, `Content-Type: application/json` |
+| 14 | Изменение временных настроек | `PATCH /v1/settings/time` | `quiet_start`, `quiet_end`, `metrics_collection_time` (body; минимум одно поле) | `Authorization`, `X-Request-ID`, `Content-Type: application/json` |
+| 15 | Изменение настроек мониторинга | `PATCH /v1/settings/monitoring` | `check_interval_sec`, `max_downtime_sec`, `timeout_sec` (body; минимум одно поле) | `Authorization`, `X-Request-ID`, `Content-Type: application/json` |
+| 16 | Изменение параметров аутентификации | `PATCH /v1/settings/auth` | `ssh_username`, `ssh_port`, `windows_username`, `auth_mode` (body; минимум одно поле) | `Authorization`, `X-Request-ID`, `Content-Type: application/json` |
+| 17 | Плановый цикл мониторинга доступности | `POST /v1/jobs/monitoring/run` | `trigger=scheduled` (body) | `Authorization`, `X-Request-ID`, `Content-Type: application/json` |
+| 19 | Автопереключение quiet/loud по расписанию | `POST /v1/jobs/quiet-mode/apply` | `trigger=scheduled`, `timestamp` (body, ISO8601) | `Authorization`, `X-Request-ID`, `Content-Type: application/json` |
+| 20 | Плановая отправка утреннего отчёта | `POST /v1/jobs/reports/morning/send` | `trigger=scheduled`, `report_date` (body, `YYYY-MM-DD`) | `Authorization`, `X-Request-ID`, `Content-Type: application/json` |
+| 21 | Эскалация/повтор уведомлений | `POST /v1/jobs/alerts/escalate` | `trigger=scheduled`, `window_min` (body) | `Authorization`, `X-Request-ID`, `Content-Type: application/json` |
+| 22 | Деградационный режим при недоступности downstream | `POST /v1/system/degradation-mode` | `mode` (body: `on`/`off`), `reason` (body) | `Authorization`, `X-Request-ID`, `Content-Type: application/json` |
+
+Мини-правила по Request для всех P0:
+- Все mutating-операции (`POST`/`PATCH`) принимают только `application/json`.
+- `X-Request-ID` обязателен для трассировки и прокидывается во все downstream вызовы.
+- Для scheduled-сценариев вызывающим считается внутренний scheduler, но формат запроса сохраняется единым через BFF.
+
 1. **Вход (Request):**
    - `Метод + endpoint` (например, `GET /v1/profile`);
    - обязательные параметры (`path/query/body`);
