@@ -1,3 +1,14 @@
+/docs/api_202020_project.md
+Server Monitoring System v8.3.47
+Copyright (c) 2025 Aleksandr Sukhanov
+License: MIT
+Документ планирования API 202020
+Система мониторинга серверов
+Версия: 8.3.47
+Автор: Александр Суханов (c)
+Лицензия: MIT
+Документ планирования API 202020
+
 # API 202020 — подробный план первого этапа
 
 ## Этап 1. Проектирование BFF-контрактов (2–3 рабочих дня)
@@ -65,6 +76,12 @@
    - `Owner: <твоё имя/ник>`;
    - `Last updated: YYYY-MM-DD`.
 3. В этом документе (`docs/api_202020_project.md`) оставь ссылки на эти артефакты.
+
+
+Ссылки на артефакты Шага 0:
+- [External BFF API Draft](./contracts/external_bff_api.md)
+- [Error Mapping Draft](./contracts/error_mapping.md)
+- [Stage 2 Vertical Slice Backlog Draft](./backlog/stage2_vertical_slice.md)
 
 **Готово, если:** файлы существуют, шапка заполнена, ссылки не битые.
 
