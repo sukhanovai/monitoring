@@ -193,9 +193,79 @@ License: MIT
 3. На этом шаге глобальные изменения существующего проекта не требуются: основной фокус — аккуратно привязать мобильный интерфейс к уже существующему функционалу.
 4. Дальше двигаемся в Шаг 2: приоритизация P0/P1 и описание BFF-контрактов для ключевых сценариев.
 
+Текущий статус по этому документу: **Шаг 1 завершён, переходим к Шагу 2**.
+
+Дополнительный опорный документ по инфраструктурной готовности:
+- [Чистый TLS-план](./api_202020_tls_plan.md)
+
 ---
 
 #### Шаг 2. Приоритизировать без магии (45–60 минут)
+
+##### Список сценариев, которые необходимо оценить на Шаге 2
+
+Ниже — рабочий список для оценки по приоритетам `P0/P1` и риску реализации.
+
+**Пользовательские сценарии (через Android/BFF):**
+1. Проверка доступности всех серверов.
+2. Проверка доступности одного выбранного сервера.
+3. Просмотр ресурсов всех серверов.
+4. Просмотр ресурсов одного выбранного сервера.
+5. Просмотр бэкапов Proxmox.
+6. Просмотр бэкапов БД.
+7. Просмотр бэкапов почты.
+8. Просмотр остатков 1С.
+9. Просмотр результатов остатков поставщиков.
+10. Просмотр состояния ZFS.
+11. Открытие и управление расширениями.
+12. Операции из раздела «Управление» (пауза/возобновление мониторинга, утренний отчёт, режимы quiet/loud).
+13. Изменение настроек бота (интеграции/каналы).
+14. Изменение временных настроек (тихий режим, время сбора).
+15. Изменение настроек мониторинга (интервалы/таймауты/допуски).
+16. Изменение параметров аутентификации.
+
+**Системные сценарии (автоматические):**
+17. Плановый цикл мониторинга доступности.
+18. Плановый сбор метрик ресурсов.
+19. Автопереключение quiet/loud по расписанию.
+20. Плановая отправка утреннего отчёта.
+21. Эскалация/повтор уведомлений при долгом простое.
+22. Деградационный режим при недоступности downstream-сервисов.
+23. Плановая загрузка файлов остатков поставщиков.
+24. Очистка архивов/retention файлов остатков.
+25. Автоприменение включённых расширений в меню и логике.
+
+**Оценка сценариев (приоритеты зафиксированы, остальные критерии заполнены):**
+
+| ID | Сценарий | Приоритет | Бизнес-ценность | Техриск | Ключевые зависимости | Готовность контракта |
+|---|---|---|---|---|---|---|
+| 1 | Проверка доступности всех серверов | P0 | высокая | средний | server_monitor, агрегирующий BFF endpoint | Черновик нужен |
+| 2 | Проверка доступности одного выбранного сервера | P0 | высокая | низкий | server_monitor, выбор server_id | Черновик нужен |
+| 3 | Просмотр ресурсов всех серверов | P1 | средняя | средний | resource_monitor, агрегирование метрик | Черновик нужен |
+| 4 | Просмотр ресурсов одного выбранного сервера | P1 | средняя | низкий | resource_monitor, фильтр по server_id | Черновик нужен |
+| 5 | Просмотр бэкапов Proxmox | P0 | высокая | средний | backup extensions, upstream backup source | Черновик нужен |
+| 6 | Просмотр бэкапов БД | P0 | высокая | средний | db backup extension, scheduler/history | Черновик нужен |
+| 7 | Просмотр бэкапов почты | P1 | средняя | средний | mail backup extension | Черновик нужен |
+| 8 | Просмотр остатков 1С | P1 | средняя | средний | stock integration, источник файлов | Черновик нужен |
+| 9 | Просмотр результатов остатков поставщиков | P1 | средняя | средний | supplier_stock_files, загрузка/парсинг | Черновик нужен |
+| 10 | Просмотр состояния ZFS | P1 | средняя | средний | zfs extension, права доступа к данным | Черновик нужен |
+| 11 | Открытие и управление расширениями | P1 | средняя | средний | extension_manager, флаги включения | Черновик нужен |
+| 12 | Операции из раздела «Управление» | P0 | высокая | средний | monitoring_active, quiet/loud state, отчёт | Черновик нужен |
+| 13 | Изменение настроек бота (интеграции/каналы) | P0 | высокая | средний | config storage, валидация токенов/chat_id | Черновик нужен |
+| 14 | Изменение временных настроек | P0 | высокая | низкий | schedule config, quiet window | Черновик нужен |
+| 15 | Изменение настроек мониторинга | P0 | высокая | средний | timeout/check interval config, safeguards | Черновик нужен |
+| 16 | Изменение параметров аутентификации | P0 | высокая | высокий | secret storage, ssh/winrm params | Черновик нужен |
+| 17 | Плановый цикл мониторинга доступности | P0 | высокая | средний | scheduler, server_monitor | Черновик нужен |
+| 18 | Плановый сбор метрик ресурсов | P1 | средняя | средний | scheduler, resource_monitor | Черновик нужен |
+| 19 | Автопереключение quiet/loud по расписанию | P0 | высокая | низкий | scheduler, time settings | Черновик нужен |
+| 20 | Плановая отправка утреннего отчёта | P0 | высокая | средний | scheduler, report builder, delivery channel | Черновик нужен |
+| 21 | Эскалация/повтор уведомлений при долгом простое | P0 | высокая | средний | alert state machine, thresholds | Черновик нужен |
+| 22 | Деградационный режим при недоступности downstream-сервисов | P0 | высокая | высокий | circuit breaker/fallback, error mapping | Черновик нужен |
+| 23 | Плановая загрузка файлов остатков поставщиков | P1 | средняя | средний | scheduler, network I/O, supplier endpoints | Черновик нужен |
+| 24 | Очистка архивов/retention файлов остатков | P1 | средняя | низкий | cleanup job, retention policy | Черновик нужен |
+| 25 | Автоприменение включённых расширений в меню и логике | P1 | средняя | средний | extension_manager consistency | Черновик нужен |
+
+Примечание: приоритеты (`P0/P1`) зафиксированы по вашему списку; бизнес-ценность/техриск/зависимости можно корректировать после первого прохода контрактов.
 
 Используем только два приоритета:
 
@@ -219,6 +289,86 @@ License: MIT
 Сейчас уже думаем про API, но без реализации.
 
 Для каждого `P0` заполни шаблон:
+
+##### Готовые черновики **Request** для всех P0-сценариев
+
+| ID | Сценарий | Метод + endpoint | Обязательные параметры | Обязательные заголовки |
+|---|---|---|---|---|
+| 1 | Проверка доступности всех серверов | `GET /v1/monitoring/availability` | `scope=all` (query) | `Authorization`, `X-Request-ID` |
+| 2 | Проверка доступности одного сервера | `GET /v1/monitoring/availability/{server_id}` | `server_id` (path) | `Authorization`, `X-Request-ID` |
+| 5 | Просмотр бэкапов Proxmox | `GET /v1/backups/proxmox` | `from`, `to` (query, ISO8601) | `Authorization`, `X-Request-ID` |
+| 6 | Просмотр бэкапов БД | `GET /v1/backups/db` | `from`, `to` (query, ISO8601) | `Authorization`, `X-Request-ID` |
+| 12 | Операции из раздела «Управление» | `POST /v1/control/actions` | `action` (body: `pause_monitoring`/`resume_monitoring`/`send_morning_report`/`force_quiet`/`force_loud`/`auto_mode`) | `Authorization`, `X-Request-ID`, `Content-Type: application/json` |
+| 13 | Изменение настроек бота | `PATCH /v1/settings/bot` | `telegram_bot_token`, `telegram_chat_id` (body; минимум одно поле) | `Authorization`, `X-Request-ID`, `Content-Type: application/json` |
+| 14 | Изменение временных настроек | `PATCH /v1/settings/time` | `quiet_start`, `quiet_end`, `metrics_collection_time` (body; минимум одно поле) | `Authorization`, `X-Request-ID`, `Content-Type: application/json` |
+| 15 | Изменение настроек мониторинга | `PATCH /v1/settings/monitoring` | `check_interval_sec`, `max_downtime_sec`, `timeout_sec` (body; минимум одно поле) | `Authorization`, `X-Request-ID`, `Content-Type: application/json` |
+| 16 | Изменение параметров аутентификации | `PATCH /v1/settings/auth` | `ssh_username`, `ssh_port`, `windows_username`, `auth_mode` (body; минимум одно поле) | `Authorization`, `X-Request-ID`, `Content-Type: application/json` |
+| 17 | Плановый цикл мониторинга доступности | `POST /v1/jobs/monitoring/run` | `trigger=scheduled` (body) | `Authorization`, `X-Request-ID`, `Content-Type: application/json` |
+| 19 | Автопереключение quiet/loud по расписанию | `POST /v1/jobs/quiet-mode/apply` | `trigger=scheduled`, `timestamp` (body, ISO8601) | `Authorization`, `X-Request-ID`, `Content-Type: application/json` |
+| 20 | Плановая отправка утреннего отчёта | `POST /v1/jobs/reports/morning/send` | `trigger=scheduled`, `report_date` (body, `YYYY-MM-DD`) | `Authorization`, `X-Request-ID`, `Content-Type: application/json` |
+| 21 | Эскалация/повтор уведомлений | `POST /v1/jobs/alerts/escalate` | `trigger=scheduled`, `window_min` (body) | `Authorization`, `X-Request-ID`, `Content-Type: application/json` |
+| 22 | Деградационный режим при недоступности downstream | `POST /v1/system/degradation-mode` | `mode` (body: `on`/`off`), `reason` (body) | `Authorization`, `X-Request-ID`, `Content-Type: application/json` |
+
+Мини-правила по Request для всех P0:
+- Все mutating-операции (`POST`/`PATCH`) принимают только `application/json`.
+- `X-Request-ID` обязателен для трассировки и прокидывается во все downstream вызовы.
+- Для scheduled-сценариев вызывающим считается внутренний scheduler, но формат запроса сохраняется единым через BFF.
+
+##### Готовые черновики **Response** для всех P0-сценариев
+
+| ID | Endpoint | Успешный ответ (кратко) | Обязательные поля | Nullable |
+|---|---|---|---|---|
+| 1 | `GET /v1/monitoring/availability` | Список статусов по всем серверам | `request_id`, `generated_at`, `items[]:{server_id,status,checked_at}` | `error_message` в `items[]` |
+| 2 | `GET /v1/monitoring/availability/{server_id}` | Статус одного сервера | `request_id`, `server:{server_id,status,checked_at}` | `server.latency_ms`, `server.error_message` |
+| 5 | `GET /v1/backups/proxmox` | Список backup jobs за период | `request_id`, `range:{from,to}`, `items[]:{job_id,node,status,finished_at}` | `items[].size_bytes`, `items[].details` |
+| 6 | `GET /v1/backups/db` | Список DB backup запусков | `request_id`, `range:{from,to}`, `items[]:{db_name,status,finished_at}` | `items[].size_bytes`, `items[].storage` |
+| 12 | `POST /v1/control/actions` | Результат управляющей команды | `request_id`, `action`, `result` (`accepted`/`applied`) | `effective_from`, `details` |
+| 13 | `PATCH /v1/settings/bot` | Актуальные настройки канала | `request_id`, `settings:{telegram_chat_id,updated_at}` | `settings.masked_token` |
+| 14 | `PATCH /v1/settings/time` | Актуальные временные настройки | `request_id`, `settings:{quiet_start,quiet_end,metrics_collection_time,updated_at}` | — |
+| 15 | `PATCH /v1/settings/monitoring` | Актуальные настройки мониторинга | `request_id`, `settings:{check_interval_sec,max_downtime_sec,timeout_sec,updated_at}` | — |
+| 16 | `PATCH /v1/settings/auth` | Подтверждение применения auth-настроек | `request_id`, `settings:{auth_mode,updated_at}` | `settings.ssh_username`, `settings.windows_username` |
+| 17 | `POST /v1/jobs/monitoring/run` | Результат триггера джобы | `request_id`, `job:{name,status,started_at}` | `job.finished_at`, `job.summary` |
+| 19 | `POST /v1/jobs/quiet-mode/apply` | Результат применения quiet/loud | `request_id`, `mode`, `applied_at` | `reason` |
+| 20 | `POST /v1/jobs/reports/morning/send` | Результат отправки отчёта | `request_id`, `report_date`, `delivery_status` | `delivery_details` |
+| 21 | `POST /v1/jobs/alerts/escalate` | Результат эскалации алертов | `request_id`, `processed_alerts`, `escalated_count` | `skipped_count`, `details[]` |
+| 22 | `POST /v1/system/degradation-mode` | Текущее состояние деградации | `request_id`, `mode`, `changed_at` | `reason`, `ttl_sec` |
+
+##### Готовые черновики **Errors** для всех P0-сценариев
+
+Единый формат ошибки для всех endpoint:
+
+```json
+{
+  "code": "UPSTREAM_UNAVAILABLE",
+  "message": "human readable message",
+  "request_id": "<uuid>",
+  "details": {}
+}
+```
+
+| ID | Endpoint | Основные бизнес-ошибки | Основные технические ошибки |
+|---|---|---|---|
+| 1 | `/v1/monitoring/availability` | `SERVERS_NOT_CONFIGURED` | `UPSTREAM_TIMEOUT`, `UPSTREAM_UNAVAILABLE` |
+| 2 | `/v1/monitoring/availability/{server_id}` | `SERVER_NOT_FOUND` | `UPSTREAM_TIMEOUT`, `UPSTREAM_UNAVAILABLE` |
+| 5 | `/v1/backups/proxmox` | `BACKUP_SOURCE_DISABLED` | `UPSTREAM_TIMEOUT`, `UPSTREAM_UNAVAILABLE` |
+| 6 | `/v1/backups/db` | `DB_BACKUP_DISABLED` | `UPSTREAM_TIMEOUT`, `UPSTREAM_UNAVAILABLE` |
+| 12 | `/v1/control/actions` | `ACTION_NOT_ALLOWED`, `INVALID_ACTION` | `STATE_CONFLICT`, `UPSTREAM_TIMEOUT` |
+| 13 | `/v1/settings/bot` | `INVALID_CHAT_ID`, `INVALID_BOT_TOKEN` | `VALIDATION_FAILED`, `CONFIG_STORE_UNAVAILABLE` |
+| 14 | `/v1/settings/time` | `INVALID_TIME_WINDOW` | `VALIDATION_FAILED`, `CONFIG_STORE_UNAVAILABLE` |
+| 15 | `/v1/settings/monitoring` | `INVALID_THRESHOLD` | `VALIDATION_FAILED`, `CONFIG_STORE_UNAVAILABLE` |
+| 16 | `/v1/settings/auth` | `AUTH_PROFILE_INVALID` | `SECRET_STORE_UNAVAILABLE`, `VALIDATION_FAILED` |
+| 17 | `/v1/jobs/monitoring/run` | `JOB_ALREADY_RUNNING` | `SCHEDULER_UNAVAILABLE`, `UPSTREAM_TIMEOUT` |
+| 19 | `/v1/jobs/quiet-mode/apply` | `MODE_TRANSITION_INVALID` | `SCHEDULER_UNAVAILABLE`, `STATE_CONFLICT` |
+| 20 | `/v1/jobs/reports/morning/send` | `REPORT_DATA_EMPTY` | `DELIVERY_CHANNEL_UNAVAILABLE`, `UPSTREAM_TIMEOUT` |
+| 21 | `/v1/jobs/alerts/escalate` | `NO_ALERTS_FOR_ESCALATION` | `ALERT_ENGINE_UNAVAILABLE`, `UPSTREAM_TIMEOUT` |
+| 22 | `/v1/system/degradation-mode` | `MODE_ALREADY_SET` | `STATE_STORE_UNAVAILABLE`, `UPSTREAM_UNAVAILABLE` |
+
+HTTP-маппинг по умолчанию:
+- `VALIDATION_FAILED` -> `400`;
+- `*_NOT_FOUND` -> `404`;
+- `*_CONFLICT`/`STATE_CONFLICT` -> `409`;
+- `UPSTREAM_TIMEOUT` -> `504`;
+- `*_UNAVAILABLE` -> `503`.
 
 1. **Вход (Request):**
    - `Метод + endpoint` (например, `GET /v1/profile`);
