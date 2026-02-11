@@ -415,7 +415,34 @@ HTTP-маппинг по умолчанию:
 - `Decision owner`;
 - `Due date`.
 
+##### Финальная таблица (рабочий черновик на конец Дня 1)
+
+| Scenario | Priority | Endpoint draft | Downstream draft | Main errors | Open questions | Decision owner | Due date |
+|---|---|---|---|---|---|---|---|
+| Доступность всех серверов | P0 | `GET /v1/monitoring/availability` | `server_monitor.GetAllStatuses` | `UPSTREAM_TIMEOUT`, `UPSTREAM_UNAVAILABLE` | Нужен ли пагинированный ответ при >1000 серверов? | Backend/BFF | День 2 (утро) |
+| Доступность одного сервера | P0 | `GET /v1/monitoring/availability/{server_id}` | `server_monitor.GetStatus` | `SERVER_NOT_FOUND`, `UPSTREAM_TIMEOUT` | Возвращаем ли историю за N минут в этом же endpoint? | Backend/BFF | День 2 (утро) |
+| Бэкапы Proxmox | P0 | `GET /v1/backups/proxmox` | `backup_ext.ListProxmoxBackups` | `BACKUP_SOURCE_DISABLED`, `UPSTREAM_UNAVAILABLE` | Единый формат статуса job для всех backup-источников? | Backend/BFF | День 2 |
+| Бэкапы БД | P0 | `GET /v1/backups/db` | `backup_ext.ListDbBackups` | `DB_BACKUP_DISABLED`, `UPSTREAM_TIMEOUT` | Нужно ли поле `retention_days` в response? | Backend/BFF | День 2 |
+| Управляющие операции | P0 | `POST /v1/control/actions` | `control_service.ApplyAction` | `INVALID_ACTION`, `STATE_CONFLICT` | Нужна ли идемпотентность по `X-Idempotency-Key`? | Backend/BFF | День 2 (утро) |
+| Настройки бота | P0 | `PATCH /v1/settings/bot` | `config_service.UpdateBotSettings` | `INVALID_BOT_TOKEN`, `CONFIG_STORE_UNAVAILABLE` | Валидируем токен синхронно или async-джобой? | Backend/BFF | День 2 |
+| Временные настройки | P0 | `PATCH /v1/settings/time` | `config_service.UpdateTimeSettings` | `INVALID_TIME_WINDOW`, `VALIDATION_FAILED` | Разрешаем ли пересечение quiet window через полночь? | Backend/BFF | День 2 |
+| Настройки мониторинга | P0 | `PATCH /v1/settings/monitoring` | `config_service.UpdateMonitoringSettings` | `INVALID_THRESHOLD`, `VALIDATION_FAILED` | Нужны ли жёсткие min/max лимиты на уровне BFF? | Backend/BFF | День 2 |
+| Параметры аутентификации | P0 | `PATCH /v1/settings/auth` | `config_service.UpdateAuthSettings` + `secret_store` | `AUTH_PROFILE_INVALID`, `SECRET_STORE_UNAVAILABLE` | Поддерживаем частичный update без передачи пароля? | Backend/BFF | День 2 |
+| Плановый цикл мониторинга | P0 | `POST /v1/jobs/monitoring/run` | `scheduler.RunMonitoringCycle` | `JOB_ALREADY_RUNNING`, `SCHEDULER_UNAVAILABLE` | Какой таймаут job считать критическим для алерта? | Backend/BFF | День 2 |
+| Автопереключение quiet/loud | P0 | `POST /v1/jobs/quiet-mode/apply` | `scheduler.ApplyQuietMode` | `MODE_TRANSITION_INVALID`, `STATE_CONFLICT` | Нужен ли override при ручном force-режиме? | Backend/BFF | День 2 |
+| Утр. отчёт по расписанию | P0 | `POST /v1/jobs/reports/morning/send` | `report_service.SendMorningReport` | `REPORT_DATA_EMPTY`, `DELIVERY_CHANNEL_UNAVAILABLE` | Что считаем пустым отчётом: ошибка или успешный no-op? | Backend/BFF | День 2 |
+| Эскалация алертов | P0 | `POST /v1/jobs/alerts/escalate` | `alert_engine.Escalate` | `NO_ALERTS_FOR_ESCALATION`, `ALERT_ENGINE_UNAVAILABLE` | Нужен ли throttling на повторные эскалации? | Backend/BFF | День 2 |
+| Деградационный режим | P0 | `POST /v1/system/degradation-mode` | `state_store.SetDegradationMode` | `MODE_ALREADY_SET`, `STATE_STORE_UNAVAILABLE` | Автовыход из деградации по TTL обязателен? | Backend/BFF | День 2 |
+
 Внизу добавь блок **«Старт Дня 2»** (3–5 пунктов: что решаем первым).
+
+##### Старт Дня 2 (фиксируем порядок работ)
+
+1. Закрыть открытые вопросы по `P0` endpoint №1, №2 и №12 (критичный контур мониторинга и управления).
+2. Зафиксировать единый `error envelope` и окончательный HTTP-маппинг в `docs/contracts/error_mapping.md`.
+3. Синхронизировать naming и поля `settings/*` endpoint в едином стиле (snake_case vs camelCase — выбрать один).
+4. Подготовить первый вертикальный срез: `availability(all)` + `control/actions` + трассировка `X-Request-ID`.
+5. Обновить backlog `docs/backlog/stage2_vertical_slice.md` конкретными задачами с оценкой по времени.
 
 **Готово, если:** утром следующего дня ты открываешь документ и сразу понимаешь, что делать дальше.
 
