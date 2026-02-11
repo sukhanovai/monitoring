@@ -115,3 +115,9 @@ dmypy.json
 # VS Code
 .vscode/
 
+
+# Android
+android-client/.gradle/
+android-client/local.properties
+android-client/**/build/
+*.apk
