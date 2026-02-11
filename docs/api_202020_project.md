@@ -314,6 +314,62 @@ License: MIT
 - `X-Request-ID` обязателен для трассировки и прокидывается во все downstream вызовы.
 - Для scheduled-сценариев вызывающим считается внутренний scheduler, но формат запроса сохраняется единым через BFF.
 
+##### Готовые черновики **Response** для всех P0-сценариев
+
+| ID | Endpoint | Успешный ответ (кратко) | Обязательные поля | Nullable |
+|---|---|---|---|---|
+| 1 | `GET /v1/monitoring/availability` | Список статусов по всем серверам | `request_id`, `generated_at`, `items[]:{server_id,status,checked_at}` | `error_message` в `items[]` |
+| 2 | `GET /v1/monitoring/availability/{server_id}` | Статус одного сервера | `request_id`, `server:{server_id,status,checked_at}` | `server.latency_ms`, `server.error_message` |
+| 5 | `GET /v1/backups/proxmox` | Список backup jobs за период | `request_id`, `range:{from,to}`, `items[]:{job_id,node,status,finished_at}` | `items[].size_bytes`, `items[].details` |
+| 6 | `GET /v1/backups/db` | Список DB backup запусков | `request_id`, `range:{from,to}`, `items[]:{db_name,status,finished_at}` | `items[].size_bytes`, `items[].storage` |
+| 12 | `POST /v1/control/actions` | Результат управляющей команды | `request_id`, `action`, `result` (`accepted`/`applied`) | `effective_from`, `details` |
+| 13 | `PATCH /v1/settings/bot` | Актуальные настройки канала | `request_id`, `settings:{telegram_chat_id,updated_at}` | `settings.masked_token` |
+| 14 | `PATCH /v1/settings/time` | Актуальные временные настройки | `request_id`, `settings:{quiet_start,quiet_end,metrics_collection_time,updated_at}` | — |
+| 15 | `PATCH /v1/settings/monitoring` | Актуальные настройки мониторинга | `request_id`, `settings:{check_interval_sec,max_downtime_sec,timeout_sec,updated_at}` | — |
+| 16 | `PATCH /v1/settings/auth` | Подтверждение применения auth-настроек | `request_id`, `settings:{auth_mode,updated_at}` | `settings.ssh_username`, `settings.windows_username` |
+| 17 | `POST /v1/jobs/monitoring/run` | Результат триггера джобы | `request_id`, `job:{name,status,started_at}` | `job.finished_at`, `job.summary` |
+| 19 | `POST /v1/jobs/quiet-mode/apply` | Результат применения quiet/loud | `request_id`, `mode`, `applied_at` | `reason` |
+| 20 | `POST /v1/jobs/reports/morning/send` | Результат отправки отчёта | `request_id`, `report_date`, `delivery_status` | `delivery_details` |
+| 21 | `POST /v1/jobs/alerts/escalate` | Результат эскалации алертов | `request_id`, `processed_alerts`, `escalated_count` | `skipped_count`, `details[]` |
+| 22 | `POST /v1/system/degradation-mode` | Текущее состояние деградации | `request_id`, `mode`, `changed_at` | `reason`, `ttl_sec` |
+
+##### Готовые черновики **Errors** для всех P0-сценариев
+
+Единый формат ошибки для всех endpoint:
+
+```json
+{
+  "code": "UPSTREAM_UNAVAILABLE",
+  "message": "human readable message",
+  "request_id": "<uuid>",
+  "details": {}
+}
+```
+
+| ID | Endpoint | Основные бизнес-ошибки | Основные технические ошибки |
+|---|---|---|---|
+| 1 | `/v1/monitoring/availability` | `SERVERS_NOT_CONFIGURED` | `UPSTREAM_TIMEOUT`, `UPSTREAM_UNAVAILABLE` |
+| 2 | `/v1/monitoring/availability/{server_id}` | `SERVER_NOT_FOUND` | `UPSTREAM_TIMEOUT`, `UPSTREAM_UNAVAILABLE` |
+| 5 | `/v1/backups/proxmox` | `BACKUP_SOURCE_DISABLED` | `UPSTREAM_TIMEOUT`, `UPSTREAM_UNAVAILABLE` |
+| 6 | `/v1/backups/db` | `DB_BACKUP_DISABLED` | `UPSTREAM_TIMEOUT`, `UPSTREAM_UNAVAILABLE` |
+| 12 | `/v1/control/actions` | `ACTION_NOT_ALLOWED`, `INVALID_ACTION` | `STATE_CONFLICT`, `UPSTREAM_TIMEOUT` |
+| 13 | `/v1/settings/bot` | `INVALID_CHAT_ID`, `INVALID_BOT_TOKEN` | `VALIDATION_FAILED`, `CONFIG_STORE_UNAVAILABLE` |
+| 14 | `/v1/settings/time` | `INVALID_TIME_WINDOW` | `VALIDATION_FAILED`, `CONFIG_STORE_UNAVAILABLE` |
+| 15 | `/v1/settings/monitoring` | `INVALID_THRESHOLD` | `VALIDATION_FAILED`, `CONFIG_STORE_UNAVAILABLE` |
+| 16 | `/v1/settings/auth` | `AUTH_PROFILE_INVALID` | `SECRET_STORE_UNAVAILABLE`, `VALIDATION_FAILED` |
+| 17 | `/v1/jobs/monitoring/run` | `JOB_ALREADY_RUNNING` | `SCHEDULER_UNAVAILABLE`, `UPSTREAM_TIMEOUT` |
+| 19 | `/v1/jobs/quiet-mode/apply` | `MODE_TRANSITION_INVALID` | `SCHEDULER_UNAVAILABLE`, `STATE_CONFLICT` |
+| 20 | `/v1/jobs/reports/morning/send` | `REPORT_DATA_EMPTY` | `DELIVERY_CHANNEL_UNAVAILABLE`, `UPSTREAM_TIMEOUT` |
+| 21 | `/v1/jobs/alerts/escalate` | `NO_ALERTS_FOR_ESCALATION` | `ALERT_ENGINE_UNAVAILABLE`, `UPSTREAM_TIMEOUT` |
+| 22 | `/v1/system/degradation-mode` | `MODE_ALREADY_SET` | `STATE_STORE_UNAVAILABLE`, `UPSTREAM_UNAVAILABLE` |
+
+HTTP-маппинг по умолчанию:
+- `VALIDATION_FAILED` -> `400`;
+- `*_NOT_FOUND` -> `404`;
+- `*_CONFLICT`/`STATE_CONFLICT` -> `409`;
+- `UPSTREAM_TIMEOUT` -> `504`;
+- `*_UNAVAILABLE` -> `503`.
+
 1. **Вход (Request):**
    - `Метод + endpoint` (например, `GET /v1/profile`);
    - обязательные параметры (`path/query/body`);
