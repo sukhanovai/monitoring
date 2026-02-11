@@ -57,14 +57,68 @@ Telegram-функционал бэкенда не тронут: мобильно
 
 ---
 
-## 3. Как забрать код через GitHub
+## 3. Как забрать код через GitHub (подробно)
+
+Ниже — два рабочих сценария. Если ты просто запускаешь проект у себя, бери **Вариант A**.
+
+### Вариант A: просто скачать и запустить (без форка)
 
 ```bash
 git clone https://github.com/sukhanovai/monitoring.git
 cd monitoring
+git branch
 ```
 
-Дальше открываешь папку `/workspace/monitoring/android-client` как отдельный проект в Android Studio.
+Что проверить после клонирования:
+
+1. В выводе `git branch` есть активная ветка (обычно `main` или `master`).
+2. В корне есть папка `android-client/`.
+3. Внутри `android-client/` есть файлы `settings.gradle.kts` и `app/build.gradle.kts`.
+
+Быстрая проверка командами:
+
+```bash
+ls
+ls android-client
+```
+
+### Вариант B: если хочешь коммитить в свой GitHub (правильный путь для доработок)
+
+1. Сделай Fork репозитория в своём GitHub-аккаунте (кнопка **Fork** в интерфейсе GitHub).
+2. Клонируй **свой** форк:
+
+```bash
+git clone https://github.com/<твой_логин>/monitoring.git
+cd monitoring
+```
+
+3. Добавь оригинальный репозиторий как `upstream` (чтобы подтягивать свежие изменения):
+
+```bash
+git remote add upstream https://github.com/sukhanovai/monitoring.git
+git remote -v
+```
+
+4. Создай отдельную рабочую ветку под Android-изменения:
+
+```bash
+git checkout -b feature/android-mobile
+```
+
+---
+
+### Как открыть проект в Android Studio (важный момент)
+
+Открывать нужно **папку `android-client`**, а не весь монорепо:
+
+1. Android Studio -> **Open**.
+2. Выбрать путь вида:
+   - Linux/macOS: `/home/<user>/.../monitoring/android-client`
+   - Windows: `C:\Users\<user>\...\monitoring\android-client`
+3. Нажать **Trust Project** (если спросит).
+4. Дождаться Sync Gradle (первый sync может занять 5–15 минут).
+
+Если открыть не `android-client`, а корень Python-проекта, Android Studio может не увидеть Android-модуль — и дальше начнётся ебаный цирк с «почему не запускается». Поэтому открываем строго `android-client`.
 
 ---
 
