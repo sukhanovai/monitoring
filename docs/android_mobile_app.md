@@ -105,6 +105,102 @@ git remote -v
 git checkout -b feature/android-mobile
 ```
 
+### Как жить с моделью `main` / `develop` и Android-разработкой
+
+Твоя схема (`main` = стабильные релизы, `develop` = основная разработка) — нормальная и рабочая.
+
+**Короткий ответ:**
+- отдельный **fork не обязателен**, если ты один и имеешь доступ в основной репозиторий;
+- отдельная **ветка под Android обязательна** (`feature/android-mobile`) — это сильно упрощает жизнь.
+
+Рекомендуемый поток без лишнего геморроя:
+
+1. Базовая ветка для Android-фичи: `develop`.
+2. Работаешь в `feature/android-mobile`.
+3. Регулярно подтягиваешь изменения из `develop` (rebase или merge).
+4. Когда Android-кусок готов — вливаешь его в `develop`.
+5. В `main` попадает только проверенный релиз через merge из `develop`.
+
+Команды для синка Android-ветки с `develop`:
+
+```bash
+git checkout develop
+git pull origin develop
+git checkout feature/android-mobile
+git rebase develop
+```
+
+Если rebase пока страшновато, можно безопаснее через merge:
+
+```bash
+git checkout feature/android-mobile
+git merge develop
+```
+
+### Почему ветку не видно в GitHub и что делать с `no upstream branch`
+
+Это частая история: ты создал ветку локально, но **ещё ни разу не запушил её в origin**.
+Пока не сделаешь первый push с установкой upstream, GitHub про эту ветку не знает.
+
+Ошибка:
+
+```text
+fatal: The current branch feature/android-mobile has no upstream branch.
+```
+
+Лечение (один раз для новой ветки):
+
+```bash
+git push --set-upstream origin feature/android-mobile
+```
+
+После этого будет работать обычный короткий push:
+
+```bash
+git push
+```
+
+Проверка, что всё ок:
+
+```bash
+git branch -vv
+git remote -v
+```
+
+В `git branch -vv` у ветки должно появиться что-то вроде `[origin/feature/android-mobile]`.
+
+Чтобы Git сам ставил upstream для новых веток по умолчанию, включи один раз:
+
+```bash
+git config --global push.autoSetupRemote true
+```
+
+И ещё важный момент, из-за которого «в GitHub пусто»: если в ветке нет новых коммитов относительно `develop`, то даже после push диффа не будет. Проверь:
+
+```bash
+git status
+git log --oneline --decorate --graph -20
+```
+
+---
+
+### Когда всё-таки нужен отдельный fork под Android
+
+Делать Android в отдельном fork имеет смысл, если:
+
+1. хочешь полностью изолировать эксперименты и не светить сырой код в основном репо;
+2. будут внешние разработчики без прямого доступа;
+3. нужно отдельное управление правами/CI/секретами именно для мобильного клиента.
+
+Минус отдельного форка: надо чаще синкать `develop`, иначе начинаются конфликты и ебля с интеграцией.
+
+Практично для твоего кейса (один разработчик):
+
+- держи всё в одном репозитории;
+- Android делай в ветке `feature/android-mobile` от `develop`;
+- параллельные доработки backend в `develop` регулярно подтягивай в Android-ветку;
+- релизный срез в `main` делай только после smoke/regression проверки.
+
 ---
 
 ### Как открыть проект в Android Studio (важный момент)
