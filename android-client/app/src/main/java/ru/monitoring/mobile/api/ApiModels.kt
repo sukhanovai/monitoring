@@ -52,3 +52,16 @@ data class SettingsMonitoringResponse(
     @Json(name = "timeout_sec") val timeoutSec: Int,
     @Json(name = "max_downtime_sec") val maxDowntimeSec: Int
 )
+
+data class ProxmoxBackupsResponse(
+    val backups: List<BackupItem> = emptyList()
+)
+
+data class BackupItem(
+    val id: String = "",
+    val source: String = "",
+    val status: String = "unknown",
+    @Json(name = "created_at") val createdAt: String? = null,
+    @Json(name = "size_human") val sizeHuman: String? = null,
+    val message: String? = null
+)

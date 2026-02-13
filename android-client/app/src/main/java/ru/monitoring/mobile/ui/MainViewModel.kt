@@ -8,68 +8,58 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 import ru.monitoring.mobile.api.ApiFactory
-import ru.monitoring.mobile.api.ControlActionRequest
-import ru.monitoring.mobile.api.ServerAvailability
+import ru.monitoring.mobile.api.BackupItem
+import ru.monitoring.mobile.api.MonitoringRepository
 import ru.monitoring.mobile.api.SettingsMonitoringRequest
 import ru.monitoring.mobile.storage.AppPreferences
+import java.time.LocalDate
 
 class MainViewModel(
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val api = ApiFactory.createApi { preferences.apiToken }
+    private val repository = MonitoringRepository(ApiFactory.createApi { preferences.apiToken })
 
     var state by mutableStateOf(MainUiState())
         private set
 
-    fun saveToken(token: String) {
-        preferences.apiToken = token
-        state = state.copy(token = token, message = "Токен сохранён")
+    fun loadInitialState() {
+        val now = LocalDate.now()
+        state = state.copy(
+            token = preferences.apiToken,
+            backupsFrom = now.minusDays(7).toString(),
+            backupsTo = now.toString()
+        )
     }
 
-    fun loadInitialState() {
-        state = state.copy(token = preferences.apiToken)
+    fun saveToken(token: String) {
+        val normalized = token.trim()
+        preferences.apiToken = normalized
+        state = state.copy(
+            token = normalized,
+            message = if (normalized.isBlank()) "Токен очищен" else "Токен сохранён"
+        )
     }
 
     fun refreshAvailability() {
-        viewModelScope.launch {
-            state = state.copy(isLoading = true, message = "")
-            runCatching {
-                api.getAvailability()
-            }.onSuccess { response ->
-                val payload = response.data
-                if (payload == null) {
-                    state = state.copy(
-                        isLoading = false,
-                        message = response.error?.message ?: "Пустой ответ от API"
-                    )
-                    return@onSuccess
-                }
-
+        requestWithLoading {
+            repository.getAvailability().onSuccess { payload ->
                 state = state.copy(
-                    isLoading = false,
                     servers = payload.servers,
                     summaryText = "UP: ${payload.summary.up}, DOWN: ${payload.summary.down}, UNKNOWN: ${payload.summary.unknown}",
                     message = "Данные обновлены"
                 )
-            }.onFailure { error ->
-                state = state.copy(isLoading = false, message = error.message ?: "Ошибка запроса")
+            }.onFailure {
+                state = state.copy(message = it.message ?: "Ошибка запроса")
             }
         }
     }
 
     fun sendAction(action: String) {
-        viewModelScope.launch {
-            state = state.copy(isLoading = true, message = "")
-            runCatching {
-                api.runControlAction(ControlActionRequest(action))
-            }.onSuccess { response ->
-                val data = response.data
-                state = state.copy(
-                    isLoading = false,
-                    message = data?.message ?: response.error?.message ?: "Команда отправлена"
-                )
-            }.onFailure { error ->
-                state = state.copy(isLoading = false, message = error.message ?: "Ошибка команды")
+        requestWithLoading {
+            repository.runAction(action).onSuccess { data ->
+                state = state.copy(message = data.message)
+            }.onFailure {
+                state = state.copy(message = it.message ?: "Ошибка команды")
             }
         }
     }
@@ -81,22 +71,48 @@ class MainViewModel(
             maxDowntimeSec = maxDowntime.toIntOrNull()
         )
 
+        requestWithLoading {
+            repository.updateMonitoringSettings(request).onSuccess { data ->
+                state = state.copy(
+                    message = "Сохранено: interval=${data.checkIntervalSec}, timeout=${data.timeoutSec}, maxDown=${data.maxDowntimeSec}"
+                )
+            }.onFailure {
+                state = state.copy(message = it.message ?: "Ошибка сохранения")
+            }
+        }
+    }
+
+    fun setBackupsRange(from: String, to: String) {
+        state = state.copy(backupsFrom = from, backupsTo = to)
+    }
+
+    fun loadBackups() {
+        if (state.backupsFrom.isBlank() || state.backupsTo.isBlank()) {
+            state = state.copy(message = "Укажи обе даты (from/to)")
+            return
+        }
+
+        requestWithLoading {
+            repository.getProxmoxBackups(state.backupsFrom, state.backupsTo).onSuccess { data ->
+                state = state.copy(
+                    backups = data.backups,
+                    message = "Бэкапы загружены: ${data.backups.size}"
+                )
+            }.onFailure {
+                state = state.copy(message = it.message ?: "Ошибка получения бэкапов")
+            }
+        }
+    }
+
+    fun setTab(tab: AppTab) {
+        state = state.copy(selectedTab = tab)
+    }
+
+    private fun requestWithLoading(block: suspend () -> Unit) {
         viewModelScope.launch {
             state = state.copy(isLoading = true, message = "")
-            runCatching {
-                api.updateMonitoringSettings(request)
-            }.onSuccess { response ->
-                val data = response.data
-                val msg = if (data != null) {
-                    "Сохранено: interval=${data.checkIntervalSec}, timeout=${data.timeoutSec}, maxDown=${data.maxDowntimeSec}"
-                } else {
-                    response.error?.message ?: "Настройки обновлены"
-                }
-
-                state = state.copy(isLoading = false, message = msg)
-            }.onFailure { error ->
-                state = state.copy(isLoading = false, message = error.message ?: "Ошибка сохранения")
-            }
+            block()
+            state = state.copy(isLoading = false)
         }
     }
 
@@ -110,10 +126,21 @@ class MainViewModel(
     }
 }
 
+enum class AppTab {
+    DASHBOARD,
+    CONTROL,
+    BACKUPS,
+    SETTINGS
+}
+
 data class MainUiState(
     val token: String = "",
     val isLoading: Boolean = false,
+    val selectedTab: AppTab = AppTab.DASHBOARD,
     val summaryText: String = "Нажми \"Обновить\", чтобы получить статус",
-    val servers: List<ServerAvailability> = emptyList(),
+    val servers: List<ru.monitoring.mobile.api.ServerAvailability> = emptyList(),
+    val backups: List<BackupItem> = emptyList(),
+    val backupsFrom: String = "",
+    val backupsTo: String = "",
     val message: String = ""
 )

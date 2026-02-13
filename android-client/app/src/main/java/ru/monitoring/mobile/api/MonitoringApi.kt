@@ -4,6 +4,7 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
+import retrofit2.http.Query
 
 interface MonitoringApi {
     @GET("v1/monitoring/availability?scope=all")
@@ -16,4 +17,10 @@ interface MonitoringApi {
     suspend fun updateMonitoringSettings(
         @Body request: SettingsMonitoringRequest
     ): ApiEnvelope<SettingsMonitoringResponse>
+
+    @GET("v1/backups/proxmox")
+    suspend fun getProxmoxBackups(
+        @Query("from") from: String,
+        @Query("to") to: String
+    ): ApiEnvelope<ProxmoxBackupsResponse>
 }

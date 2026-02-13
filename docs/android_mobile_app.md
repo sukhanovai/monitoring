@@ -12,11 +12,12 @@ Last updated: 2026-02-11
 
 - Kotlin + Jetpack Compose;
 - подключение к `https://api.202020.ru:8443`;
-- экраны:
+- экраны/вкладки:
   - сохранение Bearer-токена;
-  - получение статуса доступности серверов;
-  - отправка control action (`pause/resume/report/quiet`);
-  - изменение настроек мониторинга (`check_interval_sec`, `timeout_sec`, `max_downtime_sec`).
+  - Dashboard со статусом доступности серверов;
+  - Control actions (`pause/resume/report/quiet`);
+  - Backups (просмотр Proxmox-бэкапов по диапазону дат);
+  - Settings (`check_interval_sec`, `timeout_sec`, `max_downtime_sec`).
 
 Telegram-функционал бэкенда не тронут: мобильное приложение работает через BFF API поверх интернета и не вмешивается в код Telegram-бота.
 
@@ -226,6 +227,37 @@ git log --oneline --decorate --graph -20
 2. Выбрать Pixel + Android 14 (API 34).
 3. Нажать **Run** (зелёный треугольник).
 
+#### Если вылезла ошибка `Android Emulator hypervisor driver is not installed` (Windows)
+
+Это значит, что эмулятору не хватает драйвера виртуализации. Без него всё будет тормозить или не стартовать вообще.
+
+Сделай так:
+
+1. Открой **Android Studio -> SDK Manager -> SDK Tools**.
+2. Поставь галочки:
+   - **Android Emulator**;
+   - **Android Emulator Hypervisor Driver (installer)**.
+3. Нажми **Apply** и дождись установки.
+4. Перезапусти Android Studio.
+
+Если всё ещё ругается, проверь системные фичи Windows:
+
+1. Нажми `Win + R` -> `optionalfeatures`.
+2. Включи (минимум):
+   - **Windows Hypervisor Platform**;
+   - **Virtual Machine Platform**.
+3. Перезагрузи ПК.
+
+Проверка в PowerShell:
+
+```powershell
+systeminfo | findstr /i "Hyper-V"
+```
+
+Если виртуализация выключена в BIOS/UEFI, Windows тоже будет тупить и эмулятор не заведётся — тогда нужно включить Intel VT-x / AMD-V в BIOS.
+
+Если не хочешь ебаться с эмулятором прямо сейчас — используй физический Android-телефон (ниже), это обычно быстрее и стабильнее.
+
 ### Вариант Б: живой Android-телефон
 
 1. В телефоне включить Developer Options + USB Debugging.
@@ -247,6 +279,7 @@ git log --oneline --decorate --graph -20
 2. Вставить токен в поле `Bearer токен`.
 3. Нажать `Сохранить токен`.
 4. Нажать `Обновить` — получишь список серверов и summary.
+5. Перейти во вкладку `Бэкапы`, указать даты `from/to` и нажать `Загрузить бэкапы`.
 
 ---
 
