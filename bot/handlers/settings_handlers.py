@@ -1976,6 +1976,12 @@ def handle_setting_value(update, context):
     # Проверяем, не редактируется ли дефолтный паттерн БД
     if context.user_data.get('editing_default_db_pattern'):
         return handle_default_db_pattern_edit_input(update, context)
+
+    if context.user_data.get('adding_tamtam_chat'):
+        return handle_tamtam_chat_add_input(update, context)
+
+    if context.user_data.get('removing_tamtam_chat'):
+        return handle_tamtam_chat_remove_input(update, context)
     
     # Если это обычная настройка
     if 'editing_setting' not in context.user_data:
@@ -10278,12 +10284,116 @@ def remove_chat_handler(update, context):
     not_implemented_handler(update, context, "Удаление чата")
 
 def add_tamtam_chat_handler(update, context):
-    """Добавить TamTam чат - заглушка."""
-    not_implemented_handler(update, context, "Добавление TamTam чата")
+    """Начать добавление TamTam чата."""
+    query = update.callback_query
+    query.answer()
+
+    context.user_data['adding_tamtam_chat'] = True
+    context.user_data.pop('removing_tamtam_chat', None)
+
+    query.edit_message_text(
+        "🟠 *Добавление TamTam чата*\n\n"
+        "Отправьте ID чата TamTam одним сообщением.\n"
+        "Например: `1234567890`",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='manage_tamtam_chats')],
+            [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ])
+    )
 
 def remove_tamtam_chat_handler(update, context):
-    """Удалить TamTam чат - заглушка."""
-    not_implemented_handler(update, context, "Удаление TamTam чата")
+    """Начать удаление TamTam чата."""
+    query = update.callback_query
+    query.answer()
+
+    tamtam_chat_ids = settings_manager.get_setting('TAMTAM_CHAT_IDS', [])
+    if not tamtam_chat_ids:
+        query.edit_message_text(
+            "❌ Список TamTam чатов пуст.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='manage_tamtam_chats')],
+                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ])
+        )
+        return
+
+    context.user_data['removing_tamtam_chat'] = True
+    context.user_data.pop('adding_tamtam_chat', None)
+
+    preview = "\n".join(f"• `{chat_id}`" for chat_id in tamtam_chat_ids[:10])
+    if len(tamtam_chat_ids) > 10:
+        preview += f"\n... и еще {len(tamtam_chat_ids) - 10}"
+
+    query.edit_message_text(
+        "🟠 *Удаление TamTam чата*\n\n"
+        "Текущие ID:\n"
+        f"{preview}\n\n"
+        "Отправьте ID, который нужно удалить.",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ Назад", callback_data='manage_tamtam_chats')],
+            [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ])
+    )
+
+
+def handle_tamtam_chat_add_input(update, context):
+    """Добавляет TamTam chat ID из текстового ввода."""
+    chat_id = update.message.text.strip()
+    if not chat_id:
+        update.message.reply_text("❌ ID чата не может быть пустым. Попробуйте снова.")
+        return
+
+    tamtam_chat_ids = settings_manager.get_setting('TAMTAM_CHAT_IDS', [])
+    if chat_id in tamtam_chat_ids:
+        context.user_data.pop('adding_tamtam_chat', None)
+        update.message.reply_text(
+            "ℹ️ Этот ID уже есть в списке.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🟠 К TamTam чатам", callback_data='manage_tamtam_chats')]
+            ])
+        )
+        return
+
+    tamtam_chat_ids.append(chat_id)
+    settings_manager.set_setting('TAMTAM_CHAT_IDS', tamtam_chat_ids, 'tamtam')
+    context.user_data.pop('adding_tamtam_chat', None)
+
+    update.message.reply_text(
+        f"✅ TamTam чат `{chat_id}` добавлен.",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🟠 К TamTam чатам", callback_data='manage_tamtam_chats')]
+        ])
+    )
+
+
+def handle_tamtam_chat_remove_input(update, context):
+    """Удаляет TamTam chat ID из списка."""
+    chat_id = update.message.text.strip()
+    tamtam_chat_ids = settings_manager.get_setting('TAMTAM_CHAT_IDS', [])
+
+    if chat_id not in tamtam_chat_ids:
+        update.message.reply_text(
+            "❌ Такой ID не найден в списке. Попробуйте снова.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🟠 К TamTam чатам", callback_data='manage_tamtam_chats')]
+            ])
+        )
+        return
+
+    tamtam_chat_ids = [item for item in tamtam_chat_ids if item != chat_id]
+    settings_manager.set_setting('TAMTAM_CHAT_IDS', tamtam_chat_ids, 'tamtam')
+    context.user_data.pop('removing_tamtam_chat', None)
+
+    update.message.reply_text(
+        f"✅ TamTam чат `{chat_id}` удалён.",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🟠 К TamTam чатам", callback_data='manage_tamtam_chats')]
+        ])
+    )
 
 def view_all_settings_handler(update, context):
     """Просмотр всех настроек - заглушка"""
