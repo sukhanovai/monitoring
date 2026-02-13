@@ -498,17 +498,27 @@ def show_telegram_settings(update, context):
     
     token_display = "🟢 Установлен" if token else "🔴 Не установлен"
     chats_display = f"{len(chat_ids)} чатов" if chat_ids else "🔴 Не настроены"
+
+    tamtam_token = settings_manager.get_setting('TAMTAM_TOKEN', '')
+    tamtam_chat_ids = settings_manager.get_setting('TAMTAM_CHAT_IDS', [])
+    tamtam_token_display = "🟢 Установлен" if tamtam_token else "🔴 Не установлен"
+    tamtam_chats_display = f"{len(tamtam_chat_ids)} чатов" if tamtam_chat_ids else "🔴 Не настроены"
     
     message = (
         "🤖 *Настройки Telegram*\n\n"
         f"• Токен бота: {token_display}\n"
         f"• ID чатов: {chats_display}\n\n"
+        "🟠 *Настройки TamTam*\n"
+        f"• Токен бота: {tamtam_token_display}\n"
+        f"• ID чатов: {tamtam_chats_display}\n\n"
         "Выберите параметр для изменения:"
     )
     
     keyboard = [
         [InlineKeyboardButton("🔑 Установить токен", callback_data='set_telegram_token')],
         [InlineKeyboardButton("💬 Управление чатами", callback_data='manage_chats')],
+        [InlineKeyboardButton("🟠 Установить TamTam токен", callback_data='set_tamtam_token')],
+        [InlineKeyboardButton("🟠 Управление TamTam чатами", callback_data='manage_tamtam_chats')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
@@ -795,7 +805,11 @@ def show_all_settings(update, context):
         for key, value in category_settings.items():
             if key == 'TELEGRAM_TOKEN' and value:
                 value = '***' + value[-4:]  # Показываем только последние 4 символа
+            elif key == 'TAMTAM_TOKEN' and value:
+                value = '***' + value[-4:]
             elif key == 'CHAT_IDS':
+                value = f"{len(value)} чатов"
+            elif key == 'TAMTAM_CHAT_IDS':
                 value = f"{len(value)} чатов"
             elif isinstance(value, (list, dict)):
                 value = f"{len(value)} элементов"
@@ -1601,6 +1615,8 @@ def settings_callback_handler(update, context):
         # Обработчики для новых пунктов меню
         elif data == 'manage_chats':
             manage_chats_handler(update, context)
+        elif data == 'manage_tamtam_chats':
+            manage_tamtam_chats_handler(update, context)
         elif data == 'server_timeouts':
             show_server_timeouts(update, context)  # Теперь упрощенная версия
         elif data == 'settings_add_server':
@@ -1615,6 +1631,10 @@ def settings_callback_handler(update, context):
             add_chat_handler(update, context)
         elif data == 'remove_chat':
             remove_chat_handler(update, context)
+        elif data == 'add_tamtam_chat':
+            add_tamtam_chat_handler(update, context)
+        elif data == 'remove_tamtam_chat':
+            remove_tamtam_chat_handler(update, context)
         
         # Паттерны бэкапов
         elif data == 'view_patterns':
@@ -1839,6 +1859,7 @@ def handle_setting_input(update, context, setting_key):
     setting_descriptions = {
         # Существующие настройки...
         'telegram_token': 'Введите новый токен Telegram бота:',
+        'tamtam_token': 'Введите новый токен TamTam бота:',
         'check_interval': 'Введите новый интервал проверки (в секундах):',
         'max_fail_time': 'Введите максимальное время простоя (в секундах):',
         'silent_start': 'Введите час начала тихого режима (0-23):',
@@ -1983,6 +2004,7 @@ def handle_setting_value(update, context):
         # Сохраняем настройку
         category_map = {
             'telegram_token': 'telegram',
+            'tamtam_token': 'tamtam',
             'check_interval': 'monitoring', 'max_fail_time': 'monitoring',
             'silent_start': 'time', 'silent_end': 'time', 'data_collection': 'time',
             'cpu_warning': 'resources', 'cpu_critical': 'resources',
@@ -1993,7 +2015,11 @@ def handle_setting_value(update, context):
             'backup_alert_hours': 'backup', 'backup_stale_hours': 'backup'
         }
         
-        db_key = setting_key.upper() if setting_key != 'telegram_token' else 'TELEGRAM_TOKEN'
+        special_db_keys = {
+            'telegram_token': 'TELEGRAM_TOKEN',
+            'tamtam_token': 'TAMTAM_TOKEN',
+        }
+        db_key = special_db_keys.get(setting_key, setting_key.upper())
         category = category_map.get(setting_key, 'general')
         
         settings_manager.set_setting(db_key, new_value, category)
@@ -8862,6 +8888,40 @@ def manage_chats_handler(update, context):
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
+def manage_tamtam_chats_handler(update, context):
+    """Управление чатами TamTam."""
+    query = update.callback_query
+    query.answer()
+
+    tamtam_chat_ids = settings_manager.get_setting('TAMTAM_CHAT_IDS', [])
+
+    message = "🟠 *Управление TamTam чатами*\n\n"
+    message += f"Текущее количество чатов: {len(tamtam_chat_ids)}\n\n"
+
+    if tamtam_chat_ids:
+        message += "*Текущие чаты:*\n"
+        for i, chat_id in enumerate(tamtam_chat_ids[:5], 1):
+            message += f"{i}. `{chat_id}`\n"
+        if len(tamtam_chat_ids) > 5:
+            message += f"... и еще {len(tamtam_chat_ids) - 5} чатов\n"
+    else:
+        message += "❌ *Чаты не настроены*\n"
+
+    message += "\nВыберите действие:"
+
+    keyboard = [
+        [InlineKeyboardButton("➕ Добавить чат", callback_data='add_tamtam_chat')],
+        [InlineKeyboardButton("🗑️ Удалить чат", callback_data='remove_tamtam_chat')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_telegram'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ]
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
 def show_server_timeouts(update, context):
     """Таймауты серверов - УПРОЩЕННАЯ БЕЗ MARKDOWN ВЕРСИЯ"""
     query = update.callback_query
@@ -10216,6 +10276,14 @@ def add_chat_handler(update, context):
 def remove_chat_handler(update, context):
     """Удалить чат - заглушка"""
     not_implemented_handler(update, context, "Удаление чата")
+
+def add_tamtam_chat_handler(update, context):
+    """Добавить TamTam чат - заглушка."""
+    not_implemented_handler(update, context, "Добавление TamTam чата")
+
+def remove_tamtam_chat_handler(update, context):
+    """Удалить TamTam чат - заглушка."""
+    not_implemented_handler(update, context, "Удаление TamTam чата")
 
 def view_all_settings_handler(update, context):
     """Просмотр всех настроек - заглушка"""
