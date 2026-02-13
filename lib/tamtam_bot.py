@@ -8,6 +8,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, Optional
 from urllib.parse import urlencode
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from lib.logging import setup_logging
@@ -60,13 +61,14 @@ class TamTamBotService:
             self._thread.join(timeout=2)
 
     def send_message(self, chat_id: str, text: str) -> bool:
-        payload = {
-            "chat_id": str(chat_id),
-            "text": text,
-            "notify": False,
-        }
         try:
-            self._request("/messages", payload, method="POST")
+            # TamTam Bot API ожидает chat_id в query-параметрах.
+            self._request(
+                "/messages",
+                {"text": text},
+                method="POST",
+                query_params={"chat_id": str(chat_id)},
+            )
             return True
         except Exception as exc:
             _logger.warning(f"⚠️ TamTam: ошибка отправки в чат {chat_id}: {exc}")
@@ -116,20 +118,30 @@ class TamTamBotService:
         if reply:
             self.send_message(chat_id, reply)
 
-    def _request(self, path: str, params: Dict[str, Any], method: str = "POST") -> Dict[str, Any]:
+    def _request(
+        self,
+        path: str,
+        params: Dict[str, Any],
+        method: str = "POST",
+        query_params: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         if method.upper() == "GET":
             query_params = {"access_token": self.config.token, **params}
             url = f"{self.config.api_base}{path}?{urlencode(query_params)}"
             req = Request(url, method="GET")
         else:
-            query = urlencode({"access_token": self.config.token})
+            query = urlencode({"access_token": self.config.token, **(query_params or {})})
             url = f"{self.config.api_base}{path}?{query}"
             data = json.dumps(params).encode("utf-8")
             req = Request(url, data=data, headers={"Content-Type": "application/json"}, method="POST")
 
-        with urlopen(req, timeout=30) as response:
-            payload = response.read().decode("utf-8")
-            return json.loads(payload) if payload else {}
+        try:
+            with urlopen(req, timeout=30) as response:
+                payload = response.read().decode("utf-8")
+                return json.loads(payload) if payload else {}
+        except HTTPError as exc:
+            details = exc.read().decode("utf-8", errors="replace") if hasattr(exc, "read") else ""
+            raise RuntimeError(f"HTTP {exc.code}: {details or exc.reason}") from exc
 
 
 def _format_availability(payload: Dict[str, Any]) -> str:
