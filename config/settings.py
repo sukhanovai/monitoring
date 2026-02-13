@@ -59,6 +59,8 @@ PROC_UPTIME_FILE = Path("/proc/uptime")
 # === БАЗОВЫЕ НАСТРОЙКИ ===
 TELEGRAM_TOKEN = ""
 CHAT_IDS: List[str] = []
+TAMTAM_TOKEN = ""
+TAMTAM_CHAT_IDS: List[str] = []
 
 # === ИНТЕРВАЛЫ ПРОВЕРОК ===
 CHECK_INTERVAL = 60  # секунды
