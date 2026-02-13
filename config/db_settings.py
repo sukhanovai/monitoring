@@ -193,7 +193,7 @@ def load_all_settings() -> None:
     
     Эта функция должна вызываться при инициализации приложения
     """
-    global USE_DB, TELEGRAM_TOKEN, CHAT_IDS, CHECK_INTERVAL, MAX_FAIL_TIME
+    global USE_DB, TELEGRAM_TOKEN, CHAT_IDS, TAMTAM_TOKEN, TAMTAM_CHAT_IDS, CHECK_INTERVAL, MAX_FAIL_TIME
     global SILENT_START, SILENT_END, DATA_COLLECTION_TIME
     global RESOURCE_CHECK_INTERVAL, RESOURCE_ALERT_INTERVAL
     global RESOURCE_THRESHOLDS, RESOURCE_ALERT_THRESHOLDS
@@ -213,6 +213,8 @@ def load_all_settings() -> None:
         # === БАЗОВЫЕ НАСТРОЙКИ ===
         TELEGRAM_TOKEN = get_setting('TELEGRAM_TOKEN', defaults.TELEGRAM_TOKEN)
         CHAT_IDS = get_setting('CHAT_IDS', defaults.CHAT_IDS)
+        TAMTAM_TOKEN = get_setting('TAMTAM_TOKEN', defaults.TAMTAM_TOKEN)
+        TAMTAM_CHAT_IDS = get_setting('TAMTAM_CHAT_IDS', defaults.TAMTAM_CHAT_IDS)
 
         # === ИНТЕРВАЛЫ ПРОВЕРОК ===
         CHECK_INTERVAL = get_setting('CHECK_INTERVAL', defaults.CHECK_INTERVAL)

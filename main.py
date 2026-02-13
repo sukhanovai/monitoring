@@ -139,7 +139,7 @@ def main(args: argparse.Namespace):
     # 1. Загрузка конфигурации
     # ------------------------------------------------------------------
     try:
-        from config.db_settings import TELEGRAM_TOKEN, DEBUG_MODE, CHAT_IDS, SILENT_START, SILENT_END
+        from config.db_settings import TELEGRAM_TOKEN, DEBUG_MODE, CHAT_IDS, SILENT_START, SILENT_END, TAMTAM_TOKEN, TAMTAM_CHAT_IDS
     except ImportError as e:
         print(f"❌ Не удалось загрузить db_settings: {e}")
         sys.exit(1)
@@ -188,6 +188,24 @@ def main(args: argparse.Namespace):
         logger.warning(f"⚠️ Не удалось инициализировать алерты: {e}")
 
     logger.info("✅ Telegram бот инициализирован")
+
+
+    tamtam_service = None
+    if TAMTAM_TOKEN:
+        try:
+            from lib.tamtam_bot import TamTamBotService, TamTamConfig
+            from lib.alerts import init_tamtam_sender
+
+            tamtam_service = TamTamBotService(
+                TamTamConfig(token=TAMTAM_TOKEN, chat_ids=[str(c) for c in TAMTAM_CHAT_IDS])
+            )
+            tamtam_service.start()
+            init_tamtam_sender(tamtam_service.broadcast)
+            logger.info("✅ TamTam бот инициализирован")
+        except Exception as e:
+            logger.warning(f"⚠️ Не удалось инициализировать TamTam бот: {e}")
+    else:
+        logger.info("ℹ️ TamTam токен не задан, интеграция выключена")
 
     # ------------------------------------------------------------------
     # 4. Команды бота
