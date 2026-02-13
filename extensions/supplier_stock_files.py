@@ -1,11 +1,11 @@
 """
 /extensions/supplier_stock_files.py
-Server Monitoring System v8.4.2
+Server Monitoring System v8.4.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Supplier stock files downloader
 Система мониторинга серверов
-Версия: 8.4.2
+Версия: 8.4.3
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Получение файлов остатков поставщиков
