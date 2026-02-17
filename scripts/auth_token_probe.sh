@@ -7,11 +7,12 @@ PASSWORD=""
 INSECURE="auto" # auto|true|false
 HOST_HEADER=""
 API_PREFIX=""
+FORCE_PROBE="false"
 
 usage() {
   cat <<'TXT'
 Usage:
-  ./scripts/auth_token_probe.sh [--insecure|--strict-tls] [--host <domain>] [--prefix </api>] [base_url] [login] [password]
+  ./scripts/auth_token_probe.sh [--insecure|--strict-tls] [--host <domain>] [--prefix </api>] [--force-probe] [base_url] [login] [password]
 
 Examples:
   ./scripts/auth_token_probe.sh
@@ -19,6 +20,7 @@ Examples:
   ./scripts/auth_token_probe.sh --strict-tls https://api.202020.ru:8443 demo demo
   ./scripts/auth_token_probe.sh --insecure --host api.202020.ru https://localhost:443 demo demo
   ./scripts/auth_token_probe.sh --insecure --host api.202020.ru --prefix /api https://localhost:443 demo demo
+  ./scripts/auth_token_probe.sh --insecure --host api.202020.ru https://localhost:443 demo demo --force-probe
 TXT
 }
 
@@ -48,6 +50,10 @@ while [[ $# -gt 0 ]]; do
       fi
       API_PREFIX="$2"
       shift 2
+      ;;
+    --force-probe)
+      FORCE_PROBE="true"
+      shift
       ;;
     --help|-h)
       usage
@@ -98,6 +104,20 @@ if [[ -z "$LOGIN" || -z "$PASSWORD" ]]; then
   echo "[INFO] Для полного прогона: $0 --insecure https://localhost <login> <password>"
 fi
 
+
+PROBE_HTTP_CODE=""
+PROBE_IS_APACHE="false"
+
+quick_path_discovery() {
+  local candidates=("/" "/health" "/api/health" "/bff/health" "/v1/health" "/openapi.json" "/api/openapi.json" "/swagger" "/docs")
+  echo "[INFO] Быстрая проверка возможных маршрутов на текущем BASE_URL..."
+  for path in "${candidates[@]}"; do
+    local code
+    code=$(curl "${CURL_TLS_ARGS[@]}" "${CURL_HEADER_ARGS[@]}" -sS -o /dev/null -w "%{http_code}" --max-time 8 "${BASE_URL}${path}" || true)
+    printf "  - %s -> HTTP %s\n" "${BASE_URL}${path}" "${code:-000}"
+  done
+}
+
 print_base_url_hint() {
   cat <<TXT
 [INFO] Используется BASE_URL: $BASE_URL
@@ -106,6 +126,7 @@ print_base_url_hint() {
 [INFO] Внешний адрес (https://api.202020.ru:8443) актуален для клиентов извне этого сервера.
 [INFO] Host header override: ${HOST_HEADER:-<не задан>}
 [INFO] API prefix: ${API_PREFIX:-<нет>}
+[INFO] Force probe: $FORCE_PROBE
 TXT
 }
 
@@ -130,6 +151,7 @@ analyze_response_hint() {
   local response="$1"
 
   if echo "$response" | grep -q 'Server: Apache'; then
+    PROBE_IS_APACHE="true"
     echo "[WARN] Похоже, запрос ушёл в Apache по умолчанию, а не в BFF/API."
     echo "[WARN] Проверь порт/виртуальный хост. Часто нужный API слушает на :8443."
     echo "[HINT] Попробуй: ./scripts/auth_token_probe.sh --insecure https://localhost:8443 <login> <password>"
@@ -160,6 +182,9 @@ probe_auth_errors() {
   local response
   response=$(curl "${CURL_TLS_ARGS[@]}" "${CURL_HEADER_ARGS[@]}" -sS -i --max-time 15 "$(build_url "/v1/monitoring/availability?scope=all")") || true
   echo "$response" | sed -n '1,30p'
+  local code
+  code=$(echo "$response" | sed -nE "s#^HTTP/[0-9.]+ ([0-9]{3}).*#\1#p" | head -n1)
+  PROBE_HTTP_CODE="$code"
   analyze_response_hint "$response"
 }
 
@@ -175,6 +200,9 @@ try_json_endpoint() {
 
   echo "$response"
   extract_token_hint "$response"
+  local code
+  code=$(echo "$response" | sed -nE "s#^HTTP/[0-9.]+ ([0-9]{3}).*#\1#p" | head -n1)
+  PROBE_HTTP_CODE="$code"
   analyze_response_hint "$response"
 }
 
@@ -191,11 +219,21 @@ try_form_endpoint() {
 
   echo "$response"
   extract_token_hint "$response"
+  local code
+  code=$(echo "$response" | sed -nE "s#^HTTP/[0-9.]+ ([0-9]{3}).*#\1#p" | head -n1)
+  PROBE_HTTP_CODE="$code"
   analyze_response_hint "$response"
 }
 
 print_base_url_hint
 probe_auth_errors "$BASE_URL"
+
+if [[ "$PROBE_IS_APACHE" == "true" && "$PROBE_HTTP_CODE" == "404" && "$FORCE_PROBE" != "true" ]]; then
+  echo "[WARN] Похоже, это не auth/BFF endpoint (Apache 404 на probe)."
+  quick_path_discovery
+  echo "[HINT] Чтобы всё равно прогнать все POST-варианты, добавь --force-probe"
+  exit 0
+fi
 
 JSON_ENDPOINTS=(
   "/v1/auth/token"
