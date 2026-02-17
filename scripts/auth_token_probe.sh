@@ -6,17 +6,19 @@ LOGIN=""
 PASSWORD=""
 INSECURE="auto" # auto|true|false
 HOST_HEADER=""
+API_PREFIX=""
 
 usage() {
   cat <<'TXT'
 Usage:
-  ./scripts/auth_token_probe.sh [--insecure|--strict-tls] [--host <domain>] [base_url] [login] [password]
+  ./scripts/auth_token_probe.sh [--insecure|--strict-tls] [--host <domain>] [--prefix </api>] [base_url] [login] [password]
 
 Examples:
   ./scripts/auth_token_probe.sh
   ./scripts/auth_token_probe.sh --insecure https://localhost demo demo
   ./scripts/auth_token_probe.sh --strict-tls https://api.202020.ru:8443 demo demo
   ./scripts/auth_token_probe.sh --insecure --host api.202020.ru https://localhost:443 demo demo
+  ./scripts/auth_token_probe.sh --insecure --host api.202020.ru --prefix /api https://localhost:443 demo demo
 TXT
 }
 
@@ -39,6 +41,14 @@ while [[ $# -gt 0 ]]; do
       HOST_HEADER="$2"
       shift 2
       ;;
+    --prefix)
+      if [[ $# -lt 2 ]]; then
+        echo "[ERROR] --prefix требует значение, например: --prefix /api"
+        exit 1
+      fi
+      API_PREFIX="$2"
+      shift 2
+      ;;
     --help|-h)
       usage
       exit 0
@@ -55,6 +65,14 @@ if [[ ${#POSITIONAL[@]} -ge 2 ]]; then LOGIN="${POSITIONAL[1]}"; fi
 if [[ ${#POSITIONAL[@]} -ge 3 ]]; then PASSWORD="${POSITIONAL[2]}"; fi
 if [[ ${#POSITIONAL[@]} -gt 3 ]]; then
   echo "[WARN] Лишние позиционные аргументы будут проигнорированы: ${POSITIONAL[*]:3}"
+fi
+
+
+if [[ -n "$API_PREFIX" ]]; then
+  if [[ "$API_PREFIX" != /* ]]; then
+    API_PREFIX="/$API_PREFIX"
+  fi
+  API_PREFIX="${API_PREFIX%/}"
 fi
 
 if [[ "$INSECURE" == "auto" ]]; then
@@ -87,6 +105,7 @@ print_base_url_hint() {
 [INFO] Для запуска на сервере указывай локальный/внутренний адрес (например, https://localhost:8443 или https://192.168.20.2:8443).
 [INFO] Внешний адрес (https://api.202020.ru:8443) актуален для клиентов извне этого сервера.
 [INFO] Host header override: ${HOST_HEADER:-<не задан>}
+[INFO] API prefix: ${API_PREFIX:-<нет>}
 TXT
 }
 
@@ -120,6 +139,7 @@ analyze_response_hint() {
 
   if echo "$response" | grep -q 'HTTP_STATUS:404'; then
     echo "[WARN] Endpoint не найден (404). Возможно, BASE_URL/port/path неверный."
+    echo "[HINT] Попробуй добавить префикс API: --prefix /api или --prefix /bff"
   fi
 
   if echo "$response" | grep -q 'HTTP_STATUS:000'; then
@@ -128,11 +148,17 @@ analyze_response_hint() {
   fi
 }
 
+
+build_url() {
+  local endpoint="$1"
+  echo "${BASE_URL}${API_PREFIX}${endpoint}"
+}
+
 probe_auth_errors() {
   local url="$1"
-  printf "\n== Probe auth requirement: %s/v1/monitoring/availability?scope=all ==\n" "$url"
+  printf "\n== Probe auth requirement: %s%s/v1/monitoring/availability?scope=all ==\n" "$url" "$API_PREFIX"
   local response
-  response=$(curl "${CURL_TLS_ARGS[@]}" "${CURL_HEADER_ARGS[@]}" -sS -i --max-time 15 "$url/v1/monitoring/availability?scope=all") || true
+  response=$(curl "${CURL_TLS_ARGS[@]}" "${CURL_HEADER_ARGS[@]}" -sS -i --max-time 15 "$(build_url "/v1/monitoring/availability?scope=all")") || true
   echo "$response" | sed -n '1,30p'
   analyze_response_hint "$response"
 }
@@ -143,7 +169,7 @@ try_json_endpoint() {
 
   printf "\n== POST %s ==\n" "$endpoint"
   local response
-  response=$(curl "${CURL_TLS_ARGS[@]}" "${CURL_HEADER_ARGS[@]}" -sS --max-time 15 -w "\nHTTP_STATUS:%{http_code}" -X POST "$BASE_URL$endpoint" \
+  response=$(curl "${CURL_TLS_ARGS[@]}" "${CURL_HEADER_ARGS[@]}" -sS --max-time 15 -w "\nHTTP_STATUS:%{http_code}" -X POST "$(build_url "$endpoint")" \
     -H 'Content-Type: application/json' \
     -d "$payload") || true
 
@@ -157,7 +183,7 @@ try_form_endpoint() {
 
   printf "\n== POST(form) %s ==\n" "$endpoint"
   local response
-  response=$(curl "${CURL_TLS_ARGS[@]}" "${CURL_HEADER_ARGS[@]}" -sS --max-time 15 -w "\nHTTP_STATUS:%{http_code}" -X POST "$BASE_URL$endpoint" \
+  response=$(curl "${CURL_TLS_ARGS[@]}" "${CURL_HEADER_ARGS[@]}" -sS --max-time 15 -w "\nHTTP_STATUS:%{http_code}" -X POST "$(build_url "$endpoint")" \
     -H 'Content-Type: application/x-www-form-urlencoded' \
     --data-urlencode "grant_type=password" \
     --data-urlencode "username=$LOGIN" \

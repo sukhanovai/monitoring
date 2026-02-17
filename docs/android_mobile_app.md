@@ -319,6 +319,17 @@ ss -lntp | grep -E '(:443|:8443)'
 ```
 
 
+Если и с `--host` получаешь `404`, вероятно у API есть префикс (например, `/api` или `/bff`).
+Проверь так:
+
+```bash
+./scripts/auth_token_probe.sh --insecure --host api.202020.ru --prefix /api https://localhost:443 <login> <password>
+# или
+./scripts/auth_token_probe.sh --insecure --host api.202020.ru --prefix /bff https://localhost:443 <login> <password>
+```
+
+
+
 Также важно: сообщение `rg: команда не найдена` — это старая версия скрипта. В новой версии используется `grep`, без зависимости от `rg`.
 
 ### Можно ли достать Bearer-токен из SQL?
