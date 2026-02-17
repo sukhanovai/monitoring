@@ -244,6 +244,83 @@ git log --oneline --decorate --graph -20
 Что нужно сделать в UI:
 
 1. Получить рабочий Bearer-токен на вашей стороне (из auth-сервиса/BFF).
+
+### Быстрый способ найти endpoint выдачи токена
+
+Если запускаешь скрипт **на самом сервере**, используй локальный/внутренний адрес:
+
+```bash
+./scripts/auth_token_probe.sh --insecure https://localhost <login> <password>
+# или
+./scripts/auth_token_probe.sh --insecure https://192.168.20.2 <login> <password>
+```
+
+Внешний URL `https://api.202020.ru:8443` нужен в основном для клиентов извне сервера.
+
+Если у сервера self-signed сертификат, добавляй `--insecure` (или `-k`), иначе `curl` упирается в `SSL certificate problem`.
+
+### Откуда взять `<login>` и `<password>`
+
+Коротко: **не из этого репозитория**.
+
+Это учётные данные пользователя в вашем auth/BFF-контуре (staging/prod), обычно их выдаёт backend-админ.
+
+Практический вариант:
+1. Попросить у backend-команды тестовую учётку для Android (`login/password`) с правами на `/v1/monitoring/*`.
+2. Если login endpoint ещё сырой — попросить временный `Bearer` токен вручную (на 1–7 дней) и проверить мобильный поток.
+3. После этого уже добить нормальный login flow в приложении.
+
+В репозитории есть helper-скрипт для первичного проброса auth-вариантов:
+
+```bash
+./scripts/auth_token_probe.sh --insecure https://localhost <login> <password>
+```
+
+Что он делает:
+1. Проверяет ответ `GET /v1/monitoring/availability?scope=all` без токена (часто там видно требования к auth/scope).
+2. Пробует типовые endpoint'ы выдачи токена: `/v1/auth/token`, `/v1/auth/login`, `/auth/token`, `/auth/login`, `/token`.
+3. Для каждого endpoint пробует JSON и `x-www-form-urlencoded` payload.
+
+Если в ответе приходит `access_token`:
+- вставь его в Android UI (`Bearer токен`);
+- проверь claims/TTL:
+
+```bash
+TOKEN='<вставь_сюда_JWT>'
+python3 -c 'import base64,json,os; t=os.environ["TOKEN"]; p=t.split(".")[1]; p+="="*(-len(p)%4); print(json.dumps(json.loads(base64.urlsafe_b64decode(p)),indent=2,ensure_ascii=False))'
+```
+
+Смотри поля `scope`/`scp`/`roles`, `exp`, `iat` — это закроет вопросы про scope и TTL.
+
+
+### Если видишь 404 от Apache и токена нет
+
+Это значит, что запрос прилетает не в BFF, а в дефолтный vhost Apache на `:443`.
+
+Проверь сначала порт `8443`:
+
+```bash
+./scripts/auth_token_probe.sh --insecure https://localhost:8443 <login> <password>
+# или
+./scripts/auth_token_probe.sh --insecure https://192.168.20.2:8443 <login> <password>
+```
+
+Также важно: сообщение `rg: команда не найдена` — это старая версия скрипта. В новой версии используется `grep`, без зависимости от `rg`.
+
+### Можно ли достать Bearer-токен из SQL?
+
+В текущем репозитории `settings.db` хранит настройки мониторинга (например, `TELEGRAM_TOKEN`, `SSH_USERNAME`), но не кэш access/refresh токенов мобильного auth-flow.
+Поэтому обычно **нет**, вытаскивать Bearer из этой БД нечего.
+
+Проверить, что в `settings` нет auth access token, можно так:
+
+```bash
+sqlite3 data/settings.db "SELECT key FROM settings WHERE lower(key) LIKE '%token%' OR lower(key) LIKE '%auth%';"
+```
+
+Если ваш BFF хранит сессии в отдельной БД (PostgreSQL/MySQL/Redis) — искать надо там, а не в `settings.db` этого проекта.
+
+
 2. Вставить токен в поле `Bearer токен`.
 3. Нажать `Сохранить токен`.
 4. Нажать `Обновить` — получишь список серверов и summary.
