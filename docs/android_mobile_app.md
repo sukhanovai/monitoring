@@ -244,6 +244,41 @@ git log --oneline --decorate --graph -20
 Что нужно сделать в UI:
 
 1. Получить рабочий Bearer-токен на вашей стороне (из auth-сервиса/BFF).
+
+### Быстрый способ найти endpoint выдачи токена
+
+### Откуда взять `<login>` и `<password>`
+
+Коротко: **не из этого репозитория**.
+
+Это учётные данные пользователя в вашем auth/BFF-контуре (staging/prod), обычно их выдаёт backend-админ.
+
+Практический вариант:
+1. Попросить у backend-команды тестовую учётку для Android (`login/password`) с правами на `/v1/monitoring/*`.
+2. Если login endpoint ещё сырой — попросить временный `Bearer` токен вручную (на 1–7 дней) и проверить мобильный поток.
+3. После этого уже добить нормальный login flow в приложении.
+
+В репозитории есть helper-скрипт для первичного проброса auth-вариантов:
+
+```bash
+./scripts/auth_token_probe.sh https://api.202020.ru:8443 <login> <password>
+```
+
+Что он делает:
+1. Проверяет ответ `GET /v1/monitoring/availability?scope=all` без токена (часто там видно требования к auth/scope).
+2. Пробует типовые endpoint'ы выдачи токена: `/v1/auth/token`, `/v1/auth/login`, `/auth/token`, `/auth/login`, `/token`.
+3. Для каждого endpoint пробует JSON и `x-www-form-urlencoded` payload.
+
+Если в ответе приходит `access_token`:
+- вставь его в Android UI (`Bearer токен`);
+- проверь claims/TTL:
+
+```bash
+python3 -c 'import base64,json,sys; p=sys.argv[1].split(".")[1]; p+="="*(-len(p)%4); print(json.dumps(json.loads(base64.urlsafe_b64decode(p)),indent=2,ensure_ascii=False))' <JWT>
+```
+
+Смотри поля `scope`/`scp`/`roles`, `exp`, `iat` — это закроет вопросы про scope и TTL.
+
 2. Вставить токен в поле `Bearer токен`.
 3. Нажать `Сохранить токен`.
 4. Нажать `Обновить` — получишь список серверов и summary.
