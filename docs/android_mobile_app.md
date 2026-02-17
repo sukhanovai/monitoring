@@ -247,6 +247,16 @@ git log --oneline --decorate --graph -20
 
 ### Быстрый способ найти endpoint выдачи токена
 
+Если запускаешь скрипт **на самом сервере**, используй локальный/внутренний адрес:
+
+```bash
+./scripts/auth_token_probe.sh https://localhost <login> <password>
+# или
+./scripts/auth_token_probe.sh https://192.168.20.2 <login> <password>
+```
+
+Внешний URL `https://api.202020.ru:8443` нужен в основном для клиентов извне сервера.
+
 ### Откуда взять `<login>` и `<password>`
 
 Коротко: **не из этого репозитория**.
@@ -261,7 +271,7 @@ git log --oneline --decorate --graph -20
 В репозитории есть helper-скрипт для первичного проброса auth-вариантов:
 
 ```bash
-./scripts/auth_token_probe.sh https://api.202020.ru:8443 <login> <password>
+./scripts/auth_token_probe.sh https://localhost <login> <password>
 ```
 
 Что он делает:

@@ -1,15 +1,24 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_URL="${1:-https://api.202020.ru:8443}"
+BASE_URL="${1:-https://localhost}"
 LOGIN="${2:-}"
 PASSWORD="${3:-}"
 
 if [[ -z "$LOGIN" || -z "$PASSWORD" ]]; then
   echo "[INFO] login/password не переданы — выполню только discovery без авторизации."
-  echo "[INFO] Для полного прогона: $0 <base_url> <login> <password>"
+  echo "[INFO] Для полного прогона: $0 https://localhost <login> <password>"
 fi
 
+
+
+print_base_url_hint() {
+  cat <<TXT
+[INFO] Используется BASE_URL: $BASE_URL
+[INFO] Для запуска на сервере указывай локальный/внутренний адрес (например, https://localhost или https://192.168.20.2).
+[INFO] Внешний адрес (https://api.202020.ru:8443) актуален для клиентов извне этого сервера.
+TXT
+}
 
 print_credentials_hint() {
   cat <<'TXT'
@@ -54,6 +63,7 @@ try_form_endpoint() {
   echo "$response"
 }
 
+print_base_url_hint
 probe_auth_errors "$BASE_URL"
 
 JSON_ENDPOINTS=(
