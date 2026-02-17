@@ -250,12 +250,14 @@ git log --oneline --decorate --graph -20
 Если запускаешь скрипт **на самом сервере**, используй локальный/внутренний адрес:
 
 ```bash
-./scripts/auth_token_probe.sh https://localhost <login> <password>
+./scripts/auth_token_probe.sh --insecure https://localhost <login> <password>
 # или
-./scripts/auth_token_probe.sh https://192.168.20.2 <login> <password>
+./scripts/auth_token_probe.sh --insecure https://192.168.20.2 <login> <password>
 ```
 
 Внешний URL `https://api.202020.ru:8443` нужен в основном для клиентов извне сервера.
+
+Если у сервера self-signed сертификат, добавляй `--insecure` (или `-k`), иначе `curl` упирается в `SSL certificate problem`.
 
 ### Откуда взять `<login>` и `<password>`
 
@@ -271,7 +273,7 @@ git log --oneline --decorate --graph -20
 В репозитории есть helper-скрипт для первичного проброса auth-вариантов:
 
 ```bash
-./scripts/auth_token_probe.sh https://localhost <login> <password>
+./scripts/auth_token_probe.sh --insecure https://localhost <login> <password>
 ```
 
 Что он делает:
@@ -284,7 +286,8 @@ git log --oneline --decorate --graph -20
 - проверь claims/TTL:
 
 ```bash
-python3 -c 'import base64,json,sys; p=sys.argv[1].split(".")[1]; p+="="*(-len(p)%4); print(json.dumps(json.loads(base64.urlsafe_b64decode(p)),indent=2,ensure_ascii=False))' <JWT>
+TOKEN='<вставь_сюда_JWT>'
+python3 -c 'import base64,json,os; t=os.environ["TOKEN"]; p=t.split(".")[1]; p+="="*(-len(p)%4); print(json.dumps(json.loads(base64.urlsafe_b64decode(p)),indent=2,ensure_ascii=False))'
 ```
 
 Смотри поля `scope`/`scp`/`roles`, `exp`, `iat` — это закроет вопросы про scope и TTL.
