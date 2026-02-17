@@ -5,16 +5,18 @@ BASE_URL="https://localhost"
 LOGIN=""
 PASSWORD=""
 INSECURE="auto" # auto|true|false
+HOST_HEADER=""
 
 usage() {
   cat <<'TXT'
 Usage:
-  ./scripts/auth_token_probe.sh [--insecure|--strict-tls] [base_url] [login] [password]
+  ./scripts/auth_token_probe.sh [--insecure|--strict-tls] [--host <domain>] [base_url] [login] [password]
 
 Examples:
   ./scripts/auth_token_probe.sh
   ./scripts/auth_token_probe.sh --insecure https://localhost demo demo
   ./scripts/auth_token_probe.sh --strict-tls https://api.202020.ru:8443 demo demo
+  ./scripts/auth_token_probe.sh --insecure --host api.202020.ru https://localhost:443 demo demo
 TXT
 }
 
@@ -28,6 +30,14 @@ while [[ $# -gt 0 ]]; do
     --strict-tls)
       INSECURE="false"
       shift
+      ;;
+    --host)
+      if [[ $# -lt 2 ]]; then
+        echo "[ERROR] --host требует значение, например: --host api.202020.ru"
+        exit 1
+      fi
+      HOST_HEADER="$2"
+      shift 2
       ;;
     --help|-h)
       usage
@@ -60,6 +70,11 @@ if [[ "$INSECURE" == "true" ]]; then
   CURL_TLS_ARGS+=("-k")
 fi
 
+CURL_HEADER_ARGS=()
+if [[ -n "$HOST_HEADER" ]]; then
+  CURL_HEADER_ARGS+=("-H" "Host: $HOST_HEADER")
+fi
+
 if [[ -z "$LOGIN" || -z "$PASSWORD" ]]; then
   echo "[INFO] login/password не переданы — выполню только discovery без авторизации."
   echo "[INFO] Для полного прогона: $0 --insecure https://localhost <login> <password>"
@@ -71,6 +86,7 @@ print_base_url_hint() {
 [INFO] TLS-режим: $([[ "$INSECURE" == "true" ]] && echo "insecure (-k, self-signed ОК)" || echo "strict")
 [INFO] Для запуска на сервере указывай локальный/внутренний адрес (например, https://localhost:8443 или https://192.168.20.2:8443).
 [INFO] Внешний адрес (https://api.202020.ru:8443) актуален для клиентов извне этого сервера.
+[INFO] Host header override: ${HOST_HEADER:-<не задан>}
 TXT
 }
 
@@ -98,10 +114,17 @@ analyze_response_hint() {
     echo "[WARN] Похоже, запрос ушёл в Apache по умолчанию, а не в BFF/API."
     echo "[WARN] Проверь порт/виртуальный хост. Часто нужный API слушает на :8443."
     echo "[HINT] Попробуй: ./scripts/auth_token_probe.sh --insecure https://localhost:8443 <login> <password>"
+    echo "[HINT] Если BFF сидит за Apache/Nginx по доменному vhost, задай Host header:"
+    echo "[HINT] ./scripts/auth_token_probe.sh --insecure --host api.202020.ru https://localhost:443 <login> <password>"
   fi
 
   if echo "$response" | grep -q 'HTTP_STATUS:404'; then
     echo "[WARN] Endpoint не найден (404). Возможно, BASE_URL/port/path неверный."
+  fi
+
+  if echo "$response" | grep -q 'HTTP_STATUS:000'; then
+    echo "[WARN] Нет TCP/HTTP ответа (HTTP_STATUS:000)."
+    echo "[HINT] Проверь, какой порт реально слушает локально: ss -lntp | grep -E '(:443|:8443)'"
   fi
 }
 
@@ -109,7 +132,7 @@ probe_auth_errors() {
   local url="$1"
   printf "\n== Probe auth requirement: %s/v1/monitoring/availability?scope=all ==\n" "$url"
   local response
-  response=$(curl "${CURL_TLS_ARGS[@]}" -sS -i --max-time 15 "$url/v1/monitoring/availability?scope=all") || true
+  response=$(curl "${CURL_TLS_ARGS[@]}" "${CURL_HEADER_ARGS[@]}" -sS -i --max-time 15 "$url/v1/monitoring/availability?scope=all") || true
   echo "$response" | sed -n '1,30p'
   analyze_response_hint "$response"
 }
@@ -120,7 +143,7 @@ try_json_endpoint() {
 
   printf "\n== POST %s ==\n" "$endpoint"
   local response
-  response=$(curl "${CURL_TLS_ARGS[@]}" -sS --max-time 15 -w "\nHTTP_STATUS:%{http_code}" -X POST "$BASE_URL$endpoint" \
+  response=$(curl "${CURL_TLS_ARGS[@]}" "${CURL_HEADER_ARGS[@]}" -sS --max-time 15 -w "\nHTTP_STATUS:%{http_code}" -X POST "$BASE_URL$endpoint" \
     -H 'Content-Type: application/json' \
     -d "$payload") || true
 
@@ -134,7 +157,7 @@ try_form_endpoint() {
 
   printf "\n== POST(form) %s ==\n" "$endpoint"
   local response
-  response=$(curl "${CURL_TLS_ARGS[@]}" -sS --max-time 15 -w "\nHTTP_STATUS:%{http_code}" -X POST "$BASE_URL$endpoint" \
+  response=$(curl "${CURL_TLS_ARGS[@]}" "${CURL_HEADER_ARGS[@]}" -sS --max-time 15 -w "\nHTTP_STATUS:%{http_code}" -X POST "$BASE_URL$endpoint" \
     -H 'Content-Type: application/x-www-form-urlencoded' \
     --data-urlencode "grant_type=password" \
     --data-urlencode "username=$LOGIN" \

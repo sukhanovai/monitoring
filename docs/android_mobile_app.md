@@ -305,6 +305,20 @@ python3 -c 'import base64,json,os; t=os.environ["TOKEN"]; p=t.split(".")[1]; p+=
 ./scripts/auth_token_probe.sh --insecure https://192.168.20.2:8443 <login> <password>
 ```
 
+
+Если `8443` проброшен только снаружи и локально не слушает — это нормально. Тогда на сервере проверь, какие порты реально открыты:
+
+```bash
+ss -lntp | grep -E '(:443|:8443)'
+```
+
+Если API живёт за Apache/Nginx на `:443` и маршрутизация идёт по доменному vhost, запускай с Host header:
+
+```bash
+./scripts/auth_token_probe.sh --insecure --host api.202020.ru https://localhost:443 <login> <password>
+```
+
+
 Также важно: сообщение `rg: команда не найдена` — это старая версия скрипта. В новой версии используется `grep`, без зависимости от `rg`.
 
 ### Можно ли достать Bearer-токен из SQL?
