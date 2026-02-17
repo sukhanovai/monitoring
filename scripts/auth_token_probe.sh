@@ -73,7 +73,6 @@ if [[ ${#POSITIONAL[@]} -gt 3 ]]; then
   echo "[WARN] Лишние позиционные аргументы будут проигнорированы: ${POSITIONAL[*]:3}"
 fi
 
-
 if [[ -n "$API_PREFIX" ]]; then
   if [[ "$API_PREFIX" != /* ]]; then
     API_PREFIX="/$API_PREFIX"
@@ -104,18 +103,55 @@ if [[ -z "$LOGIN" || -z "$PASSWORD" ]]; then
   echo "[INFO] Для полного прогона: $0 --insecure https://localhost <login> <password>"
 fi
 
-
 PROBE_HTTP_CODE=""
 PROBE_IS_APACHE="false"
+
+inspect_root_page() {
+  local root_url="${BASE_URL}/"
+  echo "[INFO] Анализ главной страницы: $root_url"
+
+  local body
+  body=$(curl "${CURL_TLS_ARGS[@]}" "${CURL_HEADER_ARGS[@]}" -sS --max-time 8 "$root_url" || true)
+  if [[ -z "$body" ]]; then
+    echo "[WARN] Не удалось получить тело главной страницы."
+    return
+  fi
+
+  local title
+  title=$(echo "$body" | tr '\n' ' ' | sed -nE 's#.*<title>([^<]+)</title>.*#\1#p' | head -n1)
+  if [[ -n "$title" ]]; then
+    echo "[INFO] Title главной: $title"
+  fi
+
+  local links
+  links=$(echo "$body" | grep -Eoi 'href=["'"'"'][^"'"'"']+["'"'"']' | sed -E 's/^href=["'"'"'](.*)["'"'"']$/\1/' | grep -Ei 'api|auth|swagger|openapi|docs|v1' | sort -u || true)
+  if [[ -n "$links" ]]; then
+    echo "[INFO] Найдены потенциальные API/док-ссылки на главной:"
+    echo "$links" | sed 's#^#  - #'
+  else
+    echo "[INFO] На главной не найдено явных ссылок api/auth/swagger/docs."
+  fi
+}
 
 quick_path_discovery() {
   local candidates=("/" "/health" "/api/health" "/bff/health" "/v1/health" "/openapi.json" "/api/openapi.json" "/swagger" "/docs")
   echo "[INFO] Быстрая проверка возможных маршрутов на текущем BASE_URL..."
+  local any_api_ok="false"
   for path in "${candidates[@]}"; do
     local code
     code=$(curl "${CURL_TLS_ARGS[@]}" "${CURL_HEADER_ARGS[@]}" -sS -o /dev/null -w "%{http_code}" --max-time 8 "${BASE_URL}${path}" || true)
     printf "  - %s -> HTTP %s\n" "${BASE_URL}${path}" "${code:-000}"
+    if [[ "$path" != "/" && "$code" != "404" && "$code" != "000" ]]; then
+      any_api_ok="true"
+    fi
   done
+
+  inspect_root_page
+
+  if [[ "$any_api_ok" != "true" ]]; then
+    echo "[WARN] Похоже, на этом хосте нет опубликованного API-маршрута (кроме /)."
+    echo "[HINT] Нужен доступ к реальному BFF роуту (proxy_pass/RewriteRule) или к внутреннему порту приложения."
+  fi
 }
 
 print_base_url_hint() {
@@ -157,6 +193,7 @@ analyze_response_hint() {
     echo "[HINT] Попробуй: ./scripts/auth_token_probe.sh --insecure https://localhost:8443 <login> <password>"
     echo "[HINT] Если BFF сидит за Apache/Nginx по доменному vhost, задай Host header:"
     echo "[HINT] ./scripts/auth_token_probe.sh --insecure --host api.202020.ru https://localhost:443 <login> <password>"
+    echo "[HINT] Если и так 404, значит vhost есть, но API route в Apache/Nginx не настроен."
   fi
 
   if echo "$response" | grep -q 'HTTP_STATUS:404'; then
@@ -170,7 +207,6 @@ analyze_response_hint() {
   fi
 }
 
-
 build_url() {
   local endpoint="$1"
   echo "${BASE_URL}${API_PREFIX}${endpoint}"
@@ -183,7 +219,7 @@ probe_auth_errors() {
   response=$(curl "${CURL_TLS_ARGS[@]}" "${CURL_HEADER_ARGS[@]}" -sS -i --max-time 15 "$(build_url "/v1/monitoring/availability?scope=all")") || true
   echo "$response" | sed -n '1,30p'
   local code
-  code=$(echo "$response" | sed -nE "s#^HTTP/[0-9.]+ ([0-9]{3}).*#\1#p" | head -n1)
+  code=$(echo "$response" | sed -nE 's#^HTTP/[0-9.]+ ([0-9]{3}).*#\1#p' | head -n1)
   PROBE_HTTP_CODE="$code"
   analyze_response_hint "$response"
 }
@@ -200,9 +236,6 @@ try_json_endpoint() {
 
   echo "$response"
   extract_token_hint "$response"
-  local code
-  code=$(echo "$response" | sed -nE "s#^HTTP/[0-9.]+ ([0-9]{3}).*#\1#p" | head -n1)
-  PROBE_HTTP_CODE="$code"
   analyze_response_hint "$response"
 }
 
@@ -219,9 +252,6 @@ try_form_endpoint() {
 
   echo "$response"
   extract_token_hint "$response"
-  local code
-  code=$(echo "$response" | sed -nE "s#^HTTP/[0-9.]+ ([0-9]{3}).*#\1#p" | head -n1)
-  PROBE_HTTP_CODE="$code"
   analyze_response_hint "$response"
 }
 
