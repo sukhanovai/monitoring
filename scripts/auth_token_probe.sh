@@ -69,7 +69,7 @@ print_base_url_hint() {
   cat <<TXT
 [INFO] Используется BASE_URL: $BASE_URL
 [INFO] TLS-режим: $([[ "$INSECURE" == "true" ]] && echo "insecure (-k, self-signed ОК)" || echo "strict")
-[INFO] Для запуска на сервере указывай локальный/внутренний адрес (например, https://localhost или https://192.168.20.2).
+[INFO] Для запуска на сервере указывай локальный/внутренний адрес (например, https://localhost:8443 или https://192.168.20.2:8443).
 [INFO] Внешний адрес (https://api.202020.ru:8443) актуален для клиентов извне этого сервера.
 TXT
 }
@@ -86,15 +86,32 @@ TXT
 
 extract_token_hint() {
   local response="$1"
-  if echo "$response" | rg -q '"access_token"\s*:'; then
+  if echo "$response" | grep -Eq '"access_token"[[:space:]]*:'; then
     echo "[OK] Похоже, найден access_token в ответе. Скопируй значение поля access_token."
+  fi
+}
+
+analyze_response_hint() {
+  local response="$1"
+
+  if echo "$response" | grep -q 'Server: Apache'; then
+    echo "[WARN] Похоже, запрос ушёл в Apache по умолчанию, а не в BFF/API."
+    echo "[WARN] Проверь порт/виртуальный хост. Часто нужный API слушает на :8443."
+    echo "[HINT] Попробуй: ./scripts/auth_token_probe.sh --insecure https://localhost:8443 <login> <password>"
+  fi
+
+  if echo "$response" | grep -q 'HTTP_STATUS:404'; then
+    echo "[WARN] Endpoint не найден (404). Возможно, BASE_URL/port/path неверный."
   fi
 }
 
 probe_auth_errors() {
   local url="$1"
   printf "\n== Probe auth requirement: %s/v1/monitoring/availability?scope=all ==\n" "$url"
-  curl "${CURL_TLS_ARGS[@]}" -sS -i --max-time 15 "$url/v1/monitoring/availability?scope=all" | sed -n '1,30p' || true
+  local response
+  response=$(curl "${CURL_TLS_ARGS[@]}" -sS -i --max-time 15 "$url/v1/monitoring/availability?scope=all") || true
+  echo "$response" | sed -n '1,30p'
+  analyze_response_hint "$response"
 }
 
 try_json_endpoint() {
@@ -109,6 +126,7 @@ try_json_endpoint() {
 
   echo "$response"
   extract_token_hint "$response"
+  analyze_response_hint "$response"
 }
 
 try_form_endpoint() {
@@ -124,6 +142,7 @@ try_form_endpoint() {
 
   echo "$response"
   extract_token_hint "$response"
+  analyze_response_hint "$response"
 }
 
 print_base_url_hint
