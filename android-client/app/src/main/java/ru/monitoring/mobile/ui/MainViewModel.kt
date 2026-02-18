@@ -6,6 +6,10 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import java.net.ConnectException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
+import javax.net.ssl.SSLException
 import kotlinx.coroutines.launch
 import ru.monitoring.mobile.api.ApiFactory
 import ru.monitoring.mobile.api.ControlActionRequest
@@ -30,6 +34,15 @@ class MainViewModel(
         state = state.copy(token = preferences.apiToken)
     }
 
+
+    private fun formatNetworkError(error: Throwable): String = when (error) {
+        is SocketTimeoutException -> "Таймаут запроса. Проверь интернет на устройстве и доступность api.202020.ru:8443"
+        is UnknownHostException -> "DNS не резолвит хост api.202020.ru. Проверь сеть/мобильный интернет"
+        is ConnectException -> "Нет соединения с api.202020.ru:8443. Проверь доступ к серверу и фаервол"
+        is SSLException -> "Ошибка TLS/сертификата. Проверь дату/время устройства и SSL-конфиг сервера"
+        else -> error.message ?: "Ошибка сети"
+    }
+
     fun refreshAvailability() {
         viewModelScope.launch {
             state = state.copy(isLoading = true, message = "")
@@ -52,7 +65,7 @@ class MainViewModel(
                     message = "Данные обновлены"
                 )
             }.onFailure { error ->
-                state = state.copy(isLoading = false, message = error.message ?: "Ошибка запроса")
+                state = state.copy(isLoading = false, message = formatNetworkError(error))
             }
         }
     }
@@ -69,7 +82,7 @@ class MainViewModel(
                     message = data?.message ?: response.error?.message ?: "Команда отправлена"
                 )
             }.onFailure { error ->
-                state = state.copy(isLoading = false, message = error.message ?: "Ошибка команды")
+                state = state.copy(isLoading = false, message = formatNetworkError(error))
             }
         }
     }
@@ -95,7 +108,7 @@ class MainViewModel(
 
                 state = state.copy(isLoading = false, message = msg)
             }.onFailure { error ->
-                state = state.copy(isLoading = false, message = error.message ?: "Ошибка сохранения")
+                state = state.copy(isLoading = false, message = formatNetworkError(error))
             }
         }
     }
