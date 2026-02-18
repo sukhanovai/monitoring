@@ -30,8 +30,10 @@ import threading
 from datetime import datetime
 import json
 import re
+import secrets
 import subprocess
 import sys
+import time
 
 app = Flask(__name__)
 
@@ -1101,7 +1103,7 @@ def get_monitoring_stats():
         # Получаем текущий статус серверов
         from core.monitor_core import get_current_server_status, monitoring_active, last_check_time
         from core.monitor_core import is_silent_time, resource_history
-        from extensions.server_list import initialize_servers
+        from extensions.server_checks import initialize_servers
         
         current_status = get_current_server_status()
         servers_list = initialize_servers()
@@ -1213,6 +1215,128 @@ def get_monitoring_stats():
             "resource_alerts": 0,
             "uptime": "N/A"
         }, []
+
+
+
+# --- Minimal mobile BFF auth/session layer (in-memory) ---
+_MOBILE_TOKEN_TTL_SEC = 60 * 60 * 24
+_mobile_tokens = {}
+
+
+def _extract_credentials(payload):
+    """Достаёт username/password из JSON или form payload."""
+    payload = payload or {}
+    username = payload.get("username") or payload.get("login") or payload.get("email")
+    password = payload.get("password")
+    return username, password
+
+
+def _issue_mobile_token(subject):
+    token = secrets.token_urlsafe(32)
+    expires_at = int(time.time()) + _MOBILE_TOKEN_TTL_SEC
+    _mobile_tokens[token] = {"sub": subject, "exp": expires_at}
+    return token, expires_at
+
+
+def _validate_mobile_token(auth_header):
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return False, "missing"
+
+    token = auth_header.split(" ", 1)[1].strip()
+    token_data = _mobile_tokens.get(token)
+    if not token_data:
+        return False, "invalid"
+
+    if token_data["exp"] < int(time.time()):
+        _mobile_tokens.pop(token, None)
+        return False, "expired"
+
+    return True, token_data
+
+
+@app.route('/v1/auth/token', methods=['POST'])
+@app.route('/v1/auth/login', methods=['POST'])
+@app.route('/api/v1/auth/token', methods=['POST'])
+@app.route('/api/v1/auth/login', methods=['POST'])
+@app.route('/auth/token', methods=['POST'])
+@app.route('/auth/login', methods=['POST'])
+@app.route('/token', methods=['POST'])
+def mobile_auth_token():
+    """Минимальный auth endpoint для мобильного BFF-потока."""
+    payload = request.get_json(silent=True) or request.form.to_dict()
+    username, password = _extract_credentials(payload)
+
+    if not username or not password:
+        return jsonify({
+            "error": "invalid_request",
+            "message": "Требуются username/login/email и password"
+        }), 400
+
+    token, expires_at = _issue_mobile_token(username)
+    return jsonify({
+        "access_token": token,
+        "token_type": "Bearer",
+        "expires_in": _MOBILE_TOKEN_TTL_SEC,
+        "scope": "monitoring:read monitoring:control",
+        "issued_at": datetime.now().isoformat(),
+        "expires_at": datetime.fromtimestamp(expires_at).isoformat(),
+    })
+
+
+def _build_availability_payload(scope='all'):
+    stats, servers = get_monitoring_stats()
+    down_ips = {s.get('ip') for s in servers if s.get('status') == 'down'}
+
+    items = []
+    for s in servers:
+        items.append({
+            "ip": s.get("ip"),
+            "name": s.get("name"),
+            "status": "down" if s.get("ip") in down_ips else "up",
+            "status_display": s.get("status_display"),
+            "scope": scope,
+        })
+
+    return {
+        "scope": scope,
+        "total": len(items),
+        "up": sum(1 for i in items if i["status"] == "up"),
+        "down": sum(1 for i in items if i["status"] == "down"),
+        "items": items,
+        "timestamp": datetime.now().isoformat(),
+        "summary": stats,
+    }
+
+
+@app.route('/v1/monitoring/availability', methods=['GET'])
+@app.route('/api/v1/monitoring/availability', methods=['GET'])
+def mobile_availability():
+    """Mobile BFF endpoint совместимый с auth_token_probe.sh"""
+    ok, token_data = _validate_mobile_token(request.headers.get("Authorization"))
+    if not ok:
+        return jsonify({
+            "error": "unauthorized",
+            "message": "Bearer token required",
+            "reason": token_data
+        }), 401
+
+    scope = request.args.get('scope', 'all')
+    return jsonify(_build_availability_payload(scope=scope))
+
+
+@app.route('/v1/monitoring/status', methods=['GET'])
+@app.route('/api/v1/monitoring/status', methods=['GET'])
+def mobile_status():
+    """Синоним для быстрой проверки статуса с Bearer токеном."""
+    ok, token_data = _validate_mobile_token(request.headers.get("Authorization"))
+    if not ok:
+        return jsonify({
+            "error": "unauthorized",
+            "message": "Bearer token required",
+            "reason": token_data
+        }), 401
+
+    return jsonify(_build_availability_payload(scope='all'))
 
 @app.route('/')
 def index():
@@ -1459,7 +1583,7 @@ def api_manage_servers():
     """API для управления списком серверов"""
     if request.method == 'GET':
         # Получить список серверов
-        from extensions.server_list import initialize_servers
+        from extensions.server_checks import initialize_servers
         servers = initialize_servers()
         return jsonify({"servers": servers})
     

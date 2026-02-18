@@ -259,16 +259,282 @@ git log --oneline --decorate --graph -20
 
 Если у сервера self-signed сертификат, добавляй `--insecure` (или `-k`), иначе `curl` упирается в `SSL certificate problem`.
 
+### Практический сценарий: токен для ветки `android-mobile`, когда `develop` стоит за NAT
+
+Если backend в `develop` не торчит наружу напрямую, получай токен из консоли самого сервера, где поднят проект.
+
+1. Подключись по SSH к серверу и перейди в рабочую копию проекта:
+
+```bash
+ssh <user>@<server>
+cd /path/to/monitoring
+```
+
+2. Проверь, что ты на актуальном `develop` (Android-клиент в своей ветке использует тот же API):
+
+```bash
+git checkout develop
+git pull origin develop
+```
+
+3. Запусти discovery токен-эндпоинта через локальный адрес сервера:
+
+```bash
+./scripts/auth_token_probe.sh --insecure https://localhost <login> <password>
+```
+
+4. Если трафик идёт только через reverse proxy с обязательным `Host`, пробуй так:
+
+```bash
+./scripts/auth_token_probe.sh --insecure --host api.202020.ru https://localhost <login> <password>
+```
+
+5. Если API висит под префиксом (`/api`, `/bff` и т.п.), добавь `--prefix`:
+
+```bash
+./scripts/auth_token_probe.sh --insecure --host api.202020.ru --prefix /api https://localhost <login> <password>
+```
+
+6. Скопируй полученный `access_token` и вставь в Android-приложение в поле Bearer Token.
+
+Мини-проверка, что токен живой (подставь свой токен):
+
+```bash
+curl -k -H "Authorization: Bearer <access_token>" https://localhost/api/v1/monitor/status
+```
+
+Если этот запрос возвращает 200/JSON со статусами, токен норм и его можно использовать в ветке `feature/android-mobile`.
+
+
+### Если `login/password` нет вообще (и ты сам админ сервера)
+
+Если видишь только Apache-страницу помощи (`/ -> 200`, а `/v1/...` и `/api/...` -> 404), проблема не в токене, а в роутинге до BFF.
+В таком состоянии логин не заработает вообще — сначала нужно найти, где реально крутится API.
+
+1. Найди, кто слушает порты и есть ли локальный backend-порт (5000/8000/8080/9000/8443):
+
+```bash
+ss -lntp | grep -E '(:443|:8443|:5000|:8000|:8080|:9000)'
+```
+
+2. Посмотри vhost и proxy-настройки Apache/Nginx (ищем `ProxyPass`, `proxy_pass`, `RewriteRule`):
+
+```bash
+apache2ctl -S
+grep -R "ProxyPass\|RewriteRule\|api.202020.ru" /etc/apache2/sites-enabled /etc/apache2/sites-available
+nginx -T 2>/dev/null | grep -E "server_name|proxy_pass|api.202020.ru"
+```
+
+3. Если backend запущен в Docker/Compose — найди сервис API и его внутренний порт:
+
+```bash
+docker ps --format 'table {{.Names}}	{{.Ports}}'
+docker compose ps
+```
+
+4. Когда нашёл локальный API-порт, проверь его напрямую (минуя внешний reverse proxy):
+
+```bash
+./scripts/auth_token_probe.sh --insecure https://localhost:<API_PORT>
+./scripts/auth_token_probe.sh --insecure --prefix /api https://localhost:<API_PORT>
+```
+
+5. Если на прямом порту есть не-404 ответы по `/v1/...` или `/api/v1/...`, значит ты попал в BFF.
+Дальше уже нужно либо получить тестовую учётку, либо выпустить сервисный токен в том auth-сервисе, который этот BFF использует.
+
+#### Что делать прямо сейчас по твоему логу (коротко и без гаданий)
+
+По твоему выводу сейчас факт такой: `https://localhost:443` отдаёт не API, а страницу помощи Apache.
+Значит, endpoint токена на этом URL не появится, хоть обдолбись `--host/--prefix`.
+
+Сделай в таком порядке:
+
+```bash
+# 1) Ищем живой локальный API-порт
+ss -lntp | grep -E '(:443|:8443|:5000|:8000|:8080|:9000)'
+
+# 2) Проверяем, куда Apache должен проксировать api.202020.ru
+apache2ctl -S
+grep -R "api.202020.ru\|ProxyPass\|RewriteRule\|ProxyPassReverse" /etc/apache2/sites-enabled /etc/apache2/sites-available
+
+# 3) Если используется Docker — ищем контейнер API и его порт
+docker ps --format 'table {{.Names}}	{{.Ports}}'
+```
+
+Если в конфиге нет `ProxyPass`/`RewriteRule` на `/v1` или `/api` к backend-порту — проблема найдена: reverse proxy просто не прокидывает API.
+
+После правки proxy-конфига проверка должна стать такой (пример):
+
+```bash
+curl -k -I -H "Host: api.202020.ru" https://localhost/v1/monitoring/availability?scope=all
+# ожидаемо: не 404 от Apache (может быть 200/401/403 — это уже живой API)
+```
+
+Только после этого имеет смысл добывать токен (через login endpoint или сервисную учётку auth-сервиса).
+
+#### Отдельно по твоему выводу `apache2ctl -S`
+
+У тебя в `*:443` есть только vhost `help` (`help-ssl.conf`), а `api.202020.ru` в конфиге не видно.
+Это и есть корень проблемы: Apache обслуживает другой проект из `/var/www/html`, поэтому `/v1/...` и `/api/...` закономерно 404.
+
+Минимально что надо сделать:
+
+```bash
+# 1) Создать/добавить SSL vhost для API-домена (пример)
+cat >/etc/apache2/sites-available/api.202020.ru-ssl.conf <<'EOF'
+<VirtualHost *:443>
+    ServerName api.202020.ru
+
+    SSLEngine on
+    SSLCertificateFile /path/to/fullchain.pem
+    SSLCertificateKeyFile /path/to/privkey.pem
+
+    ProxyPreserveHost On
+    ProxyPass / http://127.0.0.1:8080/
+    ProxyPassReverse / http://127.0.0.1:8080/
+</VirtualHost>
+EOF
+
+# 2) Включить модули и сайт
+apache2enmod proxy proxy_http ssl headers rewrite
+apache2ensite api.202020.ru-ssl.conf
+apache2ctl configtest && systemctl reload apache2
+
+# 3) Проверить, что vhost появился
+apache2ctl -S | grep api.202020.ru
+```
+
+После этого снова проверяй:
+
+```bash
+curl -k -I -H "Host: api.202020.ru" https://localhost/v1/monitoring/availability?scope=all
+```
+
+Если уже не Apache 404, значит ты наконец попал в BFF и можно переходить к получению токена.
+
+### Схема NAT + отдельный reverse proxy (как у тебя) и получение токена с сервера проекта
+
+Твоя целевая схема:
+- backend/BFF крутится на **сервере проекта** во внутренней сети;
+- отдельный **reverse proxy** в той же сети принимает `api.202020.ru:8443`;
+- SSL-сертификат висит на reverse proxy;
+- токен нужно получить из консоли сервера проекта.
+
+Рабочая логика в таком сетапе:
+1. На сервере проекта проверяешь, что сам BFF живой на локальном/internal порту.
+2. Отдельно проверяешь, что с сервера проекта можно попасть в reverse proxy по `api.202020.ru:8443` (или через внутренний IP proxy + Host/SNI).
+3. Токен запрашиваешь у того endpoint, который реально отвечает не Apache-страницей, а API/BFF.
+
+Команды (по порядку):
+
+```bash
+# 1) Найти внутренний порт BFF на сервере проекта
+ss -lntp | grep -E '(:5000|:8000|:8080|:8443|:9000)'
+
+# 2) Пробный discovery напрямую в backend (без reverse proxy)
+./scripts/auth_token_probe.sh --insecure https://localhost:<BFF_PORT>
+./scripts/auth_token_probe.sh --insecure --prefix /api https://localhost:<BFF_PORT>
+
+# 3) Проверка reverse proxy из консоли сервера проекта (если DNS резолвит наружу криво)
+# подставь внутренний IP reverse proxy
+curl -k -I --resolve api.202020.ru:8443:<REVERSE_PROXY_LAN_IP> https://api.202020.ru:8443/
+
+# 4) Discovery через reverse proxy (с принудительным resolve)
+./scripts/auth_token_probe.sh --insecure https://api.202020.ru:8443
+# при необходимости:
+./scripts/auth_token_probe.sh --insecure --prefix /api https://api.202020.ru:8443
+```
+
+Если в шаге 4 снова видишь HTML/Apache 404 — значит proxy не прокидывает нужный route до BFF.
+Если получаешь API-ответы (хотя бы 401/403 на auth/monitoring), маршрут живой и можно получать токен.
+
+Практично: сначала добейся **не-404 Apache**, потом уже ебись с кредами/token payload.
+
+#### Расшифровка именно твоего текущего вывода
+
+По твоим новым проверкам видно уже точнее:
+- `http://192.168.20.2:5000/` открывает веб-интерфейс бота, но падает с ошибкой `can't compare offset-naive and offset-aware datetimes`;
+- `http://192.168.20.2:5000/api/v1/` возвращает `Not Found`;
+- `http://192.168.20.2:80/` — вообще другой LAN-сайт, не относящийся к проекту.
+
+Итог: процесс на `:5000` сейчас не даёт нужный mobile/BFF API маршрут. Поэтому тупо прокинуть `/v1` на `:5000` — хуёвая идея, токен это не вылечит.
+
+Что делать правильно перед правками Nginx:
+
+```bash
+# 1) Убедиться, какие роуты реально есть у python-сервиса на :5000
+curl -sS http://192.168.20.2:5000/ | head
+curl -sS -o /dev/null -w "%{http_code}\n" http://192.168.20.2:5000/v1/monitoring/availability?scope=all
+curl -sS -o /dev/null -w "%{http_code}\n" http://192.168.20.2:5000/api/v1/monitoring/availability?scope=all
+
+# 2) Посмотреть логи python-процесса (ошибка datetime может ломать и API-ветку)
+journalctl -u <service_name> -n 200 --no-pager
+# или, если запускается руками/через screen/supervisor/docker, смотреть соответствующие логи
+```
+
+Если на прямом `:5000` нет валидного API endpoint'а (получаешь 404/500), сначала нужно починить backend-приложение,
+а уже потом настраивать reverse proxy.
+
+Минимальный критерий "можно идти в Nginx":
+- прямой запрос на внутренний endpoint должен давать API-ответ (200/401/403/JSON), а не `Not Found`/HTML-страницу.
+
+Только после этого на reverse proxy настраиваешь `location` на **реально существующий** route backend'а (а не «наугад /v1»),
+делаешь `nginx -t && systemctl reload nginx` и повторно проверяешь `auth_token_probe.sh` через `https://api.202020.ru:8443`.
+
+#### Текущий статус по твоим последним командам
+
+По твоему `ps` и `journalctl` картина такая:
+- запущен `server-monitor.service` с процессом `/opt/monitoring/venv/bin/python /opt/monitoring/main.py`;
+- `/` отдаёт `200`, но в логах есть `❌ Ошибка получения статистики: No module named 'extensions.server_list'`;
+- `/v1/monitoring/availability` и `/api/v1/monitoring/availability` на `:5000` стабильно дают `404`.
+
+Это значит, что текущий инстанс — рабочий бот/веб-морда, но не готовый mobile BFF API.
+Поэтому токен сейчас не получить: endpoint'а для Android тупо нет в этом рантайме.
+
+Что делать дальше по-быстрому:
+
+```bash
+# 1) Проверить, какая ревизия и ветка реально крутится на сервере
+cd /opt/monitoring
+git rev-parse --abbrev-ref HEAD
+git log --oneline -n 5
+# ожидаемо: ветка develop и свежий merge из origin/develop
+
+# 2) Проверить, есть ли модуль web API в текущем коде и окружении
+python3 -c "import extensions.web_interface as m; print(m.__file__)"
+python3 -c "from importlib.util import find_spec; print(find_spec('extensions.server_list'))"
+
+# 3) Проверить, опубликованы ли API-роуты после перезапуска сервиса
+# если снова странная ошибка про importlib/util, проверь, не перекрыт ли stdlib модулем importlib.py в проекте
+python3 - <<'PY'
+import importlib
+print(importlib.__file__)
+PY
+
+systemctl restart server-monitor.service
+curl -sS -o /dev/null -w "%{http_code}\n" http://192.168.20.2:5000/v1/monitoring/availability?scope=all
+curl -sS -o /dev/null -w "%{http_code}\n" http://192.168.20.2:5000/api/v1/monitoring/availability?scope=all
+```
+
+Если после этого всё ещё `404`, значит нужно отдельно поднимать/подключать BFF API (или обновлять код/конфиг до версии, где эти маршруты реально есть),
+и только потом возвращаться к reverse proxy и Bearer токену.
+
 ### Откуда взять `<login>` и `<password>`
 
-Коротко: **не из этого репозитория**.
+Коротко: в этом репозитории их нет.
 
-Это учётные данные пользователя в вашем auth/BFF-контуре (staging/prod), обычно их выдаёт backend-админ.
+Если ты админ и не понимаешь, где auth, делай по-пацански и без магии:
+1. Сначала почини маршрут `Apache/Nginx -> BFF`, чтобы `/v1/...` не отдавал 404 от страницы помощи.
+2. Потом найди auth-сервис (обычно отдельный контейнер/процесс) и его endpoint (`/auth/login`, `/v1/auth/token` и т.д.).
+3. Создай там тестового пользователя или сервисный account и получи токен любым рабочим способом этого сервиса.
 
-Практический вариант:
-1. Попросить у backend-команды тестовую учётку для Android (`login/password`) с правами на `/v1/monitoring/*`.
-2. Если login endpoint ещё сырой — попросить временный `Bearer` токен вручную (на 1–7 дней) и проверить мобильный поток.
-3. После этого уже добить нормальный login flow в приложении.
+Пока учётки нет, всё равно можно запускать discovery для проверки маршрутов:
+
+```bash
+./scripts/auth_token_probe.sh --insecure https://localhost
+./scripts/auth_token_probe.sh --insecure --host api.202020.ru https://localhost
+./scripts/auth_token_probe.sh --insecure --host api.202020.ru --prefix /api https://localhost
+```
 
 В репозитории есть helper-скрипт для первичного проброса auth-вариантов:
 
