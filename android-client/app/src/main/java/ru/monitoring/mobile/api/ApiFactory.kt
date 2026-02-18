@@ -43,6 +43,10 @@ object ApiFactory {
             .add(KotlinJsonAdapterFactory())
             .build()
 
+        val moshi = Moshi.Builder()
+            .add(KotlinJsonAdapterFactory())
+            .build()
+
         return Retrofit.Builder()
             .baseUrl(BASE_URL)
             .client(client)
