@@ -13,6 +13,7 @@ import javax.net.ssl.SSLException
 import kotlinx.coroutines.launch
 import ru.monitoring.mobile.api.ApiFactory
 import ru.monitoring.mobile.api.ControlActionRequest
+import ru.monitoring.mobile.api.AvailabilityItem
 import ru.monitoring.mobile.api.ServerAvailability
 import ru.monitoring.mobile.api.SettingsMonitoringRequest
 import ru.monitoring.mobile.storage.AppPreferences
@@ -43,25 +44,48 @@ class MainViewModel(
         else -> error.message ?: "Ошибка сети"
     }
 
+
+    private fun mapItemsToServers(items: List<AvailabilityItem>): List<ServerAvailability> =
+        items.mapIndexed { index, item ->
+            ServerAvailability(
+                id = item.serverId,
+                name = item.serverId.ifBlank { "server-${index + 1}" },
+                status = item.status,
+                lastCheckedAt = item.checkedAt
+            )
+        }
+
+    private fun buildSummaryText(servers: List<ServerAvailability>): String {
+        val up = servers.count { it.status.equals("UP", ignoreCase = true) }
+        val down = servers.count { it.status.equals("DOWN", ignoreCase = true) }
+        val unknown = (servers.size - up - down).coerceAtLeast(0)
+        return "UP: $up, DOWN: $down, UNKNOWN: $unknown"
+    }
+
     fun refreshAvailability() {
         viewModelScope.launch {
             state = state.copy(isLoading = true, message = "")
             runCatching {
                 api.getAvailability()
             }.onSuccess { response ->
-                val payload = response.data
-                if (payload == null) {
+                val servers = if (response.servers.isNotEmpty()) {
+                    response.servers
+                } else {
+                    mapItemsToServers(response.items)
+                }
+
+                if (servers.isEmpty()) {
                     state = state.copy(
                         isLoading = false,
-                        message = response.error?.message ?: "Пустой ответ от API"
+                        message = "API ответил, но список серверов пуст"
                     )
                     return@onSuccess
                 }
 
                 state = state.copy(
                     isLoading = false,
-                    servers = payload.servers,
-                    summaryText = "UP: ${payload.summary.up}, DOWN: ${payload.summary.down}, UNKNOWN: ${payload.summary.unknown}",
+                    servers = servers,
+                    summaryText = buildSummaryText(servers),
                     message = "Данные обновлены"
                 )
             }.onFailure { error ->
@@ -76,10 +100,9 @@ class MainViewModel(
             runCatching {
                 api.runControlAction(ControlActionRequest(action))
             }.onSuccess { response ->
-                val data = response.data
                 state = state.copy(
                     isLoading = false,
-                    message = data?.message ?: response.error?.message ?: "Команда отправлена"
+                    message = response.message ?: response.result ?: "Команда отправлена"
                 )
             }.onFailure { error ->
                 state = state.copy(isLoading = false, message = formatNetworkError(error))
@@ -99,11 +122,15 @@ class MainViewModel(
             runCatching {
                 api.updateMonitoringSettings(request)
             }.onSuccess { response ->
-                val data = response.data
-                val msg = if (data != null) {
-                    "Сохранено: interval=${data.checkIntervalSec}, timeout=${data.timeoutSec}, maxDown=${data.maxDowntimeSec}"
+                val settings = response.settings
+                val interval = settings?.checkIntervalSec ?: response.checkIntervalSec
+                val timeoutValue = settings?.timeoutSec ?: response.timeoutSec
+                val maxDown = settings?.maxDowntimeSec ?: response.maxDowntimeSec
+
+                val msg = if (interval != null && timeoutValue != null && maxDown != null) {
+                    "Сохранено: interval=$interval, timeout=$timeoutValue, maxDown=$maxDown"
                 } else {
-                    response.error?.message ?: "Настройки обновлены"
+                    "Настройки обновлены"
                 }
 
                 state = state.copy(isLoading = false, message = msg)

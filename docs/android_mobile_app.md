@@ -542,6 +542,23 @@ Conflicting declarations: val moshi: Moshi!, val moshi: Moshi!
 
 ---
 
+### Ошибка в приложении: `Пустой ответ от API` / пустые данные
+
+Причина обычно не в токене, а в несовпадении формата ответа API и моделей клиента.
+
+Сейчас клиент поддерживает оба формата ответа для availability:
+
+1. `servers[]` (старый формат клиента)
+2. `items[]` + `server_id/status/checked_at` (контрактный формат BFF)
+
+Если после обновления API экран всё ещё пустой:
+
+1. Открой в браузере или Postman `GET /v1/monitoring/availability?scope=all`.
+2. Проверь, какие поля реально приходят (`servers` или `items`).
+3. Если API отдал 200, но массив пустой — это уже серверная бизнес-логика (не баг Android UI).
+
+---
+
 ### Частая проблема: таймаут (`timeout`) при `Обновить`
 
 Если после нажатия `Обновить` видишь timeout, проверь по шагам:
@@ -605,31 +622,37 @@ val moshi = com.squareup.moshi.Moshi.Builder()
 8. Валидный ли Bearer-токен вставлен в приложение.
 9. Доступен ли API `https://api.202020.ru:8443` с твоей сети.
 
-### Как правильно обновиться после `git pull` в Android Studio
+### Как правильно синхронизировать ветку из GitHub и не ловить ад
 
-Если ты сделал `git pull` и хочешь без ебли пересобрать проект, делай в таком порядке:
+Рекомендуемый цикл (каждый раз перед запуском):
 
-1. В терминале (в корне репозитория):
+1. Убедись, что находишься в корне репозитория (`monitoring`), а не в случайной подпапке.
+2. Забери изменения из GitHub:
    ```bash
-   git pull
+   git fetch origin
+   git checkout feature/android-mobile
+   git pull --ff-only origin feature/android-mobile
    ```
-2. Вернись в Android Studio.
-3. Если IDE предлагает **Load Gradle Changes** — жми её.
-4. Если не предлагает — вручную: **File -> Sync Project with Gradle Files**.
-5. Затем: **Build -> Clean Project**.
-6. Затем: **Build -> Assemble Project** (или `Compile All Sources`).
-7. Выбери устройство (эмулятор/телефон) и нажми **Run 'app'**.
+3. Если есть локальные мусорные правки в Android-файлах, откати их точечно:
+   ```bash
+   git restore --source=origin/feature/android-mobile -- android-client/app/src/main/java/ru/monitoring/mobile/api/ApiFactory.kt
+   ```
+4. После этого в Android Studio:
+   - **File -> Sync Project with Gradle Files**
+   - **Build -> Clean Project**
+   - **Build -> Assemble Project** (или `Compile All Sources`)
+   - **Run 'app'**
 
-Если после `pull` всё ещё странные ошибки:
+Если IDE продолжает показывать старые ошибки:
 
 1. **File -> Invalidate Caches / Restart -> Invalidate and Restart**.
-2. После перезапуска снова открой `android-client`.
+2. Открой снова именно папку `android-client`.
 3. Повтори: Sync -> Clean -> Assemble -> Run.
 
-Мини-шпаргалка после каждого `git pull`:
+Мини-шпаргалка:
 
 ```text
-git pull -> Sync Gradle -> Clean Project -> Assemble Project -> Run
+git fetch -> git pull --ff-only -> git restore (при нужде) -> Sync -> Clean -> Assemble -> Run
 ```
 
 ---
