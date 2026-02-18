@@ -418,11 +418,11 @@ android-client/app/build/outputs/apk/debug/app-debug.apk
 
 Если сборка падает:
 - нажми **Build -> Clean Project**;
-- затем **Build -> Make Project** (или `Ctrl+F9`);
+- затем **Build -> Assemble Project** (или `Compile All Sources`);
 - и снова **Run**.
 
 > В некоторых версиях Android Studio пункта **Build -> Rebuild Project** нет (это нормально, не баг).
-> Используй связку **Clean Project + Make Project** или запусти Gradle-задачу `assembleDebug` из панели Gradle.
+> Используй связку **Clean Project + Assemble Project** или запусти Gradle-задачу `assembleDebug` из панели Gradle.
 
 ### Этап 4. Где находится код и что менять в первую очередь
 
@@ -480,13 +480,29 @@ implementation("com.google.android.material:material:1.12.0")
 После этого:
 
 1. Нажми **File -> Sync Project with Gradle Files**.
-2. Перезапусти сборку: **Build -> Make Project** (или `Ctrl+F9`).
+2. Перезапусти сборку: **Build -> Assemble Project** (или `Compile All Sources`).
 
 Если пункта `Rebuild Project` нет — это ожидаемо для части сборок Android Studio.
 
 ---
 
 ### Ошибка Kotlin: `Conflicting import ... Moshi/KotlinJsonAdapterFactory is ambiguous`
+
+Это не сетевой баг: у тебя в `ApiFactory.kt` реально дублируются импорты (в ошибке видно строки `:3`, `:4`, `:8`, `:9`).
+
+Полностью очисти блок imports в `ApiFactory.kt` и вставь ровно это:
+
+```kotlin
+import okhttp3.Interceptor
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
+import retrofit2.Retrofit
+import retrofit2.converter.moshi.MoshiConverterFactory
+import java.util.UUID
+import java.util.concurrent.TimeUnit
+```
+
+(без `import com.squareup.moshi.Moshi` и без `import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory` — они уже используются через полные имена в коде).
 
 Если видишь ошибки вида:
 
@@ -503,7 +519,7 @@ Conflicting import, imported name 'KotlinJsonAdapterFactory' is ambiguous
 2. Либо используй полные имена классов прямо в коде:
    - `com.squareup.moshi.Moshi.Builder()`
    - `com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory()`
-3. Выполни **Build -> Clean Project** и **Build -> Make Project**.
+3. Выполни **Build -> Clean Project** и **Build -> Assemble Project**.
 
 ---
 
@@ -522,7 +538,7 @@ Conflicting declarations: val moshi: Moshi!, val moshi: Moshi!
 1. Открой `ApiFactory.kt`.
 2. Оставь только **одну** декларацию `moshi`.
 3. Нажми **Code -> Reformat Code** (или `Ctrl+Alt+L`).
-4. Выполни **Build -> Clean Project** и затем **Build -> Make Project**.
+4. Выполни **Build -> Clean Project** и затем **Build -> Assemble Project**.
 
 ---
 
@@ -560,8 +576,8 @@ Unable to create converter for ru.monitoring.mobile.api.ApiEnvelope<...>
 Проверь `ApiFactory.kt`, должно быть так:
 
 ```kotlin
-val moshi = Moshi.Builder()
-    .add(KotlinJsonAdapterFactory())
+val moshi = com.squareup.moshi.Moshi.Builder()
+    .add(com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory())
     .build()
 
 .addConverterFactory(MoshiConverterFactory.create(moshi))
@@ -570,7 +586,7 @@ val moshi = Moshi.Builder()
 После правки:
 
 1. **Build -> Clean Project**
-2. **Build -> Make Project** (или `Ctrl+F9`)
+2. **Build -> Assemble Project** (или `Compile All Sources`)
 3. Перезапусти приложение и снова нажми `Обновить`.
 
 Если нужно, собери APK напрямую через `Build -> Build APK(s)` или Gradle `assembleDebug`.
@@ -601,19 +617,19 @@ val moshi = Moshi.Builder()
 3. Если IDE предлагает **Load Gradle Changes** — жми её.
 4. Если не предлагает — вручную: **File -> Sync Project with Gradle Files**.
 5. Затем: **Build -> Clean Project**.
-6. Затем: **Build -> Make Project** (`Ctrl+F9`).
+6. Затем: **Build -> Assemble Project** (или `Compile All Sources`).
 7. Выбери устройство (эмулятор/телефон) и нажми **Run 'app'**.
 
 Если после `pull` всё ещё странные ошибки:
 
 1. **File -> Invalidate Caches / Restart -> Invalidate and Restart**.
 2. После перезапуска снова открой `android-client`.
-3. Повтори: Sync -> Clean -> Make -> Run.
+3. Повтори: Sync -> Clean -> Assemble -> Run.
 
 Мини-шпаргалка после каждого `git pull`:
 
 ```text
-git pull -> Sync Gradle -> Clean Project -> Make Project -> Run
+git pull -> Sync Gradle -> Clean Project -> Assemble Project -> Run
 ```
 
 ---
