@@ -486,6 +486,27 @@ implementation("com.google.android.material:material:1.12.0")
 
 ---
 
+### Ошибка Kotlin: `Conflicting import ... Moshi/KotlinJsonAdapterFactory is ambiguous`
+
+Если видишь ошибки вида:
+
+```text
+Conflicting import, imported name 'Moshi' is ambiguous
+Conflicting import, imported name 'KotlinJsonAdapterFactory' is ambiguous
+```
+
+значит в `ApiFactory.kt` IDE/merge оставил конфликтующие импорты.
+
+Быстрый фикс:
+
+1. Удали дубли/конфликтующие `import` для `Moshi` и `KotlinJsonAdapterFactory`.
+2. Либо используй полные имена классов прямо в коде:
+   - `com.squareup.moshi.Moshi.Builder()`
+   - `com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory()`
+3. Выполни **Build -> Clean Project** и **Build -> Make Project**.
+
+---
+
 ### Ошибка Kotlin: `Conflicting declarations: val moshi`
 
 Если в `ApiFactory.kt` видишь ошибку:

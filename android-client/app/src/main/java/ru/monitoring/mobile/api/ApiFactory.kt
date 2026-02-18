@@ -15,8 +15,8 @@ import java.util.concurrent.TimeUnit
 object ApiFactory {
     private const val BASE_URL = "https://api.202020.ru:8443/"
 
-    private val moshi: Moshi = Moshi.Builder()
-        .add(KotlinJsonAdapterFactory())
+    private val moshi: com.squareup.moshi.Moshi = com.squareup.moshi.Moshi.Builder()
+        .add(com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory())
         .build()
 
     private fun createHttpClient(tokenProvider: () -> String): OkHttpClient {
