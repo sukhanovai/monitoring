@@ -48,9 +48,9 @@ class MainViewModel(
     private fun mapItemsToServers(items: List<AvailabilityItem>): List<ServerAvailability> =
         items.mapIndexed { index, item ->
             ServerAvailability(
-                id = item.serverId,
-                name = item.serverId.ifBlank { "server-${index + 1}" },
-                status = item.status,
+                id = item.serverId?.ifBlank { null } ?: "server-${index + 1}",
+                name = item.serverId?.ifBlank { null } ?: "server-${index + 1}",
+                status = item.status ?: "UNKNOWN",
                 lastCheckedAt = item.checkedAt
             )
         }
