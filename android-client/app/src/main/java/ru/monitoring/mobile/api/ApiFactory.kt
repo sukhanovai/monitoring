@@ -33,8 +33,14 @@ object ApiFactory {
         val client = OkHttpClient.Builder()
             .addInterceptor(authInterceptor)
             .addInterceptor(logging)
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .writeTimeout(60, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
+            .build()
+
+        val moshi = Moshi.Builder()
+            .add(KotlinJsonAdapterFactory())
             .build()
 
         val moshi = Moshi.Builder()

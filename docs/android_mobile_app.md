@@ -418,8 +418,11 @@ android-client/app/build/outputs/apk/debug/app-debug.apk
 
 Если сборка падает:
 - нажми **Build -> Clean Project**;
-- потом **Build -> Rebuild Project**;
+- затем **Build -> Make Project** (или `Ctrl+F9`);
 - и снова **Run**.
+
+> В некоторых версиях Android Studio пункта **Build -> Rebuild Project** нет (это нормально, не баг).
+> Используй связку **Clean Project + Make Project** или запусти Gradle-задачу `assembleDebug` из панели Gradle.
 
 ### Этап 4. Где находится код и что менять в первую очередь
 
@@ -477,7 +480,30 @@ implementation("com.google.android.material:material:1.12.0")
 После этого:
 
 1. Нажми **File -> Sync Project with Gradle Files**.
-2. Перезапусти сборку: **Build -> Rebuild Project**.
+2. Перезапусти сборку: **Build -> Make Project** (или `Ctrl+F9`).
+
+Если пункта `Rebuild Project` нет — это ожидаемо для части сборок Android Studio.
+
+---
+
+### Частая проблема: таймаут (`timeout`) при `Обновить`
+
+Если после нажатия `Обновить` видишь timeout, проверь по шагам:
+
+1. Открой в браузере телефона `https://api.202020.ru:8443/` (или любой health endpoint, если он есть).
+2. Временно выключи Wi‑Fi и проверь через мобильный интернет (или наоборот).
+3. Проверь, что на сервере открыт порт `8443` извне (Security Group / firewall / iptables).
+4. Проверь DNS: домен `api.202020.ru` должен резолвиться на внешний IP сервера.
+5. Проверь TLS-сертификат и корректные дату/время на телефоне.
+
+В Android-клиенте увеличены сетевые таймауты и включён retry:
+
+- `connectTimeout = 30s`
+- `readTimeout = 60s`
+- `writeTimeout = 60s`
+- `retryOnConnectionFailure = true`
+
+Если timeout остаётся, проблема почти наверняка в сети/доступности API, а не в UI приложения.
 
 ---
 
@@ -504,8 +530,10 @@ val moshi = Moshi.Builder()
 После правки:
 
 1. **Build -> Clean Project**
-2. **Build -> Rebuild Project**
+2. **Build -> Make Project** (или `Ctrl+F9`)
 3. Перезапусти приложение и снова нажми `Обновить`.
+
+Если нужно, собери APK напрямую через `Build -> Build APK(s)` или Gradle `assembleDebug`.
 
 ---
 
