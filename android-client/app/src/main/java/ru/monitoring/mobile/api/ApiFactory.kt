@@ -1,5 +1,7 @@
 package ru.monitoring.mobile.api
 
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -11,7 +13,11 @@ import java.util.concurrent.TimeUnit
 object ApiFactory {
     private const val BASE_URL = "https://api.202020.ru:8443/"
 
-    fun createApi(tokenProvider: () -> String): MonitoringApi {
+    private val moshi: Moshi = Moshi.Builder()
+        .add(KotlinJsonAdapterFactory())
+        .build()
+
+    private fun createHttpClient(tokenProvider: () -> String): OkHttpClient {
         val authInterceptor = Interceptor { chain ->
             val token = tokenProvider().trim()
             val requestBuilder = chain.request().newBuilder()
@@ -28,17 +34,23 @@ object ApiFactory {
             level = HttpLoggingInterceptor.Level.BASIC
         }
 
-        val client = OkHttpClient.Builder()
+        return OkHttpClient.Builder()
             .addInterceptor(authInterceptor)
             .addInterceptor(logging)
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .writeTimeout(60, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
             .build()
+    }
+
+    fun createApi(tokenProvider: () -> String): MonitoringApi {
+        val client = createHttpClient(tokenProvider)
 
         return Retrofit.Builder()
             .baseUrl(BASE_URL)
             .client(client)
-            .addConverterFactory(MoshiConverterFactory.create())
+            .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
             .create(MonitoringApi::class.java)
     }
