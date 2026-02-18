@@ -589,6 +589,35 @@ val moshi = Moshi.Builder()
 8. Валидный ли Bearer-токен вставлен в приложение.
 9. Доступен ли API `https://api.202020.ru:8443` с твоей сети.
 
+### Как правильно обновиться после `git pull` в Android Studio
+
+Если ты сделал `git pull` и хочешь без ебли пересобрать проект, делай в таком порядке:
+
+1. В терминале (в корне репозитория):
+   ```bash
+   git pull
+   ```
+2. Вернись в Android Studio.
+3. Если IDE предлагает **Load Gradle Changes** — жми её.
+4. Если не предлагает — вручную: **File -> Sync Project with Gradle Files**.
+5. Затем: **Build -> Clean Project**.
+6. Затем: **Build -> Make Project** (`Ctrl+F9`).
+7. Выбери устройство (эмулятор/телефон) и нажми **Run 'app'**.
+
+Если после `pull` всё ещё странные ошибки:
+
+1. **File -> Invalidate Caches / Restart -> Invalidate and Restart**.
+2. После перезапуска снова открой `android-client`.
+3. Повтори: Sync -> Clean -> Make -> Run.
+
+Мини-шпаргалка после каждого `git pull`:
+
+```text
+git pull -> Sync Gradle -> Clean Project -> Make Project -> Run
+```
+
+---
+
 ### Этап 8. Что делаем дальше по шагам (план обучения)
 
 1. Научиться уверенно запускать/перезапускать приложение.
