@@ -7,13 +7,13 @@ import retrofit2.http.POST
 
 interface MonitoringApi {
     @GET("v1/monitoring/availability?scope=all")
-    suspend fun getAvailability(): ApiEnvelope<AvailabilityResponse>
+    suspend fun getAvailability(): AvailabilityResponse
 
     @POST("v1/control/actions")
-    suspend fun runControlAction(@Body request: ControlActionRequest): ApiEnvelope<ControlActionResult>
+    suspend fun runControlAction(@Body request: ControlActionRequest): ControlActionResult
 
     @PATCH("v1/settings/monitoring")
     suspend fun updateMonitoringSettings(
         @Body request: SettingsMonitoringRequest
-    ): ApiEnvelope<SettingsMonitoringResponse>
+    ): SettingsMonitoringResponse
 }
