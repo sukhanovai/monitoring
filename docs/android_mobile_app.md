@@ -486,6 +486,25 @@ implementation("com.google.android.material:material:1.12.0")
 
 ---
 
+### Ошибка Kotlin: `Conflicting declarations: val moshi`
+
+Если в `ApiFactory.kt` видишь ошибку:
+
+```text
+Conflicting declarations: val moshi: Moshi!, val moshi: Moshi!
+```
+
+значит в файле случайно осталось **две одинаковые переменные** `moshi` (обычно после нескольких правок подряд).
+
+Как исправить:
+
+1. Открой `ApiFactory.kt`.
+2. Оставь только **одну** декларацию `moshi`.
+3. Нажми **Code -> Reformat Code** (или `Ctrl+Alt+L`).
+4. Выполни **Build -> Clean Project** и затем **Build -> Make Project**.
+
+---
+
 ### Частая проблема: таймаут (`timeout`) при `Обновить`
 
 Если после нажатия `Обновить` видишь timeout, проверь по шагам:
