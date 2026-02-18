@@ -481,6 +481,34 @@ implementation("com.google.android.material:material:1.12.0")
 
 ---
 
+### Частая ошибка API: `Unable to create converter for ApiEnvelope<...>`
+
+Если после нажатия `Обновить` видишь ошибку:
+
+```text
+Unable to create converter for ru.monitoring.mobile.api.ApiEnvelope<...>
+```
+
+это означает, что Retrofit/Moshi не смог создать адаптер для Kotlin data class (обычно не подключён `KotlinJsonAdapterFactory`).
+
+Проверь `ApiFactory.kt`, должно быть так:
+
+```kotlin
+val moshi = Moshi.Builder()
+    .add(KotlinJsonAdapterFactory())
+    .build()
+
+.addConverterFactory(MoshiConverterFactory.create(moshi))
+```
+
+После правки:
+
+1. **Build -> Clean Project**
+2. **Build -> Rebuild Project**
+3. Перезапусти приложение и снова нажми `Обновить`.
+
+---
+
 ### Этап 7. Чеклист «я не ебу, почему не работает»
 
 1. Проверил ли ты, что открыт именно `android-client`, а не корень Python-проекта.
