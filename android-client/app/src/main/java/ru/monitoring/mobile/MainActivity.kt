@@ -217,6 +217,37 @@ private fun MonitoringApp(
                             Text("Проверка: ${server.lastCheckedAt ?: "-"}")
                         }
                     }
+                )
+                OutlinedTextField(
+                    value = state.windowsPasswordInput,
+                    onValueChange = onWindowsPasswordChanged,
+                    label = { Text("windows_password") },
+                    modifier = Modifier.fillMaxWidth(),
+                    visualTransformation = if (state.isWindowsPasswordVisible) VisualTransformation.None else hiddenTransformation,
+                    trailingIcon = {
+                        TextButton(onClick = onToggleWindowsPasswordVisibility) {
+                            Text(if (state.isWindowsPasswordVisible) "Скрыть" else "Показать")
+                        }
+                    }
+                )
+                Button(onClick = onSaveAuth, enabled = canSaveAuth) {
+                    Text("Сохранить auth")
+                }
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Список серверов", fontWeight = FontWeight.Bold)
+            }
+
+            items(state.servers) { server ->
+                ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(10.dp)) {
+                        Text(server.name, fontWeight = FontWeight.Bold)
+                        Text("ID: ${server.id}")
+                        Text("Статус: ${server.status}")
+                        Text("Проверка: ${server.lastCheckedAt ?: "-"}")
+                    }
                 }
             }
 
