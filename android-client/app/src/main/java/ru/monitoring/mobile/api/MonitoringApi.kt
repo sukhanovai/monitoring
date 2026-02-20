@@ -16,4 +16,19 @@ interface MonitoringApi {
     suspend fun updateMonitoringSettings(
         @Body request: SettingsMonitoringRequest
     ): SettingsMonitoringResponse
+
+    @PATCH("v1/settings/bot")
+    suspend fun updateBotSettings(
+        @Body request: SettingsBotRequest
+    ): SettingsBotResponse
+
+    @PATCH("v1/settings/time")
+    suspend fun updateTimeSettings(
+        @Body request: SettingsTimeRequest
+    ): SettingsTimeResponse
+
+    @PATCH("v1/settings/auth")
+    suspend fun updateAuthSettings(
+        @Body request: SettingsAuthRequest
+    ): SettingsAuthResponse
 }
