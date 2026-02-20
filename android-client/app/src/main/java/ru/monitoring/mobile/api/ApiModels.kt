@@ -78,3 +78,53 @@ data class SettingsMonitoringResponse(
     @Json(name = "timeout_sec") val timeoutSec: Int? = null,
     @Json(name = "max_downtime_sec") val maxDowntimeSec: Int? = null
 )
+
+data class SettingsBotRequest(
+    @Json(name = "telegram_bot_token") val telegramBotToken: String? = null,
+    @Json(name = "telegram_chat_id") val telegramChatId: String? = null
+)
+
+data class SettingsBotData(
+    @Json(name = "telegram_chat_id") val telegramChatId: String? = null,
+    @Json(name = "masked_token") val maskedToken: String? = null
+)
+
+data class SettingsBotResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val settings: SettingsBotData? = null
+)
+
+data class SettingsTimeRequest(
+    @Json(name = "quiet_start") val quietStart: String? = null,
+    @Json(name = "quiet_end") val quietEnd: String? = null,
+    @Json(name = "metrics_collection_time") val metricsCollectionTime: String? = null
+)
+
+data class SettingsTimeData(
+    @Json(name = "quiet_start") val quietStart: String? = null,
+    @Json(name = "quiet_end") val quietEnd: String? = null,
+    @Json(name = "metrics_collection_time") val metricsCollectionTime: String? = null
+)
+
+data class SettingsTimeResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val settings: SettingsTimeData? = null
+)
+
+data class SettingsAuthRequest(
+    @Json(name = "auth_mode") val authMode: String? = null,
+    @Json(name = "ssh_username") val sshUsername: String? = null,
+    @Json(name = "ssh_port") val sshPort: Int? = null,
+    @Json(name = "windows_username") val windowsUsername: String? = null
+)
+
+data class SettingsAuthData(
+    @Json(name = "auth_mode") val authMode: String? = null,
+    @Json(name = "ssh_username") val sshUsername: String? = null,
+    @Json(name = "windows_username") val windowsUsername: String? = null
+)
+
+data class SettingsAuthResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val settings: SettingsAuthData? = null
+)
