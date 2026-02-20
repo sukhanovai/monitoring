@@ -10,6 +10,7 @@ import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import javax.net.ssl.SSLException
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import ru.monitoring.mobile.api.ApiFactory
@@ -419,6 +420,13 @@ class MainViewModel(
         }
     }
 }
+
+private data class SettingsSnapshot(
+    val monitoring: ru.monitoring.mobile.api.SettingsMonitoringResponse,
+    val bot: ru.monitoring.mobile.api.SettingsBotResponse,
+    val time: ru.monitoring.mobile.api.SettingsTimeResponse,
+    val auth: ru.monitoring.mobile.api.SettingsAuthResponse
+)
 
 data class MainUiState(
     val token: String = "",
