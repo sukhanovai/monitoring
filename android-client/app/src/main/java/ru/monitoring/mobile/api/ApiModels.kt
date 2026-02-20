@@ -119,7 +119,9 @@ data class SettingsAuthRequest(
     @Json(name = "auth_mode") val authMode: String? = null,
     @Json(name = "ssh_username") val sshUsername: String? = null,
     @Json(name = "ssh_port") val sshPort: Int? = null,
-    @Json(name = "windows_username") val windowsUsername: String? = null
+    @Json(name = "windows_username") val windowsUsername: String? = null,
+    @Json(name = "ssh_password") val sshPassword: String? = null,
+    @Json(name = "windows_password") val windowsPassword: String? = null
 )
 
 data class SettingsAuthData(
@@ -137,5 +139,7 @@ data class SettingsAuthResponse(
     @Json(name = "auth_mode") val authMode: String? = null,
     @Json(name = "ssh_username") val sshUsername: String? = null,
     @Json(name = "ssh_port") val sshPort: Int? = null,
-    @Json(name = "windows_username") val windowsUsername: String? = null
+    @Json(name = "windows_username") val windowsUsername: String? = null,
+    @Json(name = "ssh_password") val sshPassword: String? = null,
+    @Json(name = "windows_password") val windowsPassword: String? = null
 )

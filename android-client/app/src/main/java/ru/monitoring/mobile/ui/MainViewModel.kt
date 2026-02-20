@@ -92,12 +92,28 @@ class MainViewModel(
         state = state.copy(windowsUsernameInput = value)
     }
 
+    fun setSshPasswordInput(value: String) {
+        state = state.copy(sshPasswordInput = value)
+    }
+
+    fun setWindowsPasswordInput(value: String) {
+        state = state.copy(windowsPasswordInput = value)
+    }
+
     fun toggleApiTokenVisibility() {
         state = state.copy(isApiTokenVisible = !state.isApiTokenVisible)
     }
 
     fun toggleTelegramTokenVisibility() {
         state = state.copy(isTelegramTokenVisible = !state.isTelegramTokenVisible)
+    }
+
+    fun toggleSshPasswordVisibility() {
+        state = state.copy(isSshPasswordVisible = !state.isSshPasswordVisible)
+    }
+
+    fun toggleWindowsPasswordVisibility() {
+        state = state.copy(isWindowsPasswordVisible = !state.isWindowsPasswordVisible)
     }
 
     private fun formatNetworkError(error: Throwable): String = when (error) {
@@ -175,6 +191,8 @@ class MainViewModel(
                     sshUsernameInput = authData?.sshUsername ?: auth.sshUsername ?: "",
                     sshPortInput = (authData?.sshPort ?: auth.sshPort)?.toString() ?: "",
                     windowsUsernameInput = authData?.windowsUsername ?: auth.windowsUsername ?: "",
+                    sshPasswordInput = authData?.maskedSshPassword ?: auth.sshPassword ?: "",
+                    windowsPasswordInput = authData?.maskedWindowsPassword ?: auth.windowsPassword ?: "",
                     message = "Настройки подтянуты из БД"
                 )
             }.onFailure { error ->
@@ -326,8 +344,10 @@ class MainViewModel(
         val sshUsername = state.sshUsernameInput
         val sshPort = state.sshPortInput
         val windowsUsername = state.windowsUsernameInput
+        val sshPassword = state.sshPasswordInput
+        val windowsPassword = state.windowsPasswordInput
 
-        if (!hasAnyValue(authMode, sshUsername, sshPort, windowsUsername)) {
+        if (!hasAnyValue(authMode, sshUsername, sshPort, windowsUsername, sshPassword, windowsPassword)) {
             state = state.copy(message = "Заполни хотя бы одно поле auth")
             return
         }
@@ -337,7 +357,9 @@ class MainViewModel(
                 authMode = authMode.ifBlank { null },
                 sshUsername = sshUsername.ifBlank { null },
                 sshPort = parseOptionalInt(sshPort, "ssh_port"),
-                windowsUsername = windowsUsername.ifBlank { null }
+                windowsUsername = windowsUsername.ifBlank { null },
+                sshPassword = sshPassword.ifBlank { null },
+                windowsPassword = windowsPassword.ifBlank { null }
             )
         }.getOrElse { error ->
             state = state.copy(message = error.message ?: "Ошибка в полях auth")
@@ -351,99 +373,6 @@ class MainViewModel(
             }.onSuccess {
                 state = state.copy(isLoading = false, message = "Auth-настройки обновлены")
                 refreshSettingsFromServer()
-            }.onFailure { error ->
-                state = state.copy(isLoading = false, message = formatNetworkError(error))
-            }
-        }
-    }
-
-    fun updateBotSettings(telegramToken: String, telegramChatId: String) {
-        if (!hasAnyValue(telegramToken, telegramChatId)) {
-            state = state.copy(message = "Заполни хотя бы одно поле bot")
-            return
-        }
-
-        val request = SettingsBotRequest(
-            telegramBotToken = telegramToken.ifBlank { null },
-            telegramChatId = telegramChatId.ifBlank { null }
-        )
-
-        viewModelScope.launch {
-            state = state.copy(isLoading = true, message = "")
-            runCatching {
-                api.updateBotSettings(request)
-            }.onSuccess { response ->
-                val settings = response.settings
-                val chatId = settings?.telegramChatId ?: "-"
-                val tokenInfo = settings?.maskedToken ?: "обновлён"
-                state = state.copy(
-                    isLoading = false,
-                    message = "Bot settings: chat_id=$chatId, token=$tokenInfo"
-                )
-            }.onFailure { error ->
-                state = state.copy(isLoading = false, message = formatNetworkError(error))
-            }
-        }
-    }
-
-    fun updateTimeSettings(quietStart: String, quietEnd: String, metricsCollectionTime: String) {
-        if (!hasAnyValue(quietStart, quietEnd, metricsCollectionTime)) {
-            state = state.copy(message = "Заполни хотя бы одно поле time")
-            return
-        }
-
-        val request = SettingsTimeRequest(
-            quietStart = quietStart.ifBlank { null },
-            quietEnd = quietEnd.ifBlank { null },
-            metricsCollectionTime = metricsCollectionTime.ifBlank { null }
-        )
-
-        viewModelScope.launch {
-            state = state.copy(isLoading = true, message = "")
-            runCatching {
-                api.updateTimeSettings(request)
-            }.onSuccess { response ->
-                val settings = response.settings
-                val quiet = "${settings?.quietStart ?: "-"}..${settings?.quietEnd ?: "-"}"
-                val metricsTime = settings?.metricsCollectionTime ?: "-"
-                state = state.copy(
-                    isLoading = false,
-                    message = "Time settings: quiet=$quiet, metrics_time=$metricsTime"
-                )
-            }.onFailure { error ->
-                state = state.copy(isLoading = false, message = formatNetworkError(error))
-            }
-        }
-    }
-
-    fun updateAuthSettings(authMode: String, sshUsername: String, sshPort: String, windowsUsername: String) {
-        if (!hasAnyValue(authMode, sshUsername, sshPort, windowsUsername)) {
-            state = state.copy(message = "Заполни хотя бы одно поле auth")
-            return
-        }
-
-        val request = runCatching {
-            SettingsAuthRequest(
-                authMode = authMode.ifBlank { null },
-                sshUsername = sshUsername.ifBlank { null },
-                sshPort = parseOptionalInt(sshPort, "ssh_port"),
-                windowsUsername = windowsUsername.ifBlank { null }
-            )
-        }.getOrElse { error ->
-            state = state.copy(message = error.message ?: "Ошибка в полях auth")
-            return
-        }
-
-        viewModelScope.launch {
-            state = state.copy(isLoading = true, message = "")
-            runCatching {
-                api.updateAuthSettings(request)
-            }.onSuccess { response ->
-                val settings = response.settings
-                state = state.copy(
-                    isLoading = false,
-                    message = "Auth settings: mode=${settings?.authMode ?: "-"}, ssh=${settings?.sshUsername ?: "-"}, win=${settings?.windowsUsername ?: "-"}"
-                )
             }.onFailure { error ->
                 state = state.copy(isLoading = false, message = formatNetworkError(error))
             }
@@ -471,6 +400,8 @@ data class MainUiState(
     val token: String = "",
     val isApiTokenVisible: Boolean = false,
     val isTelegramTokenVisible: Boolean = false,
+    val isSshPasswordVisible: Boolean = false,
+    val isWindowsPasswordVisible: Boolean = false,
     val isLoading: Boolean = false,
     val summaryText: String = "Нажми \"Обновить\", чтобы получить статус",
     val servers: List<ServerAvailability> = emptyList(),
@@ -486,5 +417,7 @@ data class MainUiState(
     val authModeInput: String = "",
     val sshUsernameInput: String = "",
     val sshPortInput: String = "",
-    val windowsUsernameInput: String = ""
+    val windowsUsernameInput: String = "",
+    val sshPasswordInput: String = "",
+    val windowsPasswordInput: String = ""
 )

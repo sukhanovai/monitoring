@@ -72,6 +72,10 @@ class MainActivity : ComponentActivity() {
                     onSshUsernameChanged = vm::setSshUsernameInput,
                     onSshPortChanged = vm::setSshPortInput,
                     onWindowsUsernameChanged = vm::setWindowsUsernameInput,
+                    onSshPasswordChanged = vm::setSshPasswordInput,
+                    onWindowsPasswordChanged = vm::setWindowsPasswordInput,
+                    onToggleSshPasswordVisibility = vm::toggleSshPasswordVisibility,
+                    onToggleWindowsPasswordVisibility = vm::toggleWindowsPasswordVisibility,
                     onSaveAuth = vm::updateAuthSettings
                 )
             }
@@ -105,31 +109,18 @@ private fun MonitoringApp(
     onSshUsernameChanged: (String) -> Unit,
     onSshPortChanged: (String) -> Unit,
     onWindowsUsernameChanged: (String) -> Unit,
+    onSshPasswordChanged: (String) -> Unit,
+    onWindowsPasswordChanged: (String) -> Unit,
+    onToggleSshPasswordVisibility: () -> Unit,
+    onToggleWindowsPasswordVisibility: () -> Unit,
     onSaveAuth: () -> Unit
 ) {
     val canSaveMonitoring = state.checkIntervalInput.isNotBlank() || state.timeoutInput.isNotBlank() || state.maxDowntimeInput.isNotBlank()
     val canSaveBot = state.telegramTokenInput.isNotBlank() || state.telegramChatIdInput.isNotBlank()
     val canSaveTime = state.quietStartInput.isNotBlank() || state.quietEndInput.isNotBlank() || state.metricsTimeInput.isNotBlank()
-    val canSaveAuth = state.authModeInput.isNotBlank() || state.sshUsernameInput.isNotBlank() || state.sshPortInput.isNotBlank() || state.windowsUsernameInput.isNotBlank()
+    val canSaveAuth = state.authModeInput.isNotBlank() || state.sshUsernameInput.isNotBlank() || state.sshPortInput.isNotBlank() || state.windowsUsernameInput.isNotBlank() || state.sshPasswordInput.isNotBlank() || state.windowsPasswordInput.isNotBlank()
 
     val hiddenTransformation = PasswordVisualTransformation()
-
-    var telegramToken by remember { mutableStateOf("") }
-    var telegramChatId by remember { mutableStateOf("") }
-
-    var quietStart by remember { mutableStateOf("") }
-    var quietEnd by remember { mutableStateOf("") }
-    var metricsTime by remember { mutableStateOf("") }
-
-    var authMode by remember { mutableStateOf("") }
-    var sshUsername by remember { mutableStateOf("") }
-    var sshPort by remember { mutableStateOf("") }
-    var windowsUsername by remember { mutableStateOf("") }
-
-    val canSaveMonitoring = checkInterval.isNotBlank() || timeout.isNotBlank() || maxDowntime.isNotBlank()
-    val canSaveBot = telegramToken.isNotBlank() || telegramChatId.isNotBlank()
-    val canSaveTime = quietStart.isNotBlank() || quietEnd.isNotBlank() || metricsTime.isNotBlank()
-    val canSaveAuth = authMode.isNotBlank() || sshUsername.isNotBlank() || sshPort.isNotBlank() || windowsUsername.isNotBlank()
 
     Scaffold(
         topBar = {
@@ -177,6 +168,15 @@ private fun MonitoringApp(
                             Text(state.message)
                         }
                     }
+                )
+                OutlinedTextField(
+                    value = state.telegramChatIdInput,
+                    onValueChange = onTelegramChatIdChanged,
+                    label = { Text("telegram_chat_id") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Button(onClick = onSaveBot, enabled = canSaveBot) {
+                    Text("Сохранить bot")
                 }
             }
 
@@ -293,6 +293,30 @@ private fun MonitoringApp(
                     onValueChange = onWindowsUsernameChanged,
                     label = { Text("windows_username") },
                     modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = state.sshPasswordInput,
+                    onValueChange = onSshPasswordChanged,
+                    label = { Text("ssh_password") },
+                    modifier = Modifier.fillMaxWidth(),
+                    visualTransformation = if (state.isSshPasswordVisible) VisualTransformation.None else hiddenTransformation,
+                    trailingIcon = {
+                        TextButton(onClick = onToggleSshPasswordVisibility) {
+                            Text(if (state.isSshPasswordVisible) "Скрыть" else "Показать")
+                        }
+                    }
+                )
+                OutlinedTextField(
+                    value = state.windowsPasswordInput,
+                    onValueChange = onWindowsPasswordChanged,
+                    label = { Text("windows_password") },
+                    modifier = Modifier.fillMaxWidth(),
+                    visualTransformation = if (state.isWindowsPasswordVisible) VisualTransformation.None else hiddenTransformation,
+                    trailingIcon = {
+                        TextButton(onClick = onToggleWindowsPasswordVisibility) {
+                            Text(if (state.isWindowsPasswordVisible) "Скрыть" else "Показать")
+                        }
+                    }
                 )
                 Button(onClick = onSaveAuth, enabled = canSaveAuth) {
                     Text("Сохранить auth")
