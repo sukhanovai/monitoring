@@ -208,6 +208,11 @@ class MainViewModel(
         }
     }
 
+
+    fun showMenuStub(section: String) {
+        state = state.copy(message = "Раздел '$section' ещё в разработке для Android-меню")
+    }
+
     fun sendAction(action: String) {
         viewModelScope.launch {
             state = state.copy(isLoading = true, message = "")

@@ -56,6 +56,7 @@ class MainActivity : ComponentActivity() {
                     onRefresh = vm::refreshAvailability,
                     onToggleApiTokenVisibility = vm::toggleApiTokenVisibility,
                     onToggleTelegramTokenVisibility = vm::toggleTelegramTokenVisibility,
+                    onShowMenuStub = vm::showMenuStub,
                     onAction = vm::sendAction,
                     onCheckIntervalChanged = vm::setCheckIntervalInput,
                     onTimeoutChanged = vm::setTimeoutInput,
@@ -92,6 +93,7 @@ private fun MonitoringApp(
     onRefresh: () -> Unit,
     onToggleApiTokenVisibility: () -> Unit,
     onToggleTelegramTokenVisibility: () -> Unit,
+    onShowMenuStub: (String) -> Unit,
     onAction: (String) -> Unit,
     onCheckIntervalChanged: (String) -> Unit,
     onTimeoutChanged: (String) -> Unit,
@@ -177,6 +179,24 @@ private fun MonitoringApp(
                             Text(state.message)
                         }
                     }
+                }
+            }
+
+            item {
+                Text("Главное меню (как в Telegram)", fontWeight = FontWeight.Bold)
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = onRefresh, modifier = Modifier.fillMaxWidth()) { Text("🔄 Доступность всех серверов") }
+                    Button(onClick = { onShowMenuStub("Доступность сервера") }, modifier = Modifier.fillMaxWidth()) { Text("🔍 Доступность сервера") }
+                    Button(onClick = { onShowMenuStub("Ресурсы сервера") }, modifier = Modifier.fillMaxWidth()) { Text("📊 Ресурсы сервера") }
+                    Button(onClick = { onShowMenuStub("Бэкапы Proxmox") }, modifier = Modifier.fillMaxWidth()) { Text("💾 Бэкапы Proxmox") }
+                    Button(onClick = { onShowMenuStub("Бэкапы БД") }, modifier = Modifier.fillMaxWidth()) { Text("🗃️ Бэкапы БД") }
+                    Button(onClick = { onShowMenuStub("Бэкапы почты") }, modifier = Modifier.fillMaxWidth()) { Text("📬 Бэкапы почты") }
+                    Button(onClick = { onShowMenuStub("Остатки 1С") }, modifier = Modifier.fillMaxWidth()) { Text("📦 Остатки 1С") }
+                    Button(onClick = { onShowMenuStub("Результаты остатков поставщиков") }, modifier = Modifier.fillMaxWidth()) { Text("📦 Результаты остатков поставщиков") }
+                    Button(onClick = { onShowMenuStub("ZFS") }, modifier = Modifier.fillMaxWidth()) { Text("🧊 ZFS") }
+                    Button(onClick = { onShowMenuStub("Расширения") }, modifier = Modifier.fillMaxWidth()) { Text("🛠️ Расширения") }
+                    Button(onClick = { onShowMenuStub("Настройки") }, modifier = Modifier.fillMaxWidth()) { Text("⚙️ Настройки") }
+                    Button(onClick = { onShowMenuStub("О боте") }, modifier = Modifier.fillMaxWidth()) { Text("ℹ️ О боте") }
                 }
             }
 
