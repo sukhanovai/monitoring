@@ -48,6 +48,7 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(Unit) {
                     vm.loadInitialState()
                 }
+
                 MonitoringApp(
                     state = vm.state,
                     onTokenChanged = vm::setTokenInput,
@@ -115,10 +116,19 @@ private fun MonitoringApp(
     onToggleWindowsPasswordVisibility: () -> Unit,
     onSaveAuth: () -> Unit
 ) {
-    val canSaveMonitoring = state.checkIntervalInput.isNotBlank() || state.timeoutInput.isNotBlank() || state.maxDowntimeInput.isNotBlank()
+    val canSaveMonitoring = state.checkIntervalInput.isNotBlank() ||
+        state.timeoutInput.isNotBlank() ||
+        state.maxDowntimeInput.isNotBlank()
     val canSaveBot = state.telegramTokenInput.isNotBlank() || state.telegramChatIdInput.isNotBlank()
-    val canSaveTime = state.quietStartInput.isNotBlank() || state.quietEndInput.isNotBlank() || state.metricsTimeInput.isNotBlank()
-    val canSaveAuth = state.authModeInput.isNotBlank() || state.sshUsernameInput.isNotBlank() || state.sshPortInput.isNotBlank() || state.windowsUsernameInput.isNotBlank() || state.sshPasswordInput.isNotBlank() || state.windowsPasswordInput.isNotBlank()
+    val canSaveTime = state.quietStartInput.isNotBlank() ||
+        state.quietEndInput.isNotBlank() ||
+        state.metricsTimeInput.isNotBlank()
+    val canSaveAuth = state.authModeInput.isNotBlank() ||
+        state.sshUsernameInput.isNotBlank() ||
+        state.sshPortInput.isNotBlank() ||
+        state.windowsUsernameInput.isNotBlank() ||
+        state.sshPasswordInput.isNotBlank() ||
+        state.windowsPasswordInput.isNotBlank()
 
     val hiddenTransformation = PasswordVisualTransformation()
 
@@ -159,24 +169,17 @@ private fun MonitoringApp(
                 if (state.isLoading) {
                     CircularProgressIndicator()
                 }
-
                 ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
                         Text("Статус", fontWeight = FontWeight.Bold)
                         Text(state.summaryText)
                         if (state.message.isNotBlank()) {
                             Text(state.message)
                         }
                     }
-                )
-                OutlinedTextField(
-                    value = state.telegramChatIdInput,
-                    onValueChange = onTelegramChatIdChanged,
-                    label = { Text("telegram_chat_id") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Button(onClick = onSaveBot, enabled = canSaveBot) {
-                    Text("Сохранить bot")
                 }
             }
 
