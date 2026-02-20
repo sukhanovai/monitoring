@@ -22,20 +22,19 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.monitoring.mobile.storage.AppPreferences
-import ru.monitoring.mobile.ui.MainViewModel
 import ru.monitoring.mobile.ui.MainUiState
+import ru.monitoring.mobile.ui.MainViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -49,7 +48,32 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(Unit) {
                     vm.loadInitialState()
                 }
-                MonitoringApp(vm.state, vm::saveToken, vm::refreshAvailability, vm::sendAction, vm::updateSettings)
+                MonitoringApp(
+                    state = vm.state,
+                    onTokenChanged = vm::setTokenInput,
+                    onSaveToken = vm::saveToken,
+                    onRefresh = vm::refreshAvailability,
+                    onRefreshSettings = vm::refreshSettingsFromServer,
+                    onToggleApiTokenVisibility = vm::toggleApiTokenVisibility,
+                    onToggleTelegramTokenVisibility = vm::toggleTelegramTokenVisibility,
+                    onAction = vm::sendAction,
+                    onCheckIntervalChanged = vm::setCheckIntervalInput,
+                    onTimeoutChanged = vm::setTimeoutInput,
+                    onMaxDowntimeChanged = vm::setMaxDowntimeInput,
+                    onSaveMonitoring = vm::updateMonitoringSettings,
+                    onTelegramTokenChanged = vm::setTelegramTokenInput,
+                    onTelegramChatIdChanged = vm::setTelegramChatIdInput,
+                    onSaveBot = vm::updateBotSettings,
+                    onQuietStartChanged = vm::setQuietStartInput,
+                    onQuietEndChanged = vm::setQuietEndInput,
+                    onMetricsTimeChanged = vm::setMetricsTimeInput,
+                    onSaveTime = vm::updateTimeSettings,
+                    onAuthModeChanged = vm::setAuthModeInput,
+                    onSshUsernameChanged = vm::setSshUsernameInput,
+                    onSshPortChanged = vm::setSshPortInput,
+                    onWindowsUsernameChanged = vm::setWindowsUsernameInput,
+                    onSaveAuth = vm::updateAuthSettings
+                )
             }
         }
     }
@@ -59,98 +83,217 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun MonitoringApp(
     state: MainUiState,
+    onTokenChanged: (String) -> Unit,
     onSaveToken: (String) -> Unit,
     onRefresh: () -> Unit,
+    onRefreshSettings: () -> Unit,
+    onToggleApiTokenVisibility: () -> Unit,
+    onToggleTelegramTokenVisibility: () -> Unit,
     onAction: (String) -> Unit,
-    onUpdateSettings: (String, String, String) -> Unit
+    onCheckIntervalChanged: (String) -> Unit,
+    onTimeoutChanged: (String) -> Unit,
+    onMaxDowntimeChanged: (String) -> Unit,
+    onSaveMonitoring: () -> Unit,
+    onTelegramTokenChanged: (String) -> Unit,
+    onTelegramChatIdChanged: (String) -> Unit,
+    onSaveBot: () -> Unit,
+    onQuietStartChanged: (String) -> Unit,
+    onQuietEndChanged: (String) -> Unit,
+    onMetricsTimeChanged: (String) -> Unit,
+    onSaveTime: () -> Unit,
+    onAuthModeChanged: (String) -> Unit,
+    onSshUsernameChanged: (String) -> Unit,
+    onSshPortChanged: (String) -> Unit,
+    onWindowsUsernameChanged: (String) -> Unit,
+    onSaveAuth: () -> Unit
 ) {
-    var tokenInput by remember(state.token) { mutableStateOf(state.token) }
-    var checkInterval by remember { mutableStateOf("") }
-    var timeout by remember { mutableStateOf("") }
-    var maxDowntime by remember { mutableStateOf("") }
+    val canSaveMonitoring = state.checkIntervalInput.isNotBlank() || state.timeoutInput.isNotBlank() || state.maxDowntimeInput.isNotBlank()
+    val canSaveBot = state.telegramTokenInput.isNotBlank() || state.telegramChatIdInput.isNotBlank()
+    val canSaveTime = state.quietStartInput.isNotBlank() || state.quietEndInput.isNotBlank() || state.metricsTimeInput.isNotBlank()
+    val canSaveAuth = state.authModeInput.isNotBlank() || state.sshUsernameInput.isNotBlank() || state.sshPortInput.isNotBlank() || state.windowsUsernameInput.isNotBlank()
+
+    val hiddenTransformation = PasswordVisualTransformation()
 
     Scaffold(
         topBar = {
             TopAppBar(title = { Text("Monitoring Android") })
         }
     ) { innerPadding ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text("Подключение к BFF", fontWeight = FontWeight.Bold)
-            OutlinedTextField(
-                value = tokenInput,
-                onValueChange = { tokenInput = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Bearer токен") }
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { onSaveToken(tokenInput) }) { Text("Сохранить токен") }
-                Button(onClick = onRefresh) { Text("Обновить") }
+            item {
+                Text("Подключение к BFF", fontWeight = FontWeight.Bold)
+                OutlinedTextField(
+                    value = state.token,
+                    onValueChange = onTokenChanged,
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Bearer токен") },
+                    visualTransformation = if (state.isApiTokenVisible) VisualTransformation.None else hiddenTransformation,
+                    trailingIcon = {
+                        TextButton(onClick = onToggleApiTokenVisibility) {
+                            Text(if (state.isApiTokenVisible) "Скрыть" else "Показать")
+                        }
+                    }
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = { onSaveToken(state.token) }) { Text("Сохранить токен") }
+                    Button(onClick = onRefresh) { Text("Обновить") }
+                    Button(onClick = onRefreshSettings) { Text("Подтянуть настройки") }
+                }
             }
 
-            if (state.isLoading) {
-                CircularProgressIndicator()
-            }
+            item {
+                if (state.isLoading) {
+                    CircularProgressIndicator()
+                }
 
-            ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Статус", fontWeight = FontWeight.Bold)
-                    Text(state.summaryText)
-                    if (state.message.isNotBlank()) {
-                        Text(state.message)
+                ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("Статус", fontWeight = FontWeight.Bold)
+                        Text(state.summaryText)
+                        if (state.message.isNotBlank()) {
+                            Text(state.message)
+                        }
                     }
                 }
             }
 
-            Text("Быстрые действия", fontWeight = FontWeight.Bold)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { onAction("pause_monitoring") }) { Text("Пауза") }
-                Button(onClick = { onAction("resume_monitoring") }) { Text("Старт") }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { onAction("send_morning_report") }) { Text("Отчёт") }
-                Button(onClick = { onAction("force_quiet") }) { Text("Quiet") }
-            }
-
-            Text("Настройки мониторинга", fontWeight = FontWeight.Bold)
-            OutlinedTextField(
-                value = checkInterval,
-                onValueChange = { checkInterval = it },
-                label = { Text("check_interval_sec") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            OutlinedTextField(
-                value = timeout,
-                onValueChange = { timeout = it },
-                label = { Text("timeout_sec") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            OutlinedTextField(
-                value = maxDowntime,
-                onValueChange = { maxDowntime = it },
-                label = { Text("max_downtime_sec") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            Button(onClick = { onUpdateSettings(checkInterval, timeout, maxDowntime) }) {
-                Text("Сохранить настройки")
+            item {
+                Text("Управление", fontWeight = FontWeight.Bold)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = { onAction("pause_monitoring") }) { Text("Пауза") }
+                    Button(onClick = { onAction("resume_monitoring") }) { Text("Старт") }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = { onAction("send_morning_report") }) { Text("Отчёт") }
+                    Button(onClick = { onAction("force_quiet") }) { Text("Quiet") }
+                    Button(onClick = { onAction("force_loud") }) { Text("Loud") }
+                }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-            Text("Список серверов", fontWeight = FontWeight.Bold)
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                items(state.servers) { server ->
-                    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(10.dp)) {
-                            Text(server.name, fontWeight = FontWeight.Bold)
-                            Text("ID: ${server.id}")
-                            Text("Статус: ${server.status}")
-                            Text("Проверка: ${server.lastCheckedAt ?: "-"}")
+            item {
+                Text("Настройки мониторинга", fontWeight = FontWeight.Bold)
+                OutlinedTextField(
+                    value = state.checkIntervalInput,
+                    onValueChange = onCheckIntervalChanged,
+                    label = { Text("check_interval_sec") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = state.timeoutInput,
+                    onValueChange = onTimeoutChanged,
+                    label = { Text("timeout_sec") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = state.maxDowntimeInput,
+                    onValueChange = onMaxDowntimeChanged,
+                    label = { Text("max_downtime_sec") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Button(onClick = onSaveMonitoring, enabled = canSaveMonitoring) {
+                    Text("Сохранить monitoring")
+                }
+            }
+
+            item {
+                Text("Настройки бота", fontWeight = FontWeight.Bold)
+                OutlinedTextField(
+                    value = state.telegramTokenInput,
+                    onValueChange = onTelegramTokenChanged,
+                    label = { Text("telegram_bot_token") },
+                    modifier = Modifier.fillMaxWidth(),
+                    visualTransformation = if (state.isTelegramTokenVisible) VisualTransformation.None else hiddenTransformation,
+                    trailingIcon = {
+                        TextButton(onClick = onToggleTelegramTokenVisibility) {
+                            Text(if (state.isTelegramTokenVisible) "Скрыть" else "Показать")
                         }
+                    }
+                )
+                OutlinedTextField(
+                    value = state.telegramChatIdInput,
+                    onValueChange = onTelegramChatIdChanged,
+                    label = { Text("telegram_chat_id") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Button(onClick = onSaveBot, enabled = canSaveBot) {
+                    Text("Сохранить bot")
+                }
+            }
+
+            item {
+                Text("Временные настройки", fontWeight = FontWeight.Bold)
+                OutlinedTextField(
+                    value = state.quietStartInput,
+                    onValueChange = onQuietStartChanged,
+                    label = { Text("quiet_start (HH:mm)") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = state.quietEndInput,
+                    onValueChange = onQuietEndChanged,
+                    label = { Text("quiet_end (HH:mm)") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = state.metricsTimeInput,
+                    onValueChange = onMetricsTimeChanged,
+                    label = { Text("metrics_collection_time (HH:mm)") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Button(onClick = onSaveTime, enabled = canSaveTime) {
+                    Text("Сохранить time")
+                }
+            }
+
+            item {
+                Text("Auth-параметры", fontWeight = FontWeight.Bold)
+                OutlinedTextField(
+                    value = state.authModeInput,
+                    onValueChange = onAuthModeChanged,
+                    label = { Text("auth_mode") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = state.sshUsernameInput,
+                    onValueChange = onSshUsernameChanged,
+                    label = { Text("ssh_username") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = state.sshPortInput,
+                    onValueChange = onSshPortChanged,
+                    label = { Text("ssh_port") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = state.windowsUsernameInput,
+                    onValueChange = onWindowsUsernameChanged,
+                    label = { Text("windows_username") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Button(onClick = onSaveAuth, enabled = canSaveAuth) {
+                    Text("Сохранить auth")
+                }
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Список серверов", fontWeight = FontWeight.Bold)
+            }
+
+            items(state.servers) { server ->
+                ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(10.dp)) {
+                        Text(server.name, fontWeight = FontWeight.Bold)
+                        Text("ID: ${server.id}")
+                        Text("Статус: ${server.status}")
+                        Text("Проверка: ${server.lastCheckedAt ?: "-"}")
                     }
                 }
             }
