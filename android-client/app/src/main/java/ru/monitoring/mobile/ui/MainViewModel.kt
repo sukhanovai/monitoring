@@ -14,7 +14,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.withTimeout
 import retrofit2.HttpException
 import ru.monitoring.mobile.api.ApiFactory
 import ru.monitoring.mobile.api.AvailabilityItem
@@ -118,10 +119,10 @@ class MainViewModel(
             state = state.copy(isLoading = true, message = "")
 
             val snapshot = withContext(Dispatchers.IO) {
-                val monitoring = async { withTimeoutOrNull(10_000) { runCatching { api.getMonitoringSettings() } } }
-                val bot = async { withTimeoutOrNull(10_000) { runCatching { api.getBotSettings() } } }
-                val time = async { withTimeoutOrNull(10_000) { runCatching { api.getTimeSettings() } } }
-                val auth = async { withTimeoutOrNull(10_000) { runCatching { api.getAuthSettings() } } }
+                val monitoring = async { runCatching { withTimeout(10_000) { api.getMonitoringSettings() } } }
+                val bot = async { runCatching { withTimeout(10_000) { api.getBotSettings() } } }
+                val time = async { runCatching { withTimeout(10_000) { api.getTimeSettings() } } }
+                val auth = async { runCatching { withTimeout(10_000) { api.getAuthSettings() } } }
                 SyncResults(monitoring.await(), bot.await(), time.await(), auth.await())
             }
 
@@ -130,18 +131,20 @@ class MainViewModel(
             val timeResult = snapshot.time
             val authResult = snapshot.auth
 
-            if (monitoringResult == null && botResult == null && timeResult == null && authResult == null) {
-                state = state.copy(isLoading = false, message = "Синхронизация настроек превысила таймаут")
-                return@launch
-            }
-
-            val monitoringFailure = monitoringResult?.exceptionOrNull()
-            val botFailure = botResult?.exceptionOrNull()
-            val timeFailure = timeResult?.exceptionOrNull()
-            val authFailure = authResult?.exceptionOrNull()
+            val monitoringFailure = monitoringResult.exceptionOrNull()
+            val botFailure = botResult.exceptionOrNull()
+            val timeFailure = timeResult.exceptionOrNull()
+            val authFailure = authResult.exceptionOrNull()
 
             if (monitoringFailure != null && botFailure != null && timeFailure != null && authFailure != null) {
                 val failMessage = if (
+                    monitoringFailure is TimeoutCancellationException &&
+                    botFailure is TimeoutCancellationException &&
+                    timeFailure is TimeoutCancellationException &&
+                    authFailure is TimeoutCancellationException
+                ) {
+                    "Автосинхронизация настроек недоступна: backend долго не отвечает на /v1/settings/*"
+                } else if (
                     isMethodNotAllowed(monitoringFailure) &&
                     isMethodNotAllowed(botFailure) &&
                     isMethodNotAllowed(timeFailure) &&
@@ -155,12 +158,12 @@ class MainViewModel(
                 return@launch
             }
 
-            val monitoring = monitoringResult?.getOrNull()
+            val monitoring = monitoringResult.getOrNull()
             val monitoringData = monitoring?.settings
-            val botData = botResult?.getOrNull()?.settings
-            val time = timeResult?.getOrNull()
+            val botData = botResult.getOrNull()?.settings
+            val time = timeResult.getOrNull()
             val timeData = time?.settings
-            val auth = authResult?.getOrNull()
+            val auth = authResult.getOrNull()
             val authData = auth?.settings
 
             state = state.copy(
@@ -346,10 +349,10 @@ class MainViewModel(
 }
 
 private data class SyncResults(
-    val monitoring: Result<ru.monitoring.mobile.api.SettingsMonitoringResponse>?,
-    val bot: Result<ru.monitoring.mobile.api.SettingsBotResponse>?,
-    val time: Result<ru.monitoring.mobile.api.SettingsTimeResponse>?,
-    val auth: Result<ru.monitoring.mobile.api.SettingsAuthResponse>?
+    val monitoring: Result<ru.monitoring.mobile.api.SettingsMonitoringResponse>,
+    val bot: Result<ru.monitoring.mobile.api.SettingsBotResponse>,
+    val time: Result<ru.monitoring.mobile.api.SettingsTimeResponse>,
+    val auth: Result<ru.monitoring.mobile.api.SettingsAuthResponse>
 )
 
 data class MainUiState(
