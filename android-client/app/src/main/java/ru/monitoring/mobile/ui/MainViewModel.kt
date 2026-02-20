@@ -36,8 +36,11 @@ class MainViewModel(
     }
 
     fun loadInitialState() {
-        state = state.copy(token = preferences.apiToken)
-        refreshSettingsFromServer()
+        val token = preferences.apiToken
+        state = state.copy(token = token)
+        if (token.isNotBlank()) {
+            refreshSettingsFromServer()
+        }
     }
 
     fun setTokenInput(value: String) {
@@ -151,52 +154,63 @@ class MainViewModel(
     }
 
     fun refreshSettingsFromServer() {
+        if (state.token.isBlank()) {
+            state = state.copy(message = "Сначала сохрани Bearer токен")
+            return
+        }
+
         viewModelScope.launch {
-            state = state.copy(isLoading = true, message = "")
-            runCatching {
-                val monitoringDeferred = async { api.getMonitoringSettings() }
-                val botDeferred = async { api.getBotSettings() }
-                val timeDeferred = async { api.getTimeSettings() }
-                val authDeferred = async { api.getAuthSettings() }
+            try {
+                state = state.copy(isLoading = true, message = "")
 
-                SettingsSnapshot(
-                    monitoring = monitoringDeferred.await(),
-                    bot = botDeferred.await(),
-                    time = timeDeferred.await(),
-                    auth = authDeferred.await()
-                )
-            }.onSuccess { snapshot ->
-                val monitoring = snapshot.monitoring
-                val monitoringData = monitoring.settings
+                val monitoringResult = runCatching { api.getMonitoringSettings() }
+                val botResult = runCatching { api.getBotSettings() }
+                val timeResult = runCatching { api.getTimeSettings() }
+                val authResult = runCatching { api.getAuthSettings() }
 
-                val botData = snapshot.bot.settings
+                if (monitoringResult.isFailure && botResult.isFailure && timeResult.isFailure && authResult.isFailure) {
+                    val firstError = monitoringResult.exceptionOrNull()
+                        ?: botResult.exceptionOrNull()
+                        ?: timeResult.exceptionOrNull()
+                        ?: authResult.exceptionOrNull()
+                    state = state.copy(
+                        isLoading = false,
+                        message = "Не удалось подтянуть настройки: ${formatNetworkError(firstError ?: IllegalStateException("unknown"))}"
+                    )
+                    return@launch
+                }
 
-                val time = snapshot.time
-                val timeData = time.settings
-
-                val auth = snapshot.auth
-                val authData = auth.settings
+                val monitoring = monitoringResult.getOrNull()
+                val monitoringData = monitoring?.settings
+                val botData = botResult.getOrNull()?.settings
+                val time = timeResult.getOrNull()
+                val timeData = time?.settings
+                val auth = authResult.getOrNull()
+                val authData = auth?.settings
 
                 state = state.copy(
                     isLoading = false,
-                    checkIntervalInput = (monitoringData?.checkIntervalSec ?: monitoring.checkIntervalSec)?.toString() ?: "",
-                    timeoutInput = (monitoringData?.timeoutSec ?: monitoring.timeoutSec)?.toString() ?: "",
-                    maxDowntimeInput = (monitoringData?.maxDowntimeSec ?: monitoring.maxDowntimeSec)?.toString() ?: "",
-                    telegramTokenInput = botData?.maskedToken ?: botData?.telegramBotToken ?: "",
-                    telegramChatIdInput = botData?.telegramChatId ?: "",
-                    quietStartInput = timeData?.quietStart ?: time.quietStart ?: "",
-                    quietEndInput = timeData?.quietEnd ?: time.quietEnd ?: "",
-                    metricsTimeInput = timeData?.metricsCollectionTime ?: time.metricsCollectionTime ?: "",
-                    authModeInput = authData?.authMode ?: auth.authMode ?: "",
-                    sshUsernameInput = authData?.sshUsername ?: auth.sshUsername ?: "",
-                    sshPortInput = (authData?.sshPort ?: auth.sshPort)?.toString() ?: "",
-                    windowsUsernameInput = authData?.windowsUsername ?: auth.windowsUsername ?: "",
-                    sshPasswordInput = authData?.maskedSshPassword ?: auth.sshPassword ?: "",
-                    windowsPasswordInput = authData?.maskedWindowsPassword ?: auth.windowsPassword ?: "",
-                    message = "Настройки подтянуты из БД"
+                    checkIntervalInput = (monitoringData?.checkIntervalSec ?: monitoring?.checkIntervalSec)?.toString() ?: state.checkIntervalInput,
+                    timeoutInput = (monitoringData?.timeoutSec ?: monitoring?.timeoutSec)?.toString() ?: state.timeoutInput,
+                    maxDowntimeInput = (monitoringData?.maxDowntimeSec ?: monitoring?.maxDowntimeSec)?.toString() ?: state.maxDowntimeInput,
+                    telegramTokenInput = botData?.maskedToken ?: botData?.telegramBotToken ?: state.telegramTokenInput,
+                    telegramChatIdInput = botData?.telegramChatId ?: state.telegramChatIdInput,
+                    quietStartInput = timeData?.quietStart ?: time?.quietStart ?: state.quietStartInput,
+                    quietEndInput = timeData?.quietEnd ?: time?.quietEnd ?: state.quietEndInput,
+                    metricsTimeInput = timeData?.metricsCollectionTime ?: time?.metricsCollectionTime ?: state.metricsTimeInput,
+                    authModeInput = authData?.authMode ?: auth?.authMode ?: state.authModeInput,
+                    sshUsernameInput = authData?.sshUsername ?: auth?.sshUsername ?: state.sshUsernameInput,
+                    sshPortInput = (authData?.sshPort ?: auth?.sshPort)?.toString() ?: state.sshPortInput,
+                    windowsUsernameInput = authData?.windowsUsername ?: auth?.windowsUsername ?: state.windowsUsernameInput,
+                    sshPasswordInput = authData?.maskedSshPassword ?: auth?.sshPassword ?: state.sshPasswordInput,
+                    windowsPasswordInput = authData?.maskedWindowsPassword ?: auth?.windowsPassword ?: state.windowsPasswordInput,
+                    message = "Настройки синхронизированы"
                 )
-            }.onFailure { error ->
-                state = state.copy(isLoading = false, message = "Не удалось подтянуть настройки: ${formatNetworkError(error)}")
+            } catch (error: Throwable) {
+                state = state.copy(
+                    isLoading = false,
+                    message = "Синхронизация оборвалась: ${formatNetworkError(error)}"
+                )
             }
         }
     }
