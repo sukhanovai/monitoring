@@ -93,6 +93,11 @@ private fun MonitoringApp(
     var sshPort by remember { mutableStateOf("") }
     var windowsUsername by remember { mutableStateOf("") }
 
+    val canSaveMonitoring = checkInterval.isNotBlank() || timeout.isNotBlank() || maxDowntime.isNotBlank()
+    val canSaveBot = telegramToken.isNotBlank() || telegramChatId.isNotBlank()
+    val canSaveTime = quietStart.isNotBlank() || quietEnd.isNotBlank() || metricsTime.isNotBlank()
+    val canSaveAuth = authMode.isNotBlank() || sshUsername.isNotBlank() || sshPort.isNotBlank() || windowsUsername.isNotBlank()
+
     Scaffold(
         topBar = {
             TopAppBar(title = { Text("Monitoring Android") })
@@ -168,7 +173,10 @@ private fun MonitoringApp(
                     label = { Text("max_downtime_sec") },
                     modifier = Modifier.fillMaxWidth()
                 )
-                Button(onClick = { onUpdateMonitoringSettings(checkInterval, timeout, maxDowntime) }) {
+                Button(
+                    onClick = { onUpdateMonitoringSettings(checkInterval, timeout, maxDowntime) },
+                    enabled = canSaveMonitoring
+                ) {
                     Text("Сохранить monitoring")
                 }
             }
@@ -187,7 +195,7 @@ private fun MonitoringApp(
                     label = { Text("telegram_chat_id") },
                     modifier = Modifier.fillMaxWidth()
                 )
-                Button(onClick = { onUpdateBotSettings(telegramToken, telegramChatId) }) {
+                Button(onClick = { onUpdateBotSettings(telegramToken, telegramChatId) }, enabled = canSaveBot) {
                     Text("Сохранить bot")
                 }
             }
@@ -212,7 +220,7 @@ private fun MonitoringApp(
                     label = { Text("metrics_collection_time (HH:mm)") },
                     modifier = Modifier.fillMaxWidth()
                 )
-                Button(onClick = { onUpdateTimeSettings(quietStart, quietEnd, metricsTime) }) {
+                Button(onClick = { onUpdateTimeSettings(quietStart, quietEnd, metricsTime) }, enabled = canSaveTime) {
                     Text("Сохранить time")
                 }
             }
@@ -243,7 +251,10 @@ private fun MonitoringApp(
                     label = { Text("windows_username") },
                     modifier = Modifier.fillMaxWidth()
                 )
-                Button(onClick = { onUpdateAuthSettings(authMode, sshUsername, sshPort, windowsUsername) }) {
+                Button(
+                    onClick = { onUpdateAuthSettings(authMode, sshUsername, sshPort, windowsUsername) },
+                    enabled = canSaveAuth
+                ) {
                     Text("Сохранить auth")
                 }
             }

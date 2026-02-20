@@ -63,6 +63,15 @@ class MainViewModel(
         return "UP: $up, DOWN: $down, UNKNOWN: $unknown"
     }
 
+    private fun hasAnyValue(vararg values: String): Boolean = values.any { it.isNotBlank() }
+
+    private fun parseOptionalInt(value: String, fieldName: String): Int? {
+        if (value.isBlank()) {
+            return null
+        }
+        return value.toIntOrNull() ?: throw IllegalArgumentException("Поле $fieldName должно быть числом")
+    }
+
     fun refreshAvailability() {
         viewModelScope.launch {
             state = state.copy(isLoading = true, message = "")
@@ -112,11 +121,21 @@ class MainViewModel(
     }
 
     fun updateMonitoringSettings(checkInterval: String, timeout: String, maxDowntime: String) {
-        val request = SettingsMonitoringRequest(
-            checkIntervalSec = checkInterval.toIntOrNull(),
-            timeoutSec = timeout.toIntOrNull(),
-            maxDowntimeSec = maxDowntime.toIntOrNull()
-        )
+        if (!hasAnyValue(checkInterval, timeout, maxDowntime)) {
+            state = state.copy(message = "Заполни хотя бы одно поле monitoring")
+            return
+        }
+
+        val request = runCatching {
+            SettingsMonitoringRequest(
+                checkIntervalSec = parseOptionalInt(checkInterval, "check_interval_sec"),
+                timeoutSec = parseOptionalInt(timeout, "timeout_sec"),
+                maxDowntimeSec = parseOptionalInt(maxDowntime, "max_downtime_sec")
+            )
+        }.getOrElse { error ->
+            state = state.copy(message = error.message ?: "Ошибка в полях monitoring")
+            return
+        }
 
         viewModelScope.launch {
             state = state.copy(isLoading = true, message = "")
@@ -142,6 +161,11 @@ class MainViewModel(
     }
 
     fun updateBotSettings(telegramToken: String, telegramChatId: String) {
+        if (!hasAnyValue(telegramToken, telegramChatId)) {
+            state = state.copy(message = "Заполни хотя бы одно поле bot")
+            return
+        }
+
         val request = SettingsBotRequest(
             telegramBotToken = telegramToken.ifBlank { null },
             telegramChatId = telegramChatId.ifBlank { null }
@@ -166,6 +190,11 @@ class MainViewModel(
     }
 
     fun updateTimeSettings(quietStart: String, quietEnd: String, metricsCollectionTime: String) {
+        if (!hasAnyValue(quietStart, quietEnd, metricsCollectionTime)) {
+            state = state.copy(message = "Заполни хотя бы одно поле time")
+            return
+        }
+
         val request = SettingsTimeRequest(
             quietStart = quietStart.ifBlank { null },
             quietEnd = quietEnd.ifBlank { null },
@@ -191,12 +220,22 @@ class MainViewModel(
     }
 
     fun updateAuthSettings(authMode: String, sshUsername: String, sshPort: String, windowsUsername: String) {
-        val request = SettingsAuthRequest(
-            authMode = authMode.ifBlank { null },
-            sshUsername = sshUsername.ifBlank { null },
-            sshPort = sshPort.toIntOrNull(),
-            windowsUsername = windowsUsername.ifBlank { null }
-        )
+        if (!hasAnyValue(authMode, sshUsername, sshPort, windowsUsername)) {
+            state = state.copy(message = "Заполни хотя бы одно поле auth")
+            return
+        }
+
+        val request = runCatching {
+            SettingsAuthRequest(
+                authMode = authMode.ifBlank { null },
+                sshUsername = sshUsername.ifBlank { null },
+                sshPort = parseOptionalInt(sshPort, "ssh_port"),
+                windowsUsername = windowsUsername.ifBlank { null }
+            )
+        }.getOrElse { error ->
+            state = state.copy(message = error.message ?: "Ошибка в полях auth")
+            return
+        }
 
         viewModelScope.launch {
             state = state.copy(isLoading = true, message = "")
