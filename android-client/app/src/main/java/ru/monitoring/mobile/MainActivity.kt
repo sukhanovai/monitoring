@@ -114,6 +114,23 @@ private fun MonitoringApp(
 
     val hiddenTransformation = PasswordVisualTransformation()
 
+    var telegramToken by remember { mutableStateOf("") }
+    var telegramChatId by remember { mutableStateOf("") }
+
+    var quietStart by remember { mutableStateOf("") }
+    var quietEnd by remember { mutableStateOf("") }
+    var metricsTime by remember { mutableStateOf("") }
+
+    var authMode by remember { mutableStateOf("") }
+    var sshUsername by remember { mutableStateOf("") }
+    var sshPort by remember { mutableStateOf("") }
+    var windowsUsername by remember { mutableStateOf("") }
+
+    val canSaveMonitoring = checkInterval.isNotBlank() || timeout.isNotBlank() || maxDowntime.isNotBlank()
+    val canSaveBot = telegramToken.isNotBlank() || telegramChatId.isNotBlank()
+    val canSaveTime = quietStart.isNotBlank() || quietEnd.isNotBlank() || metricsTime.isNotBlank()
+    val canSaveAuth = authMode.isNotBlank() || sshUsername.isNotBlank() || sshPort.isNotBlank() || windowsUsername.isNotBlank()
+
     Scaffold(
         topBar = {
             TopAppBar(title = { Text("Monitoring Android") })

@@ -357,6 +357,99 @@ class MainViewModel(
         }
     }
 
+    fun updateBotSettings(telegramToken: String, telegramChatId: String) {
+        if (!hasAnyValue(telegramToken, telegramChatId)) {
+            state = state.copy(message = "Заполни хотя бы одно поле bot")
+            return
+        }
+
+        val request = SettingsBotRequest(
+            telegramBotToken = telegramToken.ifBlank { null },
+            telegramChatId = telegramChatId.ifBlank { null }
+        )
+
+        viewModelScope.launch {
+            state = state.copy(isLoading = true, message = "")
+            runCatching {
+                api.updateBotSettings(request)
+            }.onSuccess { response ->
+                val settings = response.settings
+                val chatId = settings?.telegramChatId ?: "-"
+                val tokenInfo = settings?.maskedToken ?: "обновлён"
+                state = state.copy(
+                    isLoading = false,
+                    message = "Bot settings: chat_id=$chatId, token=$tokenInfo"
+                )
+            }.onFailure { error ->
+                state = state.copy(isLoading = false, message = formatNetworkError(error))
+            }
+        }
+    }
+
+    fun updateTimeSettings(quietStart: String, quietEnd: String, metricsCollectionTime: String) {
+        if (!hasAnyValue(quietStart, quietEnd, metricsCollectionTime)) {
+            state = state.copy(message = "Заполни хотя бы одно поле time")
+            return
+        }
+
+        val request = SettingsTimeRequest(
+            quietStart = quietStart.ifBlank { null },
+            quietEnd = quietEnd.ifBlank { null },
+            metricsCollectionTime = metricsCollectionTime.ifBlank { null }
+        )
+
+        viewModelScope.launch {
+            state = state.copy(isLoading = true, message = "")
+            runCatching {
+                api.updateTimeSettings(request)
+            }.onSuccess { response ->
+                val settings = response.settings
+                val quiet = "${settings?.quietStart ?: "-"}..${settings?.quietEnd ?: "-"}"
+                val metricsTime = settings?.metricsCollectionTime ?: "-"
+                state = state.copy(
+                    isLoading = false,
+                    message = "Time settings: quiet=$quiet, metrics_time=$metricsTime"
+                )
+            }.onFailure { error ->
+                state = state.copy(isLoading = false, message = formatNetworkError(error))
+            }
+        }
+    }
+
+    fun updateAuthSettings(authMode: String, sshUsername: String, sshPort: String, windowsUsername: String) {
+        if (!hasAnyValue(authMode, sshUsername, sshPort, windowsUsername)) {
+            state = state.copy(message = "Заполни хотя бы одно поле auth")
+            return
+        }
+
+        val request = runCatching {
+            SettingsAuthRequest(
+                authMode = authMode.ifBlank { null },
+                sshUsername = sshUsername.ifBlank { null },
+                sshPort = parseOptionalInt(sshPort, "ssh_port"),
+                windowsUsername = windowsUsername.ifBlank { null }
+            )
+        }.getOrElse { error ->
+            state = state.copy(message = error.message ?: "Ошибка в полях auth")
+            return
+        }
+
+        viewModelScope.launch {
+            state = state.copy(isLoading = true, message = "")
+            runCatching {
+                api.updateAuthSettings(request)
+            }.onSuccess { response ->
+                val settings = response.settings
+                state = state.copy(
+                    isLoading = false,
+                    message = "Auth settings: mode=${settings?.authMode ?: "-"}, ssh=${settings?.sshUsername ?: "-"}, win=${settings?.windowsUsername ?: "-"}"
+                )
+            }.onFailure { error ->
+                state = state.copy(isLoading = false, message = formatNetworkError(error))
+            }
+        }
+    }
+
     @Suppress("UNCHECKED_CAST")
     class Factory(
         private val preferences: AppPreferences
