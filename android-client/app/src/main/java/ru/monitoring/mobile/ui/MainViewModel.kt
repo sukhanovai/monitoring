@@ -12,6 +12,7 @@ import java.net.UnknownHostException
 import javax.net.ssl.SSLException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
 import ru.monitoring.mobile.api.ApiFactory
 import ru.monitoring.mobile.api.AvailabilityItem
 import ru.monitoring.mobile.api.ControlActionRequest
@@ -33,6 +34,9 @@ class MainViewModel(
     fun saveToken(token: String) {
         preferences.apiToken = token
         state = state.copy(token = token, message = "Токен сохранён")
+        if (token.isNotBlank()) {
+            refreshSettingsFromServer()
+        }
     }
 
     fun loadInitialState() {
@@ -127,6 +131,11 @@ class MainViewModel(
         else -> error.message ?: "Ошибка сети"
     }
 
+    private fun isMethodNotAllowed(error: Throwable?): Boolean {
+        val httpError = error as? HttpException ?: return false
+        return httpError.code() == 405
+    }
+
     private fun mapItemsToServers(items: List<AvailabilityItem>): List<ServerAvailability> =
         items.mapIndexed { index, item ->
             ServerAvailability(
@@ -173,10 +182,19 @@ class MainViewModel(
                         ?: botResult.exceptionOrNull()
                         ?: timeResult.exceptionOrNull()
                         ?: authResult.exceptionOrNull()
-                    state = state.copy(
-                        isLoading = false,
-                        message = "Не удалось подтянуть настройки: ${formatNetworkError(firstError ?: IllegalStateException("unknown"))}"
-                    )
+
+                    val failMessage = if (
+                        isMethodNotAllowed(monitoringResult.exceptionOrNull()) &&
+                        isMethodNotAllowed(botResult.exceptionOrNull()) &&
+                        isMethodNotAllowed(timeResult.exceptionOrNull()) &&
+                        isMethodNotAllowed(authResult.exceptionOrNull())
+                    ) {
+                        "Сервер не поддерживает GET настроек (HTTP 405). Нужна поддержка endpoint на backend."
+                    } else {
+                        "Не удалось подтянуть настройки: ${formatNetworkError(firstError ?: IllegalStateException("unknown"))}"
+                    }
+
+                    state = state.copy(isLoading = false, message = failMessage)
                     return@launch
                 }
 
@@ -204,7 +222,7 @@ class MainViewModel(
                     windowsUsernameInput = authData?.windowsUsername ?: auth?.windowsUsername ?: state.windowsUsernameInput,
                     sshPasswordInput = authData?.maskedSshPassword ?: auth?.sshPassword ?: state.sshPasswordInput,
                     windowsPasswordInput = authData?.maskedWindowsPassword ?: auth?.windowsPassword ?: state.windowsPasswordInput,
-                    message = "Настройки синхронизированы"
+                    message = "Настройки синхронизированы автоматически"
                 )
             } catch (error: Throwable) {
                 state = state.copy(

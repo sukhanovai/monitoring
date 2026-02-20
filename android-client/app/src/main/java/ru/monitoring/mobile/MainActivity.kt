@@ -54,7 +54,6 @@ class MainActivity : ComponentActivity() {
                     onTokenChanged = vm::setTokenInput,
                     onSaveToken = vm::saveToken,
                     onRefresh = vm::refreshAvailability,
-                    onRefreshSettings = vm::refreshSettingsFromServer,
                     onToggleApiTokenVisibility = vm::toggleApiTokenVisibility,
                     onToggleTelegramTokenVisibility = vm::toggleTelegramTokenVisibility,
                     onAction = vm::sendAction,
@@ -91,7 +90,6 @@ private fun MonitoringApp(
     onTokenChanged: (String) -> Unit,
     onSaveToken: (String) -> Unit,
     onRefresh: () -> Unit,
-    onRefreshSettings: () -> Unit,
     onToggleApiTokenVisibility: () -> Unit,
     onToggleTelegramTokenVisibility: () -> Unit,
     onAction: (String) -> Unit,
@@ -161,7 +159,6 @@ private fun MonitoringApp(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = { onSaveToken(state.token) }) { Text("Сохранить токен") }
                     Button(onClick = onRefresh) { Text("Обновить") }
-                    Button(onClick = onRefreshSettings) { Text("Подтянуть настройки") }
                 }
             }
 
