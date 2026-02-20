@@ -168,6 +168,15 @@ private fun MonitoringApp(
                             Text(state.message)
                         }
                     }
+                )
+                OutlinedTextField(
+                    value = state.telegramChatIdInput,
+                    onValueChange = onTelegramChatIdChanged,
+                    label = { Text("telegram_chat_id") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Button(onClick = onSaveBot, enabled = canSaveBot) {
+                    Text("Сохранить bot")
                 }
             }
 
