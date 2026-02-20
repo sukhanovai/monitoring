@@ -86,7 +86,8 @@ data class SettingsBotRequest(
 
 data class SettingsBotData(
     @Json(name = "telegram_chat_id") val telegramChatId: String? = null,
-    @Json(name = "masked_token") val maskedToken: String? = null
+    @Json(name = "masked_token") val maskedToken: String? = null,
+    @Json(name = "telegram_bot_token") val telegramBotToken: String? = null
 )
 
 data class SettingsBotResponse(
@@ -108,7 +109,10 @@ data class SettingsTimeData(
 
 data class SettingsTimeResponse(
     @Json(name = "request_id") val requestId: String? = null,
-    val settings: SettingsTimeData? = null
+    val settings: SettingsTimeData? = null,
+    @Json(name = "quiet_start") val quietStart: String? = null,
+    @Json(name = "quiet_end") val quietEnd: String? = null,
+    @Json(name = "metrics_collection_time") val metricsCollectionTime: String? = null
 )
 
 data class SettingsAuthRequest(
@@ -121,10 +125,17 @@ data class SettingsAuthRequest(
 data class SettingsAuthData(
     @Json(name = "auth_mode") val authMode: String? = null,
     @Json(name = "ssh_username") val sshUsername: String? = null,
-    @Json(name = "windows_username") val windowsUsername: String? = null
+    @Json(name = "ssh_port") val sshPort: Int? = null,
+    @Json(name = "windows_username") val windowsUsername: String? = null,
+    @Json(name = "masked_ssh_password") val maskedSshPassword: String? = null,
+    @Json(name = "masked_windows_password") val maskedWindowsPassword: String? = null
 )
 
 data class SettingsAuthResponse(
     @Json(name = "request_id") val requestId: String? = null,
-    val settings: SettingsAuthData? = null
+    val settings: SettingsAuthData? = null,
+    @Json(name = "auth_mode") val authMode: String? = null,
+    @Json(name = "ssh_username") val sshUsername: String? = null,
+    @Json(name = "ssh_port") val sshPort: Int? = null,
+    @Json(name = "windows_username") val windowsUsername: String? = null
 )

@@ -22,15 +22,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.monitoring.mobile.storage.AppPreferences
@@ -51,13 +50,29 @@ class MainActivity : ComponentActivity() {
                 }
                 MonitoringApp(
                     state = vm.state,
+                    onTokenChanged = vm::setTokenInput,
                     onSaveToken = vm::saveToken,
                     onRefresh = vm::refreshAvailability,
+                    onRefreshSettings = vm::refreshSettingsFromServer,
+                    onToggleApiTokenVisibility = vm::toggleApiTokenVisibility,
+                    onToggleTelegramTokenVisibility = vm::toggleTelegramTokenVisibility,
                     onAction = vm::sendAction,
-                    onUpdateMonitoringSettings = vm::updateMonitoringSettings,
-                    onUpdateBotSettings = vm::updateBotSettings,
-                    onUpdateTimeSettings = vm::updateTimeSettings,
-                    onUpdateAuthSettings = vm::updateAuthSettings
+                    onCheckIntervalChanged = vm::setCheckIntervalInput,
+                    onTimeoutChanged = vm::setTimeoutInput,
+                    onMaxDowntimeChanged = vm::setMaxDowntimeInput,
+                    onSaveMonitoring = vm::updateMonitoringSettings,
+                    onTelegramTokenChanged = vm::setTelegramTokenInput,
+                    onTelegramChatIdChanged = vm::setTelegramChatIdInput,
+                    onSaveBot = vm::updateBotSettings,
+                    onQuietStartChanged = vm::setQuietStartInput,
+                    onQuietEndChanged = vm::setQuietEndInput,
+                    onMetricsTimeChanged = vm::setMetricsTimeInput,
+                    onSaveTime = vm::updateTimeSettings,
+                    onAuthModeChanged = vm::setAuthModeInput,
+                    onSshUsernameChanged = vm::setSshUsernameInput,
+                    onSshPortChanged = vm::setSshPortInput,
+                    onWindowsUsernameChanged = vm::setWindowsUsernameInput,
+                    onSaveAuth = vm::updateAuthSettings
                 )
             }
         }
@@ -68,18 +83,36 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun MonitoringApp(
     state: MainUiState,
+    onTokenChanged: (String) -> Unit,
     onSaveToken: (String) -> Unit,
     onRefresh: () -> Unit,
+    onRefreshSettings: () -> Unit,
+    onToggleApiTokenVisibility: () -> Unit,
+    onToggleTelegramTokenVisibility: () -> Unit,
     onAction: (String) -> Unit,
-    onUpdateMonitoringSettings: (String, String, String) -> Unit,
-    onUpdateBotSettings: (String, String) -> Unit,
-    onUpdateTimeSettings: (String, String, String) -> Unit,
-    onUpdateAuthSettings: (String, String, String, String) -> Unit
+    onCheckIntervalChanged: (String) -> Unit,
+    onTimeoutChanged: (String) -> Unit,
+    onMaxDowntimeChanged: (String) -> Unit,
+    onSaveMonitoring: () -> Unit,
+    onTelegramTokenChanged: (String) -> Unit,
+    onTelegramChatIdChanged: (String) -> Unit,
+    onSaveBot: () -> Unit,
+    onQuietStartChanged: (String) -> Unit,
+    onQuietEndChanged: (String) -> Unit,
+    onMetricsTimeChanged: (String) -> Unit,
+    onSaveTime: () -> Unit,
+    onAuthModeChanged: (String) -> Unit,
+    onSshUsernameChanged: (String) -> Unit,
+    onSshPortChanged: (String) -> Unit,
+    onWindowsUsernameChanged: (String) -> Unit,
+    onSaveAuth: () -> Unit
 ) {
-    var tokenInput by remember(state.token) { mutableStateOf(state.token) }
-    var checkInterval by remember { mutableStateOf("") }
-    var timeout by remember { mutableStateOf("") }
-    var maxDowntime by remember { mutableStateOf("") }
+    val canSaveMonitoring = state.checkIntervalInput.isNotBlank() || state.timeoutInput.isNotBlank() || state.maxDowntimeInput.isNotBlank()
+    val canSaveBot = state.telegramTokenInput.isNotBlank() || state.telegramChatIdInput.isNotBlank()
+    val canSaveTime = state.quietStartInput.isNotBlank() || state.quietEndInput.isNotBlank() || state.metricsTimeInput.isNotBlank()
+    val canSaveAuth = state.authModeInput.isNotBlank() || state.sshUsernameInput.isNotBlank() || state.sshPortInput.isNotBlank() || state.windowsUsernameInput.isNotBlank()
+
+    val hiddenTransformation = PasswordVisualTransformation()
 
     var telegramToken by remember { mutableStateOf("") }
     var telegramChatId by remember { mutableStateOf("") }
@@ -113,14 +146,21 @@ private fun MonitoringApp(
             item {
                 Text("Подключение к BFF", fontWeight = FontWeight.Bold)
                 OutlinedTextField(
-                    value = tokenInput,
-                    onValueChange = { tokenInput = it },
+                    value = state.token,
+                    onValueChange = onTokenChanged,
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Bearer токен") }
+                    label = { Text("Bearer токен") },
+                    visualTransformation = if (state.isApiTokenVisible) VisualTransformation.None else hiddenTransformation,
+                    trailingIcon = {
+                        TextButton(onClick = onToggleApiTokenVisibility) {
+                            Text(if (state.isApiTokenVisible) "Скрыть" else "Показать")
+                        }
+                    }
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { onSaveToken(tokenInput) }) { Text("Сохранить токен") }
+                    Button(onClick = { onSaveToken(state.token) }) { Text("Сохранить токен") }
                     Button(onClick = onRefresh) { Text("Обновить") }
+                    Button(onClick = onRefreshSettings) { Text("Подтянуть настройки") }
                 }
             }
 
@@ -156,27 +196,24 @@ private fun MonitoringApp(
             item {
                 Text("Настройки мониторинга", fontWeight = FontWeight.Bold)
                 OutlinedTextField(
-                    value = checkInterval,
-                    onValueChange = { checkInterval = it },
+                    value = state.checkIntervalInput,
+                    onValueChange = onCheckIntervalChanged,
                     label = { Text("check_interval_sec") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
-                    value = timeout,
-                    onValueChange = { timeout = it },
+                    value = state.timeoutInput,
+                    onValueChange = onTimeoutChanged,
                     label = { Text("timeout_sec") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
-                    value = maxDowntime,
-                    onValueChange = { maxDowntime = it },
+                    value = state.maxDowntimeInput,
+                    onValueChange = onMaxDowntimeChanged,
                     label = { Text("max_downtime_sec") },
                     modifier = Modifier.fillMaxWidth()
                 )
-                Button(
-                    onClick = { onUpdateMonitoringSettings(checkInterval, timeout, maxDowntime) },
-                    enabled = canSaveMonitoring
-                ) {
+                Button(onClick = onSaveMonitoring, enabled = canSaveMonitoring) {
                     Text("Сохранить monitoring")
                 }
             }
@@ -184,18 +221,24 @@ private fun MonitoringApp(
             item {
                 Text("Настройки бота", fontWeight = FontWeight.Bold)
                 OutlinedTextField(
-                    value = telegramToken,
-                    onValueChange = { telegramToken = it },
+                    value = state.telegramTokenInput,
+                    onValueChange = onTelegramTokenChanged,
                     label = { Text("telegram_bot_token") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    visualTransformation = if (state.isTelegramTokenVisible) VisualTransformation.None else hiddenTransformation,
+                    trailingIcon = {
+                        TextButton(onClick = onToggleTelegramTokenVisibility) {
+                            Text(if (state.isTelegramTokenVisible) "Скрыть" else "Показать")
+                        }
+                    }
                 )
                 OutlinedTextField(
-                    value = telegramChatId,
-                    onValueChange = { telegramChatId = it },
+                    value = state.telegramChatIdInput,
+                    onValueChange = onTelegramChatIdChanged,
                     label = { Text("telegram_chat_id") },
                     modifier = Modifier.fillMaxWidth()
                 )
-                Button(onClick = { onUpdateBotSettings(telegramToken, telegramChatId) }, enabled = canSaveBot) {
+                Button(onClick = onSaveBot, enabled = canSaveBot) {
                     Text("Сохранить bot")
                 }
             }
@@ -203,24 +246,24 @@ private fun MonitoringApp(
             item {
                 Text("Временные настройки", fontWeight = FontWeight.Bold)
                 OutlinedTextField(
-                    value = quietStart,
-                    onValueChange = { quietStart = it },
+                    value = state.quietStartInput,
+                    onValueChange = onQuietStartChanged,
                     label = { Text("quiet_start (HH:mm)") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
-                    value = quietEnd,
-                    onValueChange = { quietEnd = it },
+                    value = state.quietEndInput,
+                    onValueChange = onQuietEndChanged,
                     label = { Text("quiet_end (HH:mm)") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
-                    value = metricsTime,
-                    onValueChange = { metricsTime = it },
+                    value = state.metricsTimeInput,
+                    onValueChange = onMetricsTimeChanged,
                     label = { Text("metrics_collection_time (HH:mm)") },
                     modifier = Modifier.fillMaxWidth()
                 )
-                Button(onClick = { onUpdateTimeSettings(quietStart, quietEnd, metricsTime) }, enabled = canSaveTime) {
+                Button(onClick = onSaveTime, enabled = canSaveTime) {
                     Text("Сохранить time")
                 }
             }
@@ -228,33 +271,30 @@ private fun MonitoringApp(
             item {
                 Text("Auth-параметры", fontWeight = FontWeight.Bold)
                 OutlinedTextField(
-                    value = authMode,
-                    onValueChange = { authMode = it },
+                    value = state.authModeInput,
+                    onValueChange = onAuthModeChanged,
                     label = { Text("auth_mode") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
-                    value = sshUsername,
-                    onValueChange = { sshUsername = it },
+                    value = state.sshUsernameInput,
+                    onValueChange = onSshUsernameChanged,
                     label = { Text("ssh_username") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
-                    value = sshPort,
-                    onValueChange = { sshPort = it },
+                    value = state.sshPortInput,
+                    onValueChange = onSshPortChanged,
                     label = { Text("ssh_port") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
-                    value = windowsUsername,
-                    onValueChange = { windowsUsername = it },
+                    value = state.windowsUsernameInput,
+                    onValueChange = onWindowsUsernameChanged,
                     label = { Text("windows_username") },
                     modifier = Modifier.fillMaxWidth()
                 )
-                Button(
-                    onClick = { onUpdateAuthSettings(authMode, sshUsername, sshPort, windowsUsername) },
-                    enabled = canSaveAuth
-                ) {
+                Button(onClick = onSaveAuth, enabled = canSaveAuth) {
                     Text("Сохранить auth")
                 }
             }
