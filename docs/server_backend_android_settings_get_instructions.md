@@ -88,3 +88,43 @@ curl -k -H "Authorization: Bearer <token>" https://api.202020.ru:8443/v1/setting
 ```
 
 Ожидаемо: `200 OK`, а не `405 Method Not Allowed`.
+
+## Как перенести этот файл в `develop` (если `pathspec` не найден)
+
+Ошибка вида `pathspec ... did not match any file(s) known to git` обычно означает, что:
+- вы указали несуществующую локально ветку-источник;
+- или файл в этой ветке/коммите ещё не присутствует.
+
+Рабочий сценарий:
+
+```bash
+git fetch --all --prune
+git branch -a
+```
+
+Если файл находится в текущей ветке (например, `work`), перенос в `develop`:
+
+```bash
+git checkout develop
+git pull origin develop
+git checkout work -- docs/server_backend_android_settings_get_instructions.md
+git add docs/server_backend_android_settings_get_instructions.md
+git commit -m "Добавить инструкцию для backend по GET settings"
+git push origin develop
+```
+
+Если локальной ветки `work` нет, но есть удалённая `origin/work`:
+
+```bash
+git checkout develop
+git pull origin develop
+git checkout origin/work -- docs/server_backend_android_settings_get_instructions.md
+```
+
+Если хотите перенести не только файл, а целиком конкретный коммит:
+
+```bash
+git checkout develop
+git pull origin develop
+git cherry-pick <commit_sha>
+```
