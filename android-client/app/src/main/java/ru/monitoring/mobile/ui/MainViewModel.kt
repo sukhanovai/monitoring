@@ -375,6 +375,13 @@ class MainViewModel(
     }
 }
 
+private data class SyncResults(
+    val monitoring: Result<ru.monitoring.mobile.api.SettingsMonitoringResponse>,
+    val bot: Result<ru.monitoring.mobile.api.SettingsBotResponse>,
+    val time: Result<ru.monitoring.mobile.api.SettingsTimeResponse>,
+    val auth: Result<ru.monitoring.mobile.api.SettingsAuthResponse>
+)
+
 data class MainUiState(
     val token: String = "",
     val baseUrlInput: String = "https://api.202020.ru:8443/",
