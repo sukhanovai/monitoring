@@ -204,6 +204,36 @@ class MainViewModel(
                 } else {
                     "Не удалось подтянуть настройки: ${formatNetworkError(monitoringFailure)}"
                 }
+                return@launch
+            }
+
+            val monitoring = monitoringResult.getOrNull()
+            val monitoringData = monitoring?.settings
+            val botData = botResult.getOrNull()?.settings
+            val time = timeResult.getOrNull()
+            val timeData = time?.settings
+            val auth = authResult.getOrNull()
+            val authData = auth?.settings
+
+            state = state.copy(
+                isLoading = false,
+                checkIntervalInput = (monitoringData?.checkIntervalSec ?: monitoring?.checkIntervalSec)?.toString() ?: state.checkIntervalInput,
+                timeoutInput = (monitoringData?.timeoutSec ?: monitoring?.timeoutSec)?.toString() ?: state.timeoutInput,
+                maxDowntimeInput = (monitoringData?.maxDowntimeSec ?: monitoring?.maxDowntimeSec)?.toString() ?: state.maxDowntimeInput,
+                telegramTokenInput = botData?.maskedToken ?: botData?.telegramBotToken ?: state.telegramTokenInput,
+                telegramChatIdInput = botData?.telegramChatId ?: state.telegramChatIdInput,
+                quietStartInput = timeData?.quietStart ?: time?.quietStart ?: state.quietStartInput,
+                quietEndInput = timeData?.quietEnd ?: time?.quietEnd ?: state.quietEndInput,
+                metricsTimeInput = timeData?.metricsCollectionTime ?: time?.metricsCollectionTime ?: state.metricsTimeInput,
+                authModeInput = authData?.authMode ?: auth?.authMode ?: state.authModeInput,
+                sshUsernameInput = authData?.sshUsername ?: auth?.sshUsername ?: state.sshUsernameInput,
+                sshPortInput = (authData?.sshPort ?: auth?.sshPort)?.toString() ?: state.sshPortInput,
+                windowsUsernameInput = authData?.windowsUsername ?: auth?.windowsUsername ?: state.windowsUsernameInput,
+                sshPasswordInput = authData?.maskedSshPassword ?: auth?.sshPassword ?: state.sshPasswordInput,
+                windowsPasswordInput = authData?.maskedWindowsPassword ?: auth?.windowsPassword ?: state.windowsPasswordInput
+            )
+        }
+    }
 
                 if (!showErrors || failMessage == null) {
                     state = state.copy(isLoading = false)
@@ -258,7 +288,14 @@ class MainViewModel(
                         message = "Данные обновлены"
                     )
                 }
-                .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
+                .onFailure { error ->
+                    val userMessage = when ((error as? HttpException)?.code()) {
+                        401 -> "HTTP 401: нет доступа к статусу серверов. Проверь Base URL и токен в Настройках"
+                        403 -> "HTTP 403: нет прав на получение статуса серверов"
+                        else -> formatNetworkError(error)
+                    }
+                    state = state.copy(isLoading = false, message = userMessage)
+                }
         }
     }
 
@@ -274,7 +311,14 @@ class MainViewModel(
                 .onSuccess { response ->
                     state = state.copy(isLoading = false, message = response.message ?: response.result ?: "Команда отправлена")
                 }
-                .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
+                .onFailure { error ->
+                    val userMessage = when ((error as? HttpException)?.code()) {
+                        401 -> "HTTP 401: нет доступа к командам управления. Проверь Base URL и токен в Настройках"
+                        403 -> "HTTP 403: нет прав на команды управления"
+                        else -> formatNetworkError(error)
+                    }
+                    state = state.copy(isLoading = false, message = userMessage)
+                }
         }
     }
 
