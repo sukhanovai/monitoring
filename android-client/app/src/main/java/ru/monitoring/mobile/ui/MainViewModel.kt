@@ -136,7 +136,7 @@ class MainViewModel(
         }
 
         viewModelScope.launch {
-            state = state.copy(isLoading = true, message = "")
+            state = state.copy(isLoading = true)
 
             val snapshot = withContext(Dispatchers.IO) {
                 val monitoring = async { runCatching { withTimeout(10_000) { api.getMonitoringSettings() } } }
@@ -177,11 +177,16 @@ class MainViewModel(
                     isUnauthorized(timeFailure) &&
                     isUnauthorized(authFailure)
                 ) {
-                    "Автосинхронизация настроек недоступна (HTTP 401). Проверь права токена на /v1/settings/*"
+                    null
                 } else {
                     "Не удалось подтянуть настройки: ${formatNetworkError(monitoringFailure)}"
                 }
-                state = state.copy(isLoading = false, message = failMessage)
+
+                if (failMessage == null) {
+                    state = state.copy(isLoading = false)
+                } else {
+                    state = state.copy(isLoading = false, message = failMessage)
+                }
                 return@launch
             }
 
@@ -208,15 +213,14 @@ class MainViewModel(
                 sshPortInput = (authData?.sshPort ?: auth?.sshPort)?.toString() ?: state.sshPortInput,
                 windowsUsernameInput = authData?.windowsUsername ?: auth?.windowsUsername ?: state.windowsUsernameInput,
                 sshPasswordInput = authData?.maskedSshPassword ?: auth?.sshPassword ?: state.sshPasswordInput,
-                windowsPasswordInput = authData?.maskedWindowsPassword ?: auth?.windowsPassword ?: state.windowsPasswordInput,
-                message = "Настройки синхронизированы автоматически"
+                windowsPasswordInput = authData?.maskedWindowsPassword ?: auth?.windowsPassword ?: state.windowsPasswordInput
             )
         }
     }
 
     fun refreshAvailability() {
         viewModelScope.launch {
-            state = state.copy(isLoading = true, message = "")
+            state = state.copy(isLoading = true)
             runCatching { api.getAvailability() }
                 .onSuccess { response ->
                     val servers = if (response.servers.isNotEmpty()) response.servers else mapItemsToServers(response.items)
@@ -242,7 +246,7 @@ class MainViewModel(
 
     fun sendAction(action: String) {
         viewModelScope.launch {
-            state = state.copy(isLoading = true, message = "")
+            state = state.copy(isLoading = true)
             runCatching { api.runControlAction(ControlActionRequest(action)) }
                 .onSuccess { response ->
                     state = state.copy(isLoading = false, message = response.message ?: response.result ?: "Команда отправлена")
@@ -272,7 +276,7 @@ class MainViewModel(
         }
 
         viewModelScope.launch {
-            state = state.copy(isLoading = true, message = "")
+            state = state.copy(isLoading = true)
             runCatching { api.updateMonitoringSettings(request) }
                 .onSuccess {
                     state = state.copy(isLoading = false, message = "Настройки мониторинга обновлены")
@@ -296,7 +300,7 @@ class MainViewModel(
         )
 
         viewModelScope.launch {
-            state = state.copy(isLoading = true, message = "")
+            state = state.copy(isLoading = true)
             runCatching { api.updateBotSettings(request) }
                 .onSuccess {
                     state = state.copy(isLoading = false, message = "Настройки бота обновлены")
@@ -322,7 +326,7 @@ class MainViewModel(
         )
 
         viewModelScope.launch {
-            state = state.copy(isLoading = true, message = "")
+            state = state.copy(isLoading = true)
             runCatching { api.updateTimeSettings(request) }
                 .onSuccess {
                     state = state.copy(isLoading = false, message = "Временные настройки обновлены")
@@ -360,7 +364,7 @@ class MainViewModel(
         }
 
         viewModelScope.launch {
-            state = state.copy(isLoading = true, message = "")
+            state = state.copy(isLoading = true)
             runCatching { api.updateAuthSettings(request) }
                 .onSuccess {
                     state = state.copy(isLoading = false, message = "Auth-настройки обновлены")
