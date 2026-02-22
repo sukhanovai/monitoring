@@ -204,6 +204,16 @@ class MainViewModel(
                 } else {
                     "Не удалось подтянуть настройки: ${formatNetworkError(monitoringFailure)}"
                 }
+                return@launch
+            }
+
+            val monitoring = monitoringResult.getOrNull()
+            val monitoringData = monitoring?.settings
+            val botData = botResult.getOrNull()?.settings
+            val time = timeResult.getOrNull()
+            val timeData = time?.settings
+            val auth = authResult.getOrNull()
+            val authData = auth?.settings
 
                 if (!showErrors || failMessage == null) {
                     state = state.copy(isLoading = false)
