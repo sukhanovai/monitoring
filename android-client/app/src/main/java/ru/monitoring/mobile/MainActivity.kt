@@ -60,7 +60,9 @@ class MainActivity : ComponentActivity() {
                 MonitoringApp(
                     state = vm.state,
                     onTokenChanged = vm::setTokenInput,
+                    onBaseUrlChanged = vm::setBaseUrlInput,
                     onSaveToken = vm::saveToken,
+                    onSaveBaseUrl = vm::saveBaseUrl,
                     onRefresh = vm::refreshAvailability,
                     onToggleApiTokenVisibility = vm::toggleApiTokenVisibility,
                     onToggleTelegramTokenVisibility = vm::toggleTelegramTokenVisibility,
@@ -97,7 +99,9 @@ class MainActivity : ComponentActivity() {
 private fun MonitoringApp(
     state: MainUiState,
     onTokenChanged: (String) -> Unit,
+    onBaseUrlChanged: (String) -> Unit,
     onSaveToken: (String) -> Unit,
+    onSaveBaseUrl: () -> Unit,
     onRefresh: () -> Unit,
     onToggleApiTokenVisibility: () -> Unit,
     onToggleTelegramTokenVisibility: () -> Unit,
@@ -230,6 +234,15 @@ private fun MonitoringApp(
 
                 item {
                     Text("Подключение к BFF", fontWeight = FontWeight.Bold)
+                    OutlinedTextField(
+                        value = state.baseUrlInput,
+                        onValueChange = onBaseUrlChanged,
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Base URL API") }
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = onSaveBaseUrl) { Text("Сохранить URL") }
+                    }
                     OutlinedTextField(
                         value = state.token,
                         onValueChange = onTokenChanged,
