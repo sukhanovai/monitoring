@@ -2000,11 +2000,28 @@ def send_morning_report_handler(update, context):
         report_text = morning_report.force_report()
 
         # Отправляем в текущий чат (как отдельное сообщение — надёжнее, чем edit)
-        context.bot.send_message(
-            chat_id=chat_id,
-            text=report_text,
-            parse_mode="Markdown"
-        )
+        # Если Telegram не может распарсить Markdown (из-за спецсимволов в данных),
+        # отправляем отчёт обычным текстом, чтобы команда не падала.
+        try:
+            context.bot.send_message(
+                chat_id=chat_id,
+                text=report_text,
+                parse_mode="Markdown"
+            )
+        except Exception as send_error:
+            error_text = str(send_error).lower()
+            if "parse entities" not in error_text:
+                raise
+
+            debug_log(
+                "⚠️ Утренний отчёт содержит невалидный Markdown, "
+                "повторная отправка с отключённым parse_mode"
+            )
+            context.bot.send_message(
+                chat_id=chat_id,
+                text=report_text,
+                parse_mode=None
+            )
 
         if not query:
             update.message.reply_text("📊 Отчет отправлен")
