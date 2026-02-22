@@ -30,7 +30,11 @@ import ru.monitoring.mobile.storage.AppPreferences
 class MainViewModel(
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val api = ApiFactory.createApi { preferences.apiToken }
+    private val api: ru.monitoring.mobile.api.MonitoringApi
+        get() = ApiFactory.createApi(
+            tokenProvider = { preferences.apiToken },
+            baseUrlProvider = { preferences.apiBaseUrl }
+        )
 
     var state by mutableStateOf(MainUiState())
         private set
@@ -40,6 +44,12 @@ class MainViewModel(
         .removePrefix("Bearer ")
         .removePrefix("bearer ")
         .trim()
+
+    private fun normalizeBaseUrlInput(rawUrl: String): String {
+        val trimmed = rawUrl.trim()
+        if (trimmed.isBlank()) return "https://api.202020.ru:8443/"
+        return if (trimmed.endsWith('/')) trimmed else "$trimmed/"
+    }
 
     fun saveToken(token: String) {
         val normalizedToken = normalizeToken(token)
@@ -55,13 +65,17 @@ class MainViewModel(
         if (token != preferences.apiToken) {
             preferences.apiToken = token
         }
-        state = state.copy(token = token)
+        state = state.copy(
+            token = token,
+            baseUrlInput = preferences.apiBaseUrl
+        )
         if (token.isNotBlank()) {
             refreshSettingsFromServer(showErrors = false)
         }
     }
 
     fun setTokenInput(value: String) { state = state.copy(token = value) }
+    fun setBaseUrlInput(value: String) { state = state.copy(baseUrlInput = value) }
     fun setCheckIntervalInput(value: String) { state = state.copy(checkIntervalInput = value) }
     fun setTimeoutInput(value: String) { state = state.copy(timeoutInput = value) }
     fun setMaxDowntimeInput(value: String) { state = state.copy(maxDowntimeInput = value) }
@@ -76,6 +90,15 @@ class MainViewModel(
     fun setWindowsUsernameInput(value: String) { state = state.copy(windowsUsernameInput = value) }
     fun setSshPasswordInput(value: String) { state = state.copy(sshPasswordInput = value) }
     fun setWindowsPasswordInput(value: String) { state = state.copy(windowsPasswordInput = value) }
+
+    fun saveBaseUrl() {
+        val normalized = normalizeBaseUrlInput(state.baseUrlInput)
+        preferences.apiBaseUrl = normalized
+        state = state.copy(baseUrlInput = normalized, message = "URL API сохранён")
+        if (state.token.isNotBlank()) {
+            refreshSettingsFromServer(showErrors = false)
+        }
+    }
 
     fun toggleApiTokenVisibility() { state = state.copy(isApiTokenVisible = !state.isApiTokenVisible) }
     fun toggleTelegramTokenVisibility() { state = state.copy(isTelegramTokenVisible = !state.isTelegramTokenVisible) }
@@ -393,6 +416,7 @@ private data class SyncResults(
 
 data class MainUiState(
     val token: String = "",
+    val baseUrlInput: String = "https://api.202020.ru:8443/",
     val isApiTokenVisible: Boolean = false,
     val isTelegramTokenVisible: Boolean = false,
     val isSshPasswordVisible: Boolean = false,
