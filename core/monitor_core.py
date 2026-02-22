@@ -2009,17 +2009,18 @@ def send_morning_report_handler(update, context):
                 parse_mode="Markdown"
             )
         except Exception as send_error:
-            error_text = str(send_error)
-            if "Can't parse entities" not in error_text:
+            error_text = str(send_error).lower()
+            if "parse entities" not in error_text:
                 raise
 
             debug_log(
                 "⚠️ Утренний отчёт содержит невалидный Markdown, "
-                "повторная отправка без parse_mode"
+                "повторная отправка с отключённым parse_mode"
             )
             context.bot.send_message(
                 chat_id=chat_id,
-                text=report_text
+                text=report_text,
+                parse_mode=None
             )
 
         if not query:
