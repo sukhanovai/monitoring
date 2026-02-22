@@ -231,6 +231,11 @@ class MainViewModel(
     }
 
     fun sendAction(action: String) {
+        if (hasUnsavedConnectionSettings()) {
+            state = state.copy(message = "Сначала сохрани Base URL и токен в Настройках")
+            return
+        }
+
         viewModelScope.launch {
             state = state.copy(isLoading = true)
             runCatching { currentApi().runControlAction(ControlActionRequest(action)) }
@@ -376,6 +381,13 @@ class MainViewModel(
         }
     }
 }
+
+private data class SyncResults(
+    val monitoring: Result<ru.monitoring.mobile.api.SettingsMonitoringResponse>,
+    val bot: Result<ru.monitoring.mobile.api.SettingsBotResponse>,
+    val time: Result<ru.monitoring.mobile.api.SettingsTimeResponse>,
+    val auth: Result<ru.monitoring.mobile.api.SettingsAuthResponse>
+)
 
 data class MainUiState(
     val token: String = "",
