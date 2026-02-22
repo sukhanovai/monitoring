@@ -35,16 +35,26 @@ class MainViewModel(
     var state by mutableStateOf(MainUiState())
         private set
 
+    private fun normalizeToken(rawToken: String): String = rawToken
+        .trim()
+        .removePrefix("Bearer ")
+        .removePrefix("bearer ")
+        .trim()
+
     fun saveToken(token: String) {
-        preferences.apiToken = token
-        state = state.copy(token = token, message = "Токен сохранён")
-        if (token.isNotBlank()) {
+        val normalizedToken = normalizeToken(token)
+        preferences.apiToken = normalizedToken
+        state = state.copy(token = normalizedToken, message = "Токен сохранён")
+        if (normalizedToken.isNotBlank()) {
             refreshSettingsFromServer()
         }
     }
 
     fun loadInitialState() {
-        val token = preferences.apiToken
+        val token = normalizeToken(preferences.apiToken)
+        if (token != preferences.apiToken) {
+            preferences.apiToken = token
+        }
         state = state.copy(token = token)
         if (token.isNotBlank()) {
             refreshSettingsFromServer()
@@ -77,6 +87,11 @@ class MainViewModel(
         is UnknownHostException -> "DNS не резолвит хост api.202020.ru. Проверь сеть/мобильный интернет"
         is ConnectException -> "Нет соединения с api.202020.ru:8443. Проверь доступ к серверу и фаервол"
         is SSLException -> "Ошибка TLS/сертификата. Проверь дату/время устройства и SSL-конфиг сервера"
+        is HttpException -> when (error.code()) {
+            401 -> "HTTP 401: токен не принят. Сохрани токен без префикса 'Bearer'"
+            403 -> "HTTP 403: у токена нет прав на этот endpoint"
+            else -> "HTTP ${error.code()}: ${error.message()}"
+        }
         else -> error.message ?: "Ошибка сети"
     }
 
