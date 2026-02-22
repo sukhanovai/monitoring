@@ -11,11 +11,8 @@ import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import javax.net.ssl.SSLException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.TimeoutCancellationException
-import kotlinx.coroutines.withTimeout
 import retrofit2.HttpException
 import ru.monitoring.mobile.api.ApiFactory
 import ru.monitoring.mobile.api.AvailabilityItem
@@ -30,7 +27,8 @@ import ru.monitoring.mobile.storage.AppPreferences
 class MainViewModel(
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val api: ru.monitoring.mobile.api.MonitoringApi
+
+    private val api
         get() = ApiFactory.createApi(
             tokenProvider = { preferences.apiToken },
             baseUrlProvider = { preferences.apiBaseUrl }
@@ -51,25 +49,36 @@ class MainViewModel(
         return if (trimmed.endsWith('/')) trimmed else "$trimmed/"
     }
 
+    fun loadInitialState() {
+        val token = normalizeToken(preferences.apiToken)
+        if (token != preferences.apiToken) preferences.apiToken = token
+
+        state = state.copy(
+            token = token,
+            baseUrlInput = preferences.apiBaseUrl
+        )
+
+        if (token.isNotBlank()) {
+            refreshSettingsFromServer(showErrors = false)
+        }
+    }
+
     fun saveToken(token: String) {
         val normalizedToken = normalizeToken(token)
         preferences.apiToken = normalizedToken
         state = state.copy(token = normalizedToken, message = "Токен сохранён")
+
         if (normalizedToken.isNotBlank()) {
             refreshSettingsFromServer(showErrors = false)
         }
     }
 
-    fun loadInitialState() {
-        val token = normalizeToken(preferences.apiToken)
-        if (token != preferences.apiToken) {
-            preferences.apiToken = token
-        }
-        state = state.copy(
-            token = token,
-            baseUrlInput = preferences.apiBaseUrl
-        )
-        if (token.isNotBlank()) {
+    fun saveBaseUrl() {
+        val normalized = normalizeBaseUrlInput(state.baseUrlInput)
+        preferences.apiBaseUrl = normalized
+        state = state.copy(baseUrlInput = normalized, message = "URL API сохранён")
+
+        if (state.token.isNotBlank()) {
             refreshSettingsFromServer(showErrors = false)
         }
     }
@@ -91,41 +100,22 @@ class MainViewModel(
     fun setSshPasswordInput(value: String) { state = state.copy(sshPasswordInput = value) }
     fun setWindowsPasswordInput(value: String) { state = state.copy(windowsPasswordInput = value) }
 
-    fun saveBaseUrl() {
-        val normalized = normalizeBaseUrlInput(state.baseUrlInput)
-        preferences.apiBaseUrl = normalized
-        state = state.copy(baseUrlInput = normalized, message = "URL API сохранён")
-        if (state.token.isNotBlank()) {
-            refreshSettingsFromServer(showErrors = false)
-        }
-    }
-
     fun toggleApiTokenVisibility() { state = state.copy(isApiTokenVisible = !state.isApiTokenVisible) }
     fun toggleTelegramTokenVisibility() { state = state.copy(isTelegramTokenVisible = !state.isTelegramTokenVisible) }
     fun toggleSshPasswordVisibility() { state = state.copy(isSshPasswordVisible = !state.isSshPasswordVisible) }
     fun toggleWindowsPasswordVisibility() { state = state.copy(isWindowsPasswordVisible = !state.isWindowsPasswordVisible) }
 
     private fun formatNetworkError(error: Throwable): String = when (error) {
-        is SocketTimeoutException -> "Таймаут запроса. Проверь интернет на устройстве и доступность api.202020.ru:8443"
-        is UnknownHostException -> "DNS не резолвит хост api.202020.ru. Проверь сеть/мобильный интернет"
-        is ConnectException -> "Нет соединения с api.202020.ru:8443. Проверь доступ к серверу и фаервол"
-        is SSLException -> "Ошибка TLS/сертификата. Проверь дату/время устройства и SSL-конфиг сервера"
+        is SocketTimeoutException -> "Таймаут запроса. Проверь интернет на устройстве и доступность сервера"
+        is UnknownHostException -> "DNS не резолвит хост. Проверь Base URL и сеть"
+        is ConnectException -> "Нет соединения с API. Проверь Base URL, порт и фаервол"
+        is SSLException -> "Ошибка TLS/сертификата. Проверь сертификат и дату/время устройства"
         is HttpException -> when (error.code()) {
-            401 -> "HTTP 401: токен недействителен или нет доступа к endpoint"
-            403 -> "HTTP 403: у токена нет прав на endpoint"
+            401 -> "HTTP 401: токен недействителен или нет доступа"
+            403 -> "HTTP 403: у токена нет прав"
             else -> "HTTP ${error.code()}: ${error.message()}"
         }
         else -> error.message ?: "Ошибка сети"
-    }
-
-    private fun isMethodNotAllowed(error: Throwable?): Boolean {
-        val httpError = error as? HttpException ?: return false
-        return httpError.code() == 405
-    }
-
-    private fun isUnauthorized(error: Throwable?): Boolean {
-        val httpError = error as? HttpException ?: return false
-        return httpError.code() == 401
     }
 
     private fun mapItemsToServers(items: List<AvailabilityItem>): List<ServerAvailability> =
@@ -153,83 +143,38 @@ class MainViewModel(
     }
 
     fun refreshSettingsFromServer(showErrors: Boolean = false) {
-        if (state.token.isBlank()) {
-            state = state.copy(message = "Сначала сохрани токен доступа")
-            return
-        }
+        if (state.token.isBlank()) return
 
         viewModelScope.launch {
             state = state.copy(isLoading = true)
 
-            val snapshot = withContext(Dispatchers.IO) {
-                val monitoring = async { runCatching { withTimeout(10_000) { api.getMonitoringSettings() } } }
-                val bot = async { runCatching { withTimeout(10_000) { api.getBotSettings() } } }
-                val time = async { runCatching { withTimeout(10_000) { api.getTimeSettings() } } }
-                val auth = async { runCatching { withTimeout(10_000) { api.getAuthSettings() } } }
-                SyncResults(monitoring.await(), bot.await(), time.await(), auth.await())
+            val result = withContext(Dispatchers.IO) {
+                val monitoring = runCatching { api.getMonitoringSettings() }.getOrNull()
+                val bot = runCatching { api.getBotSettings() }.getOrNull()
+                val time = runCatching { api.getTimeSettings() }.getOrNull()
+                val auth = runCatching { api.getAuthSettings() }.getOrNull()
+                listOf(monitoring, bot, time, auth)
             }
 
-            val monitoringResult = snapshot.monitoring
-            val botResult = snapshot.bot
-            val timeResult = snapshot.time
-            val authResult = snapshot.auth
+            val monitoring = result[0] as? ru.monitoring.mobile.api.SettingsMonitoringResponse
+            val bot = result[1] as? ru.monitoring.mobile.api.SettingsBotResponse
+            val time = result[2] as? ru.monitoring.mobile.api.SettingsTimeResponse
+            val auth = result[3] as? ru.monitoring.mobile.api.SettingsAuthResponse
 
-            val monitoringFailure = monitoringResult.exceptionOrNull()
-            val botFailure = botResult.exceptionOrNull()
-            val timeFailure = timeResult.exceptionOrNull()
-            val authFailure = authResult.exceptionOrNull()
+            val monitoringData = monitoring?.settings
+            val botData = bot?.settings
+            val timeData = time?.settings
+            val authData = auth?.settings
 
-            if (monitoringFailure != null && botFailure != null && timeFailure != null && authFailure != null) {
-                val failMessage = if (
-                    monitoringFailure is TimeoutCancellationException &&
-                    botFailure is TimeoutCancellationException &&
-                    timeFailure is TimeoutCancellationException &&
-                    authFailure is TimeoutCancellationException
-                ) {
-                    "Автосинхронизация настроек недоступна: backend долго не отвечает на /v1/settings/*"
-                } else if (
-                    isMethodNotAllowed(monitoringFailure) &&
-                    isMethodNotAllowed(botFailure) &&
-                    isMethodNotAllowed(timeFailure) &&
-                    isMethodNotAllowed(authFailure)
-                ) {
-                    "Сервер не поддерживает GET настроек (HTTP 405). Нужна поддержка endpoint на backend."
-                } else if (
-                    isUnauthorized(monitoringFailure) &&
-                    isUnauthorized(botFailure) &&
-                    isUnauthorized(timeFailure) &&
-                    isUnauthorized(authFailure)
-                ) {
-                    null
+            val hasAny = monitoring != null || bot != null || time != null || auth != null
+            if (!hasAny) {
+                state = if (showErrors) {
+                    state.copy(isLoading = false, message = "Не удалось подтянуть настройки")
                 } else {
-                    "Не удалось подтянуть настройки: ${formatNetworkError(monitoringFailure)}"
+                    state.copy(isLoading = false)
                 }
                 return@launch
             }
-
-            val monitoring = monitoringResult.getOrNull()
-            val monitoringData = monitoring?.settings
-            val botData = botResult.getOrNull()?.settings
-            val time = timeResult.getOrNull()
-            val timeData = time?.settings
-            val auth = authResult.getOrNull()
-            val authData = auth?.settings
-
-                if (!showErrors || failMessage == null) {
-                    state = state.copy(isLoading = false)
-                } else {
-                    state = state.copy(isLoading = false, message = failMessage)
-                }
-                return@launch
-            }
-
-            val monitoring = monitoringResult.getOrNull()
-            val monitoringData = monitoring?.settings
-            val botData = botResult.getOrNull()?.settings
-            val time = timeResult.getOrNull()
-            val timeData = time?.settings
-            val auth = authResult.getOrNull()
-            val authData = auth?.settings
 
             state = state.copy(
                 isLoading = false,
@@ -279,7 +224,6 @@ class MainViewModel(
         }
     }
 
-
     fun showMenuStub(section: String) {
         state = state.copy(message = "Раздел '$section' ещё в разработке для Android-меню")
     }
@@ -327,7 +271,7 @@ class MainViewModel(
             runCatching { api.updateMonitoringSettings(request) }
                 .onSuccess {
                     state = state.copy(isLoading = false, message = "Настройки мониторинга обновлены")
-                    refreshSettingsFromServer()
+                    refreshSettingsFromServer(showErrors = false)
                 }
                 .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
         }
@@ -351,7 +295,7 @@ class MainViewModel(
             runCatching { api.updateBotSettings(request) }
                 .onSuccess {
                     state = state.copy(isLoading = false, message = "Настройки бота обновлены")
-                    refreshSettingsFromServer()
+                    refreshSettingsFromServer(showErrors = false)
                 }
                 .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
         }
@@ -377,7 +321,7 @@ class MainViewModel(
             runCatching { api.updateTimeSettings(request) }
                 .onSuccess {
                     state = state.copy(isLoading = false, message = "Временные настройки обновлены")
-                    refreshSettingsFromServer()
+                    refreshSettingsFromServer(showErrors = false)
                 }
                 .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
         }
@@ -415,7 +359,7 @@ class MainViewModel(
             runCatching { api.updateAuthSettings(request) }
                 .onSuccess {
                     state = state.copy(isLoading = false, message = "Auth-настройки обновлены")
-                    refreshSettingsFromServer()
+                    refreshSettingsFromServer(showErrors = false)
                 }
                 .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
         }
