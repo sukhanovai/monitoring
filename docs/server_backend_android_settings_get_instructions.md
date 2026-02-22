@@ -128,3 +128,41 @@ git checkout develop
 git pull origin develop
 git cherry-pick <commit_sha>
 ```
+
+## Ошибка `Your local changes would be overwritten by merge` при `git pull`
+
+Если при `git pull` видишь:
+
+```text
+error: Your local changes to the following files would be overwritten by merge
+```
+
+это значит, что у тебя есть незакоммиченные правки, а remote пытается обновить те же файлы.
+
+### Быстрый безопасный сценарий (рекомендую)
+
+```bash
+git status
+git stash push -m "wip before pull" 
+git pull --rebase
+git stash pop
+```
+
+После `stash pop` могут появиться конфликты — это нормально, тогда решаешь конфликт и делаешь commit.
+
+### Если правки уже готовы
+
+```bash
+git add -A
+git commit -m "Локальные правки перед pull"
+git pull --rebase
+```
+
+### Если локальные правки не нужны
+
+```bash
+git reset --hard
+git pull --rebase
+```
+
+> `reset --hard` удалит незакоммиченные изменения безвозвратно.
