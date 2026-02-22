@@ -88,8 +88,8 @@ class MainViewModel(
         is ConnectException -> "Нет соединения с api.202020.ru:8443. Проверь доступ к серверу и фаервол"
         is SSLException -> "Ошибка TLS/сертификата. Проверь дату/время устройства и SSL-конфиг сервера"
         is HttpException -> when (error.code()) {
-            401 -> "HTTP 401: токен не принят. Сохрани токен без префикса 'Bearer'"
-            403 -> "HTTP 403: у токена нет прав на этот endpoint"
+            401 -> "HTTP 401: токен недействителен или нет доступа к endpoint"
+            403 -> "HTTP 403: у токена нет прав на endpoint"
             else -> "HTTP ${error.code()}: ${error.message()}"
         }
         else -> error.message ?: "Ошибка сети"
@@ -98,6 +98,11 @@ class MainViewModel(
     private fun isMethodNotAllowed(error: Throwable?): Boolean {
         val httpError = error as? HttpException ?: return false
         return httpError.code() == 405
+    }
+
+    private fun isUnauthorized(error: Throwable?): Boolean {
+        val httpError = error as? HttpException ?: return false
+        return httpError.code() == 401
     }
 
     private fun mapItemsToServers(items: List<AvailabilityItem>): List<ServerAvailability> =
@@ -126,7 +131,7 @@ class MainViewModel(
 
     fun refreshSettingsFromServer() {
         if (state.token.isBlank()) {
-            state = state.copy(message = "Сначала сохрани Bearer токен")
+            state = state.copy(message = "Сначала сохрани токен доступа")
             return
         }
 
@@ -166,6 +171,13 @@ class MainViewModel(
                     isMethodNotAllowed(authFailure)
                 ) {
                     "Сервер не поддерживает GET настроек (HTTP 405). Нужна поддержка endpoint на backend."
+                } else if (
+                    isUnauthorized(monitoringFailure) &&
+                    isUnauthorized(botFailure) &&
+                    isUnauthorized(timeFailure) &&
+                    isUnauthorized(authFailure)
+                ) {
+                    "Автосинхронизация настроек недоступна (HTTP 401). Проверь права токена на /v1/settings/*"
                 } else {
                     "Не удалось подтянуть настройки: ${formatNetworkError(monitoringFailure)}"
                 }
