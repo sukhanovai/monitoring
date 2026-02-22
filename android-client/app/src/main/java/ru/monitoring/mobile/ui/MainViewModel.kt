@@ -28,11 +28,10 @@ class MainViewModel(
     private val preferences: AppPreferences
 ) : ViewModel() {
 
-    private val api
-        get() = ApiFactory.createApi(
-            tokenProvider = { preferences.apiToken },
-            baseUrlProvider = { preferences.apiBaseUrl }
-        )
+    private fun currentApi() = ApiFactory.createApi(
+        tokenProvider = { normalizeToken(state.token.ifBlank { preferences.apiToken }) },
+        baseUrlProvider = { normalizeBaseUrlInput(state.baseUrlInput.ifBlank { preferences.apiBaseUrl }) }
+    )
 
     var state by mutableStateOf(MainUiState())
         private set
@@ -142,15 +141,6 @@ class MainViewModel(
         return value.toIntOrNull() ?: throw IllegalArgumentException("Поле $fieldName должно быть числом")
     }
 
-
-    private fun hasUnsavedConnectionSettings(): Boolean {
-        val normalizedStateToken = normalizeToken(state.token)
-        val normalizedSavedToken = normalizeToken(preferences.apiToken)
-        val normalizedStateBaseUrl = normalizeBaseUrlInput(state.baseUrlInput)
-        val normalizedSavedBaseUrl = normalizeBaseUrlInput(preferences.apiBaseUrl)
-        return normalizedStateToken != normalizedSavedToken || normalizedStateBaseUrl != normalizedSavedBaseUrl
-    }
-
     fun refreshSettingsFromServer(showErrors: Boolean = false) {
         if (state.token.isBlank()) return
 
@@ -158,10 +148,10 @@ class MainViewModel(
             state = state.copy(isLoading = true)
 
             val result = withContext(Dispatchers.IO) {
-                val monitoring = runCatching { api.getMonitoringSettings() }.getOrNull()
-                val bot = runCatching { api.getBotSettings() }.getOrNull()
-                val time = runCatching { api.getTimeSettings() }.getOrNull()
-                val auth = runCatching { api.getAuthSettings() }.getOrNull()
+                val monitoring = runCatching { currentApi().getMonitoringSettings() }.getOrNull()
+                val bot = runCatching { currentApi().getBotSettings() }.getOrNull()
+                val time = runCatching { currentApi().getTimeSettings() }.getOrNull()
+                val auth = runCatching { currentApi().getAuthSettings() }.getOrNull()
                 listOf(monitoring, bot, time, auth)
             }
 
@@ -206,14 +196,9 @@ class MainViewModel(
     }
 
     fun refreshAvailability() {
-        if (hasUnsavedConnectionSettings()) {
-            state = state.copy(message = "Сначала сохрани Base URL и токен в Настройках")
-            return
-        }
-
         viewModelScope.launch {
             state = state.copy(isLoading = true)
-            runCatching { api.getAvailability() }
+            runCatching { currentApi().getAvailability() }
                 .onSuccess { response ->
                     val servers = if (response.servers.isNotEmpty()) response.servers else mapItemsToServers(response.items)
                     if (servers.isEmpty()) {
@@ -250,7 +235,7 @@ class MainViewModel(
 
         viewModelScope.launch {
             state = state.copy(isLoading = true)
-            runCatching { api.runControlAction(ControlActionRequest(action)) }
+            runCatching { currentApi().runControlAction(ControlActionRequest(action)) }
                 .onSuccess { response ->
                     state = state.copy(isLoading = false, message = response.message ?: response.result ?: "Команда отправлена")
                 }
@@ -287,7 +272,7 @@ class MainViewModel(
 
         viewModelScope.launch {
             state = state.copy(isLoading = true)
-            runCatching { api.updateMonitoringSettings(request) }
+            runCatching { currentApi().updateMonitoringSettings(request) }
                 .onSuccess {
                     state = state.copy(isLoading = false, message = "Настройки мониторинга обновлены")
                     refreshSettingsFromServer(showErrors = false)
@@ -311,7 +296,7 @@ class MainViewModel(
 
         viewModelScope.launch {
             state = state.copy(isLoading = true)
-            runCatching { api.updateBotSettings(request) }
+            runCatching { currentApi().updateBotSettings(request) }
                 .onSuccess {
                     state = state.copy(isLoading = false, message = "Настройки бота обновлены")
                     refreshSettingsFromServer(showErrors = false)
@@ -337,7 +322,7 @@ class MainViewModel(
 
         viewModelScope.launch {
             state = state.copy(isLoading = true)
-            runCatching { api.updateTimeSettings(request) }
+            runCatching { currentApi().updateTimeSettings(request) }
                 .onSuccess {
                     state = state.copy(isLoading = false, message = "Временные настройки обновлены")
                     refreshSettingsFromServer(showErrors = false)
@@ -375,7 +360,7 @@ class MainViewModel(
 
         viewModelScope.launch {
             state = state.copy(isLoading = true)
-            runCatching { api.updateAuthSettings(request) }
+            runCatching { currentApi().updateAuthSettings(request) }
                 .onSuccess {
                     state = state.copy(isLoading = false, message = "Auth-настройки обновлены")
                     refreshSettingsFromServer(showErrors = false)
