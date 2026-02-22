@@ -1415,6 +1415,158 @@ def v1_control_actions():
         }), 500
 
 
+def _mask_secret(value):
+    """Возвращает маскированное значение секрета без раскрытия исходной строки."""
+    value_str = str(value or '').strip()
+    if not value_str:
+        return ''
+    if ':' in value_str:
+        prefix = value_str.split(':', 1)[0]
+        return f"{prefix}:***"
+    return '********'
+
+
+def _hour_to_hhmm(value, fallback):
+    try:
+        hour_value = int(value)
+        if 0 <= hour_value <= 23:
+            return f"{hour_value:02d}:00"
+    except (TypeError, ValueError):
+        pass
+    return fallback
+
+
+@app.route('/v1/settings/monitoring', methods=['GET'])
+def v1_get_settings_monitoring():
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+
+    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    if not is_ok:
+        return jsonify({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid or expired token",
+                "request_id": request_id,
+            }
+        }), 401
+
+    from config.db_settings_app import settings_manager
+
+    response = {
+        "request_id": request_id,
+        "settings": {
+            "check_interval_sec": settings_manager.get_setting('CHECK_INTERVAL', 60),
+            "timeout_sec": settings_manager.get_setting('API_TIMEOUT_SEC', 15),
+            "max_downtime_sec": settings_manager.get_setting('MAX_FAIL_TIME', 900),
+        }
+    }
+    app.logger.info("GET /v1/settings/monitoring request_id=%s", request_id)
+    return jsonify(response), 200
+
+
+@app.route('/v1/settings/bot', methods=['GET'])
+def v1_get_settings_bot():
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+
+    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    if not is_ok:
+        return jsonify({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid or expired token",
+                "request_id": request_id,
+            }
+        }), 401
+
+    from config.db_settings_app import settings_manager
+
+    chat_ids = settings_manager.get_setting('CHAT_IDS', [])
+    if isinstance(chat_ids, list) and chat_ids:
+        telegram_chat_id = str(chat_ids[0])
+    elif chat_ids:
+        telegram_chat_id = str(chat_ids)
+    else:
+        telegram_chat_id = ''
+
+    token = settings_manager.get_setting('TELEGRAM_TOKEN', '')
+
+    response = {
+        "request_id": request_id,
+        "settings": {
+            "telegram_chat_id": telegram_chat_id,
+            "masked_token": _mask_secret(token),
+        }
+    }
+    app.logger.info("GET /v1/settings/bot request_id=%s", request_id)
+    return jsonify(response), 200
+
+
+@app.route('/v1/settings/time', methods=['GET'])
+def v1_get_settings_time():
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+
+    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    if not is_ok:
+        return jsonify({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid or expired token",
+                "request_id": request_id,
+            }
+        }), 401
+
+    from config.db_settings_app import settings_manager
+
+    quiet_start = _hour_to_hhmm(settings_manager.get_setting('SILENT_START', 23), '23:00')
+    quiet_end = _hour_to_hhmm(settings_manager.get_setting('SILENT_END', 8), '08:00')
+    metrics_collection_time = str(settings_manager.get_setting('DATA_COLLECTION_TIME', '07:30'))
+
+    response = {
+        "request_id": request_id,
+        "settings": {
+            "quiet_start": quiet_start,
+            "quiet_end": quiet_end,
+            "metrics_collection_time": metrics_collection_time,
+        }
+    }
+    app.logger.info("GET /v1/settings/time request_id=%s", request_id)
+    return jsonify(response), 200
+
+
+@app.route('/v1/settings/auth', methods=['GET'])
+def v1_get_settings_auth():
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+
+    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    if not is_ok:
+        return jsonify({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid or expired token",
+                "request_id": request_id,
+            }
+        }), 401
+
+    from config.db_settings_app import settings_manager
+
+    ssh_password = settings_manager.get_setting('SSH_PASSWORD', '')
+    windows_password = settings_manager.get_setting('WINDOWS_PASSWORD', '')
+
+    response = {
+        "request_id": request_id,
+        "settings": {
+            "auth_mode": str(settings_manager.get_setting('AUTH_MODE', 'mixed')),
+            "ssh_username": str(settings_manager.get_setting('SSH_USERNAME', 'root')),
+            "ssh_port": int(settings_manager.get_setting('SSH_PORT', 22)),
+            "windows_username": str(settings_manager.get_setting('WINDOWS_USERNAME', 'Administrator')),
+            "masked_ssh_password": _mask_secret(ssh_password),
+            "masked_windows_password": _mask_secret(windows_password),
+        }
+    }
+    app.logger.info("GET /v1/settings/auth request_id=%s", request_id)
+    return jsonify(response), 200
+
+
 @app.route('/v1/settings/monitoring', methods=['PATCH'])
 def v1_settings_monitoring():
     request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
