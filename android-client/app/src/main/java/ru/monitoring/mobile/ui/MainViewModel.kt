@@ -141,6 +141,9 @@ class MainViewModel(
         return value.toIntOrNull() ?: throw IllegalArgumentException("Поле $fieldName должно быть числом")
     }
 
+    // Совместимость со старыми ссылками после частичных merge/cherry-pick.
+    private fun hasUnsavedConnectionSettings(): Boolean = false
+
     fun refreshSettingsFromServer(showErrors: Boolean = false) {
         if (state.token.isBlank()) return
 
