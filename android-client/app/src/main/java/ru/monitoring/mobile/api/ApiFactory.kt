@@ -1,12 +1,8 @@
 package ru.monitoring.mobile.api
 
-import com.squareup.moshi.Moshi
-import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
-import com.squareup.moshi.Moshi
-import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import java.util.UUID
@@ -22,11 +18,16 @@ object ApiFactory {
     private fun createHttpClient(tokenProvider: () -> String): OkHttpClient {
         val authInterceptor = Interceptor { chain ->
             val token = tokenProvider().trim()
+            val normalizedToken = token
+                .removePrefix("Bearer ")
+                .removePrefix("bearer ")
+                .trim()
+
             val requestBuilder = chain.request().newBuilder()
                 .addHeader("X-Request-ID", UUID.randomUUID().toString())
 
-            if (token.isNotBlank()) {
-                requestBuilder.addHeader("Authorization", "Bearer $token")
+            if (normalizedToken.isNotBlank()) {
+                requestBuilder.addHeader("Authorization", "Bearer $normalizedToken")
             }
 
             chain.proceed(requestBuilder.build())
