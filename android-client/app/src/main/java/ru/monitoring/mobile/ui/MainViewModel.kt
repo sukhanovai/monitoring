@@ -142,6 +142,15 @@ class MainViewModel(
         return value.toIntOrNull() ?: throw IllegalArgumentException("Поле $fieldName должно быть числом")
     }
 
+
+    private fun hasUnsavedConnectionSettings(): Boolean {
+        val normalizedStateToken = normalizeToken(state.token)
+        val normalizedSavedToken = normalizeToken(preferences.apiToken)
+        val normalizedStateBaseUrl = normalizeBaseUrlInput(state.baseUrlInput)
+        val normalizedSavedBaseUrl = normalizeBaseUrlInput(preferences.apiBaseUrl)
+        return normalizedStateToken != normalizedSavedToken || normalizedStateBaseUrl != normalizedSavedBaseUrl
+    }
+
     fun refreshSettingsFromServer(showErrors: Boolean = false) {
         if (state.token.isBlank()) return
 
@@ -197,6 +206,11 @@ class MainViewModel(
     }
 
     fun refreshAvailability() {
+        if (hasUnsavedConnectionSettings()) {
+            state = state.copy(message = "Сначала сохрани Base URL и токен в Настройках")
+            return
+        }
+
         viewModelScope.launch {
             state = state.copy(isLoading = true)
             runCatching { api.getAvailability() }
@@ -229,6 +243,11 @@ class MainViewModel(
     }
 
     fun sendAction(action: String) {
+        if (hasUnsavedConnectionSettings()) {
+            state = state.copy(message = "Сначала сохрани Base URL и токен в Настройках")
+            return
+        }
+
         viewModelScope.launch {
             state = state.copy(isLoading = true)
             runCatching { api.runControlAction(ControlActionRequest(action)) }
