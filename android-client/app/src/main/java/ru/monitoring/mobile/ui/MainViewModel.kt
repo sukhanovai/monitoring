@@ -46,7 +46,7 @@ class MainViewModel(
         preferences.apiToken = normalizedToken
         state = state.copy(token = normalizedToken, message = "Токен сохранён")
         if (normalizedToken.isNotBlank()) {
-            refreshSettingsFromServer()
+            refreshSettingsFromServer(showErrors = false)
         }
     }
 
@@ -57,7 +57,7 @@ class MainViewModel(
         }
         state = state.copy(token = token)
         if (token.isNotBlank()) {
-            refreshSettingsFromServer()
+            refreshSettingsFromServer(showErrors = false)
         }
     }
 
@@ -129,7 +129,7 @@ class MainViewModel(
         return value.toIntOrNull() ?: throw IllegalArgumentException("Поле $fieldName должно быть числом")
     }
 
-    fun refreshSettingsFromServer() {
+    fun refreshSettingsFromServer(showErrors: Boolean = false) {
         if (state.token.isBlank()) {
             state = state.copy(message = "Сначала сохрани токен доступа")
             return
@@ -182,7 +182,7 @@ class MainViewModel(
                     "Не удалось подтянуть настройки: ${formatNetworkError(monitoringFailure)}"
                 }
 
-                if (failMessage == null) {
+                if (!showErrors || failMessage == null) {
                     state = state.copy(isLoading = false)
                 } else {
                     state = state.copy(isLoading = false, message = failMessage)
