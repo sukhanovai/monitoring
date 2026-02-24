@@ -20,6 +20,7 @@ from extensions.supplier_stock_files import (
     build_supplier_stock_source_stats,
     get_supplier_stock_config,
     get_supplier_stock_reports,
+    parse_supplier_stock_schedule_times,
     run_supplier_stock_fetch,
     save_supplier_stock_config,
     start_supplier_stock_scheduler,
@@ -639,8 +640,10 @@ HTML_TEMPLATE = """
                         <span class="stat-value">{{ supplier_stock.schedule_time }}</span>
                     </div>
                     <div class="controls" style="margin-top: 15px; gap: 10px; flex-wrap: wrap;">
-                        <input type="time" id="supplierScheduleTime" value="{{ supplier_stock.schedule_time_value }}"
-                               style="padding: 8px; border-radius: 6px; border: 1px solid #555; background: rgba(60,60,70,0.8); color: white;">
+                        <input type="text" id="supplierScheduleTime" value="{{ supplier_stock.schedule_time_value }}"
+                               placeholder="06:00, 12:30"
+                               title="HH:MM, можно несколько через пробел/запятую/;"
+                               style="padding: 8px; border-radius: 6px; border: 1px solid #555; background: rgba(60,60,70,0.8); color: white; min-width: 180px;">
                         <label style="display: flex; align-items: center; gap: 6px;">
                             Период (дней):
                             <input type="number" id="supplierReportPeriod" min="1" value="{{ supplier_stock.report_period_days }}"
@@ -1783,10 +1786,16 @@ def api_supplier_stock_schedule():
     enabled_value = bool(data.get("enabled", False))
     report_period_days = data.get("report_period_days")
 
-    if time_value and not re.match(r'^\\d{1,2}:\\d{2}$', time_value):
-        return jsonify({"success": False, "message": "❌ Неверный формат времени. Используйте HH:MM"})
-
-    schedule["time"] = time_value or schedule.get("time", "")
+    if time_value:
+        schedule_times = parse_supplier_stock_schedule_times(time_value)
+        if not schedule_times:
+            return jsonify({
+                "success": False,
+                "message": "❌ Неверный формат времени. Используйте HH:MM, разделители: пробел, запятая или ;",
+            })
+        schedule["time"] = ', '.join(schedule_times)
+    else:
+        schedule["time"] = schedule.get("time", "")
     schedule["enabled"] = enabled_value
     config["download"]["schedule"] = schedule
     if report_period_days is not None:
