@@ -19,6 +19,7 @@ object ApiFactory {
             val normalizedToken = token
                 .removePrefix("Bearer ")
                 .removePrefix("bearer ")
+                .replace("\\s+".toRegex(), "")
                 .trim()
 
             val requestBuilder = chain.request().newBuilder()
