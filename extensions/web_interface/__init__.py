@@ -1327,31 +1327,77 @@ def _build_availability_payload(scope='all'):
 @app.route('/api/v1/monitoring/availability', methods=['GET'])
 def mobile_availability():
     """Mobile BFF endpoint совместимый с auth_token_probe.sh"""
+    started_at = time.time()
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+
     ok, token_data = _validate_mobile_token(request.headers.get("Authorization"))
     if not ok:
-        return jsonify({
+        app.logger.warning(
+            "GET /v1/monitoring/availability unauthorized request_id=%s reason=%s duration_ms=%s",
+            request_id,
+            token_data,
+            int((time.time() - started_at) * 1000),
+        )
+        response = jsonify({
             "error": "unauthorized",
             "message": "Bearer token required",
-            "reason": token_data
-        }), 401
+            "reason": token_data,
+            "request_id": request_id,
+        })
+        response.headers['X-Request-ID'] = request_id
+        return response, 401
 
     scope = request.args.get('scope', 'all')
-    return jsonify(_build_availability_payload(scope=scope))
+    payload = _build_availability_payload(scope=scope)
+    payload['request_id'] = request_id
+    duration_ms = int((time.time() - started_at) * 1000)
+    app.logger.info(
+        "GET /v1/monitoring/availability request_id=%s status=200 duration_ms=%s total=%s",
+        request_id,
+        duration_ms,
+        payload.get('total', 0),
+    )
+    response = jsonify(payload)
+    response.headers['X-Request-ID'] = request_id
+    return response
 
 
 @app.route('/v1/monitoring/status', methods=['GET'])
 @app.route('/api/v1/monitoring/status', methods=['GET'])
 def mobile_status():
     """Синоним для быстрой проверки статуса с Bearer токеном."""
+    started_at = time.time()
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+
     ok, token_data = _validate_mobile_token(request.headers.get("Authorization"))
     if not ok:
-        return jsonify({
+        app.logger.warning(
+            "GET /v1/monitoring/status unauthorized request_id=%s reason=%s duration_ms=%s",
+            request_id,
+            token_data,
+            int((time.time() - started_at) * 1000),
+        )
+        response = jsonify({
             "error": "unauthorized",
             "message": "Bearer token required",
-            "reason": token_data
-        }), 401
+            "reason": token_data,
+            "request_id": request_id,
+        })
+        response.headers['X-Request-ID'] = request_id
+        return response, 401
 
-    return jsonify(_build_availability_payload(scope='all'))
+    payload = _build_availability_payload(scope='all')
+    payload['request_id'] = request_id
+    duration_ms = int((time.time() - started_at) * 1000)
+    app.logger.info(
+        "GET /v1/monitoring/status request_id=%s status=200 duration_ms=%s total=%s",
+        request_id,
+        duration_ms,
+        payload.get('total', 0),
+    )
+    response = jsonify(payload)
+    response.headers['X-Request-ID'] = request_id
+    return response
 
 
 @app.route('/v1/control/actions', methods=['POST'])
