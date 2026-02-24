@@ -11,7 +11,13 @@ import ru.monitoring.mobile.api.ApiFactory
 import ru.monitoring.mobile.api.ControlActionRequest
 import ru.monitoring.mobile.api.ServerAvailability
 import ru.monitoring.mobile.api.SettingsMonitoringRequest
+import ru.monitoring.mobile.logging.ConnectionLogger
 import ru.monitoring.mobile.storage.AppPreferences
+import java.io.IOException
+import java.net.SocketTimeoutException
+import java.util.Locale
+import java.util.UUID
+import retrofit2.HttpException
 
 class MainViewModel(
     private val preferences: AppPreferences
@@ -32,15 +38,71 @@ class MainViewModel(
 
     fun refreshAvailability() {
         viewModelScope.launch {
+            val requestId = UUID.randomUUID().toString()
+            val host = "api.202020.ru"
+            val endpoint = "/v1/monitoring/availability"
+            val method = "GET"
+            val tokenPresent = preferences.apiToken.trim().isNotBlank()
+            val startedAt = System.nanoTime()
+
+            ConnectionLogger.info(
+                event = "availability_all_click_started",
+                fields = mapOf(
+                    "request_id" to requestId,
+                    "base_url_host" to host,
+                    "endpoint" to endpoint,
+                    "http_method" to method,
+                    "token_present" to tokenPresent,
+                    "network_type" to "unknown"
+                )
+            )
+
+            ConnectionLogger.info(
+                event = "availability_all_request_prepared",
+                fields = mapOf(
+                    "request_id" to requestId,
+                    "base_url_host" to host,
+                    "endpoint" to endpoint,
+                    "http_method" to method,
+                    "token_present" to tokenPresent,
+                    "network_type" to "unknown"
+                )
+            )
+
             state = state.copy(isLoading = true, message = "")
             runCatching {
-                api.getAvailability()
+                api.getAvailability(requestId)
             }.onSuccess { response ->
                 val payload = response.data
                 if (payload == null) {
+                    ConnectionLogger.warn(
+                        event = "availability_all_failed",
+                        fields = mapOf(
+                            "request_id" to requestId,
+                            "base_url_host" to host,
+                            "endpoint" to endpoint,
+                            "http_method" to method,
+                            "duration_ms" to ((System.nanoTime() - startedAt) / 1_000_000),
+                            "network_type" to "unknown",
+                            "error_type" to "UNKNOWN",
+                            "error_message_short" to ConnectionLogger.shortErrorMessage(response.error?.message)
+                        )
+                    )
                     state = state.copy(
                         isLoading = false,
                         message = response.error?.message ?: "Пустой ответ от API"
+                    )
+                    ConnectionLogger.info(
+                        event = "availability_all_result_rendered",
+                        fields = mapOf(
+                            "request_id" to requestId,
+                            "base_url_host" to host,
+                            "endpoint" to endpoint,
+                            "http_method" to method,
+                            "duration_ms" to ((System.nanoTime() - startedAt) / 1_000_000),
+                            "network_type" to "unknown",
+                            "error_type" to "UNKNOWN"
+                        )
                     )
                     return@onSuccess
                 }
@@ -51,9 +113,61 @@ class MainViewModel(
                     summaryText = "UP: ${payload.summary.up}, DOWN: ${payload.summary.down}, UNKNOWN: ${payload.summary.unknown}",
                     message = "Данные обновлены"
                 )
+
+                ConnectionLogger.info(
+                    event = "availability_all_result_rendered",
+                    fields = mapOf(
+                        "request_id" to requestId,
+                        "base_url_host" to host,
+                        "endpoint" to endpoint,
+                        "http_method" to method,
+                        "duration_ms" to ((System.nanoTime() - startedAt) / 1_000_000),
+                        "network_type" to "unknown"
+                    )
+                )
             }.onFailure { error ->
+                ConnectionLogger.error(
+                    event = "availability_all_failed",
+                    fields = mapOf(
+                        "request_id" to requestId,
+                        "base_url_host" to host,
+                        "endpoint" to endpoint,
+                        "http_method" to method,
+                        "duration_ms" to ((System.nanoTime() - startedAt) / 1_000_000),
+                        "network_type" to "unknown",
+                        "error_type" to mapErrorType(error),
+                        "error_message_short" to ConnectionLogger.shortErrorMessage(error.message),
+                        "http_status" to (error as? HttpException)?.code()
+                    )
+                )
                 state = state.copy(isLoading = false, message = error.message ?: "Ошибка запроса")
+                ConnectionLogger.info(
+                    event = "availability_all_result_rendered",
+                    fields = mapOf(
+                        "request_id" to requestId,
+                        "base_url_host" to host,
+                        "endpoint" to endpoint,
+                        "http_method" to method,
+                        "duration_ms" to ((System.nanoTime() - startedAt) / 1_000_000),
+                        "network_type" to "unknown",
+                        "error_type" to mapErrorType(error)
+                    )
+                )
             }
+        }
+    }
+
+    private fun mapErrorType(error: Throwable): String {
+        return when (error) {
+            is HttpException -> if (error.code() == 401) "HTTP_401" else "UNKNOWN"
+            is SocketTimeoutException -> "TIMEOUT"
+            is javax.net.ssl.SSLException -> "SSL"
+            is IOException -> {
+                val text = error.message?.lowercase(Locale.US).orEmpty()
+                if (text.contains("unreachable") || text.contains("failed to connect")) "NO_NETWORK" else "UNKNOWN"
+            }
+
+            else -> "UNKNOWN"
         }
     }
 
