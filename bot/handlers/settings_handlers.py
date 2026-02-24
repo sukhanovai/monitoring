@@ -27,6 +27,7 @@ from extensions.supplier_stock_files import (
     build_supplier_stock_source_stats,
     get_supplier_stock_config,
     get_supplier_stock_reports,
+    parse_supplier_stock_schedule_times,
     save_supplier_stock_config,
     summarize_supplier_stock_reports,
 )
@@ -1487,7 +1488,8 @@ def settings_callback_handler(update, context):
             )
             _supplier_stock_remember_prompt_message(context, query)
             query.edit_message_text(
-                "Введите время запуска в формате HH:MM:\n"
+                "Введите одно или несколько времен запуска (HH:MM).\n"
+                "Разделители: пробел, запятая или точка с запятой.\n"
                 f"Текущее значение: {current_time}",
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_schedule')]
@@ -6438,10 +6440,13 @@ def supplier_stock_handle_edit_input(update, context):
         return None
 
     if field == 'schedule_time':
-        if not re.match(r'^\d{1,2}:\d{2}$', user_input):
-            update.message.reply_text("❌ Неверный формат времени. Используйте HH:MM")
+        schedule_times = parse_supplier_stock_schedule_times(user_input)
+        if not schedule_times:
+            update.message.reply_text(
+                "❌ Неверный формат времени. Используйте HH:MM и разделители: пробел, запятая или ;"
+            )
             return None
-        config['download']['schedule']['time'] = user_input
+        config['download']['schedule']['time'] = ', '.join(schedule_times)
         save_supplier_stock_config(config)
         context.user_data.pop('supplier_stock_edit', None)
         _supplier_stock_close_prompt_message(context)
