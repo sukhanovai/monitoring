@@ -40,6 +40,7 @@ class MainViewModel(
         .trim()
         .removePrefix("Bearer ")
         .removePrefix("bearer ")
+        .replace("\\s+".toRegex(), "")
         .trim()
 
     private fun normalizeBaseUrlInput(rawUrl: String): String {
