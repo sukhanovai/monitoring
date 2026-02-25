@@ -41,7 +41,6 @@ import ru.monitoring.mobile.ui.MainViewModel
 
 private enum class AppSection {
     MAIN,
-    MANAGEMENT,
     SETTINGS
 }
 
@@ -130,6 +129,7 @@ private fun MonitoringApp(
     onSaveAuth: () -> Unit
 ) {
     var section by rememberSaveable { mutableStateOf(AppSection.MAIN) }
+    var isManagementExpanded by rememberSaveable { mutableStateOf(false) }
 
     val canSaveMonitoring = state.checkIntervalInput.isNotBlank() ||
         state.timeoutInput.isNotBlank() ||
@@ -190,8 +190,23 @@ private fun MonitoringApp(
                     Button(onClick = { onShowMenuStub("Расширения") }, modifier = Modifier.fillMaxWidth()) {
                         Text("🛠️ Расширения")
                     }
-                    Button(onClick = { section = AppSection.MANAGEMENT }, modifier = Modifier.fillMaxWidth()) {
+                    Button(onClick = { isManagementExpanded = !isManagementExpanded }, modifier = Modifier.fillMaxWidth()) {
                         Text("🎛️ Управление")
+                    }
+                    if (isManagementExpanded) {
+                        Text("Управление мониторингом", fontWeight = FontWeight.Bold)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = { onAction("pause_monitoring") }) { Text("Пауза") }
+                            Button(onClick = { onAction("resume_monitoring") }) { Text("Старт") }
+                        }
+                        Text("Управление тихим режимом", fontWeight = FontWeight.Bold)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = { onAction("force_quiet") }) { Text("Тихий") }
+                            Button(onClick = { onAction("force_loud") }) { Text("Громкий") }
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = { onAction("auto_mode") }) { Text("Авто") }
+                        }
                     }
                     Button(onClick = { section = AppSection.SETTINGS }, modifier = Modifier.fillMaxWidth()) {
                         Text("⚙️ Настройки")
@@ -215,33 +230,6 @@ private fun MonitoringApp(
                                 Text("Проверка: ${server.lastCheckedAt ?: "-"}")
                             }
                         }
-                    }
-                }
-            }
-
-            if (section == AppSection.MANAGEMENT) {
-                item {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { section = AppSection.MAIN }) { Text("← Назад") }
-                    }
-                }
-
-                item {
-                    Text("Управление мониторингом", fontWeight = FontWeight.Bold)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { onAction("pause_monitoring") }) { Text("Пауза") }
-                        Button(onClick = { onAction("resume_monitoring") }) { Text("Старт") }
-                    }
-                }
-
-                item {
-                    Text("Управление тихим режимом", fontWeight = FontWeight.Bold)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { onAction("force_quiet") }) { Text("Тихий") }
-                        Button(onClick = { onAction("force_loud") }) { Text("Громкий") }
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { onAction("auto_mode") }) { Text("Авто") }
                     }
                 }
             }
