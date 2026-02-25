@@ -1,4 +1,4 @@
-package ru.monitoring.mobile
+﻿package ru.monitoring.mobile
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -41,6 +41,7 @@ import ru.monitoring.mobile.ui.MainViewModel
 
 private enum class AppSection {
     MAIN,
+    MANAGEMENT,
     SETTINGS
 }
 
@@ -175,7 +176,7 @@ private fun MonitoringApp(
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = onRefresh, modifier = Modifier.fillMaxWidth()) {
-                        Text("🔄 Доступность всех серверов")
+                        Text("🖥 Доступность всех серверов")
                     }
                     Button(onClick = { onShowMenuStub("Доступность сервера") }, modifier = Modifier.fillMaxWidth()) {
                         Text("🔍 Доступность сервера")
@@ -186,6 +187,9 @@ private fun MonitoringApp(
                     Button(onClick = { onShowMenuStub("Расширения") }, modifier = Modifier.fillMaxWidth()) {
                         Text("🛠️ Расширения")
                     }
+                    Button(onClick = { section = AppSection.MANAGEMENT }, modifier = Modifier.fillMaxWidth()) {
+                        Text("🎛️ Управление")
+                    }
                     Button(onClick = { section = AppSection.SETTINGS }, modifier = Modifier.fillMaxWidth()) {
                         Text("⚙️ Настройки")
                     }
@@ -193,19 +197,6 @@ private fun MonitoringApp(
             }
 
             if (section == AppSection.MAIN) {
-                item {
-                    Text("Управление", fontWeight = FontWeight.Bold)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { onAction("pause_monitoring") }) { Text("Пауза") }
-                        Button(onClick = { onAction("resume_monitoring") }) { Text("Старт") }
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { onAction("send_morning_report") }) { Text("Отчёт") }
-                        Button(onClick = { onAction("force_quiet") }) { Text("Quiet") }
-                        Button(onClick = { onAction("force_loud") }) { Text("Loud") }
-                    }
-                }
-
                 item {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text("Список серверов", fontWeight = FontWeight.Bold)
@@ -221,6 +212,36 @@ private fun MonitoringApp(
                                 Text("Проверка: ${server.lastCheckedAt ?: "-"}")
                             }
                         }
+                    }
+                }
+            }
+
+            if (section == AppSection.MANAGEMENT) {
+                item {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = { section = AppSection.MAIN }) { Text("← Назад") }
+                    }
+                }
+
+                item {
+                    Text("Управление мониторингом", fontWeight = FontWeight.Bold)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = { onAction("pause_monitoring") }) { Text("Пауза") }
+                        Button(onClick = { onAction("resume_monitoring") }) { Text("Старт") }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = { onAction("send_morning_report") }) { Text("Отчёт") }
+                    }
+                }
+
+                item {
+                    Text("Управление тихим режимом", fontWeight = FontWeight.Bold)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = { onAction("force_quiet") }) { Text("Тихий") }
+                        Button(onClick = { onAction("force_loud") }) { Text("Громкий") }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = { onAction("auto_mode") }) { Text("Авто") }
                     }
                 }
             }
