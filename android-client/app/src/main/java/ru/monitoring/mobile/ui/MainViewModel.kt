@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import retrofit2.HttpException
 import ru.monitoring.mobile.api.ApiFactory
+import ru.monitoring.mobile.api.AuthTokenExchangeRequest
 import ru.monitoring.mobile.api.AvailabilityItem
 import ru.monitoring.mobile.api.ControlActionRequest
 import ru.monitoring.mobile.api.ServerAvailability
@@ -30,6 +31,11 @@ class MainViewModel(
 
     private fun currentApi() = ApiFactory.createApi(
         tokenProvider = { normalizeToken(state.token.ifBlank { preferences.apiToken }) },
+        baseUrlProvider = { normalizeBaseUrlInput(state.baseUrlInput.ifBlank { preferences.apiBaseUrl }) }
+    )
+
+    private fun apiForToken(rawToken: String) = ApiFactory.createApi(
+        tokenProvider = { normalizeToken(rawToken) },
         baseUrlProvider = { normalizeBaseUrlInput(state.baseUrlInput.ifBlank { preferences.apiBaseUrl }) }
     )
 
@@ -65,11 +71,38 @@ class MainViewModel(
 
     fun saveToken(token: String) {
         val normalizedToken = normalizeToken(token)
-        preferences.apiToken = normalizedToken
-        state = state.copy(token = normalizedToken, message = "Токен сохранён")
+        if (normalizedToken.isBlank()) {
+            preferences.apiToken = ""
+            state = state.copy(token = "", message = "Токен очищен")
+            return
+        }
 
-        if (normalizedToken.isNotBlank()) {
-            refreshSettingsFromServer(showErrors = false)
+        viewModelScope.launch {
+            state = state.copy(isLoading = true)
+
+            val exchangedToken = runCatching {
+                val subject = "android-${preferences.deviceId.take(8)}"
+                apiForToken(normalizedToken).exchangeAuthToken(
+                    AuthTokenExchangeRequest(
+                        deviceId = preferences.deviceId,
+                        subject = subject,
+                        reissue = true
+                    )
+                ).accessToken
+            }.getOrNull().orEmpty()
+
+            val finalToken = normalizeToken(if (exchangedToken.isNotBlank()) exchangedToken else normalizedToken)
+            preferences.apiToken = finalToken
+
+            state = state.copy(
+                isLoading = false,
+                token = finalToken,
+                message = if (exchangedToken.isNotBlank()) "Токен выдан сервером и сохранен" else "Токен сохранен"
+            )
+
+            if (finalToken.isNotBlank()) {
+                refreshSettingsFromServer(showErrors = false)
+            }
         }
     }
 

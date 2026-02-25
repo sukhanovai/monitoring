@@ -120,7 +120,7 @@ python -m modules.improved_mail_monitor
 ```bash
 python main.py --check availability
 python main.py --check resources
-python main.py --check targeted_checks --server 192.168.4.90 --mode resources
+python main.py --check targeted_checks --server 192.168.4.100 --mode resources
 ```
 
 Дополнительно:
@@ -209,9 +209,31 @@ WorkingDirectory=/opt/monitoring
 ExecStart=/opt/monitoring/venv/bin/python /opt/monitoring/main.py
 Restart=always
 RestartSec=10
+Environment="MOBILE_DEFAULT_TOKEN=CHANGE_ME_STRONG_BOOTSTRAP_TOKEN"
+Environment="MOBILE_SESSION_TOKEN_TTL_SEC=0"
 
 [Install]
 WantedBy=multi-user.target
+```
+
+Пояснение по Android-токенам:
+- `MOBILE_DEFAULT_TOKEN` — bootstrap-токен для первичной авторизации Android-клиента.
+- `MOBILE_SESSION_TOKEN_TTL_SEC` — TTL рабочих токенов, которые сервер выдает приложению после bootstrap:
+  - `0` = бессрочно,
+  - `>0` = время жизни в секундах.
+
+Рекомендуемый поток:
+1. В приложении в поле Bearer токена вставляется `MOBILE_DEFAULT_TOKEN`.
+2. При сохранении токена Android вызывает `POST /v1/auth/token`.
+3. Сервер выдает новый рабочий токен, сохраняет его в `settings.db` и приложение сохраняет его локально.
+4. Далее используется только рабочий токен.
+
+Перевыпуск токена (например, после переустановки приложения):
+```bash
+curl -k -X POST "https://<host>/v1/auth/token/reissue" \
+  -H "Authorization: Bearer <MOBILE_DEFAULT_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"device_id":"android-device-1","subject":"android-client","reissue":true}'
 ```
 
 Активируйте:

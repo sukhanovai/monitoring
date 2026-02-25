@@ -6,6 +6,12 @@ import retrofit2.http.PATCH
 import retrofit2.http.POST
 
 interface MonitoringApi {
+    @POST("v1/auth/token")
+    suspend fun exchangeAuthToken(@Body request: AuthTokenExchangeRequest): AuthTokenExchangeResponse
+
+    @POST("v1/auth/token/reissue")
+    suspend fun reissueAuthToken(@Body request: AuthTokenExchangeRequest): AuthTokenExchangeResponse
+
     @GET("v1/monitoring/availability?scope=all")
     suspend fun getAvailability(): AvailabilityResponse
 

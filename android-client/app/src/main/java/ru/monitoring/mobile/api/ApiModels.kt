@@ -50,6 +50,23 @@ data class ControlActionRequest(
     val action: String
 )
 
+data class AuthTokenExchangeRequest(
+    @Json(name = "device_id") val deviceId: String? = null,
+    @Json(name = "subject") val subject: String? = null,
+    @Json(name = "reissue") val reissue: Boolean? = true
+)
+
+data class AuthTokenExchangeResponse(
+    @Json(name = "access_token") val accessToken: String? = null,
+    @Json(name = "token_type") val tokenType: String? = null,
+    @Json(name = "expires_in") val expiresIn: Int? = null,
+    @Json(name = "expires_at") val expiresAt: String? = null,
+    @Json(name = "scope") val scope: String? = null,
+    @Json(name = "issued_at") val issuedAt: String? = null,
+    @Json(name = "subject") val subject: String? = null,
+    @Json(name = "auth_type") val authType: String? = null
+)
+
 data class ControlActionResult(
     @Json(name = "request_id") val requestId: String? = null,
     val action: String? = null,

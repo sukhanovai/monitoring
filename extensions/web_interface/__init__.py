@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.4.9
+Server Monitoring System v8.4.10
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.4.9
+Версия: 8.4.10
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -35,6 +35,7 @@ import os
 import hmac
 import hashlib
 import base64
+import secrets
 import subprocess
 import sys
 import time
@@ -1226,8 +1227,175 @@ def get_monitoring_stats():
 
 
 # --- Minimal mobile BFF auth/session layer (in-memory) ---
-_MOBILE_TOKEN_TTL_SEC = 60 * 60 * 24
+def _read_mobile_ttl_sec() -> int:
+    default_ttl_sec = 60 * 60 * 24
+    raw_ttl = str(os.getenv("MOBILE_TOKEN_TTL_SEC", "")).strip()
+    if not raw_ttl:
+        return default_ttl_sec
+
+    try:
+        ttl = int(raw_ttl)
+    except ValueError:
+        app.logger.warning("Invalid MOBILE_TOKEN_TTL_SEC=%r, fallback=%s", raw_ttl, default_ttl_sec)
+        return default_ttl_sec
+
+    if ttl < 0:
+        app.logger.warning("Negative MOBILE_TOKEN_TTL_SEC=%s, fallback=%s", ttl, default_ttl_sec)
+        return default_ttl_sec
+
+    return ttl
+
+
+def _read_non_negative_env_int(name: str, default: int) -> int:
+    raw_value = str(os.getenv(name, "")).strip()
+    if not raw_value:
+        return default
+    try:
+        value = int(raw_value)
+    except ValueError:
+        app.logger.warning("Invalid %s=%r, fallback=%s", name, raw_value, default)
+        return default
+    if value < 0:
+        app.logger.warning("Negative %s=%s, fallback=%s", name, value, default)
+        return default
+    return value
+
+
+_MOBILE_TOKEN_TTL_SEC = _read_mobile_ttl_sec()
 _MOBILE_AUTH_SECRET = os.getenv("MOBILE_AUTH_SECRET", "monitoring-mobile-bff-secret")
+_MOBILE_STATIC_TOKEN = str(os.getenv("MOBILE_STATIC_TOKEN", "")).strip()
+_MOBILE_DEFAULT_TOKEN = str(os.getenv("MOBILE_DEFAULT_TOKEN", "")).strip()
+_MOBILE_SESSION_TOKEN_TTL_SEC = _read_non_negative_env_int("MOBILE_SESSION_TOKEN_TTL_SEC", 0)
+
+
+def _mask_token(token: str) -> str:
+    token = (token or "").strip()
+    if len(token) <= 10:
+        return "********"
+    return f"{token[:6]}***{token[-4:]}"
+
+
+def _extract_bearer_token(auth_header):
+    if not auth_header:
+        return None
+    match = re.match(r"^Bearer\s+(.+)$", auth_header.strip(), flags=re.IGNORECASE)
+    if not match:
+        return None
+    token = match.group(1).strip()
+    return token or None
+
+
+def _mobile_token_hash(token: str) -> str:
+    payload = f"{_MOBILE_AUTH_SECRET}:{token}".encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _get_mobile_tokens_conn():
+    from config.db_settings_app import settings_manager
+    conn = settings_manager.get_connection()
+    conn.row_factory = None
+    return conn
+
+
+def _ensure_mobile_tokens_table():
+    conn = _get_mobile_tokens_conn()
+    try:
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS mobile_api_tokens (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                token_hash TEXT UNIQUE NOT NULL,
+                token_mask TEXT NOT NULL,
+                subject TEXT NOT NULL,
+                device_id TEXT,
+                created_at INTEGER NOT NULL,
+                expires_at INTEGER,
+                revoked INTEGER DEFAULT 0,
+                revoked_at INTEGER,
+                last_used_at INTEGER,
+                issued_via TEXT DEFAULT 'default_token'
+            )
+        ''')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_mobile_api_tokens_subject ON mobile_api_tokens(subject)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_mobile_api_tokens_device_id ON mobile_api_tokens(device_id)')
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _issue_persistent_mobile_token(subject: str, device_id: str | None = None, reissue: bool = False):
+    _ensure_mobile_tokens_table()
+    now_ts = int(time.time())
+    expires_at = None if _MOBILE_SESSION_TOKEN_TTL_SEC == 0 else now_ts + _MOBILE_SESSION_TOKEN_TTL_SEC
+    raw_token = secrets.token_urlsafe(48)
+    token_hash = _mobile_token_hash(raw_token)
+    token_mask = _mask_token(raw_token)
+
+    conn = _get_mobile_tokens_conn()
+    try:
+        cursor = conn.cursor()
+        if reissue and device_id:
+            cursor.execute(
+                '''
+                UPDATE mobile_api_tokens
+                SET revoked = 1, revoked_at = ?
+                WHERE device_id = ? AND revoked = 0
+                ''',
+                (now_ts, device_id),
+            )
+        cursor.execute(
+            '''
+            INSERT INTO mobile_api_tokens (
+                token_hash, token_mask, subject, device_id, created_at, expires_at, revoked, last_used_at, issued_via
+            ) VALUES (?, ?, ?, ?, ?, ?, 0, ?, 'default_token')
+            ''',
+            (token_hash, token_mask, subject, device_id, now_ts, expires_at, now_ts),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    return raw_token, expires_at, token_mask
+
+
+def _validate_persistent_mobile_token(token: str):
+    _ensure_mobile_tokens_table()
+    now_ts = int(time.time())
+    token_hash = _mobile_token_hash(token)
+
+    conn = _get_mobile_tokens_conn()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            '''
+            SELECT id, subject, device_id, expires_at, revoked
+            FROM mobile_api_tokens
+            WHERE token_hash = ?
+            LIMIT 1
+            ''',
+            (token_hash,),
+        )
+        row = cursor.fetchone()
+        if not row:
+            return False, "invalid"
+
+        token_id, subject, device_id, expires_at, revoked = row
+        if int(revoked or 0) == 1:
+            return False, "invalid"
+        if expires_at is not None and int(expires_at) < now_ts:
+            return False, "expired"
+
+        cursor.execute('UPDATE mobile_api_tokens SET last_used_at = ? WHERE id = ?', (now_ts, token_id))
+        conn.commit()
+        return True, {
+            "sub": subject,
+            "device_id": device_id,
+            "exp": int(expires_at) if expires_at is not None else None,
+            "auth_type": "db",
+            "token_id": token_id,
+        }
+    finally:
+        conn.close()
 
 
 def _extract_credentials(payload):
@@ -1239,12 +1407,15 @@ def _extract_credentials(payload):
 
 
 def _issue_mobile_token(subject):
-    expires_at = int(time.time()) + _MOBILE_TOKEN_TTL_SEC
+    issued_at = int(time.time())
+    expires_at = None if _MOBILE_TOKEN_TTL_SEC == 0 else issued_at + _MOBILE_TOKEN_TTL_SEC
     payload = {
         "sub": subject,
-        "exp": expires_at,
-        "iat": int(time.time()),
+        "iat": issued_at,
     }
+    if expires_at is not None:
+        payload["exp"] = expires_at
+
     payload_raw = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
     payload_b64 = base64.urlsafe_b64encode(payload_raw).decode("ascii").rstrip("=")
     signature = hmac.new(
@@ -1257,16 +1428,22 @@ def _issue_mobile_token(subject):
 
 
 def _validate_mobile_token(auth_header):
-    if not auth_header:
-        return False, "missing"
-
-    match = re.match(r"^Bearer\s+(.+)$", auth_header.strip(), flags=re.IGNORECASE)
-    if not match:
-        return False, "missing"
-
-    token = match.group(1).strip()
+    token = _extract_bearer_token(auth_header)
     if not token:
         return False, "missing"
+
+    if _MOBILE_STATIC_TOKEN and hmac.compare_digest(token, _MOBILE_STATIC_TOKEN):
+        return True, {"sub": "static-token", "exp": None, "auth_type": "static"}
+
+    # Bootstrap token разрешен только для обмена на рабочий session token.
+    if _MOBILE_DEFAULT_TOKEN and hmac.compare_digest(token, _MOBILE_DEFAULT_TOKEN):
+        return False, "bootstrap_only"
+
+    is_db_ok, db_token_data = _validate_persistent_mobile_token(token)
+    if is_db_ok:
+        return True, db_token_data
+    if db_token_data == "expired":
+        return False, "expired"
 
     try:
         payload_b64, provided_sig = token.rsplit(".", 1)
@@ -1288,11 +1465,18 @@ def _validate_mobile_token(auth_header):
     except Exception:
         return False, "invalid"
 
-    if not isinstance(token_data, dict) or "exp" not in token_data:
+    if not isinstance(token_data, dict):
         return False, "invalid"
 
-    if int(token_data["exp"]) < int(time.time()):
-        return False, "expired"
+    if "exp" in token_data and token_data["exp"] is not None:
+        try:
+            exp_ts = int(token_data["exp"])
+        except (TypeError, ValueError):
+            return False, "invalid"
+        if exp_ts < int(time.time()):
+            return False, "expired"
+    elif _MOBILE_TOKEN_TTL_SEC != 0:
+        return False, "invalid"
 
     return True, token_data
 
@@ -1316,24 +1500,91 @@ def _map_mobile_action_to_legacy(action: str) -> str | None:
 @app.route('/auth/login', methods=['POST'])
 @app.route('/token', methods=['POST'])
 def mobile_auth_token():
-    """Минимальный auth endpoint для мобильного BFF-потока."""
+    """Auth endpoint: bootstrap-token -> session token (DB), fallback на legacy username/password."""
     payload = request.get_json(silent=True) or request.form.to_dict()
-    username, password = _extract_credentials(payload)
+    bearer_token = _extract_bearer_token(request.headers.get("Authorization"))
 
+    if _MOBILE_DEFAULT_TOKEN and bearer_token and hmac.compare_digest(bearer_token, _MOBILE_DEFAULT_TOKEN):
+        device_id = str(payload.get("device_id") or request.headers.get("X-Device-ID") or "").strip() or None
+        subject_raw = str(payload.get("subject") or payload.get("client_name") or device_id or "android-client").strip()
+        subject = subject_raw[:128] if subject_raw else "android-client"
+        reissue = bool(payload.get("reissue", True))
+
+        token, expires_at, token_mask = _issue_persistent_mobile_token(
+            subject=subject,
+            device_id=device_id,
+            reissue=reissue,
+        )
+
+        return jsonify({
+            "access_token": token,
+            "token_type": "Bearer",
+            "expires_in": _MOBILE_SESSION_TOKEN_TTL_SEC if _MOBILE_SESSION_TOKEN_TTL_SEC > 0 else None,
+            "scope": "monitoring:read monitoring:control",
+            "issued_at": datetime.now().isoformat(),
+            "expires_at": datetime.fromtimestamp(expires_at).isoformat() if expires_at is not None else None,
+            "subject": subject,
+            "token_mask": token_mask,
+            "auth_type": "bootstrap_exchange",
+        })
+
+    username, password = _extract_credentials(payload)
     if not username or not password:
         return jsonify({
             "error": "invalid_request",
-            "message": "Требуются username/login/email и password"
+            "message": "Требуется Authorization: Bearer <MOBILE_DEFAULT_TOKEN> или username/login/email + password"
         }), 400
 
     token, expires_at = _issue_mobile_token(username)
     return jsonify({
         "access_token": token,
         "token_type": "Bearer",
-        "expires_in": _MOBILE_TOKEN_TTL_SEC,
+        "expires_in": _MOBILE_TOKEN_TTL_SEC if _MOBILE_TOKEN_TTL_SEC > 0 else None,
         "scope": "monitoring:read monitoring:control",
         "issued_at": datetime.now().isoformat(),
-        "expires_at": datetime.fromtimestamp(expires_at).isoformat(),
+        "expires_at": datetime.fromtimestamp(expires_at).isoformat() if expires_at is not None else None,
+        "auth_type": "legacy_credentials",
+    })
+
+
+@app.route('/v1/auth/token/reissue', methods=['POST'])
+@app.route('/api/v1/auth/token/reissue', methods=['POST'])
+def mobile_auth_token_reissue():
+    """Явный перевыпуск токена по bootstrap token (например, после переустановки приложения)."""
+    if not _MOBILE_DEFAULT_TOKEN:
+        return jsonify({
+            "error": "bootstrap_token_not_configured",
+            "message": "MOBILE_DEFAULT_TOKEN is not configured on server"
+        }), 503
+
+    bearer_token = _extract_bearer_token(request.headers.get("Authorization"))
+    if not bearer_token or not hmac.compare_digest(bearer_token, _MOBILE_DEFAULT_TOKEN):
+        return jsonify({
+            "error": "unauthorized",
+            "message": "Bearer MOBILE_DEFAULT_TOKEN required"
+        }), 401
+
+    payload = request.get_json(silent=True) or request.form.to_dict()
+    device_id = str(payload.get("device_id") or request.headers.get("X-Device-ID") or "").strip() or None
+    subject_raw = str(payload.get("subject") or payload.get("client_name") or device_id or "android-client").strip()
+    subject = subject_raw[:128] if subject_raw else "android-client"
+
+    token, expires_at, token_mask = _issue_persistent_mobile_token(
+        subject=subject,
+        device_id=device_id,
+        reissue=True,
+    )
+
+    return jsonify({
+        "access_token": token,
+        "token_type": "Bearer",
+        "expires_in": _MOBILE_SESSION_TOKEN_TTL_SEC if _MOBILE_SESSION_TOKEN_TTL_SEC > 0 else None,
+        "scope": "monitoring:read monitoring:control",
+        "issued_at": datetime.now().isoformat(),
+        "expires_at": datetime.fromtimestamp(expires_at).isoformat() if expires_at is not None else None,
+        "subject": subject,
+        "token_mask": token_mask,
+        "auth_type": "reissued",
     })
 
 

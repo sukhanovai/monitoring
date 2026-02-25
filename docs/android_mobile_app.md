@@ -295,7 +295,19 @@ git pull origin develop
 ./scripts/auth_token_probe.sh --insecure --host api.202020.ru --prefix /api https://localhost <login> <password>
 ```
 
-6. Скопируй полученный `access_token` и вставь в Android-приложение в поле Bearer Token.
+6. Если в проде настроен `MOBILE_DEFAULT_TOKEN`, вставь в Android-приложение именно его и нажми «Сохранить токен».
+   Клиент автоматически вызовет `POST /v1/auth/token`, получит рабочий `access_token` и сохранит его локально.
+   Ручной копипаст `access_token` из консоли в этом режиме не нужен.
+
+Для переустановки приложения используй тот же `MOBILE_DEFAULT_TOKEN` повторно
+или выполни явный перевыпуск:
+
+```bash
+curl -k -X POST "https://api.202020.ru:8443/v1/auth/token/reissue" \
+  -H "Authorization: Bearer <MOBILE_DEFAULT_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"device_id":"android-device-1","subject":"android-client","reissue":true}'
+```
 
 Мини-проверка, что токен живой (подставь свой токен):
 
