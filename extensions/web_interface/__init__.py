@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.4.3
+Server Monitoring System v8.4.9
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.4.3
+Версия: 8.4.9
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -20,6 +20,7 @@ from extensions.supplier_stock_files import (
     build_supplier_stock_source_stats,
     get_supplier_stock_config,
     get_supplier_stock_reports,
+    parse_supplier_stock_schedule_times,
     run_supplier_stock_fetch,
     save_supplier_stock_config,
     start_supplier_stock_scheduler,
@@ -37,6 +38,7 @@ import base64
 import subprocess
 import sys
 import time
+import uuid
 
 app = Flask(__name__)
 
@@ -641,8 +643,10 @@ HTML_TEMPLATE = """
                         <span class="stat-value">{{ supplier_stock.schedule_time }}</span>
                     </div>
                     <div class="controls" style="margin-top: 15px; gap: 10px; flex-wrap: wrap;">
-                        <input type="time" id="supplierScheduleTime" value="{{ supplier_stock.schedule_time_value }}"
-                               style="padding: 8px; border-radius: 6px; border: 1px solid #555; background: rgba(60,60,70,0.8); color: white;">
+                        <input type="text" id="supplierScheduleTime" value="{{ supplier_stock.schedule_time_value }}"
+                               placeholder="06:00, 12:30"
+                               title="HH:MM, можно несколько через пробел/запятую/;"
+                               style="padding: 8px; border-radius: 6px; border: 1px solid #555; background: rgba(60,60,70,0.8); color: white; min-width: 180px;">
                         <label style="display: flex; align-items: center; gap: 6px;">
                             Период (дней):
                             <input type="number" id="supplierReportPeriod" min="1" value="{{ supplier_stock.report_period_days }}"
@@ -1293,6 +1297,17 @@ def _validate_mobile_token(auth_header):
     return True, token_data
 
 
+def _map_mobile_action_to_legacy(action: str) -> str | None:
+    mapping = {
+        "pause_monitoring": "toggle_monitoring",  # временный fallback
+        "resume_monitoring": "toggle_monitoring",  # временный fallback
+        "send_morning_report": "morning_report",
+        "force_quiet": "toggle_silent",           # временный fallback
+        "force_loud": "toggle_silent",            # временный fallback
+    }
+    return mapping.get(action)
+
+
 @app.route('/v1/auth/token', methods=['POST'])
 @app.route('/v1/auth/login', methods=['POST'])
 @app.route('/api/v1/auth/token', methods=['POST'])
@@ -1351,31 +1366,369 @@ def _build_availability_payload(scope='all'):
 @app.route('/api/v1/monitoring/availability', methods=['GET'])
 def mobile_availability():
     """Mobile BFF endpoint совместимый с auth_token_probe.sh"""
+    started_at = time.time()
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+
     ok, token_data = _validate_mobile_token(request.headers.get("Authorization"))
     if not ok:
-        return jsonify({
+        app.logger.warning(
+            "GET /v1/monitoring/availability unauthorized request_id=%s reason=%s duration_ms=%s",
+            request_id,
+            token_data,
+            int((time.time() - started_at) * 1000),
+        )
+        response = jsonify({
             "error": "unauthorized",
             "message": "Bearer token required",
-            "reason": token_data
-        }), 401
+            "reason": token_data,
+            "request_id": request_id,
+        })
+        response.headers['X-Request-ID'] = request_id
+        return response, 401
 
     scope = request.args.get('scope', 'all')
-    return jsonify(_build_availability_payload(scope=scope))
+    payload = _build_availability_payload(scope=scope)
+    payload['request_id'] = request_id
+    duration_ms = int((time.time() - started_at) * 1000)
+    app.logger.info(
+        "GET /v1/monitoring/availability request_id=%s status=200 duration_ms=%s total=%s",
+        request_id,
+        duration_ms,
+        payload.get('total', 0),
+    )
+    response = jsonify(payload)
+    response.headers['X-Request-ID'] = request_id
+    return response
 
 
 @app.route('/v1/monitoring/status', methods=['GET'])
 @app.route('/api/v1/monitoring/status', methods=['GET'])
 def mobile_status():
     """Синоним для быстрой проверки статуса с Bearer токеном."""
+    started_at = time.time()
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+
     ok, token_data = _validate_mobile_token(request.headers.get("Authorization"))
     if not ok:
-        return jsonify({
+        app.logger.warning(
+            "GET /v1/monitoring/status unauthorized request_id=%s reason=%s duration_ms=%s",
+            request_id,
+            token_data,
+            int((time.time() - started_at) * 1000),
+        )
+        response = jsonify({
             "error": "unauthorized",
             "message": "Bearer token required",
-            "reason": token_data
+            "reason": token_data,
+            "request_id": request_id,
+        })
+        response.headers['X-Request-ID'] = request_id
+        return response, 401
+
+    payload = _build_availability_payload(scope='all')
+    payload['request_id'] = request_id
+    duration_ms = int((time.time() - started_at) * 1000)
+    app.logger.info(
+        "GET /v1/monitoring/status request_id=%s status=200 duration_ms=%s total=%s",
+        request_id,
+        duration_ms,
+        payload.get('total', 0),
+    )
+    response = jsonify(payload)
+    response.headers['X-Request-ID'] = request_id
+    return response
+
+
+@app.route('/v1/control/actions', methods=['POST'])
+def v1_control_actions():
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+
+    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    if not is_ok:
+        return jsonify({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid or expired token",
+                "request_id": request_id,
+            }
         }), 401
 
-    return jsonify(_build_availability_payload(scope='all'))
+    payload = request.get_json(silent=True) or {}
+    action = str(payload.get('action') or '').strip()
+    if not action:
+        return jsonify({
+            "error": {
+                "code": "INVALID_ACTION",
+                "message": "Field 'action' is required",
+                "request_id": request_id,
+            }
+        }), 400
+
+    legacy_action = _map_mobile_action_to_legacy(action)
+    if not legacy_action:
+        return jsonify({
+            "error": {
+                "code": "INVALID_ACTION",
+                "message": f"Unsupported action: {action}",
+                "request_id": request_id,
+            }
+        }), 400
+
+    try:
+        with app.test_request_context(f"/api/run_action?action={legacy_action}"):
+            legacy_response = api_run_action()
+
+        if isinstance(legacy_response, tuple):
+            response_obj, status_code = legacy_response
+        else:
+            response_obj, status_code = legacy_response, 200
+
+        data = response_obj.get_json(silent=True) if hasattr(response_obj, 'get_json') else {}
+        message = (data or {}).get('message') or 'Action processed'
+
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "result": "accepted" if status_code < 400 else "rejected",
+            "message": message,
+        }), (200 if status_code < 400 else status_code)
+
+    except Exception as e:
+        return jsonify({
+            "error": {
+                "code": "CONTROL_ACTION_FAILED",
+                "message": str(e),
+                "request_id": request_id,
+            }
+        }), 500
+
+
+def _mask_secret(value):
+    """Возвращает маскированное значение секрета без раскрытия исходной строки."""
+    value_str = str(value or '').strip()
+    if not value_str:
+        return ''
+    if ':' in value_str:
+        prefix = value_str.split(':', 1)[0]
+        return f"{prefix}:***"
+    return '********'
+
+
+def _hour_to_hhmm(value, fallback):
+    try:
+        hour_value = int(value)
+        if 0 <= hour_value <= 23:
+            return f"{hour_value:02d}:00"
+    except (TypeError, ValueError):
+        pass
+    return fallback
+
+
+@app.route('/v1/settings/monitoring', methods=['GET'])
+def v1_get_settings_monitoring():
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+
+    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    if not is_ok:
+        return jsonify({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid or expired token",
+                "request_id": request_id,
+            }
+        }), 401
+
+    from config.db_settings_app import settings_manager
+
+    response = {
+        "request_id": request_id,
+        "settings": {
+            "check_interval_sec": settings_manager.get_setting('CHECK_INTERVAL', 60),
+            "timeout_sec": settings_manager.get_setting('API_TIMEOUT_SEC', 15),
+            "max_downtime_sec": settings_manager.get_setting('MAX_FAIL_TIME', 900),
+        }
+    }
+    app.logger.info("GET /v1/settings/monitoring request_id=%s", request_id)
+    return jsonify(response), 200
+
+
+@app.route('/v1/settings/bot', methods=['GET'])
+def v1_get_settings_bot():
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+
+    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    if not is_ok:
+        return jsonify({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid or expired token",
+                "request_id": request_id,
+            }
+        }), 401
+
+    from config.db_settings_app import settings_manager
+
+    chat_ids = settings_manager.get_setting('CHAT_IDS', [])
+    if isinstance(chat_ids, list) and chat_ids:
+        telegram_chat_id = str(chat_ids[0])
+    elif chat_ids:
+        telegram_chat_id = str(chat_ids)
+    else:
+        telegram_chat_id = ''
+
+    token = settings_manager.get_setting('TELEGRAM_TOKEN', '')
+
+    response = {
+        "request_id": request_id,
+        "settings": {
+            "telegram_chat_id": telegram_chat_id,
+            "masked_token": _mask_secret(token),
+        }
+    }
+    app.logger.info("GET /v1/settings/bot request_id=%s", request_id)
+    return jsonify(response), 200
+
+
+@app.route('/v1/settings/time', methods=['GET'])
+def v1_get_settings_time():
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+
+    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    if not is_ok:
+        return jsonify({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid or expired token",
+                "request_id": request_id,
+            }
+        }), 401
+
+    from config.db_settings_app import settings_manager
+
+    quiet_start = _hour_to_hhmm(settings_manager.get_setting('SILENT_START', 23), '23:00')
+    quiet_end = _hour_to_hhmm(settings_manager.get_setting('SILENT_END', 8), '08:00')
+    metrics_collection_time = str(settings_manager.get_setting('DATA_COLLECTION_TIME', '07:30'))
+
+    response = {
+        "request_id": request_id,
+        "settings": {
+            "quiet_start": quiet_start,
+            "quiet_end": quiet_end,
+            "metrics_collection_time": metrics_collection_time,
+        }
+    }
+    app.logger.info("GET /v1/settings/time request_id=%s", request_id)
+    return jsonify(response), 200
+
+
+@app.route('/v1/settings/auth', methods=['GET'])
+def v1_get_settings_auth():
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+
+    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    if not is_ok:
+        return jsonify({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid or expired token",
+                "request_id": request_id,
+            }
+        }), 401
+
+    from config.db_settings_app import settings_manager
+
+    ssh_password = settings_manager.get_setting('SSH_PASSWORD', '')
+    windows_password = settings_manager.get_setting('WINDOWS_PASSWORD', '')
+
+    response = {
+        "request_id": request_id,
+        "settings": {
+            "auth_mode": str(settings_manager.get_setting('AUTH_MODE', 'mixed')),
+            "ssh_username": str(settings_manager.get_setting('SSH_USERNAME', 'root')),
+            "ssh_port": int(settings_manager.get_setting('SSH_PORT', 22)),
+            "windows_username": str(settings_manager.get_setting('WINDOWS_USERNAME', 'Administrator')),
+            "masked_ssh_password": _mask_secret(ssh_password),
+            "masked_windows_password": _mask_secret(windows_password),
+        }
+    }
+    app.logger.info("GET /v1/settings/auth request_id=%s", request_id)
+    return jsonify(response), 200
+
+
+@app.route('/v1/settings/monitoring', methods=['PATCH'])
+def v1_settings_monitoring():
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+
+    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    if not is_ok:
+        return jsonify({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid or expired token",
+                "request_id": request_id,
+            }
+        }), 401
+
+    payload = request.get_json(silent=True) or {}
+
+    check_interval = payload.get('check_interval_sec')
+    timeout_sec = payload.get('timeout_sec')
+    max_downtime = payload.get('max_downtime_sec')
+
+    if check_interval is None and timeout_sec is None and max_downtime is None:
+        return jsonify({
+            "error": {
+                "code": "VALIDATION_FAILED",
+                "message": "At least one field is required",
+                "request_id": request_id,
+            }
+        }), 400
+
+    try:
+        from config.db_settings_app import settings_manager
+
+        if check_interval is not None:
+            check_interval = int(check_interval)
+            if check_interval < 5:
+                return jsonify({"error": {"code": "INVALID_THRESHOLD", "message": "check_interval_sec must be >= 5", "request_id": request_id}}), 400
+            settings_manager.set_setting('CHECK_INTERVAL', check_interval, 'monitoring', 'Интервал проверки серверов (секунды)', 'int')
+        else:
+            check_interval = settings_manager.get_setting('CHECK_INTERVAL', 60)
+
+        if max_downtime is not None:
+            max_downtime = int(max_downtime)
+            if max_downtime < 30:
+                return jsonify({"error": {"code": "INVALID_THRESHOLD", "message": "max_downtime_sec must be >= 30", "request_id": request_id}}), 400
+            settings_manager.set_setting('MAX_FAIL_TIME', max_downtime, 'monitoring', 'Максимальное время простоя до алерта (секунды)', 'int')
+        else:
+            max_downtime = settings_manager.get_setting('MAX_FAIL_TIME', 900)
+
+        if timeout_sec is not None:
+            timeout_sec = int(timeout_sec)
+            if timeout_sec < 1:
+                return jsonify({"error": {"code": "INVALID_THRESHOLD", "message": "timeout_sec must be >= 1", "request_id": request_id}}), 400
+            settings_manager.set_setting('API_TIMEOUT_SEC', timeout_sec, 'monitoring', 'Таймаут API (секунды)', 'int')
+        else:
+            timeout_sec = settings_manager.get_setting('API_TIMEOUT_SEC', 15)
+
+        return jsonify({
+            "request_id": request_id,
+            "settings": {
+                "check_interval_sec": check_interval,
+                "timeout_sec": timeout_sec,
+                "max_downtime_sec": max_downtime,
+                "updated_at": datetime.now().isoformat(),
+            }
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            "error": {
+                "code": "CONFIG_STORE_UNAVAILABLE",
+                "message": str(e),
+                "request_id": request_id,
+            }
+        }), 500
 
 @app.route('/')
 def index():
@@ -1518,10 +1871,16 @@ def api_supplier_stock_schedule():
     enabled_value = bool(data.get("enabled", False))
     report_period_days = data.get("report_period_days")
 
-    if time_value and not re.match(r'^\\d{1,2}:\\d{2}$', time_value):
-        return jsonify({"success": False, "message": "❌ Неверный формат времени. Используйте HH:MM"})
-
-    schedule["time"] = time_value or schedule.get("time", "")
+    if time_value:
+        schedule_times = parse_supplier_stock_schedule_times(time_value)
+        if not schedule_times:
+            return jsonify({
+                "success": False,
+                "message": "❌ Неверный формат времени. Используйте HH:MM, разделители: пробел, запятая или ;",
+            })
+        schedule["time"] = ', '.join(schedule_times)
+    else:
+        schedule["time"] = schedule.get("time", "")
     schedule["enabled"] = enabled_value
     config["download"]["schedule"] = schedule
     if report_period_days is not None:

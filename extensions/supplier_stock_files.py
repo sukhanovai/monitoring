@@ -1,11 +1,11 @@
 """
 /extensions/supplier_stock_files.py
-Server Monitoring System v8.4.3
+Server Monitoring System v8.4.9
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Supplier stock files downloader
 Система мониторинга серверов
-Версия: 8.4.3
+Версия: 8.4.9
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Получение файлов остатков поставщиков
@@ -117,7 +117,29 @@ _LEGACY_IEK_OUTPUT_TEMPLATES = {
 
 _scheduler_lock = threading.Lock()
 _scheduler_started = False
-_last_run_marker: str | None = None
+_last_run_markers: set[str] = set()
+
+
+def parse_supplier_stock_schedule_times(schedule_time: Any) -> list[str]:
+    """Разобрать строку расписания на список временных точек HH:MM."""
+    raw_value = str(schedule_time or "").strip()
+    if not raw_value:
+        return []
+
+    points: list[str] = []
+    for token in re.split(r"[;,\s]+", raw_value):
+        value = token.strip()
+        if not value:
+            continue
+        if not re.fullmatch(r"\d{1,2}:\d{2}", value):
+            return []
+        hours, minutes = [int(part) for part in value.split(":", 1)]
+        if not (0 <= hours <= 23 and 0 <= minutes <= 59):
+            return []
+        normalized = f"{hours:02d}:{minutes:02d}"
+        if normalized not in points:
+            points.append(normalized)
+    return points
 _smbclient_missing_logged = False
 
 
@@ -915,25 +937,25 @@ def _should_run_schedule(schedule: Dict[str, Any], now: datetime) -> bool:
     if not schedule.get("enabled"):
         return False
 
-    schedule_time = str(schedule.get("time", ""))
-    if not schedule_time:
+    schedule_times = parse_supplier_stock_schedule_times(schedule.get("time", ""))
+    if not schedule_times:
         return False
 
-    try:
-        hours, minutes = [int(part) for part in schedule_time.split(":", 1)]
-    except ValueError:
+    current_time = now.strftime("%H:%M")
+    if current_time not in schedule_times:
         return False
 
-    if now.hour != hours or now.minute != minutes:
-        return False
-
-    global _last_run_marker
+    global _last_run_markers
     current_date = now.strftime("%Y-%m-%d")
-    marker = f"{current_date}|{schedule_time}"
-    if _last_run_marker == marker:
+    marker = f"{current_date}|{current_time}"
+    if marker in _last_run_markers:
         return False
 
-    _last_run_marker = marker
+    _last_run_markers = {
+        existing for existing in _last_run_markers
+        if existing.startswith(f"{current_date}|")
+    }
+    _last_run_markers.add(marker)
     return True
 
 
