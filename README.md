@@ -120,7 +120,7 @@ python -m modules.improved_mail_monitor
 ```bash
 python main.py --check availability
 python main.py --check resources
-python main.py --check targeted_checks --server 192.168.4.100 --mode resources
+python main.py --check targeted_checks --server 192.168.4.110 --mode resources
 ```
 
 Дополнительно:
@@ -196,21 +196,37 @@ http://<YOUR_IP>:5000
 sudo nano /etc/systemd/system/server-monitor.service
 ```
 
-Пример:
+Пример (под текущий production-профиль с `proxychains4`):
 ```ini
 [Unit]
-Description=Server Monitoring System
-After=network.target
+Description=Server Monitoring Bot
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple
 User=root
+Group=root
 WorkingDirectory=/opt/monitoring
-ExecStart=/opt/monitoring/venv/bin/python /opt/monitoring/main.py
-Restart=always
-RestartSec=10
+Environment=PYTHONPATH=/opt/monitoring
+Environment=PYTHONUNBUFFERED=1
 Environment="MOBILE_DEFAULT_TOKEN=CHANGE_ME_STRONG_BOOTSTRAP_TOKEN"
 Environment="MOBILE_SESSION_TOKEN_TTL_SEC=0"
+
+ExecStartPre=/bin/mkdir -p /run/samba
+ExecStartPre=/bin/chmod 0755 /run/samba
+
+ExecStart=/usr/bin/proxychains4 -q /opt/monitoring/venv/bin/python /opt/monitoring/main.py
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/opt/monitoring /opt/monitoring/data /root/.ssh /run/samba
 
 [Install]
 WantedBy=multi-user.target
@@ -221,6 +237,11 @@ WantedBy=multi-user.target
 - `MOBILE_SESSION_TOKEN_TTL_SEC` — TTL рабочих токенов, которые сервер выдает приложению после bootstrap:
   - `0` = бессрочно,
   - `>0` = время жизни в секундах.
+
+Сгенерировать `MOBILE_DEFAULT_TOKEN` можно командой:
+```bash
+python scripts/generate_mobile_default_token.py
+```
 
 Рекомендуемый поток:
 1. В приложении в поле Bearer токена вставляется `MOBILE_DEFAULT_TOKEN`.
@@ -248,21 +269,32 @@ sudo systemctl start server-monitor
 Если используется почтовый модуль:
 
 ```bash
-sudo nano /etc/systemd/system/server-monitor-mail.service
+sudo nano /etc/systemd/system/mail-monitor.service
 ```
 
 ```ini
 [Unit]
-Description=Server Monitoring Mail Processor
-After=network.target
+Description=Proxmox Backup Mail Monitor
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple
 User=root
 WorkingDirectory=/opt/monitoring
-ExecStart=/opt/monitoring/venv/bin/python -m modules.improved_mail_monitor
+Environment=PYTHONPATH=/opt/monitoring
+
+ExecStartPre=/bin/mkdir -p /run/samba
+ExecStartPre=/bin/chmod 0755 /run/samba
+
+ExecStart=/usr/bin/proxychains4 -q /opt/monitoring/venv/bin/python /opt/monitoring/modules/mail_monitor.py
 Restart=always
 RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+ProtectSystem=strict
+ReadWritePaths=/opt/monitoring /opt/monitoring/data /root/.ssh /run/samba
 
 [Install]
 WantedBy=multi-user.target
@@ -271,14 +303,14 @@ WantedBy=multi-user.target
 Активация:
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable server-monitor-mail
-sudo systemctl start server-monitor-mail
+sudo systemctl enable mail-monitor
+sudo systemctl start mail-monitor
 ```
 
 ### 3. Проверка статуса
 ```bash
-systemctl status server-monitor
-systemctl status server-monitor-mail
+systemctl status server-monitor.service
+systemctl status mail-monitor.service
 ```
 
 ## ✅ Диагностика
