@@ -2,6 +2,11 @@ package ru.monitoring.mobile.api
 
 import com.squareup.moshi.Json
 
+/**
+ * Модели сделаны толерантными к двум форматам API:
+ * 1) старый: envelope { data, error }
+ * 2) прямой ответ: request_id + payload поля в корне.
+ */
 data class ApiEnvelope<T>(
     val data: T? = null,
     val error: ApiError? = null
@@ -20,8 +25,18 @@ data class ServerAvailability(
     @Json(name = "last_checked_at") val lastCheckedAt: String?
 )
 
+data class AvailabilityItem(
+    @Json(name = "server_id") val serverId: String? = null,
+    val status: String? = null,
+    @Json(name = "checked_at") val checkedAt: String? = null,
+    @Json(name = "error_message") val errorMessage: String? = null
+)
+
 data class AvailabilityResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    @Json(name = "generated_at") val generatedAt: String? = null,
     val servers: List<ServerAvailability> = emptyList(),
+    val items: List<AvailabilityItem> = emptyList(),
     val summary: Summary = Summary()
 )
 
@@ -36,9 +51,12 @@ data class ControlActionRequest(
 )
 
 data class ControlActionResult(
-    val accepted: Boolean,
-    val message: String,
-    @Json(name = "queued_job_id") val queuedJobId: String?
+    @Json(name = "request_id") val requestId: String? = null,
+    val action: String? = null,
+    val result: String? = null,
+    val accepted: Boolean? = null,
+    val message: String? = null,
+    @Json(name = "queued_job_id") val queuedJobId: String? = null
 )
 
 data class SettingsMonitoringRequest(
@@ -47,8 +65,81 @@ data class SettingsMonitoringRequest(
     @Json(name = "max_downtime_sec") val maxDowntimeSec: Int? = null
 )
 
-data class SettingsMonitoringResponse(
+data class SettingsMonitoringData(
     @Json(name = "check_interval_sec") val checkIntervalSec: Int,
     @Json(name = "timeout_sec") val timeoutSec: Int,
     @Json(name = "max_downtime_sec") val maxDowntimeSec: Int
+)
+
+data class SettingsMonitoringResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val settings: SettingsMonitoringData? = null,
+    @Json(name = "check_interval_sec") val checkIntervalSec: Int? = null,
+    @Json(name = "timeout_sec") val timeoutSec: Int? = null,
+    @Json(name = "max_downtime_sec") val maxDowntimeSec: Int? = null
+)
+
+data class SettingsBotRequest(
+    @Json(name = "telegram_bot_token") val telegramBotToken: String? = null,
+    @Json(name = "telegram_chat_id") val telegramChatId: String? = null
+)
+
+data class SettingsBotData(
+    @Json(name = "telegram_chat_id") val telegramChatId: String? = null,
+    @Json(name = "masked_token") val maskedToken: String? = null,
+    @Json(name = "telegram_bot_token") val telegramBotToken: String? = null
+)
+
+data class SettingsBotResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val settings: SettingsBotData? = null
+)
+
+data class SettingsTimeRequest(
+    @Json(name = "quiet_start") val quietStart: String? = null,
+    @Json(name = "quiet_end") val quietEnd: String? = null,
+    @Json(name = "metrics_collection_time") val metricsCollectionTime: String? = null
+)
+
+data class SettingsTimeData(
+    @Json(name = "quiet_start") val quietStart: String? = null,
+    @Json(name = "quiet_end") val quietEnd: String? = null,
+    @Json(name = "metrics_collection_time") val metricsCollectionTime: String? = null
+)
+
+data class SettingsTimeResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val settings: SettingsTimeData? = null,
+    @Json(name = "quiet_start") val quietStart: String? = null,
+    @Json(name = "quiet_end") val quietEnd: String? = null,
+    @Json(name = "metrics_collection_time") val metricsCollectionTime: String? = null
+)
+
+data class SettingsAuthRequest(
+    @Json(name = "auth_mode") val authMode: String? = null,
+    @Json(name = "ssh_username") val sshUsername: String? = null,
+    @Json(name = "ssh_port") val sshPort: Int? = null,
+    @Json(name = "windows_username") val windowsUsername: String? = null,
+    @Json(name = "ssh_password") val sshPassword: String? = null,
+    @Json(name = "windows_password") val windowsPassword: String? = null
+)
+
+data class SettingsAuthData(
+    @Json(name = "auth_mode") val authMode: String? = null,
+    @Json(name = "ssh_username") val sshUsername: String? = null,
+    @Json(name = "ssh_port") val sshPort: Int? = null,
+    @Json(name = "windows_username") val windowsUsername: String? = null,
+    @Json(name = "masked_ssh_password") val maskedSshPassword: String? = null,
+    @Json(name = "masked_windows_password") val maskedWindowsPassword: String? = null
+)
+
+data class SettingsAuthResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val settings: SettingsAuthData? = null,
+    @Json(name = "auth_mode") val authMode: String? = null,
+    @Json(name = "ssh_username") val sshUsername: String? = null,
+    @Json(name = "ssh_port") val sshPort: Int? = null,
+    @Json(name = "windows_username") val windowsUsername: String? = null,
+    @Json(name = "ssh_password") val sshPassword: String? = null,
+    @Json(name = "windows_password") val windowsPassword: String? = null
 )

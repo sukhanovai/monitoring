@@ -31,7 +31,10 @@ import threading
 from datetime import datetime
 import json
 import re
-import secrets
+import os
+import hmac
+import hashlib
+import base64
 import subprocess
 import sys
 import time
@@ -1224,7 +1227,7 @@ def get_monitoring_stats():
 
 # --- Minimal mobile BFF auth/session layer (in-memory) ---
 _MOBILE_TOKEN_TTL_SEC = 60 * 60 * 24
-_mobile_tokens = {}
+_MOBILE_AUTH_SECRET = os.getenv("MOBILE_AUTH_SECRET", "monitoring-mobile-bff-secret")
 
 
 def _extract_credentials(payload):
@@ -1236,23 +1239,59 @@ def _extract_credentials(payload):
 
 
 def _issue_mobile_token(subject):
-    token = secrets.token_urlsafe(32)
     expires_at = int(time.time()) + _MOBILE_TOKEN_TTL_SEC
-    _mobile_tokens[token] = {"sub": subject, "exp": expires_at}
+    payload = {
+        "sub": subject,
+        "exp": expires_at,
+        "iat": int(time.time()),
+    }
+    payload_raw = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    payload_b64 = base64.urlsafe_b64encode(payload_raw).decode("ascii").rstrip("=")
+    signature = hmac.new(
+        _MOBILE_AUTH_SECRET.encode("utf-8"),
+        payload_b64.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    token = f"{payload_b64}.{signature}"
     return token, expires_at
 
 
 def _validate_mobile_token(auth_header):
-    if not auth_header or not auth_header.startswith("Bearer "):
+    if not auth_header:
         return False, "missing"
 
-    token = auth_header.split(" ", 1)[1].strip()
-    token_data = _mobile_tokens.get(token)
-    if not token_data:
+    match = re.match(r"^Bearer\s+(.+)$", auth_header.strip(), flags=re.IGNORECASE)
+    if not match:
+        return False, "missing"
+
+    token = match.group(1).strip()
+    if not token:
+        return False, "missing"
+
+    try:
+        payload_b64, provided_sig = token.rsplit(".", 1)
+    except ValueError:
         return False, "invalid"
 
-    if token_data["exp"] < int(time.time()):
-        _mobile_tokens.pop(token, None)
+    expected_sig = hmac.new(
+        _MOBILE_AUTH_SECRET.encode("utf-8"),
+        payload_b64.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    if not hmac.compare_digest(expected_sig, provided_sig):
+        return False, "invalid"
+
+    padded_payload = payload_b64 + "=" * (-len(payload_b64) % 4)
+    try:
+        payload_raw = base64.urlsafe_b64decode(padded_payload.encode("ascii"))
+        token_data = json.loads(payload_raw.decode("utf-8"))
+    except Exception:
+        return False, "invalid"
+
+    if not isinstance(token_data, dict) or "exp" not in token_data:
+        return False, "invalid"
+
+    if int(token_data["exp"]) < int(time.time()):
         return False, "expired"
 
     return True, token_data
