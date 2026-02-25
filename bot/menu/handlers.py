@@ -1,11 +1,11 @@
 """
 /bot/menu/handlers.py
-Server Monitoring System v8.4.14
+Server Monitoring System v8.4.15
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Bot menu handlers
 Система мониторинга серверов
-Версия: 8.4.14
+Версия: 8.4.15
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики меню бота
@@ -158,6 +158,7 @@ def start_command(update, context):
         return
 
     keyboard = [
+        [InlineKeyboardButton("🌅 Утренний отчет", callback_data='daily_report')],
         [InlineKeyboardButton("🔄 Проверить все серверы", callback_data='manual_check')],
         [InlineKeyboardButton("🔍 Проверить один сервер", callback_data='show_availability_menu')],
         [InlineKeyboardButton("🐛 Отладка", callback_data='debug_menu')],

@@ -1,11 +1,11 @@
 """
 /bot/menu/builder.py
-Server Monitoring System v8.4.14
+Server Monitoring System v8.4.15
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 The place where keyboards are made.
 Система мониторинга серверов
-Версия: 8.4.14
+Версия: 8.4.15
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Место, где строятся клавиатуры
@@ -16,6 +16,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 def main_menu(extension_manager):
     keyboard = [
+        [InlineKeyboardButton("🌅 Утренний отчет", callback_data='daily_report')],
         [InlineKeyboardButton("🔄 Доступность всех серверов", callback_data='manual_check')],
         [InlineKeyboardButton("🔍 Доступность сервера", callback_data='show_availability_menu')],
     ]

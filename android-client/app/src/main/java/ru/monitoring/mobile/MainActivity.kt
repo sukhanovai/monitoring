@@ -175,6 +175,9 @@ private fun MonitoringApp(
 
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = { onAction("send_morning_report") }, modifier = Modifier.fillMaxWidth()) {
+                        Text("🌅 Отчёт")
+                    }
                     Button(onClick = onRefresh, modifier = Modifier.fillMaxWidth()) {
                         Text("🖥 Доступность всех серверов")
                     }
@@ -228,9 +231,6 @@ private fun MonitoringApp(
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(onClick = { onAction("pause_monitoring") }) { Text("Пауза") }
                         Button(onClick = { onAction("resume_monitoring") }) { Text("Старт") }
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { onAction("send_morning_report") }) { Text("Отчёт") }
                     }
                 }
 
