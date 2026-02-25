@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.4.12
+Server Monitoring System v8.4.13
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.4.12
+Версия: 8.4.13
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1483,13 +1483,50 @@ def _validate_mobile_token(auth_header):
 
 def _map_mobile_action_to_legacy(action: str) -> str | None:
     mapping = {
-        "pause_monitoring": "toggle_monitoring",  # временный fallback
-        "resume_monitoring": "toggle_monitoring",  # временный fallback
+        "pause_monitoring": "toggle_monitoring",  # legacy fallback
+        "resume_monitoring": "toggle_monitoring",  # legacy fallback
         "send_morning_report": "morning_report",
-        "force_quiet": "toggle_silent",           # временный fallback
-        "force_loud": "toggle_silent",            # временный fallback
+        "force_quiet": "toggle_silent",           # legacy fallback
+        "force_loud": "toggle_silent",            # legacy fallback
     }
     return mapping.get(action)
+
+
+def _execute_mobile_control_action(action: str):
+    """
+    Executes explicit control actions for Android API.
+    Returns tuple: (ok: bool, message: str, result: str)
+    """
+    try:
+        import core.monitor_core as monitor_core
+    except Exception as e:
+        return False, f"monitor core unavailable: {e}", "failed"
+
+    if action == "pause_monitoring":
+        monitor_core.monitoring_active = False
+        return True, "Мониторинг приостановлен", "applied"
+
+    if action == "resume_monitoring":
+        monitor_core.monitoring_active = True
+        return True, "Мониторинг возобновлен", "applied"
+
+    if action == "send_morning_report":
+        monitor_core.send_morning_report(manual_call=True)
+        return True, "Утренний отчет отправлен", "accepted"
+
+    if action == "force_quiet":
+        monitor_core.set_silent_override(True)
+        return True, "Принудительно включен тихий режим", "applied"
+
+    if action == "force_loud":
+        monitor_core.set_silent_override(False)
+        return True, "Принудительно включен громкий режим", "applied"
+
+    if action == "auto_mode":
+        monitor_core.set_silent_override(None)
+        return True, "Включен автоматический режим quiet/loud", "applied"
+
+    return False, f"Unsupported action: {action}", "failed"
 
 
 @app.route('/v1/auth/token', methods=['POST'])
@@ -1715,43 +1752,51 @@ def v1_control_actions():
             }
         }), 400
 
-    legacy_action = _map_mobile_action_to_legacy(action)
-    if not legacy_action:
-        return jsonify({
-            "error": {
-                "code": "INVALID_ACTION",
-                "message": f"Unsupported action: {action}",
-                "request_id": request_id,
-            }
-        }), 400
-
-    try:
-        with app.test_request_context(f"/api/run_action?action={legacy_action}"):
-            legacy_response = api_run_action()
-
-        if isinstance(legacy_response, tuple):
-            response_obj, status_code = legacy_response
-        else:
-            response_obj, status_code = legacy_response, 200
-
-        data = response_obj.get_json(silent=True) if hasattr(response_obj, 'get_json') else {}
-        message = (data or {}).get('message') or 'Action processed'
-
+    ok, message, result = _execute_mobile_control_action(action)
+    if ok:
         return jsonify({
             "request_id": request_id,
             "action": action,
-            "result": "accepted" if status_code < 400 else "rejected",
+            "result": result,
             "message": message,
-        }), (200 if status_code < 400 else status_code)
+        }), 200
 
-    except Exception as e:
-        return jsonify({
-            "error": {
-                "code": "CONTROL_ACTION_FAILED",
-                "message": str(e),
+    # Backward compatibility fallback for legacy action path.
+    legacy_action = _map_mobile_action_to_legacy(action)
+    if legacy_action:
+        try:
+            with app.test_request_context(f"/api/run_action?action={legacy_action}"):
+                legacy_response = api_run_action()
+
+            if isinstance(legacy_response, tuple):
+                response_obj, status_code = legacy_response
+            else:
+                response_obj, status_code = legacy_response, 200
+
+            data = response_obj.get_json(silent=True) if hasattr(response_obj, 'get_json') else {}
+            fallback_message = (data or {}).get('message') or message or 'Action processed'
+            return jsonify({
                 "request_id": request_id,
-            }
-        }), 500
+                "action": action,
+                "result": "accepted" if status_code < 400 else "rejected",
+                "message": fallback_message,
+            }), (200 if status_code < 400 else status_code)
+        except Exception as e:
+            return jsonify({
+                "error": {
+                    "code": "CONTROL_ACTION_FAILED",
+                    "message": str(e),
+                    "request_id": request_id,
+                }
+            }), 500
+
+    return jsonify({
+        "error": {
+            "code": "INVALID_ACTION",
+            "message": message,
+            "request_id": request_id,
+        }
+    }), 400
 
 
 def _mask_secret(value):
