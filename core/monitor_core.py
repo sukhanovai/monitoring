@@ -1,11 +1,11 @@
 """
 /core/monitor_core.py
-Server Monitoring System v8.4.15
+Server Monitoring System v8.4.16
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core system
 Система мониторинга серверов
-Версия: 8.4.15
+Версия: 8.4.16
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Ядро системы
@@ -495,7 +495,6 @@ def control_command(update, context):
     keyboard = [
         [InlineKeyboardButton("⏸️ Приостановить мониторинг", callback_data='pause_monitoring')],
         [InlineKeyboardButton("▶️ Возобновить мониторинг", callback_data='resume_monitoring')],
-        [InlineKeyboardButton("📊 Утренний отчет", callback_data='full_report')],
         [InlineKeyboardButton("↩️ Назад", callback_data='monitor_status')]
     ]
 
@@ -520,7 +519,6 @@ def control_panel_handler(update, context):
 
     keyboard = [
         [monitoring_button],
-        [InlineKeyboardButton("📊 Утренний отчет", callback_data='full_report')],
         [InlineKeyboardButton("🔇 Управление тихим режимом", callback_data='silent_status')],
         [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]

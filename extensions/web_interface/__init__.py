@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.4.15
+Server Monitoring System v8.4.16
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.4.15
+Версия: 8.4.16
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1511,8 +1511,9 @@ def _execute_mobile_control_action(action: str):
         return True, "Мониторинг возобновлен", "applied"
 
     if action == "send_morning_report":
-        monitor_core.send_morning_report(manual_call=True)
-        return True, "Утренний отчет отправлен", "accepted"
+        from modules.morning_report import morning_report
+        report_text = morning_report.force_report()
+        return True, report_text, "accepted"
 
     if action == "force_quiet":
         monitor_core.set_silent_override(True)
