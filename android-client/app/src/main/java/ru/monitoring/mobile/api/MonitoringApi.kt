@@ -18,6 +18,9 @@ interface MonitoringApi {
     @POST("v1/control/actions")
     suspend fun runControlAction(@Body request: ControlActionRequest): ControlActionResult
 
+    @GET("v1/control/status")
+    suspend fun getControlStatus(): ControlStatusResponse
+
     @GET("v1/settings/monitoring")
     suspend fun getMonitoringSettings(): SettingsMonitoringResponse
 

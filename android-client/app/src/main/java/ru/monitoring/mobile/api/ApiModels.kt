@@ -76,6 +76,15 @@ data class ControlActionResult(
     @Json(name = "queued_job_id") val queuedJobId: String? = null
 )
 
+data class ControlStatusResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    @Json(name = "monitoring_active") val monitoringActive: Boolean? = null,
+    @Json(name = "monitoring_status") val monitoringStatus: String? = null,
+    @Json(name = "silent_active") val silentActive: Boolean? = null,
+    @Json(name = "silent_mode") val silentMode: String? = null,
+    @Json(name = "silent_override") val silentOverride: Boolean? = null
+)
+
 data class SettingsMonitoringRequest(
     @Json(name = "check_interval_sec") val checkIntervalSec: Int? = null,
     @Json(name = "timeout_sec") val timeoutSec: Int? = null,

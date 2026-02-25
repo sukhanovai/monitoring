@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.4.17
+Server Monitoring System v8.4.18
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.4.17
+Версия: 8.4.18
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1798,6 +1798,44 @@ def v1_control_actions():
             "request_id": request_id,
         }
     }), 400
+
+
+@app.route('/v1/control/status', methods=['GET'])
+@app.route('/api/v1/control/status', methods=['GET'])
+def v1_control_status():
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+
+    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    if not is_ok:
+        return jsonify({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid or expired token",
+                "request_id": request_id,
+            }
+        }), 401
+
+    import core.monitor_core as monitor_core
+
+    monitoring_active = bool(getattr(monitor_core, 'monitoring_active', True))
+    silent_active = bool(monitor_core.is_silent_time())
+    silent_override = monitor_core.get_silent_override()
+
+    if silent_override is None:
+        silent_mode = "auto"
+    elif silent_override:
+        silent_mode = "force_quiet"
+    else:
+        silent_mode = "force_loud"
+
+    return jsonify({
+        "request_id": request_id,
+        "monitoring_active": monitoring_active,
+        "monitoring_status": "active" if monitoring_active else "paused",
+        "silent_active": silent_active,
+        "silent_mode": silent_mode,
+        "silent_override": silent_override,
+    }), 200
 
 
 def _mask_secret(value):

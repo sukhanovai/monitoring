@@ -189,20 +189,22 @@ class MainViewModel(
                 val bot = runCatching { currentApi().getBotSettings() }.getOrNull()
                 val time = runCatching { currentApi().getTimeSettings() }.getOrNull()
                 val auth = runCatching { currentApi().getAuthSettings() }.getOrNull()
-                listOf(monitoring, bot, time, auth)
+                val control = runCatching { currentApi().getControlStatus() }.getOrNull()
+                listOf(monitoring, bot, time, auth, control)
             }
 
             val monitoring = result[0] as? ru.monitoring.mobile.api.SettingsMonitoringResponse
             val bot = result[1] as? ru.monitoring.mobile.api.SettingsBotResponse
             val time = result[2] as? ru.monitoring.mobile.api.SettingsTimeResponse
             val auth = result[3] as? ru.monitoring.mobile.api.SettingsAuthResponse
+            val control = result[4] as? ru.monitoring.mobile.api.ControlStatusResponse
 
             val monitoringData = monitoring?.settings
             val botData = bot?.settings
             val timeData = time?.settings
             val authData = auth?.settings
 
-            val hasAny = monitoring != null || bot != null || time != null || auth != null
+            val hasAny = monitoring != null || bot != null || time != null || auth != null || control != null
             if (!hasAny) {
                 state = if (showErrors) {
                     state.copy(isLoading = false, message = "Не удалось подтянуть настройки")
@@ -227,7 +229,18 @@ class MainViewModel(
                 sshPortInput = (authData?.sshPort ?: auth?.sshPort)?.toString() ?: state.sshPortInput,
                 windowsUsernameInput = authData?.windowsUsername ?: auth?.windowsUsername ?: state.windowsUsernameInput,
                 sshPasswordInput = authData?.maskedSshPassword ?: auth?.sshPassword ?: state.sshPasswordInput,
-                windowsPasswordInput = authData?.maskedWindowsPassword ?: auth?.windowsPassword ?: state.windowsPasswordInput
+                windowsPasswordInput = authData?.maskedWindowsPassword ?: auth?.windowsPassword ?: state.windowsPasswordInput,
+                monitoringStatusText = when {
+                    control?.monitoringActive == true -> "🟢 Активен"
+                    control?.monitoringActive == false -> "🔴 Приостановлен"
+                    else -> state.monitoringStatusText
+                },
+                silentStatusText = when (control?.silentMode) {
+                    "force_quiet" -> "🔇 Принудительно тихий"
+                    "force_loud" -> "🔊 Принудительно громкий"
+                    "auto" -> if (control.silentActive == true) "🔇 Авто (сейчас тихий)" else "🔊 Авто (сейчас громкий)"
+                    else -> state.silentStatusText
+                }
             )
         }
     }
@@ -275,6 +288,7 @@ class MainViewModel(
             runCatching { currentApi().runControlAction(ControlActionRequest(action)) }
                 .onSuccess { response ->
                     state = state.copy(isLoading = false, message = response.message ?: response.result ?: "Команда отправлена")
+                    refreshSettingsFromServer(showErrors = false)
                 }
                 .onFailure { error ->
                     val userMessage = when ((error as? HttpException)?.code()) {
@@ -447,5 +461,7 @@ data class MainUiState(
     val sshPortInput: String = "",
     val windowsUsernameInput: String = "",
     val sshPasswordInput: String = "",
-    val windowsPasswordInput: String = ""
+    val windowsPasswordInput: String = "",
+    val monitoringStatusText: String = "Неизвестно",
+    val silentStatusText: String = "Неизвестно"
 )
