@@ -3,7 +3,7 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-if (!plugins.hasPlugin("org.jetbrains.kotlin.android")) {
+if (extensions.findByName("kotlin") == null) {
     apply(plugin = "org.jetbrains.kotlin.android")
 }
 
