@@ -15,14 +15,17 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import retrofit2.HttpException
 import ru.monitoring.mobile.api.ApiFactory
+import ru.monitoring.mobile.api.AddWindowsCredentialRequest
 import ru.monitoring.mobile.api.AuthTokenExchangeRequest
 import ru.monitoring.mobile.api.AvailabilityItem
+import ru.monitoring.mobile.api.BotChatRequest
 import ru.monitoring.mobile.api.ControlActionRequest
 import ru.monitoring.mobile.api.ServerAvailability
 import ru.monitoring.mobile.api.SettingsAuthRequest
 import ru.monitoring.mobile.api.SettingsBotRequest
 import ru.monitoring.mobile.api.SettingsMonitoringRequest
 import ru.monitoring.mobile.api.SettingsTimeRequest
+import ru.monitoring.mobile.api.WindowsCredential
 import ru.monitoring.mobile.storage.AppPreferences
 
 class MainViewModel(
@@ -123,15 +126,21 @@ class MainViewModel(
     fun setMaxDowntimeInput(value: String) { state = state.copy(maxDowntimeInput = value) }
     fun setTelegramTokenInput(value: String) { state = state.copy(telegramTokenInput = value) }
     fun setTelegramChatIdInput(value: String) { state = state.copy(telegramChatIdInput = value) }
+    fun setNewTelegramChatIdInput(value: String) { state = state.copy(newTelegramChatIdInput = value) }
     fun setQuietStartInput(value: String) { state = state.copy(quietStartInput = value) }
     fun setQuietEndInput(value: String) { state = state.copy(quietEndInput = value) }
     fun setMetricsTimeInput(value: String) { state = state.copy(metricsTimeInput = value) }
     fun setAuthModeInput(value: String) { state = state.copy(authModeInput = value) }
     fun setSshUsernameInput(value: String) { state = state.copy(sshUsernameInput = value) }
+    fun setSshKeyPathInput(value: String) { state = state.copy(sshKeyPathInput = value) }
     fun setSshPortInput(value: String) { state = state.copy(sshPortInput = value) }
     fun setWindowsUsernameInput(value: String) { state = state.copy(windowsUsernameInput = value) }
     fun setSshPasswordInput(value: String) { state = state.copy(sshPasswordInput = value) }
     fun setWindowsPasswordInput(value: String) { state = state.copy(windowsPasswordInput = value) }
+    fun setWindowsCredUsernameInput(value: String) { state = state.copy(windowsCredUsernameInput = value) }
+    fun setWindowsCredPasswordInput(value: String) { state = state.copy(windowsCredPasswordInput = value) }
+    fun setWindowsCredServerTypeInput(value: String) { state = state.copy(windowsCredServerTypeInput = value) }
+    fun setWindowsCredPriorityInput(value: String) { state = state.copy(windowsCredPriorityInput = value) }
 
     fun toggleApiTokenVisibility() { state = state.copy(isApiTokenVisible = !state.isApiTokenVisible) }
     fun toggleTelegramTokenVisibility() { state = state.copy(isTelegramTokenVisible = !state.isTelegramTokenVisible) }
@@ -203,6 +212,11 @@ class MainViewModel(
             val botData = bot?.settings
             val timeData = time?.settings
             val authData = auth?.settings
+            val botChatIds = when {
+                botData?.telegramChatIds != null -> botData.telegramChatIds
+                !botData?.telegramChatId.isNullOrBlank() -> listOf(botData?.telegramChatId.orEmpty())
+                else -> state.telegramChatIds
+            }
 
             val hasAny = monitoring != null || bot != null || time != null || auth != null || control != null
             if (!hasAny) {
@@ -221,15 +235,19 @@ class MainViewModel(
                 maxDowntimeInput = (monitoringData?.maxDowntimeSec ?: monitoring?.maxDowntimeSec)?.toString() ?: state.maxDowntimeInput,
                 telegramTokenInput = botData?.maskedToken ?: botData?.telegramBotToken ?: state.telegramTokenInput,
                 telegramChatIdInput = botData?.telegramChatId ?: state.telegramChatIdInput,
+                telegramChatIds = botChatIds,
                 quietStartInput = timeData?.quietStart ?: time?.quietStart ?: state.quietStartInput,
                 quietEndInput = timeData?.quietEnd ?: time?.quietEnd ?: state.quietEndInput,
                 metricsTimeInput = timeData?.metricsCollectionTime ?: time?.metricsCollectionTime ?: state.metricsTimeInput,
                 authModeInput = authData?.authMode ?: auth?.authMode ?: state.authModeInput,
                 sshUsernameInput = authData?.sshUsername ?: auth?.sshUsername ?: state.sshUsernameInput,
+                sshKeyPathInput = authData?.sshKeyPath ?: auth?.sshKeyPath ?: state.sshKeyPathInput,
                 sshPortInput = (authData?.sshPort ?: auth?.sshPort)?.toString() ?: state.sshPortInput,
                 windowsUsernameInput = authData?.windowsUsername ?: auth?.windowsUsername ?: state.windowsUsernameInput,
                 sshPasswordInput = authData?.maskedSshPassword ?: auth?.sshPassword ?: state.sshPasswordInput,
                 windowsPasswordInput = authData?.maskedWindowsPassword ?: auth?.windowsPassword ?: state.windowsPasswordInput,
+                windowsCredentials = if (authData != null) authData.windowsCredentials else state.windowsCredentials,
+                windowsServerTypes = if (authData != null) authData.windowsServerTypes else state.windowsServerTypes,
                 monitoringStatusText = when {
                     control?.monitoringActive == true -> "🟢 Активен"
                     control?.monitoringActive == false -> "🔴 Приостановлен"
@@ -301,6 +319,106 @@ class MainViewModel(
         }
     }
 
+    fun addTelegramChatId() {
+        val chatId = state.newTelegramChatIdInput.trim()
+        if (chatId.isBlank()) {
+            state = state.copy(message = "Введи chat_id для добавления")
+            return
+        }
+
+        viewModelScope.launch {
+            state = state.copy(isLoading = true)
+            runCatching { currentApi().addBotChat(BotChatRequest(chatId)) }
+                .onSuccess { response ->
+                    val ids = response.settings?.telegramChatIds ?: state.telegramChatIds
+                    state = state.copy(
+                        isLoading = false,
+                        telegramChatIds = ids,
+                        telegramChatIdInput = response.settings?.telegramChatId ?: state.telegramChatIdInput,
+                        newTelegramChatIdInput = "",
+                        message = "Chat ID добавлен"
+                    )
+                }
+                .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
+        }
+    }
+
+    fun removeTelegramChatId(chatId: String) {
+        val normalized = chatId.trim()
+        if (normalized.isBlank()) return
+
+        viewModelScope.launch {
+            state = state.copy(isLoading = true)
+            runCatching { currentApi().removeBotChat(normalized) }
+                .onSuccess { response ->
+                    val ids = response.settings?.telegramChatIds ?: state.telegramChatIds.filterNot { it == normalized }
+                    state = state.copy(
+                        isLoading = false,
+                        telegramChatIds = ids,
+                        telegramChatIdInput = response.settings?.telegramChatId ?: state.telegramChatIdInput,
+                        message = "Chat ID удален"
+                    )
+                }
+                .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
+        }
+    }
+
+    fun addWindowsCredential() {
+        val username = state.windowsCredUsernameInput.trim()
+        val password = state.windowsCredPasswordInput.trim()
+        val serverType = state.windowsCredServerTypeInput.trim().ifBlank { "default" }
+        val priority = state.windowsCredPriorityInput.toIntOrNull() ?: 0
+
+        if (username.isBlank() || password.isBlank()) {
+            state = state.copy(message = "Для Windows-учетки нужны username и password")
+            return
+        }
+
+        viewModelScope.launch {
+            state = state.copy(isLoading = true)
+            runCatching {
+                currentApi().addWindowsCredential(
+                    AddWindowsCredentialRequest(
+                        username = username,
+                        password = password,
+                        serverType = serverType,
+                        priority = priority
+                    )
+                )
+            }
+                .onSuccess { response ->
+                    state = state.copy(
+                        isLoading = false,
+                        windowsCredentials = response.items,
+                        windowsServerTypes = response.serverTypes,
+                        windowsCredUsernameInput = "",
+                        windowsCredPasswordInput = "",
+                        windowsCredServerTypeInput = "",
+                        windowsCredPriorityInput = "0",
+                        message = "Windows-учетка добавлена"
+                    )
+                }
+                .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
+        }
+    }
+
+    fun removeWindowsCredential(credId: Int?) {
+        if (credId == null) return
+        viewModelScope.launch {
+            state = state.copy(isLoading = true)
+            runCatching { currentApi().deleteWindowsCredential(credId) }
+                .onSuccess { response ->
+                    state = state.copy(
+                        isLoading = false,
+                        windowsCredentials = response.items,
+                        windowsServerTypes = response.serverTypes,
+                        message = "Windows-учетка удалена"
+                    )
+                }
+                .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
+        }
+    }
+
     fun updateMonitoringSettings() {
         val checkInterval = state.checkIntervalInput
         val timeout = state.timeoutInput
@@ -335,14 +453,15 @@ class MainViewModel(
     fun updateBotSettings() {
         val telegramToken = state.telegramTokenInput
         val telegramChatId = state.telegramChatIdInput
-        if (!hasAnyValue(telegramToken, telegramChatId)) {
+        if (!hasAnyValue(telegramToken, telegramChatId) && state.telegramChatIds.isEmpty()) {
             state = state.copy(message = "Заполни хотя бы одно поле bot")
             return
         }
 
         val request = SettingsBotRequest(
             telegramBotToken = telegramToken.ifBlank { null },
-            telegramChatId = telegramChatId.ifBlank { null }
+            telegramChatId = telegramChatId.ifBlank { null },
+            telegramChatIds = state.telegramChatIds
         )
 
         viewModelScope.launch {
@@ -385,12 +504,13 @@ class MainViewModel(
     fun updateAuthSettings() {
         val authMode = state.authModeInput
         val sshUsername = state.sshUsernameInput
+        val sshKeyPath = state.sshKeyPathInput
         val sshPort = state.sshPortInput
         val windowsUsername = state.windowsUsernameInput
         val sshPassword = state.sshPasswordInput
         val windowsPassword = state.windowsPasswordInput
 
-        if (!hasAnyValue(authMode, sshUsername, sshPort, windowsUsername, sshPassword, windowsPassword)) {
+        if (!hasAnyValue(authMode, sshUsername, sshKeyPath, sshPort, windowsUsername, sshPassword, windowsPassword)) {
             state = state.copy(message = "Заполни хотя бы одно поле auth")
             return
         }
@@ -400,6 +520,7 @@ class MainViewModel(
                 authMode = authMode.ifBlank { null },
                 sshUsername = sshUsername.ifBlank { null },
                 sshPort = parseOptionalInt(sshPort, "ssh_port"),
+                sshKeyPath = state.sshKeyPathInput.ifBlank { null },
                 windowsUsername = windowsUsername.ifBlank { null },
                 sshPassword = sshPassword.ifBlank { null },
                 windowsPassword = windowsPassword.ifBlank { null }
@@ -453,15 +574,24 @@ data class MainUiState(
     val maxDowntimeInput: String = "",
     val telegramTokenInput: String = "",
     val telegramChatIdInput: String = "",
+    val telegramChatIds: List<String> = emptyList(),
+    val newTelegramChatIdInput: String = "",
     val quietStartInput: String = "",
     val quietEndInput: String = "",
     val metricsTimeInput: String = "",
     val authModeInput: String = "",
     val sshUsernameInput: String = "",
+    val sshKeyPathInput: String = "",
     val sshPortInput: String = "",
     val windowsUsernameInput: String = "",
     val sshPasswordInput: String = "",
     val windowsPasswordInput: String = "",
+    val windowsCredentials: List<WindowsCredential> = emptyList(),
+    val windowsServerTypes: List<String> = emptyList(),
+    val windowsCredUsernameInput: String = "",
+    val windowsCredPasswordInput: String = "",
+    val windowsCredServerTypeInput: String = "",
+    val windowsCredPriorityInput: String = "0",
     val monitoringStatusText: String = "Неизвестно",
     val silentStatusText: String = "Неизвестно"
 )

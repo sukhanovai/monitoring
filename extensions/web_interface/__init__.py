@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.4.18
+Server Monitoring System v8.4.19
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.4.18
+Версия: 8.4.19
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1903,25 +1903,176 @@ def v1_get_settings_bot():
 
     from config.db_settings_app import settings_manager
 
-    chat_ids = settings_manager.get_setting('CHAT_IDS', [])
-    if isinstance(chat_ids, list) and chat_ids:
-        telegram_chat_id = str(chat_ids[0])
-    elif chat_ids:
-        telegram_chat_id = str(chat_ids)
+    raw_chat_ids = settings_manager.get_setting('CHAT_IDS', [])
+    if isinstance(raw_chat_ids, list):
+        chat_ids = [str(chat_id).strip() for chat_id in raw_chat_ids if str(chat_id).strip()]
+    elif raw_chat_ids:
+        chat_ids = [str(raw_chat_ids).strip()]
     else:
-        telegram_chat_id = ''
+        chat_ids = []
 
     token = settings_manager.get_setting('TELEGRAM_TOKEN', '')
 
     response = {
         "request_id": request_id,
         "settings": {
-            "telegram_chat_id": telegram_chat_id,
+            "telegram_chat_id": chat_ids[0] if chat_ids else '',
+            "telegram_chat_ids": chat_ids,
             "masked_token": _mask_secret(token),
         }
     }
     app.logger.info("GET /v1/settings/bot request_id=%s", request_id)
     return jsonify(response), 200
+
+
+@app.route('/v1/settings/bot', methods=['PATCH'])
+def v1_settings_bot():
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+
+    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    if not is_ok:
+        return jsonify({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid or expired token",
+                "request_id": request_id,
+            }
+        }), 401
+
+    payload = request.get_json(silent=True) or {}
+    token = payload.get('telegram_bot_token')
+    single_chat_id = payload.get('telegram_chat_id')
+    chat_ids = payload.get('telegram_chat_ids')
+
+    if token is None and single_chat_id is None and chat_ids is None:
+        return jsonify({
+            "error": {
+                "code": "VALIDATION_FAILED",
+                "message": "At least one field is required",
+                "request_id": request_id,
+            }
+        }), 400
+
+    from config.db_settings_app import settings_manager
+
+    if token is not None:
+        settings_manager.set_setting('TELEGRAM_TOKEN', str(token), 'telegram')
+
+    if chat_ids is not None:
+        if not isinstance(chat_ids, list):
+            return jsonify({
+                "error": {
+                    "code": "VALIDATION_FAILED",
+                    "message": "telegram_chat_ids must be an array",
+                    "request_id": request_id,
+                }
+            }), 400
+        normalized_chat_ids = [str(chat_id).strip() for chat_id in chat_ids if str(chat_id).strip()]
+        settings_manager.set_setting('CHAT_IDS', normalized_chat_ids, 'telegram')
+    elif single_chat_id is not None:
+        value = str(single_chat_id).strip()
+        settings_manager.set_setting('CHAT_IDS', [value] if value else [], 'telegram')
+
+    raw_chat_ids = settings_manager.get_setting('CHAT_IDS', [])
+    if isinstance(raw_chat_ids, list):
+        normalized_chat_ids = [str(chat_id).strip() for chat_id in raw_chat_ids if str(chat_id).strip()]
+    elif raw_chat_ids:
+        normalized_chat_ids = [str(raw_chat_ids).strip()]
+    else:
+        normalized_chat_ids = []
+
+    saved_token = settings_manager.get_setting('TELEGRAM_TOKEN', '')
+    return jsonify({
+        "request_id": request_id,
+        "settings": {
+            "telegram_chat_id": normalized_chat_ids[0] if normalized_chat_ids else '',
+            "telegram_chat_ids": normalized_chat_ids,
+            "masked_token": _mask_secret(saved_token),
+        }
+    }), 200
+
+
+@app.route('/v1/settings/bot/chats', methods=['POST'])
+def v1_settings_bot_add_chat():
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+
+    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    if not is_ok:
+        return jsonify({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid or expired token",
+                "request_id": request_id,
+            }
+        }), 401
+
+    payload = request.get_json(silent=True) or {}
+    chat_id = str(payload.get('chat_id') or '').strip()
+    if not chat_id:
+        return jsonify({
+            "error": {
+                "code": "VALIDATION_FAILED",
+                "message": "chat_id is required",
+                "request_id": request_id,
+            }
+        }), 400
+
+    from config.db_settings_app import settings_manager
+    raw_chat_ids = settings_manager.get_setting('CHAT_IDS', [])
+    if isinstance(raw_chat_ids, list):
+        chat_ids = [str(item).strip() for item in raw_chat_ids if str(item).strip()]
+    elif raw_chat_ids:
+        chat_ids = [str(raw_chat_ids).strip()]
+    else:
+        chat_ids = []
+
+    if chat_id not in chat_ids:
+        chat_ids.append(chat_id)
+        settings_manager.set_setting('CHAT_IDS', chat_ids, 'telegram')
+
+    return jsonify({
+        "request_id": request_id,
+        "settings": {
+            "telegram_chat_ids": chat_ids,
+            "telegram_chat_id": chat_ids[0] if chat_ids else '',
+        }
+    }), 200
+
+
+@app.route('/v1/settings/bot/chats/<chat_id>', methods=['DELETE'])
+def v1_settings_bot_remove_chat(chat_id):
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+
+    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    if not is_ok:
+        return jsonify({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid or expired token",
+                "request_id": request_id,
+            }
+        }), 401
+
+    target_chat_id = str(chat_id).strip()
+    from config.db_settings_app import settings_manager
+    raw_chat_ids = settings_manager.get_setting('CHAT_IDS', [])
+    if isinstance(raw_chat_ids, list):
+        chat_ids = [str(item).strip() for item in raw_chat_ids if str(item).strip()]
+    elif raw_chat_ids:
+        chat_ids = [str(raw_chat_ids).strip()]
+    else:
+        chat_ids = []
+
+    chat_ids = [item for item in chat_ids if item != target_chat_id]
+    settings_manager.set_setting('CHAT_IDS', chat_ids, 'telegram')
+
+    return jsonify({
+        "request_id": request_id,
+        "settings": {
+            "telegram_chat_ids": chat_ids,
+            "telegram_chat_id": chat_ids[0] if chat_ids else '',
+        }
+    }), 200
 
 
 @app.route('/v1/settings/time', methods=['GET'])
@@ -1974,6 +2125,13 @@ def v1_get_settings_auth():
 
     ssh_password = settings_manager.get_setting('SSH_PASSWORD', '')
     windows_password = settings_manager.get_setting('WINDOWS_PASSWORD', '')
+    windows_credentials = settings_manager.get_windows_credentials()
+    safe_windows_credentials = []
+    for item in windows_credentials:
+        safe_item = dict(item)
+        if 'password' in safe_item:
+            safe_item['password'] = _mask_secret(safe_item.get('password'))
+        safe_windows_credentials.append(safe_item)
 
     response = {
         "request_id": request_id,
@@ -1981,13 +2139,169 @@ def v1_get_settings_auth():
             "auth_mode": str(settings_manager.get_setting('AUTH_MODE', 'mixed')),
             "ssh_username": str(settings_manager.get_setting('SSH_USERNAME', 'root')),
             "ssh_port": int(settings_manager.get_setting('SSH_PORT', 22)),
+            "ssh_key_path": str(settings_manager.get_setting('SSH_KEY_PATH', '/root/.ssh/id_rsa')),
             "windows_username": str(settings_manager.get_setting('WINDOWS_USERNAME', 'Administrator')),
             "masked_ssh_password": _mask_secret(ssh_password),
             "masked_windows_password": _mask_secret(windows_password),
+            "windows_credentials": safe_windows_credentials,
+            "windows_server_types": settings_manager.get_windows_server_types(),
         }
     }
     app.logger.info("GET /v1/settings/auth request_id=%s", request_id)
     return jsonify(response), 200
+
+
+@app.route('/v1/settings/auth', methods=['PATCH'])
+def v1_settings_auth():
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+
+    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    if not is_ok:
+        return jsonify({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid or expired token",
+                "request_id": request_id,
+            }
+        }), 401
+
+    payload = request.get_json(silent=True) or {}
+
+    auth_mode = payload.get('auth_mode')
+    ssh_username = payload.get('ssh_username')
+    ssh_port = payload.get('ssh_port')
+    ssh_key_path = payload.get('ssh_key_path')
+    windows_username = payload.get('windows_username')
+    ssh_password = payload.get('ssh_password')
+    windows_password = payload.get('windows_password')
+
+    if (
+        auth_mode is None and ssh_username is None and ssh_port is None and ssh_key_path is None
+        and windows_username is None and ssh_password is None and windows_password is None
+    ):
+        return jsonify({
+            "error": {
+                "code": "VALIDATION_FAILED",
+                "message": "At least one field is required",
+                "request_id": request_id,
+            }
+        }), 400
+
+    from config.db_settings_app import settings_manager
+
+    if auth_mode is not None:
+        settings_manager.set_setting('AUTH_MODE', str(auth_mode).strip(), 'auth')
+    if ssh_username is not None:
+        settings_manager.set_setting('SSH_USERNAME', str(ssh_username).strip(), 'auth')
+    if ssh_port is not None:
+        settings_manager.set_setting('SSH_PORT', int(ssh_port), 'auth', data_type='int')
+    if ssh_key_path is not None:
+        settings_manager.set_setting('SSH_KEY_PATH', str(ssh_key_path).strip(), 'auth')
+    if windows_username is not None:
+        settings_manager.set_setting('WINDOWS_USERNAME', str(windows_username).strip(), 'auth')
+    if ssh_password is not None:
+        settings_manager.set_setting('SSH_PASSWORD', str(ssh_password), 'auth')
+    if windows_password is not None:
+        settings_manager.set_setting('WINDOWS_PASSWORD', str(windows_password), 'auth')
+
+    return v1_get_settings_auth()
+
+
+@app.route('/v1/settings/auth/windows-credentials', methods=['GET'])
+def v1_get_windows_credentials():
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    if not is_ok:
+        return jsonify({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid or expired token",
+                "request_id": request_id,
+            }
+        }), 401
+
+    from config.db_settings_app import settings_manager
+    windows_credentials = settings_manager.get_windows_credentials()
+    safe_windows_credentials = []
+    for item in windows_credentials:
+        safe_item = dict(item)
+        if 'password' in safe_item:
+            safe_item['password'] = _mask_secret(safe_item.get('password'))
+        safe_windows_credentials.append(safe_item)
+    return jsonify({
+        "request_id": request_id,
+        "items": safe_windows_credentials,
+        "server_types": settings_manager.get_windows_server_types(),
+    }), 200
+
+
+@app.route('/v1/settings/auth/windows-credentials', methods=['POST'])
+def v1_add_windows_credential():
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    if not is_ok:
+        return jsonify({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid or expired token",
+                "request_id": request_id,
+            }
+        }), 401
+
+    payload = request.get_json(silent=True) or {}
+    username = str(payload.get('username') or '').strip()
+    password = str(payload.get('password') or '').strip()
+    server_type = str(payload.get('server_type') or 'default').strip() or 'default'
+    priority = int(payload.get('priority') or 0)
+
+    if not username or not password:
+        return jsonify({
+            "error": {
+                "code": "VALIDATION_FAILED",
+                "message": "username and password are required",
+                "request_id": request_id,
+            }
+        }), 400
+
+    from config.db_settings_app import settings_manager
+    ok = settings_manager.add_windows_credential(username, password, server_type, priority)
+    if not ok:
+        return jsonify({
+            "error": {
+                "code": "CONFIG_STORE_UNAVAILABLE",
+                "message": "failed to add windows credential",
+                "request_id": request_id,
+            }
+        }), 500
+
+    return v1_get_windows_credentials()
+
+
+@app.route('/v1/settings/auth/windows-credentials/<int:cred_id>', methods=['DELETE'])
+def v1_delete_windows_credential(cred_id):
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    if not is_ok:
+        return jsonify({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid or expired token",
+                "request_id": request_id,
+            }
+        }), 401
+
+    from config.db_settings_app import settings_manager
+    ok = settings_manager.delete_windows_credential(int(cred_id))
+    if not ok:
+        return jsonify({
+            "error": {
+                "code": "CONFIG_STORE_UNAVAILABLE",
+                "message": "failed to delete windows credential",
+                "request_id": request_id,
+            }
+        }), 500
+
+    return v1_get_windows_credentials()
 
 
 @app.route('/v1/settings/monitoring', methods=['PATCH'])

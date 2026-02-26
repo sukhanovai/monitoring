@@ -1,8 +1,10 @@
 package ru.monitoring.mobile.api
 
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.PATCH
+import retrofit2.http.Path
 import retrofit2.http.POST
 
 interface MonitoringApi {
@@ -37,6 +39,12 @@ interface MonitoringApi {
         @Body request: SettingsBotRequest
     ): SettingsBotResponse
 
+    @POST("v1/settings/bot/chats")
+    suspend fun addBotChat(@Body request: BotChatRequest): SettingsBotResponse
+
+    @DELETE("v1/settings/bot/chats/{chatId}")
+    suspend fun removeBotChat(@Path("chatId") chatId: String): SettingsBotResponse
+
     @GET("v1/settings/time")
     suspend fun getTimeSettings(): SettingsTimeResponse
 
@@ -52,4 +60,15 @@ interface MonitoringApi {
     suspend fun updateAuthSettings(
         @Body request: SettingsAuthRequest
     ): SettingsAuthResponse
+
+    @GET("v1/settings/auth/windows-credentials")
+    suspend fun getWindowsCredentials(): WindowsCredentialsResponse
+
+    @POST("v1/settings/auth/windows-credentials")
+    suspend fun addWindowsCredential(
+        @Body request: AddWindowsCredentialRequest
+    ): WindowsCredentialsResponse
+
+    @DELETE("v1/settings/auth/windows-credentials/{credId}")
+    suspend fun deleteWindowsCredential(@Path("credId") credId: Int): WindowsCredentialsResponse
 }

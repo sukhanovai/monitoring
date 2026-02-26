@@ -70,19 +70,29 @@ class MainActivity : ComponentActivity() {
                     onTelegramTokenChanged = vm::setTelegramTokenInput,
                     onTelegramChatIdChanged = vm::setTelegramChatIdInput,
                     onSaveBot = vm::updateBotSettings,
+                    onNewTelegramChatIdChanged = vm::setNewTelegramChatIdInput,
+                    onAddTelegramChatId = vm::addTelegramChatId,
+                    onRemoveTelegramChatId = vm::removeTelegramChatId,
                     onQuietStartChanged = vm::setQuietStartInput,
                     onQuietEndChanged = vm::setQuietEndInput,
                     onMetricsTimeChanged = vm::setMetricsTimeInput,
                     onSaveTime = vm::updateTimeSettings,
                     onAuthModeChanged = vm::setAuthModeInput,
                     onSshUsernameChanged = vm::setSshUsernameInput,
+                    onSshKeyPathChanged = vm::setSshKeyPathInput,
                     onSshPortChanged = vm::setSshPortInput,
                     onWindowsUsernameChanged = vm::setWindowsUsernameInput,
                     onSshPasswordChanged = vm::setSshPasswordInput,
                     onWindowsPasswordChanged = vm::setWindowsPasswordInput,
                     onToggleSshPasswordVisibility = vm::toggleSshPasswordVisibility,
                     onToggleWindowsPasswordVisibility = vm::toggleWindowsPasswordVisibility,
-                    onSaveAuth = vm::updateAuthSettings
+                    onSaveAuth = vm::updateAuthSettings,
+                    onWindowsCredUsernameChanged = vm::setWindowsCredUsernameInput,
+                    onWindowsCredPasswordChanged = vm::setWindowsCredPasswordInput,
+                    onWindowsCredServerTypeChanged = vm::setWindowsCredServerTypeInput,
+                    onWindowsCredPriorityChanged = vm::setWindowsCredPriorityInput,
+                    onAddWindowsCredential = vm::addWindowsCredential,
+                    onRemoveWindowsCredential = vm::removeWindowsCredential
                 )
             }
         }
@@ -109,19 +119,29 @@ private fun MonitoringApp(
     onTelegramTokenChanged: (String) -> Unit,
     onTelegramChatIdChanged: (String) -> Unit,
     onSaveBot: () -> Unit,
+    onNewTelegramChatIdChanged: (String) -> Unit,
+    onAddTelegramChatId: () -> Unit,
+    onRemoveTelegramChatId: (String) -> Unit,
     onQuietStartChanged: (String) -> Unit,
     onQuietEndChanged: (String) -> Unit,
     onMetricsTimeChanged: (String) -> Unit,
     onSaveTime: () -> Unit,
     onAuthModeChanged: (String) -> Unit,
     onSshUsernameChanged: (String) -> Unit,
+    onSshKeyPathChanged: (String) -> Unit,
     onSshPortChanged: (String) -> Unit,
     onWindowsUsernameChanged: (String) -> Unit,
     onSshPasswordChanged: (String) -> Unit,
     onWindowsPasswordChanged: (String) -> Unit,
     onToggleSshPasswordVisibility: () -> Unit,
     onToggleWindowsPasswordVisibility: () -> Unit,
-    onSaveAuth: () -> Unit
+    onSaveAuth: () -> Unit,
+    onWindowsCredUsernameChanged: (String) -> Unit,
+    onWindowsCredPasswordChanged: (String) -> Unit,
+    onWindowsCredServerTypeChanged: (String) -> Unit,
+    onWindowsCredPriorityChanged: (String) -> Unit,
+    onAddWindowsCredential: () -> Unit,
+    onRemoveWindowsCredential: (Int?) -> Unit
 ) {
     var isManagementExpanded by rememberSaveable { mutableStateOf(false) }
     var isSettingsExpanded by rememberSaveable { mutableStateOf(false) }
@@ -129,12 +149,15 @@ private fun MonitoringApp(
     val canSaveMonitoring = state.checkIntervalInput.isNotBlank() ||
         state.timeoutInput.isNotBlank() ||
         state.maxDowntimeInput.isNotBlank()
-    val canSaveBot = state.telegramTokenInput.isNotBlank() || state.telegramChatIdInput.isNotBlank()
+    val canSaveBot = state.telegramTokenInput.isNotBlank() ||
+        state.telegramChatIdInput.isNotBlank() ||
+        state.telegramChatIds.isNotEmpty()
     val canSaveTime = state.quietStartInput.isNotBlank() ||
         state.quietEndInput.isNotBlank() ||
         state.metricsTimeInput.isNotBlank()
     val canSaveAuth = state.authModeInput.isNotBlank() ||
         state.sshUsernameInput.isNotBlank() ||
+        state.sshKeyPathInput.isNotBlank() ||
         state.sshPortInput.isNotBlank() ||
         state.windowsUsernameInput.isNotBlank() ||
         state.sshPasswordInput.isNotBlank() ||
@@ -274,9 +297,27 @@ private fun MonitoringApp(
                         OutlinedTextField(
                             value = state.telegramChatIdInput,
                             onValueChange = onTelegramChatIdChanged,
-                            label = { Text("telegram_chat_id") },
+                            label = { Text("telegram_chat_id (legacy)") },
                             modifier = Modifier.fillMaxWidth()
                         )
+                        if (state.telegramChatIds.isNotEmpty()) {
+                            Text("Чаты Telegram (${state.telegramChatIds.size})", fontWeight = FontWeight.Bold)
+                            state.telegramChatIds.forEach { chatId ->
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text(chatId, modifier = Modifier.weight(1f))
+                                    Button(onClick = { onRemoveTelegramChatId(chatId) }) { Text("Удалить") }
+                                }
+                            }
+                        }
+                        OutlinedTextField(
+                            value = state.newTelegramChatIdInput,
+                            onValueChange = onNewTelegramChatIdChanged,
+                            label = { Text("Новый chat_id") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = onAddTelegramChatId) { Text("Добавить chat_id") }
+                        }
                         Button(onClick = onSaveBot, enabled = canSaveBot) {
                             Text("Сохранить bot")
                         }
@@ -305,6 +346,7 @@ private fun MonitoringApp(
                         }
 
                         Text("Auth-параметры", fontWeight = FontWeight.Bold)
+                        Text("SSH аутентификация", fontWeight = FontWeight.Bold)
                         OutlinedTextField(
                             value = state.authModeInput,
                             onValueChange = onAuthModeChanged,
@@ -318,15 +360,15 @@ private fun MonitoringApp(
                             modifier = Modifier.fillMaxWidth()
                         )
                         OutlinedTextField(
-                            value = state.sshPortInput,
-                            onValueChange = onSshPortChanged,
-                            label = { Text("ssh_port") },
+                            value = state.sshKeyPathInput,
+                            onValueChange = onSshKeyPathChanged,
+                            label = { Text("ssh_key_path") },
                             modifier = Modifier.fillMaxWidth()
                         )
                         OutlinedTextField(
-                            value = state.windowsUsernameInput,
-                            onValueChange = onWindowsUsernameChanged,
-                            label = { Text("windows_username") },
+                            value = state.sshPortInput,
+                            onValueChange = onSshPortChanged,
+                            label = { Text("ssh_port") },
                             modifier = Modifier.fillMaxWidth()
                         )
                         OutlinedTextField(
@@ -341,10 +383,62 @@ private fun MonitoringApp(
                                 }
                             }
                         )
+                        Text("Windows аутентификация", fontWeight = FontWeight.Bold)
+                        if (state.windowsCredentials.isNotEmpty()) {
+                            state.windowsCredentials.forEach { cred ->
+                                ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                                    Column(modifier = Modifier.padding(10.dp)) {
+                                        Text("${cred.serverType ?: "default"} | ${cred.username ?: "-"} | prio=${cred.priority ?: 0}")
+                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            Button(onClick = { onRemoveWindowsCredential(cred.id) }) { Text("Удалить") }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        OutlinedTextField(
+                            value = state.windowsCredUsernameInput,
+                            onValueChange = onWindowsCredUsernameChanged,
+                            label = { Text("windows_cred_username") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = state.windowsCredPasswordInput,
+                            onValueChange = onWindowsCredPasswordChanged,
+                            label = { Text("windows_cred_password") },
+                            modifier = Modifier.fillMaxWidth(),
+                            visualTransformation = if (state.isWindowsPasswordVisible) VisualTransformation.None else hiddenTransformation,
+                            trailingIcon = {
+                                TextButton(onClick = onToggleWindowsPasswordVisibility) {
+                                    Text(if (state.isWindowsPasswordVisible) "Скрыть" else "Показать")
+                                }
+                            }
+                        )
+                        OutlinedTextField(
+                            value = state.windowsCredServerTypeInput,
+                            onValueChange = onWindowsCredServerTypeChanged,
+                            label = { Text("windows_cred_server_type") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = state.windowsCredPriorityInput,
+                            onValueChange = onWindowsCredPriorityChanged,
+                            label = { Text("windows_cred_priority") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = onAddWindowsCredential) { Text("Добавить Windows-учетку") }
+                        }
+                        OutlinedTextField(
+                            value = state.windowsUsernameInput,
+                            onValueChange = onWindowsUsernameChanged,
+                            label = { Text("windows_username (legacy)") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
                         OutlinedTextField(
                             value = state.windowsPasswordInput,
                             onValueChange = onWindowsPasswordChanged,
-                            label = { Text("windows_password") },
+                            label = { Text("windows_password (legacy)") },
                             modifier = Modifier.fillMaxWidth(),
                             visualTransformation = if (state.isWindowsPasswordVisible) VisualTransformation.None else hiddenTransformation,
                             trailingIcon = {

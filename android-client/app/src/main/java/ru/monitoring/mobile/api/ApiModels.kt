@@ -107,11 +107,13 @@ data class SettingsMonitoringResponse(
 
 data class SettingsBotRequest(
     @Json(name = "telegram_bot_token") val telegramBotToken: String? = null,
-    @Json(name = "telegram_chat_id") val telegramChatId: String? = null
+    @Json(name = "telegram_chat_id") val telegramChatId: String? = null,
+    @Json(name = "telegram_chat_ids") val telegramChatIds: List<String>? = null
 )
 
 data class SettingsBotData(
     @Json(name = "telegram_chat_id") val telegramChatId: String? = null,
+    @Json(name = "telegram_chat_ids") val telegramChatIds: List<String>? = null,
     @Json(name = "masked_token") val maskedToken: String? = null,
     @Json(name = "telegram_bot_token") val telegramBotToken: String? = null
 )
@@ -145,6 +147,7 @@ data class SettingsAuthRequest(
     @Json(name = "auth_mode") val authMode: String? = null,
     @Json(name = "ssh_username") val sshUsername: String? = null,
     @Json(name = "ssh_port") val sshPort: Int? = null,
+    @Json(name = "ssh_key_path") val sshKeyPath: String? = null,
     @Json(name = "windows_username") val windowsUsername: String? = null,
     @Json(name = "ssh_password") val sshPassword: String? = null,
     @Json(name = "windows_password") val windowsPassword: String? = null
@@ -154,9 +157,12 @@ data class SettingsAuthData(
     @Json(name = "auth_mode") val authMode: String? = null,
     @Json(name = "ssh_username") val sshUsername: String? = null,
     @Json(name = "ssh_port") val sshPort: Int? = null,
+    @Json(name = "ssh_key_path") val sshKeyPath: String? = null,
     @Json(name = "windows_username") val windowsUsername: String? = null,
     @Json(name = "masked_ssh_password") val maskedSshPassword: String? = null,
-    @Json(name = "masked_windows_password") val maskedWindowsPassword: String? = null
+    @Json(name = "masked_windows_password") val maskedWindowsPassword: String? = null,
+    @Json(name = "windows_credentials") val windowsCredentials: List<WindowsCredential> = emptyList(),
+    @Json(name = "windows_server_types") val windowsServerTypes: List<String> = emptyList()
 )
 
 data class SettingsAuthResponse(
@@ -165,7 +171,34 @@ data class SettingsAuthResponse(
     @Json(name = "auth_mode") val authMode: String? = null,
     @Json(name = "ssh_username") val sshUsername: String? = null,
     @Json(name = "ssh_port") val sshPort: Int? = null,
+    @Json(name = "ssh_key_path") val sshKeyPath: String? = null,
     @Json(name = "windows_username") val windowsUsername: String? = null,
     @Json(name = "ssh_password") val sshPassword: String? = null,
     @Json(name = "windows_password") val windowsPassword: String? = null
+)
+
+data class BotChatRequest(
+    @Json(name = "chat_id") val chatId: String
+)
+
+data class WindowsCredential(
+    val id: Int? = null,
+    val username: String? = null,
+    val password: String? = null,
+    @Json(name = "server_type") val serverType: String? = null,
+    val priority: Int? = null,
+    val enabled: Boolean? = null
+)
+
+data class WindowsCredentialsResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val items: List<WindowsCredential> = emptyList(),
+    @Json(name = "server_types") val serverTypes: List<String> = emptyList()
+)
+
+data class AddWindowsCredentialRequest(
+    val username: String,
+    val password: String,
+    @Json(name = "server_type") val serverType: String,
+    val priority: Int = 0
 )
