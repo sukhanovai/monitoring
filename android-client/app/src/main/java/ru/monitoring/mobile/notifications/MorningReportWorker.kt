@@ -20,7 +20,6 @@ import java.time.Duration
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.util.concurrent.TimeUnit
-import ru.monitoring.mobile.R
 import ru.monitoring.mobile.api.ApiFactory
 import ru.monitoring.mobile.api.ControlActionRequest
 import ru.monitoring.mobile.storage.AppPreferences
@@ -76,7 +75,7 @@ class MorningReportWorker(
         if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("Утренний отчет")
             .setContentText(reportText)
             .setStyle(NotificationCompat.BigTextStyle().bigText(reportText))
