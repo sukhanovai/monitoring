@@ -92,7 +92,18 @@ class MainActivity : ComponentActivity() {
                     onWindowsCredServerTypeChanged = vm::setWindowsCredServerTypeInput,
                     onWindowsCredPriorityChanged = vm::setWindowsCredPriorityInput,
                     onAddWindowsCredential = vm::addWindowsCredential,
-                    onRemoveWindowsCredential = vm::removeWindowsCredential
+                    onRemoveWindowsCredential = vm::removeWindowsCredential,
+                    onCreateWindowsTypeInputChanged = vm::setCreateWindowsTypeInput,
+                    onRenameOldTypeInputChanged = vm::setRenameOldTypeInput,
+                    onRenameNewTypeInputChanged = vm::setRenameNewTypeInput,
+                    onMergeSourceTypeInputChanged = vm::setMergeSourceTypeInput,
+                    onMergeTargetTypeInputChanged = vm::setMergeTargetTypeInput,
+                    onDeleteTypeInputChanged = vm::setDeleteTypeInput,
+                    onDeleteTargetTypeInputChanged = vm::setDeleteTargetTypeInput,
+                    onCreateWindowsType = vm::createWindowsType,
+                    onRenameWindowsType = vm::renameWindowsType,
+                    onMergeWindowsTypes = vm::mergeWindowsTypes,
+                    onDeleteWindowsType = vm::deleteWindowsType
                 )
             }
         }
@@ -141,7 +152,18 @@ private fun MonitoringApp(
     onWindowsCredServerTypeChanged: (String) -> Unit,
     onWindowsCredPriorityChanged: (String) -> Unit,
     onAddWindowsCredential: () -> Unit,
-    onRemoveWindowsCredential: (Int?) -> Unit
+    onRemoveWindowsCredential: (Int?) -> Unit,
+    onCreateWindowsTypeInputChanged: (String) -> Unit,
+    onRenameOldTypeInputChanged: (String) -> Unit,
+    onRenameNewTypeInputChanged: (String) -> Unit,
+    onMergeSourceTypeInputChanged: (String) -> Unit,
+    onMergeTargetTypeInputChanged: (String) -> Unit,
+    onDeleteTypeInputChanged: (String) -> Unit,
+    onDeleteTargetTypeInputChanged: (String) -> Unit,
+    onCreateWindowsType: () -> Unit,
+    onRenameWindowsType: () -> Unit,
+    onMergeWindowsTypes: () -> Unit,
+    onDeleteWindowsType: () -> Unit
 ) {
     var isManagementExpanded by rememberSaveable { mutableStateOf(false) }
     var isSettingsExpanded by rememberSaveable { mutableStateOf(false) }
@@ -151,6 +173,7 @@ private fun MonitoringApp(
     var showWindowsAll by rememberSaveable { mutableStateOf(false) }
     var showWindowsByType by rememberSaveable { mutableStateOf(false) }
     var showWindowsTypeStats by rememberSaveable { mutableStateOf(false) }
+    var settingsSection by rememberSaveable { mutableStateOf("bff") }
 
     val canSaveMonitoring = state.checkIntervalInput.isNotBlank() ||
         state.timeoutInput.isNotBlank() ||
@@ -241,7 +264,19 @@ private fun MonitoringApp(
                         Text("⚙️ Настройки")
                     }
                     if (isSettingsExpanded) {
-                        Text("Подключение к BFF", fontWeight = FontWeight.Bold)
+                        Text("Разделы настроек", fontWeight = FontWeight.Bold)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = { settingsSection = "bff" }) { Text("BFF") }
+                            Button(onClick = { settingsSection = "monitoring" }) { Text("Мониторинг") }
+                            Button(onClick = { settingsSection = "bot" }) { Text("Бот") }
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = { settingsSection = "time" }) { Text("Время") }
+                            Button(onClick = { settingsSection = "auth" }) { Text("Auth") }
+                        }
+
+                        if (settingsSection == "bff") {
+                            Text("Подключение к BFF", fontWeight = FontWeight.Bold)
                         OutlinedTextField(
                             value = state.baseUrlInput,
                             onValueChange = onBaseUrlChanged,
@@ -266,7 +301,9 @@ private fun MonitoringApp(
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(onClick = { onSaveToken(state.token) }) { Text("Сохранить токен") }
                         }
+                        }
 
+                        if (settingsSection == "monitoring") {
                         Text("Настройки мониторинга", fontWeight = FontWeight.Bold)
                         OutlinedTextField(
                             value = state.checkIntervalInput,
@@ -289,7 +326,9 @@ private fun MonitoringApp(
                         Button(onClick = onSaveMonitoring, enabled = canSaveMonitoring) {
                             Text("Сохранить monitoring")
                         }
+                        }
 
+                        if (settingsSection == "bot") {
                         Text("Настройки бота", fontWeight = FontWeight.Bold)
                         OutlinedTextField(
                             value = state.telegramTokenInput,
@@ -330,7 +369,9 @@ private fun MonitoringApp(
                         Button(onClick = onSaveBot, enabled = canSaveBot) {
                             Text("Сохранить bot")
                         }
+                        }
 
+                        if (settingsSection == "time") {
                         Text("Временные настройки", fontWeight = FontWeight.Bold)
                         OutlinedTextField(
                             value = state.quietStartInput,
@@ -353,7 +394,9 @@ private fun MonitoringApp(
                         Button(onClick = onSaveTime, enabled = canSaveTime) {
                             Text("Сохранить time")
                         }
+                        }
 
+                        if (settingsSection == "auth") {
                         Text("🔐 Настройки аутентификации", fontWeight = FontWeight.Bold)
                         Button(onClick = { isAuthExpanded = !isAuthExpanded }, modifier = Modifier.fillMaxWidth()) {
                             Text("🔐 Аутентификация")
@@ -461,12 +504,73 @@ private fun MonitoringApp(
                                 }
                                 if (showWindowsTypeStats) {
                                     Text("Существующие типы:", fontWeight = FontWeight.Bold)
-                                    windowsByType.keys.sorted().forEach { type ->
-                                        val total = windowsByType[type]?.size ?: 0
-                                        Text("• $type: $total/$total активных учетных записей")
+                                    if (state.windowsTypes.isNotEmpty()) {
+                                        state.windowsTypes.forEach { type ->
+                                            Text("• ${type.name}: ${type.active}/${type.total} активных учетных записей")
+                                        }
+                                    } else {
+                                        windowsByType.keys.sorted().forEach { type ->
+                                            val total = windowsByType[type]?.size ?: 0
+                                            Text("• $type: $total/$total активных учетных записей")
+                                        }
                                     }
+
+                                    Text("Создать новый тип", fontWeight = FontWeight.Bold)
+                                    OutlinedTextField(
+                                        value = state.createWindowsTypeInput,
+                                        onValueChange = onCreateWindowsTypeInputChanged,
+                                        label = { Text("Имя нового типа") },
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    Button(onClick = onCreateWindowsType) { Text("Создать тип") }
+
+                                    Text("Переименовать тип", fontWeight = FontWeight.Bold)
+                                    OutlinedTextField(
+                                        value = state.renameOldTypeInput,
+                                        onValueChange = onRenameOldTypeInputChanged,
+                                        label = { Text("Старое имя типа") },
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    OutlinedTextField(
+                                        value = state.renameNewTypeInput,
+                                        onValueChange = onRenameNewTypeInputChanged,
+                                        label = { Text("Новое имя типа") },
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    Button(onClick = onRenameWindowsType) { Text("Переименовать") }
+
+                                    Text("Объединить типы", fontWeight = FontWeight.Bold)
+                                    OutlinedTextField(
+                                        value = state.mergeSourceTypeInput,
+                                        onValueChange = onMergeSourceTypeInputChanged,
+                                        label = { Text("Source type") },
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    OutlinedTextField(
+                                        value = state.mergeTargetTypeInput,
+                                        onValueChange = onMergeTargetTypeInputChanged,
+                                        label = { Text("Target type") },
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    Button(onClick = onMergeWindowsTypes) { Text("Объединить") }
+
+                                    Text("Удалить тип", fontWeight = FontWeight.Bold)
+                                    OutlinedTextField(
+                                        value = state.deleteTypeInput,
+                                        onValueChange = onDeleteTypeInputChanged,
+                                        label = { Text("Удаляемый тип") },
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    OutlinedTextField(
+                                        value = state.deleteTargetTypeInput,
+                                        onValueChange = onDeleteTargetTypeInputChanged,
+                                        label = { Text("Перенести в тип (target)") },
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    Button(onClick = onDeleteWindowsType) { Text("Удалить тип") }
                                 }
                             }
+                        }
                         }
                     }
                 }

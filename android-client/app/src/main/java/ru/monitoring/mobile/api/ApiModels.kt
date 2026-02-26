@@ -202,3 +202,34 @@ data class AddWindowsCredentialRequest(
     @Json(name = "server_type") val serverType: String,
     val priority: Int = 0
 )
+
+data class WindowsTypeItem(
+    val name: String,
+    val total: Int,
+    val active: Int,
+    val inactive: Int
+)
+
+data class WindowsTypesSummary(
+    @Json(name = "types_count") val typesCount: Int = 0,
+    @Json(name = "credentials_count") val credentialsCount: Int = 0
+)
+
+data class WindowsTypesResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val types: List<WindowsTypeItem> = emptyList(),
+    val summary: WindowsTypesSummary = WindowsTypesSummary()
+)
+
+data class CreateWindowsTypeRequest(
+    val name: String
+)
+
+data class RenameWindowsTypeRequest(
+    @Json(name = "new_name") val newName: String
+)
+
+data class MergeWindowsTypesRequest(
+    @Json(name = "source_type") val sourceType: String,
+    @Json(name = "target_type") val targetType: String
+)

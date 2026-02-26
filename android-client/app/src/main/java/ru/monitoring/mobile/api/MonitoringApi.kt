@@ -6,6 +6,7 @@ import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.Path
 import retrofit2.http.POST
+import retrofit2.http.Query
 
 interface MonitoringApi {
     @POST("v1/auth/token")
@@ -71,4 +72,25 @@ interface MonitoringApi {
 
     @DELETE("v1/settings/auth/windows-credentials/{credId}")
     suspend fun deleteWindowsCredential(@Path("credId") credId: Int): WindowsCredentialsResponse
+
+    @GET("v1/settings/auth/windows-types")
+    suspend fun getWindowsTypes(): WindowsTypesResponse
+
+    @POST("v1/settings/auth/windows-types")
+    suspend fun createWindowsType(@Body request: CreateWindowsTypeRequest): WindowsTypesResponse
+
+    @PATCH("v1/settings/auth/windows-types/{typeName}")
+    suspend fun renameWindowsType(
+        @Path("typeName") typeName: String,
+        @Body request: RenameWindowsTypeRequest
+    ): WindowsTypesResponse
+
+    @POST("v1/settings/auth/windows-types/merge")
+    suspend fun mergeWindowsTypes(@Body request: MergeWindowsTypesRequest): WindowsTypesResponse
+
+    @DELETE("v1/settings/auth/windows-types/{typeName}")
+    suspend fun deleteWindowsType(
+        @Path("typeName") typeName: String,
+        @Query("target_type") targetType: String = "default"
+    ): WindowsTypesResponse
 }

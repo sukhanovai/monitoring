@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.4.20
+Server Monitoring System v8.5.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.4.20
+Версия: 8.5.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -2302,6 +2302,246 @@ def v1_delete_windows_credential(cred_id):
         }), 500
 
     return v1_get_windows_credentials()
+
+
+def _build_windows_types_stats(settings_manager):
+    credentials = settings_manager.get_windows_credentials()
+    grouped = {type_name: {"total": 0, "active": 0, "inactive": 0} for type_name in settings_manager.get_windows_server_types()}
+    for cred in credentials:
+        server_type = str(cred.get('server_type') or 'default')
+        bucket = grouped.setdefault(server_type, {"total": 0, "active": 0, "inactive": 0})
+        bucket["total"] += 1
+        if cred.get('enabled'):
+            bucket["active"] += 1
+        else:
+            bucket["inactive"] += 1
+    return grouped
+
+
+@app.route('/v1/settings/auth/windows-types', methods=['GET'])
+def v1_get_windows_types():
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    if not is_ok:
+        return jsonify({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid or expired token",
+                "request_id": request_id,
+            }
+        }), 401
+
+    from config.db_settings_app import settings_manager
+    stats = _build_windows_types_stats(settings_manager)
+    return jsonify({
+        "request_id": request_id,
+        "types": [
+            {
+                "name": type_name,
+                "total": values["total"],
+                "active": values["active"],
+                "inactive": values["inactive"],
+            }
+            for type_name, values in sorted(stats.items())
+        ],
+        "summary": {
+            "types_count": len(stats),
+            "credentials_count": sum(item["total"] for item in stats.values()),
+        }
+    }), 200
+
+
+@app.route('/v1/settings/auth/windows-types', methods=['POST'])
+def v1_create_windows_type():
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    if not is_ok:
+        return jsonify({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid or expired token",
+                "request_id": request_id,
+            }
+        }), 401
+
+    payload = request.get_json(silent=True) or {}
+    type_name = str(payload.get('name') or '').strip()
+    if not type_name:
+        return jsonify({
+            "error": {
+                "code": "VALIDATION_FAILED",
+                "message": "name is required",
+                "request_id": request_id,
+            }
+        }), 400
+
+    from config.db_settings_app import settings_manager
+    existing = set(settings_manager.get_windows_server_types())
+    if type_name in existing:
+        return jsonify({
+            "error": {
+                "code": "CONFLICT",
+                "message": "type already exists",
+                "request_id": request_id,
+            }
+        }), 409
+
+    # В БД тип существует только через учетные записи: создаем и сразу отключаем тех. запись.
+    settings_manager.add_windows_credential(
+        username=f"user_{type_name}",
+        password="temp_password",
+        server_type=type_name,
+        priority=0,
+    )
+    created = settings_manager.get_windows_credentials(type_name)
+    if created:
+        settings_manager.update_windows_credential(created[0]['id'], enabled=0)
+
+    return v1_get_windows_types()
+
+
+@app.route('/v1/settings/auth/windows-types/<type_name>', methods=['PATCH'])
+def v1_rename_windows_type(type_name):
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    if not is_ok:
+        return jsonify({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid or expired token",
+                "request_id": request_id,
+            }
+        }), 401
+
+    payload = request.get_json(silent=True) or {}
+    new_name = str(payload.get('new_name') or '').strip()
+    old_name = str(type_name or '').strip()
+    if not old_name or not new_name:
+        return jsonify({
+            "error": {
+                "code": "VALIDATION_FAILED",
+                "message": "new_name is required",
+                "request_id": request_id,
+            }
+        }), 400
+
+    from config.db_settings_app import settings_manager
+    existing = set(settings_manager.get_windows_server_types())
+    if old_name not in existing:
+        return jsonify({
+            "error": {
+                "code": "NOT_FOUND",
+                "message": "type not found",
+                "request_id": request_id,
+            }
+        }), 404
+    if new_name in existing and new_name != old_name:
+        return jsonify({
+            "error": {
+                "code": "CONFLICT",
+                "message": "target type already exists",
+                "request_id": request_id,
+            }
+        }), 409
+
+    for cred in settings_manager.get_windows_credentials(old_name):
+        settings_manager.update_windows_credential(cred['id'], server_type=new_name)
+
+    return v1_get_windows_types()
+
+
+@app.route('/v1/settings/auth/windows-types/merge', methods=['POST'])
+def v1_merge_windows_types():
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    if not is_ok:
+        return jsonify({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid or expired token",
+                "request_id": request_id,
+            }
+        }), 401
+
+    payload = request.get_json(silent=True) or {}
+    source_type = str(payload.get('source_type') or '').strip()
+    target_type = str(payload.get('target_type') or '').strip()
+    if not source_type or not target_type or source_type == target_type:
+        return jsonify({
+            "error": {
+                "code": "VALIDATION_FAILED",
+                "message": "source_type and target_type are required and must differ",
+                "request_id": request_id,
+            }
+        }), 400
+
+    from config.db_settings_app import settings_manager
+    existing = set(settings_manager.get_windows_server_types())
+    if source_type not in existing or target_type not in existing:
+        return jsonify({
+            "error": {
+                "code": "NOT_FOUND",
+                "message": "source or target type not found",
+                "request_id": request_id,
+            }
+        }), 404
+
+    for cred in settings_manager.get_windows_credentials(source_type):
+        settings_manager.update_windows_credential(cred['id'], server_type=target_type)
+
+    return v1_get_windows_types()
+
+
+@app.route('/v1/settings/auth/windows-types/<type_name>', methods=['DELETE'])
+def v1_delete_windows_type(type_name):
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    if not is_ok:
+        return jsonify({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid or expired token",
+                "request_id": request_id,
+            }
+        }), 401
+
+    source_type = str(type_name or '').strip()
+    target_type = str(request.args.get('target_type') or 'default').strip() or 'default'
+    if source_type == 'default':
+        return jsonify({
+            "error": {
+                "code": "VALIDATION_FAILED",
+                "message": "type 'default' cannot be deleted",
+                "request_id": request_id,
+            }
+        }), 400
+
+    from config.db_settings_app import settings_manager
+    existing = set(settings_manager.get_windows_server_types())
+    if source_type not in existing:
+        return jsonify({
+            "error": {
+                "code": "NOT_FOUND",
+                "message": "type not found",
+                "request_id": request_id,
+            }
+        }), 404
+
+    if target_type not in existing:
+        settings_manager.add_windows_credential(
+            username=f"user_{target_type}",
+            password="temp_password",
+            server_type=target_type,
+            priority=0,
+        )
+        created = settings_manager.get_windows_credentials(target_type)
+        if created:
+            settings_manager.update_windows_credential(created[0]['id'], enabled=0)
+
+    for cred in settings_manager.get_windows_credentials(source_type):
+        settings_manager.update_windows_credential(cred['id'], server_type=target_type)
+
+    return v1_get_windows_types()
 
 
 @app.route('/v1/settings/monitoring', methods=['PATCH'])

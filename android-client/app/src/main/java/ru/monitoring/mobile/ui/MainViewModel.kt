@@ -19,13 +19,17 @@ import ru.monitoring.mobile.api.AddWindowsCredentialRequest
 import ru.monitoring.mobile.api.AuthTokenExchangeRequest
 import ru.monitoring.mobile.api.AvailabilityItem
 import ru.monitoring.mobile.api.BotChatRequest
+import ru.monitoring.mobile.api.CreateWindowsTypeRequest
 import ru.monitoring.mobile.api.ControlActionRequest
+import ru.monitoring.mobile.api.MergeWindowsTypesRequest
+import ru.monitoring.mobile.api.RenameWindowsTypeRequest
 import ru.monitoring.mobile.api.ServerAvailability
 import ru.monitoring.mobile.api.SettingsAuthRequest
 import ru.monitoring.mobile.api.SettingsBotRequest
 import ru.monitoring.mobile.api.SettingsMonitoringRequest
 import ru.monitoring.mobile.api.SettingsTimeRequest
 import ru.monitoring.mobile.api.WindowsCredential
+import ru.monitoring.mobile.api.WindowsTypeItem
 import ru.monitoring.mobile.storage.AppPreferences
 
 class MainViewModel(
@@ -141,6 +145,13 @@ class MainViewModel(
     fun setWindowsCredPasswordInput(value: String) { state = state.copy(windowsCredPasswordInput = value) }
     fun setWindowsCredServerTypeInput(value: String) { state = state.copy(windowsCredServerTypeInput = value) }
     fun setWindowsCredPriorityInput(value: String) { state = state.copy(windowsCredPriorityInput = value) }
+    fun setCreateWindowsTypeInput(value: String) { state = state.copy(createWindowsTypeInput = value) }
+    fun setRenameOldTypeInput(value: String) { state = state.copy(renameOldTypeInput = value) }
+    fun setRenameNewTypeInput(value: String) { state = state.copy(renameNewTypeInput = value) }
+    fun setMergeSourceTypeInput(value: String) { state = state.copy(mergeSourceTypeInput = value) }
+    fun setMergeTargetTypeInput(value: String) { state = state.copy(mergeTargetTypeInput = value) }
+    fun setDeleteTypeInput(value: String) { state = state.copy(deleteTypeInput = value) }
+    fun setDeleteTargetTypeInput(value: String) { state = state.copy(deleteTargetTypeInput = value) }
 
     fun toggleApiTokenVisibility() { state = state.copy(isApiTokenVisible = !state.isApiTokenVisible) }
     fun toggleTelegramTokenVisibility() { state = state.copy(isTelegramTokenVisible = !state.isTelegramTokenVisible) }
@@ -199,7 +210,8 @@ class MainViewModel(
                 val time = runCatching { currentApi().getTimeSettings() }.getOrNull()
                 val auth = runCatching { currentApi().getAuthSettings() }.getOrNull()
                 val control = runCatching { currentApi().getControlStatus() }.getOrNull()
-                listOf(monitoring, bot, time, auth, control)
+                val winTypes = runCatching { currentApi().getWindowsTypes() }.getOrNull()
+                listOf(monitoring, bot, time, auth, control, winTypes)
             }
 
             val monitoring = result[0] as? ru.monitoring.mobile.api.SettingsMonitoringResponse
@@ -207,6 +219,7 @@ class MainViewModel(
             val time = result[2] as? ru.monitoring.mobile.api.SettingsTimeResponse
             val auth = result[3] as? ru.monitoring.mobile.api.SettingsAuthResponse
             val control = result[4] as? ru.monitoring.mobile.api.ControlStatusResponse
+            val winTypes = result[5] as? ru.monitoring.mobile.api.WindowsTypesResponse
 
             val monitoringData = monitoring?.settings
             val botData = bot?.settings
@@ -218,7 +231,7 @@ class MainViewModel(
                 else -> state.telegramChatIds
             }
 
-            val hasAny = monitoring != null || bot != null || time != null || auth != null || control != null
+            val hasAny = monitoring != null || bot != null || time != null || auth != null || control != null || winTypes != null
             if (!hasAny) {
                 state = if (showErrors) {
                     state.copy(isLoading = false, message = "Не удалось подтянуть настройки")
@@ -247,7 +260,12 @@ class MainViewModel(
                 sshPasswordInput = authData?.maskedSshPassword ?: auth?.sshPassword ?: state.sshPasswordInput,
                 windowsPasswordInput = authData?.maskedWindowsPassword ?: auth?.windowsPassword ?: state.windowsPasswordInput,
                 windowsCredentials = if (authData != null) authData.windowsCredentials else state.windowsCredentials,
-                windowsServerTypes = if (authData != null) authData.windowsServerTypes else state.windowsServerTypes,
+                windowsServerTypes = when {
+                    winTypes != null -> winTypes.types.map { it.name }
+                    authData != null -> authData.windowsServerTypes
+                    else -> state.windowsServerTypes
+                },
+                windowsTypes = winTypes?.types ?: state.windowsTypes,
                 monitoringStatusText = when {
                     control?.monitoringActive == true -> "🟢 Активен"
                     control?.monitoringActive == false -> "🔴 Приостановлен"
@@ -414,6 +432,103 @@ class MainViewModel(
                         windowsServerTypes = response.serverTypes,
                         message = "Windows-учетка удалена"
                     )
+                }
+                .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
+        }
+    }
+
+    fun createWindowsType() {
+        val typeName = state.createWindowsTypeInput.trim()
+        if (typeName.isBlank()) {
+            state = state.copy(message = "Введите имя нового типа")
+            return
+        }
+        viewModelScope.launch {
+            state = state.copy(isLoading = true)
+            runCatching { currentApi().createWindowsType(CreateWindowsTypeRequest(typeName)) }
+                .onSuccess { response ->
+                    state = state.copy(
+                        isLoading = false,
+                        windowsTypes = response.types,
+                        windowsServerTypes = response.types.map { it.name },
+                        createWindowsTypeInput = "",
+                        message = "Тип создан"
+                    )
+                    refreshSettingsFromServer(showErrors = false)
+                }
+                .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
+        }
+    }
+
+    fun renameWindowsType() {
+        val oldType = state.renameOldTypeInput.trim()
+        val newType = state.renameNewTypeInput.trim()
+        if (oldType.isBlank() || newType.isBlank()) {
+            state = state.copy(message = "Заполни старое и новое имя типа")
+            return
+        }
+        viewModelScope.launch {
+            state = state.copy(isLoading = true)
+            runCatching { currentApi().renameWindowsType(oldType, RenameWindowsTypeRequest(newType)) }
+                .onSuccess { response ->
+                    state = state.copy(
+                        isLoading = false,
+                        windowsTypes = response.types,
+                        windowsServerTypes = response.types.map { it.name },
+                        renameOldTypeInput = "",
+                        renameNewTypeInput = "",
+                        message = "Тип переименован"
+                    )
+                    refreshSettingsFromServer(showErrors = false)
+                }
+                .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
+        }
+    }
+
+    fun mergeWindowsTypes() {
+        val source = state.mergeSourceTypeInput.trim()
+        val target = state.mergeTargetTypeInput.trim()
+        if (source.isBlank() || target.isBlank() || source == target) {
+            state = state.copy(message = "Укажи source/target типы (и они должны отличаться)")
+            return
+        }
+        viewModelScope.launch {
+            state = state.copy(isLoading = true)
+            runCatching { currentApi().mergeWindowsTypes(MergeWindowsTypesRequest(source, target)) }
+                .onSuccess { response ->
+                    state = state.copy(
+                        isLoading = false,
+                        windowsTypes = response.types,
+                        windowsServerTypes = response.types.map { it.name },
+                        mergeSourceTypeInput = "",
+                        mergeTargetTypeInput = "",
+                        message = "Типы объединены"
+                    )
+                    refreshSettingsFromServer(showErrors = false)
+                }
+                .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
+        }
+    }
+
+    fun deleteWindowsType() {
+        val typeName = state.deleteTypeInput.trim()
+        val target = state.deleteTargetTypeInput.trim().ifBlank { "default" }
+        if (typeName.isBlank()) {
+            state = state.copy(message = "Укажи тип для удаления")
+            return
+        }
+        viewModelScope.launch {
+            state = state.copy(isLoading = true)
+            runCatching { currentApi().deleteWindowsType(typeName, target) }
+                .onSuccess { response ->
+                    state = state.copy(
+                        isLoading = false,
+                        windowsTypes = response.types,
+                        windowsServerTypes = response.types.map { it.name },
+                        deleteTypeInput = "",
+                        message = "Тип удален"
+                    )
+                    refreshSettingsFromServer(showErrors = false)
                 }
                 .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
         }
@@ -588,10 +703,18 @@ data class MainUiState(
     val windowsPasswordInput: String = "",
     val windowsCredentials: List<WindowsCredential> = emptyList(),
     val windowsServerTypes: List<String> = emptyList(),
+    val windowsTypes: List<WindowsTypeItem> = emptyList(),
     val windowsCredUsernameInput: String = "",
     val windowsCredPasswordInput: String = "",
     val windowsCredServerTypeInput: String = "",
     val windowsCredPriorityInput: String = "0",
+    val createWindowsTypeInput: String = "",
+    val renameOldTypeInput: String = "",
+    val renameNewTypeInput: String = "",
+    val mergeSourceTypeInput: String = "",
+    val mergeTargetTypeInput: String = "",
+    val deleteTypeInput: String = "",
+    val deleteTargetTypeInput: String = "default",
     val monitoringStatusText: String = "Неизвестно",
     val silentStatusText: String = "Неизвестно"
 )
