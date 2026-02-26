@@ -1,7 +1,10 @@
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
+}
+
+if (!plugins.hasPlugin("org.jetbrains.kotlin.android")) {
+    apply(plugin = "org.jetbrains.kotlin.android")
 }
 
 android {
