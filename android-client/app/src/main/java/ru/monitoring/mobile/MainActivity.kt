@@ -35,6 +35,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import ru.monitoring.mobile.api.ManagedServer
 import ru.monitoring.mobile.storage.AppPreferences
 import ru.monitoring.mobile.ui.MainUiState
 import ru.monitoring.mobile.ui.MainViewModel
@@ -103,7 +104,16 @@ class MainActivity : ComponentActivity() {
                     onCreateWindowsType = vm::createWindowsType,
                     onRenameWindowsType = vm::renameWindowsType,
                     onMergeWindowsTypes = vm::mergeWindowsTypes,
-                    onDeleteWindowsType = vm::deleteWindowsType
+                    onDeleteWindowsType = vm::deleteWindowsType,
+                    onServerIpChanged = vm::setServerIpInput,
+                    onServerNameChanged = vm::setServerNameInput,
+                    onServerTypeChanged = vm::setServerTypeInput,
+                    onServerTimeoutChanged = vm::setServerTimeoutInput,
+                    onSaveServer = vm::saveServer,
+                    onEditServer = vm::startServerEdit,
+                    onCancelServerEdit = vm::cancelServerEdit,
+                    onDeleteServer = vm::deleteServer,
+                    onToggleServerMonitoring = vm::toggleServerMonitoring
                 )
             }
         }
@@ -163,7 +173,16 @@ private fun MonitoringApp(
     onCreateWindowsType: () -> Unit,
     onRenameWindowsType: () -> Unit,
     onMergeWindowsTypes: () -> Unit,
-    onDeleteWindowsType: () -> Unit
+    onDeleteWindowsType: () -> Unit,
+    onServerIpChanged: (String) -> Unit,
+    onServerNameChanged: (String) -> Unit,
+    onServerTypeChanged: (String) -> Unit,
+    onServerTimeoutChanged: (String) -> Unit,
+    onSaveServer: () -> Unit,
+    onEditServer: (ManagedServer) -> Unit,
+    onCancelServerEdit: () -> Unit,
+    onDeleteServer: (String) -> Unit,
+    onToggleServerMonitoring: (String, Boolean) -> Unit
 ) {
     var isManagementExpanded by rememberSaveable { mutableStateOf(false) }
     var isSettingsExpanded by rememberSaveable { mutableStateOf(false) }
@@ -272,6 +291,7 @@ private fun MonitoringApp(
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(onClick = { settingsSection = "time" }) { Text("Время") }
                             Button(onClick = { settingsSection = "auth" }) { Text("Аутентификация") }
+                            Button(onClick = { settingsSection = "servers" }) { Text("Серверы") }
                         }
 
                         if (settingsSection == "bff") {
@@ -563,6 +583,67 @@ private fun MonitoringApp(
                                         modifier = Modifier.fillMaxWidth()
                                     )
                                     Button(onClick = onDeleteWindowsType) { Text("Удалить тип") }
+                                }
+                            }
+                        }
+
+                        if (settingsSection == "servers") {
+                            Text("🖥️ Серверы", fontWeight = FontWeight.Bold)
+                            Text("Всего: ${state.managedServers.size}")
+                            Text("Активных: ${state.managedServers.count { it.enabled == true }}")
+
+                            Text(
+                                if (state.serverEditIp.isBlank()) "Добавить сервер" else "Редактирование сервера ${state.serverEditIp}",
+                                fontWeight = FontWeight.Bold
+                            )
+                            OutlinedTextField(
+                                value = state.serverIpInput,
+                                onValueChange = onServerIpChanged,
+                                label = { Text("IP сервера") },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = state.serverEditIp.isBlank()
+                            )
+                            OutlinedTextField(
+                                value = state.serverNameInput,
+                                onValueChange = onServerNameChanged,
+                                label = { Text("Имя сервера") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                value = state.serverTypeInput,
+                                onValueChange = onServerTypeChanged,
+                                label = { Text("Тип (rdp/ssh/ping)") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            OutlinedTextField(
+                                value = state.serverTimeoutInput,
+                                onValueChange = onServerTimeoutChanged,
+                                label = { Text("Timeout (сек)") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(onClick = onSaveServer) {
+                                    Text(if (state.serverEditIp.isBlank()) "Добавить сервер" else "Сохранить изменения")
+                                }
+                                if (state.serverEditIp.isNotBlank()) {
+                                    Button(onClick = onCancelServerEdit) { Text("Отмена") }
+                                }
+                            }
+
+                            state.managedServers.forEach { server ->
+                                ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                                    Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Text("${server.name} (${server.ip})", fontWeight = FontWeight.Bold)
+                                        Text("Тип: ${server.type}, timeout: ${server.timeout ?: 30} сек")
+                                        Text("Мониторинг: ${if (server.enabled == true) "включен" else "выключен"}")
+                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            Button(onClick = { onToggleServerMonitoring(server.ip, server.enabled != true) }) {
+                                                Text(if (server.enabled == true) "Выключить" else "Включить")
+                                            }
+                                            Button(onClick = { onEditServer(server) }) { Text("Редактировать") }
+                                            Button(onClick = { onDeleteServer(server.ip) }) { Text("Удалить") }
+                                        }
+                                    }
                                 }
                             }
                         }

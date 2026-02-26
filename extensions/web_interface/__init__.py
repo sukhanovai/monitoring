@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.6.0
+Server Monitoring System v8.7.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.6.0
+Версия: 8.7.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -2618,6 +2618,244 @@ def v1_settings_monitoring():
                 "request_id": request_id,
             }
         }), 500
+
+
+def _normalize_server_type(raw_value):
+    normalized = str(raw_value or '').strip().lower()
+    aliases = {
+        'windows': 'rdp',
+        'linux': 'ssh',
+        'rdp': 'rdp',
+        'ssh': 'ssh',
+        'ping': 'ping',
+    }
+    return aliases.get(normalized)
+
+
+@app.route('/v1/settings/servers', methods=['GET'])
+def v1_get_settings_servers():
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    if not is_ok:
+        return jsonify({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid or expired token",
+                "request_id": request_id,
+            }
+        }), 401
+
+    from config.db_settings_app import settings_manager
+    servers = settings_manager.get_all_servers(include_disabled=True)
+    return jsonify({
+        "request_id": request_id,
+        "items": servers,
+        "summary": {
+            "total": len(servers),
+            "enabled": sum(1 for item in servers if item.get("enabled")),
+            "disabled": sum(1 for item in servers if not item.get("enabled")),
+        }
+    }), 200
+
+
+@app.route('/v1/settings/servers', methods=['POST'])
+def v1_add_settings_server():
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    if not is_ok:
+        return jsonify({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid or expired token",
+                "request_id": request_id,
+            }
+        }), 401
+
+    payload = request.get_json(silent=True) or {}
+    ip = str(payload.get('ip') or '').strip()
+    name = str(payload.get('name') or '').strip()
+    server_type = _normalize_server_type(payload.get('type'))
+    timeout = payload.get('timeout')
+    enabled = payload.get('enabled')
+
+    if not ip or not name or not server_type:
+        return jsonify({
+            "error": {
+                "code": "VALIDATION_FAILED",
+                "message": "ip, name and type are required",
+                "request_id": request_id,
+            }
+        }), 400
+
+    try:
+        timeout_value = int(timeout) if timeout is not None else 30
+        if timeout_value < 1:
+            raise ValueError("timeout must be >= 1")
+    except Exception:
+        return jsonify({
+            "error": {
+                "code": "VALIDATION_FAILED",
+                "message": "timeout must be integer >= 1",
+                "request_id": request_id,
+            }
+        }), 400
+
+    enabled_value = True if enabled is None else bool(enabled)
+    from config.db_settings_app import settings_manager
+    ok = settings_manager.add_server(
+        ip=ip,
+        name=name,
+        server_type=server_type,
+        timeout=timeout_value,
+        enabled=enabled_value,
+    )
+    if not ok:
+        return jsonify({
+            "error": {
+                "code": "CONFIG_STORE_UNAVAILABLE",
+                "message": "failed to add server",
+                "request_id": request_id,
+            }
+        }), 500
+
+    return v1_get_settings_servers()
+
+
+@app.route('/v1/settings/servers/<path:ip>', methods=['PATCH'])
+def v1_update_settings_server(ip):
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    if not is_ok:
+        return jsonify({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid or expired token",
+                "request_id": request_id,
+            }
+        }), 401
+
+    payload = request.get_json(silent=True) or {}
+    name = payload.get('name')
+    raw_type = payload.get('type')
+    server_type = _normalize_server_type(raw_type) if raw_type is not None else None
+    timeout = payload.get('timeout')
+    enabled = payload.get('enabled')
+
+    if name is None and raw_type is None and timeout is None and enabled is None:
+        return jsonify({
+            "error": {
+                "code": "VALIDATION_FAILED",
+                "message": "At least one field is required",
+                "request_id": request_id,
+            }
+        }), 400
+
+    timeout_value = None
+    if timeout is not None:
+        try:
+            timeout_value = int(timeout)
+            if timeout_value < 1:
+                raise ValueError("timeout must be >= 1")
+        except Exception:
+            return jsonify({
+                "error": {
+                    "code": "VALIDATION_FAILED",
+                    "message": "timeout must be integer >= 1",
+                    "request_id": request_id,
+                }
+            }), 400
+
+    if raw_type is not None and server_type is None:
+        return jsonify({
+            "error": {
+                "code": "VALIDATION_FAILED",
+                "message": "type must be one of: rdp, ssh, ping",
+                "request_id": request_id,
+            }
+        }), 400
+
+    from config.db_settings_app import settings_manager
+    ok = settings_manager.update_server(
+        ip=str(ip).strip(),
+        name=str(name).strip() if name is not None else None,
+        server_type=server_type,
+        timeout=timeout_value,
+        enabled=bool(enabled) if enabled is not None else None,
+    )
+    if not ok:
+        return jsonify({
+            "error": {
+                "code": "SERVER_NOT_FOUND",
+                "message": "server not found or update skipped",
+                "request_id": request_id,
+            }
+        }), 404
+
+    return v1_get_settings_servers()
+
+
+@app.route('/v1/settings/servers/<path:ip>/enabled', methods=['PATCH'])
+def v1_toggle_settings_server(ip):
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    if not is_ok:
+        return jsonify({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid or expired token",
+                "request_id": request_id,
+            }
+        }), 401
+
+    payload = request.get_json(silent=True) or {}
+    if 'enabled' not in payload:
+        return jsonify({
+            "error": {
+                "code": "VALIDATION_FAILED",
+                "message": "enabled field is required",
+                "request_id": request_id,
+            }
+        }), 400
+
+    from config.db_settings_app import settings_manager
+    ok = settings_manager.set_server_enabled(str(ip).strip(), bool(payload.get('enabled')))
+    if not ok:
+        return jsonify({
+            "error": {
+                "code": "SERVER_NOT_FOUND",
+                "message": "server not found",
+                "request_id": request_id,
+            }
+        }), 404
+
+    return v1_get_settings_servers()
+
+
+@app.route('/v1/settings/servers/<path:ip>', methods=['DELETE'])
+def v1_delete_settings_server(ip):
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    if not is_ok:
+        return jsonify({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid or expired token",
+                "request_id": request_id,
+            }
+        }), 401
+
+    from config.db_settings_app import settings_manager
+    ok = settings_manager.delete_server(str(ip).strip())
+    if not ok:
+        return jsonify({
+            "error": {
+                "code": "CONFIG_STORE_UNAVAILABLE",
+                "message": "failed to delete server",
+                "request_id": request_id,
+            }
+        }), 500
+
+    return v1_get_settings_servers()
 
 @app.route('/')
 def index():

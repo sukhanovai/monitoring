@@ -16,18 +16,22 @@ import kotlinx.coroutines.withContext
 import retrofit2.HttpException
 import ru.monitoring.mobile.api.ApiFactory
 import ru.monitoring.mobile.api.AddWindowsCredentialRequest
+import ru.monitoring.mobile.api.AddServerRequest
 import ru.monitoring.mobile.api.AuthTokenExchangeRequest
 import ru.monitoring.mobile.api.AvailabilityItem
 import ru.monitoring.mobile.api.BotChatRequest
 import ru.monitoring.mobile.api.CreateWindowsTypeRequest
 import ru.monitoring.mobile.api.ControlActionRequest
 import ru.monitoring.mobile.api.MergeWindowsTypesRequest
+import ru.monitoring.mobile.api.ManagedServer
 import ru.monitoring.mobile.api.RenameWindowsTypeRequest
 import ru.monitoring.mobile.api.ServerAvailability
 import ru.monitoring.mobile.api.SettingsAuthRequest
 import ru.monitoring.mobile.api.SettingsBotRequest
 import ru.monitoring.mobile.api.SettingsMonitoringRequest
 import ru.monitoring.mobile.api.SettingsTimeRequest
+import ru.monitoring.mobile.api.ToggleServerEnabledRequest
+import ru.monitoring.mobile.api.UpdateServerRequest
 import ru.monitoring.mobile.api.WindowsCredential
 import ru.monitoring.mobile.api.WindowsTypeItem
 import ru.monitoring.mobile.storage.AppPreferences
@@ -152,6 +156,10 @@ class MainViewModel(
     fun setMergeTargetTypeInput(value: String) { state = state.copy(mergeTargetTypeInput = value) }
     fun setDeleteTypeInput(value: String) { state = state.copy(deleteTypeInput = value) }
     fun setDeleteTargetTypeInput(value: String) { state = state.copy(deleteTargetTypeInput = value) }
+    fun setServerIpInput(value: String) { state = state.copy(serverIpInput = value) }
+    fun setServerNameInput(value: String) { state = state.copy(serverNameInput = value) }
+    fun setServerTypeInput(value: String) { state = state.copy(serverTypeInput = value) }
+    fun setServerTimeoutInput(value: String) { state = state.copy(serverTimeoutInput = value) }
 
     fun toggleApiTokenVisibility() { state = state.copy(isApiTokenVisible = !state.isApiTokenVisible) }
     fun toggleTelegramTokenVisibility() { state = state.copy(isTelegramTokenVisible = !state.isTelegramTokenVisible) }
@@ -212,7 +220,8 @@ class MainViewModel(
                 val control = runCatching { currentApi().getControlStatus() }.getOrNull()
                 val winTypes = runCatching { currentApi().getWindowsTypes() }.getOrNull()
                 val winCreds = runCatching { currentApi().getWindowsCredentials() }.getOrNull()
-                listOf(monitoring, bot, time, auth, control, winTypes, winCreds)
+                val servers = runCatching { currentApi().getServersSettings() }.getOrNull()
+                listOf(monitoring, bot, time, auth, control, winTypes, winCreds, servers)
             }
 
             val monitoring = result[0] as? ru.monitoring.mobile.api.SettingsMonitoringResponse
@@ -222,6 +231,7 @@ class MainViewModel(
             val control = result[4] as? ru.monitoring.mobile.api.ControlStatusResponse
             val winTypes = result[5] as? ru.monitoring.mobile.api.WindowsTypesResponse
             val winCreds = result[6] as? ru.monitoring.mobile.api.WindowsCredentialsResponse
+            val servers = result[7] as? ru.monitoring.mobile.api.ServersSettingsResponse
 
             val monitoringData = monitoring?.settings
             val botData = bot?.settings
@@ -233,7 +243,7 @@ class MainViewModel(
                 else -> state.telegramChatIds
             }
 
-            val hasAny = monitoring != null || bot != null || time != null || auth != null || control != null || winTypes != null || winCreds != null
+            val hasAny = monitoring != null || bot != null || time != null || auth != null || control != null || winTypes != null || winCreds != null || servers != null
             if (!hasAny) {
                 state = if (showErrors) {
                     state.copy(isLoading = false, message = "Не удалось подтянуть настройки")
@@ -273,6 +283,7 @@ class MainViewModel(
                     else -> state.windowsServerTypes
                 },
                 windowsTypes = winTypes?.types ?: state.windowsTypes,
+                managedServers = servers?.items ?: state.managedServers,
                 monitoringStatusText = when {
                     control?.monitoringActive == true -> "🟢 Активен"
                     control?.monitoringActive == false -> "🔴 Приостановлен"
@@ -541,6 +552,137 @@ class MainViewModel(
         }
     }
 
+    fun startServerEdit(server: ManagedServer) {
+        state = state.copy(
+            serverEditIp = server.ip,
+            serverIpInput = server.ip,
+            serverNameInput = server.name,
+            serverTypeInput = server.type,
+            serverTimeoutInput = (server.timeout ?: 30).toString(),
+            message = "Режим редактирования: ${server.ip}"
+        )
+    }
+
+    fun cancelServerEdit() {
+        state = state.copy(
+            serverEditIp = "",
+            serverIpInput = "",
+            serverNameInput = "",
+            serverTypeInput = "",
+            serverTimeoutInput = "30",
+            message = "Редактирование сервера отменено"
+        )
+    }
+
+    private fun normalizeServerType(raw: String): String? = when (raw.trim().lowercase()) {
+        "rdp", "windows" -> "rdp"
+        "ssh", "linux" -> "ssh"
+        "ping" -> "ping"
+        else -> null
+    }
+
+    fun saveServer() {
+        val ip = state.serverIpInput.trim()
+        val name = state.serverNameInput.trim()
+        val type = normalizeServerType(state.serverTypeInput)
+        val timeout = state.serverTimeoutInput.trim().toIntOrNull() ?: 30
+        val isEdit = state.serverEditIp.isNotBlank()
+
+        if (!isEdit && ip.isBlank()) {
+            state = state.copy(message = "Введите IP сервера")
+            return
+        }
+        if (name.isBlank()) {
+            state = state.copy(message = "Введите имя сервера")
+            return
+        }
+        if (type == null) {
+            state = state.copy(message = "Тип сервера: rdp / ssh / ping")
+            return
+        }
+        if (timeout < 1) {
+            state = state.copy(message = "timeout должен быть >= 1")
+            return
+        }
+
+        viewModelScope.launch {
+            state = state.copy(isLoading = true)
+            val result = if (isEdit) {
+                runCatching {
+                    currentApi().updateServer(
+                        state.serverEditIp,
+                        UpdateServerRequest(
+                            name = name,
+                            type = type,
+                            timeout = timeout
+                        )
+                    )
+                }
+            } else {
+                runCatching {
+                    currentApi().addServer(
+                        AddServerRequest(
+                            ip = ip,
+                            name = name,
+                            type = type,
+                            timeout = timeout,
+                            enabled = true
+                        )
+                    )
+                }
+            }
+
+            result
+                .onSuccess { response ->
+                    state = state.copy(
+                        isLoading = false,
+                        managedServers = response.items,
+                        serverEditIp = "",
+                        serverIpInput = "",
+                        serverNameInput = "",
+                        serverTypeInput = "",
+                        serverTimeoutInput = "30",
+                        message = if (isEdit) "Сервер обновлен" else "Сервер добавлен"
+                    )
+                }
+                .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
+        }
+    }
+
+    fun deleteServer(ip: String) {
+        val normalizedIp = ip.trim()
+        if (normalizedIp.isBlank()) return
+        viewModelScope.launch {
+            state = state.copy(isLoading = true)
+            runCatching { currentApi().deleteServer(normalizedIp) }
+                .onSuccess { response ->
+                    state = state.copy(
+                        isLoading = false,
+                        managedServers = response.items,
+                        message = "Сервер удален"
+                    )
+                }
+                .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
+        }
+    }
+
+    fun toggleServerMonitoring(ip: String, enabled: Boolean) {
+        val normalizedIp = ip.trim()
+        if (normalizedIp.isBlank()) return
+        viewModelScope.launch {
+            state = state.copy(isLoading = true)
+            runCatching { currentApi().setServerEnabled(normalizedIp, ToggleServerEnabledRequest(enabled)) }
+                .onSuccess { response ->
+                    state = state.copy(
+                        isLoading = false,
+                        managedServers = response.items,
+                        message = if (enabled) "Мониторинг включен" else "Мониторинг приостановлен"
+                    )
+                }
+                .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
+        }
+    }
+
     fun updateMonitoringSettings() {
         val checkInterval = state.checkIntervalInput
         val timeout = state.timeoutInput
@@ -722,6 +864,12 @@ data class MainUiState(
     val mergeTargetTypeInput: String = "",
     val deleteTypeInput: String = "",
     val deleteTargetTypeInput: String = "default",
+    val managedServers: List<ManagedServer> = emptyList(),
+    val serverEditIp: String = "",
+    val serverIpInput: String = "",
+    val serverNameInput: String = "",
+    val serverTypeInput: String = "",
+    val serverTimeoutInput: String = "30",
     val monitoringStatusText: String = "Неизвестно",
     val silentStatusText: String = "Неизвестно"
 )

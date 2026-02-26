@@ -1,11 +1,11 @@
 """
 /lib/tamtam_bot.py
-Server Monitoring System v8.6.0
+Server Monitoring System v8.7.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 TamTam bot integration for monitoring controls
 Система мониторинга серверов
-Версия: 8.6.0
+Версия: 8.7.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Интеграция TamTam-бота для управления мониторингом

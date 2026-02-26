@@ -93,4 +93,25 @@ interface MonitoringApi {
         @Path("typeName") typeName: String,
         @Query("target_type") targetType: String = "default"
     ): WindowsTypesResponse
+
+    @GET("v1/settings/servers")
+    suspend fun getServersSettings(): ServersSettingsResponse
+
+    @POST("v1/settings/servers")
+    suspend fun addServer(@Body request: AddServerRequest): ServersSettingsResponse
+
+    @PATCH("v1/settings/servers/{ip}")
+    suspend fun updateServer(
+        @Path("ip") ip: String,
+        @Body request: UpdateServerRequest
+    ): ServersSettingsResponse
+
+    @PATCH("v1/settings/servers/{ip}/enabled")
+    suspend fun setServerEnabled(
+        @Path("ip") ip: String,
+        @Body request: ToggleServerEnabledRequest
+    ): ServersSettingsResponse
+
+    @DELETE("v1/settings/servers/{ip}")
+    suspend fun deleteServer(@Path("ip") ip: String): ServersSettingsResponse
 }

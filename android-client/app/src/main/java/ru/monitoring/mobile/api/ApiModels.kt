@@ -233,3 +233,42 @@ data class MergeWindowsTypesRequest(
     @Json(name = "source_type") val sourceType: String,
     @Json(name = "target_type") val targetType: String
 )
+
+data class ManagedServer(
+    val ip: String,
+    val name: String,
+    @Json(name = "type") val type: String,
+    val timeout: Int? = null,
+    val enabled: Boolean? = true
+)
+
+data class ServersSummary(
+    val total: Int = 0,
+    val enabled: Int = 0,
+    val disabled: Int = 0
+)
+
+data class ServersSettingsResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val items: List<ManagedServer> = emptyList(),
+    val summary: ServersSummary = ServersSummary()
+)
+
+data class AddServerRequest(
+    val ip: String,
+    val name: String,
+    @Json(name = "type") val type: String,
+    val timeout: Int = 30,
+    val enabled: Boolean = true
+)
+
+data class UpdateServerRequest(
+    val name: String? = null,
+    @Json(name = "type") val type: String? = null,
+    val timeout: Int? = null,
+    val enabled: Boolean? = null
+)
+
+data class ToggleServerEnabledRequest(
+    val enabled: Boolean
+)

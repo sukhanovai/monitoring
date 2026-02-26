@@ -1,11 +1,11 @@
 """
 /config/db_settings_app.py
-Server Monitoring System v8.6.0
+Server Monitoring System v8.7.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Database Settings Manager
 Система мониторинга серверов
-Версия: 8.6.0
+Версия: 8.7.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Менеджер настроек БД
@@ -257,17 +257,18 @@ class SettingsManager:
         conn.close()
         return servers
 
-    def add_server(self, ip, name, server_type, credentials=None, timeout=30):
+    def add_server(self, ip, name, server_type, credentials=None, timeout=30, enabled=True):
         """Добавить сервер"""
         conn = self.get_connection()
         cursor = conn.cursor()
         
         credentials_json = json.dumps(credentials) if credentials else '[]'
+        enabled_value = 1 if bool(enabled) else 0
         
         cursor.execute('''
-            INSERT OR REPLACE INTO servers (ip, name, type, credentials, timeout)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (ip, name, server_type, credentials_json, timeout))
+            INSERT OR REPLACE INTO servers (ip, name, type, credentials, timeout, enabled, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ''', (ip, name, server_type, credentials_json, timeout, enabled_value))
         
         conn.commit()
         conn.close()
@@ -284,26 +285,73 @@ class SettingsManager:
         conn.close()
         return True
 
-    def get_all_servers(self):
+    def get_all_servers(self, include_disabled=False):
         """Получить все серверы"""
         conn = self.get_connection()
         cursor = conn.cursor()
         
-        cursor.execute('SELECT ip, name, type, credentials, timeout FROM servers WHERE enabled = 1')
+        if include_disabled:
+            cursor.execute('SELECT ip, name, type, credentials, timeout, enabled FROM servers ORDER BY type, name')
+        else:
+            cursor.execute('SELECT ip, name, type, credentials, timeout, enabled FROM servers WHERE enabled = 1 ORDER BY type, name')
         
         servers = []
-        for ip, name, server_type, credentials_json, timeout in cursor.fetchall():
+        for ip, name, server_type, credentials_json, timeout, enabled in cursor.fetchall():
             credentials = json.loads(credentials_json) if credentials_json else []
             servers.append({
                 'ip': ip,
                 'name': name,
                 'type': server_type,
                 'credentials': credentials,
-                'timeout': timeout
+                'timeout': timeout,
+                'enabled': bool(enabled),
             })
         
         conn.close()
         return servers
+
+    def update_server(self, ip, name=None, server_type=None, timeout=None, enabled=None):
+        """Обновить параметры сервера"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        fields = []
+        params = []
+
+        if name is not None:
+            fields.append("name = ?")
+            params.append(name)
+        if server_type is not None:
+            fields.append("type = ?")
+            params.append(server_type)
+        if timeout is not None:
+            fields.append("timeout = ?")
+            params.append(int(timeout))
+        if enabled is not None:
+            fields.append("enabled = ?")
+            params.append(1 if bool(enabled) else 0)
+
+        if not fields:
+            conn.close()
+            return False
+
+        fields.append("updated_at = CURRENT_TIMESTAMP")
+        params.append(ip)
+
+        cursor.execute(f'''
+            UPDATE servers
+            SET {', '.join(fields)}
+            WHERE ip = ?
+        ''', params)
+
+        conn.commit()
+        updated = cursor.rowcount > 0
+        conn.close()
+        return updated
+
+    def set_server_enabled(self, ip, enabled):
+        """Включить/выключить мониторинг сервера"""
+        return self.update_server(ip=ip, enabled=enabled)
 
     def get_backup_patterns(self):
         """Получить паттерны бэкапов"""
