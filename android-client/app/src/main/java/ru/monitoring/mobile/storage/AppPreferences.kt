@@ -18,6 +18,18 @@ class AppPreferences(context: Context) {
             prefs.edit().putString(KEY_API_BASE_URL, value).apply()
         }
 
+    var themeMode: String
+        get() = prefs.getString(KEY_THEME_MODE, DEFAULT_THEME_MODE) ?: DEFAULT_THEME_MODE
+        set(value) {
+            prefs.edit().putString(KEY_THEME_MODE, value).apply()
+        }
+
+    var morningReportNotificationsEnabled: Boolean
+        get() = prefs.getBoolean(KEY_MORNING_REPORT_NOTIFICATIONS_ENABLED, true)
+        set(value) {
+            prefs.edit().putBoolean(KEY_MORNING_REPORT_NOTIFICATIONS_ENABLED, value).apply()
+        }
+
     val deviceId: String
         get() {
             val existing = prefs.getString(KEY_DEVICE_ID, null)?.trim().orEmpty()
@@ -31,6 +43,9 @@ class AppPreferences(context: Context) {
         private const val KEY_API_TOKEN = "api_token"
         private const val KEY_API_BASE_URL = "api_base_url"
         private const val KEY_DEVICE_ID = "device_id"
+        private const val KEY_THEME_MODE = "theme_mode"
+        private const val KEY_MORNING_REPORT_NOTIFICATIONS_ENABLED = "morning_report_notifications_enabled"
         private const val DEFAULT_API_BASE_URL = "https://api.202020.ru:8443/"
+        private const val DEFAULT_THEME_MODE = "dark"
     }
 }

@@ -1,9 +1,14 @@
-﻿package ru.monitoring.mobile
+package ru.monitoring.mobile
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,7 +22,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -38,17 +42,19 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.monitoring.mobile.api.ManagedServer
 import ru.monitoring.mobile.storage.AppPreferences
 import ru.monitoring.mobile.ui.MainUiState
+import ru.monitoring.mobile.ui.MonitoringTheme
 import ru.monitoring.mobile.ui.MainViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        ensureNotificationPermission()
         val preferences = AppPreferences(applicationContext)
 
         enableEdgeToEdge()
         setContent {
-            MaterialTheme {
-                val vm: MainViewModel = viewModel(factory = MainViewModel.Factory(preferences))
+            val vm: MainViewModel = viewModel(factory = MainViewModel.Factory(applicationContext, preferences))
+            MonitoringTheme(darkTheme = vm.state.themeMode != "light") {
                 LaunchedEffect(Unit) {
                     vm.loadInitialState()
                 }
@@ -113,9 +119,22 @@ class MainActivity : ComponentActivity() {
                     onEditServer = vm::startServerEdit,
                     onCancelServerEdit = vm::cancelServerEdit,
                     onDeleteServer = vm::deleteServer,
-                    onToggleServerMonitoring = vm::toggleServerMonitoring
+                    onToggleServerMonitoring = vm::toggleServerMonitoring,
+                    onThemeModeChanged = vm::setThemeMode,
+                    onMorningNotificationsEnabledChanged = vm::setMorningReportNotificationsEnabled
                 )
             }
+        }
+    }
+
+    private fun ensureNotificationPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val granted = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.POST_NOTIFICATIONS
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!granted) {
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)
         }
     }
 }
@@ -182,7 +201,9 @@ private fun MonitoringApp(
     onEditServer: (ManagedServer) -> Unit,
     onCancelServerEdit: () -> Unit,
     onDeleteServer: (String) -> Unit,
-    onToggleServerMonitoring: (String, Boolean) -> Unit
+    onToggleServerMonitoring: (String, Boolean) -> Unit,
+    onThemeModeChanged: (String) -> Unit,
+    onMorningNotificationsEnabledChanged: (Boolean) -> Unit
 ) {
     var isManagementExpanded by rememberSaveable { mutableStateOf(false) }
     var isSettingsExpanded by rememberSaveable { mutableStateOf(false) }
@@ -292,6 +313,7 @@ private fun MonitoringApp(
                             Button(onClick = { settingsSection = "time" }) { Text("Время") }
                             Button(onClick = { settingsSection = "auth" }) { Text("Аутентификация") }
                             Button(onClick = { settingsSection = "servers" }) { Text("Серверы") }
+                            Button(onClick = { settingsSection = "appearance" }) { Text("Тема") }
                         }
 
                         if (settingsSection == "bff") {
@@ -410,9 +432,23 @@ private fun MonitoringApp(
                             label = { Text("metrics_collection_time (HH:mm)") },
                             modifier = Modifier.fillMaxWidth()
                         )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = { onMorningNotificationsEnabledChanged(true) }) { Text("Уведомления ВКЛ") }
+                            Button(onClick = { onMorningNotificationsEnabledChanged(false) }) { Text("Уведомления ВЫКЛ") }
+                        }
+                        Text("Статус уведомлений: ${if (state.morningReportNotificationsEnabled) "включены" else "выключены"}")
                         Button(onClick = onSaveTime, enabled = canSaveTime) {
                             Text("Сохранить time")
                         }
+                        }
+
+                        if (settingsSection == "appearance") {
+                            Text("Оформление", fontWeight = FontWeight.Bold)
+                            Text("Текущая тема: ${if (state.themeMode == "light") "светлая" else "темная"}")
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(onClick = { onThemeModeChanged("dark") }) { Text("Темная") }
+                                Button(onClick = { onThemeModeChanged("light") }) { Text("Светлая") }
+                            }
                         }
 
                         if (settingsSection == "auth") {

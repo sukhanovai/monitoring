@@ -1,5 +1,6 @@
 package ru.monitoring.mobile.ui
 
+import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -34,9 +35,11 @@ import ru.monitoring.mobile.api.ToggleServerEnabledRequest
 import ru.monitoring.mobile.api.UpdateServerRequest
 import ru.monitoring.mobile.api.WindowsCredential
 import ru.monitoring.mobile.api.WindowsTypeItem
+import ru.monitoring.mobile.notifications.MorningReportWorker
 import ru.monitoring.mobile.storage.AppPreferences
 
 class MainViewModel(
+    private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
 
@@ -72,12 +75,15 @@ class MainViewModel(
 
         state = state.copy(
             token = token,
-            baseUrlInput = preferences.apiBaseUrl
+            baseUrlInput = preferences.apiBaseUrl,
+            themeMode = preferences.themeMode,
+            morningReportNotificationsEnabled = preferences.morningReportNotificationsEnabled
         )
 
         if (token.isNotBlank()) {
             refreshSettingsFromServer(showErrors = false)
         }
+        rescheduleMorningReportWorker()
     }
 
     fun saveToken(token: String) {
@@ -114,6 +120,7 @@ class MainViewModel(
             if (finalToken.isNotBlank()) {
                 refreshSettingsFromServer(showErrors = false)
             }
+            rescheduleMorningReportWorker()
         }
     }
 
@@ -125,6 +132,7 @@ class MainViewModel(
         if (state.token.isNotBlank()) {
             refreshSettingsFromServer(showErrors = false)
         }
+        rescheduleMorningReportWorker()
     }
 
     fun setTokenInput(value: String) { state = state.copy(token = value) }
@@ -160,6 +168,16 @@ class MainViewModel(
     fun setServerNameInput(value: String) { state = state.copy(serverNameInput = value) }
     fun setServerTypeInput(value: String) { state = state.copy(serverTypeInput = value) }
     fun setServerTimeoutInput(value: String) { state = state.copy(serverTimeoutInput = value) }
+    fun setThemeMode(value: String) {
+        val normalized = if (value.lowercase() == "light") "light" else "dark"
+        preferences.themeMode = normalized
+        state = state.copy(themeMode = normalized, message = "Тема: ${if (normalized == "dark") "темная" else "светлая"}")
+    }
+    fun setMorningReportNotificationsEnabled(value: Boolean) {
+        preferences.morningReportNotificationsEnabled = value
+        state = state.copy(morningReportNotificationsEnabled = value)
+        rescheduleMorningReportWorker()
+    }
 
     fun toggleApiTokenVisibility() { state = state.copy(isApiTokenVisible = !state.isApiTokenVisible) }
     fun toggleTelegramTokenVisibility() { state = state.copy(isTelegramTokenVisible = !state.isTelegramTokenVisible) }
@@ -296,6 +314,7 @@ class MainViewModel(
                     else -> state.silentStatusText
                 }
             )
+            rescheduleMorningReportWorker()
         }
     }
 
@@ -760,6 +779,7 @@ class MainViewModel(
                 .onSuccess {
                     state = state.copy(isLoading = false, message = "Временные настройки обновлены")
                     refreshSettingsFromServer(showErrors = false)
+                    rescheduleMorningReportWorker()
                 }
                 .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
         }
@@ -805,12 +825,22 @@ class MainViewModel(
         }
     }
 
+    private fun rescheduleMorningReportWorker() {
+        val scheduleTime = state.metricsTimeInput.ifBlank { "08:30" }
+        MorningReportWorker.schedule(
+            context = appContext,
+            timeRaw = scheduleTime,
+            enabled = state.morningReportNotificationsEnabled && state.token.isNotBlank()
+        )
+    }
+
     @Suppress("UNCHECKED_CAST")
     class Factory(
+        private val context: Context,
         private val preferences: AppPreferences
     ) : ViewModelProvider.Factory {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return MainViewModel(preferences) as T
+            return MainViewModel(context.applicationContext, preferences) as T
         }
     }
 }
@@ -870,6 +900,8 @@ data class MainUiState(
     val serverNameInput: String = "",
     val serverTypeInput: String = "",
     val serverTimeoutInput: String = "30",
+    val themeMode: String = "dark",
+    val morningReportNotificationsEnabled: Boolean = true,
     val monitoringStatusText: String = "Неизвестно",
     val silentStatusText: String = "Неизвестно"
 )

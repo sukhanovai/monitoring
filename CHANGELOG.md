@@ -6,6 +6,26 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.8.0] - 2026-02-26
+
+### Added / Добавлено
+- EN: Android scheduled morning report delivery via background worker with push notification and sound.
+- RU: В Android добавлена доставка утреннего отчета по расписанию через фоновый worker с push-уведомлением и звуком.
+- EN: Android runtime request for notification permission (`POST_NOTIFICATIONS`, Android 13+).
+- RU: В Android добавлен runtime-запрос разрешения на уведомления (`POST_NOTIFICATIONS`, Android 13+).
+- EN: App setting to enable/disable scheduled morning report notifications.
+- RU: Добавлена настройка включения/выключения плановых уведомлений утреннего отчета.
+- EN: App setting to switch between dark and light themes.
+- RU: Добавлена настройка переключения между темной и светлой темами.
+
+### Changed / Изменено
+- EN: Dark theme is now default in Android app.
+- RU: Темная тема установлена по умолчанию в Android-приложении.
+- EN: Morning report notifications are now scheduled using configured report time.
+- RU: Планирование уведомлений утреннего отчета теперь использует настроенное время отчета.
+- EN: Project version bumped from `8.7.0` to `8.8.0`.
+- RU: Версия проекта повышена с `8.7.0` до `8.8.0`.
+
 ## [8.7.0] - 2026-02-26
 
 ### Added / Добавлено
@@ -16,15 +36,12 @@ The project follows Semantic Versioning (SemVer).
   - `PATCH /v1/settings/servers/{ip}/enabled`
   - `DELETE /v1/settings/servers/{ip}`
 - RU: Добавлен новый BFF API для управления серверами в настройках (получение, добавление, редактирование, включение/выключение мониторинга, удаление).
-- EN: Android settings now include a dedicated `Серверы` section with CRUD and enable/disable monitoring controls.
-- RU: В Android-приложение добавлен раздел `Серверы` с возможностью добавления, редактирования, удаления и включения/выключения мониторинга.
+- EN: Android settings include a dedicated `Серверы` section with CRUD and monitoring enable/disable actions.
+- RU: В Android-приложение добавлен раздел `Серверы` с CRUD-операциями и включением/выключением мониторинга.
 
 ### Changed / Изменено
-- EN: `config.db_settings_app.SettingsManager` server methods extended to support:
-  - storing `enabled` on create,
-  - listing servers with disabled items,
-  - partial server updates.
-- RU: Методы работы с серверами в `config.db_settings_app.SettingsManager` расширены: добавлена поддержка `enabled`, выборки отключенных серверов и частичного обновления.
+- EN: `config.db_settings_app.SettingsManager` extended for server management: `enabled` on create, include disabled servers, partial updates.
+- RU: `config.db_settings_app.SettingsManager` расширен для управления серверами: `enabled` при создании, выборка отключенных серверов, частичные обновления.
 - EN: Project version bumped from `8.6.0` to `8.7.0`.
 - RU: Версия проекта повышена с `8.6.0` до `8.7.0`.
 
