@@ -1,14 +1,14 @@
 """
 /lib/utils.py
-Server Monitoring System v8.5.0
+Server Monitoring System v8.6.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Utility functions
-Система мониторинга серверов
-Версия: 8.5.0
-Автор: Александр Суханов (c)
-Лицензия: MIT
-Вспомогательные функции
+РЎРёСЃС‚РµРјР° РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЃРµСЂРІРµСЂРѕРІ
+Р’РµСЂСЃРёСЏ: 8.6.0
+РђРІС‚РѕСЂ: РђР»РµРєСЃР°РЅРґСЂ РЎСѓС…Р°РЅРѕРІ (c)
+Р›РёС†РµРЅР·РёСЏ: MIT
+Р’СЃРїРѕРјРѕРіР°С‚РµР»СЊРЅС‹Рµ С„СѓРЅРєС†РёРё
 """
 
 import time
@@ -18,14 +18,14 @@ import importlib
 
 def safe_import(module_name: str, class_name: Optional[str] = None) -> Any:
     """
-    Безопасный импорт модулей с обработкой ошибок
+    Р‘РµР·РѕРїР°СЃРЅС‹Р№ РёРјРїРѕСЂС‚ РјРѕРґСѓР»РµР№ СЃ РѕР±СЂР°Р±РѕС‚РєРѕР№ РѕС€РёР±РѕРє
     
     Args:
-        module_name: Имя модуля
-        class_name: Имя класса (опционально)
+        module_name: РРјСЏ РјРѕРґСѓР»СЏ
+        class_name: РРјСЏ РєР»Р°СЃСЃР° (РѕРїС†РёРѕРЅР°Р»СЊРЅРѕ)
         
     Returns:
-        Импортированный модуль или класс, или None при ошибке
+        РРјРїРѕСЂС‚РёСЂРѕРІР°РЅРЅС‹Р№ РјРѕРґСѓР»СЊ РёР»Рё РєР»Р°СЃСЃ, РёР»Рё None РїСЂРё РѕС€РёР±РєРµ
     """
     try:
         module = importlib.import_module(module_name)
@@ -43,13 +43,13 @@ def safe_import(module_name: str, class_name: Optional[str] = None) -> Any:
 
 def format_duration(seconds: int) -> str:
     """
-    Форматирование длительности в читаемый вид
+    Р¤РѕСЂРјР°С‚РёСЂРѕРІР°РЅРёРµ РґР»РёС‚РµР»СЊРЅРѕСЃС‚Рё РІ С‡РёС‚Р°РµРјС‹Р№ РІРёРґ
     
     Args:
-        seconds: Количество секунд
+        seconds: РљРѕР»РёС‡РµСЃС‚РІРѕ СЃРµРєСѓРЅРґ
         
     Returns:
-        Отформатированная строка
+        РћС‚С„РѕСЂРјР°С‚РёСЂРѕРІР°РЅРЅР°СЏ СЃС‚СЂРѕРєР°
     """
     hours = seconds // 3600
     minutes = (seconds % 3600) // 60
@@ -64,58 +64,58 @@ def format_duration(seconds: int) -> str:
 
 def progress_bar(percentage: float, width: int = 20) -> str:
     """
-    Универсальный прогресс-бар
+    РЈРЅРёРІРµСЂСЃР°Р»СЊРЅС‹Р№ РїСЂРѕРіСЂРµСЃСЃ-Р±Р°СЂ
     
     Args:
-        percentage: Процент завершения (0-100)
-        width: Ширина прогресс1бара в символах
+        percentage: РџСЂРѕС†РµРЅС‚ Р·Р°РІРµСЂС€РµРЅРёСЏ (0-100)
+        width: РЁРёСЂРёРЅР° РїСЂРѕРіСЂРµСЃСЃ1Р±Р°СЂР° РІ СЃРёРјРІРѕР»Р°С…
         
     Returns:
-        Строка с прогресс1баром
+        РЎС‚СЂРѕРєР° СЃ РїСЂРѕРіСЂРµСЃСЃ1Р±Р°СЂРѕРј
     """
     filled = int(round(width * percentage / 100))
-    bar = f"[{'█' * filled}{'░' * (width - filled)}] {percentage:.1f}%"
+    bar = f"[{'в–€' * filled}{'в–‘' * (width - filled)}] {percentage:.1f}%"
     return bar
 
 def is_proxmox_server(ip: str) -> bool:
     """
-    Проверяет, является ли сервер Proxmox
+    РџСЂРѕРІРµСЂСЏРµС‚, СЏРІР»СЏРµС‚СЃСЏ Р»Рё СЃРµСЂРІРµСЂ Proxmox
     
     Args:
-        ip: IP адрес
+        ip: IP Р°РґСЂРµСЃ
         
     Returns:
-        True если сервер Proxmox
+        True РµСЃР»Рё СЃРµСЂРІРµСЂ Proxmox
     """
     return (ip.startswith("192.168.30.") or
            ip in ["192.168.20.30", "192.168.20.32", "192.168.20.59"])
 
 def parse_time_string(time_str: str) -> datetime.time:
     """
-    Парсит строку времени в формате HH:MM
+    РџР°СЂСЃРёС‚ СЃС‚СЂРѕРєСѓ РІСЂРµРјРµРЅРё РІ С„РѕСЂРјР°С‚Рµ HH:MM
     
     Args:
-        time_str: Строка времени (например, "08:30")
+        time_str: РЎС‚СЂРѕРєР° РІСЂРµРјРµРЅРё (РЅР°РїСЂРёРјРµСЂ, "08:30")
         
     Returns:
-        Объект datetime.time
+        РћР±СЉРµРєС‚ datetime.time
     """
     from datetime import time
     try:
         hours, minutes = map(int, time_str.split(':'))
         return time(hours, minutes)
     except (ValueError, AttributeError):
-        return time(8, 30)  # Значение по умолчанию
+        return time(8, 30)  # Р—РЅР°С‡РµРЅРёРµ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ
 
 def get_size_string(size_bytes: int) -> str:
     """
-    Преобразует размер в байтах в читаемую строку
+    РџСЂРµРѕР±СЂР°Р·СѓРµС‚ СЂР°Р·РјРµСЂ РІ Р±Р°Р№С‚Р°С… РІ С‡РёС‚Р°РµРјСѓСЋ СЃС‚СЂРѕРєСѓ
     
     Args:
-        size_bytes: Размер в байтах
+        size_bytes: Р Р°Р·РјРµСЂ РІ Р±Р°Р№С‚Р°С…
         
     Returns:
-        Читаемая строка (например, "1.5 MB")
+        Р§РёС‚Р°РµРјР°СЏ СЃС‚СЂРѕРєР° (РЅР°РїСЂРёРјРµСЂ, "1.5 MB")
     """
     for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
         if size_bytes < 1024.0:

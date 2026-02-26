@@ -1,14 +1,14 @@
 """
 /bot/handlers/extensions.py
-Server Monitoring System v8.5.0
+Server Monitoring System v8.6.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 UI handlers for managing extensions
-Система мониторинга серверов
-Версия: 8.5.0
-Автор: Александр Суханов (c)
-Лицензия: MIT
-UI-обработчики управления расширениями
+РЎРёСЃС‚РµРјР° РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЃРµСЂРІРµСЂРѕРІ
+Р’РµСЂСЃРёСЏ: 8.6.0
+РђРІС‚РѕСЂ: РђР»РµРєСЃР°РЅРґСЂ РЎСѓС…Р°РЅРѕРІ (c)
+Р›РёС†РµРЅР·РёСЏ: MIT
+UI-РѕР±СЂР°Р±РѕС‚С‡РёРєРё СѓРїСЂР°РІР»РµРЅРёСЏ СЂР°СЃС€РёСЂРµРЅРёСЏРјРё
 """
 
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton
@@ -18,14 +18,14 @@ from lib.logging import debug_log
 
 
 def show_extensions_menu(update, context):
-    """Показывает меню управления расширениями"""
+    """РџРѕРєР°Р·С‹РІР°РµС‚ РјРµРЅСЋ СѓРїСЂР°РІР»РµРЅРёСЏ СЂР°СЃС€РёСЂРµРЅРёСЏРјРё"""
     query = update.callback_query
     chat_id = query.message.chat_id if query else update.message.chat_id
 
     extensions_status = extension_manager.get_extensions_status()
 
-    message = "🛠️ *Управление расширениями*\n\n"
-    message += "📊 *Статус расширений:*\n\n"
+    message = "рџ› пёЏ *РЈРїСЂР°РІР»РµРЅРёРµ СЂР°СЃС€РёСЂРµРЅРёСЏРјРё*\n\n"
+    message += "рџ“Љ *РЎС‚Р°С‚СѓСЃ СЂР°СЃС€РёСЂРµРЅРёР№:*\n\n"
 
     keyboard = []
 
@@ -33,12 +33,12 @@ def show_extensions_menu(update, context):
         enabled = status_info['enabled']
         ext_info = status_info['info']
 
-        status_icon = "🟢" if enabled else "🔴"
-        toggle_text = "🔴 Выключить" if enabled else "🟢 Включить"
+        status_icon = "рџџў" if enabled else "рџ”ґ"
+        toggle_text = "рџ”ґ Р’С‹РєР»СЋС‡РёС‚СЊ" if enabled else "рџџў Р’РєР»СЋС‡РёС‚СЊ"
 
         message += f"{status_icon} *{ext_info['name']}*\n"
         message += f"   {ext_info['description']}\n"
-        message += f"   Статус: {'Включено' if enabled else 'Отключено'}\n\n"
+        message += f"   РЎС‚Р°С‚СѓСЃ: {'Р’РєР»СЋС‡РµРЅРѕ' if enabled else 'РћС‚РєР»СЋС‡РµРЅРѕ'}\n\n"
 
         keyboard.append([
             InlineKeyboardButton(
@@ -48,11 +48,11 @@ def show_extensions_menu(update, context):
         ])
 
     keyboard.extend([
-        [InlineKeyboardButton("📊 Включить все", callback_data='ext_enable_all')],
-        [InlineKeyboardButton("📋 Отключить все", callback_data='ext_disable_all')],
+        [InlineKeyboardButton("рџ“Љ Р’РєР»СЋС‡РёС‚СЊ РІСЃРµ", callback_data='ext_enable_all')],
+        [InlineKeyboardButton("рџ“‹ РћС‚РєР»СЋС‡РёС‚СЊ РІСЃРµ", callback_data='ext_disable_all')],
         [
-            InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
-            InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+            InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu'),
+            InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')
         ]
     ])
 
@@ -73,7 +73,7 @@ def show_extensions_menu(update, context):
 
 
 def extensions_callback_handler(update, context):
-    """Callback-обработчик управления расширениями"""
+    """Callback-РѕР±СЂР°Р±РѕС‚С‡РёРє СѓРїСЂР°РІР»РµРЅРёСЏ СЂР°СЃС€РёСЂРµРЅРёСЏРјРё"""
     query = update.callback_query
     data = query.data
     query.answer()
@@ -102,7 +102,7 @@ def _enable_all_extensions(query):
         success, _ = extension_manager.enable_extension(ext_id)
         if success:
             enabled += 1
-    query.answer(f"✅ Включено {enabled}/{len(AVAILABLE_EXTENSIONS)} расширений")
+    query.answer(f"вњ… Р’РєР»СЋС‡РµРЅРѕ {enabled}/{len(AVAILABLE_EXTENSIONS)} СЂР°СЃС€РёСЂРµРЅРёР№")
 
 
 def _disable_all_extensions(query):
@@ -111,4 +111,4 @@ def _disable_all_extensions(query):
         success, _ = extension_manager.disable_extension(ext_id)
         if success:
             disabled += 1
-    query.answer(f"✅ Отключено {disabled}/{len(AVAILABLE_EXTENSIONS)} расширений")
+    query.answer(f"вњ… РћС‚РєР»СЋС‡РµРЅРѕ {disabled}/{len(AVAILABLE_EXTENSIONS)} СЂР°СЃС€РёСЂРµРЅРёР№")

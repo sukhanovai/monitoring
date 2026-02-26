@@ -211,7 +211,8 @@ class MainViewModel(
                 val auth = runCatching { currentApi().getAuthSettings() }.getOrNull()
                 val control = runCatching { currentApi().getControlStatus() }.getOrNull()
                 val winTypes = runCatching { currentApi().getWindowsTypes() }.getOrNull()
-                listOf(monitoring, bot, time, auth, control, winTypes)
+                val winCreds = runCatching { currentApi().getWindowsCredentials() }.getOrNull()
+                listOf(monitoring, bot, time, auth, control, winTypes, winCreds)
             }
 
             val monitoring = result[0] as? ru.monitoring.mobile.api.SettingsMonitoringResponse
@@ -220,6 +221,7 @@ class MainViewModel(
             val auth = result[3] as? ru.monitoring.mobile.api.SettingsAuthResponse
             val control = result[4] as? ru.monitoring.mobile.api.ControlStatusResponse
             val winTypes = result[5] as? ru.monitoring.mobile.api.WindowsTypesResponse
+            val winCreds = result[6] as? ru.monitoring.mobile.api.WindowsCredentialsResponse
 
             val monitoringData = monitoring?.settings
             val botData = bot?.settings
@@ -231,7 +233,7 @@ class MainViewModel(
                 else -> state.telegramChatIds
             }
 
-            val hasAny = monitoring != null || bot != null || time != null || auth != null || control != null || winTypes != null
+            val hasAny = monitoring != null || bot != null || time != null || auth != null || control != null || winTypes != null || winCreds != null
             if (!hasAny) {
                 state = if (showErrors) {
                     state.copy(isLoading = false, message = "Не удалось подтянуть настройки")
@@ -259,8 +261,13 @@ class MainViewModel(
                 windowsUsernameInput = authData?.windowsUsername ?: auth?.windowsUsername ?: state.windowsUsernameInput,
                 sshPasswordInput = authData?.maskedSshPassword ?: auth?.sshPassword ?: state.sshPasswordInput,
                 windowsPasswordInput = authData?.maskedWindowsPassword ?: auth?.windowsPassword ?: state.windowsPasswordInput,
-                windowsCredentials = if (authData != null) authData.windowsCredentials else state.windowsCredentials,
+                windowsCredentials = when {
+                    winCreds != null -> winCreds.items
+                    authData != null -> authData.windowsCredentials
+                    else -> state.windowsCredentials
+                },
                 windowsServerTypes = when {
+                    winCreds != null -> winCreds.serverTypes
                     winTypes != null -> winTypes.types.map { it.name }
                     authData != null -> authData.windowsServerTypes
                     else -> state.windowsServerTypes

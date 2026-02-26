@@ -1,14 +1,14 @@
 """
 /core/checker.py
-Server Monitoring System v8.5.0
+Server Monitoring System v8.6.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Server Checker Module
-Система мониторинга серверов
-Версия: 8.5.0
-Автор: Александр Суханов (c)
-Лицензия: MIT
-Модуль проверки серверов
+РЎРёСЃС‚РµРјР° РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЃРµСЂРІРµСЂРѕРІ
+Р’РµСЂСЃРёСЏ: 8.6.0
+РђРІС‚РѕСЂ: РђР»РµРєСЃР°РЅРґСЂ РЎСѓС…Р°РЅРѕРІ (c)
+Р›РёС†РµРЅР·РёСЏ: MIT
+РњРѕРґСѓР»СЊ РїСЂРѕРІРµСЂРєРё СЃРµСЂРІРµСЂРѕРІ
 """
 
 import time
@@ -22,7 +22,7 @@ from lib.logging import debug_log, error_log, setup_logging
 from lib.network import check_ping as net_check_ping, check_port as net_check_port
 
 class ServerChecker:
-    """Единый класс для проверки серверов - базовая версия"""
+    """Р•РґРёРЅС‹Р№ РєР»Р°СЃСЃ РґР»СЏ РїСЂРѕРІРµСЂРєРё СЃРµСЂРІРµСЂРѕРІ - Р±Р°Р·РѕРІР°СЏ РІРµСЂСЃРёСЏ"""
     
     def __init__(self, ssh_timeout: int = 15, ping_timeout: int = 10, port_timeout: int = 5):
         self.ssh_timeout = ssh_timeout
@@ -31,17 +31,17 @@ class ServerChecker:
         self.logger = setup_logging("checker")
         
     def check_ping(self, ip: str) -> bool:
-        """Универсальная проверка ping"""
+        """РЈРЅРёРІРµСЂСЃР°Р»СЊРЅР°СЏ РїСЂРѕРІРµСЂРєР° ping"""
         return net_check_ping(ip, timeout=self.ping_timeout)
     
     def check_port(self, ip: str, port: int = 3389) -> bool:
-        """Универсальная проверка порта"""
+        """РЈРЅРёРІРµСЂСЃР°Р»СЊРЅР°СЏ РїСЂРѕРІРµСЂРєР° РїРѕСЂС‚Р°"""
         return net_check_port(ip, port, timeout=self.port_timeout)
     
     def check_ssh_universal(self, ip: str, username: Optional[str] = None, key_path: Optional[str] = None) -> bool:
-        """Универсальная проверка SSH с обработкой ошибок"""
+        """РЈРЅРёРІРµСЂСЃР°Р»СЊРЅР°СЏ РїСЂРѕРІРµСЂРєР° SSH СЃ РѕР±СЂР°Р±РѕС‚РєРѕР№ РѕС€РёР±РѕРє"""
         try:
-            # Ленивая загрузка конфига
+            # Р›РµРЅРёРІР°СЏ Р·Р°РіСЂСѓР·РєР° РєРѕРЅС„РёРіР°
             if username is None or key_path is None:
                 from config.db_settings import SSH_USERNAME, SSH_KEY_PATH
                 username = SSH_USERNAME
@@ -62,7 +62,7 @@ class ServerChecker:
                     allow_agent=False,
                 )
 
-            # Простая проверка
+            # РџСЂРѕСЃС‚Р°СЏ РїСЂРѕРІРµСЂРєР°
             stdin, stdout, stderr = client.exec_command('echo "test"', timeout=5)
             exit_code = stdout.channel.recv_exit_status()
             client.close()
@@ -83,7 +83,7 @@ class ServerChecker:
             return False
 
     def check_server(self, server: Dict) -> bool:
-        """Универсальная проверка сервера по типу"""
+        """РЈРЅРёРІРµСЂСЃР°Р»СЊРЅР°СЏ РїСЂРѕРІРµСЂРєР° СЃРµСЂРІРµСЂР° РїРѕ С‚РёРїСѓ"""
         server_type = server.get("type", "ssh")
         ip = server["ip"]
 
@@ -91,11 +91,11 @@ class ServerChecker:
             return self.check_port(ip, 3389)
         elif server_type == "ping":
             return self.check_ping(ip)
-        else:  # ssh и другие
+        else:  # ssh Рё РґСЂСѓРіРёРµ
             return self.check_ssh_universal(ip)
 
     def get_timeout_for_type(self, server_type: str) -> int:
-        """Получить таймаут для типа сервера"""
+        """РџРѕР»СѓС‡РёС‚СЊ С‚Р°Р№РјР°СѓС‚ РґР»СЏ С‚РёРїР° СЃРµСЂРІРµСЂР°"""
         try:
             from config.db_settings import SERVER_TIMEOUTS
             return SERVER_TIMEOUTS.get(server_type, 15)
@@ -105,7 +105,7 @@ class ServerChecker:
 
 @contextmanager
 def _suppress_paramiko_logging():
-    """Временно подавляет шумные трассировки Paramiko при сбоях SSH."""
+    """Р’СЂРµРјРµРЅРЅРѕ РїРѕРґР°РІР»СЏРµС‚ С€СѓРјРЅС‹Рµ С‚СЂР°СЃСЃРёСЂРѕРІРєРё Paramiko РїСЂРё СЃР±РѕСЏС… SSH."""
     logger = logging.getLogger("paramiko.transport")
     previous_level = logger.level
     previous_propagate = logger.propagate

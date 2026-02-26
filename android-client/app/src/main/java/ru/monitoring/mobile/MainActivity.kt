@@ -167,7 +167,6 @@ private fun MonitoringApp(
 ) {
     var isManagementExpanded by rememberSaveable { mutableStateOf(false) }
     var isSettingsExpanded by rememberSaveable { mutableStateOf(false) }
-    var isAuthExpanded by rememberSaveable { mutableStateOf(false) }
     var isSshAuthExpanded by rememberSaveable { mutableStateOf(false) }
     var isWindowsAuthExpanded by rememberSaveable { mutableStateOf(false) }
     var showWindowsAll by rememberSaveable { mutableStateOf(false) }
@@ -272,7 +271,7 @@ private fun MonitoringApp(
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(onClick = { settingsSection = "time" }) { Text("Время") }
-                            Button(onClick = { settingsSection = "auth" }) { Text("Auth") }
+                            Button(onClick = { settingsSection = "auth" }) { Text("Аутентификация") }
                         }
 
                         if (settingsSection == "bff") {
@@ -398,10 +397,6 @@ private fun MonitoringApp(
 
                         if (settingsSection == "auth") {
                         Text("🔐 Настройки аутентификации", fontWeight = FontWeight.Bold)
-                        Button(onClick = { isAuthExpanded = !isAuthExpanded }, modifier = Modifier.fillMaxWidth()) {
-                            Text("🔐 Аутентификация")
-                        }
-                        if (isAuthExpanded) {
                             Text("SSH аутентификация:", fontWeight = FontWeight.Bold)
                             Text("• Пользователь: ${state.sshUsernameInput.ifBlank { "root" }}")
                             Text("• Путь к ключу: ${state.sshKeyPathInput.ifBlank { "/root/.ssh/id_rsa" }}")
@@ -570,7 +565,6 @@ private fun MonitoringApp(
                                     Button(onClick = onDeleteWindowsType) { Text("Удалить тип") }
                                 }
                             }
-                        }
                         }
                     }
                 }

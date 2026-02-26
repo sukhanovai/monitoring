@@ -1,17 +1,17 @@
 """
 /config/__init__.py
-Server Monitoring System v8.5.0
+Server Monitoring System v8.6.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Configuration package
-Система мониторинга серверов
-Версия: 8.5.0
-Автор: Александр Суханов (c)
-Лицензия: MIT
-Пакет конфигурации
+РЎРёСЃС‚РµРјР° РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЃРµСЂРІРµСЂРѕРІ
+Р’РµСЂСЃРёСЏ: 8.6.0
+РђРІС‚РѕСЂ: РђР»РµРєСЃР°РЅРґСЂ РЎСѓС…Р°РЅРѕРІ (c)
+Р›РёС†РµРЅР·РёСЏ: MIT
+РџР°РєРµС‚ РєРѕРЅС„РёРіСѓСЂР°С†РёРё
 """
 
-# Сначала импортируем настройки по умолчанию из settings.py
+# РЎРЅР°С‡Р°Р»Р° РёРјРїРѕСЂС‚РёСЂСѓРµРј РЅР°СЃС‚СЂРѕР№РєРё РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ РёР· settings.py
 from .settings import (
     BASE_DIR, DATA_DIR, LOG_DIR,
     LOG_FORMAT, LOG_DATE_FORMAT, LOG_MAX_BYTES, LOG_BACKUP_COUNT,
@@ -40,7 +40,7 @@ from .settings import (
     DEBUG_MODE as SETTINGS_DEBUG_MODE
 )
 
-# Затем импортируем из db_settings
+# Р—Р°С‚РµРј РёРјРїРѕСЂС‚РёСЂСѓРµРј РёР· db_settings
 from .db_settings import (
     get_setting, get_json_setting,
     get_windows_credentials_db, get_windows_server_configs,
@@ -52,9 +52,9 @@ from .db_settings import (
     MONITOR_SERVER_IP as DB_MONITOR_SERVER_IP
 )
 
-# Определяем какие значения использовать
-# Если USE_DB = True и значение из БД не пустое, используем из БД
-# Иначе используем из settings.py
+# РћРїСЂРµРґРµР»СЏРµРј РєР°РєРёРµ Р·РЅР°С‡РµРЅРёСЏ РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ
+# Р•СЃР»Рё USE_DB = True Рё Р·РЅР°С‡РµРЅРёРµ РёР· Р‘Р” РЅРµ РїСѓСЃС‚РѕРµ, РёСЃРїРѕР»СЊР·СѓРµРј РёР· Р‘Р”
+# РРЅР°С‡Рµ РёСЃРїРѕР»СЊР·СѓРµРј РёР· settings.py
 
 TELEGRAM_TOKEN = DB_TELEGRAM_TOKEN if USE_DB and DB_TELEGRAM_TOKEN else SETTINGS_TOKEN
 CHAT_IDS = DB_CHAT_IDS if USE_DB and DB_CHAT_IDS else SETTINGS_CHAT_IDS
@@ -66,7 +66,7 @@ MONITOR_SERVER_IP = (
 )
 
 __all__ = [
-    # Пути
+    # РџСѓС‚Рё
     'BASE_DIR', 'DATA_DIR', 'LOG_DIR',
     'LOG_FORMAT', 'LOG_DATE_FORMAT', 'LOG_MAX_BYTES', 'LOG_BACKUP_COUNT',
     'DEBUG_LOG_FILE', 'BOT_LOG_FILE', 'MONITOR_LOG_FILE', 'BOT_DEBUG_LOG_FILE',
@@ -74,48 +74,48 @@ __all__ = [
     'MAILDIR_BASE', 'MAILDIR_NEW', 'MAILDIR_CUR',
     'PROC_UPTIME_FILE',
         
-    # Основные настройки (с приоритетом БД)
+    # РћСЃРЅРѕРІРЅС‹Рµ РЅР°СЃС‚СЂРѕР№РєРё (СЃ РїСЂРёРѕСЂРёС‚РµС‚РѕРј Р‘Р”)
     'TELEGRAM_TOKEN', 'CHAT_IDS', 'DEBUG_MODE',
     
-    # Интервалы проверок
+    # РРЅС‚РµСЂРІР°Р»С‹ РїСЂРѕРІРµСЂРѕРє
     'CHECK_INTERVAL', 'MAX_FAIL_TIME',
     
-    # Временные настройки
+    # Р’СЂРµРјРµРЅРЅС‹Рµ РЅР°СЃС‚СЂРѕР№РєРё
     'SILENT_START', 'SILENT_END', 'DATA_COLLECTION_TIME',
     
-    # Настройки ресурсов
+    # РќР°СЃС‚СЂРѕР№РєРё СЂРµСЃСѓСЂСЃРѕРІ
     'RESOURCE_CHECK_INTERVAL', 'RESOURCE_ALERT_INTERVAL',
     'RESOURCE_THRESHOLDS', 'RESOURCE_ALERT_THRESHOLDS',
     
-    # Аутентификация
+    # РђСѓС‚РµРЅС‚РёС„РёРєР°С†РёСЏ
     'SSH_KEY_PATH', 'SSH_USERNAME',
     
-    # Конфигурация серверов
+    # РљРѕРЅС„РёРіСѓСЂР°С†РёСЏ СЃРµСЂРІРµСЂРѕРІ
     'SERVER_CONFIG',
     'WINDOWS_CREDENTIALS', 'WINDOWS_SERVER_CREDENTIALS', 'WINRM_CONFIGS',
     'SERVER_TIMEOUTS',
     
-    # Веб-интерфейс
+    # Р’РµР±-РёРЅС‚РµСЂС„РµР№СЃ
     'WEB_PORT', 'WEB_HOST',
     'MONITOR_SERVER_IP',
     
-    # Файлы
+    # Р¤Р°Р№Р»С‹
     'STATS_FILE', 'BACKUP_DB_FILE', 'SETTINGS_DB_FILE',
     'DEBUG_CONFIG_FILE', 'EXTENSIONS_CONFIG_FILE',
     
-    # Бэкапы
+    # Р‘СЌРєР°РїС‹
     'PROXMOX_HOSTS', 'DUPLICATE_IP_HOSTS', 'HOSTNAME_ALIASES',
     'BACKUP_PATTERNS', 'BACKUP_STATUS_MAP', 'DATABASE_CONFIG', 'ZFS_SERVERS',
     'BACKUP_DATABASE_CONFIG', 'DATABASE_BACKUP_CONFIG',
     
-    # Функции
+    # Р¤СѓРЅРєС†РёРё
     'is_proxmox_server', 'get_windows_servers_by_type',
     'get_all_windows_servers', 'get_server_timeout',
     
-    # Списки серверов
+    # РЎРїРёСЃРєРё СЃРµСЂРІРµСЂРѕРІ
     'RDP_SERVERS', 'SSH_SERVERS', 'PING_SERVERS',
     
-    # Функции из db_settings
+    # Р¤СѓРЅРєС†РёРё РёР· db_settings
     'get_setting', 'get_json_setting',
     'get_windows_credentials_db', 'get_windows_server_configs',
     'get_servers_config', 'load_all_settings',

@@ -1,14 +1,14 @@
 """
 /config/settings.py
-Server Monitoring System v8.5.0
+Server Monitoring System v8.6.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Application settings - default values
-Система мониторинга серверов
-Версия: 8.5.0
-Автор: Александр Суханов (c)
-Лицензия: MIT
-Настройки приложения - значения по умолчанию
+РЎРёСЃС‚РµРјР° РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЃРµСЂРІРµСЂРѕРІ
+Р’РµСЂСЃРёСЏ: 8.6.0
+РђРІС‚РѕСЂ: РђР»РµРєСЃР°РЅРґСЂ РЎСѓС…Р°РЅРѕРІ (c)
+Р›РёС†РµРЅР·РёСЏ: MIT
+РќР°СЃС‚СЂРѕР№РєРё РїСЂРёР»РѕР¶РµРЅРёСЏ - Р·РЅР°С‡РµРЅРёСЏ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ
 """
 
 import os
@@ -18,13 +18,13 @@ from typing import Dict, List, Any
 
 from lib.utils import is_proxmox_server
 
-# Режим отладки
+# Р РµР¶РёРј РѕС‚Р»Р°РґРєРё
 DEBUG_MODE = False
 
-# Версия приложения
-APP_VERSION = "8.5.0"
+# Р’РµСЂСЃРёСЏ РїСЂРёР»РѕР¶РµРЅРёСЏ
+APP_VERSION = "8.6.0"
 
-# === БАЗОВЫЕ ПУТИ ===
+# === Р‘РђР—РћР’Р«Р• РџРЈРўР ===
 _DEFAULT_BASE = Path(__file__).resolve().parents[1]
 BASE_DIR = Path(
     os.environ.get("MONITORING_BASE_DIR", _DEFAULT_BASE)
@@ -35,45 +35,45 @@ LOG_DIR = BASE_DIR / "logs"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
-# === НАСТРОЙКИ ЛОГИРОВАНИЯ ===
+# === РќРђРЎРўР РћР™РљР Р›РћР“РР РћР’РђРќРРЇ ===
 LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 LOG_MAX_BYTES = 10 * 1024 * 1024  # 10 MB
 LOG_BACKUP_COUNT = 5
 
-# Файлы логов
+# Р¤Р°Р№Р»С‹ Р»РѕРіРѕРІ
 DEBUG_LOG_FILE = LOG_DIR / "debug.log"
 BOT_LOG_FILE = LOG_DIR / "bot.log"
 MONITOR_LOG_FILE = LOG_DIR / "monitor.log"
 BOT_DEBUG_LOG_FILE = LOG_DIR / "bot_debug.log"
 MAIL_MONITOR_LOG_FILE = LOG_DIR / "mail_monitor.log"
 
-# Пути почтового мониторинга
+# РџСѓС‚Рё РїРѕС‡С‚РѕРІРѕРіРѕ РјРѕРЅРёС‚РѕСЂРёРЅРіР°
 MAILDIR_BASE = Path(os.environ.get("MONITORING_MAILDIR_BASE", "/root/Maildir")).resolve()
 MAILDIR_NEW = MAILDIR_BASE / "new"
 MAILDIR_CUR = MAILDIR_BASE / "cur"
 
-# Системные файлы
+# РЎРёСЃС‚РµРјРЅС‹Рµ С„Р°Р№Р»С‹
 PROC_UPTIME_FILE = Path("/proc/uptime")
 
-# === БАЗОВЫЕ НАСТРОЙКИ ===
+# === Р‘РђР—РћР’Р«Р• РќРђРЎРўР РћР™РљР ===
 TELEGRAM_TOKEN = ""
 CHAT_IDS: List[str] = []
 TAMTAM_TOKEN = ""
 TAMTAM_CHAT_IDS: List[str] = []
 
-# === ИНТЕРВАЛЫ ПРОВЕРОК ===
-CHECK_INTERVAL = 60  # секунды
-MAX_FAIL_TIME = 900  # секунды (15 минут)
+# === РРќРўР•Р Р’РђР›Р« РџР РћР’Р•Р РћРљ ===
+CHECK_INTERVAL = 60  # СЃРµРєСѓРЅРґС‹
+MAX_FAIL_TIME = 900  # СЃРµРєСѓРЅРґС‹ (15 РјРёРЅСѓС‚)
 
-# === ВРЕМЕННЫЕ НАСТРОЙКИ ===
+# === Р’Р Р•РњР•РќРќР«Р• РќРђРЎРўР РћР™РљР ===
 SILENT_START = 20  # 20:00
 SILENT_END = 9     # 09:00
 DATA_COLLECTION_TIME = dt_time(8, 30)  # 08:30
 
-# === НАСТРОЙКИ РЕСУРСОВ ===
-RESOURCE_CHECK_INTERVAL = 1800  # секунды (30 минут)
-RESOURCE_ALERT_INTERVAL = 1800  # секунды (30 минут)
+# === РќРђРЎРўР РћР™РљР Р Р•РЎРЈР РЎРћР’ ===
+RESOURCE_CHECK_INTERVAL = 1800  # СЃРµРєСѓРЅРґС‹ (30 РјРёРЅСѓС‚)
+RESOURCE_ALERT_INTERVAL = 1800  # СЃРµРєСѓРЅРґС‹ (30 РјРёРЅСѓС‚)
 
 RESOURCE_THRESHOLDS = {
     "cpu_warning": 80,
@@ -91,23 +91,23 @@ RESOURCE_ALERT_THRESHOLDS = {
     "check_consecutive": 2
 }
 
-# === АУТЕНТИФИКАЦИЯ ===
+# === РђРЈРўР•РќРўРР¤РРљРђР¦РРЇ ===
 SSH_KEY_PATH = "/root/.ssh/id_rsa"
 SSH_USERNAME = "root"
 
-# === КОНФИГУРАЦИЯ СЕРВЕРОВ ===
+# === РљРћРќР¤РР“РЈР РђР¦РРЇ РЎР•Р Р’Р•Р РћР’ ===
 SERVER_CONFIG = {
-    "windows_servers": {},  # заполняется из БД
-    "linux_servers": {},    # заполняется из БД
-    "ping_servers": {}      # заполняется из БД
+    "windows_servers": {},  # Р·Р°РїРѕР»РЅСЏРµС‚СЃСЏ РёР· Р‘Р”
+    "linux_servers": {},    # Р·Р°РїРѕР»РЅСЏРµС‚СЃСЏ РёР· Р‘Р”
+    "ping_servers": {}      # Р·Р°РїРѕР»РЅСЏРµС‚СЃСЏ РёР· Р‘Р”
 }
 
-# Учетные данные Windows по умолчанию
+# РЈС‡РµС‚РЅС‹Рµ РґР°РЅРЅС‹Рµ Windows РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ
 WINDOWS_CREDENTIALS = [
     # {"username": "user", "password": "pass"},
 ]
 
-# Конфигурация Windows серверов
+# РљРѕРЅС„РёРіСѓСЂР°С†РёСЏ Windows СЃРµСЂРІРµСЂРѕРІ
 WINDOWS_SERVER_CREDENTIALS = {
     "windows_2025": {
         "servers": ["192.0.2.10", "192.0.2.11"],
@@ -127,10 +127,10 @@ WINDOWS_SERVER_CREDENTIALS = {
     }
 }
 
-# Обратная совместимость
+# РћР±СЂР°С‚РЅР°СЏ СЃРѕРІРјРµСЃС‚РёРјРѕСЃС‚СЊ
 WINRM_CONFIGS = WINDOWS_CREDENTIALS
 
-# === УНИФИЦИРОВАННЫЕ ТАЙМАУТЫ ===
+# === РЈРќРР¤РР¦РР РћР’РђРќРќР«Р• РўРђР™РњРђРЈРўР« ===
 SERVER_TIMEOUTS = {
     "windows_2025": 35,
     "domain_servers": 20,
@@ -142,33 +142,33 @@ SERVER_TIMEOUTS = {
     "ssh": 15
 }
 
-# === ВЕБ-ИНТЕРФЕЙС ===
+# === Р’Р•Р‘-РРќРўР•Р Р¤Р•Р™РЎ ===
 WEB_PORT = 5000
 WEB_HOST = '0.0.0.0'
 MONITOR_SERVER_IP = "192.0.2.1"
 
-# === ФАЙЛЫ ДАННЫХ ===
+# === Р¤РђР™Р›Р« Р”РђРќРќР«РҐ ===
 STATS_FILE = DATA_DIR / "monitoring_stats.json"
 BACKUP_DB_FILE = DATA_DIR / "backups.db"
 SETTINGS_DB_FILE = DATA_DIR / "settings.db"
 DEBUG_CONFIG_FILE = DATA_DIR / "debug_config.json"
 EXTENSIONS_CONFIG_FILE = DATA_DIR / "extensions" / "extensions_config.json"
 
-# === КОНФИГУРАЦИЯ БЭКАПОВ ===
+# === РљРћРќР¤РР“РЈР РђР¦РРЇ Р‘Р­РљРђРџРћР’ ===
 PROXMOX_HOSTS: Dict[str, Any] = {}
 DUPLICATE_IP_HOSTS: Dict[str, List[str]] = {}
 HOSTNAME_ALIASES: Dict[str, List[str]] = {}
 BACKUP_PATTERNS: Dict[str, Dict[str, List[str]]] = {
     "mail": {
         "subject": [
-            r"^\s*бэкап\s+zimbra\s*-\s*"
+            r"^\s*Р±СЌРєР°Рї\s+zimbra\s*-\s*"
             r"(?P<size>\d+(?:[.,]\d+)?\s*[TGMK]?(?:i?B)?)\s+"
             r"(?P<path>/\S+)\s*$"
         ]
     },
     "stock_load": {
         "subject": [
-            r"^Логи\s+загрузки\s+файлов\s+в\s+рабочую\s+базу(?:\s+\d{2}:\d{2}:\d{2,3})?$"
+            r"^Р›РѕРіРё\s+Р·Р°РіСЂСѓР·РєРё\s+С„Р°Р№Р»РѕРІ\s+РІ\s+СЂР°Р±РѕС‡СѓСЋ\s+Р±Р°Р·Сѓ(?:\s+\d{2}:\d{2}:\d{2,3})?$"
         ],
         "attachment": [
             r"LogiLogistam\.txt$"
@@ -180,29 +180,29 @@ BACKUP_PATTERNS: Dict[str, Dict[str, List[str]]] = {
             )
         ],
         "success": [
-            r"\*{3}Остатки загружены!\*{3}\s+строк\s+(?P<rows>\d+)"
+            r"\*{3}РћСЃС‚Р°С‚РєРё Р·Р°РіСЂСѓР¶РµРЅС‹!\*{3}\s+СЃС‚СЂРѕРє\s+(?P<rows>\d+)"
         ],
         "sources": [
             {
-                "name": "Основное предприятие",
+                "name": "РћСЃРЅРѕРІРЅРѕРµ РїСЂРµРґРїСЂРёСЏС‚РёРµ",
                 "subject": [
-                    r"^Логи\s+загрузки\s+файлов\s+в\s+рабочую\s+базу(?:\s+\d{2}:\d{2}:\d{2,3})?$"
+                    r"^Р›РѕРіРё\s+Р·Р°РіСЂСѓР·РєРё\s+С„Р°Р№Р»РѕРІ\s+РІ\s+СЂР°Р±РѕС‡СѓСЋ\s+Р±Р°Р·Сѓ(?:\s+\d{2}:\d{2}:\d{2,3})?$"
                 ],
             },
             {
-                "name": "Барнаул",
+                "name": "Р‘Р°СЂРЅР°СѓР»",
                 "subject": [
-                    r"^Логи\s+загрузки\s+файлов\s+в\s+рабочую\s+базу\s+\(Барнаул\)(?:\s+\d{2}:\d{2}:\d{2,3})?$"
+                    r"^Р›РѕРіРё\s+Р·Р°РіСЂСѓР·РєРё\s+С„Р°Р№Р»РѕРІ\s+РІ\s+СЂР°Р±РѕС‡СѓСЋ\s+Р±Р°Р·Сѓ\s+\(Р‘Р°СЂРЅР°СѓР»\)(?:\s+\d{2}:\d{2}:\d{2,3})?$"
                 ],
             }
         ],
         "ignore": [
-            r"Внимание!\s*Ошибка.*строка файла =\s*\d+"
+            r"Р’РЅРёРјР°РЅРёРµ!\s*РћС€РёР±РєР°.*СЃС‚СЂРѕРєР° С„Р°Р№Р»Р° =\s*\d+"
         ],
         "failure": [
-            r"---\s*неудача!!!.*",
-            r"Внимание!\s*Ошибка.*",
-            r"Ошибка.*"
+            r"---\s*РЅРµСѓРґР°С‡Р°!!!.*",
+            r"Р’РЅРёРјР°РЅРёРµ!\s*РћС€РёР±РєР°.*",
+            r"РћС€РёР±РєР°.*"
         ]
     }
 }
@@ -223,7 +223,7 @@ BACKUP_STATUS_MAP = {
 
 DATABASE_CONFIG: Dict[str, Any] = {}
 
-# Обратная совместимость
+# РћР±СЂР°С‚РЅР°СЏ СЃРѕРІРјРµСЃС‚РёРјРѕСЃС‚СЊ
 BACKUP_DATABASE_CONFIG = {
     "backups_db": BACKUP_DB_FILE,
     "max_backup_age_days": 90
@@ -231,26 +231,26 @@ BACKUP_DATABASE_CONFIG = {
 
 DATABASE_BACKUP_CONFIG = DATABASE_CONFIG
 
-# === УТИЛИТЫ КОНФИГУРАЦИИ ===
+# === РЈРўРР›РРўР« РљРћРќР¤РР“РЈР РђР¦РР ===
 
 def get_windows_servers_by_type(server_type: str) -> List[str]:
     """
-    Получить серверы Windows по типу
+    РџРѕР»СѓС‡РёС‚СЊ СЃРµСЂРІРµСЂС‹ Windows РїРѕ С‚РёРїСѓ
     
     Args:
-        server_type: Тип сервера
+        server_type: РўРёРї СЃРµСЂРІРµСЂР°
         
     Returns:
-        Список IP адресов
+        РЎРїРёСЃРѕРє IP Р°РґСЂРµСЃРѕРІ
     """
     return WINDOWS_SERVER_CREDENTIALS.get(server_type, {}).get('servers', [])
 
 def get_all_windows_servers() -> List[str]:
     """
-    Получить все Windows серверы
+    РџРѕР»СѓС‡РёС‚СЊ РІСЃРµ Windows СЃРµСЂРІРµСЂС‹
     
     Returns:
-        Список всех IP адресов Windows серверов
+        РЎРїРёСЃРѕРє РІСЃРµС… IP Р°РґСЂРµСЃРѕРІ Windows СЃРµСЂРІРµСЂРѕРІ
     """
     all_servers = []
     for config in WINDOWS_SERVER_CREDENTIALS.values():
@@ -259,20 +259,20 @@ def get_all_windows_servers() -> List[str]:
 
 def get_server_timeout(server_type: str, default: int = 15) -> int:
     """
-    Получить таймаут для типа сервера
+    РџРѕР»СѓС‡РёС‚СЊ С‚Р°Р№РјР°СѓС‚ РґР»СЏ С‚РёРїР° СЃРµСЂРІРµСЂР°
     
     Args:
-        server_type: Тип сервера
-        default: Таймаут по умолчанию
+        server_type: РўРёРї СЃРµСЂРІРµСЂР°
+        default: РўР°Р№РјР°СѓС‚ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ
         
     Returns:
-        Таймаут в секундах
+        РўР°Р№РјР°СѓС‚ РІ СЃРµРєСѓРЅРґР°С…
     """
     return SERVER_TIMEOUTS.get(server_type, default)
 
-# Автоматически создаем список IP для обратной совместимости
+# РђРІС‚РѕРјР°С‚РёС‡РµСЃРєРё СЃРѕР·РґР°РµРј СЃРїРёСЃРѕРє IP РґР»СЏ РѕР±СЂР°С‚РЅРѕР№ СЃРѕРІРјРµСЃС‚РёРјРѕСЃС‚Рё
 def _generate_ip_lists() -> tuple:
-    """Генерирует списки IP из конфигурации"""
+    """Р“РµРЅРµСЂРёСЂСѓРµС‚ СЃРїРёСЃРєРё IP РёР· РєРѕРЅС„РёРіСѓСЂР°С†РёРё"""
     rdp_servers = []
     ssh_servers = []
     ping_servers = []
@@ -288,5 +288,5 @@ def _generate_ip_lists() -> tuple:
     
     return rdp_servers, ssh_servers, ping_servers
 
-# Глобальные переменные для обратной совместимости
+# Р“Р»РѕР±Р°Р»СЊРЅС‹Рµ РїРµСЂРµРјРµРЅРЅС‹Рµ РґР»СЏ РѕР±СЂР°С‚РЅРѕР№ СЃРѕРІРјРµСЃС‚РёРјРѕСЃС‚Рё
 RDP_SERVERS, SSH_SERVERS, PING_SERVERS = _generate_ip_lists()

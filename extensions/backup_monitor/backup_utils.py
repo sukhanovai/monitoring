@@ -1,14 +1,14 @@
 """
 /extensions/backup_monitor/backup_utils.py
-Server Monitoring System v8.5.0
+Server Monitoring System v8.6.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Utilities for working with backups
-Система мониторинга серверов
-Версия: 8.5.0
-Автор: Александр Суханов (c)
-Лицензия: MIT
-Утилиты для работы с бэкапами
+РЎРёСЃС‚РµРјР° РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЃРµСЂРІРµСЂРѕРІ
+Р’РµСЂСЃРёСЏ: 8.6.0
+РђРІС‚РѕСЂ: РђР»РµРєСЃР°РЅРґСЂ РЎСѓС…Р°РЅРѕРІ (c)
+Р›РёС†РµРЅР·РёСЏ: MIT
+РЈС‚РёР»РёС‚С‹ РґР»СЏ СЂР°Р±РѕС‚С‹ СЃ Р±СЌРєР°РїР°РјРё
 """
 
 import sqlite3
@@ -33,7 +33,7 @@ def _normalize_host_key(value: object) -> str:
 
 
 def _is_proxmox_host_enabled(host_value: object) -> bool:
-    """Проверяет, включен ли мониторинг хоста Proxmox."""
+    """РџСЂРѕРІРµСЂСЏРµС‚, РІРєР»СЋС‡РµРЅ Р»Рё РјРѕРЅРёС‚РѕСЂРёРЅРі С…РѕСЃС‚Р° Proxmox."""
     if isinstance(host_value, dict):
         return host_value.get("enabled", True)
     return True
@@ -46,14 +46,14 @@ def get_backup_summary(
     include_mail=False,
     unavailable_hosts=None,
 ):
-    """Возвращает текстовую сводку по бэкапам за период."""
+    """Р’РѕР·РІСЂР°С‰Р°РµС‚ С‚РµРєСЃС‚РѕРІСѓСЋ СЃРІРѕРґРєСѓ РїРѕ Р±СЌРєР°РїР°Рј Р·Р° РїРµСЂРёРѕРґ."""
     try:
         from config.db_settings import DATA_DIR, DATABASE_BACKUP_CONFIG, PROXMOX_HOSTS
 
         db_path = DATA_DIR / "backups.db"
         if not db_path.exists():
-            logger.error("База данных бэкапов недоступна: %s", db_path)
-            return "❌ База данных бэкапов недоступна\n", True
+            logger.error("Р‘Р°Р·Р° РґР°РЅРЅС‹С… Р±СЌРєР°РїРѕРІ РЅРµРґРѕСЃС‚СѓРїРЅР°: %s", db_path)
+            return "вќЊ Р‘Р°Р·Р° РґР°РЅРЅС‹С… Р±СЌРєР°РїРѕРІ РЅРµРґРѕСЃС‚СѓРїРЅР°\n", True
 
         since_time = (datetime.now() - timedelta(hours=period_hours)).strftime('%Y-%m-%d %H:%M:%S')
         stale_threshold = (datetime.now() - timedelta(hours=24)).strftime('%Y-%m-%d %H:%M:%S')
@@ -217,7 +217,7 @@ def get_backup_summary(
                 DATABASE_BACKUP_CONFIG,
                 "barnaul_backups",
                 "barnaul",
-                "Филиалы",
+                "Р¤РёР»РёР°Р»С‹",
             ),
             'client': client_databases,
             'yandex': _get_db_config(DATABASE_BACKUP_CONFIG, "yandex_backups", "yandex"),
@@ -306,27 +306,27 @@ def get_backup_summary(
                     or bool(unavailable_hosts_set)
                     or hosts_with_success < len(all_hosts)
                 )
-                proxmox_icon = "🔴" if proxmox_has_issues else "🟢"
+                proxmox_icon = "рџ”ґ" if proxmox_has_issues else "рџџў"
                 message += (
-                    f"• {proxmox_icon} Proxmox: {hosts_with_success}/{len(all_hosts)} успешно "
+                    f"вЂў {proxmox_icon} Proxmox: {hosts_with_success}/{len(all_hosts)} СѓСЃРїРµС€РЅРѕ "
                     f"({success_rate:.1f}%)"
                 )
                 if stale_hosts:
-                    message += f" ⚠️ {len(stale_hosts)} хостов без бэкапов >24ч"
+                    message += f" вљ пёЏ {len(stale_hosts)} С…РѕСЃС‚РѕРІ Р±РµР· Р±СЌРєР°РїРѕРІ >24С‡"
                 if unavailable_hosts_set:
-                    message += f" ⚠️ {len(unavailable_hosts_set)} хостов недоступны"
+                    message += f" вљ пёЏ {len(unavailable_hosts_set)} С…РѕСЃС‚РѕРІ РЅРµРґРѕСЃС‚СѓРїРЅС‹"
                 message += "\n"
             else:
-                message += "• 🟡 Proxmox: нет данных\n"
+                message += "вЂў рџџЎ Proxmox: РЅРµС‚ РґР°РЅРЅС‹С…\n"
 
         if include_databases:
-            message += "• Базы данных:\n"
+            message += "вЂў Р‘Р°Р·С‹ РґР°РЅРЅС‹С…:\n"
 
         if include_databases:
             category_names = {
-                'company_database': 'Основные',
-                'barnaul': 'Барнаул',
-                'client': 'Клиенты',
+                'company_database': 'РћСЃРЅРѕРІРЅС‹Рµ',
+                'barnaul': 'Р‘Р°СЂРЅР°СѓР»',
+                'client': 'РљР»РёРµРЅС‚С‹',
                 'yandex': 'Yandex',
             }
 
@@ -336,7 +336,7 @@ def get_backup_summary(
             )
             if total_configured == 0:
                 if not db_results:
-                    message += "  - Нет настроенных БД\n"
+                    message += "  - РќРµС‚ РЅР°СЃС‚СЂРѕРµРЅРЅС‹С… Р‘Р”\n"
                 else:
                     fallback_stats = {}
                     for backup_type, db_name, status, _ in db_results:
@@ -359,14 +359,14 @@ def get_backup_summary(
                         success_rate = (stats["successful"] / stats["total"]) * 100
                         stale_count = len([db for db in stale_databases if db[0] == backup_type])
                         is_ok = stats["successful"] == stats["total"] and stale_count == 0
-                        db_icon = "🟢" if is_ok else "🔴"
+                        db_icon = "рџџў" if is_ok else "рџ”ґ"
                         message += (
-                            f"  - {db_icon} {type_name}: {stats['successful']}/{stats['total']} успешно "
+                            f"  - {db_icon} {type_name}: {stats['successful']}/{stats['total']} СѓСЃРїРµС€РЅРѕ "
                             f"({success_rate:.1f}%)"
                         )
 
                         if stale_count > 0:
-                            message += f" ⚠️ {stale_count} БД без бэкапов >24ч"
+                            message += f" вљ пёЏ {stale_count} Р‘Р” Р±РµР· Р±СЌРєР°РїРѕРІ >24С‡"
                         message += "\n"
             else:
                 for category in ['company_database', 'barnaul', 'client', 'yandex']:
@@ -385,16 +385,16 @@ def get_backup_summary(
                         and stale_count == 0
                         and missing_recent == 0
                     )
-                    db_icon = "🟢" if is_ok else "🔴"
+                    db_icon = "рџџў" if is_ok else "рџ”ґ"
                     message += (
                         f"  - {db_icon} {type_name}: {stats['successful']}/{stats['total']} "
-                        f"успешно ({success_rate:.1f}%)"
+                        f"СѓСЃРїРµС€РЅРѕ ({success_rate:.1f}%)"
                     )
 
                     if stale_count > 0:
-                        message += f" ⚠️ {stale_count} БД без бэкапов >24ч"
+                        message += f" вљ пёЏ {stale_count} Р‘Р” Р±РµР· Р±СЌРєР°РїРѕРІ >24С‡"
                     if missing_recent > 0:
-                        message += f" ⚠️ {missing_recent} БД без бэкапов за последние {period_hours}ч"
+                        message += f" вљ пёЏ {missing_recent} Р‘Р” Р±РµР· Р±СЌРєР°РїРѕРІ Р·Р° РїРѕСЃР»РµРґРЅРёРµ {period_hours}С‡"
                     message += "\n"
 
         total_stale = 0
@@ -422,25 +422,25 @@ def get_backup_summary(
                 for backup_type, db_name in sorted(missing_recent_db_keys):
                     missing_recent_by_category.setdefault(backup_type, []).append(db_name)
 
-            message += f"\n🚨 Внимание: {total_issues} проблем:\n"
+            message += f"\nрџљЁ Р’РЅРёРјР°РЅРёРµ: {total_issues} РїСЂРѕР±Р»РµРј:\n"
             if include_proxmox and stale_hosts:
-                message += f"• {len(stale_hosts)} хостов без бэкапов >24ч\n"
+                message += f"вЂў {len(stale_hosts)} С…РѕСЃС‚РѕРІ Р±РµР· Р±СЌРєР°РїРѕРІ >24С‡\n"
             if include_proxmox and unavailable_hosts_set:
-                message += f"• {len(unavailable_hosts_set)} хостов недоступны\n"
+                message += f"вЂў {len(unavailable_hosts_set)} С…РѕСЃС‚РѕРІ РЅРµРґРѕСЃС‚СѓРїРЅС‹\n"
             if include_databases and stale_databases and not stale_by_category:
-                message += f"• {len(stale_databases)} БД без бэкапов >24ч\n"
+                message += f"вЂў {len(stale_databases)} Р‘Р” Р±РµР· Р±СЌРєР°РїРѕРІ >24С‡\n"
             if include_databases and total_missing_recent > 0 and not missing_recent_by_category:
                 message += (
-                    f"• {total_missing_recent} БД без бэкапов за последние {period_hours}ч\n"
+                    f"вЂў {total_missing_recent} Р‘Р” Р±РµР· Р±СЌРєР°РїРѕРІ Р·Р° РїРѕСЃР»РµРґРЅРёРµ {period_hours}С‡\n"
                 )
 
             if include_proxmox and stale_hosts:
                 stale_host_names = sorted({host_name for host_name, _ in stale_hosts})
                 stale_host_list = ", ".join(stale_host_names)
-                message += f"• Проблемные хосты (>24ч): {stale_host_list}\n"
+                message += f"вЂў РџСЂРѕР±Р»РµРјРЅС‹Рµ С…РѕСЃС‚С‹ (>24С‡): {stale_host_list}\n"
 
             if include_databases and stale_by_category:
-                message += "• Проблемные БД (>24ч):\n"
+                message += "вЂў РџСЂРѕР±Р»РµРјРЅС‹Рµ Р‘Р” (>24С‡):\n"
                 for category in ['company_database', 'barnaul', 'client', 'yandex']:
                     if category not in stale_by_category:
                         continue
@@ -450,7 +450,7 @@ def get_backup_summary(
 
             if include_databases and missing_recent_by_category:
                 message += (
-                    f"• Нет бэкапов за последние {period_hours}ч:\n"
+                    f"вЂў РќРµС‚ Р±СЌРєР°РїРѕРІ Р·Р° РїРѕСЃР»РµРґРЅРёРµ {period_hours}С‡:\n"
                 )
                 for category in ['company_database', 'barnaul', 'client', 'yandex']:
                     if category not in missing_recent_by_category:
@@ -462,35 +462,35 @@ def get_backup_summary(
         if include_mail:
             def _mail_time_ago(received_at):
                 if not received_at:
-                    return "неизвестно"
+                    return "РЅРµРёР·РІРµСЃС‚РЅРѕ"
                 try:
                     last_time = datetime.strptime(received_at, "%Y-%m-%d %H:%M:%S")
                 except ValueError:
-                    return "неизвестно"
+                    return "РЅРµРёР·РІРµСЃС‚РЅРѕ"
                 hours_ago = int((datetime.now() - last_time).total_seconds() / 3600)
                 if hours_ago >= 24:
                     days = hours_ago // 24
                     hours = hours_ago % 24
-                    return f"{days}д {hours}ч назад"
-                return f"{hours_ago}ч назад"
+                    return f"{days}Рґ {hours}С‡ РЅР°Р·Р°Рґ"
+                return f"{hours_ago}С‡ РЅР°Р·Р°Рґ"
 
             if not mail_latest:
-                message += "• 🟡 Почта: нет данных\n"
+                message += "вЂў рџџЎ РџРѕС‡С‚Р°: РЅРµС‚ РґР°РЅРЅС‹С…\n"
             else:
                 status, size, path, received_at = mail_latest
-                size_text = size or "неизвестно"
-                path_text = path or "без пути"
+                size_text = size or "РЅРµРёР·РІРµСЃС‚РЅРѕ"
+                path_text = path or "Р±РµР· РїСѓС‚Рё"
                 time_ago = _mail_time_ago(received_at)
                 mail_has_issues = mail_recent is None
-                mail_icon = "🔴" if mail_has_issues else "🟢"
+                mail_icon = "рџ”ґ" if mail_has_issues else "рџџў"
                 if mail_recent:
                     message += (
-                        f"• {mail_icon} Почта: {size_text} {path_text} ({time_ago})\n"
+                        f"вЂў {mail_icon} РџРѕС‡С‚Р°: {size_text} {path_text} ({time_ago})\n"
                     )
                 else:
                     message += (
-                        f"• {mail_icon} Почта: нет свежих бэкапов "
-                        f"(>{period_hours}ч), последний: {size_text} "
+                        f"вЂў {mail_icon} РџРѕС‡С‚Р°: РЅРµС‚ СЃРІРµР¶РёС… Р±СЌРєР°РїРѕРІ "
+                        f"(>{period_hours}С‡), РїРѕСЃР»РµРґРЅРёР№: {size_text} "
                         f"{path_text} ({time_ago})\n"
                     )
 
@@ -505,19 +505,19 @@ def get_backup_summary(
         return message, has_issues
 
     except Exception as e:
-        logger.exception("Ошибка формирования отчета о бэкапах: %s", e)
-        return "❌ Ошибка формирования отчета о бэкапах\n", True
+        logger.exception("РћС€РёР±РєР° С„РѕСЂРјРёСЂРѕРІР°РЅРёСЏ РѕС‚С‡РµС‚Р° Рѕ Р±СЌРєР°РїР°С…: %s", e)
+        return "вќЊ РћС€РёР±РєР° С„РѕСЂРјРёСЂРѕРІР°РЅРёСЏ РѕС‚С‡РµС‚Р° Рѕ Р±СЌРєР°РїР°С…\n", True
 
 
 def get_stock_load_summary(period_hours=16) -> str:
-    """Возвращает сводку по загрузке остатков за период."""
+    """Р’РѕР·РІСЂР°С‰Р°РµС‚ СЃРІРѕРґРєСѓ РїРѕ Р·Р°РіСЂСѓР·РєРµ РѕСЃС‚Р°С‚РєРѕРІ Р·Р° РїРµСЂРёРѕРґ."""
     try:
         from config.db_settings import DATA_DIR
 
         db_path = DATA_DIR / "backups.db"
         if not db_path.exists():
-            logger.error("База данных бэкапов недоступна: %s", db_path)
-            return "❌ База данных бэкапов недоступна\n"
+            logger.error("Р‘Р°Р·Р° РґР°РЅРЅС‹С… Р±СЌРєР°РїРѕРІ РЅРµРґРѕСЃС‚СѓРїРЅР°: %s", db_path)
+            return "вќЊ Р‘Р°Р·Р° РґР°РЅРЅС‹С… Р±СЌРєР°РїРѕРІ РЅРµРґРѕСЃС‚СѓРїРЅР°\n"
 
         since_time = (datetime.now() - timedelta(hours=period_hours)).strftime("%Y-%m-%d %H:%M:%S")
 
@@ -536,13 +536,13 @@ def get_stock_load_summary(period_hours=16) -> str:
             rows = cursor.fetchall()
         except Exception as exc:
             if "no such table: stock_load_results" in str(exc):
-                return "❌ Таблица остатков ещё не создана.\n"
+                return "вќЊ РўР°Р±Р»РёС†Р° РѕСЃС‚Р°С‚РєРѕРІ РµС‰С‘ РЅРµ СЃРѕР·РґР°РЅР°.\n"
             raise
         finally:
             conn.close()
 
         if not rows:
-            return "❌ Нет свежих данных о загрузке остатков\n"
+            return "вќЊ РќРµС‚ СЃРІРµР¶РёС… РґР°РЅРЅС‹С… Рѕ Р·Р°РіСЂСѓР·РєРµ РѕСЃС‚Р°С‚РєРѕРІ\n"
 
         total = len(rows)
         success_count = len([row for row in rows if row[1] == "success"])
@@ -550,30 +550,30 @@ def get_stock_load_summary(period_hours=16) -> str:
         failed_count = len([row for row in rows if row[1] == "failed"])
         unknown_count = total - success_count - warning_count - failed_count
 
-        summary = f"• Файлов: {total}, ✅ {success_count} успешно"
+        summary = f"вЂў Р¤Р°Р№Р»РѕРІ: {total}, вњ… {success_count} СѓСЃРїРµС€РЅРѕ"
         if warning_count:
-            summary += f", ⚠️ {warning_count} с ошибками"
+            summary += f", вљ пёЏ {warning_count} СЃ РѕС€РёР±РєР°РјРё"
         if failed_count:
-            summary += f", ❌ {failed_count} неудачно"
+            summary += f", вќЊ {failed_count} РЅРµСѓРґР°С‡РЅРѕ"
         if unknown_count:
-            summary += f", ❔ {unknown_count} без статуса"
+            summary += f", вќ” {unknown_count} Р±РµР· СЃС‚Р°С‚СѓСЃР°"
         summary += "\n"
 
         return summary
 
     except Exception as exc:
-        logger.exception("Ошибка формирования сводки остатков: %s", exc)
-        return "❌ Ошибка формирования отчета о загрузке остатков\n"
+        logger.exception("РћС€РёР±РєР° С„РѕСЂРјРёСЂРѕРІР°РЅРёСЏ СЃРІРѕРґРєРё РѕСЃС‚Р°С‚РєРѕРІ: %s", exc)
+        return "вќЊ РћС€РёР±РєР° С„РѕСЂРјРёСЂРѕРІР°РЅРёСЏ РѕС‚С‡РµС‚Р° Рѕ Р·Р°РіСЂСѓР·РєРµ РѕСЃС‚Р°С‚РєРѕРІ\n"
 
 
 class BackupBase:
-    """Базовый класс для работы с бэкапами"""
+    """Р‘Р°Р·РѕРІС‹Р№ РєР»Р°СЃСЃ РґР»СЏ СЂР°Р±РѕС‚С‹ СЃ Р±СЌРєР°РїР°РјРё"""
     
     def __init__(self, db_path):
         self.db_path = db_path
     
     def execute_query(self, query, params=()):
-        """Выполняет SQL запрос и возвращает результаты"""
+        """Р’С‹РїРѕР»РЅСЏРµС‚ SQL Р·Р°РїСЂРѕСЃ Рё РІРѕР·РІСЂР°С‰Р°РµС‚ СЂРµР·СѓР»СЊС‚Р°С‚С‹"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
@@ -582,11 +582,11 @@ class BackupBase:
             conn.close()
             return results
         except Exception as e:
-            logger.error(f"Ошибка выполнения запроса: {e}")
+            logger.error(f"РћС€РёР±РєР° РІС‹РїРѕР»РЅРµРЅРёСЏ Р·Р°РїСЂРѕСЃР°: {e}")
             return []
     
     def execute_many(self, query, params_list):
-        """Выполняет запрос с несколькими наборами параметров"""
+        """Р’С‹РїРѕР»РЅСЏРµС‚ Р·Р°РїСЂРѕСЃ СЃ РЅРµСЃРєРѕР»СЊРєРёРјРё РЅР°Р±РѕСЂР°РјРё РїР°СЂР°РјРµС‚СЂРѕРІ"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
@@ -595,14 +595,14 @@ class BackupBase:
             conn.close()
             return True
         except Exception as e:
-            logger.error(f"Ошибка выполнения массового запроса: {e}")
+            logger.error(f"РћС€РёР±РєР° РІС‹РїРѕР»РЅРµРЅРёСЏ РјР°СЃСЃРѕРІРѕРіРѕ Р·Р°РїСЂРѕСЃР°: {e}")
             return False
     
     def format_time_ago(self, time_str):
-        """Форматирует время в читаемый формат 'Xд Yч назад'"""
+        """Р¤РѕСЂРјР°С‚РёСЂСѓРµС‚ РІСЂРµРјСЏ РІ С‡РёС‚Р°РµРјС‹Р№ С„РѕСЂРјР°С‚ 'XРґ YС‡ РЅР°Р·Р°Рґ'"""
         try:
             if not time_str:
-                return "неизвестно"
+                return "РЅРµРёР·РІРµСЃС‚РЅРѕ"
                 
             time_obj = datetime.strptime(time_str, '%Y-%m-%d %H:%M:%S')
             time_diff = datetime.now() - time_obj
@@ -611,33 +611,33 @@ class BackupBase:
             if hours_ago >= 24:
                 days = hours_ago // 24
                 hours = hours_ago % 24
-                return f"{days}д {hours}ч назад"
+                return f"{days}Рґ {hours}С‡ РЅР°Р·Р°Рґ"
             else:
-                return f"{hours_ago}ч назад"
+                return f"{hours_ago}С‡ РЅР°Р·Р°Рґ"
         except Exception:
-            return "ошибка времени"
+            return "РѕС€РёР±РєР° РІСЂРµРјРµРЅРё"
 
 class StatusCalculator:
-    """Калькулятор статусов для хостов и БД"""
+    """РљР°Р»СЊРєСѓР»СЏС‚РѕСЂ СЃС‚Р°С‚СѓСЃРѕРІ РґР»СЏ С…РѕСЃС‚РѕРІ Рё Р‘Р”"""
 
     @staticmethod
     def calculate_host_status(recent_backups, alert_hours=24, stale_hours=48):
-        """Рассчитывает статус хоста на основе recent_backups"""
+        """Р Р°СЃСЃС‡РёС‚С‹РІР°РµС‚ СЃС‚Р°С‚СѓСЃ С…РѕСЃС‚Р° РЅР° РѕСЃРЅРѕРІРµ recent_backups"""
         if not recent_backups:
             return "stale"
 
         last_status, last_time = recent_backups[0]
 
-        # Последний бэкап неуспешный
+        # РџРѕСЃР»РµРґРЅРёР№ Р±СЌРєР°Рї РЅРµСѓСЃРїРµС€РЅС‹Р№
         if last_status != 'success':
             return "failed"
 
-        # Есть неудачные бэкапы в истории
+        # Р•СЃС‚СЊ РЅРµСѓРґР°С‡РЅС‹Рµ Р±СЌРєР°РїС‹ РІ РёСЃС‚РѕСЂРёРё
         recent_failed = any(status != 'success' for status, _ in recent_backups[:3])
         if recent_failed:
             return "recent_failed"
 
-        # Проверяем свежесть
+        # РџСЂРѕРІРµСЂСЏРµРј СЃРІРµР¶РµСЃС‚СЊ
         try:
             last_backup_time = datetime.strptime(last_time, '%Y-%m-%d %H:%M:%S')
             hours_since_last = (datetime.now() - last_backup_time).total_seconds() / 3600
@@ -653,31 +653,31 @@ class StatusCalculator:
     
     @staticmethod
     def calculate_db_status(recent_backups, hours_threshold=48):
-        """Рассчитывает статус БД на основе recent_backups"""
+        """Р Р°СЃСЃС‡РёС‚С‹РІР°РµС‚ СЃС‚Р°С‚СѓСЃ Р‘Р” РЅР° РѕСЃРЅРѕРІРµ recent_backups"""
         if not recent_backups:
             return "stale"
         
         last_status, last_time, last_error_count = recent_backups[0]
         
-        # Последний бэкап неудачный
+        # РџРѕСЃР»РµРґРЅРёР№ Р±СЌРєР°Рї РЅРµСѓРґР°С‡РЅС‹Р№
         if last_status == 'failed':
             return "failed"
         
-        # Ошибки в последнем бэкапе
+        # РћС€РёР±РєРё РІ РїРѕСЃР»РµРґРЅРµРј Р±СЌРєР°РїРµ
         if last_error_count and last_error_count > 0:
             return "warning"
         
-        # Неудачные бэкапы в истории
+        # РќРµСѓРґР°С‡РЅС‹Рµ Р±СЌРєР°РїС‹ РІ РёСЃС‚РѕСЂРёРё
         recent_failed = any(status == 'failed' for status, _, _ in recent_backups[:3])
         if recent_failed:
             return "recent_failed"
         
-        # Ошибки в истории
+        # РћС€РёР±РєРё РІ РёСЃС‚РѕСЂРёРё
         recent_errors = any(error_count and error_count > 0 for _, _, error_count in recent_backups[:3])
         if recent_errors:
             return "recent_errors"
         
-        # Проверяем свежесть
+        # РџСЂРѕРІРµСЂСЏРµРј СЃРІРµР¶РµСЃС‚СЊ
         try:
             last_backup_time = datetime.strptime(last_time, '%Y-%m-%d %H:%M:%S')
             hours_since_last = (datetime.now() - last_backup_time).total_seconds() / 3600
@@ -692,61 +692,61 @@ class StatusCalculator:
             return "unknown"
 
 class DisplayFormatters:
-    """Форматтеры для отображения"""
+    """Р¤РѕСЂРјР°С‚С‚РµСЂС‹ РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ"""
     
     HOST_STATUS_ICONS = {
-        "success": "✅",
-        "failed": "🔴", 
-        "recent_failed": "🟠",
-        "old": "🟡",
-        "stale": "⚫",
-        "unknown": "⚪"
+        "success": "вњ…",
+        "failed": "рџ”ґ", 
+        "recent_failed": "рџџ ",
+        "old": "рџџЎ",
+        "stale": "вљ«",
+        "unknown": "вљЄ"
     }
     
     DB_STATUS_ICONS = {
-        "success": "✅",
-        "failed": "🔴",
-        "recent_failed": "🟠", 
-        "warning": "🟡",
-        "recent_errors": "🟠",
-        "old": "🟡",
-        "stale": "⚫",
-        "unknown": "⚪"
+        "success": "вњ…",
+        "failed": "рџ”ґ",
+        "recent_failed": "рџџ ", 
+        "warning": "рџџЎ",
+        "recent_errors": "рџџ ",
+        "old": "рџџЎ",
+        "stale": "вљ«",
+        "unknown": "вљЄ"
     }
     
     TYPE_ICONS = {
-        'company_database': '🏢',
-        'barnaul': '🏔️',
-        'client': '👥', 
-        'yandex': '☁️'
+        'company_database': 'рџЏў',
+        'barnaul': 'рџЏ”пёЏ',
+        'client': 'рџ‘Ґ', 
+        'yandex': 'вЃпёЏ'
     }
     
     TYPE_NAMES = {
-        'company_database': 'Основные БД компании',
-        'barnaul': 'Бэкапы Барнаул',
-        'client': 'Базы клиентов',
-        'yandex': 'Бэкапы на Yandex'
+        'company_database': 'РћСЃРЅРѕРІРЅС‹Рµ Р‘Р” РєРѕРјРїР°РЅРёРё',
+        'barnaul': 'Р‘СЌРєР°РїС‹ Р‘Р°СЂРЅР°СѓР»',
+        'client': 'Р‘Р°Р·С‹ РєР»РёРµРЅС‚РѕРІ',
+        'yandex': 'Р‘СЌРєР°РїС‹ РЅР° Yandex'
     }
     
     @classmethod
     def get_host_display_name(cls, host_name, status):
-        """Возвращает отображаемое имя хоста с иконкой"""
-        icon = cls.HOST_STATUS_ICONS.get(status, "⚪")
+        """Р’РѕР·РІСЂР°С‰Р°РµС‚ РѕС‚РѕР±СЂР°Р¶Р°РµРјРѕРµ РёРјСЏ С…РѕСЃС‚Р° СЃ РёРєРѕРЅРєРѕР№"""
+        icon = cls.HOST_STATUS_ICONS.get(status, "вљЄ")
         return f"{icon} {host_name}"
     
     @classmethod
     def get_db_display_name(cls, display_name, status):
-        """Возвращает отображаемое имя БД с иконкой"""
-        icon = cls.DB_STATUS_ICONS.get(status, "⚪")
-        # Ограничиваем длину для кнопок
+        """Р’РѕР·РІСЂР°С‰Р°РµС‚ РѕС‚РѕР±СЂР°Р¶Р°РµРјРѕРµ РёРјСЏ Р‘Р” СЃ РёРєРѕРЅРєРѕР№"""
+        icon = cls.DB_STATUS_ICONS.get(status, "вљЄ")
+        # РћРіСЂР°РЅРёС‡РёРІР°РµРј РґР»РёРЅСѓ РґР»СЏ РєРЅРѕРїРѕРє
         if len(display_name) > 12:
             display_name = display_name[:10] + ".."
         return f"{icon} {display_name}"
     
     @classmethod
     def get_type_display(cls, backup_type):
-        """Возвращает отображаемое имя типа"""
-        icon = cls.TYPE_ICONS.get(backup_type, '📁')
+        """Р’РѕР·РІСЂР°С‰Р°РµС‚ РѕС‚РѕР±СЂР°Р¶Р°РµРјРѕРµ РёРјСЏ С‚РёРїР°"""
+        icon = cls.TYPE_ICONS.get(backup_type, 'рџ“Ѓ')
         name = cls.TYPE_NAMES.get(backup_type, backup_type)
         return f"{icon} {name}"
     

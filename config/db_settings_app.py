@@ -1,14 +1,14 @@
 """
 /config/db_settings_app.py
-Server Monitoring System v8.5.0
+Server Monitoring System v8.6.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Database Settings Manager
-Система мониторинга серверов
-Версия: 8.5.0
-Автор: Александр Суханов (c)
-Лицензия: MIT
-Менеджер настроек БД
+РЎРёСЃС‚РµРјР° РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЃРµСЂРІРµСЂРѕРІ
+Р’РµСЂСЃРёСЏ: 8.6.0
+РђРІС‚РѕСЂ: РђР»РµРєСЃР°РЅРґСЂ РЎСѓС…Р°РЅРѕРІ (c)
+Р›РёС†РµРЅР·РёСЏ: MIT
+РњРµРЅРµРґР¶РµСЂ РЅР°СЃС‚СЂРѕРµРє Р‘Р”
 """
 
 import sqlite3
@@ -26,17 +26,17 @@ class SettingsManager:
         self.init_database()
     
     def get_connection(self):
-        """Получить соединение с БД"""
+        """РџРѕР»СѓС‡РёС‚СЊ СЃРѕРµРґРёРЅРµРЅРёРµ СЃ Р‘Р”"""
         return sqlite3.connect(str(self.db_path))
     
     def init_database(self):
-        """Инициализация базы данных настроек"""
+        """РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ Р±Р°Р·С‹ РґР°РЅРЅС‹С… РЅР°СЃС‚СЂРѕРµРє"""
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         
         conn = self.get_connection()
         cursor = conn.cursor()
         
-        # Таблица основных настроек
+        # РўР°Р±Р»РёС†Р° РѕСЃРЅРѕРІРЅС‹С… РЅР°СЃС‚СЂРѕРµРє
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS settings (
                 key TEXT PRIMARY KEY,
@@ -49,7 +49,7 @@ class SettingsManager:
             )
         ''')
         
-        # Таблица серверов
+        # РўР°Р±Р»РёС†Р° СЃРµСЂРІРµСЂРѕРІ
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS servers (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -64,7 +64,7 @@ class SettingsManager:
             )
         ''')
         
-        # Таблица Windows учетных данных
+        # РўР°Р±Р»РёС†Р° Windows СѓС‡РµС‚РЅС‹С… РґР°РЅРЅС‹С…
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS windows_credentials (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -77,7 +77,7 @@ class SettingsManager:
             )
         ''')
         
-        # Таблица паттернов бэкапов
+        # РўР°Р±Р»РёС†Р° РїР°С‚С‚РµСЂРЅРѕРІ Р±СЌРєР°РїРѕРІ
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS backup_patterns (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -92,44 +92,44 @@ class SettingsManager:
         conn.commit()
         conn.close()
         
-        # Инициализация настроек по умолчанию
+        # РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ РЅР°СЃС‚СЂРѕРµРє РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ
         self.init_default_settings()
     
     def init_default_settings(self):
-        """Инициализация настроек по умолчанию"""
+        """РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ РЅР°СЃС‚СЂРѕРµРє РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ"""
         default_settings = [
             # Telegram
-            ('TELEGRAM_TOKEN', '', 'telegram', 'Токен Telegram бота', 'string'),
-            ('CHAT_IDS', '[]', 'telegram', 'ID чатов для уведомлений', 'list'),
+            ('TELEGRAM_TOKEN', '', 'telegram', 'РўРѕРєРµРЅ Telegram Р±РѕС‚Р°', 'string'),
+            ('CHAT_IDS', '[]', 'telegram', 'ID С‡Р°С‚РѕРІ РґР»СЏ СѓРІРµРґРѕРјР»РµРЅРёР№', 'list'),
             
-            # Интервалы проверок
-            ('CHECK_INTERVAL', '60', 'monitoring', 'Интервал проверки серверов (секунды)', 'int'),
-            ('MAX_FAIL_TIME', '900', 'monitoring', 'Максимальное время простоя до алерта (секунды)', 'int'),
+            # РРЅС‚РµСЂРІР°Р»С‹ РїСЂРѕРІРµСЂРѕРє
+            ('CHECK_INTERVAL', '60', 'monitoring', 'РРЅС‚РµСЂРІР°Р» РїСЂРѕРІРµСЂРєРё СЃРµСЂРІРµСЂРѕРІ (СЃРµРєСѓРЅРґС‹)', 'int'),
+            ('MAX_FAIL_TIME', '900', 'monitoring', 'РњР°РєСЃРёРјР°Р»СЊРЅРѕРµ РІСЂРµРјСЏ РїСЂРѕСЃС‚РѕСЏ РґРѕ Р°Р»РµСЂС‚Р° (СЃРµРєСѓРЅРґС‹)', 'int'),
             
-            # Временные настройки
-            ('SILENT_START', '20', 'time', 'Начало тихого режима (час)', 'int'),
-            ('SILENT_END', '9', 'time', 'Конец тихого режима (час)', 'int'),
-            ('DATA_COLLECTION_TIME', '08:30', 'time', 'Время сбора данных для отчета', 'time'),
+            # Р’СЂРµРјРµРЅРЅС‹Рµ РЅР°СЃС‚СЂРѕР№РєРё
+            ('SILENT_START', '20', 'time', 'РќР°С‡Р°Р»Рѕ С‚РёС…РѕРіРѕ СЂРµР¶РёРјР° (С‡Р°СЃ)', 'int'),
+            ('SILENT_END', '9', 'time', 'РљРѕРЅРµС† С‚РёС…РѕРіРѕ СЂРµР¶РёРјР° (С‡Р°СЃ)', 'int'),
+            ('DATA_COLLECTION_TIME', '08:30', 'time', 'Р’СЂРµРјСЏ СЃР±РѕСЂР° РґР°РЅРЅС‹С… РґР»СЏ РѕС‚С‡РµС‚Р°', 'time'),
             
-            # Настройки ресурсов
-            ('RESOURCE_CHECK_INTERVAL', '1800', 'resources', 'Интервал проверки ресурсов (секунды)', 'int'),
-            ('RESOURCE_ALERT_INTERVAL', '1800', 'resources', 'Интервал повторных алертов ресурсов (секунды)', 'int'),
+            # РќР°СЃС‚СЂРѕР№РєРё СЂРµСЃСѓСЂСЃРѕРІ
+            ('RESOURCE_CHECK_INTERVAL', '1800', 'resources', 'РРЅС‚РµСЂРІР°Р» РїСЂРѕРІРµСЂРєРё СЂРµСЃСѓСЂСЃРѕРІ (СЃРµРєСѓРЅРґС‹)', 'int'),
+            ('RESOURCE_ALERT_INTERVAL', '1800', 'resources', 'РРЅС‚РµСЂРІР°Р» РїРѕРІС‚РѕСЂРЅС‹С… Р°Р»РµСЂС‚РѕРІ СЂРµСЃСѓСЂСЃРѕРІ (СЃРµРєСѓРЅРґС‹)', 'int'),
             
-            # Пороги ресурсов
-            ('CPU_WARNING', '80', 'resources', 'Порог предупреждения CPU (%)', 'int'),
-            ('CPU_CRITICAL', '90', 'resources', 'Порог критического CPU (%)', 'int'),
-            ('RAM_WARNING', '85', 'resources', 'Порог предупреждения RAM (%)', 'int'),
-            ('RAM_CRITICAL', '95', 'resources', 'Порог критического RAM (%)', 'int'),
-            ('DISK_WARNING', '80', 'resources', 'Порог предупреждения Disk (%)', 'int'),
-            ('DISK_CRITICAL', '90', 'resources', 'Порог критического Disk (%)', 'int'),
+            # РџРѕСЂРѕРіРё СЂРµСЃСѓСЂСЃРѕРІ
+            ('CPU_WARNING', '80', 'resources', 'РџРѕСЂРѕРі РїСЂРµРґСѓРїСЂРµР¶РґРµРЅРёСЏ CPU (%)', 'int'),
+            ('CPU_CRITICAL', '90', 'resources', 'РџРѕСЂРѕРі РєСЂРёС‚РёС‡РµСЃРєРѕРіРѕ CPU (%)', 'int'),
+            ('RAM_WARNING', '85', 'resources', 'РџРѕСЂРѕРі РїСЂРµРґСѓРїСЂРµР¶РґРµРЅРёСЏ RAM (%)', 'int'),
+            ('RAM_CRITICAL', '95', 'resources', 'РџРѕСЂРѕРі РєСЂРёС‚РёС‡РµСЃРєРѕРіРѕ RAM (%)', 'int'),
+            ('DISK_WARNING', '80', 'resources', 'РџРѕСЂРѕРі РїСЂРµРґСѓРїСЂРµР¶РґРµРЅРёСЏ Disk (%)', 'int'),
+            ('DISK_CRITICAL', '90', 'resources', 'РџРѕСЂРѕРі РєСЂРёС‚РёС‡РµСЃРєРѕРіРѕ Disk (%)', 'int'),
             
-            # Аутентификация
-            ('SSH_USERNAME', 'root', 'auth', 'Имя пользователя SSH', 'string'),
-            ('SSH_KEY_PATH', '/root/.ssh/id_rsa', 'auth', 'Путь к SSH ключу', 'string'),
+            # РђСѓС‚РµРЅС‚РёС„РёРєР°С†РёСЏ
+            ('SSH_USERNAME', 'root', 'auth', 'РРјСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ SSH', 'string'),
+            ('SSH_KEY_PATH', '/root/.ssh/id_rsa', 'auth', 'РџСѓС‚СЊ Рє SSH РєР»СЋС‡Сѓ', 'string'),
             
-            # Бэкапы
-            ('BACKUP_ALERT_HOURS', '24', 'backup', 'Часы для алертов о бэкапах', 'int'),
-            ('BACKUP_STALE_HOURS', '36', 'backup', 'Часы для устаревших бэкапов', 'int'),
+            # Р‘СЌРєР°РїС‹
+            ('BACKUP_ALERT_HOURS', '24', 'backup', 'Р§Р°СЃС‹ РґР»СЏ Р°Р»РµСЂС‚РѕРІ Рѕ Р±СЌРєР°РїР°С…', 'int'),
+            ('BACKUP_STALE_HOURS', '36', 'backup', 'Р§Р°СЃС‹ РґР»СЏ СѓСЃС‚Р°СЂРµРІС€РёС… Р±СЌРєР°РїРѕРІ', 'int'),
         ]
         
         conn = self.get_connection()
@@ -145,7 +145,7 @@ class SettingsManager:
         conn.close()
     
     def get_setting(self, key, default=None):
-        """Получить значение настройки"""
+        """РџРѕР»СѓС‡РёС‚СЊ Р·РЅР°С‡РµРЅРёРµ РЅР°СЃС‚СЂРѕР№РєРё"""
         conn = self.get_connection()
         cursor = conn.cursor()
         
@@ -158,7 +158,7 @@ class SettingsManager:
         
         value, data_type = result
         
-        # Преобразование типов
+        # РџСЂРµРѕР±СЂР°Р·РѕРІР°РЅРёРµ С‚РёРїРѕРІ
         if data_type == 'int':
             return int(value) if value else default
         elif data_type == 'float':
@@ -173,8 +173,8 @@ class SettingsManager:
             return value if value else default
     
     def set_setting(self, key, value, category='general', description='', data_type='string'):
-        """Установить значение настройки"""
-        # Определяем тип данных
+        """РЈСЃС‚Р°РЅРѕРІРёС‚СЊ Р·РЅР°С‡РµРЅРёРµ РЅР°СЃС‚СЂРѕР№РєРё"""
+        # РћРїСЂРµРґРµР»СЏРµРј С‚РёРї РґР°РЅРЅС‹С…
         if data_type == 'auto':
             if isinstance(value, int):
                 data_type = 'int'
@@ -207,7 +207,7 @@ class SettingsManager:
         return True
     
     def get_all_settings(self, category=None):
-        """Получить все настройки"""
+        """РџРѕР»СѓС‡РёС‚СЊ РІСЃРµ РЅР°СЃС‚СЂРѕР№РєРё"""
         conn = self.get_connection()
         cursor = conn.cursor()
         
@@ -218,7 +218,7 @@ class SettingsManager:
         
         settings = {}
         for key, value, data_type, description in cursor.fetchall():
-            # Преобразование типов
+            # РџСЂРµРѕР±СЂР°Р·РѕРІР°РЅРёРµ С‚РёРїРѕРІ
             if data_type == 'int':
                 settings[key] = int(value) if value else 0
             elif data_type == 'float':
@@ -236,7 +236,7 @@ class SettingsManager:
         return settings
     
     def get_categories(self):
-        """Получить список категорий"""
+        """РџРѕР»СѓС‡РёС‚СЊ СЃРїРёСЃРѕРє РєР°С‚РµРіРѕСЂРёР№"""
         conn = self.get_connection()
         cursor = conn.cursor()
         
@@ -247,7 +247,7 @@ class SettingsManager:
         return categories
 
     def get_servers_by_type(self, server_type):
-        """Получить серверы по типу"""
+        """РџРѕР»СѓС‡РёС‚СЊ СЃРµСЂРІРµСЂС‹ РїРѕ С‚РёРїСѓ"""
         conn = self.get_connection()
         cursor = conn.cursor()
         
@@ -258,7 +258,7 @@ class SettingsManager:
         return servers
 
     def add_server(self, ip, name, server_type, credentials=None, timeout=30):
-        """Добавить сервер"""
+        """Р”РѕР±Р°РІРёС‚СЊ СЃРµСЂРІРµСЂ"""
         conn = self.get_connection()
         cursor = conn.cursor()
         
@@ -274,7 +274,7 @@ class SettingsManager:
         return True
 
     def delete_server(self, ip):
-        """Удалить сервер"""
+        """РЈРґР°Р»РёС‚СЊ СЃРµСЂРІРµСЂ"""
         conn = self.get_connection()
         cursor = conn.cursor()
         
@@ -285,7 +285,7 @@ class SettingsManager:
         return True
 
     def get_all_servers(self):
-        """Получить все серверы"""
+        """РџРѕР»СѓС‡РёС‚СЊ РІСЃРµ СЃРµСЂРІРµСЂС‹"""
         conn = self.get_connection()
         cursor = conn.cursor()
         
@@ -306,7 +306,7 @@ class SettingsManager:
         return servers
 
     def get_backup_patterns(self):
-        """Получить паттерны бэкапов"""
+        """РџРѕР»СѓС‡РёС‚СЊ РїР°С‚С‚РµСЂРЅС‹ Р±СЌРєР°РїРѕРІ"""
         conn = self.get_connection()
         cursor = conn.cursor()
         
@@ -324,7 +324,7 @@ class SettingsManager:
         return patterns
 
     def get_backup_status_map(self):
-        """Получить карту статусов бэкапов"""
+        """РџРѕР»СѓС‡РёС‚СЊ РєР°СЂС‚Сѓ СЃС‚Р°С‚СѓСЃРѕРІ Р±СЌРєР°РїРѕРІ"""
         return self.get_setting('BACKUP_STATUS_MAP', {
             'backup successful': 'success',
             'successful': 'success',
@@ -340,27 +340,27 @@ class SettingsManager:
         })
 
     def get_duplicate_ip_hosts(self):
-        """Получить хосты с одинаковыми IP"""
+        """РџРѕР»СѓС‡РёС‚СЊ С…РѕСЃС‚С‹ СЃ РѕРґРёРЅР°РєРѕРІС‹РјРё IP"""
         return self.get_setting('DUPLICATE_IP_HOSTS', {
             '95.170.153.118': ['pve-rubicon', 'pve2-rubicon']
         })
 
     def get_hostname_aliases(self):
-        """Получить алиасы имен хостов"""
+        """РџРѕР»СѓС‡РёС‚СЊ Р°Р»РёР°СЃС‹ РёРјРµРЅ С…РѕСЃС‚РѕРІ"""
         return self.get_setting('HOSTNAME_ALIASES', {
             'pve-rubicon': ['rubicon', 'pve-rubicon', 'rubicon-pve', 'pve1-rubicon'],
             'pve2-rubicon': ['rubicon2', 'pve2-rubicon', 'rubicon2-pve', 'pve-rubicon2'],
         })
 
     def get_web_settings(self):
-        """Получить настройки веб-интерфейса"""
+        """РџРѕР»СѓС‡РёС‚СЊ РЅР°СЃС‚СЂРѕР№РєРё РІРµР±-РёРЅС‚РµСЂС„РµР№СЃР°"""
         return {
             'WEB_PORT': self.get_setting('WEB_PORT', 5000),
             'WEB_HOST': self.get_setting('WEB_HOST', '0.0.0.0')
         }
 
     def get_windows_credentials_db(self):
-        """Получить учетные данные Windows из БД"""
+        """РџРѕР»СѓС‡РёС‚СЊ СѓС‡РµС‚РЅС‹Рµ РґР°РЅРЅС‹Рµ Windows РёР· Р‘Р”"""
         conn = self.get_connection()
         cursor = conn.cursor()
         
@@ -381,19 +381,19 @@ class SettingsManager:
         return credentials
         
     def get_proxmox_hosts(self):
-        """Получить хосты Proxmox"""
+        """РџРѕР»СѓС‡РёС‚СЊ С…РѕСЃС‚С‹ Proxmox"""
         return self.get_setting('PROXMOX_HOSTS', {})
 
     def get_database_config(self):
-        """Получить конфигурацию баз данных"""
+        """РџРѕР»СѓС‡РёС‚СЊ РєРѕРЅС„РёРіСѓСЂР°С†РёСЋ Р±Р°Р· РґР°РЅРЅС‹С…"""
         return self.get_setting('DATABASE_CONFIG', {})
 
     def get_server_timeouts(self):
-        """Получить таймауты серверов"""
+        """РџРѕР»СѓС‡РёС‚СЊ С‚Р°Р№РјР°СѓС‚С‹ СЃРµСЂРІРµСЂРѕРІ"""
         return self.get_setting('SERVER_TIMEOUTS', {})
 
     def get_windows_credentials(self, server_type=None):
-        """Получить учетные данные Windows"""
+        """РџРѕР»СѓС‡РёС‚СЊ СѓС‡РµС‚РЅС‹Рµ РґР°РЅРЅС‹Рµ Windows"""
         conn = self.get_connection()
         cursor = conn.cursor()
         
@@ -427,7 +427,7 @@ class SettingsManager:
         return credentials
     
     def add_windows_credential(self, username, password, server_type='default', priority=0):
-        """Добавить учетные данные Windows"""
+        """Р”РѕР±Р°РІРёС‚СЊ СѓС‡РµС‚РЅС‹Рµ РґР°РЅРЅС‹Рµ Windows"""
         conn = self.get_connection()
         cursor = conn.cursor()
         
@@ -441,7 +441,7 @@ class SettingsManager:
         return True
     
     def update_windows_credential(self, cred_id, username=None, password=None, server_type=None, priority=None, enabled=None):
-        """Обновить учетные данные Windows"""
+        """РћР±РЅРѕРІРёС‚СЊ СѓС‡РµС‚РЅС‹Рµ РґР°РЅРЅС‹Рµ Windows"""
         conn = self.get_connection()
         cursor = conn.cursor()
         
@@ -480,7 +480,7 @@ class SettingsManager:
         return True
     
     def delete_windows_credential(self, cred_id):
-        """Удалить учетные данные Windows"""
+        """РЈРґР°Р»РёС‚СЊ СѓС‡РµС‚РЅС‹Рµ РґР°РЅРЅС‹Рµ Windows"""
         conn = self.get_connection()
         cursor = conn.cursor()
         
@@ -491,7 +491,7 @@ class SettingsManager:
         return True
     
     def get_windows_server_types(self):
-        """Получить типы Windows серверов"""
+        """РџРѕР»СѓС‡РёС‚СЊ С‚РёРїС‹ Windows СЃРµСЂРІРµСЂРѕРІ"""
         conn = self.get_connection()
         cursor = conn.cursor()
         
@@ -501,5 +501,5 @@ class SettingsManager:
         conn.close()
         return types
     
-# Глобальный экземпляр менеджера настроек
+# Р“Р»РѕР±Р°Р»СЊРЅС‹Р№ СЌРєР·РµРјРїР»СЏСЂ РјРµРЅРµРґР¶РµСЂР° РЅР°СЃС‚СЂРѕРµРє
 settings_manager = SettingsManager()

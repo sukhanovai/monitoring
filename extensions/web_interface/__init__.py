@@ -1,14 +1,14 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.5.0
+Server Monitoring System v8.6.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
-Система мониторинга серверов
-Версия: 8.5.0
-Автор: Александр Суханов (c)
-Лицензия: MIT
-Веб-интерфейс
+РЎРёСЃС‚РµРјР° РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЃРµСЂРІРµСЂРѕРІ
+Р’РµСЂСЃРёСЏ: 8.6.0
+РђРІС‚РѕСЂ: РђР»РµРєСЃР°РЅРґСЂ РЎСѓС…Р°РЅРѕРІ (c)
+Р›РёС†РµРЅР·РёСЏ: MIT
+Р’РµР±-РёРЅС‚РµСЂС„РµР№СЃ
 """
 
 from flask import Flask, jsonify, render_template_string, request
@@ -43,14 +43,14 @@ import uuid
 
 app = Flask(__name__)
 
-# HTML шаблон с вкладками и темной темой (без вкладки Ресурсы)
+# HTML С€Р°Р±Р»РѕРЅ СЃ РІРєР»Р°РґРєР°РјРё Рё С‚РµРјРЅРѕР№ С‚РµРјРѕР№ (Р±РµР· РІРєР»Р°РґРєРё Р РµСЃСѓСЂСЃС‹)
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🌐 Мониторинг серверов</title>
+    <title>рџЊђ РњРѕРЅРёС‚РѕСЂРёРЅРі СЃРµСЂРІРµСЂРѕРІ</title>
     <style>
         * {
             margin: 0;
@@ -87,7 +87,7 @@ HTML_TEMPLATE = """
             color: #aaa;
         }
         
-        /* Вкладки */
+        /* Р’РєР»Р°РґРєРё */
         .tabs {
             display: flex;
             background: rgba(30, 30, 40, 0.95);
@@ -124,7 +124,7 @@ HTML_TEMPLATE = """
             display: block;
         }
         
-        /* Общие стили карточек */
+        /* РћР±С‰РёРµ СЃС‚РёР»Рё РєР°СЂС‚РѕС‡РµРє */
         .dashboard {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -165,7 +165,7 @@ HTML_TEMPLATE = """
         .status-info { color: #2196F3; }
         .status-critical { color: #ff4444; }
         
-        /* Стили для списка серверов */
+        /* РЎС‚РёР»Рё РґР»СЏ СЃРїРёСЃРєР° СЃРµСЂРІРµСЂРѕРІ */
         .server-list {
             max-height: 600px;
             overflow-y: auto;
@@ -330,7 +330,7 @@ HTML_TEMPLATE = """
             color: #333;
         }
         
-        /* Кнопки */
+        /* РљРЅРѕРїРєРё */
         .controls {
             display: flex;
             gap: 10px;
@@ -384,7 +384,7 @@ HTML_TEMPLATE = """
             font-size: 0.9em;
         }
         
-        /* Анимации */
+        /* РђРЅРёРјР°С†РёРё */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
@@ -423,124 +423,124 @@ HTML_TEMPLATE = """
 <body>
     <div class="container">
         <div class="header">
-            <h1>🌐 Мониторинг серверов</h1>
-            <div class="status">Система работает • Последнее обновление: <span id="lastUpdate">{{ last_update }}</span></div>
+            <h1>рџЊђ РњРѕРЅРёС‚РѕСЂРёРЅРі СЃРµСЂРІРµСЂРѕРІ</h1>
+            <div class="status">РЎРёСЃС‚РµРјР° СЂР°Р±РѕС‚Р°РµС‚ вЂў РџРѕСЃР»РµРґРЅРµРµ РѕР±РЅРѕРІР»РµРЅРёРµ: <span id="lastUpdate">{{ last_update }}</span></div>
         </div>
         
-        <!-- Вкладки -->
+        <!-- Р’РєР»Р°РґРєРё -->
         <div class="tabs">
-            <div class="tab active" onclick="switchTab('overview')">📊 Обзор</div>
-            <div class="tab" onclick="switchTab('servers')">🖥️ Сервера</div>
-            <div class="tab" onclick="switchTab('server-management')">⚙️ Управление серверами</div>
-            <div class="tab" onclick="switchTab('controls')">🎛️ Управление</div>
+            <div class="tab active" onclick="switchTab('overview')">рџ“Љ РћР±Р·РѕСЂ</div>
+            <div class="tab" onclick="switchTab('servers')">рџ–ҐпёЏ РЎРµСЂРІРµСЂР°</div>
+            <div class="tab" onclick="switchTab('server-management')">вљ™пёЏ РЈРїСЂР°РІР»РµРЅРёРµ СЃРµСЂРІРµСЂР°РјРё</div>
+            <div class="tab" onclick="switchTab('controls')">рџЋ›пёЏ РЈРїСЂР°РІР»РµРЅРёРµ</div>
             {% if supplier_stock_enabled %}
-            <div class="tab" onclick="switchTab('supplier-stock')">📦 Остатки поставщиков</div>
+            <div class="tab" onclick="switchTab('supplier-stock')">рџ“¦ РћСЃС‚Р°С‚РєРё РїРѕСЃС‚Р°РІС‰РёРєРѕРІ</div>
             {% endif %}
         </div>
         
-        <!-- Содержимое вкладки Обзор -->
+        <!-- РЎРѕРґРµСЂР¶РёРјРѕРµ РІРєР»Р°РґРєРё РћР±Р·РѕСЂ -->
         <div id="overview" class="tab-content active">
             <div class="dashboard">
                 <div class="card">
-                    <h2>📊 Общая статистика</h2>
+                    <h2>рџ“Љ РћР±С‰Р°СЏ СЃС‚Р°С‚РёСЃС‚РёРєР°</h2>
                     <div class="stat-item">
-                        <span>Всего серверов:</span>
+                        <span>Р’СЃРµРіРѕ СЃРµСЂРІРµСЂРѕРІ:</span>
                         <span class="stat-value">{{ stats.total_servers }}</span>
                     </div>
                     <div class="stat-item">
-                        <span>Доступно:</span>
+                        <span>Р”РѕСЃС‚СѓРїРЅРѕ:</span>
                         <span class="stat-value status-up">{{ stats.servers_up }}</span>
                     </div>
                     <div class="stat-item">
-                        <span>Недоступно:</span>
+                        <span>РќРµРґРѕСЃС‚СѓРїРЅРѕ:</span>
                         <span class="stat-value status-down">{{ stats.servers_down }}</span>
                     </div>
                     <div class="stat-item">
-                        <span>Доступность:</span>
+                        <span>Р”РѕСЃС‚СѓРїРЅРѕСЃС‚СЊ:</span>
                         <span class="stat-value">{{ stats.availability_percentage }}%</span>
                     </div>
                 </div>
                 
                 <div class="card">
-                    <h2>🔄 Мониторинг</h2>
+                    <h2>рџ”„ РњРѕРЅРёС‚РѕСЂРёРЅРі</h2>
                     <div class="stat-item">
-                        <span>Статус:</span>
+                        <span>РЎС‚Р°С‚СѓСЃ:</span>
                         <span class="stat-value status-info">{{ stats.monitoring_mode }}</span>
                     </div>
                     <div class="stat-item">
-                        <span>Тихий режим:</span>
+                        <span>РўРёС…РёР№ СЂРµР¶РёРј:</span>
                         <span class="stat-value">{{ stats.silent_mode }}</span>
                     </div>
                     <div class="stat-item">
-                        <span>Последняя проверка:</span>
+                        <span>РџРѕСЃР»РµРґРЅСЏСЏ РїСЂРѕРІРµСЂРєР°:</span>
                         <span class="stat-value">{{ stats.last_check_time }}</span>
                     </div>
                     <div class="stat-item">
-                        <span>Интервал:</span>
-                        <span class="stat-value">{{ stats.check_interval }} сек</span>
+                        <span>РРЅС‚РµСЂРІР°Р»:</span>
+                        <span class="stat-value">{{ stats.check_interval }} СЃРµРє</span>
                     </div>
                 </div>
                 
                 <div class="card">
-                    <h2>📈 Ресурсы</h2>
+                    <h2>рџ“€ Р РµСЃСѓСЂСЃС‹</h2>
                     <div class="stat-item">
-                        <span>Проверка ресурсов:</span>
+                        <span>РџСЂРѕРІРµСЂРєР° СЂРµСЃСѓСЂСЃРѕРІ:</span>
                         <span class="stat-value">{{ stats.resource_check_status }}</span>
                     </div>
                     <div class="stat-item">
-                        <span>Интервал проверки:</span>
-                        <span class="stat-value">{{ stats.resource_check_interval }} мин</span>
+                        <span>РРЅС‚РµСЂРІР°Р» РїСЂРѕРІРµСЂРєРё:</span>
+                        <span class="stat-value">{{ stats.resource_check_interval }} РјРёРЅ</span>
                     </div>
                     <div class="stat-item">
-                        <span>Проблем с ресурсами:</span>
+                        <span>РџСЂРѕР±Р»РµРј СЃ СЂРµСЃСѓСЂСЃР°РјРё:</span>
                         <span class="stat-value status-warning">{{ stats.resource_alerts }}</span>
                     </div>
                     <div class="stat-item">
-                        <span>Время работы:</span>
+                        <span>Р’СЂРµРјСЏ СЂР°Р±РѕС‚С‹:</span>
                         <span class="stat-value">{{ stats.uptime }}</span>
                     </div>
                 </div>
             </div>
             
             <div class="controls">
-                <button class="btn btn-success" onclick="runCheck('quick')">🔍 Быстрая проверка</button>
-                <button class="btn btn-info" onclick="runCheck('resources')">📈 Проверить ресурсы</button>
-                <button class="btn btn-warning" onclick="runCheck('report')">📊 Сформировать отчет</button>
+                <button class="btn btn-success" onclick="runCheck('quick')">рџ”Ќ Р‘С‹СЃС‚СЂР°СЏ РїСЂРѕРІРµСЂРєР°</button>
+                <button class="btn btn-info" onclick="runCheck('resources')">рџ“€ РџСЂРѕРІРµСЂРёС‚СЊ СЂРµСЃСѓСЂСЃС‹</button>
+                <button class="btn btn-warning" onclick="runCheck('report')">рџ“Љ РЎС„РѕСЂРјРёСЂРѕРІР°С‚СЊ РѕС‚С‡РµС‚</button>
             </div>
         </div>
         
-        <!-- Содержимое вкладки Сервера -->
+        <!-- РЎРѕРґРµСЂР¶РёРјРѕРµ РІРєР»Р°РґРєРё РЎРµСЂРІРµСЂР° -->
         <div id="servers" class="tab-content">
-            <h2 style="margin-bottom: 20px;">🖥️ Статус серверов</h2>
+            <h2 style="margin-bottom: 20px;">рџ–ҐпёЏ РЎС‚Р°С‚СѓСЃ СЃРµСЂРІРµСЂРѕРІ</h2>
             <div class="server-list">
                 {% for server in servers %}
                 <div class="server-item {% if server.status == 'down' %}down{% elif server.status == 'warning' %}warning{% endif %} fade-in">
                     <div class="server-info">
                         <div class="server-name">{{ server.name }}</div>
-                        <div class="server-details">{{ server.ip }} • {{ server.type.upper() }} • {{ server.os }}</div>
+                        <div class="server-details">{{ server.ip }} вЂў {{ server.type.upper() }} вЂў {{ server.os }}</div>
                         {% if server.resources %}
                         <div class="server-resources">
                             <div class="resource-item">
-                                <span>💻 CPU:</span>
+                                <span>рџ’» CPU:</span>
                                 <span class="resource-cpu {{ server.resources.cpu_class }}">{{ server.resources.cpu }}%</span>
                             </div>
                             <div class="resource-item">
-                                <span>🧠 RAM:</span>
+                                <span>рџ§  RAM:</span>
                                 <span class="resource-ram {{ server.resources.ram_class }}">{{ server.resources.ram }}%</span>
                             </div>
                             <div class="resource-item">
-                                <span>💾 Disk:</span>
+                                <span>рџ’ѕ Disk:</span>
                                 <span class="resource-disk {{ server.resources.disk_class }}">{{ server.resources.disk }}%</span>
                             </div>
                             {% if server.resources.load_avg and server.resources.load_avg != 'N/A' %}
                             <div class="resource-item">
-                                <span>📊 Load:</span>
+                                <span>рџ“Љ Load:</span>
                                 <span>{{ server.resources.load_avg }}</span>
                             </div>
                             {% endif %}
                             {% if server.resources.uptime and server.resources.uptime != 'N/A' %}
                             <div class="resource-item">
-                                <span>⏱️ Uptime:</span>
+                                <span>вЏ±пёЏ Uptime:</span>
                                 <span>{{ server.resources.uptime }}</span>
                             </div>
                             {% endif %}
@@ -555,146 +555,146 @@ HTML_TEMPLATE = """
             </div>
         </div>
         
-        <!-- Содержимое вкладки Управление серверами -->
+        <!-- РЎРѕРґРµСЂР¶РёРјРѕРµ РІРєР»Р°РґРєРё РЈРїСЂР°РІР»РµРЅРёРµ СЃРµСЂРІРµСЂР°РјРё -->
         <div id="server-management" class="tab-content">
-            <h2 style="margin-bottom: 20px;">⚙️ Управление списком серверов</h2>
+            <h2 style="margin-bottom: 20px;">вљ™пёЏ РЈРїСЂР°РІР»РµРЅРёРµ СЃРїРёСЃРєРѕРј СЃРµСЂРІРµСЂРѕРІ</h2>
             
             <div class="card">
-                <h2>📋 Список серверов</h2>
+                <h2>рџ“‹ РЎРїРёСЃРѕРє СЃРµСЂРІРµСЂРѕРІ</h2>
                 <div id="serverListContainer">
-                    <!-- Список серверов будет загружен здесь -->
+                    <!-- РЎРїРёСЃРѕРє СЃРµСЂРІРµСЂРѕРІ Р±СѓРґРµС‚ Р·Р°РіСЂСѓР¶РµРЅ Р·РґРµСЃСЊ -->
                 </div>
-                <button class="btn btn-success" onclick="loadServerList()">🔄 Обновить список</button>
+                <button class="btn btn-success" onclick="loadServerList()">рџ”„ РћР±РЅРѕРІРёС‚СЊ СЃРїРёСЃРѕРє</button>
             </div>
             
             <div class="card">
-                <h2>➕ Добавить новый сервер</h2>
+                <h2>вћ• Р”РѕР±Р°РІРёС‚СЊ РЅРѕРІС‹Р№ СЃРµСЂРІРµСЂ</h2>
                 <form id="addServerForm" style="display: grid; gap: 15px; margin-top: 15px;">
-                    <input type="text" name="name" placeholder="Название сервера" required style="padding: 10px; border-radius: 6px; border: 1px solid #555; background: rgba(60,60,70,0.8); color: white;">
-                    <input type="text" name="ip" placeholder="IP адрес" required style="padding: 10px; border-radius: 6px; border: 1px solid #555; background: rgba(60,60,70,0.8); color: white;">
+                    <input type="text" name="name" placeholder="РќР°Р·РІР°РЅРёРµ СЃРµСЂРІРµСЂР°" required style="padding: 10px; border-radius: 6px; border: 1px solid #555; background: rgba(60,60,70,0.8); color: white;">
+                    <input type="text" name="ip" placeholder="IP Р°РґСЂРµСЃ" required style="padding: 10px; border-radius: 6px; border: 1px solid #555; background: rgba(60,60,70,0.8); color: white;">
                     <select name="type" style="padding: 10px; border-radius: 6px; border: 1px solid #555; background: rgba(60,60,70,0.8); color: white;">
                         <option value="linux">Linux</option>
                         <option value="windows">Windows</option>
                     </select>
-                    <button type="submit" class="btn btn-success">✅ Добавить сервер</button>
+                    <button type="submit" class="btn btn-success">вњ… Р”РѕР±Р°РІРёС‚СЊ СЃРµСЂРІРµСЂ</button>
                 </form>
             </div>
         </div>     
                 
-        <!-- Содержимое вкладки Управление -->
+        <!-- РЎРѕРґРµСЂР¶РёРјРѕРµ РІРєР»Р°РґРєРё РЈРїСЂР°РІР»РµРЅРёРµ -->
         <div id="controls" class="tab-content">
-            <h2 style="margin-bottom: 20px;">🎛️ Управление мониторингом</h2>
+            <h2 style="margin-bottom: 20px;">рџЋ›пёЏ РЈРїСЂР°РІР»РµРЅРёРµ РјРѕРЅРёС‚РѕСЂРёРЅРіРѕРј</h2>
             
             <div class="dashboard">
                 <div class="card">
-                    <h2>🔧 Действия</h2>
+                    <h2>рџ”§ Р”РµР№СЃС‚РІРёСЏ</h2>
                     <div class="controls" style="flex-direction: column; gap: 15px;">
-                        <button class="btn btn-success" onclick="runAction('check_all')">🔍 Проверить все серверы</button>
-                        <button class="btn btn-info" onclick="runAction('check_resources')">📈 Проверить ресурсы</button>
-                        <button class="btn btn-warning" onclick="runAction('morning_report')">📊 Утренний отчет</button>
-                        <button class="btn btn-danger" onclick="runAction('restart_service')">🔄 Перезапуск сервиса</button>
+                        <button class="btn btn-success" onclick="runAction('check_all')">рџ”Ќ РџСЂРѕРІРµСЂРёС‚СЊ РІСЃРµ СЃРµСЂРІРµСЂС‹</button>
+                        <button class="btn btn-info" onclick="runAction('check_resources')">рџ“€ РџСЂРѕРІРµСЂРёС‚СЊ СЂРµСЃСѓСЂСЃС‹</button>
+                        <button class="btn btn-warning" onclick="runAction('morning_report')">рџ“Љ РЈС‚СЂРµРЅРЅРёР№ РѕС‚С‡РµС‚</button>
+                        <button class="btn btn-danger" onclick="runAction('restart_service')">рџ”„ РџРµСЂРµР·Р°РїСѓСЃРє СЃРµСЂРІРёСЃР°</button>
                     </div>
                 </div>
                 
                 <div class="card">
-                    <h2>⚙️ Настройки</h2>
+                    <h2>вљ™пёЏ РќР°СЃС‚СЂРѕР№РєРё</h2>
                     <div class="stat-item">
-                        <span>Текущий режим:</span>
+                        <span>РўРµРєСѓС‰РёР№ СЂРµР¶РёРј:</span>
                         <span class="stat-value">{{ stats.monitoring_mode }}</span>
                     </div>
                     <div class="stat-item">
-                        <span>Тихий режим:</span>
+                        <span>РўРёС…РёР№ СЂРµР¶РёРј:</span>
                         <span class="stat-value">{{ stats.silent_mode }}</span>
                     </div>
                     <div class="controls" style="margin-top: 20px;">
-                        <button class="btn {% if stats.monitoring_mode == '🟢 Активен' %}btn-warning{% else %}btn-success{% endif %}" 
+                        <button class="btn {% if stats.monitoring_mode == 'рџџў РђРєС‚РёРІРµРЅ' %}btn-warning{% else %}btn-success{% endif %}" 
                                 onclick="toggleMonitoring()">
-                            {% if stats.monitoring_mode == '🟢 Активен' %}⏸️ Приостановить{% else %}▶️ Возобновить{% endif %}
+                            {% if stats.monitoring_mode == 'рџџў РђРєС‚РёРІРµРЅ' %}вЏёпёЏ РџСЂРёРѕСЃС‚Р°РЅРѕРІРёС‚СЊ{% else %}в–¶пёЏ Р’РѕР·РѕР±РЅРѕРІРёС‚СЊ{% endif %}
                         </button>
-                        <button class="btn {% if stats.silent_mode == '🔇 Включен' %}btn-info{% else %}btn-warning{% endif %}" 
+                        <button class="btn {% if stats.silent_mode == 'рџ”‡ Р’РєР»СЋС‡РµРЅ' %}btn-info{% else %}btn-warning{% endif %}" 
                                 onclick="toggleSilentMode()">
-                            {% if stats.silent_mode == '🔇 Включен' %}🔊 Выключить тихий{% else %}🔇 Включить тихий{% endif %}
+                            {% if stats.silent_mode == 'рџ”‡ Р’РєР»СЋС‡РµРЅ' %}рџ”Љ Р’С‹РєР»СЋС‡РёС‚СЊ С‚РёС…РёР№{% else %}рџ”‡ Р’РєР»СЋС‡РёС‚СЊ С‚РёС…РёР№{% endif %}
                         </button>
                     </div>
                 </div>
             </div>
             
             <div class="card" style="margin-top: 20px;">
-                <h2>📋 Логи действий</h2>
+                <h2>рџ“‹ Р›РѕРіРё РґРµР№СЃС‚РІРёР№</h2>
                 <div id="actionLogs" style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 0.9em;">
-                    <!-- Логи будут добавляться сюда -->
+                    <!-- Р›РѕРіРё Р±СѓРґСѓС‚ РґРѕР±Р°РІР»СЏС‚СЊСЃСЏ СЃСЋРґР° -->
                 </div>
             </div>
         </div>
 
         {% if supplier_stock_enabled %}
-        <!-- Содержимое вкладки Остатки поставщиков -->
+        <!-- РЎРѕРґРµСЂР¶РёРјРѕРµ РІРєР»Р°РґРєРё РћСЃС‚Р°С‚РєРё РїРѕСЃС‚Р°РІС‰РёРєРѕРІ -->
         <div id="supplier-stock" class="tab-content">
-            <h2 style="margin-bottom: 20px;">📦 Остатки поставщиков</h2>
+            <h2 style="margin-bottom: 20px;">рџ“¦ РћСЃС‚Р°С‚РєРё РїРѕСЃС‚Р°РІС‰РёРєРѕРІ</h2>
 
             <div class="dashboard">
                 <div class="card">
-                    <h2>⏰ Расписание</h2>
+                    <h2>вЏ° Р Р°СЃРїРёСЃР°РЅРёРµ</h2>
                     <div class="stat-item">
-                        <span>Статус:</span>
+                        <span>РЎС‚Р°С‚СѓСЃ:</span>
                         <span class="stat-value">{{ supplier_stock.schedule_status }}</span>
                     </div>
                     <div class="stat-item">
-                        <span>Время:</span>
+                        <span>Р’СЂРµРјСЏ:</span>
                         <span class="stat-value">{{ supplier_stock.schedule_time }}</span>
                     </div>
                     <div class="controls" style="margin-top: 15px; gap: 10px; flex-wrap: wrap;">
                         <input type="text" id="supplierScheduleTime" value="{{ supplier_stock.schedule_time_value }}"
                                placeholder="06:00, 12:30"
-                               title="HH:MM, можно несколько через пробел/запятую/;"
+                               title="HH:MM, РјРѕР¶РЅРѕ РЅРµСЃРєРѕР»СЊРєРѕ С‡РµСЂРµР· РїСЂРѕР±РµР»/Р·Р°РїСЏС‚СѓСЋ/;"
                                style="padding: 8px; border-radius: 6px; border: 1px solid #555; background: rgba(60,60,70,0.8); color: white; min-width: 180px;">
                         <label style="display: flex; align-items: center; gap: 6px;">
-                            Период (дней):
+                            РџРµСЂРёРѕРґ (РґРЅРµР№):
                             <input type="number" id="supplierReportPeriod" min="1" value="{{ supplier_stock.report_period_days }}"
                                    style="padding: 8px; border-radius: 6px; border: 1px solid #555; background: rgba(60,60,70,0.8); color: white; width: 110px;"
-                                   title="Период отчетов (дней)" placeholder="Дней">
+                                   title="РџРµСЂРёРѕРґ РѕС‚С‡РµС‚РѕРІ (РґРЅРµР№)" placeholder="Р”РЅРµР№">
                         </label>
                         <label style="display: flex; align-items: center; gap: 6px;">
                             <input type="checkbox" id="supplierScheduleEnabled" {% if supplier_stock.schedule_enabled %}checked{% endif %}>
-                            Включено
+                            Р’РєР»СЋС‡РµРЅРѕ
                         </label>
-                        <button class="btn btn-success" onclick="saveSupplierSchedule()">💾 Сохранить</button>
-                        <button class="btn btn-info" onclick="runSupplierFetch()">📥 Запустить сейчас</button>
+                        <button class="btn btn-success" onclick="saveSupplierSchedule()">рџ’ѕ РЎРѕС…СЂР°РЅРёС‚СЊ</button>
+                        <button class="btn btn-info" onclick="runSupplierFetch()">рџ“Ґ Р—Р°РїСѓСЃС‚РёС‚СЊ СЃРµР№С‡Р°СЃ</button>
                     </div>
                 </div>
 
                 <div class="card">
-                    <h2>📦 Источники</h2>
+                    <h2>рџ“¦ РСЃС‚РѕС‡РЅРёРєРё</h2>
                     {% if supplier_stock.sources %}
                     <div class="server-list">
                         {% for source in supplier_stock.sources %}
                         <div class="server-item">
                             <div class="server-info">
                                 <div class="server-name">
-                                    {% if source.enabled %}🟢{% else %}🔴{% endif %}
+                                    {% if source.enabled %}рџџў{% else %}рџ”ґ{% endif %}
                                     {{ source.name or source.id }}
                                 </div>
-                                <div class="server-details">{{ source.url or 'URL не задан' }}</div>
-                                <div class="server-details">Файл: {{ source.output_name or 'не задан' }}</div>
-                                <div class="server-details">Метод: {{ source.method }}</div>
+                                <div class="server-details">{{ source.url or 'URL РЅРµ Р·Р°РґР°РЅ' }}</div>
+                                <div class="server-details">Р¤Р°Р№Р»: {{ source.output_name or 'РЅРµ Р·Р°РґР°РЅ' }}</div>
+                                <div class="server-details">РњРµС‚РѕРґ: {{ source.method }}</div>
                             </div>
                         </div>
                         {% endfor %}
                     </div>
                     {% else %}
-                    <div class="stat-item">Источники не настроены.</div>
+                    <div class="stat-item">РСЃС‚РѕС‡РЅРёРєРё РЅРµ РЅР°СЃС‚СЂРѕРµРЅС‹.</div>
                     {% endif %}
                 </div>
             </div>
 
             <div class="card" style="margin-top: 20px;">
-                <h2>📋 Результаты остатков поставщиков</h2>
+                <h2>рџ“‹ Р РµР·СѓР»СЊС‚Р°С‚С‹ РѕСЃС‚Р°С‚РєРѕРІ РїРѕСЃС‚Р°РІС‰РёРєРѕРІ</h2>
                 <div class="supplier-details" style="margin-bottom: 10px;">
-                    Период: {{ supplier_stock.report_period_days }} дн.
+                    РџРµСЂРёРѕРґ: {{ supplier_stock.report_period_days }} РґРЅ.
                 </div>
                 <div class="supplier-report-tabs">
-                    <button class="btn btn-info active" onclick="switchSupplierReports('download')">⬇️ Полученные скачиванием</button>
-                    <button class="btn btn-info" onclick="switchSupplierReports('mail')">✉️ Полученные по почте</button>
+                    <button class="btn btn-info active" onclick="switchSupplierReports('download')">в¬‡пёЏ РџРѕР»СѓС‡РµРЅРЅС‹Рµ СЃРєР°С‡РёРІР°РЅРёРµРј</button>
+                    <button class="btn btn-info" onclick="switchSupplierReports('mail')">вњ‰пёЏ РџРѕР»СѓС‡РµРЅРЅС‹Рµ РїРѕ РїРѕС‡С‚Рµ</button>
                 </div>
                 <div id="supplier-report-download" class="supplier-report-group active">
                     {% if supplier_stock.report_groups.download %}
@@ -703,22 +703,22 @@ HTML_TEMPLATE = """
                         <div class="server-item">
                             <div class="server-info">
                                 <div class="server-name">{{ report.source_name }}</div>
-                                <div class="supplier-details">Последнее обновление: {{ report.timestamp or 'нет данных' }}</div>
+                                <div class="supplier-details">РџРѕСЃР»РµРґРЅРµРµ РѕР±РЅРѕРІР»РµРЅРёРµ: {{ report.timestamp or 'РЅРµС‚ РґР°РЅРЅС‹С…' }}</div>
                                 {% if report.method %}
-                                <div class="supplier-details">Метод: {{ report.method }}</div>
+                                <div class="supplier-details">РњРµС‚РѕРґ: {{ report.method }}</div>
                                 {% endif %}
                                 <div class="status-flags">
-                                    <div class="status-flag">{{ report.receive.icon }} Получение</div>
-                                    <div class="status-flag">{{ report.processing.icon }} Обработка</div>
-                                    <div class="status-flag">{{ report.transfer.icon }} Выгрузка</div>
+                                    <div class="status-flag">{{ report.receive.icon }} РџРѕР»СѓС‡РµРЅРёРµ</div>
+                                    <div class="status-flag">{{ report.processing.icon }} РћР±СЂР°Р±РѕС‚РєР°</div>
+                                    <div class="status-flag">{{ report.transfer.icon }} Р’С‹РіСЂСѓР·РєР°</div>
                                 </div>
                             </div>
-                            <button class="btn btn-info" onclick="showSupplierSourceStats('{{ report.source_id }}', '{{ report.source_kind }}')">📊 Детали</button>
+                            <button class="btn btn-info" onclick="showSupplierSourceStats('{{ report.source_id }}', '{{ report.source_kind }}')">рџ“Љ Р”РµС‚Р°Р»Рё</button>
                         </div>
                         {% endfor %}
                     </div>
                     {% else %}
-                    <div class="stat-item">Нет данных за период по скачиванию.</div>
+                    <div class="stat-item">РќРµС‚ РґР°РЅРЅС‹С… Р·Р° РїРµСЂРёРѕРґ РїРѕ СЃРєР°С‡РёРІР°РЅРёСЋ.</div>
                     {% endif %}
                 </div>
                 <div id="supplier-report-mail" class="supplier-report-group">
@@ -728,19 +728,19 @@ HTML_TEMPLATE = """
                         <div class="server-item">
                             <div class="server-info">
                                 <div class="server-name">{{ report.source_name }}</div>
-                                <div class="supplier-details">Последнее обновление: {{ report.timestamp or 'нет данных' }}</div>
+                                <div class="supplier-details">РџРѕСЃР»РµРґРЅРµРµ РѕР±РЅРѕРІР»РµРЅРёРµ: {{ report.timestamp or 'РЅРµС‚ РґР°РЅРЅС‹С…' }}</div>
                                 <div class="status-flags">
-                                    <div class="status-flag">{{ report.receive.icon }} Получение</div>
-                                    <div class="status-flag">{{ report.processing.icon }} Обработка</div>
-                                    <div class="status-flag">{{ report.transfer.icon }} Выгрузка</div>
+                                    <div class="status-flag">{{ report.receive.icon }} РџРѕР»СѓС‡РµРЅРёРµ</div>
+                                    <div class="status-flag">{{ report.processing.icon }} РћР±СЂР°Р±РѕС‚РєР°</div>
+                                    <div class="status-flag">{{ report.transfer.icon }} Р’С‹РіСЂСѓР·РєР°</div>
                                 </div>
                             </div>
-                            <button class="btn btn-info" onclick="showSupplierSourceStats('{{ report.source_id }}', '{{ report.source_kind }}')">📊 Детали</button>
+                            <button class="btn btn-info" onclick="showSupplierSourceStats('{{ report.source_id }}', '{{ report.source_kind }}')">рџ“Љ Р”РµС‚Р°Р»Рё</button>
                         </div>
                         {% endfor %}
                     </div>
                     {% else %}
-                    <div class="stat-item">Нет данных за период по почте.</div>
+                    <div class="stat-item">РќРµС‚ РґР°РЅРЅС‹С… Р·Р° РїРµСЂРёРѕРґ РїРѕ РїРѕС‡С‚Рµ.</div>
                     {% endif %}
                 </div>
             </div>
@@ -750,25 +750,25 @@ HTML_TEMPLATE = """
         <div id="supplierStatsModal" class="modal-overlay" onclick="closeSupplierSourceStats(event)">
             <div class="modal" onclick="event.stopPropagation()">
                 <div class="modal-header">
-                    <h3 id="supplierStatsTitle">Статистика источника</h3>
-                    <button class="btn btn-danger" onclick="closeSupplierSourceStats()">✖</button>
+                    <h3 id="supplierStatsTitle">РЎС‚Р°С‚РёСЃС‚РёРєР° РёСЃС‚РѕС‡РЅРёРєР°</h3>
+                    <button class="btn btn-danger" onclick="closeSupplierSourceStats()">вњ–</button>
                 </div>
                 <div id="supplierStatsSummary" class="supplier-details"></div>
                 <div id="supplierStatsEntries" class="modal-list"></div>
             </div>
         </div>
 
-        <button class="refresh-btn" onclick="location.reload()">🔄 Обновить данные</button>
+        <button class="refresh-btn" onclick="location.reload()">рџ”„ РћР±РЅРѕРІРёС‚СЊ РґР°РЅРЅС‹Рµ</button>
         
         <div class="last-update">
-            Система мониторинга серверов • Версия 2.0 • Темная тема
+            РЎРёСЃС‚РµРјР° РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЃРµСЂРІРµСЂРѕРІ вЂў Р’РµСЂСЃРёСЏ 2.0 вЂў РўРµРјРЅР°СЏ С‚РµРјР°
         </div>
     </div>
 
     <script>
-        // Переключение основных вкладок
+        // РџРµСЂРµРєР»СЋС‡РµРЅРёРµ РѕСЃРЅРѕРІРЅС‹С… РІРєР»Р°РґРѕРє
         function switchTab(tabName) {
-            // Скрыть все вкладки
+            // РЎРєСЂС‹С‚СЊ РІСЃРµ РІРєР»Р°РґРєРё
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
             });
@@ -776,14 +776,14 @@ HTML_TEMPLATE = """
                 tab.classList.remove('active');
             });
             
-            // Показать выбранную вкладку
+            // РџРѕРєР°Р·Р°С‚СЊ РІС‹Р±СЂР°РЅРЅСѓСЋ РІРєР»Р°РґРєСѓ
             document.getElementById(tabName).classList.add('active');
             event.target.classList.add('active');
         }
         
-        // Запуск проверок
+        // Р—Р°РїСѓСЃРє РїСЂРѕРІРµСЂРѕРє
         function runCheck(type) {
-            addLog(`Запуск ${getCheckName(type)}...`);
+            addLog(`Р—Р°РїСѓСЃРє ${getCheckName(type)}...`);
             fetch(`/api/run_check?type=${type}`)
                 .then(response => response.json())
                 .then(data => {
@@ -793,13 +793,13 @@ HTML_TEMPLATE = """
                     }
                 })
                 .catch(error => {
-                    addLog(`Ошибка: ${error}`);
+                    addLog(`РћС€РёР±РєР°: ${error}`);
                 });
         }
         
-        // Запуск действий
+        // Р—Р°РїСѓСЃРє РґРµР№СЃС‚РІРёР№
         function runAction(action) {
-            addLog(`Выполнение: ${getActionName(action)}...`);
+            addLog(`Р’С‹РїРѕР»РЅРµРЅРёРµ: ${getActionName(action)}...`);
             fetch(`/api/run_action?action=${action}`)
                 .then(response => response.json())
                 .then(data => {
@@ -809,23 +809,23 @@ HTML_TEMPLATE = """
                     }
                 })
                 .catch(error => {
-                    addLog(`Ошибка: ${error}`);
+                    addLog(`РћС€РёР±РєР°: ${error}`);
                 });
         }
         
-        // Переключение мониторинга
+        // РџРµСЂРµРєР»СЋС‡РµРЅРёРµ РјРѕРЅРёС‚РѕСЂРёРЅРіР°
         function toggleMonitoring() {
             runAction('toggle_monitoring');
         }
         
-        // Переключение тихого режима
+        // РџРµСЂРµРєР»СЋС‡РµРЅРёРµ С‚РёС…РѕРіРѕ СЂРµР¶РёРјР°
         function toggleSilentMode() {
             runAction('toggle_silent');
         }
 
-        // Запуск загрузки остатков поставщиков
+        // Р—Р°РїСѓСЃРє Р·Р°РіСЂСѓР·РєРё РѕСЃС‚Р°С‚РєРѕРІ РїРѕСЃС‚Р°РІС‰РёРєРѕРІ
         function runSupplierFetch() {
-            addLog('📦 Запуск загрузки остатков поставщиков...');
+            addLog('рџ“¦ Р—Р°РїСѓСЃРє Р·Р°РіСЂСѓР·РєРё РѕСЃС‚Р°С‚РєРѕРІ РїРѕСЃС‚Р°РІС‰РёРєРѕРІ...');
             fetch('/api/supplier_stock/run', { method: 'POST' })
                 .then(response => response.json())
                 .then(data => {
@@ -835,17 +835,17 @@ HTML_TEMPLATE = """
                     }
                 })
                 .catch(error => {
-                    addLog(`Ошибка: ${error}`);
+                    addLog(`РћС€РёР±РєР°: ${error}`);
                 });
         }
 
-        // Сохранение расписания загрузки остатков
+        // РЎРѕС…СЂР°РЅРµРЅРёРµ СЂР°СЃРїРёСЃР°РЅРёСЏ Р·Р°РіСЂСѓР·РєРё РѕСЃС‚Р°С‚РєРѕРІ
         function saveSupplierSchedule() {
             const timeInput = document.getElementById('supplierScheduleTime');
             const enabledInput = document.getElementById('supplierScheduleEnabled');
             const periodInput = document.getElementById('supplierReportPeriod');
             if (!timeInput || !enabledInput) {
-                addLog('⚠️ Элементы расписания не найдены');
+                addLog('вљ пёЏ Р­Р»РµРјРµРЅС‚С‹ СЂР°СЃРїРёСЃР°РЅРёСЏ РЅРµ РЅР°Р№РґРµРЅС‹');
                 return;
             }
 
@@ -870,7 +870,7 @@ HTML_TEMPLATE = """
                     }
                 })
                 .catch(error => {
-                    addLog(`Ошибка: ${error}`);
+                    addLog(`РћС€РёР±РєР°: ${error}`);
                 });
         }
 
@@ -897,11 +897,11 @@ HTML_TEMPLATE = """
             const summary = document.getElementById('supplierStatsSummary');
             const entriesContainer = document.getElementById('supplierStatsEntries');
             if (!modal || !title || !summary || !entriesContainer) {
-                addLog('⚠️ Окно статистики недоступно');
+                addLog('вљ пёЏ РћРєРЅРѕ СЃС‚Р°С‚РёСЃС‚РёРєРё РЅРµРґРѕСЃС‚СѓРїРЅРѕ');
                 return;
             }
-            title.textContent = `Статистика: ${sourceId}`;
-            summary.textContent = 'Загрузка...';
+            title.textContent = `РЎС‚Р°С‚РёСЃС‚РёРєР°: ${sourceId}`;
+            summary.textContent = 'Р—Р°РіСЂСѓР·РєР°...';
             entriesContainer.innerHTML = '';
             modal.classList.add('active');
 
@@ -913,35 +913,35 @@ HTML_TEMPLATE = """
                 .then(response => response.json())
                 .then(data => {
                     if (!data.success) {
-                        summary.textContent = data.message || 'Ошибка загрузки статистики';
+                        summary.textContent = data.message || 'РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё СЃС‚Р°С‚РёСЃС‚РёРєРё';
                         return;
                     }
                     const stats = data.stats || {};
                     summary.innerHTML = `
-                        Период: ${data.period_days} дн. • Всего: ${stats.total || 0}
-                        • Получено ✅ ${stats.receive_success || 0} / ❌ ${stats.receive_error || 0}
-                        • Обработка ✅ ${stats.processing_success || 0} / ❌ ${stats.processing_error || 0}
-                        • Выгрузка ✅ ${stats.transfer_success || 0} / ❌ ${stats.transfer_error || 0}
+                        РџРµСЂРёРѕРґ: ${data.period_days} РґРЅ. вЂў Р’СЃРµРіРѕ: ${stats.total || 0}
+                        вЂў РџРѕР»СѓС‡РµРЅРѕ вњ… ${stats.receive_success || 0} / вќЊ ${stats.receive_error || 0}
+                        вЂў РћР±СЂР°Р±РѕС‚РєР° вњ… ${stats.processing_success || 0} / вќЊ ${stats.processing_error || 0}
+                        вЂў Р’С‹РіСЂСѓР·РєР° вњ… ${stats.transfer_success || 0} / вќЊ ${stats.transfer_error || 0}
                     `;
                     const entries = data.entries || [];
                     if (!entries.length) {
-                        entriesContainer.innerHTML = '<div class="stat-item">Нет записей за период.</div>';
+                        entriesContainer.innerHTML = '<div class="stat-item">РќРµС‚ Р·Р°РїРёСЃРµР№ Р·Р° РїРµСЂРёРѕРґ.</div>';
                         return;
                     }
                     entriesContainer.innerHTML = entries.map(entry => `
                         <div class="modal-item">
-                            <div class="server-details">${entry.timestamp || '—'}</div>
+                            <div class="server-details">${entry.timestamp || 'вЂ”'}</div>
                             <div class="status-flags">
-                                <div class="status-flag">${entry.receive.icon} Получение</div>
-                                <div class="status-flag">${entry.processing.icon} Обработка</div>
-                                <div class="status-flag">${entry.transfer.icon} Выгрузка</div>
+                                <div class="status-flag">${entry.receive.icon} РџРѕР»СѓС‡РµРЅРёРµ</div>
+                                <div class="status-flag">${entry.processing.icon} РћР±СЂР°Р±РѕС‚РєР°</div>
+                                <div class="status-flag">${entry.transfer.icon} Р’С‹РіСЂСѓР·РєР°</div>
                             </div>
-                            ${entry.error ? `<div class="server-details">Ошибка: ${entry.error}</div>` : ''}
+                            ${entry.error ? `<div class="server-details">РћС€РёР±РєР°: ${entry.error}</div>` : ''}
                         </div>
                     `).join('');
                 })
                 .catch(error => {
-                    summary.textContent = `Ошибка: ${error}`;
+                    summary.textContent = `РћС€РёР±РєР°: ${error}`;
                 });
         }
 
@@ -955,24 +955,24 @@ HTML_TEMPLATE = """
             }
         }
         
-        // Вспомогательные функции
+        // Р’СЃРїРѕРјРѕРіР°С‚РµР»СЊРЅС‹Рµ С„СѓРЅРєС†РёРё
         function getCheckName(type) {
             const names = {
-                'quick': 'быстрой проверки',
-                'resources': 'проверки ресурсов', 
-                'report': 'формирования отчета'
+                'quick': 'Р±С‹СЃС‚СЂРѕР№ РїСЂРѕРІРµСЂРєРё',
+                'resources': 'РїСЂРѕРІРµСЂРєРё СЂРµСЃСѓСЂСЃРѕРІ', 
+                'report': 'С„РѕСЂРјРёСЂРѕРІР°РЅРёСЏ РѕС‚С‡РµС‚Р°'
             };
             return names[type] || type;
         }
         
         function getActionName(action) {
             const names = {
-                'check_all': 'Проверка всех серверов',
-                'check_resources': 'Проверка ресурсов',
-                'morning_report': 'Формирование утреннего отчета',
-                'restart_service': 'Перезапуск сервиса',
-                'toggle_monitoring': 'Переключение мониторинга',
-                'toggle_silent': 'Переключение тихого режима'
+                'check_all': 'РџСЂРѕРІРµСЂРєР° РІСЃРµС… СЃРµСЂРІРµСЂРѕРІ',
+                'check_resources': 'РџСЂРѕРІРµСЂРєР° СЂРµСЃСѓСЂСЃРѕРІ',
+                'morning_report': 'Р¤РѕСЂРјРёСЂРѕРІР°РЅРёРµ СѓС‚СЂРµРЅРЅРµРіРѕ РѕС‚С‡РµС‚Р°',
+                'restart_service': 'РџРµСЂРµР·Р°РїСѓСЃРє СЃРµСЂРІРёСЃР°',
+                'toggle_monitoring': 'РџРµСЂРµРєР»СЋС‡РµРЅРёРµ РјРѕРЅРёС‚РѕСЂРёРЅРіР°',
+                'toggle_silent': 'РџРµСЂРµРєР»СЋС‡РµРЅРёРµ С‚РёС…РѕРіРѕ СЂРµР¶РёРјР°'
             };
             return names[action] || action;
         }
@@ -983,7 +983,7 @@ HTML_TEMPLATE = """
             logDiv.innerHTML = `<div>[${timestamp}] ${message}</div>` + logDiv.innerHTML;
         }
         
-        // Управление серверами
+        // РЈРїСЂР°РІР»РµРЅРёРµ СЃРµСЂРІРµСЂР°РјРё
         function loadServerList() {
             fetch('/api/servers')
                 .then(response => response.json())
@@ -994,19 +994,19 @@ HTML_TEMPLATE = """
                             <div class="server-item">
                                 <div class="server-info">
                                     <div class="server-name">${server.name}</div>
-                                    <div class="server-details">${server.ip} • ${server.type.toUpperCase()}</div>
+                                    <div class="server-details">${server.ip} вЂў ${server.type.toUpperCase()}</div>
                                 </div>
-                                <button class="btn btn-danger" onclick="deleteServer('${server.ip}')">🗑️ Удалить</button>
+                                <button class="btn btn-danger" onclick="deleteServer('${server.ip}')">рџ—‘пёЏ РЈРґР°Р»РёС‚СЊ</button>
                             </div>
                         `).join('') + '</div>';
                 })
                 .catch(error => {
-                    console.error('Ошибка загрузки списка серверов:', error);
+                    console.error('РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё СЃРїРёСЃРєР° СЃРµСЂРІРµСЂРѕРІ:', error);
                 });
         }
 
         function deleteServer(ip) {
-            if (confirm(`Удалить сервер ${ip}?`)) {
+            if (confirm(`РЈРґР°Р»РёС‚СЊ СЃРµСЂРІРµСЂ ${ip}?`)) {
                 fetch(`/api/servers?ip=${ip}`, { method: 'DELETE' })
                     .then(response => response.json())
                     .then(data => {
@@ -1016,7 +1016,7 @@ HTML_TEMPLATE = """
             }
         }
 
-        // Обработка формы добавления сервера
+        // РћР±СЂР°Р±РѕС‚РєР° С„РѕСЂРјС‹ РґРѕР±Р°РІР»РµРЅРёСЏ СЃРµСЂРІРµСЂР°
         document.addEventListener('DOMContentLoaded', function() {
             const addServerForm = document.getElementById('addServerForm');
             if (addServerForm) {
@@ -1044,23 +1044,23 @@ HTML_TEMPLATE = """
             }
         });
 
-        // Модифицируем существующую функцию switchTab для автозагрузки списка серверов
+        // РњРѕРґРёС„РёС†РёСЂСѓРµРј СЃСѓС‰РµСЃС‚РІСѓСЋС‰СѓСЋ С„СѓРЅРєС†РёСЋ switchTab РґР»СЏ Р°РІС‚РѕР·Р°РіСЂСѓР·РєРё СЃРїРёСЃРєР° СЃРµСЂРІРµСЂРѕРІ
         const originalSwitchTab = switchTab;
         switchTab = function(tabName) {
             originalSwitchTab(tabName);
             
-            // Автозагрузка списка серверов при открытии вкладки
+            // РђРІС‚РѕР·Р°РіСЂСѓР·РєР° СЃРїРёСЃРєР° СЃРµСЂРІРµСЂРѕРІ РїСЂРё РѕС‚РєСЂС‹С‚РёРё РІРєР»Р°РґРєРё
             if (tabName === 'server-management') {
                 setTimeout(loadServerList, 100);
             }
         };       
         
-        // Авто-обновление каждые 30 секунд
+        // РђРІС‚Рѕ-РѕР±РЅРѕРІР»РµРЅРёРµ РєР°Р¶РґС‹Рµ 30 СЃРµРєСѓРЅРґ
         setTimeout(() => {
             location.reload();
         }, 30000);
         
-        // Обновление времени
+        // РћР±РЅРѕРІР»РµРЅРёРµ РІСЂРµРјРµРЅРё
         function updateLastUpdate() {
             const now = new Date();
             document.getElementById('lastUpdate').textContent = now.toLocaleString('ru-RU');
@@ -1073,7 +1073,7 @@ HTML_TEMPLATE = """
 """
 
 def get_resource_class(value, resource_type):
-    """Определяет класс для окрашивания ресурсов"""
+    """РћРїСЂРµРґРµР»СЏРµС‚ РєР»Р°СЃСЃ РґР»СЏ РѕРєСЂР°С€РёРІР°РЅРёСЏ СЂРµСЃСѓСЂСЃРѕРІ"""
     if not value or value == 0:
         return "normal"
     
@@ -1101,14 +1101,14 @@ def get_resource_class(value, resource_type):
     return "normal"
 
 def get_monitoring_stats():
-    """Получает статистику мониторинга"""
+    """РџРѕР»СѓС‡Р°РµС‚ СЃС‚Р°С‚РёСЃС‚РёРєСѓ РјРѕРЅРёС‚РѕСЂРёРЅРіР°"""
     try:
-        # Пробуем получить данные из файла статистики
+        # РџСЂРѕР±СѓРµРј РїРѕР»СѓС‡РёС‚СЊ РґР°РЅРЅС‹Рµ РёР· С„Р°Р№Р»Р° СЃС‚Р°С‚РёСЃС‚РёРєРё
         stats_data = {}
         if STATS_FILE.exists():
             stats_data = json.loads(STATS_FILE.read_text(encoding="utf-8"))
         
-        # Получаем текущий статус серверов
+        # РџРѕР»СѓС‡Р°РµРј С‚РµРєСѓС‰РёР№ СЃС‚Р°С‚СѓСЃ СЃРµСЂРІРµСЂРѕРІ
         from core.monitor_core import get_current_server_status, monitoring_active, last_check_time
         from core.monitor_core import is_silent_time, resource_history
         from extensions.server_checks import initialize_servers
@@ -1116,7 +1116,7 @@ def get_monitoring_stats():
         current_status = get_current_server_status()
         servers_list = initialize_servers()
         
-        # Формируем список серверов для отображения
+        # Р¤РѕСЂРјРёСЂСѓРµРј СЃРїРёСЃРѕРє СЃРµСЂРІРµСЂРѕРІ РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ
         servers_display = []
         
         for server in servers_list:
@@ -1124,16 +1124,16 @@ def get_monitoring_stats():
             is_down = any(s["ip"] == server["ip"] for s in current_status["failed"])
             
             status = "up" if is_up else "down"
-            status_display = "✅ Доступен" if is_up else "❌ Недоступен"
+            status_display = "вњ… Р”РѕСЃС‚СѓРїРµРЅ" if is_up else "вќЊ РќРµРґРѕСЃС‚СѓРїРµРЅ"
             
-            # Получаем информацию о ресурсах
+            # РџРѕР»СѓС‡Р°РµРј РёРЅС„РѕСЂРјР°С†РёСЋ Рѕ СЂРµСЃСѓСЂСЃР°С…
             resources_data = None
             os_info = "Unknown"
             if server["ip"] in resource_history and resource_history[server["ip"]]:
                 latest_resources = resource_history[server["ip"]][-1]
                 os_info = latest_resources.get("os", "Unknown")
                 
-                # Форматируем ресурсы с классами для окрашивания
+                # Р¤РѕСЂРјР°С‚РёСЂСѓРµРј СЂРµСЃСѓСЂСЃС‹ СЃ РєР»Р°СЃСЃР°РјРё РґР»СЏ РѕРєСЂР°С€РёРІР°РЅРёСЏ
                 cpu_value = latest_resources.get("cpu", 0)
                 ram_value = latest_resources.get("ram", 0)
                 disk_value = latest_resources.get("disk", 0)
@@ -1149,10 +1149,10 @@ def get_monitoring_stats():
                     "disk_class": get_resource_class(disk_value, "disk")
                 }
                 
-                # Проверяем на проблемы с ресурсами для статуса
+                # РџСЂРѕРІРµСЂСЏРµРј РЅР° РїСЂРѕР±Р»РµРјС‹ СЃ СЂРµСЃСѓСЂСЃР°РјРё РґР»СЏ СЃС‚Р°С‚СѓСЃР°
                 if resources_data and (cpu_value > 80 or ram_value > 85 or disk_value > 80):
                     status = "warning"
-                    status_display = "⚠️ Высокая нагрузка"
+                    status_display = "вљ пёЏ Р’С‹СЃРѕРєР°СЏ РЅР°РіСЂСѓР·РєР°"
             
             server_data = {
                 "name": server["name"],
@@ -1166,20 +1166,20 @@ def get_monitoring_stats():
             
             servers_display.append(server_data)
         
-        # Сортируем серверы: сначала проблемные, потом доступные
+        # РЎРѕСЂС‚РёСЂСѓРµРј СЃРµСЂРІРµСЂС‹: СЃРЅР°С‡Р°Р»Р° РїСЂРѕР±Р»РµРјРЅС‹Рµ, РїРѕС‚РѕРј РґРѕСЃС‚СѓРїРЅС‹Рµ
         servers_display.sort(key=lambda x: (0 if x["status"] == "down" else 1 if x["status"] == "warning" else 2))
         
-        # Рассчитываем статистику
+        # Р Р°СЃСЃС‡РёС‚С‹РІР°РµРј СЃС‚Р°С‚РёСЃС‚РёРєСѓ
         total_servers = len(servers_list)
         servers_up = len(current_status["ok"])
         servers_down = len(current_status["failed"])
         availability_percentage = round((servers_up / total_servers) * 100, 1) if total_servers > 0 else 0
         
-        # Получаем настройки из конфига
+        # РџРѕР»СѓС‡Р°РµРј РЅР°СЃС‚СЂРѕР№РєРё РёР· РєРѕРЅС„РёРіР°
         from config.db_settings import CHECK_INTERVAL, RESOURCE_CHECK_INTERVAL
         resource_check_minutes = RESOURCE_CHECK_INTERVAL // 60
         
-        # Считаем проблемы с ресурсами
+        # РЎС‡РёС‚Р°РµРј РїСЂРѕР±Р»РµРјС‹ СЃ СЂРµСЃСѓСЂСЃР°РјРё
         resource_alerts_count = 0
         for history in resource_history.values():
             if history:
@@ -1196,9 +1196,9 @@ def get_monitoring_stats():
             "availability_percentage": availability_percentage,
             "last_check_time": last_check_time.strftime("%H:%M:%S") if last_check_time else "N/A",
             "check_interval": CHECK_INTERVAL,
-            "monitoring_mode": "🟢 Активен" if monitoring_active else "🔴 Приостановлен",
-            "silent_mode": "🔇 Включен" if is_silent_time() else "🔊 Выключен",
-            "resource_check_status": "🟢 Работает" if monitoring_active and not is_silent_time() else "⏸️ Приостановлен",
+            "monitoring_mode": "рџџў РђРєС‚РёРІРµРЅ" if monitoring_active else "рџ”ґ РџСЂРёРѕСЃС‚Р°РЅРѕРІР»РµРЅ",
+            "silent_mode": "рџ”‡ Р’РєР»СЋС‡РµРЅ" if is_silent_time() else "рџ”Љ Р’С‹РєР»СЋС‡РµРЅ",
+            "resource_check_status": "рџџў Р Р°Р±РѕС‚Р°РµС‚" if monitoring_active and not is_silent_time() else "вЏёпёЏ РџСЂРёРѕСЃС‚Р°РЅРѕРІР»РµРЅ",
             "resource_check_interval": resource_check_minutes,
             "resource_alerts": resource_alerts_count,
             "uptime": stats_data.get("uptime", "N/A")
@@ -1207,8 +1207,8 @@ def get_monitoring_stats():
         return stats, servers_display
         
     except Exception as e:
-        print(f"❌ Ошибка получения статистики: {e}")
-        # Возвращаем данные по умолчанию при ошибке
+        print(f"вќЊ РћС€РёР±РєР° РїРѕР»СѓС‡РµРЅРёСЏ СЃС‚Р°С‚РёСЃС‚РёРєРё: {e}")
+        # Р’РѕР·РІСЂР°С‰Р°РµРј РґР°РЅРЅС‹Рµ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ РїСЂРё РѕС€РёР±РєРµ
         return {
             "total_servers": 0,
             "servers_up": 0,
@@ -1216,9 +1216,9 @@ def get_monitoring_stats():
             "availability_percentage": 0,
             "last_check_time": "N/A",
             "check_interval": 0,
-            "monitoring_mode": "❌ Ошибка",
+            "monitoring_mode": "вќЊ РћС€РёР±РєР°",
             "silent_mode": "N/A",
-            "resource_check_status": "❌ Ошибка",
+            "resource_check_status": "вќЊ РћС€РёР±РєР°",
             "resource_check_interval": 0,
             "resource_alerts": 0,
             "uptime": "N/A"
@@ -1399,7 +1399,7 @@ def _validate_persistent_mobile_token(token: str):
 
 
 def _extract_credentials(payload):
-    """Достаёт username/password из JSON или form payload."""
+    """Р”РѕСЃС‚Р°С‘С‚ username/password РёР· JSON РёР»Рё form payload."""
     payload = payload or {}
     username = payload.get("username") or payload.get("login") or payload.get("email")
     password = payload.get("password")
@@ -1435,7 +1435,7 @@ def _validate_mobile_token(auth_header):
     if _MOBILE_STATIC_TOKEN and hmac.compare_digest(token, _MOBILE_STATIC_TOKEN):
         return True, {"sub": "static-token", "exp": None, "auth_type": "static"}
 
-    # Bootstrap token разрешен только для обмена на рабочий session token.
+    # Bootstrap token СЂР°Р·СЂРµС€РµРЅ С‚РѕР»СЊРєРѕ РґР»СЏ РѕР±РјРµРЅР° РЅР° СЂР°Р±РѕС‡РёР№ session token.
     if _MOBILE_DEFAULT_TOKEN and hmac.compare_digest(token, _MOBILE_DEFAULT_TOKEN):
         return False, "bootstrap_only"
 
@@ -1504,11 +1504,11 @@ def _execute_mobile_control_action(action: str):
 
     if action == "pause_monitoring":
         monitor_core.monitoring_active = False
-        return True, "Мониторинг приостановлен", "applied"
+        return True, "РњРѕРЅРёС‚РѕСЂРёРЅРі РїСЂРёРѕСЃС‚Р°РЅРѕРІР»РµРЅ", "applied"
 
     if action == "resume_monitoring":
         monitor_core.monitoring_active = True
-        return True, "Мониторинг возобновлен", "applied"
+        return True, "РњРѕРЅРёС‚РѕСЂРёРЅРі РІРѕР·РѕР±РЅРѕРІР»РµРЅ", "applied"
 
     if action == "send_morning_report":
         from modules.morning_report import morning_report
@@ -1517,15 +1517,15 @@ def _execute_mobile_control_action(action: str):
 
     if action == "force_quiet":
         monitor_core.set_silent_override(True)
-        return True, "Принудительно включен тихий режим", "applied"
+        return True, "РџСЂРёРЅСѓРґРёС‚РµР»СЊРЅРѕ РІРєР»СЋС‡РµРЅ С‚РёС…РёР№ СЂРµР¶РёРј", "applied"
 
     if action == "force_loud":
         monitor_core.set_silent_override(False)
-        return True, "Принудительно включен громкий режим", "applied"
+        return True, "РџСЂРёРЅСѓРґРёС‚РµР»СЊРЅРѕ РІРєР»СЋС‡РµРЅ РіСЂРѕРјРєРёР№ СЂРµР¶РёРј", "applied"
 
     if action == "auto_mode":
         monitor_core.set_silent_override(None)
-        return True, "Включен автоматический режим quiet/loud", "applied"
+        return True, "Р’РєР»СЋС‡РµРЅ Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРёР№ СЂРµР¶РёРј quiet/loud", "applied"
 
     return False, f"Unsupported action: {action}", "failed"
 
@@ -1538,7 +1538,7 @@ def _execute_mobile_control_action(action: str):
 @app.route('/auth/login', methods=['POST'])
 @app.route('/token', methods=['POST'])
 def mobile_auth_token():
-    """Auth endpoint: bootstrap-token -> session token (DB), fallback на legacy username/password."""
+    """Auth endpoint: bootstrap-token -> session token (DB), fallback РЅР° legacy username/password."""
     payload = request.get_json(silent=True) or request.form.to_dict()
     bearer_token = _extract_bearer_token(request.headers.get("Authorization"))
 
@@ -1570,7 +1570,7 @@ def mobile_auth_token():
     if not username or not password:
         return jsonify({
             "error": "invalid_request",
-            "message": "Требуется Authorization: Bearer <MOBILE_DEFAULT_TOKEN> или username/login/email + password"
+            "message": "РўСЂРµР±СѓРµС‚СЃСЏ Authorization: Bearer <MOBILE_DEFAULT_TOKEN> РёР»Рё username/login/email + password"
         }), 400
 
     token, expires_at = _issue_mobile_token(username)
@@ -1588,7 +1588,7 @@ def mobile_auth_token():
 @app.route('/v1/auth/token/reissue', methods=['POST'])
 @app.route('/api/v1/auth/token/reissue', methods=['POST'])
 def mobile_auth_token_reissue():
-    """Явный перевыпуск токена по bootstrap token (например, после переустановки приложения)."""
+    """РЇРІРЅС‹Р№ РїРµСЂРµРІС‹РїСѓСЃРє С‚РѕРєРµРЅР° РїРѕ bootstrap token (РЅР°РїСЂРёРјРµСЂ, РїРѕСЃР»Рµ РїРµСЂРµСѓСЃС‚Р°РЅРѕРІРєРё РїСЂРёР»РѕР¶РµРЅРёСЏ)."""
     if not _MOBILE_DEFAULT_TOKEN:
         return jsonify({
             "error": "bootstrap_token_not_configured",
@@ -1654,7 +1654,7 @@ def _build_availability_payload(scope='all'):
 @app.route('/v1/monitoring/availability', methods=['GET'])
 @app.route('/api/v1/monitoring/availability', methods=['GET'])
 def mobile_availability():
-    """Mobile BFF endpoint совместимый с auth_token_probe.sh"""
+    """Mobile BFF endpoint СЃРѕРІРјРµСЃС‚РёРјС‹Р№ СЃ auth_token_probe.sh"""
     started_at = time.time()
     request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
 
@@ -1693,7 +1693,7 @@ def mobile_availability():
 @app.route('/v1/monitoring/status', methods=['GET'])
 @app.route('/api/v1/monitoring/status', methods=['GET'])
 def mobile_status():
-    """Синоним для быстрой проверки статуса с Bearer токеном."""
+    """РЎРёРЅРѕРЅРёРј РґР»СЏ Р±С‹СЃС‚СЂРѕР№ РїСЂРѕРІРµСЂРєРё СЃС‚Р°С‚СѓСЃР° СЃ Bearer С‚РѕРєРµРЅРѕРј."""
     started_at = time.time()
     request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
 
@@ -1839,7 +1839,7 @@ def v1_control_status():
 
 
 def _mask_secret(value):
-    """Возвращает маскированное значение секрета без раскрытия исходной строки."""
+    """Р’РѕР·РІСЂР°С‰Р°РµС‚ РјР°СЃРєРёСЂРѕРІР°РЅРЅРѕРµ Р·РЅР°С‡РµРЅРёРµ СЃРµРєСЂРµС‚Р° Р±РµР· СЂР°СЃРєСЂС‹С‚РёСЏ РёСЃС…РѕРґРЅРѕР№ СЃС‚СЂРѕРєРё."""
     value_str = str(value or '').strip()
     if not value_str:
         return ''
@@ -2386,7 +2386,7 @@ def v1_create_windows_type():
             }
         }), 409
 
-    # В БД тип существует только через учетные записи: создаем и сразу отключаем тех. запись.
+    # Р’ Р‘Р” С‚РёРї СЃСѓС‰РµСЃС‚РІСѓРµС‚ С‚РѕР»СЊРєРѕ С‡РµСЂРµР· СѓС‡РµС‚РЅС‹Рµ Р·Р°РїРёСЃРё: СЃРѕР·РґР°РµРј Рё СЃСЂР°Р·Сѓ РѕС‚РєР»СЋС‡Р°РµРј С‚РµС…. Р·Р°РїРёСЃСЊ.
     settings_manager.add_windows_credential(
         username=f"user_{type_name}",
         password="temp_password",
@@ -2580,7 +2580,7 @@ def v1_settings_monitoring():
             check_interval = int(check_interval)
             if check_interval < 5:
                 return jsonify({"error": {"code": "INVALID_THRESHOLD", "message": "check_interval_sec must be >= 5", "request_id": request_id}}), 400
-            settings_manager.set_setting('CHECK_INTERVAL', check_interval, 'monitoring', 'Интервал проверки серверов (секунды)', 'int')
+            settings_manager.set_setting('CHECK_INTERVAL', check_interval, 'monitoring', 'РРЅС‚РµСЂРІР°Р» РїСЂРѕРІРµСЂРєРё СЃРµСЂРІРµСЂРѕРІ (СЃРµРєСѓРЅРґС‹)', 'int')
         else:
             check_interval = settings_manager.get_setting('CHECK_INTERVAL', 60)
 
@@ -2588,7 +2588,7 @@ def v1_settings_monitoring():
             max_downtime = int(max_downtime)
             if max_downtime < 30:
                 return jsonify({"error": {"code": "INVALID_THRESHOLD", "message": "max_downtime_sec must be >= 30", "request_id": request_id}}), 400
-            settings_manager.set_setting('MAX_FAIL_TIME', max_downtime, 'monitoring', 'Максимальное время простоя до алерта (секунды)', 'int')
+            settings_manager.set_setting('MAX_FAIL_TIME', max_downtime, 'monitoring', 'РњР°РєСЃРёРјР°Р»СЊРЅРѕРµ РІСЂРµРјСЏ РїСЂРѕСЃС‚РѕСЏ РґРѕ Р°Р»РµСЂС‚Р° (СЃРµРєСѓРЅРґС‹)', 'int')
         else:
             max_downtime = settings_manager.get_setting('MAX_FAIL_TIME', 900)
 
@@ -2596,7 +2596,7 @@ def v1_settings_monitoring():
             timeout_sec = int(timeout_sec)
             if timeout_sec < 1:
                 return jsonify({"error": {"code": "INVALID_THRESHOLD", "message": "timeout_sec must be >= 1", "request_id": request_id}}), 400
-            settings_manager.set_setting('API_TIMEOUT_SEC', timeout_sec, 'monitoring', 'Таймаут API (секунды)', 'int')
+            settings_manager.set_setting('API_TIMEOUT_SEC', timeout_sec, 'monitoring', 'РўР°Р№РјР°СѓС‚ API (СЃРµРєСѓРЅРґС‹)', 'int')
         else:
             timeout_sec = settings_manager.get_setting('API_TIMEOUT_SEC', 15)
 
@@ -2621,7 +2621,7 @@ def v1_settings_monitoring():
 
 @app.route('/')
 def index():
-    """Главная страница веб-интерфейса"""
+    """Р“Р»Р°РІРЅР°СЏ СЃС‚СЂР°РЅРёС†Р° РІРµР±-РёРЅС‚РµСЂС„РµР№СЃР°"""
     try:
         stats, servers = get_monitoring_stats()
         supplier_stock_enabled = extension_manager.is_extension_enabled(SUPPLIER_STOCK_EXTENSION_ID)
@@ -2633,8 +2633,8 @@ def index():
             schedule_time = schedule.get("time", "")
             period_days = config.get("reporting", {}).get("period_days", 7)
             supplier_stock = {
-                "schedule_status": "🟢 Включено" if schedule.get("enabled") else "🔴 Выключено",
-                "schedule_time": schedule_time or "не задано",
+                "schedule_status": "рџџў Р’РєР»СЋС‡РµРЅРѕ" if schedule.get("enabled") else "рџ”ґ Р’С‹РєР»СЋС‡РµРЅРѕ",
+                "schedule_time": schedule_time or "РЅРµ Р·Р°РґР°РЅРѕ",
                 "schedule_time_value": schedule_time or "",
                 "schedule_enabled": bool(schedule.get("enabled")),
                 "report_period_days": period_days,
@@ -2651,39 +2651,39 @@ def index():
             supplier_stock=supplier_stock
         )
     except Exception as e:
-        return f"❌ Ошибка загрузки веб-интерфейса: {e}"
+        return f"вќЊ РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё РІРµР±-РёРЅС‚РµСЂС„РµР№СЃР°: {e}"
 
 @app.route('/api/run_check')
 def api_run_check():
-    """API для запуска проверок"""
+    """API РґР»СЏ Р·Р°РїСѓСЃРєР° РїСЂРѕРІРµСЂРѕРє"""
     check_type = request.args.get('type', 'quick')
     
     try:
         if check_type == 'quick':
-            # Запуск быстрой проверки доступности
+            # Р—Р°РїСѓСЃРє Р±С‹СЃС‚СЂРѕР№ РїСЂРѕРІРµСЂРєРё РґРѕСЃС‚СѓРїРЅРѕСЃС‚Рё
             from core.monitor_core import get_current_server_status
             status = get_current_server_status()
-            message = f"✅ Быстрая проверка выполнена: {len(status['ok'])} доступно, {len(status['failed'])} недоступно"
+            message = f"вњ… Р‘С‹СЃС‚СЂР°СЏ РїСЂРѕРІРµСЂРєР° РІС‹РїРѕР»РЅРµРЅР°: {len(status['ok'])} РґРѕСЃС‚СѓРїРЅРѕ, {len(status['failed'])} РЅРµРґРѕСЃС‚СѓРїРЅРѕ"
             
         elif check_type == 'resources':
-            # Запуск проверки ресурсов
+            # Р—Р°РїСѓСЃРє РїСЂРѕРІРµСЂРєРё СЂРµСЃСѓСЂСЃРѕРІ
             from core.monitor_core import check_resources_automatically
             check_resources_automatically()
-            message = "✅ Проверка ресурсов выполнена. Данные обновятся через 1-2 минуты."
+            message = "вњ… РџСЂРѕРІРµСЂРєР° СЂРµСЃСѓСЂСЃРѕРІ РІС‹РїРѕР»РЅРµРЅР°. Р”Р°РЅРЅС‹Рµ РѕР±РЅРѕРІСЏС‚СЃСЏ С‡РµСЂРµР· 1-2 РјРёРЅСѓС‚С‹."
             
         elif check_type == 'report':
-            # Формирование отчета
+            # Р¤РѕСЂРјРёСЂРѕРІР°РЅРёРµ РѕС‚С‡РµС‚Р°
             from core.monitor_core import send_morning_report
             send_morning_report()
-            message = "✅ Отчет сформирован и отправлен в Telegram"
+            message = "вњ… РћС‚С‡РµС‚ СЃС„РѕСЂРјРёСЂРѕРІР°РЅ Рё РѕС‚РїСЂР°РІР»РµРЅ РІ Telegram"
             
         else:
-            message = "❌ Неизвестный тип проверки"
+            message = "вќЊ РќРµРёР·РІРµСЃС‚РЅС‹Р№ С‚РёРї РїСЂРѕРІРµСЂРєРё"
             
         return jsonify({"success": True, "message": message, "reload": check_type != 'resources'})
         
     except Exception as e:
-        return jsonify({"success": False, "message": f"❌ Ошибка: {str(e)}"})
+        return jsonify({"success": False, "message": f"вќЊ РћС€РёР±РєР°: {str(e)}"})
 
 @app.route('/api/run_action')
 def api_run_action():
@@ -2733,21 +2733,21 @@ def api_run_action():
 
 @app.route('/api/supplier_stock/run', methods=['POST'])
 def api_supplier_stock_run():
-    """API для запуска загрузки остатков поставщиков."""
+    """API РґР»СЏ Р·Р°РїСѓСЃРєР° Р·Р°РіСЂСѓР·РєРё РѕСЃС‚Р°С‚РєРѕРІ РїРѕСЃС‚Р°РІС‰РёРєРѕРІ."""
     if not extension_manager.is_extension_enabled(SUPPLIER_STOCK_EXTENSION_ID):
-        return jsonify({"success": False, "message": "📦 Модуль остатков поставщиков отключен"})
+        return jsonify({"success": False, "message": "рџ“¦ РњРѕРґСѓР»СЊ РѕСЃС‚Р°С‚РєРѕРІ РїРѕСЃС‚Р°РІС‰РёРєРѕРІ РѕС‚РєР»СЋС‡РµРЅ"})
 
     def _run():
         run_supplier_stock_fetch()
 
     threading.Thread(target=_run, daemon=True).start()
-    return jsonify({"success": True, "message": "✅ Загрузка остатков поставщиков запущена"})
+    return jsonify({"success": True, "message": "вњ… Р—Р°РіСЂСѓР·РєР° РѕСЃС‚Р°С‚РєРѕРІ РїРѕСЃС‚Р°РІС‰РёРєРѕРІ Р·Р°РїСѓС‰РµРЅР°"})
 
 @app.route('/api/supplier_stock/schedule', methods=['GET', 'POST'])
 def api_supplier_stock_schedule():
-    """API для управления расписанием загрузки остатков."""
+    """API РґР»СЏ СѓРїСЂР°РІР»РµРЅРёСЏ СЂР°СЃРїРёСЃР°РЅРёРµРј Р·Р°РіСЂСѓР·РєРё РѕСЃС‚Р°С‚РєРѕРІ."""
     if not extension_manager.is_extension_enabled(SUPPLIER_STOCK_EXTENSION_ID):
-        return jsonify({"success": False, "message": "📦 Модуль остатков поставщиков отключен"})
+        return jsonify({"success": False, "message": "рџ“¦ РњРѕРґСѓР»СЊ РѕСЃС‚Р°С‚РєРѕРІ РїРѕСЃС‚Р°РІС‰РёРєРѕРІ РѕС‚РєР»СЋС‡РµРЅ"})
 
     config = get_supplier_stock_config()
     schedule = config.get("download", {}).get("schedule", {})
@@ -2765,7 +2765,7 @@ def api_supplier_stock_schedule():
         if not schedule_times:
             return jsonify({
                 "success": False,
-                "message": "❌ Неверный формат времени. Используйте HH:MM, разделители: пробел, запятая или ;",
+                "message": "вќЊ РќРµРІРµСЂРЅС‹Р№ С„РѕСЂРјР°С‚ РІСЂРµРјРµРЅРё. РСЃРїРѕР»СЊР·СѓР№С‚Рµ HH:MM, СЂР°Р·РґРµР»РёС‚РµР»Рё: РїСЂРѕР±РµР», Р·Р°РїСЏС‚Р°СЏ РёР»Рё ;",
             })
         schedule["time"] = ', '.join(schedule_times)
     else:
@@ -2779,13 +2779,13 @@ def api_supplier_stock_schedule():
             pass
     save_supplier_stock_config(config)
 
-    return jsonify({"success": True, "message": "✅ Расписание обновлено", "schedule": schedule})
+    return jsonify({"success": True, "message": "вњ… Р Р°СЃРїРёСЃР°РЅРёРµ РѕР±РЅРѕРІР»РµРЅРѕ", "schedule": schedule})
 
 @app.route('/api/supplier_stock/reports')
 def api_supplier_stock_reports():
-    """API для получения отчетов по остаткам поставщиков."""
+    """API РґР»СЏ РїРѕР»СѓС‡РµРЅРёСЏ РѕС‚С‡РµС‚РѕРІ РїРѕ РѕСЃС‚Р°С‚РєР°Рј РїРѕСЃС‚Р°РІС‰РёРєРѕРІ."""
     if not extension_manager.is_extension_enabled(SUPPLIER_STOCK_EXTENSION_ID):
-        return jsonify({"success": False, "message": "📦 Модуль остатков поставщиков отключен"})
+        return jsonify({"success": False, "message": "рџ“¦ РњРѕРґСѓР»СЊ РѕСЃС‚Р°С‚РєРѕРІ РїРѕСЃС‚Р°РІС‰РёРєРѕРІ РѕС‚РєР»СЋС‡РµРЅ"})
 
     limit = request.args.get('limit')
     try:
@@ -2809,14 +2809,14 @@ def api_supplier_stock_reports():
 
 @app.route('/api/supplier_stock/source_stats')
 def api_supplier_stock_source_stats():
-    """API для получения детальной статистики по источнику остатков."""
+    """API РґР»СЏ РїРѕР»СѓС‡РµРЅРёСЏ РґРµС‚Р°Р»СЊРЅРѕР№ СЃС‚Р°С‚РёСЃС‚РёРєРё РїРѕ РёСЃС‚РѕС‡РЅРёРєСѓ РѕСЃС‚Р°С‚РєРѕРІ."""
     if not extension_manager.is_extension_enabled(SUPPLIER_STOCK_EXTENSION_ID):
-        return jsonify({"success": False, "message": "📦 Модуль остатков поставщиков отключен"})
+        return jsonify({"success": False, "message": "рџ“¦ РњРѕРґСѓР»СЊ РѕСЃС‚Р°С‚РєРѕРІ РїРѕСЃС‚Р°РІС‰РёРєРѕРІ РѕС‚РєР»СЋС‡РµРЅ"})
 
     source_id = request.args.get("source_id")
     source_kind = request.args.get("source_kind")
     if not source_id:
-        return jsonify({"success": False, "message": "❌ Не указан источник"})
+        return jsonify({"success": False, "message": "вќЊ РќРµ СѓРєР°Р·Р°РЅ РёСЃС‚РѕС‡РЅРёРє"})
     config = get_supplier_stock_config()
     period_days = config.get("reporting", {}).get("period_days", 7)
     stats = build_supplier_stock_source_stats(source_id, source_kind, period_days)
@@ -2829,11 +2829,11 @@ def api_supplier_stock_source_stats():
 
 @app.route('/api/status')
 def api_status():
-    """API endpoint для получения статуса"""
+    """API endpoint РґР»СЏ РїРѕР»СѓС‡РµРЅРёСЏ СЃС‚Р°С‚СѓСЃР°"""
     stats, servers = get_monitoring_stats()
     return jsonify({
         "status": "ok", 
-        "message": "Система мониторинга работает",
+        "message": "РЎРёСЃС‚РµРјР° РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЂР°Р±РѕС‚Р°РµС‚",
         "data": {
             "stats": stats,
             "servers": servers,
@@ -2843,7 +2843,7 @@ def api_status():
 
 @app.route('/api/servers')
 def api_servers():
-    """API endpoint для получения списка серверов"""
+    """API endpoint РґР»СЏ РїРѕР»СѓС‡РµРЅРёСЏ СЃРїРёСЃРєР° СЃРµСЂРІРµСЂРѕРІ"""
     stats, servers = get_monitoring_stats()
     return jsonify({
         "servers": servers,
@@ -2853,7 +2853,7 @@ def api_servers():
 
 @app.route('/api/stats')
 def api_stats():
-    """API endpoint для получения статистики"""
+    """API endpoint РґР»СЏ РїРѕР»СѓС‡РµРЅРёСЏ СЃС‚Р°С‚РёСЃС‚РёРєРё"""
     stats, servers = get_monitoring_stats()
     return jsonify({
         "statistics": stats,
@@ -2867,40 +2867,40 @@ def health_check():
 
 @app.route('/api/servers', methods=['GET', 'POST', 'PUT', 'DELETE'])
 def api_manage_servers():
-    """API для управления списком серверов"""
+    """API РґР»СЏ СѓРїСЂР°РІР»РµРЅРёСЏ СЃРїРёСЃРєРѕРј СЃРµСЂРІРµСЂРѕРІ"""
     if request.method == 'GET':
-        # Получить список серверов
+        # РџРѕР»СѓС‡РёС‚СЊ СЃРїРёСЃРѕРє СЃРµСЂРІРµСЂРѕРІ
         from extensions.server_checks import initialize_servers
         servers = initialize_servers()
         return jsonify({"servers": servers})
     
     elif request.method == 'POST':
-        # Добавить новый сервер
+        # Р”РѕР±Р°РІРёС‚СЊ РЅРѕРІС‹Р№ СЃРµСЂРІРµСЂ
         data = request.json
-        # Здесь добавить логику сохранения в server_list.json
-        return jsonify({"success": True, "message": "Сервер добавлен"})
+        # Р—РґРµСЃСЊ РґРѕР±Р°РІРёС‚СЊ Р»РѕРіРёРєСѓ СЃРѕС…СЂР°РЅРµРЅРёСЏ РІ server_list.json
+        return jsonify({"success": True, "message": "РЎРµСЂРІРµСЂ РґРѕР±Р°РІР»РµРЅ"})
     
     elif request.method == 'PUT':
-        # Обновить сервер
+        # РћР±РЅРѕРІРёС‚СЊ СЃРµСЂРІРµСЂ
         data = request.json
-        # Логика обновления
-        return jsonify({"success": True, "message": "Сервер обновлен"})
+        # Р›РѕРіРёРєР° РѕР±РЅРѕРІР»РµРЅРёСЏ
+        return jsonify({"success": True, "message": "РЎРµСЂРІРµСЂ РѕР±РЅРѕРІР»РµРЅ"})
     
     elif request.method == 'DELETE':
-        # Удалить сервер
+        # РЈРґР°Р»РёС‚СЊ СЃРµСЂРІРµСЂ
         server_ip = request.args.get('ip')
-        # Логика удаления
-        return jsonify({"success": True, "message": "Сервер удален"})
+        # Р›РѕРіРёРєР° СѓРґР°Р»РµРЅРёСЏ
+        return jsonify({"success": True, "message": "РЎРµСЂРІРµСЂ СѓРґР°Р»РµРЅ"})
     
 def start_web_server():
-    """Запускает веб-сервер"""
-    print(f"🌐 Запуск веб-интерфейса на http://{WEB_HOST}:{WEB_PORT}")
+    """Р—Р°РїСѓСЃРєР°РµС‚ РІРµР±-СЃРµСЂРІРµСЂ"""
+    print(f"рџЊђ Р—Р°РїСѓСЃРє РІРµР±-РёРЅС‚РµСЂС„РµР№СЃР° РЅР° http://{WEB_HOST}:{WEB_PORT}")
     try:
         if extension_manager.is_extension_enabled(SUPPLIER_STOCK_EXTENSION_ID):
             start_supplier_stock_scheduler()
         app.run(host=WEB_HOST, port=WEB_PORT, debug=False, use_reloader=False)
     except Exception as e:
-        print(f"❌ Ошибка запуска веб-сервера: {e}")
+        print(f"вќЊ РћС€РёР±РєР° Р·Р°РїСѓСЃРєР° РІРµР±-СЃРµСЂРІРµСЂР°: {e}")
 
 if __name__ == "__main__":
     start_web_server()

@@ -1,14 +1,14 @@
 """
 /core/monitor.py
-Server Monitoring System v8.5.0
+Server Monitoring System v8.6.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core monitoring module
-Система мониторинга серверов
-Версия: 8.5.0
-Автор: Александр Суханов (c)
-Лицензия: MIT
-Основной модуль мониторинга
+РЎРёСЃС‚РµРјР° РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЃРµСЂРІРµСЂРѕРІ
+Р’РµСЂСЃРёСЏ: 8.6.0
+РђРІС‚РѕСЂ: РђР»РµРєСЃР°РЅРґСЂ РЎСѓС…Р°РЅРѕРІ (c)
+Р›РёС†РµРЅР·РёСЏ: MIT
+РћСЃРЅРѕРІРЅРѕР№ РјРѕРґСѓР»СЊ РјРѕРЅРёС‚РѕСЂРёРЅРіР°
 """
 
 import time
@@ -31,10 +31,10 @@ from modules.morning_report import morning_report
 from core.config_manager import config_manager
 
 class Monitor:
-    """Основной класс мониторинга"""
+    """РћСЃРЅРѕРІРЅРѕР№ РєР»Р°СЃСЃ РјРѕРЅРёС‚РѕСЂРёРЅРіР°"""
     
     def __init__(self):
-        """Инициализация мониторинга"""
+        """РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ РјРѕРЅРёС‚РѕСЂРёРЅРіР°"""
         self.monitoring_active = True
         self.silent_override = None
         self.server_status = {}
@@ -47,12 +47,12 @@ class Monitor:
         
     def is_silent_time(self) -> bool:
         """
-        Проверяет, находится ли текущее время в 'тихом' периоде
+        РџСЂРѕРІРµСЂСЏРµС‚, РЅР°С…РѕРґРёС‚СЃСЏ Р»Рё С‚РµРєСѓС‰РµРµ РІСЂРµРјСЏ РІ 'С‚РёС…РѕРј' РїРµСЂРёРѕРґРµ
         
         Returns:
-            bool: True если тихий режим
+            bool: True РµСЃР»Рё С‚РёС…РёР№ СЂРµР¶РёРј
         """
-        # Если есть принудительное переопределение
+        # Р•СЃР»Рё РµСЃС‚СЊ РїСЂРёРЅСѓРґРёС‚РµР»СЊРЅРѕРµ РїРµСЂРµРѕРїСЂРµРґРµР»РµРЅРёРµ
         if self.silent_override is not None:
             return self.silent_override
         
@@ -60,10 +60,10 @@ class Monitor:
     
     def load_servers(self) -> List[Dict]:
         """
-        Загружает список серверов для мониторинга
+        Р—Р°РіСЂСѓР¶Р°РµС‚ СЃРїРёСЃРѕРє СЃРµСЂРІРµСЂРѕРІ РґР»СЏ РјРѕРЅРёС‚РѕСЂРёРЅРіР°
         
         Returns:
-            List[Dict]: Список серверов
+            List[Dict]: РЎРїРёСЃРѕРє СЃРµСЂРІРµСЂРѕРІ
         """
         try:
             servers = config_manager.get_all_servers(include_disabled=True)
@@ -73,19 +73,19 @@ class Monitor:
                 for server in servers:
                     server.setdefault("enabled", True)
             
-            # Исключаем сервер мониторинга
+            # РСЃРєР»СЋС‡Р°РµРј СЃРµСЂРІРµСЂ РјРѕРЅРёС‚РѕСЂРёРЅРіР°
             monitor_server_ip = "192.168.20.2"
             servers = [s for s in servers if s.get("ip") != monitor_server_ip]
             
-            debug_log(f"✅ Загружено {len(servers)} серверов для мониторинга")
+            debug_log(f"вњ… Р—Р°РіСЂСѓР¶РµРЅРѕ {len(servers)} СЃРµСЂРІРµСЂРѕРІ РґР»СЏ РјРѕРЅРёС‚РѕСЂРёРЅРіР°")
             return servers
             
         except Exception as e:
-            debug_log(f"❌ Ошибка загрузки серверов: {e}")
+            debug_log(f"вќЊ РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё СЃРµСЂРІРµСЂРѕРІ: {e}")
             return []
 
     def refresh_servers(self) -> None:
-        """Обновляет список серверов и статусы."""
+        """РћР±РЅРѕРІР»СЏРµС‚ СЃРїРёСЃРѕРє СЃРµСЂРІРµСЂРѕРІ Рё СЃС‚Р°С‚СѓСЃС‹."""
         servers = self.load_servers()
         if not servers:
             return
@@ -99,15 +99,15 @@ class Monitor:
         self.initialize_server_status()
 
     def is_server_enabled(self, ip: str) -> bool:
-        """Проверяет, включен ли мониторинг для сервера."""
+        """РџСЂРѕРІРµСЂСЏРµС‚, РІРєР»СЋС‡РµРЅ Р»Рё РјРѕРЅРёС‚РѕСЂРёРЅРі РґР»СЏ СЃРµСЂРІРµСЂР°."""
         try:
             return config_manager.get_server_enabled(ip)
         except Exception as e:
-            debug_log(f"⚠️ Не удалось получить статус сервера {ip}: {e}")
+            debug_log(f"вљ пёЏ РќРµ СѓРґР°Р»РѕСЃСЊ РїРѕР»СѓС‡РёС‚СЊ СЃС‚Р°С‚СѓСЃ СЃРµСЂРІРµСЂР° {ip}: {e}")
             return True
     
     def initialize_server_status(self) -> None:
-        """Инициализирует статусы серверов"""
+        """РРЅРёС†РёР°Р»РёР·РёСЂСѓРµС‚ СЃС‚Р°С‚СѓСЃС‹ СЃРµСЂРІРµСЂРѕРІ"""
         for server in self.servers:
             ip = server.get("ip")
             if ip and ip not in self.server_status:
@@ -122,33 +122,33 @@ class Monitor:
                     "monitoring_enabled": server.get("enabled", True)
                 }
         
-        debug_log(f"✅ Инициализированы статусы для {len(self.server_status)} серверов")
+        debug_log(f"вњ… РРЅРёС†РёР°Р»РёР·РёСЂРѕРІР°РЅС‹ СЃС‚Р°С‚СѓСЃС‹ РґР»СЏ {len(self.server_status)} СЃРµСЂРІРµСЂРѕРІ")
     
     def check_server_availability(self, server: Dict) -> bool:
         """
-        Проверяет доступность сервера
+        РџСЂРѕРІРµСЂСЏРµС‚ РґРѕСЃС‚СѓРїРЅРѕСЃС‚СЊ СЃРµСЂРІРµСЂР°
         
         Args:
-            server: Информация о сервере
+            server: РРЅС„РѕСЂРјР°С†РёСЏ Рѕ СЃРµСЂРІРµСЂРµ
             
         Returns:
-            bool: True если сервер доступен
+            bool: True РµСЃР»Рё СЃРµСЂРІРµСЂ РґРѕСЃС‚СѓРїРµРЅ
         """
         try:
             from extensions.server_checks import check_server_availability
             return check_server_availability(server)
         except Exception as e:
-            debug_log(f"❌ Ошибка проверки доступности {server.get('name')}: {e}")
+            debug_log(f"вќЊ РћС€РёР±РєР° РїСЂРѕРІРµСЂРєРё РґРѕСЃС‚СѓРїРЅРѕСЃС‚Рё {server.get('name')}: {e}")
             return False
     
     def handle_server_up(self, ip: str, status: Dict, current_time: datetime) -> None:
         """
-        Обрабатывает доступный сервер
+        РћР±СЂР°Р±Р°С‚С‹РІР°РµС‚ РґРѕСЃС‚СѓРїРЅС‹Р№ СЃРµСЂРІРµСЂ
         
         Args:
-            ip: IP сервера
-            status: Текущий статус
-            current_time: Текущее время
+            ip: IP СЃРµСЂРІРµСЂР°
+            status: РўРµРєСѓС‰РёР№ СЃС‚Р°С‚СѓСЃ
+            current_time: РўРµРєСѓС‰РµРµ РІСЂРµРјСЏ
         """
         if status.get("alert_sent"):
             last_up = status.get("last_up")
@@ -156,13 +156,13 @@ class Monitor:
             if downtime_start:
                 downtime = (current_time - downtime_start).total_seconds()
 
-            message = f"✅ {status.get('name')} ({ip}) доступен"
+            message = f"вњ… {status.get('name')} ({ip}) РґРѕСЃС‚СѓРїРµРЅ"
             if downtime > 0:
-                message += f" (простой: {int(downtime // 60)} мин {int(downtime % 60)} сек)"
+                message += f" (РїСЂРѕСЃС‚РѕР№: {int(downtime // 60)} РјРёРЅ {int(downtime % 60)} СЃРµРє)"
 
             send_alert(message)
         
-        # Обновляем статус
+        # РћР±РЅРѕРІР»СЏРµРј СЃС‚Р°С‚СѓСЃ
         self.server_status[ip] = {
             "last_up": current_time,
             "alert_sent": False,
@@ -175,7 +175,7 @@ class Monitor:
     
     def handle_server_down(self, ip: str, status: Dict, current_time: datetime) -> bool:
         """
-        Обрабатывает недоступный сервер
+        РћР±СЂР°Р±Р°С‚С‹РІР°РµС‚ РЅРµРґРѕСЃС‚СѓРїРЅС‹Р№ СЃРµСЂРІРµСЂ
         """
         downtime_start = status.get("downtime_start")
         if downtime_start is None:
@@ -184,10 +184,10 @@ class Monitor:
 
         downtime = (current_time - downtime_start).total_seconds()
 
-        # Проверяем нужно ли отправлять алерт
+        # РџСЂРѕРІРµСЂСЏРµРј РЅСѓР¶РЅРѕ Р»Рё РѕС‚РїСЂР°РІР»СЏС‚СЊ Р°Р»РµСЂС‚
         if downtime >= MAX_FAIL_TIME and not status.get("alert_sent"):
-            message = f"🚨 {status.get('name')} ({ip}) не отвечает"
-            message += f" ({int(downtime // 60)} мин {int(downtime % 60)} сек)"
+            message = f"рџљЁ {status.get('name')} ({ip}) РЅРµ РѕС‚РІРµС‡Р°РµС‚"
+            message += f" ({int(downtime // 60)} РјРёРЅ {int(downtime % 60)} СЃРµРє)"
 
             send_alert(message)
             self.server_status[ip]["alert_sent"] = True
@@ -196,28 +196,28 @@ class Monitor:
         return False
     
     def check_resources_automatically(self) -> None:
-        """Автоматическая проверка ресурсов серверов"""
+        """РђРІС‚РѕРјР°С‚РёС‡РµСЃРєР°СЏ РїСЂРѕРІРµСЂРєР° СЂРµСЃСѓСЂСЃРѕРІ СЃРµСЂРІРµСЂРѕРІ"""
         try:
             from extensions.extension_manager import extension_manager
             if not extension_manager.is_extension_enabled('resource_monitor'):
-                debug_log("⏸️ Проверка ресурсов пропущена (расширение отключено)")
+                debug_log("вЏёпёЏ РџСЂРѕРІРµСЂРєР° СЂРµСЃСѓСЂСЃРѕРІ РїСЂРѕРїСѓС‰РµРЅР° (СЂР°СЃС€РёСЂРµРЅРёРµ РѕС‚РєР»СЋС‡РµРЅРѕ)")
                 return
         except ImportError:
             pass
 
         if not self.monitoring_active or self.is_silent_time():
-            debug_log("⏸️ Проверка ресурсов пропущена (мониторинг неактивен или тихий режим)")
+            debug_log("вЏёпёЏ РџСЂРѕРІРµСЂРєР° СЂРµСЃСѓСЂСЃРѕРІ РїСЂРѕРїСѓС‰РµРЅР° (РјРѕРЅРёС‚РѕСЂРёРЅРі РЅРµР°РєС‚РёРІРµРЅ РёР»Рё С‚РёС…РёР№ СЂРµР¶РёРј)")
             return
         
         current_time = datetime.now()
         
-        # Проверяем интервал
+        # РџСЂРѕРІРµСЂСЏРµРј РёРЅС‚РµСЂРІР°Р»
         if (current_time - self.last_resource_check).total_seconds() < RESOURCE_CHECK_INTERVAL:
             return
         
-        debug_log("🔍 Автоматическая проверка ресурсов серверов...")
+        debug_log("рџ”Ќ РђРІС‚РѕРјР°С‚РёС‡РµСЃРєР°СЏ РїСЂРѕРІРµСЂРєР° СЂРµСЃСѓСЂСЃРѕРІ СЃРµСЂРІРµСЂРѕРІ...")
         
-        # Проверяем все серверы
+        # РџСЂРѕРІРµСЂСЏРµРј РІСЃРµ СЃРµСЂРІРµСЂС‹
         alerts_found = []
         
         for server in self.servers:
@@ -233,140 +233,140 @@ class Monitor:
                         self.server_status[ip]["last_alert"] = {}
                     continue
 
-                # Получаем текущие ресурсы
+                # РџРѕР»СѓС‡Р°РµРј С‚РµРєСѓС‰РёРµ СЂРµСЃСѓСЂСЃС‹
                 success, resources = resources_checker.check_server_resources(server)
                 
                 if success and resources:
-                    # Проверяем алерты
+                    # РџСЂРѕРІРµСЂСЏРµРј Р°Р»РµСЂС‚С‹
                     server_alerts = resources_checker.check_resource_alerts(ip, resources)
                     
                     if server_alerts:
                         alerts_found.extend(server_alerts)
-                        debug_log(f"⚠️ Найдены проблемы для {server_name}: {server_alerts}")
+                        debug_log(f"вљ пёЏ РќР°Р№РґРµРЅС‹ РїСЂРѕР±Р»РµРјС‹ РґР»СЏ {server_name}: {server_alerts}")
                     
-                    # Сохраняем ресурсы в статус
+                    # РЎРѕС…СЂР°РЅСЏРµРј СЂРµСЃСѓСЂСЃС‹ РІ СЃС‚Р°С‚СѓСЃ
                     if ip in self.server_status:
                         self.server_status[ip]["resources"] = resources
                 
             except Exception as e:
-                debug_log(f"❌ Ошибка при проверке ресурсов {server.get('name')}: {e}")
+                debug_log(f"вќЊ РћС€РёР±РєР° РїСЂРё РїСЂРѕРІРµСЂРєРµ СЂРµСЃСѓСЂСЃРѕРІ {server.get('name')}: {e}")
                 continue
         
-        # Отправляем алерты если есть
+        # РћС‚РїСЂР°РІР»СЏРµРј Р°Р»РµСЂС‚С‹ РµСЃР»Рё РµСЃС‚СЊ
         if alerts_found:
             self.send_resource_alerts(alerts_found)
         
         self.last_resource_check = current_time
-        debug_log(f"✅ Автоматическая проверка ресурсов завершена. Найдено проблем: {len(alerts_found)}")
+        debug_log(f"вњ… РђРІС‚РѕРјР°С‚РёС‡РµСЃРєР°СЏ РїСЂРѕРІРµСЂРєР° СЂРµСЃСѓСЂСЃРѕРІ Р·Р°РІРµСЂС€РµРЅР°. РќР°Р№РґРµРЅРѕ РїСЂРѕР±Р»РµРј: {len(alerts_found)}")
     
     def send_resource_alerts(self, alerts: List[str]) -> None:
         """
-        Отправляет алерты по ресурсам
+        РћС‚РїСЂР°РІР»СЏРµС‚ Р°Р»РµСЂС‚С‹ РїРѕ СЂРµСЃСѓСЂСЃР°Рј
         
         Args:
-            alerts: Список сообщений для алертов
+            alerts: РЎРїРёСЃРѕРє СЃРѕРѕР±С‰РµРЅРёР№ РґР»СЏ Р°Р»РµСЂС‚РѕРІ
         """
         if not alerts:
             return
         
-        message = "🚨 *Проблемы с ресурсами серверов*\n\n"
+        message = "рџљЁ *РџСЂРѕР±Р»РµРјС‹ СЃ СЂРµСЃСѓСЂСЃР°РјРё СЃРµСЂРІРµСЂРѕРІ*\n\n"
         
-        # Группируем алерты по типам ресурсов
-        disk_alerts = [a for a in alerts if "💾" in a]
-        cpu_alerts = [a for a in alerts if "💻" in a]
-        ram_alerts = [a for a in alerts if "🧠" in a]
+        # Р“СЂСѓРїРїРёСЂСѓРµРј Р°Р»РµСЂС‚С‹ РїРѕ С‚РёРїР°Рј СЂРµСЃСѓСЂСЃРѕРІ
+        disk_alerts = [a for a in alerts if "рџ’ѕ" in a]
+        cpu_alerts = [a for a in alerts if "рџ’»" in a]
+        ram_alerts = [a for a in alerts if "рџ§ " in a]
         
-        # Дисковое пространство
+        # Р”РёСЃРєРѕРІРѕРµ РїСЂРѕСЃС‚СЂР°РЅСЃС‚РІРѕ
         if disk_alerts:
-            message += "💾 **Дисковое пространство:**\n"
+            message += "рџ’ѕ **Р”РёСЃРєРѕРІРѕРµ РїСЂРѕСЃС‚СЂР°РЅСЃС‚РІРѕ:**\n"
             for alert in disk_alerts:
-                parts = alert.split("на ")
+                parts = alert.split("РЅР° ")
                 if len(parts) > 1:
                     server_info = parts[1]
-                    message += f"• {server_info}\n"
+                    message += f"вЂў {server_info}\n"
             message += "\n"
         
-        # Процессор
+        # РџСЂРѕС†РµСЃСЃРѕСЂ
         if cpu_alerts:
-            message += "💻 **Процессор (CPU):**\n"
+            message += "рџ’» **РџСЂРѕС†РµСЃСЃРѕСЂ (CPU):**\n"
             for alert in cpu_alerts:
-                parts = alert.split("на ")
+                parts = alert.split("РЅР° ")
                 if len(parts) > 1:
                     server_info = parts[1]
-                    message += f"• {server_info}\n"
+                    message += f"вЂў {server_info}\n"
             message += "\n"
         
-        # Память
+        # РџР°РјСЏС‚СЊ
         if ram_alerts:
-            message += "🧠 **Память (RAM):**\n"
+            message += "рџ§  **РџР°РјСЏС‚СЊ (RAM):**\n"
             for alert in ram_alerts:
-                parts = alert.split("на ")
+                parts = alert.split("РЅР° ")
                 if len(parts) > 1:
                     server_info = parts[1]
-                    message += f"• {server_info}\n"
+                    message += f"вЂў {server_info}\n"
             message += "\n"
         
-        message += f"⏰ Время проверки: {datetime.now().strftime('%H:%M:%S')}"
+        message += f"вЏ° Р’СЂРµРјСЏ РїСЂРѕРІРµСЂРєРё: {datetime.now().strftime('%H:%M:%S')}"
         
         send_alert(message)
-        debug_log(f"✅ Отправлены алерты по ресурсам: {len(alerts)} проблем")
+        debug_log(f"вњ… РћС‚РїСЂР°РІР»РµРЅС‹ Р°Р»РµСЂС‚С‹ РїРѕ СЂРµСЃСѓСЂСЃР°Рј: {len(alerts)} РїСЂРѕР±Р»РµРј")
     
     def check_morning_report(self) -> None:
-        """Проверяет и отправляет утренний отчет если нужно"""
+        """РџСЂРѕРІРµСЂСЏРµС‚ Рё РѕС‚РїСЂР°РІР»СЏРµС‚ СѓС‚СЂРµРЅРЅРёР№ РѕС‚С‡РµС‚ РµСЃР»Рё РЅСѓР¶РЅРѕ"""
         current_time = datetime.now()
         current_time_time = current_time.time()
         
-        # Проверяем время сбора данных
+        # РџСЂРѕРІРµСЂСЏРµРј РІСЂРµРјСЏ СЃР±РѕСЂР° РґР°РЅРЅС‹С…
         if (current_time_time.hour == DATA_COLLECTION_TIME.hour and
             current_time_time.minute == DATA_COLLECTION_TIME.minute):
             
-            # Проверяем, что сегодня еще не отправляли отчет
+            # РџСЂРѕРІРµСЂСЏРµРј, С‡С‚Рѕ СЃРµРіРѕРґРЅСЏ РµС‰Рµ РЅРµ РѕС‚РїСЂР°РІР»СЏР»Рё РѕС‚С‡РµС‚
             today = current_time.date()
             if self.last_report_date != today:
-                debug_log(f"[{current_time}] 🔍 Собираем данные для утреннего отчета...")
+                debug_log(f"[{current_time}] рџ”Ќ РЎРѕР±РёСЂР°РµРј РґР°РЅРЅС‹Рµ РґР»СЏ СѓС‚СЂРµРЅРЅРµРіРѕ РѕС‚С‡РµС‚Р°...")
                 
-                # Собираем данные утреннего отчета
+                # РЎРѕР±РёСЂР°РµРј РґР°РЅРЅС‹Рµ СѓС‚СЂРµРЅРЅРµРіРѕ РѕС‚С‡РµС‚Р°
                 morning_report.collect_morning_data(manual_call=False)
 
                 status = morning_report.morning_data.get("status", {})
-                debug_log(f"✅ Данные собраны: {len(status.get('ok', []))} доступно")
+                debug_log(f"вњ… Р”Р°РЅРЅС‹Рµ СЃРѕР±СЂР°РЅС‹: {len(status.get('ok', []))} РґРѕСЃС‚СѓРїРЅРѕ")
 
-                # Отправляем отчет
-                debug_log(f"[{current_time}] 📊 Отправка утреннего отчета...")
+                # РћС‚РїСЂР°РІР»СЏРµРј РѕС‚С‡РµС‚
+                debug_log(f"[{current_time}] рџ“Љ РћС‚РїСЂР°РІРєР° СѓС‚СЂРµРЅРЅРµРіРѕ РѕС‚С‡РµС‚Р°...")
                 report_text = morning_report.generate_report_message()
                 send_alert(report_text, force=True)
                 
                 self.last_report_date = today
-                debug_log("✅ Утренний отчет отправлен")
+                debug_log("вњ… РЈС‚СЂРµРЅРЅРёР№ РѕС‚С‡РµС‚ РѕС‚РїСЂР°РІР»РµРЅ")
                 
-                # Добавляем задержку чтобы не запускать повторно
+                # Р”РѕР±Р°РІР»СЏРµРј Р·Р°РґРµСЂР¶РєСѓ С‡С‚РѕР±С‹ РЅРµ Р·Р°РїСѓСЃРєР°С‚СЊ РїРѕРІС‚РѕСЂРЅРѕ
                 time.sleep(65)
     
     def start(self) -> None:
-        """Запускает основной цикл мониторинга"""
-        # Загружаем серверы
+        """Р—Р°РїСѓСЃРєР°РµС‚ РѕСЃРЅРѕРІРЅРѕР№ С†РёРєР» РјРѕРЅРёС‚РѕСЂРёРЅРіР°"""
+        # Р—Р°РіСЂСѓР¶Р°РµРј СЃРµСЂРІРµСЂС‹
         self.servers = self.load_servers()
         
         if not self.servers:
-            debug_log("❌ Нет серверов для мониторинга")
+            debug_log("вќЊ РќРµС‚ СЃРµСЂРІРµСЂРѕРІ РґР»СЏ РјРѕРЅРёС‚РѕСЂРёРЅРіР°")
             return
         
-        # Инициализируем статусы
+        # РРЅРёС†РёР°Р»РёР·РёСЂСѓРµРј СЃС‚Р°С‚СѓСЃС‹
         self.initialize_server_status()
         
-        # Отправляем стартовое сообщение
+        # РћС‚РїСЂР°РІР»СЏРµРј СЃС‚Р°СЂС‚РѕРІРѕРµ СЃРѕРѕР±С‰РµРЅРёРµ
         try:
             from config.settings import APP_VERSION
         except Exception:
             APP_VERSION = None
 
-        start_message = "🟢 *Мониторинг серверов запущен*\n\n"
+        start_message = "рџџў *РњРѕРЅРёС‚РѕСЂРёРЅРі СЃРµСЂРІРµСЂРѕРІ Р·Р°РїСѓС‰РµРЅ*\n\n"
         if APP_VERSION:
-            start_message += f"🔖 *Версия:* {APP_VERSION}\n"
+            start_message += f"рџ”– *Р’РµСЂСЃРёСЏ:* {APP_VERSION}\n"
         start_message += (
-            f"• Серверов в мониторинге: {len(self.servers)}\n"
-            f"• Проверка доступности: каждые {CHECK_INTERVAL} сек\n"
-            f"• Утренний отчет: {DATA_COLLECTION_TIME.strftime('%H:%M')}\n\n"
+            f"вЂў РЎРµСЂРІРµСЂРѕРІ РІ РјРѕРЅРёС‚РѕСЂРёРЅРіРµ: {len(self.servers)}\n"
+            f"вЂў РџСЂРѕРІРµСЂРєР° РґРѕСЃС‚СѓРїРЅРѕСЃС‚Рё: РєР°Р¶РґС‹Рµ {CHECK_INTERVAL} СЃРµРє\n"
+            f"вЂў РЈС‚СЂРµРЅРЅРёР№ РѕС‚С‡РµС‚: {DATA_COLLECTION_TIME.strftime('%H:%M')}\n\n"
         )
 
         resources_enabled = True
@@ -377,35 +377,35 @@ class Monitor:
             resources_enabled = True
 
         if resources_enabled:
-            start_message += f"• Проверка ресурсов: каждые {RESOURCE_CHECK_INTERVAL // 60} минут\n"
+            start_message += f"вЂў РџСЂРѕРІРµСЂРєР° СЂРµСЃСѓСЂСЃРѕРІ: РєР°Р¶РґС‹Рµ {RESOURCE_CHECK_INTERVAL // 60} РјРёРЅСѓС‚\n"
         else:
-            start_message += "• Проверка ресурсов: отключена\n"
+            start_message += "вЂў РџСЂРѕРІРµСЂРєР° СЂРµСЃСѓСЂСЃРѕРІ: РѕС‚РєР»СЋС‡РµРЅР°\n"
         
-        # Информация о веб-интерфейсе
+        # РРЅС„РѕСЂРјР°С†РёСЏ Рѕ РІРµР±-РёРЅС‚РµСЂС„РµР№СЃРµ
         try:
             from extensions.extension_manager import extension_manager
             if extension_manager.is_extension_enabled('web_interface'):
-                start_message += "🌐 *Веб-интерфейс:* http://192.168.20.2:5000\n"
-                start_message += "_*доступен только в локальной сети_\n"
+                start_message += "рџЊђ *Р’РµР±-РёРЅС‚РµСЂС„РµР№СЃ:* http://192.168.20.2:5000\n"
+                start_message += "_*РґРѕСЃС‚СѓРїРµРЅ С‚РѕР»СЊРєРѕ РІ Р»РѕРєР°Р»СЊРЅРѕР№ СЃРµС‚Рё_\n"
             else:
-                start_message += "🌐 *Веб-интерфейс:* 🔴 отключен\n"
+                start_message += "рџЊђ *Р’РµР±-РёРЅС‚РµСЂС„РµР№СЃ:* рџ”ґ РѕС‚РєР»СЋС‡РµРЅ\n"
         except ImportError:
-            start_message += "🌐 *Веб-интерфейс:* 🔴 модуль не загружен\n"
+            start_message += "рџЊђ *Р’РµР±-РёРЅС‚РµСЂС„РµР№СЃ:* рџ”ґ РјРѕРґСѓР»СЊ РЅРµ Р·Р°РіСЂСѓР¶РµРЅ\n"
         
         send_alert(start_message)
-        debug_log(f"✅ Мониторинг запущен для {len(self.servers)} серверов")
+        debug_log(f"вњ… РњРѕРЅРёС‚РѕСЂРёРЅРі Р·Р°РїСѓС‰РµРЅ РґР»СЏ {len(self.servers)} СЃРµСЂРІРµСЂРѕРІ")
         
-        # Основной цикл мониторинга
+        # РћСЃРЅРѕРІРЅРѕР№ С†РёРєР» РјРѕРЅРёС‚РѕСЂРёРЅРіР°
         while True:
             current_time = datetime.now()
             
-            # Проверяем утренний отчет
+            # РџСЂРѕРІРµСЂСЏРµРј СѓС‚СЂРµРЅРЅРёР№ РѕС‚С‡РµС‚
             self.check_morning_report()
             
-            # Автоматическая проверка ресурсов
+            # РђРІС‚РѕРјР°С‚РёС‡РµСЃРєР°СЏ РїСЂРѕРІРµСЂРєР° СЂРµСЃСѓСЂСЃРѕРІ
             self.check_resources_automatically()
             
-            # Основная проверка доступности
+            # РћСЃРЅРѕРІРЅР°СЏ РїСЂРѕРІРµСЂРєР° РґРѕСЃС‚СѓРїРЅРѕСЃС‚Рё
             if self.monitoring_active:
                 self.last_check_time = current_time
 
@@ -419,7 +419,7 @@ class Monitor:
                         
                         status = self.server_status[ip]
                         
-                        # Исключаем сервер мониторинга
+                        # РСЃРєР»СЋС‡Р°РµРј СЃРµСЂРІРµСЂ РјРѕРЅРёС‚РѕСЂРёРЅРіР°
                         if ip == "192.168.20.2":
                             self.server_status[ip]["last_up"] = current_time
                             continue
@@ -434,7 +434,7 @@ class Monitor:
                             self.server_status[ip]["alert_sent"] = False
                             self.server_status[ip]["last_alert"] = {}
                         
-                        # Проверка доступности
+                        # РџСЂРѕРІРµСЂРєР° РґРѕСЃС‚СѓРїРЅРѕСЃС‚Рё
                         is_up = self.check_server_availability(server)
                         
                         if is_up:
@@ -443,27 +443,27 @@ class Monitor:
                             self.handle_server_down(ip, status, current_time)
                             
                     except Exception as e:
-                        debug_log(f"❌ Ошибка мониторинга {server.get('name')}: {e}")
+                        debug_log(f"вќЊ РћС€РёР±РєР° РјРѕРЅРёС‚РѕСЂРёРЅРіР° {server.get('name')}: {e}")
             
-            # Ожидание перед следующей проверкой
+            # РћР¶РёРґР°РЅРёРµ РїРµСЂРµРґ СЃР»РµРґСѓСЋС‰РµР№ РїСЂРѕРІРµСЂРєРѕР№
             time.sleep(CHECK_INTERVAL)
     
     def stop(self) -> None:
-        """Останавливает мониторинг"""
+        """РћСЃС‚Р°РЅР°РІР»РёРІР°РµС‚ РјРѕРЅРёС‚РѕСЂРёРЅРі"""
         self.monitoring_active = False
-        debug_log("⏸️ Мониторинг приостановлен")
+        debug_log("вЏёпёЏ РњРѕРЅРёС‚РѕСЂРёРЅРі РїСЂРёРѕСЃС‚Р°РЅРѕРІР»РµРЅ")
     
     def resume(self) -> None:
-        """Возобновляет мониторинг"""
+        """Р’РѕР·РѕР±РЅРѕРІР»СЏРµС‚ РјРѕРЅРёС‚РѕСЂРёРЅРі"""
         self.monitoring_active = True
-        debug_log("▶️ Мониторинг возобновлен")
+        debug_log("в–¶пёЏ РњРѕРЅРёС‚РѕСЂРёРЅРі РІРѕР·РѕР±РЅРѕРІР»РµРЅ")
     
     def get_status(self) -> Dict:
         """
-        Получает текущий статус мониторинга
+        РџРѕР»СѓС‡Р°РµС‚ С‚РµРєСѓС‰РёР№ СЃС‚Р°С‚СѓСЃ РјРѕРЅРёС‚РѕСЂРёРЅРіР°
         
         Returns:
-            Dict: Статус мониторинга
+            Dict: РЎС‚Р°С‚СѓСЃ РјРѕРЅРёС‚РѕСЂРёРЅРіР°
         """
         return {
             "monitoring_active": self.monitoring_active,
@@ -475,5 +475,5 @@ class Monitor:
             "last_resource_check": self.last_resource_check
         }
 
-# Глобальный экземпляр для импорта
+# Р“Р»РѕР±Р°Р»СЊРЅС‹Р№ СЌРєР·РµРјРїР»СЏСЂ РґР»СЏ РёРјРїРѕСЂС‚Р°
 monitor = Monitor()

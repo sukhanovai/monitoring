@@ -1,14 +1,14 @@
 """
 /modules/mail_monitor.py
-Server Monitoring System v8.5.0
+Server Monitoring System v8.6.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Mailbox monitoring
-Система мониторинга серверов
-Версия: 8.5.0
-Автор: Александр Суханов (c)
-Лицензия: MIT
-Мониторинг почтового ящика
+РЎРёСЃС‚РµРјР° РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЃРµСЂРІРµСЂРѕРІ
+Р’РµСЂСЃРёСЏ: 8.6.0
+РђРІС‚РѕСЂ: РђР»РµРєСЃР°РЅРґСЂ РЎСѓС…Р°РЅРѕРІ (c)
+Р›РёС†РµРЅР·РёСЏ: MIT
+РњРѕРЅРёС‚РѕСЂРёРЅРі РїРѕС‡С‚РѕРІРѕРіРѕ СЏС‰РёРєР°
 """
 
 from __future__ import annotations
@@ -54,7 +54,7 @@ logger = setup_logging("mail_monitor", log_file=MAIL_MONITOR_LOG_FILE)
 
 
 def get_database_patterns_from_config() -> dict[str, list[str]]:
-    """Правильно извлекает паттерны из конфигурации."""
+    """РџСЂР°РІРёР»СЊРЅРѕ РёР·РІР»РµРєР°РµС‚ РїР°С‚С‚РµСЂРЅС‹ РёР· РєРѕРЅС„РёРіСѓСЂР°С†РёРё."""
     try:
         all_patterns = BACKUP_PATTERNS
 
@@ -64,11 +64,11 @@ def get_database_patterns_from_config() -> dict[str, list[str]]:
 
                 all_patterns = json.loads(all_patterns)
             except Exception:
-                logger.error("❌ Не удалось распарсить BACKUP_PATTERNS как JSON")
+                logger.error("вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ СЂР°СЃРїР°СЂСЃРёС‚СЊ BACKUP_PATTERNS РєР°Рє JSON")
                 return {"company": [], "barnaul": [], "client": [], "yandex": []}
 
         if not isinstance(all_patterns, dict):
-            logger.error(f"❌ BACKUP_PATTERNS не словарь: {type(all_patterns)}")
+            logger.error(f"вќЊ BACKUP_PATTERNS РЅРµ СЃР»РѕРІР°СЂСЊ: {type(all_patterns)}")
             return {"company": [], "barnaul": [], "client": [], "yandex": []}
 
         db_patterns = all_patterns.get("database", {})
@@ -81,7 +81,7 @@ def get_database_patterns_from_config() -> dict[str, list[str]]:
                         result[key] = value
                 else:
                     logger.warning(
-                        "⚠️ Неверный формат элемента в database паттернах: %s",
+                        "вљ пёЏ РќРµРІРµСЂРЅС‹Р№ С„РѕСЂРјР°С‚ СЌР»РµРјРµРЅС‚Р° РІ database РїР°С‚С‚РµСЂРЅР°С…: %s",
                         item,
                     )
         elif isinstance(db_patterns, dict):
@@ -97,32 +97,32 @@ def get_database_patterns_from_config() -> dict[str, list[str]]:
         }
 
     except Exception as exc:
-        logger.error(f"❌ Ошибка извлечения паттернов: {exc}")
+        logger.error(f"вќЊ РћС€РёР±РєР° РёР·РІР»РµС‡РµРЅРёСЏ РїР°С‚С‚РµСЂРЅРѕРІ: {exc}")
         return {"company": [], "barnaul": [], "client": [], "yandex": []}
 
 
 DATABASE_BACKUP_PATTERNS = get_database_patterns_from_config()
 
 logger.info(
-    "🔍 Итоговые паттерны company: %s",
+    "рџ”Ќ РС‚РѕРіРѕРІС‹Рµ РїР°С‚С‚РµСЂРЅС‹ company: %s",
     DATABASE_BACKUP_PATTERNS.get("company", []),
 )
 logger.info(
-    "🔍 Итоговые паттерны barnaul: %s",
+    "рџ”Ќ РС‚РѕРіРѕРІС‹Рµ РїР°С‚С‚РµСЂРЅС‹ barnaul: %s",
     DATABASE_BACKUP_PATTERNS.get("barnaul", []),
 )
 logger.info(
-    "🔍 Итоговые паттерны client: %s",
+    "рџ”Ќ РС‚РѕРіРѕРІС‹Рµ РїР°С‚С‚РµСЂРЅС‹ client: %s",
     DATABASE_BACKUP_PATTERNS.get("client", []),
 )
 logger.info(
-    "🔍 Итоговые паттерны yandex: %s",
+    "рџ”Ќ РС‚РѕРіРѕРІС‹Рµ РїР°С‚С‚РµСЂРЅС‹ yandex: %s",
     DATABASE_BACKUP_PATTERNS.get("yandex", []),
 )
 
 
 def get_zfs_patterns_from_config() -> list[str]:
-    """Извлекает паттерны для писем ZFS из таблицы паттернов."""
+    """РР·РІР»РµРєР°РµС‚ РїР°С‚С‚РµСЂРЅС‹ РґР»СЏ РїРёСЃРµРј ZFS РёР· С‚Р°Р±Р»РёС†С‹ РїР°С‚С‚РµСЂРЅРѕРІ."""
     try:
         patterns = config_manager.get_backup_patterns()
         zfs_patterns = patterns.get("zfs", {})
@@ -143,12 +143,12 @@ def get_zfs_patterns_from_config() -> list[str]:
         return [pattern for pattern in subject_patterns if isinstance(pattern, str)]
 
     except Exception as exc:
-        logger.error(f"❌ Ошибка извлечения ZFS паттернов: {exc}")
+        logger.error(f"вќЊ РћС€РёР±РєР° РёР·РІР»РµС‡РµРЅРёСЏ ZFS РїР°С‚С‚РµСЂРЅРѕРІ: {exc}")
         return []
 
 
 def get_mail_patterns_from_config() -> list[str]:
-    """Извлекает паттерны для писем о бэкапах почты из таблицы паттернов."""
+    """РР·РІР»РµРєР°РµС‚ РїР°С‚С‚РµСЂРЅС‹ РґР»СЏ РїРёСЃРµРј Рѕ Р±СЌРєР°РїР°С… РїРѕС‡С‚С‹ РёР· С‚Р°Р±Р»РёС†С‹ РїР°С‚С‚РµСЂРЅРѕРІ."""
     try:
         patterns = config_manager.get_backup_patterns()
         mail_patterns = patterns.get("mail", {})
@@ -169,12 +169,12 @@ def get_mail_patterns_from_config() -> list[str]:
         return [pattern for pattern in subject_patterns if isinstance(pattern, str)]
 
     except Exception as exc:
-        logger.error(f"❌ Ошибка извлечения паттернов почты: {exc}")
+        logger.error(f"вќЊ РћС€РёР±РєР° РёР·РІР»РµС‡РµРЅРёСЏ РїР°С‚С‚РµСЂРЅРѕРІ РїРѕС‡С‚С‹: {exc}")
         return []
 
 
 def get_stock_load_patterns_from_config() -> dict[str, list[str]]:
-    """Извлекает паттерны для логов загрузки остатков из настроек."""
+    """РР·РІР»РµРєР°РµС‚ РїР°С‚С‚РµСЂРЅС‹ РґР»СЏ Р»РѕРіРѕРІ Р·Р°РіСЂСѓР·РєРё РѕСЃС‚Р°С‚РєРѕРІ РёР· РЅР°СЃС‚СЂРѕРµРє."""
     try:
         patterns = config_manager.get_backup_patterns()
         if isinstance(patterns, str):
@@ -306,7 +306,7 @@ def get_stock_load_patterns_from_config() -> dict[str, list[str]]:
         if not sources:
             sources = [
                 {
-                    "name": "Основное предприятие",
+                    "name": "РћСЃРЅРѕРІРЅРѕРµ РїСЂРµРґРїСЂРёСЏС‚РёРµ",
                     "subject": normalized.get("subject", []),
                 }
             ]
@@ -314,7 +314,7 @@ def get_stock_load_patterns_from_config() -> dict[str, list[str]]:
 
         return normalized
     except Exception as exc:
-        logger.error(f"❌ Ошибка извлечения паттернов остатков: {exc}")
+        logger.error(f"вќЊ РћС€РёР±РєР° РёР·РІР»РµС‡РµРЅРёСЏ РїР°С‚С‚РµСЂРЅРѕРІ РѕСЃС‚Р°С‚РєРѕРІ: {exc}")
         return {
             "subject": [],
             "attachment": [],
@@ -327,7 +327,7 @@ def get_stock_load_patterns_from_config() -> dict[str, list[str]]:
 
 
 class BackupProcessor:
-    """Обработчик бэкапов."""
+    """РћР±СЂР°Р±РѕС‚С‡РёРє Р±СЌРєР°РїРѕРІ."""
 
     def __init__(self) -> None:
         self.db_path = BACKUP_DATABASE_CONFIG["backups_db"]
@@ -335,7 +335,7 @@ class BackupProcessor:
         self.init_database()
 
     def init_database(self) -> None:
-        """Инициализация базы данных."""
+        """РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ Р±Р°Р·С‹ РґР°РЅРЅС‹С…."""
         try:
             conn = sqlite3.connect(str(self.db_path))
             cursor = conn.cursor()
@@ -441,19 +441,19 @@ class BackupProcessor:
 
             conn.commit()
             conn.close()
-            logger.info("База данных бэкапов инициализирована")
+            logger.info("Р‘Р°Р·Р° РґР°РЅРЅС‹С… Р±СЌРєР°РїРѕРІ РёРЅРёС†РёР°Р»РёР·РёСЂРѕРІР°РЅР°")
 
         except Exception as exc:
-            logger.error(f"Ошибка инициализации БД: {exc}")
+            logger.error(f"РћС€РёР±РєР° РёРЅРёС†РёР°Р»РёР·Р°С†РёРё Р‘Р”: {exc}")
             raise
 
     def process_new_emails(self) -> int:
-        """Обрабатывает новые письма из директории new."""
+        """РћР±СЂР°Р±Р°С‚С‹РІР°РµС‚ РЅРѕРІС‹Рµ РїРёСЃСЊРјР° РёР· РґРёСЂРµРєС‚РѕСЂРёРё new."""
         maildir_new = MAILDIR_NEW
         maildir_cur = MAILDIR_CUR
 
         if not maildir_new.exists():
-            logger.error(f"Директория не существует: {maildir_new}")
+            logger.error(f"Р”РёСЂРµРєС‚РѕСЂРёСЏ РЅРµ СЃСѓС‰РµСЃС‚РІСѓРµС‚: {maildir_new}")
             return 0
 
         processed_count = 0
@@ -461,7 +461,7 @@ class BackupProcessor:
             if not file_path.is_file():
                 continue
 
-            logger.info(f"🔍 Обнаружено новое письмо: {file_path.name}")
+            logger.info(f"рџ”Ќ РћР±РЅР°СЂСѓР¶РµРЅРѕ РЅРѕРІРѕРµ РїРёСЃСЊРјРѕ: {file_path.name}")
 
             result = self.parse_email_file(file_path)
 
@@ -469,28 +469,28 @@ class BackupProcessor:
                 try:
                     new_path = maildir_cur / file_path.name
                     shutil.move(str(file_path), str(new_path))
-                    logger.info(f"✅ Письмо перемещено в cur: {file_path.name}")
+                    logger.info(f"вњ… РџРёСЃСЊРјРѕ РїРµСЂРµРјРµС‰РµРЅРѕ РІ cur: {file_path.name}")
                     self.processed_files.add(str(new_path))
                 except Exception as exc:
-                    logger.error(f"❌ Ошибка перемещения письма: {exc}")
+                    logger.error(f"вќЊ РћС€РёР±РєР° РїРµСЂРµРјРµС‰РµРЅРёСЏ РїРёСЃСЊРјР°: {exc}")
                     self.processed_files.add(str(file_path))
 
                 processed_count += 1
             else:
-                logger.warning(f"⚠️ Не удалось обработать письмо: {file_path.name}")
+                logger.warning(f"вљ пёЏ РќРµ СѓРґР°Р»РѕСЃСЊ РѕР±СЂР°Р±РѕС‚Р°С‚СЊ РїРёСЃСЊРјРѕ: {file_path.name}")
                 try:
                     new_path = maildir_cur / file_path.name
                     shutil.move(str(file_path), str(new_path))
                     self.processed_files.add(str(new_path))
                 except Exception as exc:
-                    logger.error(f"❌ Ошибка перемещения непрочитанного письма: {exc}")
+                    logger.error(f"вќЊ РћС€РёР±РєР° РїРµСЂРµРјРµС‰РµРЅРёСЏ РЅРµРїСЂРѕС‡РёС‚Р°РЅРЅРѕРіРѕ РїРёСЃСЊРјР°: {exc}")
 
         return processed_count
 
     def parse_database_backup(self, subject: str, body: str) -> dict | None:
-        """Парсит бэкапы баз данных из темы письма."""
+        """РџР°СЂСЃРёС‚ Р±СЌРєР°РїС‹ Р±Р°Р· РґР°РЅРЅС‹С… РёР· С‚РµРјС‹ РїРёСЃСЊРјР°."""
         try:
-            logger.info(f"🎯 Парсим бэкап БД: '{subject}'")
+            logger.info(f"рџЋЇ РџР°СЂСЃРёРј Р±СЌРєР°Рї Р‘Р”: '{subject}'")
             backup_info: dict = {}
 
             subject_lower = subject.lower()
@@ -517,7 +517,7 @@ class BackupProcessor:
                 if match:
                     db_name = match.group(1).strip() if match.groups() else "unknown"
                     logger.info(
-                        "✅ Найден бэкап company_database: '%s' по паттерну: %s",
+                        "вњ… РќР°Р№РґРµРЅ Р±СЌРєР°Рї company_database: '%s' РїРѕ РїР°С‚С‚РµСЂРЅСѓ: %s",
                         db_name,
                         pattern,
                     )
@@ -541,7 +541,7 @@ class BackupProcessor:
                 if match:
                     db_name = match.group(1).strip() if match.groups() else "unknown"
                     logger.info(
-                        "✅ Найден бэкап client: '%s' по паттерну: %s",
+                        "вњ… РќР°Р№РґРµРЅ Р±СЌРєР°Рї client: '%s' РїРѕ РїР°С‚С‚РµСЂРЅСѓ: %s",
                         db_name,
                         pattern,
                     )
@@ -580,7 +580,7 @@ class BackupProcessor:
                     error_value = match.group(2) if match.groups() and len(match.groups()) > 1 else None
                     error_count = parse_error_count(error_value)
                     logger.info(
-                        "✅ Найден бэкап barnaul: '%s' по паттерну: %s",
+                        "вњ… РќР°Р№РґРµРЅ Р±СЌРєР°Рї barnaul: '%s' РїРѕ РїР°С‚С‚РµСЂРЅСѓ: %s",
                         db_name,
                         pattern,
                     )
@@ -604,7 +604,7 @@ class BackupProcessor:
                 if match:
                     db_name = match.group(1).strip().upper() if match.groups() else "UNKNOWN"
                     logger.info(
-                        "✅ Найден бэкап yandex: '%s' по паттерну: %s",
+                        "вњ… РќР°Р№РґРµРЅ Р±СЌРєР°Рї yandex: '%s' РїРѕ РїР°С‚С‚РµСЂРЅСѓ: %s",
                         db_name,
                         pattern,
                     )
@@ -622,18 +622,18 @@ class BackupProcessor:
                     }
                     return backup_info
 
-            logger.info(f"❌ Ни один паттерн не подошел для темы: '{subject}'")
+            logger.info(f"вќЊ РќРё РѕРґРёРЅ РїР°С‚С‚РµСЂРЅ РЅРµ РїРѕРґРѕС€РµР» РґР»СЏ С‚РµРјС‹: '{subject}'")
             return None
 
         except Exception as exc:
-            logger.error(f"💥 Ошибка в parse_database_backup: {exc}")
+            logger.error(f"рџ’Ґ РћС€РёР±РєР° РІ parse_database_backup: {exc}")
             import traceback
 
             logger.error(traceback.format_exc())
             return None
 
     def save_database_backup(self, backup_info: dict, subject: str, email_date: datetime | None = None) -> None:
-        """Сохраняет информацию о бэкапе базы данных, игнорируя дубликаты."""
+        """РЎРѕС…СЂР°РЅСЏРµС‚ РёРЅС„РѕСЂРјР°С†РёСЋ Рѕ Р±СЌРєР°РїРµ Р±Р°Р·С‹ РґР°РЅРЅС‹С…, РёРіРЅРѕСЂРёСЂСѓСЏ РґСѓР±Р»РёРєР°С‚С‹."""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
@@ -684,25 +684,25 @@ class BackupProcessor:
 
             conn.commit()
             logger.info(
-                "✅ Сохранен бэкап БД: %s - %s",
+                "вњ… РЎРѕС…СЂР°РЅРµРЅ Р±СЌРєР°Рї Р‘Р”: %s - %s",
                 backup_info["database_display_name"],
                 backup_info["backup_status"],
             )
 
         except Exception as exc:
-            logger.error(f"❌ Ошибка сохранения бэкапа БД в БД: {exc}")
+            logger.error(f"вќЊ РћС€РёР±РєР° СЃРѕС…СЂР°РЅРµРЅРёСЏ Р±СЌРєР°РїР° Р‘Р” РІ Р‘Р”: {exc}")
         finally:
             if "conn" in locals():
                 conn.close()
 
     def parse_zfs_status(self, subject: str) -> list[dict] | None:
-        """Парсит статусы ZFS массивов из темы письма."""
+        """РџР°СЂСЃРёС‚ СЃС‚Р°С‚СѓСЃС‹ ZFS РјР°СЃСЃРёРІРѕРІ РёР· С‚РµРјС‹ РїРёСЃСЊРјР°."""
         if not extension_manager.is_extension_enabled("zfs_monitor"):
             return None
 
         patterns = get_zfs_patterns_from_config()
         if not patterns:
-            logger.info("⚠️ Паттерны ZFS не настроены")
+            logger.info("вљ пёЏ РџР°С‚С‚РµСЂРЅС‹ ZFS РЅРµ РЅР°СЃС‚СЂРѕРµРЅС‹")
             return None
 
         matched_server = None
@@ -726,17 +726,17 @@ class BackupProcessor:
 
         states = re.findall(r"state:\s*([A-Za-z0-9_-]+)", subject, re.IGNORECASE)
         if not states:
-            logger.warning(f"⚠️ Не удалось найти статусы ZFS в теме: {subject}")
+            logger.warning(f"вљ пёЏ РќРµ СѓРґР°Р»РѕСЃСЊ РЅР°Р№С‚Рё СЃС‚Р°С‚СѓСЃС‹ ZFS РІ С‚РµРјРµ: {subject}")
             return None
 
         server_config = ZFS_SERVERS.get(matched_server, {})
         if not server_config:
             logger.warning(
-                "⚠️ ZFS сервер не найден в настройках: %s",
+                "вљ пёЏ ZFS СЃРµСЂРІРµСЂ РЅРµ РЅР°Р№РґРµРЅ РІ РЅР°СЃС‚СЂРѕР№РєР°С…: %s",
                 matched_server,
             )
         if isinstance(server_config, dict) and not server_config.get("enabled", True):
-            logger.info("ℹ️ ZFS сервер отключен в настройках: %s", matched_server)
+            logger.info("в„№пёЏ ZFS СЃРµСЂРІРµСЂ РѕС‚РєР»СЋС‡РµРЅ РІ РЅР°СЃС‚СЂРѕР№РєР°С…: %s", matched_server)
             return None
 
         entries = []
@@ -759,7 +759,7 @@ class BackupProcessor:
         subject: str,
         email_date: datetime | None = None,
     ) -> None:
-        """Сохраняет статусы ZFS массивов в БД."""
+        """РЎРѕС…СЂР°РЅСЏРµС‚ СЃС‚Р°С‚СѓСЃС‹ ZFS РјР°СЃСЃРёРІРѕРІ РІ Р‘Р”."""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
@@ -789,24 +789,24 @@ class BackupProcessor:
 
             conn.commit()
             logger.info(
-                "✅ Сохранены статусы ZFS: %s (%s шт.)",
+                "вњ… РЎРѕС…СЂР°РЅРµРЅС‹ СЃС‚Р°С‚СѓСЃС‹ ZFS: %s (%s С€С‚.)",
                 entries[0]["server_name"] if entries else "unknown",
                 len(entries),
             )
 
         except Exception as exc:
-            logger.error(f"❌ Ошибка сохранения ZFS статуса в БД: {exc}")
+            logger.error(f"вќЊ РћС€РёР±РєР° СЃРѕС…СЂР°РЅРµРЅРёСЏ ZFS СЃС‚Р°С‚СѓСЃР° РІ Р‘Р”: {exc}")
         finally:
             if "conn" in locals():
                 conn.close()
 
     def parse_mail_backup(self, subject: str) -> dict | None:
-        """Парсит результат бэкапа почтового сервера из темы письма."""
+        """РџР°СЂСЃРёС‚ СЂРµР·СѓР»СЊС‚Р°С‚ Р±СЌРєР°РїР° РїРѕС‡С‚РѕРІРѕРіРѕ СЃРµСЂРІРµСЂР° РёР· С‚РµРјС‹ РїРёСЃСЊРјР°."""
         if not extension_manager.is_extension_enabled("mail_backup_monitor"):
             return None
 
         default_pattern = (
-            r"^\s*бэкап\s+zimbra\s*-\s*"
+            r"^\s*Р±СЌРєР°Рї\s+zimbra\s*-\s*"
             r"(?P<size>\d+(?:[.,]\d+)?\s*[TGMK]?(?:i?B)?)\s+"
             r"(?P<path>/\S+)\s*$"
         )
@@ -834,7 +834,7 @@ class BackupProcessor:
         size = size.strip() if isinstance(size, str) else None
         path = path.strip() if isinstance(path, str) else None
 
-        logger.info("✅ Найден бэкап Zimbra: размер=%s, путь=%s", size, path)
+        logger.info("вњ… РќР°Р№РґРµРЅ Р±СЌРєР°Рї Zimbra: СЂР°Р·РјРµСЂ=%s, РїСѓС‚СЊ=%s", size, path)
         return {
             "host_name": "zimbra",
             "backup_status": "success",
@@ -849,7 +849,7 @@ class BackupProcessor:
         subject: str,
         email_date: datetime | None = None,
     ) -> None:
-        """Сохраняет результат бэкапа почтового сервера."""
+        """РЎРѕС…СЂР°РЅСЏРµС‚ СЂРµР·СѓР»СЊС‚Р°С‚ Р±СЌРєР°РїР° РїРѕС‡С‚РѕРІРѕРіРѕ СЃРµСЂРІРµСЂР°."""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
@@ -878,19 +878,19 @@ class BackupProcessor:
 
             conn.commit()
             logger.info(
-                "✅ Сохранен бэкап почтового сервера: %s (%s)",
-                backup_info.get("total_size") or "неизвестно",
-                backup_info.get("backup_path") or "без пути",
+                "вњ… РЎРѕС…СЂР°РЅРµРЅ Р±СЌРєР°Рї РїРѕС‡С‚РѕРІРѕРіРѕ СЃРµСЂРІРµСЂР°: %s (%s)",
+                backup_info.get("total_size") or "РЅРµРёР·РІРµСЃС‚РЅРѕ",
+                backup_info.get("backup_path") or "Р±РµР· РїСѓС‚Рё",
             )
 
         except Exception as exc:
-            logger.error(f"❌ Ошибка сохранения бэкапа почтового сервера: {exc}")
+            logger.error(f"вќЊ РћС€РёР±РєР° СЃРѕС…СЂР°РЅРµРЅРёСЏ Р±СЌРєР°РїР° РїРѕС‡С‚РѕРІРѕРіРѕ СЃРµСЂРІРµСЂР°: {exc}")
         finally:
             if "conn" in locals():
                 conn.close()
 
     def _match_subject_patterns(self, subject: str, patterns: list[str]) -> bool:
-        """Проверяет тему письма по списку паттернов."""
+        """РџСЂРѕРІРµСЂСЏРµС‚ С‚РµРјСѓ РїРёСЃСЊРјР° РїРѕ СЃРїРёСЃРєСѓ РїР°С‚С‚РµСЂРЅРѕРІ."""
         normalized_subject = re.sub(r"\s+", " ", subject).strip()
         for pattern in patterns:
             try:
@@ -899,11 +899,11 @@ class BackupProcessor:
                 if normalized_subject != subject and re.search(pattern, normalized_subject, re.IGNORECASE):
                     return True
             except re.error as exc:
-                logger.warning("⚠️ Некорректный паттерн '%s': %s", pattern, exc)
+                logger.warning("вљ пёЏ РќРµРєРѕСЂСЂРµРєС‚РЅС‹Р№ РїР°С‚С‚РµСЂРЅ '%s': %s", pattern, exc)
         return False
 
     def _decode_attachment_payload(self, payload: bytes | None) -> str:
-        """Пытается декодировать содержимое вложения."""
+        """РџС‹С‚Р°РµС‚СЃСЏ РґРµРєРѕРґРёСЂРѕРІР°С‚СЊ СЃРѕРґРµСЂР¶РёРјРѕРµ РІР»РѕР¶РµРЅРёСЏ."""
         if not payload:
             return ""
 
@@ -919,7 +919,7 @@ class BackupProcessor:
         try:
             return bool(re.search(pattern, value, re.IGNORECASE))
         except re.error as exc:
-            logger.warning("⚠️ Некорректный паттерн '%s': %s", pattern, exc)
+            logger.warning("вљ пёЏ РќРµРєРѕСЂСЂРµРєС‚РЅС‹Р№ РїР°С‚С‚РµСЂРЅ '%s': %s", pattern, exc)
         return False
 
     def _normalize_rule_pattern(self, value: str) -> str:
@@ -1040,7 +1040,7 @@ class BackupProcessor:
         msg,
         filename_patterns: list[str],
     ) -> list[dict]:
-        """Возвращает список вложений, подходящих под паттерны имени файла."""
+        """Р’РѕР·РІСЂР°С‰Р°РµС‚ СЃРїРёСЃРѕРє РІР»РѕР¶РµРЅРёР№, РїРѕРґС…РѕРґСЏС‰РёС… РїРѕРґ РїР°С‚С‚РµСЂРЅС‹ РёРјРµРЅРё С„Р°Р№Р»Р°."""
         matched: list[dict] = []
         if not msg.is_multipart():
             return matched
@@ -1072,7 +1072,7 @@ class BackupProcessor:
         msg,
         email_date: datetime | None,
     ) -> dict | None:
-        """Парсит письма с файлами остатков поставщиков."""
+        """РџР°СЂСЃРёС‚ РїРёСЃСЊРјР° СЃ С„Р°Р№Р»Р°РјРё РѕСЃС‚Р°С‚РєРѕРІ РїРѕСЃС‚Р°РІС‰РёРєРѕРІ."""
         if not extension_manager.is_extension_enabled("supplier_stock_files"):
             return None
 
@@ -1160,7 +1160,7 @@ class BackupProcessor:
                     if unpacked_path:
                         output_path = unpacked_path
                         logger.info(
-                            "📦 Вложение поставщика распаковано: %s -> %s",
+                            "рџ“¦ Р’Р»РѕР¶РµРЅРёРµ РїРѕСЃС‚Р°РІС‰РёРєР° СЂР°СЃРїР°РєРѕРІР°РЅРѕ: %s -> %s",
                             filename,
                             output_path,
                         )
@@ -1188,7 +1188,7 @@ class BackupProcessor:
                 append_supplier_stock_report(report_entry)
                 if processing_result:
                     logger.info(
-                        "🧩 Обработка остатков выполнена: %s",
+                        "рџ§© РћР±СЂР°Р±РѕС‚РєР° РѕСЃС‚Р°С‚РєРѕРІ РІС‹РїРѕР»РЅРµРЅР°: %s",
                         processing_result.get("rules"),
                     )
 
@@ -1196,7 +1196,7 @@ class BackupProcessor:
                 collected += 1
 
                 logger.info(
-                    "📦 Сохранено вложение поставщика: %s -> %s",
+                    "рџ“¦ РЎРѕС…СЂР°РЅРµРЅРѕ РІР»РѕР¶РµРЅРёРµ РїРѕСЃС‚Р°РІС‰РёРєР°: %s -> %s",
                     filename,
                     output_path,
                 )
@@ -1206,15 +1206,15 @@ class BackupProcessor:
 
             if collected < expected:
                 logger.warning(
-                    "⚠️ Для правила '%s' найдено %s/%s вложений",
-                    source.get("name") or source.get("id") or "без имени",
+                    "вљ пёЏ Р”Р»СЏ РїСЂР°РІРёР»Р° '%s' РЅР°Р№РґРµРЅРѕ %s/%s РІР»РѕР¶РµРЅРёР№",
+                    source.get("name") or source.get("id") or "Р±РµР· РёРјРµРЅРё",
                     collected,
                     expected,
                 )
 
         if not matched_files:
             logger.info(
-                "📭 Письмо не соответствует правилам остатков поставщиков: %s",
+                "рџ“­ РџРёСЃСЊРјРѕ РЅРµ СЃРѕРѕС‚РІРµС‚СЃС‚РІСѓРµС‚ РїСЂР°РІРёР»Р°Рј РѕСЃС‚Р°С‚РєРѕРІ РїРѕСЃС‚Р°РІС‰РёРєРѕРІ: %s",
                 subject[:80],
             )
             return None
@@ -1223,7 +1223,7 @@ class BackupProcessor:
         return {"supplier_stock_files": matched_files}
 
     def _match_stock_load_source(self, subject: str, patterns: dict[str, list[str]]) -> str:
-        """Определяет источник отчёта по теме письма."""
+        """РћРїСЂРµРґРµР»СЏРµС‚ РёСЃС‚РѕС‡РЅРёРє РѕС‚С‡С‘С‚Р° РїРѕ С‚РµРјРµ РїРёСЃСЊРјР°."""
         sources = patterns.get("sources", [])
         if isinstance(sources, list):
             for source in sources:
@@ -1237,14 +1237,14 @@ class BackupProcessor:
                     continue
                 if self._match_subject_patterns(subject, subject_patterns):
                     return name
-        return "Основное предприятие"
+        return "РћСЃРЅРѕРІРЅРѕРµ РїСЂРµРґРїСЂРёСЏС‚РёРµ"
 
     def parse_stock_load_log(
         self,
         content: str,
         patterns: dict[str, list[str]],
     ) -> list[dict]:
-        """Парсит содержимое лога загрузки остатков."""
+        """РџР°СЂСЃРёС‚ СЃРѕРґРµСЂР¶РёРјРѕРµ Р»РѕРіР° Р·Р°РіСЂСѓР·РєРё РѕСЃС‚Р°С‚РєРѕРІ."""
         file_entry_patterns = patterns.get("file_entry", [])
         success_patterns = patterns.get("success", [])
         failure_patterns = patterns.get("failure", [])
@@ -1265,7 +1265,7 @@ class BackupProcessor:
         entries: list[dict] = []
         current: dict | None = None
         fallback_entry = {
-            "supplier_name": "неизвестно",
+            "supplier_name": "РЅРµРёР·РІРµСЃС‚РЅРѕ",
             "file_path": None,
             "rows_count": None,
             "errors": [],
@@ -1325,7 +1325,7 @@ class BackupProcessor:
                 if path is None and file_match.lastindex and file_match.lastindex >= 2:
                     path = file_match.group(2)
 
-                supplier = " ".join((supplier or "").split()) or "неизвестно"
+                supplier = " ".join((supplier or "").split()) or "РЅРµРёР·РІРµСЃС‚РЅРѕ"
                 path = path.strip() if isinstance(path, str) else None
 
                 timestamp_match = re.match(
@@ -1475,7 +1475,7 @@ class BackupProcessor:
         source_name: str | None,
         email_date: datetime | None = None,
     ) -> None:
-        """Сохраняет результаты загрузки остатков в БД."""
+        """РЎРѕС…СЂР°РЅСЏРµС‚ СЂРµР·СѓР»СЊС‚Р°С‚С‹ Р·Р°РіСЂСѓР·РєРё РѕСЃС‚Р°С‚РєРѕРІ РІ Р‘Р”."""
         if not entries:
             return
 
@@ -1491,8 +1491,8 @@ class BackupProcessor:
 
             for entry in entries:
                 supplier_name = entry.get("supplier_name")
-                if not supplier_name or supplier_name == "неизвестно":
-                    supplier_name = source_name or "неизвестно"
+                if not supplier_name or supplier_name == "РЅРµРёР·РІРµСЃС‚РЅРѕ":
+                    supplier_name = source_name or "РЅРµРёР·РІРµСЃС‚РЅРѕ"
                 cursor.execute(
                     """
                     INSERT OR IGNORE INTO stock_load_results
@@ -1516,10 +1516,10 @@ class BackupProcessor:
                 )
 
             conn.commit()
-            logger.info("✅ Сохранены результаты загрузки остатков: %s", len(entries))
+            logger.info("вњ… РЎРѕС…СЂР°РЅРµРЅС‹ СЂРµР·СѓР»СЊС‚Р°С‚С‹ Р·Р°РіСЂСѓР·РєРё РѕСЃС‚Р°С‚РєРѕРІ: %s", len(entries))
 
         except Exception as exc:
-            logger.error(f"❌ Ошибка сохранения остатков в БД: {exc}")
+            logger.error(f"вќЊ РћС€РёР±РєР° СЃРѕС…СЂР°РЅРµРЅРёСЏ РѕСЃС‚Р°С‚РєРѕРІ РІ Р‘Р”: {exc}")
         finally:
             if "conn" in locals():
                 conn.close()
@@ -1530,7 +1530,7 @@ class BackupProcessor:
         msg,
         email_date: datetime | None,
     ) -> dict | None:
-        """Парсит письмо с логами загрузки остатков."""
+        """РџР°СЂСЃРёС‚ РїРёСЃСЊРјРѕ СЃ Р»РѕРіР°РјРё Р·Р°РіСЂСѓР·РєРё РѕСЃС‚Р°С‚РєРѕРІ."""
         if not extension_manager.is_extension_enabled("stock_load_monitor"):
             return None
 
@@ -1562,7 +1562,7 @@ class BackupProcessor:
         attachment_patterns = patterns.get("attachment", [])
         attachments = self._extract_matching_attachments(msg, attachment_patterns)
         if not attachments:
-            logger.warning("⚠️ Лог остатков не найден во вложениях письма: %s", subject)
+            logger.warning("вљ пёЏ Р›РѕРі РѕСЃС‚Р°С‚РєРѕРІ РЅРµ РЅР°Р№РґРµРЅ РІРѕ РІР»РѕР¶РµРЅРёСЏС… РїРёСЃСЊРјР°: %s", subject)
             return None
 
         all_entries: list[dict] = []
@@ -1579,15 +1579,15 @@ class BackupProcessor:
             all_entries.extend(entries)
 
         if not all_entries:
-            logger.warning("⚠️ Не удалось извлечь результаты остатков из письма: %s", subject)
+            logger.warning("вљ пёЏ РќРµ СѓРґР°Р»РѕСЃСЊ РёР·РІР»РµС‡СЊ СЂРµР·СѓР»СЊС‚Р°С‚С‹ РѕСЃС‚Р°С‚РєРѕРІ РёР· РїРёСЃСЊРјР°: %s", subject)
             return None
 
         return {"stock_load_entries": all_entries}
 
     def parse_email_file(self, file_path: Path) -> dict | None:
-        """Парсит email файл."""
+        """РџР°СЂСЃРёС‚ email С„Р°Р№Р»."""
         try:
-            logger.info(f"Обработка файла: {file_path}")
+            logger.info(f"РћР±СЂР°Р±РѕС‚РєР° С„Р°Р№Р»Р°: {file_path}")
 
             msg = message_from_bytes(
                 Path(file_path).read_bytes(),
@@ -1596,17 +1596,17 @@ class BackupProcessor:
 
             subject = msg.get("subject", "")
             email_date_str = msg.get("date", "")
-            logger.info(f"Тема письма: {subject}")
-            logger.info(f"Дата письма: {email_date_str}")
+            logger.info(f"РўРµРјР° РїРёСЃСЊРјР°: {subject}")
+            logger.info(f"Р”Р°С‚Р° РїРёСЃСЊРјР°: {email_date_str}")
 
             email_date = None
             if email_date_str:
                 try:
                     email_date = parsedate_to_datetime(email_date_str)
-                    logger.info(f"✅ Дата письма распарсена: {email_date}")
+                    logger.info(f"вњ… Р”Р°С‚Р° РїРёСЃСЊРјР° СЂР°СЃРїР°СЂСЃРµРЅР°: {email_date}")
                 except Exception as exc:
                     logger.warning(
-                        "Не удалось распарсить дату письма '%s': %s",
+                        "РќРµ СѓРґР°Р»РѕСЃСЊ СЂР°СЃРїР°СЂСЃРёС‚СЊ РґР°С‚Сѓ РїРёСЃСЊРјР° '%s': %s",
                         email_date_str,
                         exc,
                     )
@@ -1616,22 +1616,22 @@ class BackupProcessor:
                             "%a, %d %b %Y %H:%M:%S %z",
                         )
                         logger.info(
-                            "✅ Дата письма распарсена альтернативным методом: %s",
+                            "вњ… Р”Р°С‚Р° РїРёСЃСЊРјР° СЂР°СЃРїР°СЂСЃРµРЅР° Р°Р»СЊС‚РµСЂРЅР°С‚РёРІРЅС‹Рј РјРµС‚РѕРґРѕРј: %s",
                             email_date,
                         )
                     except Exception:
                         logger.warning(
-                            "❌ Не удалось распарсить дату альтернативным методом, используем текущее время"
+                            "вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ СЂР°СЃРїР°СЂСЃРёС‚СЊ РґР°С‚Сѓ Р°Р»СЊС‚РµСЂРЅР°С‚РёРІРЅС‹Рј РјРµС‚РѕРґРѕРј, РёСЃРїРѕР»СЊР·СѓРµРј С‚РµРєСѓС‰РµРµ РІСЂРµРјСЏ"
                         )
                         email_date = datetime.now()
             else:
-                logger.warning("❌ Дата письма отсутствует, используем текущее время")
+                logger.warning("вќЊ Р”Р°С‚Р° РїРёСЃСЊРјР° РѕС‚СЃСѓС‚СЃС‚РІСѓРµС‚, РёСЃРїРѕР»СЊР·СѓРµРј С‚РµРєСѓС‰РµРµ РІСЂРµРјСЏ")
                 email_date = datetime.now()
 
             db_backup_info = self.parse_database_backup(subject, self.get_email_body(msg))
             if db_backup_info:
                 logger.info(
-                    "📊 Обнаружен бэкап базы данных: %s",
+                    "рџ“Љ РћР±РЅР°СЂСѓР¶РµРЅ Р±СЌРєР°Рї Р±Р°Р·С‹ РґР°РЅРЅС‹С…: %s",
                     db_backup_info["database_display_name"],
                 )
                 self.save_database_backup(db_backup_info, subject, email_date)
@@ -1657,14 +1657,14 @@ class BackupProcessor:
 
             if not self.is_proxmox_backup_email(subject):
                 logger.info(
-                    "Пропускаем не-Proxmox/БД/ZFS/почта/остатки письмо: %s...",
+                    "РџСЂРѕРїСѓСЃРєР°РµРј РЅРµ-Proxmox/Р‘Р”/ZFS/РїРѕС‡С‚Р°/РѕСЃС‚Р°С‚РєРё РїРёСЃСЊРјРѕ: %s...",
                     subject[:50],
                 )
                 return None
 
             backup_info = self.parse_subject(subject)
             if not backup_info:
-                logger.warning("Не удалось извлечь информацию из темы")
+                logger.warning("РќРµ СѓРґР°Р»РѕСЃСЊ РёР·РІР»РµС‡СЊ РёРЅС„РѕСЂРјР°С†РёСЋ РёР· С‚РµРјС‹")
                 return None
 
             body = self.get_email_body(msg)
@@ -1675,11 +1675,11 @@ class BackupProcessor:
             return backup_info
 
         except Exception as exc:
-            logger.error(f"Ошибка парсинга файла {file_path}: {exc}")
+            logger.error(f"РћС€РёР±РєР° РїР°СЂСЃРёРЅРіР° С„Р°Р№Р»Р° {file_path}: {exc}")
             return None
 
     def is_proxmox_backup_email(self, subject: str) -> bool:
-        """Проверяет, является ли письмо отчетом о бэкапе Proxmox."""
+        """РџСЂРѕРІРµСЂСЏРµС‚, СЏРІР»СЏРµС‚СЃСЏ Р»Рё РїРёСЃСЊРјРѕ РѕС‚С‡РµС‚РѕРј Рѕ Р±СЌРєР°РїРµ Proxmox."""
         subject_lower = subject.lower()
         return any(
             keyword in subject_lower
@@ -1692,7 +1692,7 @@ class BackupProcessor:
         )
 
     def parse_subject(self, subject: str) -> dict | None:
-        """Парсит тему письма."""
+        """РџР°СЂСЃРёС‚ С‚РµРјСѓ РїРёСЃСЊРјР°."""
         if "pve2-rubicon" in subject.lower():
             host_name = "pve2-rubicon"
             status_match = re.search(r":\s*([^:]+)$", subject)
@@ -1721,14 +1721,14 @@ class BackupProcessor:
 
         host_match = re.search(r"\(([^)]+)\)", subject)
         if not host_match:
-            logger.warning(f"Не удалось извлечь имя хоста: {subject}")
+            logger.warning(f"РќРµ СѓРґР°Р»РѕСЃСЊ РёР·РІР»РµС‡СЊ РёРјСЏ С…РѕСЃС‚Р°: {subject}")
             return None
 
         host_name = host_match.group(1).split(".")[0]
 
         status_match = re.search(r":\s*([^:]+)$", subject)
         if not status_match:
-            logger.warning(f"Не удалось извлечь статус: {subject}")
+            logger.warning(f"РќРµ СѓРґР°Р»РѕСЃСЊ РёР·РІР»РµС‡СЊ СЃС‚Р°С‚СѓСЃ: {subject}")
             return None
 
         raw_status = status_match.group(1).strip().lower()
@@ -1742,7 +1742,7 @@ class BackupProcessor:
         }
 
     def normalize_status(self, raw_status: str) -> str:
-        """Нормализует статус бэкапа."""
+        """РќРѕСЂРјР°Р»РёР·СѓРµС‚ СЃС‚Р°С‚СѓСЃ Р±СЌРєР°РїР°."""
         status_map = {
             "backup successful": "success",
             "successful": "success",
@@ -1754,7 +1754,7 @@ class BackupProcessor:
         return status_map.get(raw_status, raw_status)
 
     def get_email_body(self, msg) -> str:
-        """Извлекает тело письма."""
+        """РР·РІР»РµРєР°РµС‚ С‚РµР»Рѕ РїРёСЃСЊРјР°."""
         try:
             if msg.is_multipart():
                 for part in msg.walk():
@@ -1764,12 +1764,12 @@ class BackupProcessor:
             else:
                 return msg.get_content()
         except Exception as exc:
-            logger.error(f"Ошибка извлечения тела письма: {exc}")
+            logger.error(f"РћС€РёР±РєР° РёР·РІР»РµС‡РµРЅРёСЏ С‚РµР»Р° РїРёСЃСЊРјР°: {exc}")
 
         return ""
 
     def parse_body(self, body: str) -> dict:
-        """Парсит тело письма для извлечения корректной информации."""
+        """РџР°СЂСЃРёС‚ С‚РµР»Рѕ РїРёСЃСЊРјР° РґР»СЏ РёР·РІР»РµС‡РµРЅРёСЏ РєРѕСЂСЂРµРєС‚РЅРѕР№ РёРЅС„РѕСЂРјР°С†РёРё."""
         info = {
             "duration": None,
             "total_size": None,
@@ -1850,12 +1850,12 @@ class BackupProcessor:
                     info["duration"] = self.seconds_to_duration(total_seconds)
 
         except Exception as exc:
-            logger.error(f"Ошибка парсинга тела письма: {exc}")
+            logger.error(f"РћС€РёР±РєР° РїР°СЂСЃРёРЅРіР° С‚РµР»Р° РїРёСЃСЊРјР°: {exc}")
 
         return info
 
     def parse_duration(self, duration_str: str) -> str:
-        """Парсит строку длительности в читаемый формат."""
+        """РџР°СЂСЃРёС‚ СЃС‚СЂРѕРєСѓ РґР»РёС‚РµР»СЊРЅРѕСЃС‚Рё РІ С‡РёС‚Р°РµРјС‹Р№ С„РѕСЂРјР°С‚."""
         try:
             duration_str = duration_str.lower().replace(" ", "")
 
@@ -1882,11 +1882,11 @@ class BackupProcessor:
             return f"{seconds}s"
 
         except Exception as exc:
-            logger.error(f"Ошибка парсинга длительности '{duration_str}': {exc}")
+            logger.error(f"РћС€РёР±РєР° РїР°СЂСЃРёРЅРіР° РґР»РёС‚РµР»СЊРЅРѕСЃС‚Рё '{duration_str}': {exc}")
             return duration_str
 
     def duration_to_seconds(self, duration_str: str) -> int:
-        """Конвертирует строку длительности в секунды."""
+        """РљРѕРЅРІРµСЂС‚РёСЂСѓРµС‚ СЃС‚СЂРѕРєСѓ РґР»РёС‚РµР»СЊРЅРѕСЃС‚Рё РІ СЃРµРєСѓРЅРґС‹."""
         try:
             total_seconds = 0
             duration_str = duration_str.lower().replace(" ", "")
@@ -1904,7 +1904,7 @@ class BackupProcessor:
             return 0
 
     def seconds_to_duration(self, total_seconds: int) -> str:
-        """Конвертирует секунды в читаемую длительность."""
+        """РљРѕРЅРІРµСЂС‚РёСЂСѓРµС‚ СЃРµРєСѓРЅРґС‹ РІ С‡РёС‚Р°РµРјСѓСЋ РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ."""
         hours = total_seconds // 3600
         minutes = (total_seconds % 3600) // 60
         seconds = total_seconds % 60
@@ -1916,7 +1916,7 @@ class BackupProcessor:
         return f"{seconds}s"
 
     def save_backup_report(self, backup_info: dict, subject: str, email_date: datetime | None = None) -> None:
-        """Сохраняет отчет в базу с корректным временем, игнорируя дубликаты."""
+        """РЎРѕС…СЂР°РЅСЏРµС‚ РѕС‚С‡РµС‚ РІ Р±Р°Р·Сѓ СЃ РєРѕСЂСЂРµРєС‚РЅС‹Рј РІСЂРµРјРµРЅРµРј, РёРіРЅРѕСЂРёСЂСѓСЏ РґСѓР±Р»РёРєР°С‚С‹."""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
@@ -1948,13 +1948,13 @@ class BackupProcessor:
 
             conn.commit()
             logger.info(
-                "✅ Сохранен бэкап: %s - %s",
+                "вњ… РЎРѕС…СЂР°РЅРµРЅ Р±СЌРєР°Рї: %s - %s",
                 backup_info["host_name"],
                 backup_info["backup_status"],
             )
 
         except Exception as exc:
-            logger.error(f"❌ Ошибка сохранения в БД: {exc}")
+            logger.error(f"вќЊ РћС€РёР±РєР° СЃРѕС…СЂР°РЅРµРЅРёСЏ РІ Р‘Р”: {exc}")
         finally:
             if "conn" in locals():
                 conn.close()
@@ -1962,38 +1962,38 @@ class BackupProcessor:
 
 def run_mail_monitor() -> int:
     """
-    Запускает обработку новых писем с отчётами о бэкапах.
+    Р—Р°РїСѓСЃРєР°РµС‚ РѕР±СЂР°Р±РѕС‚РєСѓ РЅРѕРІС‹С… РїРёСЃРµРј СЃ РѕС‚С‡С‘С‚Р°РјРё Рѕ Р±СЌРєР°РїР°С….
 
     Returns:
-        Количество обработанных писем.
+        РљРѕР»РёС‡РµСЃС‚РІРѕ РѕР±СЂР°Р±РѕС‚Р°РЅРЅС‹С… РїРёСЃРµРј.
     """
     processor = BackupProcessor()
     return processor.process_new_emails()
 
 
 def main() -> None:
-    """Основная функция."""
-    logger.info("🔄 Запуск исправленного мониторинга почты Proxmox бэкапов...")
+    """РћСЃРЅРѕРІРЅР°СЏ С„СѓРЅРєС†РёСЏ."""
+    logger.info("рџ”„ Р—Р°РїСѓСЃРє РёСЃРїСЂР°РІР»РµРЅРЅРѕРіРѕ РјРѕРЅРёС‚РѕСЂРёРЅРіР° РїРѕС‡С‚С‹ Proxmox Р±СЌРєР°РїРѕРІ...")
 
     try:
         processor = BackupProcessor()
 
-        logger.info("📧 Мониторинг директорий: /root/Maildir/new и /root/Maildir/cur")
+        logger.info("рџ“§ РњРѕРЅРёС‚РѕСЂРёРЅРі РґРёСЂРµРєС‚РѕСЂРёР№: /root/Maildir/new Рё /root/Maildir/cur")
 
         while True:
             try:
                 processed = processor.process_new_emails()
                 if processed > 0:
-                    logger.info(f"✅ Обработано новых писем: {processed}")
+                    logger.info(f"вњ… РћР±СЂР°Р±РѕС‚Р°РЅРѕ РЅРѕРІС‹С… РїРёСЃРµРј: {processed}")
 
                 time.sleep(30)
 
             except Exception as exc:
-                logger.error(f"❌ Ошибка в основном цикле: {exc}")
+                logger.error(f"вќЊ РћС€РёР±РєР° РІ РѕСЃРЅРѕРІРЅРѕРј С†РёРєР»Рµ: {exc}")
                 time.sleep(60)
 
     except Exception as exc:
-        logger.error(f"💥 Критическая ошибка: {exc}")
+        logger.error(f"рџ’Ґ РљСЂРёС‚РёС‡РµСЃРєР°СЏ РѕС€РёР±РєР°: {exc}")
         raise
 
 

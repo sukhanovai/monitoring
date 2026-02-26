@@ -1,14 +1,14 @@
 """
 /lib/common.py
-Server Monitoring System v8.5.0
+Server Monitoring System v8.6.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 General system utilities
-Система мониторинга серверов
-Версия: 8.5.0
-Автор: Александр Суханов (c)
-Лицензия: MIT
-Общие утилиты системы
+РЎРёСЃС‚РµРјР° РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЃРµСЂРІРµСЂРѕРІ
+Р’РµСЂСЃРёСЏ: 8.6.0
+РђРІС‚РѕСЂ: РђР»РµРєСЃР°РЅРґСЂ РЎСѓС…Р°РЅРѕРІ (c)
+Р›РёС†РµРЅР·РёСЏ: MIT
+РћР±С‰РёРµ СѓС‚РёР»РёС‚С‹ СЃРёСЃС‚РµРјС‹
 """
 
 import importlib
@@ -21,11 +21,11 @@ except ImportError:
 from lib.logging import setup_logging as _setup_logging, get_logger
 
 def setup_logging():
-    """Настройка централизованного логирования"""
+    """РќР°СЃС‚СЂРѕР№РєР° С†РµРЅС‚СЂР°Р»РёР·РѕРІР°РЅРЅРѕРіРѕ Р»РѕРіРёСЂРѕРІР°РЅРёСЏ"""
     return _setup_logging()
 
 def debug_log(message, force=False):
-    """Централизованное логирование отладки"""
+    """Р¦РµРЅС‚СЂР°Р»РёР·РѕРІР°РЅРЅРѕРµ Р»РѕРіРёСЂРѕРІР°РЅРёРµ РѕС‚Р»Р°РґРєРё"""
     logger = get_logger(__name__)
     if DEBUG_MODE or force:
         logger.debug(message)
@@ -33,7 +33,7 @@ def debug_log(message, force=False):
         logger.info(message)
         
 def safe_import(module_name, class_name=None):
-    """Безопасный импорт с обработкой ошибок"""
+    """Р‘РµР·РѕРїР°СЃРЅС‹Р№ РёРјРїРѕСЂС‚ СЃ РѕР±СЂР°Р±РѕС‚РєРѕР№ РѕС€РёР±РѕРє"""
     try:
         module = importlib.import_module(module_name)
         if class_name:
@@ -47,7 +47,7 @@ def safe_import(module_name, class_name=None):
         return None
 
 def format_duration(seconds):
-    """Форматирование длительности в читаемый вид"""
+    """Р¤РѕСЂРјР°С‚РёСЂРѕРІР°РЅРёРµ РґР»РёС‚РµР»СЊРЅРѕСЃС‚Рё РІ С‡РёС‚Р°РµРјС‹Р№ РІРёРґ"""
     hours = seconds // 3600
     minutes = (seconds % 3600) // 60
     seconds = seconds % 60
@@ -60,15 +60,15 @@ def format_duration(seconds):
         return f"{seconds}s"
 
 def progress_bar(percentage, width=20):
-    """Универсальный прогресс-бар"""
+    """РЈРЅРёРІРµСЂСЃР°Р»СЊРЅС‹Р№ РїСЂРѕРіСЂРµСЃСЃ-Р±Р°СЂ"""
     filled = int(round(width * percentage / 100))
-    bar = f"[{'█' * filled}{'░' * (width - filled)}] {percentage:.1f}%"
+    bar = f"[{'в–€' * filled}{'в–‘' * (width - filled)}] {percentage:.1f}%"
     return bar
 
 def is_proxmox_server(ip):
-    """Проверяет, является ли сервер Proxmox (устаревшая обертка)."""
+    """РџСЂРѕРІРµСЂСЏРµС‚, СЏРІР»СЏРµС‚СЃСЏ Р»Рё СЃРµСЂРІРµСЂ Proxmox (СѓСЃС‚Р°СЂРµРІС€Р°СЏ РѕР±РµСЂС‚РєР°)."""
     warnings.warn(
-        "lib.common.is_proxmox_server устарела; используйте lib.utils.is_proxmox_server.",
+        "lib.common.is_proxmox_server СѓСЃС‚Р°СЂРµР»Р°; РёСЃРїРѕР»СЊР·СѓР№С‚Рµ lib.utils.is_proxmox_server.",
         DeprecationWarning,
         stacklevel=2,
     )

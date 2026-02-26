@@ -187,7 +187,7 @@ data class WindowsCredential(
     val password: String? = null,
     @Json(name = "server_type") val serverType: String? = null,
     val priority: Int? = null,
-    val enabled: Boolean? = null
+    val enabled: Int? = null
 )
 
 data class WindowsCredentialsResponse(

@@ -1,14 +1,14 @@
 """
 /lib/network.py
-Server Monitoring System v8.5.0
+Server Monitoring System v8.6.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Network utilities
-Система мониторинга серверов
-Версия: 8.5.0
-Автор: Александр Суханов (c)
-Лицензия: MIT
-Сетевые утилиты
+РЎРёСЃС‚РµРјР° РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЃРµСЂРІРµСЂРѕРІ
+Р’РµСЂСЃРёСЏ: 8.6.0
+РђРІС‚РѕСЂ: РђР»РµРєСЃР°РЅРґСЂ РЎСѓС…Р°РЅРѕРІ (c)
+Р›РёС†РµРЅР·РёСЏ: MIT
+РЎРµС‚РµРІС‹Рµ СѓС‚РёР»РёС‚С‹
 """
 
 import socket
@@ -19,15 +19,15 @@ from lib.logging import debug_log
 
 def check_port(ip: str, port: int, timeout: int = 5) -> bool:
     """
-    Проверка доступности порта
+    РџСЂРѕРІРµСЂРєР° РґРѕСЃС‚СѓРїРЅРѕСЃС‚Рё РїРѕСЂС‚Р°
     
     Args:
-        ip: IP адрес
-        port: Номер порта
-        timeout: Таймаут в секундах
+        ip: IP Р°РґСЂРµСЃ
+        port: РќРѕРјРµСЂ РїРѕСЂС‚Р°
+        timeout: РўР°Р№РјР°СѓС‚ РІ СЃРµРєСѓРЅРґР°С…
         
     Returns:
-        True если порт доступен
+        True РµСЃР»Рё РїРѕСЂС‚ РґРѕСЃС‚СѓРїРµРЅ
     """
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -41,14 +41,14 @@ def check_port(ip: str, port: int, timeout: int = 5) -> bool:
 
 def check_ping(ip: str, timeout: int = 10) -> bool:
     """
-    Проверка доступности через ping
+    РџСЂРѕРІРµСЂРєР° РґРѕСЃС‚СѓРїРЅРѕСЃС‚Рё С‡РµСЂРµР· ping
     
     Args:
-        ip: IP адрес
-        timeout: Таймаут в секундах
+        ip: IP Р°РґСЂРµСЃ
+        timeout: РўР°Р№РјР°СѓС‚ РІ СЃРµРєСѓРЅРґР°С…
         
     Returns:
-        True если сервер отвечает на ping
+        True РµСЃР»Рё СЃРµСЂРІРµСЂ РѕС‚РІРµС‡Р°РµС‚ РЅР° ping
     """
     try:
         result = subprocess.run(
@@ -67,13 +67,13 @@ def check_ping(ip: str, timeout: int = 10) -> bool:
 
 def resolve_hostname(ip: str) -> str:
     """
-    Разрешает IP в hostname
+    Р Р°Р·СЂРµС€Р°РµС‚ IP РІ hostname
     
     Args:
-        ip: IP адрес
+        ip: IP Р°РґСЂРµСЃ
         
     Returns:
-        Hostname или оригинальный IP при ошибке
+        Hostname РёР»Рё РѕСЂРёРіРёРЅР°Р»СЊРЅС‹Р№ IP РїСЂРё РѕС€РёР±РєРµ
     """
     try:
         hostname = socket.gethostbyaddr(ip)[0]
@@ -86,14 +86,14 @@ def resolve_hostname(ip: str) -> str:
 
 def get_network_latency(ip: str, count: int = 3) -> Optional[float]:
     """
-    Измеряет сетевую задержку
+    РР·РјРµСЂСЏРµС‚ СЃРµС‚РµРІСѓСЋ Р·Р°РґРµСЂР¶РєСѓ
     
     Args:
-        ip: IP адрес
-        count: Количество попыток
+        ip: IP Р°РґСЂРµСЃ
+        count: РљРѕР»РёС‡РµСЃС‚РІРѕ РїРѕРїС‹С‚РѕРє
         
     Returns:
-        Средняя задержка в мс или None при ошибке
+        РЎСЂРµРґРЅСЏСЏ Р·Р°РґРµСЂР¶РєР° РІ РјСЃ РёР»Рё None РїСЂРё РѕС€РёР±РєРµ
     """
     try:
         total_time = 0
@@ -108,7 +108,7 @@ def get_network_latency(ip: str, count: int = 3) -> Optional[float]:
             )
             
             if result.returncode == 0:
-                # Парсим время из вывода ping
+                # РџР°СЂСЃРёРј РІСЂРµРјСЏ РёР· РІС‹РІРѕРґР° ping
                 for line in result.stdout.split('\n'):
                     if 'time=' in line:
                         try:

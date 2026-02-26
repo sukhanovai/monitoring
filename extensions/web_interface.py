@@ -1,14 +1,14 @@
 """
 /extensions/supplier_stock_files.py
-Server Monitoring System v8.5.0
+Server Monitoring System v8.6.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
-Система мониторинга серверов
-Версия: 8.5.0
-Автор: Александр Суханов (c)
-Лицензия: MIT
-Веб-интерфейс
+РЎРёСЃС‚РµРјР° РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЃРµСЂРІРµСЂРѕРІ
+Р’РµСЂСЃРёСЏ: 8.6.0
+РђРІС‚РѕСЂ: РђР»РµРєСЃР°РЅРґСЂ РЎСѓС…Р°РЅРѕРІ (c)
+Р›РёС†РµРЅР·РёСЏ: MIT
+Р’РµР±-РёРЅС‚РµСЂС„РµР№СЃ
 """
 
 from flask import Flask, jsonify, render_template_string, request
@@ -23,14 +23,14 @@ import sys
 
 app = Flask(__name__)
 
-# HTML шаблон с вкладками и темной темой (без вкладки Ресурсы)
+# HTML С€Р°Р±Р»РѕРЅ СЃ РІРєР»Р°РґРєР°РјРё Рё С‚РµРјРЅРѕР№ С‚РµРјРѕР№ (Р±РµР· РІРєР»Р°РґРєРё Р РµСЃСѓСЂСЃС‹)
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🌐 Мониторинг серверов</title>
+    <title>рџЊђ РњРѕРЅРёС‚РѕСЂРёРЅРі СЃРµСЂРІРµСЂРѕРІ</title>
     <style>
         * {
             margin: 0;
@@ -67,7 +67,7 @@ HTML_TEMPLATE = """
             color: #aaa;
         }
         
-        /* Вкладки */
+        /* Р’РєР»Р°РґРєРё */
         .tabs {
             display: flex;
             background: rgba(30, 30, 40, 0.95);
@@ -104,7 +104,7 @@ HTML_TEMPLATE = """
             display: block;
         }
         
-        /* Общие стили карточек */
+        /* РћР±С‰РёРµ СЃС‚РёР»Рё РєР°СЂС‚РѕС‡РµРє */
         .dashboard {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -145,7 +145,7 @@ HTML_TEMPLATE = """
         .status-info { color: #2196F3; }
         .status-critical { color: #ff4444; }
         
-        /* Стили для списка серверов */
+        /* РЎС‚РёР»Рё РґР»СЏ СЃРїРёСЃРєР° СЃРµСЂРІРµСЂРѕРІ */
         .server-list {
             max-height: 600px;
             overflow-y: auto;
@@ -231,7 +231,7 @@ HTML_TEMPLATE = """
             color: #333;
         }
         
-        /* Кнопки */
+        /* РљРЅРѕРїРєРё */
         .controls {
             display: flex;
             gap: 10px;
@@ -285,7 +285,7 @@ HTML_TEMPLATE = """
             font-size: 0.9em;
         }
         
-        /* Анимации */
+        /* РђРЅРёРјР°С†РёРё */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
@@ -324,121 +324,121 @@ HTML_TEMPLATE = """
 <body>
     <div class="container">
         <div class="header">
-            <h1>🌐 Мониторинг серверов</h1>
-            <div class="status">Система работает • Последнее обновление: <span id="lastUpdate">{{ last_update }}</span></div>
+            <h1>рџЊђ РњРѕРЅРёС‚РѕСЂРёРЅРі СЃРµСЂРІРµСЂРѕРІ</h1>
+            <div class="status">РЎРёСЃС‚РµРјР° СЂР°Р±РѕС‚Р°РµС‚ вЂў РџРѕСЃР»РµРґРЅРµРµ РѕР±РЅРѕРІР»РµРЅРёРµ: <span id="lastUpdate">{{ last_update }}</span></div>
         </div>
         
-        <!-- Вкладки -->
+        <!-- Р’РєР»Р°РґРєРё -->
         <div class="tabs">
-            <div class="tab active" onclick="switchTab('overview')">📊 Обзор</div>
-            <div class="tab" onclick="switchTab('servers')">🖥️ Сервера</div>
-            <div class="tab" onclick="switchTab('server-management')">⚙️ Управление серверами</div>
-            <div class="tab" onclick="switchTab('controls')">🎛️ Управление</div>
+            <div class="tab active" onclick="switchTab('overview')">рџ“Љ РћР±Р·РѕСЂ</div>
+            <div class="tab" onclick="switchTab('servers')">рџ–ҐпёЏ РЎРµСЂРІРµСЂР°</div>
+            <div class="tab" onclick="switchTab('server-management')">вљ™пёЏ РЈРїСЂР°РІР»РµРЅРёРµ СЃРµСЂРІРµСЂР°РјРё</div>
+            <div class="tab" onclick="switchTab('controls')">рџЋ›пёЏ РЈРїСЂР°РІР»РµРЅРёРµ</div>
         </div>
         
-        <!-- Содержимое вкладки Обзор -->
+        <!-- РЎРѕРґРµСЂР¶РёРјРѕРµ РІРєР»Р°РґРєРё РћР±Р·РѕСЂ -->
         <div id="overview" class="tab-content active">
             <div class="dashboard">
                 <div class="card">
-                    <h2>📊 Общая статистика</h2>
+                    <h2>рџ“Љ РћР±С‰Р°СЏ СЃС‚Р°С‚РёСЃС‚РёРєР°</h2>
                     <div class="stat-item">
-                        <span>Всего серверов:</span>
+                        <span>Р’СЃРµРіРѕ СЃРµСЂРІРµСЂРѕРІ:</span>
                         <span class="stat-value">{{ stats.total_servers }}</span>
                     </div>
                     <div class="stat-item">
-                        <span>Доступно:</span>
+                        <span>Р”РѕСЃС‚СѓРїРЅРѕ:</span>
                         <span class="stat-value status-up">{{ stats.servers_up }}</span>
                     </div>
                     <div class="stat-item">
-                        <span>Недоступно:</span>
+                        <span>РќРµРґРѕСЃС‚СѓРїРЅРѕ:</span>
                         <span class="stat-value status-down">{{ stats.servers_down }}</span>
                     </div>
                     <div class="stat-item">
-                        <span>Доступность:</span>
+                        <span>Р”РѕСЃС‚СѓРїРЅРѕСЃС‚СЊ:</span>
                         <span class="stat-value">{{ stats.availability_percentage }}%</span>
                     </div>
                 </div>
                 
                 <div class="card">
-                    <h2>🔄 Мониторинг</h2>
+                    <h2>рџ”„ РњРѕРЅРёС‚РѕСЂРёРЅРі</h2>
                     <div class="stat-item">
-                        <span>Статус:</span>
+                        <span>РЎС‚Р°С‚СѓСЃ:</span>
                         <span class="stat-value status-info">{{ stats.monitoring_mode }}</span>
                     </div>
                     <div class="stat-item">
-                        <span>Тихий режим:</span>
+                        <span>РўРёС…РёР№ СЂРµР¶РёРј:</span>
                         <span class="stat-value">{{ stats.silent_mode }}</span>
                     </div>
                     <div class="stat-item">
-                        <span>Последняя проверка:</span>
+                        <span>РџРѕСЃР»РµРґРЅСЏСЏ РїСЂРѕРІРµСЂРєР°:</span>
                         <span class="stat-value">{{ stats.last_check_time }}</span>
                     </div>
                     <div class="stat-item">
-                        <span>Интервал:</span>
-                        <span class="stat-value">{{ stats.check_interval }} сек</span>
+                        <span>РРЅС‚РµСЂРІР°Р»:</span>
+                        <span class="stat-value">{{ stats.check_interval }} СЃРµРє</span>
                     </div>
                 </div>
                 
                 <div class="card">
-                    <h2>📈 Ресурсы</h2>
+                    <h2>рџ“€ Р РµСЃСѓСЂСЃС‹</h2>
                     <div class="stat-item">
-                        <span>Проверка ресурсов:</span>
+                        <span>РџСЂРѕРІРµСЂРєР° СЂРµСЃСѓСЂСЃРѕРІ:</span>
                         <span class="stat-value">{{ stats.resource_check_status }}</span>
                     </div>
                     <div class="stat-item">
-                        <span>Интервал проверки:</span>
-                        <span class="stat-value">{{ stats.resource_check_interval }} мин</span>
+                        <span>РРЅС‚РµСЂРІР°Р» РїСЂРѕРІРµСЂРєРё:</span>
+                        <span class="stat-value">{{ stats.resource_check_interval }} РјРёРЅ</span>
                     </div>
                     <div class="stat-item">
-                        <span>Проблем с ресурсами:</span>
+                        <span>РџСЂРѕР±Р»РµРј СЃ СЂРµСЃСѓСЂСЃР°РјРё:</span>
                         <span class="stat-value status-warning">{{ stats.resource_alerts }}</span>
                     </div>
                     <div class="stat-item">
-                        <span>Время работы:</span>
+                        <span>Р’СЂРµРјСЏ СЂР°Р±РѕС‚С‹:</span>
                         <span class="stat-value">{{ stats.uptime }}</span>
                     </div>
                 </div>
             </div>
             
             <div class="controls">
-                <button class="btn btn-success" onclick="runCheck('quick')">🔍 Быстрая проверка</button>
-                <button class="btn btn-info" onclick="runCheck('resources')">📈 Проверить ресурсы</button>
-                <button class="btn btn-warning" onclick="runCheck('report')">📊 Сформировать отчет</button>
+                <button class="btn btn-success" onclick="runCheck('quick')">рџ”Ќ Р‘С‹СЃС‚СЂР°СЏ РїСЂРѕРІРµСЂРєР°</button>
+                <button class="btn btn-info" onclick="runCheck('resources')">рџ“€ РџСЂРѕРІРµСЂРёС‚СЊ СЂРµСЃСѓСЂСЃС‹</button>
+                <button class="btn btn-warning" onclick="runCheck('report')">рџ“Љ РЎС„РѕСЂРјРёСЂРѕРІР°С‚СЊ РѕС‚С‡РµС‚</button>
             </div>
         </div>
         
-        <!-- Содержимое вкладки Сервера -->
+        <!-- РЎРѕРґРµСЂР¶РёРјРѕРµ РІРєР»Р°РґРєРё РЎРµСЂРІРµСЂР° -->
         <div id="servers" class="tab-content">
-            <h2 style="margin-bottom: 20px;">🖥️ Статус серверов</h2>
+            <h2 style="margin-bottom: 20px;">рџ–ҐпёЏ РЎС‚Р°С‚СѓСЃ СЃРµСЂРІРµСЂРѕРІ</h2>
             <div class="server-list">
                 {% for server in servers %}
                 <div class="server-item {% if server.status == 'down' %}down{% elif server.status == 'warning' %}warning{% endif %} fade-in">
                     <div class="server-info">
                         <div class="server-name">{{ server.name }}</div>
-                        <div class="server-details">{{ server.ip }} • {{ server.type.upper() }} • {{ server.os }}</div>
+                        <div class="server-details">{{ server.ip }} вЂў {{ server.type.upper() }} вЂў {{ server.os }}</div>
                         {% if server.resources %}
                         <div class="server-resources">
                             <div class="resource-item">
-                                <span>💻 CPU:</span>
+                                <span>рџ’» CPU:</span>
                                 <span class="resource-cpu {{ server.resources.cpu_class }}">{{ server.resources.cpu }}%</span>
                             </div>
                             <div class="resource-item">
-                                <span>🧠 RAM:</span>
+                                <span>рџ§  RAM:</span>
                                 <span class="resource-ram {{ server.resources.ram_class }}">{{ server.resources.ram }}%</span>
                             </div>
                             <div class="resource-item">
-                                <span>💾 Disk:</span>
+                                <span>рџ’ѕ Disk:</span>
                                 <span class="resource-disk {{ server.resources.disk_class }}">{{ server.resources.disk }}%</span>
                             </div>
                             {% if server.resources.load_avg and server.resources.load_avg != 'N/A' %}
                             <div class="resource-item">
-                                <span>📊 Load:</span>
+                                <span>рџ“Љ Load:</span>
                                 <span>{{ server.resources.load_avg }}</span>
                             </div>
                             {% endif %}
                             {% if server.resources.uptime and server.resources.uptime != 'N/A' %}
                             <div class="resource-item">
-                                <span>⏱️ Uptime:</span>
+                                <span>вЏ±пёЏ Uptime:</span>
                                 <span>{{ server.resources.uptime }}</span>
                             </div>
                             {% endif %}
@@ -453,89 +453,89 @@ HTML_TEMPLATE = """
             </div>
         </div>
         
-        <!-- Содержимое вкладки Управление серверами -->
+        <!-- РЎРѕРґРµСЂР¶РёРјРѕРµ РІРєР»Р°РґРєРё РЈРїСЂР°РІР»РµРЅРёРµ СЃРµСЂРІРµСЂР°РјРё -->
         <div id="server-management" class="tab-content">
-            <h2 style="margin-bottom: 20px;">⚙️ Управление списком серверов</h2>
+            <h2 style="margin-bottom: 20px;">вљ™пёЏ РЈРїСЂР°РІР»РµРЅРёРµ СЃРїРёСЃРєРѕРј СЃРµСЂРІРµСЂРѕРІ</h2>
             
             <div class="card">
-                <h2>📋 Список серверов</h2>
+                <h2>рџ“‹ РЎРїРёСЃРѕРє СЃРµСЂРІРµСЂРѕРІ</h2>
                 <div id="serverListContainer">
-                    <!-- Список серверов будет загружен здесь -->
+                    <!-- РЎРїРёСЃРѕРє СЃРµСЂРІРµСЂРѕРІ Р±СѓРґРµС‚ Р·Р°РіСЂСѓР¶РµРЅ Р·РґРµСЃСЊ -->
                 </div>
-                <button class="btn btn-success" onclick="loadServerList()">🔄 Обновить список</button>
+                <button class="btn btn-success" onclick="loadServerList()">рџ”„ РћР±РЅРѕРІРёС‚СЊ СЃРїРёСЃРѕРє</button>
             </div>
             
             <div class="card">
-                <h2>➕ Добавить новый сервер</h2>
+                <h2>вћ• Р”РѕР±Р°РІРёС‚СЊ РЅРѕРІС‹Р№ СЃРµСЂРІРµСЂ</h2>
                 <form id="addServerForm" style="display: grid; gap: 15px; margin-top: 15px;">
-                    <input type="text" name="name" placeholder="Название сервера" required style="padding: 10px; border-radius: 6px; border: 1px solid #555; background: rgba(60,60,70,0.8); color: white;">
-                    <input type="text" name="ip" placeholder="IP адрес" required style="padding: 10px; border-radius: 6px; border: 1px solid #555; background: rgba(60,60,70,0.8); color: white;">
+                    <input type="text" name="name" placeholder="РќР°Р·РІР°РЅРёРµ СЃРµСЂРІРµСЂР°" required style="padding: 10px; border-radius: 6px; border: 1px solid #555; background: rgba(60,60,70,0.8); color: white;">
+                    <input type="text" name="ip" placeholder="IP Р°РґСЂРµСЃ" required style="padding: 10px; border-radius: 6px; border: 1px solid #555; background: rgba(60,60,70,0.8); color: white;">
                     <select name="type" style="padding: 10px; border-radius: 6px; border: 1px solid #555; background: rgba(60,60,70,0.8); color: white;">
                         <option value="linux">Linux</option>
                         <option value="windows">Windows</option>
                     </select>
-                    <button type="submit" class="btn btn-success">✅ Добавить сервер</button>
+                    <button type="submit" class="btn btn-success">вњ… Р”РѕР±Р°РІРёС‚СЊ СЃРµСЂРІРµСЂ</button>
                 </form>
             </div>
         </div>     
                 
-        <!-- Содержимое вкладки Управление -->
+        <!-- РЎРѕРґРµСЂР¶РёРјРѕРµ РІРєР»Р°РґРєРё РЈРїСЂР°РІР»РµРЅРёРµ -->
         <div id="controls" class="tab-content">
-            <h2 style="margin-bottom: 20px;">🎛️ Управление мониторингом</h2>
+            <h2 style="margin-bottom: 20px;">рџЋ›пёЏ РЈРїСЂР°РІР»РµРЅРёРµ РјРѕРЅРёС‚РѕСЂРёРЅРіРѕРј</h2>
             
             <div class="dashboard">
                 <div class="card">
-                    <h2>🔧 Действия</h2>
+                    <h2>рџ”§ Р”РµР№СЃС‚РІРёСЏ</h2>
                     <div class="controls" style="flex-direction: column; gap: 15px;">
-                        <button class="btn btn-success" onclick="runAction('check_all')">🔍 Проверить все серверы</button>
-                        <button class="btn btn-info" onclick="runAction('check_resources')">📈 Проверить ресурсы</button>
-                        <button class="btn btn-warning" onclick="runAction('morning_report')">📊 Утренний отчет</button>
-                        <button class="btn btn-danger" onclick="runAction('restart_service')">🔄 Перезапуск сервиса</button>
+                        <button class="btn btn-success" onclick="runAction('check_all')">рџ”Ќ РџСЂРѕРІРµСЂРёС‚СЊ РІСЃРµ СЃРµСЂРІРµСЂС‹</button>
+                        <button class="btn btn-info" onclick="runAction('check_resources')">рџ“€ РџСЂРѕРІРµСЂРёС‚СЊ СЂРµСЃСѓСЂСЃС‹</button>
+                        <button class="btn btn-warning" onclick="runAction('morning_report')">рџ“Љ РЈС‚СЂРµРЅРЅРёР№ РѕС‚С‡РµС‚</button>
+                        <button class="btn btn-danger" onclick="runAction('restart_service')">рџ”„ РџРµСЂРµР·Р°РїСѓСЃРє СЃРµСЂРІРёСЃР°</button>
                     </div>
                 </div>
                 
                 <div class="card">
-                    <h2>⚙️ Настройки</h2>
+                    <h2>вљ™пёЏ РќР°СЃС‚СЂРѕР№РєРё</h2>
                     <div class="stat-item">
-                        <span>Текущий режим:</span>
+                        <span>РўРµРєСѓС‰РёР№ СЂРµР¶РёРј:</span>
                         <span class="stat-value">{{ stats.monitoring_mode }}</span>
                     </div>
                     <div class="stat-item">
-                        <span>Тихий режим:</span>
+                        <span>РўРёС…РёР№ СЂРµР¶РёРј:</span>
                         <span class="stat-value">{{ stats.silent_mode }}</span>
                     </div>
                     <div class="controls" style="margin-top: 20px;">
-                        <button class="btn {% if stats.monitoring_mode == '🟢 Активен' %}btn-warning{% else %}btn-success{% endif %}" 
+                        <button class="btn {% if stats.monitoring_mode == 'рџџў РђРєС‚РёРІРµРЅ' %}btn-warning{% else %}btn-success{% endif %}" 
                                 onclick="toggleMonitoring()">
-                            {% if stats.monitoring_mode == '🟢 Активен' %}⏸️ Приостановить{% else %}▶️ Возобновить{% endif %}
+                            {% if stats.monitoring_mode == 'рџџў РђРєС‚РёРІРµРЅ' %}вЏёпёЏ РџСЂРёРѕСЃС‚Р°РЅРѕРІРёС‚СЊ{% else %}в–¶пёЏ Р’РѕР·РѕР±РЅРѕРІРёС‚СЊ{% endif %}
                         </button>
-                        <button class="btn {% if stats.silent_mode == '🔇 Включен' %}btn-info{% else %}btn-warning{% endif %}" 
+                        <button class="btn {% if stats.silent_mode == 'рџ”‡ Р’РєР»СЋС‡РµРЅ' %}btn-info{% else %}btn-warning{% endif %}" 
                                 onclick="toggleSilentMode()">
-                            {% if stats.silent_mode == '🔇 Включен' %}🔊 Выключить тихий{% else %}🔇 Включить тихий{% endif %}
+                            {% if stats.silent_mode == 'рџ”‡ Р’РєР»СЋС‡РµРЅ' %}рџ”Љ Р’С‹РєР»СЋС‡РёС‚СЊ С‚РёС…РёР№{% else %}рџ”‡ Р’РєР»СЋС‡РёС‚СЊ С‚РёС…РёР№{% endif %}
                         </button>
                     </div>
                 </div>
             </div>
             
             <div class="card" style="margin-top: 20px;">
-                <h2>📋 Логи действий</h2>
+                <h2>рџ“‹ Р›РѕРіРё РґРµР№СЃС‚РІРёР№</h2>
                 <div id="actionLogs" style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 0.9em;">
-                    <!-- Логи будут добавляться сюда -->
+                    <!-- Р›РѕРіРё Р±СѓРґСѓС‚ РґРѕР±Р°РІР»СЏС‚СЊСЃСЏ СЃСЋРґР° -->
                 </div>
             </div>
         </div>
         
-        <button class="refresh-btn" onclick="location.reload()">🔄 Обновить данные</button>
+        <button class="refresh-btn" onclick="location.reload()">рџ”„ РћР±РЅРѕРІРёС‚СЊ РґР°РЅРЅС‹Рµ</button>
         
         <div class="last-update">
-            Система мониторинга серверов • Версия 2.0 • Темная тема
+            РЎРёСЃС‚РµРјР° РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЃРµСЂРІРµСЂРѕРІ вЂў Р’РµСЂСЃРёСЏ 2.0 вЂў РўРµРјРЅР°СЏ С‚РµРјР°
         </div>
     </div>
 
     <script>
-        // Переключение основных вкладок
+        // РџРµСЂРµРєР»СЋС‡РµРЅРёРµ РѕСЃРЅРѕРІРЅС‹С… РІРєР»Р°РґРѕРє
         function switchTab(tabName) {
-            // Скрыть все вкладки
+            // РЎРєСЂС‹С‚СЊ РІСЃРµ РІРєР»Р°РґРєРё
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
             });
@@ -543,14 +543,14 @@ HTML_TEMPLATE = """
                 tab.classList.remove('active');
             });
             
-            // Показать выбранную вкладку
+            // РџРѕРєР°Р·Р°С‚СЊ РІС‹Р±СЂР°РЅРЅСѓСЋ РІРєР»Р°РґРєСѓ
             document.getElementById(tabName).classList.add('active');
             event.target.classList.add('active');
         }
         
-        // Запуск проверок
+        // Р—Р°РїСѓСЃРє РїСЂРѕРІРµСЂРѕРє
         function runCheck(type) {
-            addLog(`Запуск ${getCheckName(type)}...`);
+            addLog(`Р—Р°РїСѓСЃРє ${getCheckName(type)}...`);
             fetch(`/api/run_check?type=${type}`)
                 .then(response => response.json())
                 .then(data => {
@@ -560,13 +560,13 @@ HTML_TEMPLATE = """
                     }
                 })
                 .catch(error => {
-                    addLog(`Ошибка: ${error}`);
+                    addLog(`РћС€РёР±РєР°: ${error}`);
                 });
         }
         
-        // Запуск действий
+        // Р—Р°РїСѓСЃРє РґРµР№СЃС‚РІРёР№
         function runAction(action) {
-            addLog(`Выполнение: ${getActionName(action)}...`);
+            addLog(`Р’С‹РїРѕР»РЅРµРЅРёРµ: ${getActionName(action)}...`);
             fetch(`/api/run_action?action=${action}`)
                 .then(response => response.json())
                 .then(data => {
@@ -576,38 +576,38 @@ HTML_TEMPLATE = """
                     }
                 })
                 .catch(error => {
-                    addLog(`Ошибка: ${error}`);
+                    addLog(`РћС€РёР±РєР°: ${error}`);
                 });
         }
         
-        // Переключение мониторинга
+        // РџРµСЂРµРєР»СЋС‡РµРЅРёРµ РјРѕРЅРёС‚РѕСЂРёРЅРіР°
         function toggleMonitoring() {
             runAction('toggle_monitoring');
         }
         
-        // Переключение тихого режима
+        // РџРµСЂРµРєР»СЋС‡РµРЅРёРµ С‚РёС…РѕРіРѕ СЂРµР¶РёРјР°
         function toggleSilentMode() {
             runAction('toggle_silent');
         }
         
-        // Вспомогательные функции
+        // Р’СЃРїРѕРјРѕРіР°С‚РµР»СЊРЅС‹Рµ С„СѓРЅРєС†РёРё
         function getCheckName(type) {
             const names = {
-                'quick': 'быстрой проверки',
-                'resources': 'проверки ресурсов', 
-                'report': 'формирования отчета'
+                'quick': 'Р±С‹СЃС‚СЂРѕР№ РїСЂРѕРІРµСЂРєРё',
+                'resources': 'РїСЂРѕРІРµСЂРєРё СЂРµСЃСѓСЂСЃРѕРІ', 
+                'report': 'С„РѕСЂРјРёСЂРѕРІР°РЅРёСЏ РѕС‚С‡РµС‚Р°'
             };
             return names[type] || type;
         }
         
         function getActionName(action) {
             const names = {
-                'check_all': 'Проверка всех серверов',
-                'check_resources': 'Проверка ресурсов',
-                'morning_report': 'Формирование утреннего отчета',
-                'restart_service': 'Перезапуск сервиса',
-                'toggle_monitoring': 'Переключение мониторинга',
-                'toggle_silent': 'Переключение тихого режима'
+                'check_all': 'РџСЂРѕРІРµСЂРєР° РІСЃРµС… СЃРµСЂРІРµСЂРѕРІ',
+                'check_resources': 'РџСЂРѕРІРµСЂРєР° СЂРµСЃСѓСЂСЃРѕРІ',
+                'morning_report': 'Р¤РѕСЂРјРёСЂРѕРІР°РЅРёРµ СѓС‚СЂРµРЅРЅРµРіРѕ РѕС‚С‡РµС‚Р°',
+                'restart_service': 'РџРµСЂРµР·Р°РїСѓСЃРє СЃРµСЂРІРёСЃР°',
+                'toggle_monitoring': 'РџРµСЂРµРєР»СЋС‡РµРЅРёРµ РјРѕРЅРёС‚РѕСЂРёРЅРіР°',
+                'toggle_silent': 'РџРµСЂРµРєР»СЋС‡РµРЅРёРµ С‚РёС…РѕРіРѕ СЂРµР¶РёРјР°'
             };
             return names[action] || action;
         }
@@ -618,7 +618,7 @@ HTML_TEMPLATE = """
             logDiv.innerHTML = `<div>[${timestamp}] ${message}</div>` + logDiv.innerHTML;
         }
         
-        // Управление серверами
+        // РЈРїСЂР°РІР»РµРЅРёРµ СЃРµСЂРІРµСЂР°РјРё
         function loadServerList() {
             fetch('/api/servers')
                 .then(response => response.json())
@@ -629,19 +629,19 @@ HTML_TEMPLATE = """
                             <div class="server-item">
                                 <div class="server-info">
                                     <div class="server-name">${server.name}</div>
-                                    <div class="server-details">${server.ip} • ${server.type.toUpperCase()}</div>
+                                    <div class="server-details">${server.ip} вЂў ${server.type.toUpperCase()}</div>
                                 </div>
-                                <button class="btn btn-danger" onclick="deleteServer('${server.ip}')">🗑️ Удалить</button>
+                                <button class="btn btn-danger" onclick="deleteServer('${server.ip}')">рџ—‘пёЏ РЈРґР°Р»РёС‚СЊ</button>
                             </div>
                         `).join('') + '</div>';
                 })
                 .catch(error => {
-                    console.error('Ошибка загрузки списка серверов:', error);
+                    console.error('РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё СЃРїРёСЃРєР° СЃРµСЂРІРµСЂРѕРІ:', error);
                 });
         }
 
         function deleteServer(ip) {
-            if (confirm(`Удалить сервер ${ip}?`)) {
+            if (confirm(`РЈРґР°Р»РёС‚СЊ СЃРµСЂРІРµСЂ ${ip}?`)) {
                 fetch(`/api/servers?ip=${ip}`, { method: 'DELETE' })
                     .then(response => response.json())
                     .then(data => {
@@ -651,7 +651,7 @@ HTML_TEMPLATE = """
             }
         }
 
-        // Обработка формы добавления сервера
+        // РћР±СЂР°Р±РѕС‚РєР° С„РѕСЂРјС‹ РґРѕР±Р°РІР»РµРЅРёСЏ СЃРµСЂРІРµСЂР°
         document.addEventListener('DOMContentLoaded', function() {
             const addServerForm = document.getElementById('addServerForm');
             if (addServerForm) {
@@ -679,23 +679,23 @@ HTML_TEMPLATE = """
             }
         });
 
-        // Модифицируем существующую функцию switchTab для автозагрузки списка серверов
+        // РњРѕРґРёС„РёС†РёСЂСѓРµРј СЃСѓС‰РµСЃС‚РІСѓСЋС‰СѓСЋ С„СѓРЅРєС†РёСЋ switchTab РґР»СЏ Р°РІС‚РѕР·Р°РіСЂСѓР·РєРё СЃРїРёСЃРєР° СЃРµСЂРІРµСЂРѕРІ
         const originalSwitchTab = switchTab;
         switchTab = function(tabName) {
             originalSwitchTab(tabName);
             
-            // Автозагрузка списка серверов при открытии вкладки
+            // РђРІС‚РѕР·Р°РіСЂСѓР·РєР° СЃРїРёСЃРєР° СЃРµСЂРІРµСЂРѕРІ РїСЂРё РѕС‚РєСЂС‹С‚РёРё РІРєР»Р°РґРєРё
             if (tabName === 'server-management') {
                 setTimeout(loadServerList, 100);
             }
         };       
         
-        // Авто-обновление каждые 30 секунд
+        // РђРІС‚Рѕ-РѕР±РЅРѕРІР»РµРЅРёРµ РєР°Р¶РґС‹Рµ 30 СЃРµРєСѓРЅРґ
         setTimeout(() => {
             location.reload();
         }, 30000);
         
-        // Обновление времени
+        // РћР±РЅРѕРІР»РµРЅРёРµ РІСЂРµРјРµРЅРё
         function updateLastUpdate() {
             const now = new Date();
             document.getElementById('lastUpdate').textContent = now.toLocaleString('ru-RU');
@@ -708,7 +708,7 @@ HTML_TEMPLATE = """
 """
 
 def get_resource_class(value, resource_type):
-    """Определяет класс для окрашивания ресурсов"""
+    """РћРїСЂРµРґРµР»СЏРµС‚ РєР»Р°СЃСЃ РґР»СЏ РѕРєСЂР°С€РёРІР°РЅРёСЏ СЂРµСЃСѓСЂСЃРѕРІ"""
     if not value or value == 0:
         return "normal"
     
@@ -736,15 +736,15 @@ def get_resource_class(value, resource_type):
     return "normal"
 
 def get_monitoring_stats():
-    """Получает статистику мониторинга"""
+    """РџРѕР»СѓС‡Р°РµС‚ СЃС‚Р°С‚РёСЃС‚РёРєСѓ РјРѕРЅРёС‚РѕСЂРёРЅРіР°"""
     try:
-        # Пробуем получить данные из файла статистики
+        # РџСЂРѕР±СѓРµРј РїРѕР»СѓС‡РёС‚СЊ РґР°РЅРЅС‹Рµ РёР· С„Р°Р№Р»Р° СЃС‚Р°С‚РёСЃС‚РёРєРё
         stats_data = {}
         if os.path.exists(STATS_FILE):
             with open(STATS_FILE, 'r') as f:
                 stats_data = json.load(f)
         
-        # Получаем текущий статус серверов
+        # РџРѕР»СѓС‡Р°РµРј С‚РµРєСѓС‰РёР№ СЃС‚Р°С‚СѓСЃ СЃРµСЂРІРµСЂРѕРІ
         from monitor_core import get_current_server_status, monitoring_active, last_check_time
         from monitor_core import is_silent_time, resource_history
         from extensions.server_list import initialize_servers
@@ -752,7 +752,7 @@ def get_monitoring_stats():
         current_status = get_current_server_status()
         servers_list = initialize_servers()
         
-        # Формируем список серверов для отображения
+        # Р¤РѕСЂРјРёСЂСѓРµРј СЃРїРёСЃРѕРє СЃРµСЂРІРµСЂРѕРІ РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ
         servers_display = []
         
         for server in servers_list:
@@ -760,16 +760,16 @@ def get_monitoring_stats():
             is_down = any(s["ip"] == server["ip"] for s in current_status["failed"])
             
             status = "up" if is_up else "down"
-            status_display = "✅ Доступен" if is_up else "❌ Недоступен"
+            status_display = "вњ… Р”РѕСЃС‚СѓРїРµРЅ" if is_up else "вќЊ РќРµРґРѕСЃС‚СѓРїРµРЅ"
             
-            # Получаем информацию о ресурсах
+            # РџРѕР»СѓС‡Р°РµРј РёРЅС„РѕСЂРјР°С†РёСЋ Рѕ СЂРµСЃСѓСЂСЃР°С…
             resources_data = None
             os_info = "Unknown"
             if server["ip"] in resource_history and resource_history[server["ip"]]:
                 latest_resources = resource_history[server["ip"]][-1]
                 os_info = latest_resources.get("os", "Unknown")
                 
-                # Форматируем ресурсы с классами для окрашивания
+                # Р¤РѕСЂРјР°С‚РёСЂСѓРµРј СЂРµСЃСѓСЂСЃС‹ СЃ РєР»Р°СЃСЃР°РјРё РґР»СЏ РѕРєСЂР°С€РёРІР°РЅРёСЏ
                 cpu_value = latest_resources.get("cpu", 0)
                 ram_value = latest_resources.get("ram", 0)
                 disk_value = latest_resources.get("disk", 0)
@@ -785,10 +785,10 @@ def get_monitoring_stats():
                     "disk_class": get_resource_class(disk_value, "disk")
                 }
                 
-                # Проверяем на проблемы с ресурсами для статуса
+                # РџСЂРѕРІРµСЂСЏРµРј РЅР° РїСЂРѕР±Р»РµРјС‹ СЃ СЂРµСЃСѓСЂСЃР°РјРё РґР»СЏ СЃС‚Р°С‚СѓСЃР°
                 if resources_data and (cpu_value > 80 or ram_value > 85 or disk_value > 80):
                     status = "warning"
-                    status_display = "⚠️ Высокая нагрузка"
+                    status_display = "вљ пёЏ Р’С‹СЃРѕРєР°СЏ РЅР°РіСЂСѓР·РєР°"
             
             server_data = {
                 "name": server["name"],
@@ -802,20 +802,20 @@ def get_monitoring_stats():
             
             servers_display.append(server_data)
         
-        # Сортируем серверы: сначала проблемные, потом доступные
+        # РЎРѕСЂС‚РёСЂСѓРµРј СЃРµСЂРІРµСЂС‹: СЃРЅР°С‡Р°Р»Р° РїСЂРѕР±Р»РµРјРЅС‹Рµ, РїРѕС‚РѕРј РґРѕСЃС‚СѓРїРЅС‹Рµ
         servers_display.sort(key=lambda x: (0 if x["status"] == "down" else 1 if x["status"] == "warning" else 2))
         
-        # Рассчитываем статистику
+        # Р Р°СЃСЃС‡РёС‚С‹РІР°РµРј СЃС‚Р°С‚РёСЃС‚РёРєСѓ
         total_servers = len(servers_list)
         servers_up = len(current_status["ok"])
         servers_down = len(current_status["failed"])
         availability_percentage = round((servers_up / total_servers) * 100, 1) if total_servers > 0 else 0
         
-        # Получаем настройки из конфига
+        # РџРѕР»СѓС‡Р°РµРј РЅР°СЃС‚СЂРѕР№РєРё РёР· РєРѕРЅС„РёРіР°
         from config import CHECK_INTERVAL, RESOURCE_CHECK_INTERVAL
         resource_check_minutes = RESOURCE_CHECK_INTERVAL // 60
         
-        # Считаем проблемы с ресурсами
+        # РЎС‡РёС‚Р°РµРј РїСЂРѕР±Р»РµРјС‹ СЃ СЂРµСЃСѓСЂСЃР°РјРё
         resource_alerts_count = 0
         for history in resource_history.values():
             if history:
@@ -832,9 +832,9 @@ def get_monitoring_stats():
             "availability_percentage": availability_percentage,
             "last_check_time": last_check_time.strftime("%H:%M:%S") if last_check_time else "N/A",
             "check_interval": CHECK_INTERVAL,
-            "monitoring_mode": "🟢 Активен" if monitoring_active else "🔴 Приостановлен",
-            "silent_mode": "🔇 Включен" if is_silent_time() else "🔊 Выключен",
-            "resource_check_status": "🟢 Работает" if monitoring_active and not is_silent_time() else "⏸️ Приостановлен",
+            "monitoring_mode": "рџџў РђРєС‚РёРІРµРЅ" if monitoring_active else "рџ”ґ РџСЂРёРѕСЃС‚Р°РЅРѕРІР»РµРЅ",
+            "silent_mode": "рџ”‡ Р’РєР»СЋС‡РµРЅ" if is_silent_time() else "рџ”Љ Р’С‹РєР»СЋС‡РµРЅ",
+            "resource_check_status": "рџџў Р Р°Р±РѕС‚Р°РµС‚" if monitoring_active and not is_silent_time() else "вЏёпёЏ РџСЂРёРѕСЃС‚Р°РЅРѕРІР»РµРЅ",
             "resource_check_interval": resource_check_minutes,
             "resource_alerts": resource_alerts_count,
             "uptime": stats_data.get("uptime", "N/A")
@@ -843,8 +843,8 @@ def get_monitoring_stats():
         return stats, servers_display
         
     except Exception as e:
-        print(f"❌ Ошибка получения статистики: {e}")
-        # Возвращаем данные по умолчанию при ошибке
+        print(f"вќЊ РћС€РёР±РєР° РїРѕР»СѓС‡РµРЅРёСЏ СЃС‚Р°С‚РёСЃС‚РёРєРё: {e}")
+        # Р’РѕР·РІСЂР°С‰Р°РµРј РґР°РЅРЅС‹Рµ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ РїСЂРё РѕС€РёР±РєРµ
         return {
             "total_servers": 0,
             "servers_up": 0,
@@ -852,9 +852,9 @@ def get_monitoring_stats():
             "availability_percentage": 0,
             "last_check_time": "N/A",
             "check_interval": 0,
-            "monitoring_mode": "❌ Ошибка",
+            "monitoring_mode": "вќЊ РћС€РёР±РєР°",
             "silent_mode": "N/A",
-            "resource_check_status": "❌ Ошибка",
+            "resource_check_status": "вќЊ РћС€РёР±РєР°",
             "resource_check_interval": 0,
             "resource_alerts": 0,
             "uptime": "N/A"
@@ -862,7 +862,7 @@ def get_monitoring_stats():
 
 @app.route('/')
 def index():
-    """Главная страница веб-интерфейса"""
+    """Р“Р»Р°РІРЅР°СЏ СЃС‚СЂР°РЅРёС†Р° РІРµР±-РёРЅС‚РµСЂС„РµР№СЃР°"""
     try:
         stats, servers = get_monitoring_stats()
         
@@ -873,76 +873,76 @@ def index():
             last_update=datetime.now().strftime("%H:%M:%S")
         )
     except Exception as e:
-        return f"❌ Ошибка загрузки веб-интерфейса: {e}"
+        return f"вќЊ РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё РІРµР±-РёРЅС‚РµСЂС„РµР№СЃР°: {e}"
 
 @app.route('/api/run_check')
 def api_run_check():
-    """API для запуска проверок"""
+    """API РґР»СЏ Р·Р°РїСѓСЃРєР° РїСЂРѕРІРµСЂРѕРє"""
     check_type = request.args.get('type', 'quick')
     
     try:
         if check_type == 'quick':
-            # Запуск быстрой проверки доступности
+            # Р—Р°РїСѓСЃРє Р±С‹СЃС‚СЂРѕР№ РїСЂРѕРІРµСЂРєРё РґРѕСЃС‚СѓРїРЅРѕСЃС‚Рё
             from monitor_core import get_current_server_status
             status = get_current_server_status()
-            message = f"✅ Быстрая проверка выполнена: {len(status['ok'])} доступно, {len(status['failed'])} недоступно"
+            message = f"вњ… Р‘С‹СЃС‚СЂР°СЏ РїСЂРѕРІРµСЂРєР° РІС‹РїРѕР»РЅРµРЅР°: {len(status['ok'])} РґРѕСЃС‚СѓРїРЅРѕ, {len(status['failed'])} РЅРµРґРѕСЃС‚СѓРїРЅРѕ"
             
         elif check_type == 'resources':
-            # Запуск проверки ресурсов
+            # Р—Р°РїСѓСЃРє РїСЂРѕРІРµСЂРєРё СЂРµСЃСѓСЂСЃРѕРІ
             from monitor_core import check_resources_automatically
             check_resources_automatically()
-            message = "✅ Проверка ресурсов выполнена. Данные обновятся через 1-2 минуты."
+            message = "вњ… РџСЂРѕРІРµСЂРєР° СЂРµСЃСѓСЂСЃРѕРІ РІС‹РїРѕР»РЅРµРЅР°. Р”Р°РЅРЅС‹Рµ РѕР±РЅРѕРІСЏС‚СЃСЏ С‡РµСЂРµР· 1-2 РјРёРЅСѓС‚С‹."
             
         elif check_type == 'report':
-            # Формирование отчета
+            # Р¤РѕСЂРјРёСЂРѕРІР°РЅРёРµ РѕС‚С‡РµС‚Р°
             from monitor_core import send_morning_report
             send_morning_report()
-            message = "✅ Отчет сформирован и отправлен в Telegram"
+            message = "вњ… РћС‚С‡РµС‚ СЃС„РѕСЂРјРёСЂРѕРІР°РЅ Рё РѕС‚РїСЂР°РІР»РµРЅ РІ Telegram"
             
         else:
-            message = "❌ Неизвестный тип проверки"
+            message = "вќЊ РќРµРёР·РІРµСЃС‚РЅС‹Р№ С‚РёРї РїСЂРѕРІРµСЂРєРё"
             
         return jsonify({"success": True, "message": message, "reload": check_type != 'resources'})
         
     except Exception as e:
-        return jsonify({"success": False, "message": f"❌ Ошибка: {str(e)}"})
+        return jsonify({"success": False, "message": f"вќЊ РћС€РёР±РєР°: {str(e)}"})
 
 @app.route('/api/run_action')
 def api_run_action():
-    """API для выполнения действий"""
+    """API РґР»СЏ РІС‹РїРѕР»РЅРµРЅРёСЏ РґРµР№СЃС‚РІРёР№"""
     action = request.args.get('action', '')
     
     try:
         if action == 'check_all':
             from monitor_core import get_current_server_status
             status = get_current_server_status()
-            message = f"✅ Проверка всех серверов выполнена: {len(status['ok'])} доступно, {len(status['failed'])} недоступно"
+            message = f"вњ… РџСЂРѕРІРµСЂРєР° РІСЃРµС… СЃРµСЂРІРµСЂРѕРІ РІС‹РїРѕР»РЅРµРЅР°: {len(status['ok'])} РґРѕСЃС‚СѓРїРЅРѕ, {len(status['failed'])} РЅРµРґРѕСЃС‚СѓРїРЅРѕ"
             
         elif action == 'check_resources':
             from monitor_core import check_resources_automatically
             check_resources_automatically()
-            message = "✅ Проверка ресурсов запущена. Данные обновятся через 1-2 минуты."
+            message = "вњ… РџСЂРѕРІРµСЂРєР° СЂРµСЃСѓСЂСЃРѕРІ Р·Р°РїСѓС‰РµРЅР°. Р”Р°РЅРЅС‹Рµ РѕР±РЅРѕРІСЏС‚СЃСЏ С‡РµСЂРµР· 1-2 РјРёРЅСѓС‚С‹."
             
         elif action == 'morning_report':
             from monitor_core import send_morning_report
             send_morning_report()
-            message = "✅ Утренний отчет отправлен в Telegram"
+            message = "вњ… РЈС‚СЂРµРЅРЅРёР№ РѕС‚С‡РµС‚ РѕС‚РїСЂР°РІР»РµРЅ РІ Telegram"
             
         elif action == 'restart_service':
-            # Перезапуск сервиса (осторожно!)
+            # РџРµСЂРµР·Р°РїСѓСЃРє СЃРµСЂРІРёСЃР° (РѕСЃС‚РѕСЂРѕР¶РЅРѕ!)
             subprocess.run(['systemctl', 'restart', 'server-monitor.service'], check=True)
-            message = "✅ Сервис перезапускается..."
+            message = "вњ… РЎРµСЂРІРёСЃ РїРµСЂРµР·Р°РїСѓСЃРєР°РµС‚СЃСЏ..."
             
         elif action == 'toggle_monitoring':
-            # В реальной реализации здесь нужно менять глобальную переменную
-            message = "⚠️ Функция переключения мониторинга в разработке"
+            # Р’ СЂРµР°Р»СЊРЅРѕР№ СЂРµР°Р»РёР·Р°С†РёРё Р·РґРµСЃСЊ РЅСѓР¶РЅРѕ РјРµРЅСЏС‚СЊ РіР»РѕР±Р°Р»СЊРЅСѓСЋ РїРµСЂРµРјРµРЅРЅСѓСЋ
+            message = "вљ пёЏ Р¤СѓРЅРєС†РёСЏ РїРµСЂРµРєР»СЋС‡РµРЅРёСЏ РјРѕРЅРёС‚РѕСЂРёРЅРіР° РІ СЂР°Р·СЂР°Р±РѕС‚РєРµ"
             
         elif action == 'toggle_silent':
-            # В реальной реализации здесь нужно менять глобальную переменную
-            message = "⚠️ Функция переключения тихого режима в разработке"
+            # Р’ СЂРµР°Р»СЊРЅРѕР№ СЂРµР°Р»РёР·Р°С†РёРё Р·РґРµСЃСЊ РЅСѓР¶РЅРѕ РјРµРЅСЏС‚СЊ РіР»РѕР±Р°Р»СЊРЅСѓСЋ РїРµСЂРµРјРµРЅРЅСѓСЋ
+            message = "вљ пёЏ Р¤СѓРЅРєС†РёСЏ РїРµСЂРµРєР»СЋС‡РµРЅРёСЏ С‚РёС…РѕРіРѕ СЂРµР¶РёРјР° РІ СЂР°Р·СЂР°Р±РѕС‚РєРµ"
             
         else:
-            message = "❌ Неизвестное действие"
+            message = "вќЊ РќРµРёР·РІРµСЃС‚РЅРѕРµ РґРµР№СЃС‚РІРёРµ"
             
         return jsonify({
             "success": True, 
@@ -951,15 +951,15 @@ def api_run_action():
         })
         
     except Exception as e:
-        return jsonify({"success": False, "message": f"❌ Ошибка: {str(e)}"})
+        return jsonify({"success": False, "message": f"вќЊ РћС€РёР±РєР°: {str(e)}"})
 
 @app.route('/api/status')
 def api_status():
-    """API endpoint для получения статуса"""
+    """API endpoint РґР»СЏ РїРѕР»СѓС‡РµРЅРёСЏ СЃС‚Р°С‚СѓСЃР°"""
     stats, servers = get_monitoring_stats()
     return jsonify({
         "status": "ok", 
-        "message": "Система мониторинга работает",
+        "message": "РЎРёСЃС‚РµРјР° РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЂР°Р±РѕС‚Р°РµС‚",
         "data": {
             "stats": stats,
             "servers": servers,
@@ -969,7 +969,7 @@ def api_status():
 
 @app.route('/api/servers')
 def api_servers():
-    """API endpoint для получения списка серверов"""
+    """API endpoint РґР»СЏ РїРѕР»СѓС‡РµРЅРёСЏ СЃРїРёСЃРєР° СЃРµСЂРІРµСЂРѕРІ"""
     stats, servers = get_monitoring_stats()
     return jsonify({
         "servers": servers,
@@ -979,7 +979,7 @@ def api_servers():
 
 @app.route('/api/stats')
 def api_stats():
-    """API endpoint для получения статистики"""
+    """API endpoint РґР»СЏ РїРѕР»СѓС‡РµРЅРёСЏ СЃС‚Р°С‚РёСЃС‚РёРєРё"""
     stats, servers = get_monitoring_stats()
     return jsonify({
         "statistics": stats,
@@ -993,38 +993,38 @@ def health_check():
 
 @app.route('/api/servers', methods=['GET', 'POST', 'PUT', 'DELETE'])
 def api_manage_servers():
-    """API для управления списком серверов"""
+    """API РґР»СЏ СѓРїСЂР°РІР»РµРЅРёСЏ СЃРїРёСЃРєРѕРј СЃРµСЂРІРµСЂРѕРІ"""
     if request.method == 'GET':
-        # Получить список серверов
+        # РџРѕР»СѓС‡РёС‚СЊ СЃРїРёСЃРѕРє СЃРµСЂРІРµСЂРѕРІ
         from extensions.server_list import initialize_servers
         servers = initialize_servers()
         return jsonify({"servers": servers})
     
     elif request.method == 'POST':
-        # Добавить новый сервер
+        # Р”РѕР±Р°РІРёС‚СЊ РЅРѕРІС‹Р№ СЃРµСЂРІРµСЂ
         data = request.json
-        # Здесь добавить логику сохранения в server_list.json
-        return jsonify({"success": True, "message": "Сервер добавлен"})
+        # Р—РґРµСЃСЊ РґРѕР±Р°РІРёС‚СЊ Р»РѕРіРёРєСѓ СЃРѕС…СЂР°РЅРµРЅРёСЏ РІ server_list.json
+        return jsonify({"success": True, "message": "РЎРµСЂРІРµСЂ РґРѕР±Р°РІР»РµРЅ"})
     
     elif request.method == 'PUT':
-        # Обновить сервер
+        # РћР±РЅРѕРІРёС‚СЊ СЃРµСЂРІРµСЂ
         data = request.json
-        # Логика обновления
-        return jsonify({"success": True, "message": "Сервер обновлен"})
+        # Р›РѕРіРёРєР° РѕР±РЅРѕРІР»РµРЅРёСЏ
+        return jsonify({"success": True, "message": "РЎРµСЂРІРµСЂ РѕР±РЅРѕРІР»РµРЅ"})
     
     elif request.method == 'DELETE':
-        # Удалить сервер
+        # РЈРґР°Р»РёС‚СЊ СЃРµСЂРІРµСЂ
         server_ip = request.args.get('ip')
-        # Логика удаления
-        return jsonify({"success": True, "message": "Сервер удален"})
+        # Р›РѕРіРёРєР° СѓРґР°Р»РµРЅРёСЏ
+        return jsonify({"success": True, "message": "РЎРµСЂРІРµСЂ СѓРґР°Р»РµРЅ"})
     
 def start_web_server():
-    """Запускает веб-сервер"""
-    print(f"🌐 Запуск веб-интерфейса на http://{WEB_HOST}:{WEB_PORT}")
+    """Р—Р°РїСѓСЃРєР°РµС‚ РІРµР±-СЃРµСЂРІРµСЂ"""
+    print(f"рџЊђ Р—Р°РїСѓСЃРє РІРµР±-РёРЅС‚РµСЂС„РµР№СЃР° РЅР° http://{WEB_HOST}:{WEB_PORT}")
     try:
         app.run(host=WEB_HOST, port=WEB_PORT, debug=False, use_reloader=False)
     except Exception as e:
-        print(f"❌ Ошибка запуска веб-сервера: {e}")
+        print(f"вќЊ РћС€РёР±РєР° Р·Р°РїСѓСЃРєР° РІРµР±-СЃРµСЂРІРµСЂР°: {e}")
 
 if __name__ == "__main__":
     start_web_server()

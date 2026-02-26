@@ -1,14 +1,14 @@
 """
 /app/modules/resources.py
-Server Monitoring System v8.5.0
+Server Monitoring System v8.6.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Server resource checking module
-Система мониторинга серверов
-Версия: 8.5.0
-Автор: Александр Суханов (c)
-Лицензия: MIT
-Модуль проверки ресурсов серверов
+РЎРёСЃС‚РµРјР° РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЃРµСЂРІРµСЂРѕРІ
+Р’РµСЂСЃРёСЏ: 8.6.0
+РђРІС‚РѕСЂ: РђР»РµРєСЃР°РЅРґСЂ РЎСѓС…Р°РЅРѕРІ (c)
+Р›РёС†РµРЅР·РёСЏ: MIT
+РњРѕРґСѓР»СЊ РїСЂРѕРІРµСЂРєРё СЂРµСЃСѓСЂСЃРѕРІ СЃРµСЂРІРµСЂРѕРІ
 """
 
 import threading
@@ -18,7 +18,7 @@ from lib.logging import debug_log
 from lib.helpers import progress_bar
 
 class ResourceMonitor:
-    """Класс мониторинга ресурсов серверов"""
+    """РљР»Р°СЃСЃ РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЂРµСЃСѓСЂСЃРѕРІ СЃРµСЂРІРµСЂРѕРІ"""
     
     def __init__(self):
         self.resource_history = {}
@@ -26,7 +26,7 @@ class ResourceMonitor:
         self.last_resource_check = datetime.now()
         
     def check_single_server(self, server_ip):
-        """Проверка ресурсов одного сервера"""
+        """РџСЂРѕРІРµСЂРєР° СЂРµСЃСѓСЂСЃРѕРІ РѕРґРЅРѕРіРѕ СЃРµСЂРІРµСЂР°"""
         try:
             from extensions.server_checks import (
                 get_server_by_ip,
@@ -36,7 +36,7 @@ class ResourceMonitor:
             
             server = get_server_by_ip(server_ip)
             if not server:
-                debug_log(f"❌ Сервер {server_ip} не найден")
+                debug_log(f"вќЊ РЎРµСЂРІРµСЂ {server_ip} РЅРµ РЅР°Р№РґРµРЅ")
                 return None
                 
             if server["type"] == "ssh":
@@ -47,11 +47,11 @@ class ResourceMonitor:
                 return None
                 
         except Exception as e:
-            debug_log(f"❌ Ошибка проверки ресурсов {server_ip}: {e}")
+            debug_log(f"вќЊ РћС€РёР±РєР° РїСЂРѕРІРµСЂРєРё СЂРµСЃСѓСЂСЃРѕРІ {server_ip}: {e}")
             return None
     
     def check_all_resources(self, progress_callback=None):
-        """Проверка ресурсов всех серверов"""
+        """РџСЂРѕРІРµСЂРєР° СЂРµСЃСѓСЂСЃРѕРІ РІСЃРµС… СЃРµСЂРІРµСЂРѕРІ"""
         try:
             from extensions.server_checks import initialize_servers
             servers = initialize_servers()
@@ -62,7 +62,7 @@ class ResourceMonitor:
             for i, server in enumerate(servers):
                 if progress_callback:
                     progress = (i + 1) / total * 100
-                    progress_callback(progress, f"Проверяем {server['name']}...")
+                    progress_callback(progress, f"РџСЂРѕРІРµСЂСЏРµРј {server['name']}...")
                 
                 try:
                     resources = self.check_single_server(server["ip"])
@@ -81,11 +81,11 @@ class ResourceMonitor:
             return results
             
         except Exception as e:
-            debug_log(f"❌ Ошибка проверки всех ресурсов: {e}")
+            debug_log(f"вќЊ РћС€РёР±РєР° РїСЂРѕРІРµСЂРєРё РІСЃРµС… СЂРµСЃСѓСЂСЃРѕРІ: {e}")
             return []
     
     def check_by_server_type(self, server_type, progress_callback=None):
-        """Проверка ресурсов серверов определенного типа"""
+        """РџСЂРѕРІРµСЂРєР° СЂРµСЃСѓСЂСЃРѕРІ СЃРµСЂРІРµСЂРѕРІ РѕРїСЂРµРґРµР»РµРЅРЅРѕРіРѕ С‚РёРїР°"""
         try:
             from extensions.server_checks import get_servers_by_type
             servers = get_servers_by_type(server_type)
@@ -96,7 +96,7 @@ class ResourceMonitor:
             for i, server in enumerate(servers):
                 if progress_callback:
                     progress = (i + 1) / total * 100
-                    progress_callback(progress, f"Проверяем {server['name']}...")
+                    progress_callback(progress, f"РџСЂРѕРІРµСЂСЏРµРј {server['name']}...")
                 
                 try:
                     resources = self.check_single_server(server["ip"])
@@ -115,11 +115,11 @@ class ResourceMonitor:
             return results
             
         except Exception as e:
-            debug_log(f"❌ Ошибка проверки ресурсов типа {server_type}: {e}")
+            debug_log(f"вќЊ РћС€РёР±РєР° РїСЂРѕРІРµСЂРєРё СЂРµСЃСѓСЂСЃРѕРІ С‚РёРїР° {server_type}: {e}")
             return []
     
     def check_by_resource_type(self, resource_type, progress_callback=None):
-        """Проверка определенного типа ресурсов на всех серверах"""
+        """РџСЂРѕРІРµСЂРєР° РѕРїСЂРµРґРµР»РµРЅРЅРѕРіРѕ С‚РёРїР° СЂРµСЃСѓСЂСЃРѕРІ РЅР° РІСЃРµС… СЃРµСЂРІРµСЂР°С…"""
         try:
             from extensions.server_checks import initialize_servers
             servers = initialize_servers()
@@ -130,7 +130,7 @@ class ResourceMonitor:
             for i, server in enumerate(servers):
                 if progress_callback:
                     progress = (i + 1) / total * 100
-                    progress_callback(progress, f"Проверяем {server['name']}...")
+                    progress_callback(progress, f"РџСЂРѕРІРµСЂСЏРµРј {server['name']}...")
                 
                 try:
                     resources = self.check_single_server(server["ip"])
@@ -154,39 +154,39 @@ class ResourceMonitor:
                         "success": False
                     })
             
-            # Сортировка по убыванию значения
+            # РЎРѕСЂС‚РёСЂРѕРІРєР° РїРѕ СѓР±С‹РІР°РЅРёСЋ Р·РЅР°С‡РµРЅРёСЏ
             results.sort(key=lambda x: x["value"], reverse=True)
             return results
             
         except Exception as e:
-            debug_log(f"❌ Ошибка проверки ресурса {resource_type}: {e}")
+            debug_log(f"вќЊ РћС€РёР±РєР° РїСЂРѕРІРµСЂРєРё СЂРµСЃСѓСЂСЃР° {resource_type}: {e}")
             return []
     
     def get_resource_history(self, server_ip, limit=10):
-        """Получить историю ресурсов сервера"""
+        """РџРѕР»СѓС‡РёС‚СЊ РёСЃС‚РѕСЂРёСЋ СЂРµСЃСѓСЂСЃРѕРІ СЃРµСЂРІРµСЂР°"""
         return self.resource_history.get(server_ip, [])[-limit:]
     
     def start_automatic_checks(self):
-        """Запуск автоматических проверок ресурсов"""
-        debug_log("🔄 Запуск автоматических проверок ресурсов")
+        """Р—Р°РїСѓСЃРє Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРёС… РїСЂРѕРІРµСЂРѕРє СЂРµСЃСѓСЂСЃРѕРІ"""
+        debug_log("рџ”„ Р—Р°РїСѓСЃРє Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРёС… РїСЂРѕРІРµСЂРѕРє СЂРµСЃСѓСЂСЃРѕРІ")
         
         while True:
             current_time = datetime.now()
             
-            # Проверяем интервал
+            # РџСЂРѕРІРµСЂСЏРµРј РёРЅС‚РµСЂРІР°Р»
             if (current_time - self.last_resource_check).total_seconds() >= RESOURCE_CHECK_INTERVAL:
-                debug_log("🔍 Автоматическая проверка ресурсов...")
+                debug_log("рџ”Ќ РђРІС‚РѕРјР°С‚РёС‡РµСЃРєР°СЏ РїСЂРѕРІРµСЂРєР° СЂРµСЃСѓСЂСЃРѕРІ...")
                 self.perform_automatic_check()
                 self.last_resource_check = current_time
             
-            time.sleep(60)  # Проверяем каждую минуту
+            time.sleep(60)  # РџСЂРѕРІРµСЂСЏРµРј РєР°Р¶РґСѓСЋ РјРёРЅСѓС‚Сѓ
     
     def perform_automatic_check(self):
-        """Выполнение автоматической проверки ресурсов"""
+        """Р’С‹РїРѕР»РЅРµРЅРёРµ Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРѕР№ РїСЂРѕРІРµСЂРєРё СЂРµСЃСѓСЂСЃРѕРІ"""
         try:
             results = self.check_all_resources()
             
-            # Анализ результатов и отправка алертов
+            # РђРЅР°Р»РёР· СЂРµР·СѓР»СЊС‚Р°С‚РѕРІ Рё РѕС‚РїСЂР°РІРєР° Р°Р»РµСЂС‚РѕРІ
             alerts = []
             for result in results:
                 if result["success"] and result["resources"]:
@@ -197,55 +197,55 @@ class ResourceMonitor:
                     if server_alerts:
                         alerts.extend(server_alerts)
             
-            # Отправка алертов если есть
+            # РћС‚РїСЂР°РІРєР° Р°Р»РµСЂС‚РѕРІ РµСЃР»Рё РµСЃС‚СЊ
             if alerts:
                 self.send_resource_alerts(alerts)
                 
         except Exception as e:
-            debug_log(f"❌ Ошибка автоматической проверки ресурсов: {e}")
+            debug_log(f"вќЊ РћС€РёР±РєР° Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРѕР№ РїСЂРѕРІРµСЂРєРё СЂРµСЃСѓСЂСЃРѕРІ: {e}")
     
     def check_resource_alerts(self, ip, resources):
-        """Проверка условий для алертов"""
+        """РџСЂРѕРІРµСЂРєР° СѓСЃР»РѕРІРёР№ РґР»СЏ Р°Р»РµСЂС‚РѕРІ"""
         alerts = []
         
-        # Проверка Disk (одна проверка)
+        # РџСЂРѕРІРµСЂРєР° Disk (РѕРґРЅР° РїСЂРѕРІРµСЂРєР°)
         disk_usage = resources.get('disk', 0)
         if disk_usage >= RESOURCE_ALERT_THRESHOLDS["disk_alert"]:
             alert_key = f"{ip}_disk"
             if alert_key not in self.resource_alerts_sent or \
                (datetime.now() - self.resource_alerts_sent[alert_key]).total_seconds() > RESOURCE_ALERT_INTERVAL:
-                alerts.append(f"💾 **Дисковое пространство** на сервере: {disk_usage}%")
+                alerts.append(f"рџ’ѕ **Р”РёСЃРєРѕРІРѕРµ РїСЂРѕСЃС‚СЂР°РЅСЃС‚РІРѕ** РЅР° СЃРµСЂРІРµСЂРµ: {disk_usage}%")
                 self.resource_alerts_sent[alert_key] = datetime.now()
         
-        # Здесь можно добавить проверки CPU и RAM
+        # Р—РґРµСЃСЊ РјРѕР¶РЅРѕ РґРѕР±Р°РІРёС‚СЊ РїСЂРѕРІРµСЂРєРё CPU Рё RAM
         
         return alerts
     
     def send_resource_alerts(self, alerts):
-        """Отправка алертов по ресурсам"""
+        """РћС‚РїСЂР°РІРєР° Р°Р»РµСЂС‚РѕРІ РїРѕ СЂРµСЃСѓСЂСЃР°Рј"""
         if not alerts:
             return
             
-        message = "🚨 *Проблемы с ресурсами серверов*\n\n"
+        message = "рџљЁ *РџСЂРѕР±Р»РµРјС‹ СЃ СЂРµСЃСѓСЂСЃР°РјРё СЃРµСЂРІРµСЂРѕРІ*\n\n"
         message += "\n".join(alerts)
-        message += f"\n⏰ Время проверки: {datetime.now().strftime('%H:%M:%S')}"
+        message += f"\nвЏ° Р’СЂРµРјСЏ РїСЂРѕРІРµСЂРєРё: {datetime.now().strftime('%H:%M:%S')}"
         
         from bot.handlers.commands import send_alert
         send_alert(message)
 
-# Глобальный экземпляр мониторинга ресурсов
+# Р“Р»РѕР±Р°Р»СЊРЅС‹Р№ СЌРєР·РµРјРїР»СЏСЂ РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЂРµСЃСѓСЂСЃРѕРІ
 resource_monitor = ResourceMonitor()
 
 
 class ResourcesChecker:
-    """Утилиты для разовых проверок ресурсов серверов."""
+    """РЈС‚РёР»РёС‚С‹ РґР»СЏ СЂР°Р·РѕРІС‹С… РїСЂРѕРІРµСЂРѕРє СЂРµСЃСѓСЂСЃРѕРІ СЃРµСЂРІРµСЂРѕРІ."""
 
     def __init__(self):
         self.resource_history = {}
         self.resource_alerts_sent = {}
 
     def check_server_resources(self, server):
-        """Проверка ресурсов одного сервера."""
+        """РџСЂРѕРІРµСЂРєР° СЂРµСЃСѓСЂСЃРѕРІ РѕРґРЅРѕРіРѕ СЃРµСЂРІРµСЂР°."""
         try:
             server_ip = server.get("ip")
             server_name = server.get("name", server_ip)
@@ -267,11 +267,11 @@ class ResourcesChecker:
             return True, resources
 
         except Exception as e:
-            debug_log(f"❌ Ошибка проверки ресурсов {server.get('name')}: {e}")
+            debug_log(f"вќЊ РћС€РёР±РєР° РїСЂРѕРІРµСЂРєРё СЂРµСЃСѓСЂСЃРѕРІ {server.get('name')}: {e}")
             return False, None
 
     def check_multiple_resources(self, servers, progress_callback=None):
-        """Проверка ресурсов нескольких серверов."""
+        """РџСЂРѕРІРµСЂРєР° СЂРµСЃСѓСЂСЃРѕРІ РЅРµСЃРєРѕР»СЊРєРёС… СЃРµСЂРІРµСЂРѕРІ."""
         results = []
         total = len(servers)
         success_count = 0
@@ -279,7 +279,7 @@ class ResourcesChecker:
         for index, server in enumerate(servers):
             if progress_callback:
                 progress = (index + 1) / total * 100 if total else 100
-                progress_callback(progress, f"Проверяем {server.get('name', 'сервер')}...")
+                progress_callback(progress, f"РџСЂРѕРІРµСЂСЏРµРј {server.get('name', 'СЃРµСЂРІРµСЂ')}...")
 
             success, resources = self.check_server_resources(server)
             results.append({
@@ -300,7 +300,7 @@ class ResourcesChecker:
         return results, stats
 
     def check_resource_alerts(self, ip, current_resources):
-        """Проверяет условия для отправки алертов по ресурсам."""
+        """РџСЂРѕРІРµСЂСЏРµС‚ СѓСЃР»РѕРІРёСЏ РґР»СЏ РѕС‚РїСЂР°РІРєРё Р°Р»РµСЂС‚РѕРІ РїРѕ СЂРµСЃСѓСЂСЃР°Рј."""
         from config import RESOURCE_ALERT_THRESHOLDS, RESOURCE_ALERT_INTERVAL
 
         if not current_resources:
@@ -334,8 +334,8 @@ class ResourcesChecker:
                 current_time - self.resource_alerts_sent[alert_key]
             ).total_seconds() > RESOURCE_ALERT_INTERVAL:
                 alerts.append(
-                    f"💾 **Дисковое пространство** на {server_name}: {disk_usage}% "
-                    f"(превышен порог {RESOURCE_ALERT_THRESHOLDS['disk_alert']}%)"
+                    f"рџ’ѕ **Р”РёСЃРєРѕРІРѕРµ РїСЂРѕСЃС‚СЂР°РЅСЃС‚РІРѕ** РЅР° {server_name}: {disk_usage}% "
+                    f"(РїСЂРµРІС‹С€РµРЅ РїРѕСЂРѕРі {RESOURCE_ALERT_THRESHOLDS['disk_alert']}%)"
                 )
                 self.resource_alerts_sent[alert_key] = current_time
 
@@ -348,8 +348,8 @@ class ResourcesChecker:
                     current_time - self.resource_alerts_sent[alert_key]
                 ).total_seconds() > RESOURCE_ALERT_INTERVAL:
                     alerts.append(
-                        f"💻 **Процессор** на {server_name}: {prev_cpu}% → {cpu_usage}% "
-                        f"(2 проверки подряд >= {RESOURCE_ALERT_THRESHOLDS['cpu_alert']}%)"
+                        f"рџ’» **РџСЂРѕС†РµСЃСЃРѕСЂ** РЅР° {server_name}: {prev_cpu}% в†’ {cpu_usage}% "
+                        f"(2 РїСЂРѕРІРµСЂРєРё РїРѕРґСЂСЏРґ >= {RESOURCE_ALERT_THRESHOLDS['cpu_alert']}%)"
                     )
                     self.resource_alerts_sent[alert_key] = current_time
 
@@ -362,13 +362,13 @@ class ResourcesChecker:
                     current_time - self.resource_alerts_sent[alert_key]
                 ).total_seconds() > RESOURCE_ALERT_INTERVAL:
                     alerts.append(
-                        f"🧠 **Память** на {server_name}: {prev_ram}% → {ram_usage}% "
-                        f"(2 проверки подряд >= {RESOURCE_ALERT_THRESHOLDS['ram_alert']}%)"
+                        f"рџ§  **РџР°РјСЏС‚СЊ** РЅР° {server_name}: {prev_ram}% в†’ {ram_usage}% "
+                        f"(2 РїСЂРѕРІРµСЂРєРё РїРѕРґСЂСЏРґ >= {RESOURCE_ALERT_THRESHOLDS['ram_alert']}%)"
                     )
                     self.resource_alerts_sent[alert_key] = current_time
 
         return alerts
 
 
-# Глобальный экземпляр чекера ресурсов
+# Р“Р»РѕР±Р°Р»СЊРЅС‹Р№ СЌРєР·РµРјРїР»СЏСЂ С‡РµРєРµСЂР° СЂРµСЃСѓСЂСЃРѕРІ
 resources_checker = ResourcesChecker()

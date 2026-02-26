@@ -1,14 +1,14 @@
 """
 /bot/handlers/commands.py
-Server Monitoring System v8.5.0
+Server Monitoring System v8.6.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Only commands, no inline buttons.
-Система мониторинга серверов
-Версия: 8.5.0
-Автор: Александр Суханов (c)
-Лицензия: MIT
-Только команды, никаких inline-кнопок
+РЎРёСЃС‚РµРјР° РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЃРµСЂРІРµСЂРѕРІ
+Р’РµСЂСЃРёСЏ: 8.6.0
+РђРІС‚РѕСЂ: РђР»РµРєСЃР°РЅРґСЂ РЎСѓС…Р°РЅРѕРІ (c)
+Р›РёС†РµРЅР·РёСЏ: MIT
+РўРѕР»СЊРєРѕ РєРѕРјР°РЅРґС‹, РЅРёРєР°РєРёС… inline-РєРЅРѕРїРѕРє
 """
 
 from bot.menu.handlers import show_main_menu
@@ -34,7 +34,7 @@ def help_command(update, context):
         return
 
     update.message.reply_text(
-        "ℹ️ Используйте меню для управления мониторингом",
+        "в„№пёЏ РСЃРїРѕР»СЊР·СѓР№С‚Рµ РјРµРЅСЋ РґР»СЏ СѓРїСЂР°РІР»РµРЅРёСЏ РјРѕРЅРёС‚РѕСЂРёРЅРіРѕРј",
         parse_mode='Markdown'
     )
 
@@ -60,7 +60,7 @@ def report_command(update, context):
 
 
 def send_alert(message, force=False):
-    """Отправляет сообщение в Telegram"""
+    """РћС‚РїСЂР°РІР»СЏРµС‚ СЃРѕРѕР±С‰РµРЅРёРµ РІ Telegram"""
     try:
         from modules.availability import availability_monitor
         from lib.alerts import is_silent_time
@@ -71,60 +71,60 @@ def send_alert(message, force=False):
                 from config.db_settings import CHAT_IDS
                 for chat_id in CHAT_IDS:
                     bot.send_message(chat_id=chat_id, text=message)
-                debug_log("✅ Сообщение отправлено")
+                debug_log("вњ… РЎРѕРѕР±С‰РµРЅРёРµ РѕС‚РїСЂР°РІР»РµРЅРѕ")
                 return True
         else:
-            debug_log("⏸️ Сообщение не отправлено (тихий режим)")
+            debug_log("вЏёпёЏ РЎРѕРѕР±С‰РµРЅРёРµ РЅРµ РѕС‚РїСЂР°РІР»РµРЅРѕ (С‚РёС…РёР№ СЂРµР¶РёРј)")
 
         return False
     except Exception as e:
-        debug_log(f"❌ Ошибка отправки сообщения: {e}")
+        debug_log(f"вќЊ РћС€РёР±РєР° РѕС‚РїСЂР°РІРєРё СЃРѕРѕР±С‰РµРЅРёСЏ: {e}")
         return False
 
 
 def handle_check_single_server(update, context, server_ip):
-    """Обработка проверки одного сервера"""
+    """РћР±СЂР°Р±РѕС‚РєР° РїСЂРѕРІРµСЂРєРё РѕРґРЅРѕРіРѕ СЃРµСЂРІРµСЂР°"""
     try:
         from extensions.server_checks import get_server_by_ip, check_server_availability
 
         server = get_server_by_ip(server_ip)
         if not server:
-            return "❌ Сервер не найден"
+            return "вќЊ РЎРµСЂРІРµСЂ РЅРµ РЅР°Р№РґРµРЅ"
 
         is_up = check_server_availability(server)
 
         if is_up:
-            return f"✅ Сервер {server['name']} ({server_ip}) доступен"
-        return f"🔴 Сервер {server['name']} ({server_ip}) недоступен"
+            return f"вњ… РЎРµСЂРІРµСЂ {server['name']} ({server_ip}) РґРѕСЃС‚СѓРїРµРЅ"
+        return f"рџ”ґ РЎРµСЂРІРµСЂ {server['name']} ({server_ip}) РЅРµРґРѕСЃС‚СѓРїРµРЅ"
 
     except Exception as e:
-        debug_log(f"❌ Ошибка проверки сервера {server_ip}: {e}")
-        return f"❌ Ошибка проверки: {str(e)[:100]}"
+        debug_log(f"вќЊ РћС€РёР±РєР° РїСЂРѕРІРµСЂРєРё СЃРµСЂРІРµСЂР° {server_ip}: {e}")
+        return f"вќЊ РћС€РёР±РєР° РїСЂРѕРІРµСЂРєРё: {str(e)[:100]}"
 
 
 def handle_check_server_resources(update, context, server_ip):
-    """Обработка проверки ресурсов одного сервера"""
+    """РћР±СЂР°Р±РѕС‚РєР° РїСЂРѕРІРµСЂРєРё СЂРµСЃСѓСЂСЃРѕРІ РѕРґРЅРѕРіРѕ СЃРµСЂРІРµСЂР°"""
     try:
         from extensions.extension_manager import extension_manager
         if not extension_manager.is_extension_enabled('resource_monitor'):
-            return "📊 Мониторинг ресурсов отключён"
+            return "рџ“Љ РњРѕРЅРёС‚РѕСЂРёРЅРі СЂРµСЃСѓСЂСЃРѕРІ РѕС‚РєР»СЋС‡С‘РЅ"
 
         from modules.resources import resource_monitor
 
         resources = resource_monitor.check_single_server(server_ip)
 
         if not resources:
-            return "❌ Не удалось получить ресурсы сервера"
+            return "вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ РїРѕР»СѓС‡РёС‚СЊ СЂРµСЃСѓСЂСЃС‹ СЃРµСЂРІРµСЂР°"
 
         from extensions.server_checks import get_server_by_ip
         server = get_server_by_ip(server_ip)
 
-        message = f"📊 **Ресурсы сервера {server['name']} ({server_ip})**\n\n"
-        message += f"• CPU: {resources.get('cpu', 0)}%\n"
-        message += f"• RAM: {resources.get('ram', 0)}%\n"
-        message += f"• Disk: {resources.get('disk', 0)}%\n"
-        message += f"• Метод доступа: {resources.get('access_method', 'неизвестно')}\n"
-        message += f"• Время проверки: {resources.get('timestamp', 'N/A')}\n"
+        message = f"рџ“Љ **Р РµСЃСѓСЂСЃС‹ СЃРµСЂРІРµСЂР° {server['name']} ({server_ip})**\n\n"
+        message += f"вЂў CPU: {resources.get('cpu', 0)}%\n"
+        message += f"вЂў RAM: {resources.get('ram', 0)}%\n"
+        message += f"вЂў Disk: {resources.get('disk', 0)}%\n"
+        message += f"вЂў РњРµС‚РѕРґ РґРѕСЃС‚СѓРїР°: {resources.get('access_method', 'РЅРµРёР·РІРµСЃС‚РЅРѕ')}\n"
+        message += f"вЂў Р’СЂРµРјСЏ РїСЂРѕРІРµСЂРєРё: {resources.get('timestamp', 'N/A')}\n"
 
         from config.db_settings import RESOURCE_THRESHOLDS
         alerts = []
@@ -134,34 +134,34 @@ def handle_check_server_resources(update, context, server_ip):
         disk = resources.get('disk', 0)
 
         if cpu >= RESOURCE_THRESHOLDS["cpu_critical"]:
-            alerts.append(f"🚨 CPU: {cpu}% (критично)")
+            alerts.append(f"рџљЁ CPU: {cpu}% (РєСЂРёС‚РёС‡РЅРѕ)")
         elif cpu >= RESOURCE_THRESHOLDS["cpu_warning"]:
-            alerts.append(f"⚠️ CPU: {cpu}% (высокая нагрузка)")
+            alerts.append(f"вљ пёЏ CPU: {cpu}% (РІС‹СЃРѕРєР°СЏ РЅР°РіСЂСѓР·РєР°)")
 
         if ram >= RESOURCE_THRESHOLDS["ram_critical"]:
-            alerts.append(f"🚨 RAM: {ram}% (критично)")
+            alerts.append(f"рџљЁ RAM: {ram}% (РєСЂРёС‚РёС‡РЅРѕ)")
         elif ram >= RESOURCE_THRESHOLDS["ram_warning"]:
-            alerts.append(f"⚠️ RAM: {ram}% (мало свободной памяти)")
+            alerts.append(f"вљ пёЏ RAM: {ram}% (РјР°Р»Рѕ СЃРІРѕР±РѕРґРЅРѕР№ РїР°РјСЏС‚Рё)")
 
         if disk >= RESOURCE_THRESHOLDS["disk_critical"]:
-            alerts.append(f"🚨 Disk: {disk}% (критично)")
+            alerts.append(f"рџљЁ Disk: {disk}% (РєСЂРёС‚РёС‡РЅРѕ)")
         elif disk >= RESOURCE_THRESHOLDS["disk_warning"]:
-            alerts.append(f"⚠️ Disk: {disk}% (мало места)")
+            alerts.append(f"вљ пёЏ Disk: {disk}% (РјР°Р»Рѕ РјРµСЃС‚Р°)")
 
         if alerts:
-            message += "\n**⚠️ Предупреждения:**\n"
+            message += "\n**вљ пёЏ РџСЂРµРґСѓРїСЂРµР¶РґРµРЅРёСЏ:**\n"
             for alert in alerts:
-                message += f"• {alert}\n"
+                message += f"вЂў {alert}\n"
 
         return message
 
     except Exception as e:
-        debug_log(f"❌ Ошибка проверки ресурсов сервера {server_ip}: {e}")
-        return f"❌ Ошибка: {str(e)[:100]}"
+        debug_log(f"вќЊ РћС€РёР±РєР° РїСЂРѕРІРµСЂРєРё СЂРµСЃСѓСЂСЃРѕРІ СЃРµСЂРІРµСЂР° {server_ip}: {e}")
+        return f"вќЊ РћС€РёР±РєР°: {str(e)[:100]}"
 
 
 def create_server_selection_keyboard(server_type=None, action="check_single"):
-    """Создает клавиатуру для выбора сервера"""
+    """РЎРѕР·РґР°РµС‚ РєР»Р°РІРёР°С‚СѓСЂСѓ РґР»СЏ РІС‹Р±РѕСЂР° СЃРµСЂРІРµСЂР°"""
     try:
         from extensions.server_checks import initialize_servers
 
@@ -186,12 +186,12 @@ def create_server_selection_keyboard(server_type=None, action="check_single"):
                 current_row = []
 
         keyboard.append([
-            InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
-            InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+            InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu'),
+            InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')
         ])
 
         return InlineKeyboardMarkup(keyboard)
 
     except Exception as e:
-        debug_log(f"❌ Ошибка создания клавиатуры выбора сервера: {e}")
+        debug_log(f"вќЊ РћС€РёР±РєР° СЃРѕР·РґР°РЅРёСЏ РєР»Р°РІРёР°С‚СѓСЂС‹ РІС‹Р±РѕСЂР° СЃРµСЂРІРµСЂР°: {e}")
         return InlineKeyboardMarkup([[]])

@@ -1,14 +1,14 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.5.0
+Server Monitoring System v8.6.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
-Система мониторинга серверов
-Версия: 8.5.0
-Автор: Александр Суханов (c)
-Лицензия: MIT
-Обработчики для управления настройками через бота
+РЎРёСЃС‚РµРјР° РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЃРµСЂРІРµСЂРѕРІ
+Р’РµСЂСЃРёСЏ: 8.6.0
+РђРІС‚РѕСЂ: РђР»РµРєСЃР°РЅРґСЂ РЎСѓС…Р°РЅРѕРІ (c)
+Р›РёС†РµРЅР·РёСЏ: MIT
+РћР±СЂР°Р±РѕС‚С‡РёРєРё РґР»СЏ СѓРїСЂР°РІР»РµРЅРёСЏ РЅР°СЃС‚СЂРѕР№РєР°РјРё С‡РµСЂРµР· Р±РѕС‚Р°
 """
 
 import sqlite3
@@ -70,9 +70,9 @@ def _safe_query_answer(query, text: str | None = None, **kwargs) -> None:
         pass
 
 def _get_mail_fallback_patterns() -> list:
-    """Получить запасные паттерны для бэкапов почты."""
+    """РџРѕР»СѓС‡РёС‚СЊ Р·Р°РїР°СЃРЅС‹Рµ РїР°С‚С‚РµСЂРЅС‹ РґР»СЏ Р±СЌРєР°РїРѕРІ РїРѕС‡С‚С‹."""
     default_pattern = (
-        r"^\s*бэкап\s+zimbra\s*-\s*"
+        r"^\s*Р±СЌРєР°Рї\s+zimbra\s*-\s*"
         r"(?P<size>\d+(?:[.,]\d+)?\s*[TGMK]?(?:i?B)?)\s+"
         r"(?P<path>/\S+)\s*$"
     )
@@ -109,11 +109,11 @@ def _get_mail_fallback_patterns() -> list:
     return [default_pattern]
 
 def _escape_pattern_text(text: str) -> str:
-    """Экранирует текст для Markdown."""
+    """Р­РєСЂР°РЅРёСЂСѓРµС‚ С‚РµРєСЃС‚ РґР»СЏ Markdown."""
     return escape_markdown(str(text or ""), version=1)
 
-def _format_current_hint(value, default: str = "не задано") -> str:
-    """Сформировать подсказку для текущего значения."""
+def _format_current_hint(value, default: str = "РЅРµ Р·Р°РґР°РЅРѕ") -> str:
+    """РЎС„РѕСЂРјРёСЂРѕРІР°С‚СЊ РїРѕРґСЃРєР°Р·РєСѓ РґР»СЏ С‚РµРєСѓС‰РµРіРѕ Р·РЅР°С‡РµРЅРёСЏ."""
     if value is None:
         return default
     if isinstance(value, str) and value.strip() == "":
@@ -121,17 +121,17 @@ def _format_current_hint(value, default: str = "не задано") -> str:
     return str(value)
 
 def _format_archive_cleanup_days(value) -> str:
-    """Сформировать отображение периода очистки архива."""
+    """РЎС„РѕСЂРјРёСЂРѕРІР°С‚СЊ РѕС‚РѕР±СЂР°Р¶РµРЅРёРµ РїРµСЂРёРѕРґР° РѕС‡РёСЃС‚РєРё Р°СЂС…РёРІР°."""
     try:
         days = int(str(value).strip())
     except (TypeError, ValueError):
         days = 0
     if days <= 0:
-        return "выключено"
-    return f"{days} дн."
+        return "РІС‹РєР»СЋС‡РµРЅРѕ"
+    return f"{days} РґРЅ."
 
 def _build_mail_pattern_from_subject(subject: str) -> str:
-    """Собрать regex паттерн по теме письма."""
+    """РЎРѕР±СЂР°С‚СЊ regex РїР°С‚С‚РµСЂРЅ РїРѕ С‚РµРјРµ РїРёСЃСЊРјР°."""
     if not subject:
         return ""
 
@@ -167,7 +167,7 @@ def _build_mail_pattern_from_subject(subject: str) -> str:
     return escaped
 
 def _build_mail_pattern_from_fragments(fragments: list[str]) -> str:
-    """Собрать regex паттерн из обязательных фрагментов."""
+    """РЎРѕР±СЂР°С‚СЊ regex РїР°С‚С‚РµСЂРЅ РёР· РѕР±СЏР·Р°С‚РµР»СЊРЅС‹С… С„СЂР°РіРјРµРЅС‚РѕРІ."""
     cleaned = [fragment.strip() for fragment in fragments if fragment.strip()]
     if not cleaned:
         return ""
@@ -175,7 +175,7 @@ def _build_mail_pattern_from_fragments(fragments: list[str]) -> str:
     return r".*".join(escaped_parts)
 
 def _build_stock_subject_pattern(subject: str) -> str:
-    """Собрать regex паттерн для темы письма загрузки остатков."""
+    """РЎРѕР±СЂР°С‚СЊ regex РїР°С‚С‚РµСЂРЅ РґР»СЏ С‚РµРјС‹ РїРёСЃСЊРјР° Р·Р°РіСЂСѓР·РєРё РѕСЃС‚Р°С‚РєРѕРІ."""
     if not subject:
         return ""
 
@@ -197,11 +197,11 @@ def _build_stock_subject_pattern(subject: str) -> str:
     return escaped
 
 def _build_stock_pattern_from_fragments(fragments: list[str]) -> str:
-    """Собрать regex паттерн для остатков из обязательных фрагментов."""
+    """РЎРѕР±СЂР°С‚СЊ regex РїР°С‚С‚РµСЂРЅ РґР»СЏ РѕСЃС‚Р°С‚РєРѕРІ РёР· РѕР±СЏР·Р°С‚РµР»СЊРЅС‹С… С„СЂР°РіРјРµРЅС‚РѕРІ."""
     return _build_mail_pattern_from_fragments(fragments)
 
 def _build_stock_success_pattern(sample: str) -> str:
-    """Собрать regex паттерн успеха по примеру строки."""
+    """РЎРѕР±СЂР°С‚СЊ regex РїР°С‚С‚РµСЂРЅ СѓСЃРїРµС…Р° РїРѕ РїСЂРёРјРµСЂСѓ СЃС‚СЂРѕРєРё."""
     normalized = sample.strip()
     if not normalized:
         return ""
@@ -211,7 +211,7 @@ def _build_stock_success_pattern(sample: str) -> str:
 
     draft = re.sub(date_regex, "__DATE__", normalized)
     draft = re.sub(time_regex, "__TIME__", draft)
-    draft = re.sub(r"(строк\s+)\d+", r"\1__ROWS__", draft, flags=re.IGNORECASE)
+    draft = re.sub(r"(СЃС‚СЂРѕРє\s+)\d+", r"\1__ROWS__", draft, flags=re.IGNORECASE)
 
     escaped = re.escape(draft)
     escaped = re.sub(r"\\\s+", r"\\s+", escaped)
@@ -222,7 +222,7 @@ def _build_stock_success_pattern(sample: str) -> str:
     return escaped
 
 def _get_stock_load_fallback_patterns() -> dict[str, list[str]]:
-    """Получить запасные паттерны для загрузки остатков."""
+    """РџРѕР»СѓС‡РёС‚СЊ Р·Р°РїР°СЃРЅС‹Рµ РїР°С‚С‚РµСЂРЅС‹ РґР»СЏ Р·Р°РіСЂСѓР·РєРё РѕСЃС‚Р°С‚РєРѕРІ."""
     fallback_raw = settings_manager.get_setting('BACKUP_PATTERNS', DEFAULT_BACKUP_PATTERNS)
     if isinstance(fallback_raw, str):
         try:
@@ -243,7 +243,7 @@ def _get_stock_load_fallback_patterns() -> dict[str, list[str]]:
     }
 
 def _get_database_fallback_patterns() -> dict[str, list[str]]:
-    """Получить запасные паттерны для бэкапов БД."""
+    """РџРѕР»СѓС‡РёС‚СЊ Р·Р°РїР°СЃРЅС‹Рµ РїР°С‚С‚РµСЂРЅС‹ РґР»СЏ Р±СЌРєР°РїРѕРІ Р‘Р”."""
     fallback_raw = settings_manager.get_setting('BACKUP_PATTERNS', DEFAULT_BACKUP_PATTERNS)
     if isinstance(fallback_raw, str):
         try:
@@ -271,7 +271,7 @@ def _get_database_fallback_patterns() -> dict[str, list[str]]:
     return {}
 
 def _get_backup_patterns_setting() -> dict:
-    """Получить полные паттерны из настроек."""
+    """РџРѕР»СѓС‡РёС‚СЊ РїРѕР»РЅС‹Рµ РїР°С‚С‚РµСЂРЅС‹ РёР· РЅР°СЃС‚СЂРѕРµРє."""
     raw_patterns = settings_manager.get_setting('BACKUP_PATTERNS', DEFAULT_BACKUP_PATTERNS)
     if isinstance(raw_patterns, str):
         try:
@@ -283,7 +283,7 @@ def _get_backup_patterns_setting() -> dict:
     return raw_patterns
 
 def _get_database_patterns_setting() -> dict[str, list[str]]:
-    """Получить паттерны БД из настроек в нормализованном виде."""
+    """РџРѕР»СѓС‡РёС‚СЊ РїР°С‚С‚РµСЂРЅС‹ Р‘Р” РёР· РЅР°СЃС‚СЂРѕРµРє РІ РЅРѕСЂРјР°Р»РёР·РѕРІР°РЅРЅРѕРј РІРёРґРµ."""
     raw_patterns = _get_backup_patterns_setting()
     db_patterns = raw_patterns.get("database", {})
     if isinstance(db_patterns, list):
@@ -303,13 +303,13 @@ def _get_database_patterns_setting() -> dict[str, list[str]]:
     return {}
 
 def _save_database_patterns_setting(db_patterns: dict[str, list[str]]) -> None:
-    """Сохранить паттерны БД в настройках."""
+    """РЎРѕС…СЂР°РЅРёС‚СЊ РїР°С‚С‚РµСЂРЅС‹ Р‘Р” РІ РЅР°СЃС‚СЂРѕР№РєР°С…."""
     raw_patterns = _get_backup_patterns_setting()
     raw_patterns["database"] = db_patterns
     settings_manager.set_setting('BACKUP_PATTERNS', raw_patterns)
 
 def _get_database_names() -> list[str]:
-    """Получить список имён БД из настроек."""
+    """РџРѕР»СѓС‡РёС‚СЊ СЃРїРёСЃРѕРє РёРјС‘РЅ Р‘Р” РёР· РЅР°СЃС‚СЂРѕРµРє."""
     db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
     if not isinstance(db_config, dict):
         return []
@@ -321,7 +321,7 @@ def _get_database_names() -> list[str]:
     return names
 
 def _inject_db_placeholder(text: str, db_names: list[str]) -> tuple[str, str | None]:
-    """Подменить имя БД на плейсхолдер, если найдено."""
+    """РџРѕРґРјРµРЅРёС‚СЊ РёРјСЏ Р‘Р” РЅР° РїР»РµР№СЃС…РѕР»РґРµСЂ, РµСЃР»Рё РЅР°Р№РґРµРЅРѕ."""
     if not text or not db_names:
         return text, None
 
@@ -343,7 +343,7 @@ def _inject_db_placeholder(text: str, db_names: list[str]) -> tuple[str, str | N
     return replaced, matched
 
 def _build_db_pattern_from_subject(subject: str, db_names: list[str]) -> tuple[str, str | None]:
-    """Собрать regex паттерн БД по теме письма."""
+    """РЎРѕР±СЂР°С‚СЊ regex РїР°С‚С‚РµСЂРЅ Р‘Р” РїРѕ С‚РµРјРµ РїРёСЃСЊРјР°."""
     if not subject:
         return "", None
 
@@ -364,7 +364,7 @@ def _build_db_pattern_from_fragments(
     fragments: list[str],
     db_names: list[str],
 ) -> tuple[str, str | None]:
-    """Собрать regex паттерн БД из обязательных фрагментов."""
+    """РЎРѕР±СЂР°С‚СЊ regex РїР°С‚С‚РµСЂРЅ Р‘Р” РёР· РѕР±СЏР·Р°С‚РµР»СЊРЅС‹С… С„СЂР°РіРјРµРЅС‚РѕРІ."""
     cleaned = [fragment.strip() for fragment in fragments if fragment.strip()]
     if not cleaned:
         return "", None
@@ -388,14 +388,14 @@ def _build_db_pattern_from_fragments(
     return pattern, matched_db
 
 def _get_zfs_server_names() -> list[str]:
-    """Получить список имён ZFS серверов из настроек."""
+    """РџРѕР»СѓС‡РёС‚СЊ СЃРїРёСЃРѕРє РёРјС‘РЅ ZFS СЃРµСЂРІРµСЂРѕРІ РёР· РЅР°СЃС‚СЂРѕРµРє."""
     zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
     if isinstance(zfs_servers, dict):
         return [name for name in zfs_servers.keys() if isinstance(name, str)]
     return []
 
 def _inject_server_placeholder(text: str, server_names: list[str]) -> tuple[str, bool]:
-    """Подменить имя сервера на плейсхолдер, если найдено."""
+    """РџРѕРґРјРµРЅРёС‚СЊ РёРјСЏ СЃРµСЂРІРµСЂР° РЅР° РїР»РµР№СЃС…РѕР»РґРµСЂ, РµСЃР»Рё РЅР°Р№РґРµРЅРѕ."""
     if not text or not server_names:
         return text, False
 
@@ -417,7 +417,7 @@ def _inject_server_placeholder(text: str, server_names: list[str]) -> tuple[str,
     return replaced, True
 
 def _build_zfs_pattern_from_subject(subject: str, server_names: list[str]) -> tuple[str, bool]:
-    """Собрать regex паттерн ZFS по теме письма."""
+    """РЎРѕР±СЂР°С‚СЊ regex РїР°С‚С‚РµСЂРЅ ZFS РїРѕ С‚РµРјРµ РїРёСЃСЊРјР°."""
     if not subject:
         return "", False
 
@@ -435,7 +435,7 @@ def _build_zfs_pattern_from_fragments(
     fragments: list[str],
     server_names: list[str],
 ) -> tuple[str, bool]:
-    """Собрать regex паттерн ZFS из обязательных фрагментов."""
+    """РЎРѕР±СЂР°С‚СЊ regex РїР°С‚С‚РµСЂРЅ ZFS РёР· РѕР±СЏР·Р°С‚РµР»СЊРЅС‹С… С„СЂР°РіРјРµРЅС‚РѕРІ."""
     cleaned = [fragment.strip() for fragment in fragments if fragment.strip()]
     if not cleaned:
         return "", False
@@ -454,74 +454,74 @@ def _build_zfs_pattern_from_fragments(
     return pattern, has_server
 
 def settings_command(update, context):
-    """Команда управления настройками"""
+    """РљРѕРјР°РЅРґР° СѓРїСЂР°РІР»РµРЅРёСЏ РЅР°СЃС‚СЂРѕР№РєР°РјРё"""
     keyboard = [
-        [InlineKeyboardButton("🤖 Настройки бота", callback_data='settings_telegram')],
-        [InlineKeyboardButton("⏰ Временные настройки", callback_data='settings_time')],
-        [InlineKeyboardButton("🔧 Мониторинг", callback_data='settings_monitoring')],
+        [InlineKeyboardButton("рџ¤– РќР°СЃС‚СЂРѕР№РєРё Р±РѕС‚Р°", callback_data='settings_telegram')],
+        [InlineKeyboardButton("вЏ° Р’СЂРµРјРµРЅРЅС‹Рµ РЅР°СЃС‚СЂРѕР№РєРё", callback_data='settings_time')],
+        [InlineKeyboardButton("рџ”§ РњРѕРЅРёС‚РѕСЂРёРЅРі", callback_data='settings_monitoring')],
     ]
 
     keyboard.extend([
-        [InlineKeyboardButton("🔐 Аутентификация", callback_data='settings_auth')],
-        [InlineKeyboardButton("🖥️ Серверы", callback_data='settings_servers')],
+        [InlineKeyboardButton("рџ”ђ РђСѓС‚РµРЅС‚РёС„РёРєР°С†РёСЏ", callback_data='settings_auth')],
+        [InlineKeyboardButton("рџ–ҐпёЏ РЎРµСЂРІРµСЂС‹", callback_data='settings_servers')],
     ])
 
-    keyboard.append([InlineKeyboardButton("🧩 Расширения", callback_data='settings_extensions')])
+    keyboard.append([InlineKeyboardButton("рџ§© Р Р°СЃС€РёСЂРµРЅРёСЏ", callback_data='settings_extensions')])
 
     if extension_manager.is_extension_enabled('web_interface'):
-        keyboard.append([InlineKeyboardButton("🌐 Веб-интерфейс", callback_data='settings_web')])
+        keyboard.append([InlineKeyboardButton("рџЊђ Р’РµР±-РёРЅС‚РµСЂС„РµР№СЃ", callback_data='settings_web')])
 
     keyboard.extend([
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu'),
+         InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
     ])
     
     if update.message:
         update.message.reply_text(
-            "⚙️ *Управление настройками*\n\nВыберите категорию для настройки:",
+            "вљ™пёЏ *РЈРїСЂР°РІР»РµРЅРёРµ РЅР°СЃС‚СЂРѕР№РєР°РјРё*\n\nР’С‹Р±РµСЂРёС‚Рµ РєР°С‚РµРіРѕСЂРёСЋ РґР»СЏ РЅР°СЃС‚СЂРѕР№РєРё:",
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
     else:
         update.callback_query.edit_message_text(
-            "⚙️ *Управление настройками*\n\nВыберите категорию для настройки:",
+            "вљ™пёЏ *РЈРїСЂР°РІР»РµРЅРёРµ РЅР°СЃС‚СЂРѕР№РєР°РјРё*\n\nР’С‹Р±РµСЂРёС‚Рµ РєР°С‚РµРіРѕСЂРёСЋ РґР»СЏ РЅР°СЃС‚СЂРѕР№РєРё:",
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
 def show_telegram_settings(update, context):
-    """Показать настройки Telegram - ОБНОВЛЕННАЯ ВЕРСИЯ"""
+    """РџРѕРєР°Р·Р°С‚СЊ РЅР°СЃС‚СЂРѕР№РєРё Telegram - РћР‘РќРћР’Р›Р•РќРќРђРЇ Р’Р•Р РЎРРЇ"""
     query = update.callback_query
     query.answer()
     
     token = settings_manager.get_setting('TELEGRAM_TOKEN', '')
     chat_ids = settings_manager.get_setting('CHAT_IDS', [])
     
-    token_display = "🟢 Установлен" if token else "🔴 Не установлен"
-    chats_display = f"{len(chat_ids)} чатов" if chat_ids else "🔴 Не настроены"
+    token_display = "рџџў РЈСЃС‚Р°РЅРѕРІР»РµРЅ" if token else "рџ”ґ РќРµ СѓСЃС‚Р°РЅРѕРІР»РµРЅ"
+    chats_display = f"{len(chat_ids)} С‡Р°С‚РѕРІ" if chat_ids else "рџ”ґ РќРµ РЅР°СЃС‚СЂРѕРµРЅС‹"
 
     tamtam_token = settings_manager.get_setting('TAMTAM_TOKEN', '')
     tamtam_chat_ids = settings_manager.get_setting('TAMTAM_CHAT_IDS', [])
-    tamtam_token_display = "🟢 Установлен" if tamtam_token else "🔴 Не установлен"
-    tamtam_chats_display = f"{len(tamtam_chat_ids)} чатов" if tamtam_chat_ids else "🔴 Не настроены"
+    tamtam_token_display = "рџџў РЈСЃС‚Р°РЅРѕРІР»РµРЅ" if tamtam_token else "рџ”ґ РќРµ СѓСЃС‚Р°РЅРѕРІР»РµРЅ"
+    tamtam_chats_display = f"{len(tamtam_chat_ids)} С‡Р°С‚РѕРІ" if tamtam_chat_ids else "рџ”ґ РќРµ РЅР°СЃС‚СЂРѕРµРЅС‹"
     
     message = (
-        "🤖 *Настройки Telegram*\n\n"
-        f"• Токен бота: {token_display}\n"
-        f"• ID чатов: {chats_display}\n\n"
-        "🟠 *Настройки TamTam*\n"
-        f"• Токен бота: {tamtam_token_display}\n"
-        f"• ID чатов: {tamtam_chats_display}\n\n"
-        "Выберите параметр для изменения:"
+        "рџ¤– *РќР°СЃС‚СЂРѕР№РєРё Telegram*\n\n"
+        f"вЂў РўРѕРєРµРЅ Р±РѕС‚Р°: {token_display}\n"
+        f"вЂў ID С‡Р°С‚РѕРІ: {chats_display}\n\n"
+        "рџџ  *РќР°СЃС‚СЂРѕР№РєРё TamTam*\n"
+        f"вЂў РўРѕРєРµРЅ Р±РѕС‚Р°: {tamtam_token_display}\n"
+        f"вЂў ID С‡Р°С‚РѕРІ: {tamtam_chats_display}\n\n"
+        "Р’С‹Р±РµСЂРёС‚Рµ РїР°СЂР°РјРµС‚СЂ РґР»СЏ РёР·РјРµРЅРµРЅРёСЏ:"
     )
     
     keyboard = [
-        [InlineKeyboardButton("🔑 Установить токен", callback_data='set_telegram_token')],
-        [InlineKeyboardButton("💬 Управление чатами", callback_data='manage_chats')],
-        [InlineKeyboardButton("🟠 Установить TamTam токен", callback_data='set_tamtam_token')],
-        [InlineKeyboardButton("🟠 Управление TamTam чатами", callback_data='manage_tamtam_chats')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("рџ”‘ РЈСЃС‚Р°РЅРѕРІРёС‚СЊ С‚РѕРєРµРЅ", callback_data='set_telegram_token')],
+        [InlineKeyboardButton("рџ’¬ РЈРїСЂР°РІР»РµРЅРёРµ С‡Р°С‚Р°РјРё", callback_data='manage_chats')],
+        [InlineKeyboardButton("рџџ  РЈСЃС‚Р°РЅРѕРІРёС‚СЊ TamTam С‚РѕРєРµРЅ", callback_data='set_tamtam_token')],
+        [InlineKeyboardButton("рџџ  РЈРїСЂР°РІР»РµРЅРёРµ TamTam С‡Р°С‚Р°РјРё", callback_data='manage_tamtam_chats')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_main'),
+         InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
     ]
     
     query.edit_message_text(
@@ -531,14 +531,14 @@ def show_telegram_settings(update, context):
     )
 
 def show_monitoring_settings(update, context):
-    """Показать настройки мониторинга - ОБНОВЛЕННАЯ ВЕРСИЯ"""
+    """РџРѕРєР°Р·Р°С‚СЊ РЅР°СЃС‚СЂРѕР№РєРё РјРѕРЅРёС‚РѕСЂРёРЅРіР° - РћР‘РќРћР’Р›Р•РќРќРђРЇ Р’Р•Р РЎРРЇ"""
     query = update.callback_query
     query.answer()
     
     check_interval = settings_manager.get_setting('CHECK_INTERVAL', 60)
     max_fail_time = settings_manager.get_setting('MAX_FAIL_TIME', 900)
     
-    # Новые настройки таймаутов
+    # РќРѕРІС‹Рµ РЅР°СЃС‚СЂРѕР№РєРё С‚Р°Р№РјР°СѓС‚РѕРІ
     windows_2025_timeout = settings_manager.get_setting('WINDOWS_2025_TIMEOUT', 35)
     domain_timeout = settings_manager.get_setting('DOMAIN_SERVERS_TIMEOUT', 20)
     admin_timeout = settings_manager.get_setting('ADMIN_SERVERS_TIMEOUT', 25)
@@ -546,24 +546,24 @@ def show_monitoring_settings(update, context):
     linux_timeout = settings_manager.get_setting('LINUX_TIMEOUT', 15)
     
     message = (
-        "🔧 *Настройки мониторинга*\n\n"
-        f"• Интервал проверки: {check_interval} сек\n"
-        f"• Макс. время простоя: {max_fail_time} сек\n\n"
-        "*Таймауты серверов:*\n"
-        f"• Windows 2025: {windows_2025_timeout} сек\n"
-        f"• Доменные серверы: {domain_timeout} сек\n"
-        f"• Admin серверы: {admin_timeout} сек\n"
-        f"• Стандартные Windows: {standard_timeout} сек\n"
-        f"• Linux серверы: {linux_timeout} сек\n\n"
-        "Выберите параметр для изменения:"
+        "рџ”§ *РќР°СЃС‚СЂРѕР№РєРё РјРѕРЅРёС‚РѕСЂРёРЅРіР°*\n\n"
+        f"вЂў РРЅС‚РµСЂРІР°Р» РїСЂРѕРІРµСЂРєРё: {check_interval} СЃРµРє\n"
+        f"вЂў РњР°РєСЃ. РІСЂРµРјСЏ РїСЂРѕСЃС‚РѕСЏ: {max_fail_time} СЃРµРє\n\n"
+        "*РўР°Р№РјР°СѓС‚С‹ СЃРµСЂРІРµСЂРѕРІ:*\n"
+        f"вЂў Windows 2025: {windows_2025_timeout} СЃРµРє\n"
+        f"вЂў Р”РѕРјРµРЅРЅС‹Рµ СЃРµСЂРІРµСЂС‹: {domain_timeout} СЃРµРє\n"
+        f"вЂў Admin СЃРµСЂРІРµСЂС‹: {admin_timeout} СЃРµРє\n"
+        f"вЂў РЎС‚Р°РЅРґР°СЂС‚РЅС‹Рµ Windows: {standard_timeout} СЃРµРє\n"
+        f"вЂў Linux СЃРµСЂРІРµСЂС‹: {linux_timeout} СЃРµРє\n\n"
+        "Р’С‹Р±РµСЂРёС‚Рµ РїР°СЂР°РјРµС‚СЂ РґР»СЏ РёР·РјРµРЅРµРЅРёСЏ:"
     )
     
     keyboard = [
-        [InlineKeyboardButton("⏱️ Интервал проверки", callback_data='set_check_interval')],
-        [InlineKeyboardButton("🚨 Макс. время простоя", callback_data='set_max_fail_time')],
-        [InlineKeyboardButton("⏰ Таймауты серверов", callback_data='server_timeouts')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("вЏ±пёЏ РРЅС‚РµСЂРІР°Р» РїСЂРѕРІРµСЂРєРё", callback_data='set_check_interval')],
+        [InlineKeyboardButton("рџљЁ РњР°РєСЃ. РІСЂРµРјСЏ РїСЂРѕСЃС‚РѕСЏ", callback_data='set_max_fail_time')],
+        [InlineKeyboardButton("вЏ° РўР°Р№РјР°СѓС‚С‹ СЃРµСЂРІРµСЂРѕРІ", callback_data='server_timeouts')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_main'),
+         InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
     ]
     
     query.edit_message_text(
@@ -573,7 +573,7 @@ def show_monitoring_settings(update, context):
     )
 
 def show_time_settings(update, context):
-    """Показать временные настройки"""
+    """РџРѕРєР°Р·Р°С‚СЊ РІСЂРµРјРµРЅРЅС‹Рµ РЅР°СЃС‚СЂРѕР№РєРё"""
     query = update.callback_query
     query.answer()
     
@@ -582,18 +582,18 @@ def show_time_settings(update, context):
     data_collection = settings_manager.get_setting('DATA_COLLECTION_TIME', '08:30')
     
     message = (
-        "⏰ *Временные настройки*\n\n"
-        f"• Тихий режим: {silent_start}:00 - {silent_end}:00\n"
-        f"• Сбор данных: {data_collection}\n\n"
-        "Выберите параметр для изменения:"
+        "вЏ° *Р’СЂРµРјРµРЅРЅС‹Рµ РЅР°СЃС‚СЂРѕР№РєРё*\n\n"
+        f"вЂў РўРёС…РёР№ СЂРµР¶РёРј: {silent_start}:00 - {silent_end}:00\n"
+        f"вЂў РЎР±РѕСЂ РґР°РЅРЅС‹С…: {data_collection}\n\n"
+        "Р’С‹Р±РµСЂРёС‚Рµ РїР°СЂР°РјРµС‚СЂ РґР»СЏ РёР·РјРµРЅРµРЅРёСЏ:"
     )
     
     keyboard = [
-        [InlineKeyboardButton("🔇 Начало тихого режима", callback_data='set_silent_start')],
-        [InlineKeyboardButton("🔊 Конец тихого режима", callback_data='set_silent_end')],
-        [InlineKeyboardButton("📊 Время сбора данных", callback_data='set_data_collection')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("рџ”‡ РќР°С‡Р°Р»Рѕ С‚РёС…РѕРіРѕ СЂРµР¶РёРјР°", callback_data='set_silent_start')],
+        [InlineKeyboardButton("рџ”Љ РљРѕРЅРµС† С‚РёС…РѕРіРѕ СЂРµР¶РёРјР°", callback_data='set_silent_end')],
+        [InlineKeyboardButton("рџ“Љ Р’СЂРµРјСЏ СЃР±РѕСЂР° РґР°РЅРЅС‹С…", callback_data='set_data_collection')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_main'),
+         InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
     ]
     
     query.edit_message_text(
@@ -603,7 +603,7 @@ def show_time_settings(update, context):
     )
 
 def show_resource_settings(update, context):
-    """Показать настройки ресурсов"""
+    """РџРѕРєР°Р·Р°С‚СЊ РЅР°СЃС‚СЂРѕР№РєРё СЂРµСЃСѓСЂСЃРѕРІ"""
     query = update.callback_query
     query.answer()
     
@@ -615,25 +615,25 @@ def show_resource_settings(update, context):
     disk_critical = settings_manager.get_setting('DISK_CRITICAL', 90)
     
     message = (
-        "💻 *Настройки ресурсов*\n\n"
-        f"• CPU предупреждение: {cpu_warning}%\n"
-        f"• CPU критический: {cpu_critical}%\n"
-        f"• RAM предупреждение: {ram_warning}%\n"
-        f"• RAM критический: {ram_critical}%\n"
-        f"• Disk предупреждение: {disk_warning}%\n"
-        f"• Disk критический: {disk_critical}%\n\n"
-        "Выберите параметр для изменения:"
+        "рџ’» *РќР°СЃС‚СЂРѕР№РєРё СЂРµСЃСѓСЂСЃРѕРІ*\n\n"
+        f"вЂў CPU РїСЂРµРґСѓРїСЂРµР¶РґРµРЅРёРµ: {cpu_warning}%\n"
+        f"вЂў CPU РєСЂРёС‚РёС‡РµСЃРєРёР№: {cpu_critical}%\n"
+        f"вЂў RAM РїСЂРµРґСѓРїСЂРµР¶РґРµРЅРёРµ: {ram_warning}%\n"
+        f"вЂў RAM РєСЂРёС‚РёС‡РµСЃРєРёР№: {ram_critical}%\n"
+        f"вЂў Disk РїСЂРµРґСѓРїСЂРµР¶РґРµРЅРёРµ: {disk_warning}%\n"
+        f"вЂў Disk РєСЂРёС‚РёС‡РµСЃРєРёР№: {disk_critical}%\n\n"
+        "Р’С‹Р±РµСЂРёС‚Рµ РїР°СЂР°РјРµС‚СЂ РґР»СЏ РёР·РјРµРЅРµРЅРёСЏ:"
     )
     
     keyboard = [
-        [InlineKeyboardButton("💻 CPU предупреждение", callback_data='set_cpu_warning')],
-        [InlineKeyboardButton("💻 CPU критический", callback_data='set_cpu_critical')],
-        [InlineKeyboardButton("🧠 RAM предупреждение", callback_data='set_ram_warning')],
-        [InlineKeyboardButton("🧠 RAM критический", callback_data='set_ram_critical')],
-        [InlineKeyboardButton("💾 Disk предупреждение", callback_data='set_disk_warning')],
-        [InlineKeyboardButton("💾 Disk критический", callback_data='set_disk_critical')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("рџ’» CPU РїСЂРµРґСѓРїСЂРµР¶РґРµРЅРёРµ", callback_data='set_cpu_warning')],
+        [InlineKeyboardButton("рџ’» CPU РєСЂРёС‚РёС‡РµСЃРєРёР№", callback_data='set_cpu_critical')],
+        [InlineKeyboardButton("рџ§  RAM РїСЂРµРґСѓРїСЂРµР¶РґРµРЅРёРµ", callback_data='set_ram_warning')],
+        [InlineKeyboardButton("рџ§  RAM РєСЂРёС‚РёС‡РµСЃРєРёР№", callback_data='set_ram_critical')],
+        [InlineKeyboardButton("рџ’ѕ Disk РїСЂРµРґСѓРїСЂРµР¶РґРµРЅРёРµ", callback_data='set_disk_warning')],
+        [InlineKeyboardButton("рџ’ѕ Disk РєСЂРёС‚РёС‡РµСЃРєРёР№", callback_data='set_disk_critical')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_main'),
+         InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
     ]
     
     query.edit_message_text(
@@ -643,7 +643,7 @@ def show_resource_settings(update, context):
     )
 
 def show_backup_settings(update, context):
-    """Показать настройки бэкапов - С ИЗМЕНЕННЫМ CALLBACK"""
+    """РџРѕРєР°Р·Р°С‚СЊ РЅР°СЃС‚СЂРѕР№РєРё Р±СЌРєР°РїРѕРІ - РЎ РР—РњР•РќР•РќРќР«Рњ CALLBACK"""
     query = update.callback_query
     query.answer()
     
@@ -658,34 +658,34 @@ def show_backup_settings(update, context):
     zfs_count = len(zfs_servers) if isinstance(zfs_servers, dict) else 0
     
     message = (
-        "💾 *Настройки бэкапов*\n\n"
-        f"• Алерты через: {backup_alert_hours}ч\n"
-        f"• Устаревание через: {backup_stale_hours}ч\n"
-        f"• Категории БД: {len(db_categories)}\n\n"
-        f"• Proxmox хосты: {proxmox_count}\n\n"
-        f"• ZFS серверы: {zfs_count}\n\n"
-        "Выберите раздел для настройки:"
+        "рџ’ѕ *РќР°СЃС‚СЂРѕР№РєРё Р±СЌРєР°РїРѕРІ*\n\n"
+        f"вЂў РђР»РµСЂС‚С‹ С‡РµСЂРµР·: {backup_alert_hours}С‡\n"
+        f"вЂў РЈСЃС‚Р°СЂРµРІР°РЅРёРµ С‡РµСЂРµР·: {backup_stale_hours}С‡\n"
+        f"вЂў РљР°С‚РµРіРѕСЂРёРё Р‘Р”: {len(db_categories)}\n\n"
+        f"вЂў Proxmox С…РѕСЃС‚С‹: {proxmox_count}\n\n"
+        f"вЂў ZFS СЃРµСЂРІРµСЂС‹: {zfs_count}\n\n"
+        "Р’С‹Р±РµСЂРёС‚Рµ СЂР°Р·РґРµР» РґР»СЏ РЅР°СЃС‚СЂРѕР№РєРё:"
     )
     
     keyboard = [
-        [InlineKeyboardButton("⏰ Временные интервалы", callback_data='backup_times')],
+        [InlineKeyboardButton("вЏ° Р’СЂРµРјРµРЅРЅС‹Рµ РёРЅС‚РµСЂРІР°Р»С‹", callback_data='backup_times')],
     ]
 
     if extension_manager.is_extension_enabled('backup_monitor'):
-        keyboard.append([InlineKeyboardButton("🖥️ Proxmox бэкапы", callback_data='settings_backup_proxmox')])
-        keyboard.append([InlineKeyboardButton("🖥️ Паттерны Proxmox", callback_data='settings_patterns_proxmox')])
+        keyboard.append([InlineKeyboardButton("рџ–ҐпёЏ Proxmox Р±СЌРєР°РїС‹", callback_data='settings_backup_proxmox')])
+        keyboard.append([InlineKeyboardButton("рџ–ҐпёЏ РџР°С‚С‚РµСЂРЅС‹ Proxmox", callback_data='settings_patterns_proxmox')])
 
     if extension_manager.is_extension_enabled('database_backup_monitor'):
-        keyboard.append([InlineKeyboardButton("🗃️ Базы данных", callback_data='settings_db_main')])
-        keyboard.append([InlineKeyboardButton("🗃️ Паттерны БД", callback_data='settings_patterns_db')])
+        keyboard.append([InlineKeyboardButton("рџ—ѓпёЏ Р‘Р°Р·С‹ РґР°РЅРЅС‹С…", callback_data='settings_db_main')])
+        keyboard.append([InlineKeyboardButton("рџ—ѓпёЏ РџР°С‚С‚РµСЂРЅС‹ Р‘Р”", callback_data='settings_patterns_db')])
 
     if extension_manager.is_extension_enabled('zfs_monitor'):
-        keyboard.append([InlineKeyboardButton("🧊 ZFS", callback_data='settings_zfs')])
+        keyboard.append([InlineKeyboardButton("рџ§Љ ZFS", callback_data='settings_zfs')])
 
     keyboard.extend([
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_main'),
+         InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
     ])
     
     query.edit_message_text(
@@ -695,7 +695,7 @@ def show_backup_settings(update, context):
     )
 
 def show_proxmox_backup_settings(update, context):
-    """Показать настройки бэкапов Proxmox в разделе расширений"""
+    """РџРѕРєР°Р·Р°С‚СЊ РЅР°СЃС‚СЂРѕР№РєРё Р±СЌРєР°РїРѕРІ Proxmox РІ СЂР°Р·РґРµР»Рµ СЂР°СЃС€РёСЂРµРЅРёР№"""
     query = update.callback_query
     query.answer()
 
@@ -703,16 +703,16 @@ def show_proxmox_backup_settings(update, context):
     proxmox_count = len(proxmox_hosts) if isinstance(proxmox_hosts, dict) else 0
 
     message = (
-        "🖥️ *Бэкапы Proxmox*\n\n"
-        f"Хостов в списке: {proxmox_count}\n\n"
-        "Выберите раздел:"
+        "рџ–ҐпёЏ *Р‘СЌРєР°РїС‹ Proxmox*\n\n"
+        f"РҐРѕСЃС‚РѕРІ РІ СЃРїРёСЃРєРµ: {proxmox_count}\n\n"
+        "Р’С‹Р±РµСЂРёС‚Рµ СЂР°Р·РґРµР»:"
     )
 
     keyboard = [
-        [InlineKeyboardButton("📋 Хосты", callback_data='settings_backup_proxmox')],
-        [InlineKeyboardButton("🔍 Паттерны", callback_data='settings_patterns_proxmox')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_extensions'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("рџ“‹ РҐРѕСЃС‚С‹", callback_data='settings_backup_proxmox')],
+        [InlineKeyboardButton("рџ”Ќ РџР°С‚С‚РµСЂРЅС‹", callback_data='settings_patterns_proxmox')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_extensions'),
+         InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
     ]
 
     query.edit_message_text(
@@ -722,7 +722,7 @@ def show_proxmox_backup_settings(update, context):
     )
 
 def show_database_backup_settings(update, context):
-    """Показать настройки бэкапов БД в разделе расширений"""
+    """РџРѕРєР°Р·Р°С‚СЊ РЅР°СЃС‚СЂРѕР№РєРё Р±СЌРєР°РїРѕРІ Р‘Р” РІ СЂР°Р·РґРµР»Рµ СЂР°СЃС€РёСЂРµРЅРёР№"""
     query = update.callback_query
     query.answer()
 
@@ -730,16 +730,16 @@ def show_database_backup_settings(update, context):
     db_categories = list(db_config.keys()) if isinstance(db_config, dict) else []
 
     message = (
-        "🗃️ *Бэкапы БД*\n\n"
-        f"Категорий: {len(db_categories)}\n\n"
-        "Выберите раздел:"
+        "рџ—ѓпёЏ *Р‘СЌРєР°РїС‹ Р‘Р”*\n\n"
+        f"РљР°С‚РµРіРѕСЂРёР№: {len(db_categories)}\n\n"
+        "Р’С‹Р±РµСЂРёС‚Рµ СЂР°Р·РґРµР»:"
     )
 
     keyboard = [
-        [InlineKeyboardButton("📋 Базы", callback_data='settings_db_main')],
-        [InlineKeyboardButton("🔍 Паттерны", callback_data='settings_patterns_db')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_extensions'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("рџ“‹ Р‘Р°Р·С‹", callback_data='settings_db_main')],
+        [InlineKeyboardButton("рџ”Ќ РџР°С‚С‚РµСЂРЅС‹", callback_data='settings_patterns_db')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_extensions'),
+         InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
     ]
 
     query.edit_message_text(
@@ -749,39 +749,39 @@ def show_database_backup_settings(update, context):
     )
 
 def show_backup_databases_settings(update, context):
-    """Показать настройки баз данных для бэкапов"""
+    """РџРѕРєР°Р·Р°С‚СЊ РЅР°СЃС‚СЂРѕР№РєРё Р±Р°Р· РґР°РЅРЅС‹С… РґР»СЏ Р±СЌРєР°РїРѕРІ"""
     query = update.callback_query
     query.answer()
     
     db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
     
-    message = "🗃️ *Настройки баз данных для бэкапов*\n\n"
+    message = "рџ—ѓпёЏ *РќР°СЃС‚СЂРѕР№РєРё Р±Р°Р· РґР°РЅРЅС‹С… РґР»СЏ Р±СЌРєР°РїРѕРІ*\n\n"
     
     if not db_config:
-        message += "❌ *Базы данных не настроены*\n\n"
-        message += "Здесь вы можете настроить категории и базы данных для мониторинга бэкапов."
+        message += "вќЊ *Р‘Р°Р·С‹ РґР°РЅРЅС‹С… РЅРµ РЅР°СЃС‚СЂРѕРµРЅС‹*\n\n"
+        message += "Р—РґРµСЃСЊ РІС‹ РјРѕР¶РµС‚Рµ РЅР°СЃС‚СЂРѕРёС‚СЊ РєР°С‚РµРіРѕСЂРёРё Рё Р±Р°Р·С‹ РґР°РЅРЅС‹С… РґР»СЏ РјРѕРЅРёС‚РѕСЂРёРЅРіР° Р±СЌРєР°РїРѕРІ."
     else:
-        message += "*Текущие настройки:*\n\n"
+        message += "*РўРµРєСѓС‰РёРµ РЅР°СЃС‚СЂРѕР№РєРё:*\n\n"
         for category, databases in db_config.items():
-            message += f"📁 *{category.upper()}*\n"
-            message += f"   Количество БД: {len(databases)}\n"
-            # Показываем несколько примеров
+            message += f"рџ“Ѓ *{category.upper()}*\n"
+            message += f"   РљРѕР»РёС‡РµСЃС‚РІРѕ Р‘Р”: {len(databases)}\n"
+            # РџРѕРєР°Р·С‹РІР°РµРј РЅРµСЃРєРѕР»СЊРєРѕ РїСЂРёРјРµСЂРѕРІ
             sample_dbs = list(databases.values())[:2]
             for db_name in sample_dbs:
-                message += f"   • {db_name}\n"
+                message += f"   вЂў {db_name}\n"
             if len(databases) > 2:
-                message += f"   • ... и еще {len(databases) - 2} БД\n"
+                message += f"   вЂў ... Рё РµС‰Рµ {len(databases) - 2} Р‘Р”\n"
             message += "\n"
     
-    message += "Выберите действие:"
+    message += "Р’С‹Р±РµСЂРёС‚Рµ РґРµР№СЃС‚РІРёРµ:"
     
     keyboard = [
-        [InlineKeyboardButton("➕ Добавить категорию", callback_data='settings_db_add_category')],
-        [InlineKeyboardButton("✏️ Редактировать категорию", callback_data='settings_db_edit_category')],
-        [InlineKeyboardButton("🗑️ Удалить категорию", callback_data='settings_db_delete_category')],
-        [InlineKeyboardButton("📋 Просмотр всех БД", callback_data='settings_db_view_all')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_extensions'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("вћ• Р”РѕР±Р°РІРёС‚СЊ РєР°С‚РµРіРѕСЂРёСЋ", callback_data='settings_db_add_category')],
+        [InlineKeyboardButton("вњЏпёЏ Р РµРґР°РєС‚РёСЂРѕРІР°С‚СЊ РєР°С‚РµРіРѕСЂРёСЋ", callback_data='settings_db_edit_category')],
+        [InlineKeyboardButton("рџ—‘пёЏ РЈРґР°Р»РёС‚СЊ РєР°С‚РµРіРѕСЂРёСЋ", callback_data='settings_db_delete_category')],
+        [InlineKeyboardButton("рџ“‹ РџСЂРѕСЃРјРѕС‚СЂ РІСЃРµС… Р‘Р”", callback_data='settings_db_view_all')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_extensions'),
+         InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
     ]
     
     query.edit_message_text(
@@ -791,13 +791,13 @@ def show_backup_databases_settings(update, context):
     )
 
 def show_all_settings(update, context):
-    """Показать все настройки"""
+    """РџРѕРєР°Р·Р°С‚СЊ РІСЃРµ РЅР°СЃС‚СЂРѕР№РєРё"""
     query = update.callback_query
     query.answer()
     
     all_settings = settings_manager.get_all_settings()
     
-    message = "📊 *Все настройки системы*\n\n"
+    message = "рџ“Љ *Р’СЃРµ РЅР°СЃС‚СЂРѕР№РєРё СЃРёСЃС‚РµРјС‹*\n\n"
     
     for category in settings_manager.get_categories():
         message += f"*{category.upper()}:*\n"
@@ -805,23 +805,23 @@ def show_all_settings(update, context):
         
         for key, value in category_settings.items():
             if key == 'TELEGRAM_TOKEN' and value:
-                value = '***' + value[-4:]  # Показываем только последние 4 символа
+                value = '***' + value[-4:]  # РџРѕРєР°Р·С‹РІР°РµРј С‚РѕР»СЊРєРѕ РїРѕСЃР»РµРґРЅРёРµ 4 СЃРёРјРІРѕР»Р°
             elif key == 'TAMTAM_TOKEN' and value:
                 value = '***' + value[-4:]
             elif key == 'CHAT_IDS':
-                value = f"{len(value)} чатов"
+                value = f"{len(value)} С‡Р°С‚РѕРІ"
             elif key == 'TAMTAM_CHAT_IDS':
-                value = f"{len(value)} чатов"
+                value = f"{len(value)} С‡Р°С‚РѕРІ"
             elif isinstance(value, (list, dict)):
-                value = f"{len(value)} элементов"
+                value = f"{len(value)} СЌР»РµРјРµРЅС‚РѕРІ"
             
-            message += f"• {key}: {value}\n"
+            message += f"вЂў {key}: {value}\n"
         message += "\n"
     
     keyboard = [
-        [InlineKeyboardButton("⚙️ Управление настройками", callback_data='settings_main')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("вљ™пёЏ РЈРїСЂР°РІР»РµРЅРёРµ РЅР°СЃС‚СЂРѕР№РєР°РјРё", callback_data='settings_main')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_main'),
+         InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
     ]
     
     query.edit_message_text(
@@ -831,26 +831,26 @@ def show_all_settings(update, context):
     )
 
 def settings_callback_handler(update, context):
-    """Обработчик callback'ов настроек"""
+    """РћР±СЂР°Р±РѕС‚С‡РёРє callback'РѕРІ РЅР°СЃС‚СЂРѕРµРє"""
     query = update.callback_query
     data = query.data
     
-    # если это callback от бэкапов, НЕ обрабатываем здесь
+    # РµСЃР»Рё СЌС‚Рѕ callback РѕС‚ Р±СЌРєР°РїРѕРІ, РќР• РѕР±СЂР°Р±Р°С‚С‹РІР°РµРј Р·РґРµСЃСЊ
     if (
         data.startswith('db_')
         and data not in BACKUP_SETTINGS_CALLBACKS
         and not data.startswith('db_default_')
     ):
-        _safe_query_answer(query, "⚙️ Перенаправление к модулю бэкапов...")
-        # Передаем обработку дальше по цепочке
+        _safe_query_answer(query, "вљ™пёЏ РџРµСЂРµРЅР°РїСЂР°РІР»РµРЅРёРµ Рє РјРѕРґСѓР»СЋ Р±СЌРєР°РїРѕРІ...")
+        # РџРµСЂРµРґР°РµРј РѕР±СЂР°Р±РѕС‚РєСѓ РґР°Р»СЊС€Рµ РїРѕ С†РµРїРѕС‡РєРµ
         return
     if data.startswith('backup_') and data not in BACKUP_SETTINGS_CALLBACKS:
-        _safe_query_answer(query, "⚙️ Перенаправление к модулю бэкапов...")
-        # Передаем обработку дальше по цепочке
+        _safe_query_answer(query, "вљ™пёЏ РџРµСЂРµРЅР°РїСЂР°РІР»РµРЅРёРµ Рє РјРѕРґСѓР»СЋ Р±СЌРєР°РїРѕРІ...")
+        # РџРµСЂРµРґР°РµРј РѕР±СЂР°Р±РѕС‚РєСѓ РґР°Р»СЊС€Рµ РїРѕ С†РµРїРѕС‡РєРµ
         return
 
     try:
-        # Основные категории настроек
+        # РћСЃРЅРѕРІРЅС‹Рµ РєР°С‚РµРіРѕСЂРёРё РЅР°СЃС‚СЂРѕРµРє
         if data == 'settings_main':
             settings_command(update, context)
         elif data == 'settings_telegram':
@@ -862,7 +862,7 @@ def settings_callback_handler(update, context):
         elif data == 'settings_resources':
             show_resource_settings(update, context)
         elif data == 'settings_auth':
-            show_auth_settings(update, context)  # Теперь упрощенная версия
+            show_auth_settings(update, context)  # РўРµРїРµСЂСЊ СѓРїСЂРѕС‰РµРЅРЅР°СЏ РІРµСЂСЃРёСЏ
         elif data == 'settings_servers':
             show_servers_settings(update, context)
         elif data == 'settings_backup':
@@ -1151,7 +1151,7 @@ def settings_callback_handler(update, context):
                     source_kind="download",
                     back_callback=back_callback,
                     action_prefix=action_prefix,
-                    title="🧩 *Обработка файлов (источник)*",
+                    title="рџ§© *РћР±СЂР°Р±РѕС‚РєР° С„Р°Р№Р»РѕРІ (РёСЃС‚РѕС‡РЅРёРє)*",
                 )
             elif action == 'add':
                 supplier_stock_start_processing_rule_menu(
@@ -1198,7 +1198,7 @@ def settings_callback_handler(update, context):
                     source_kind="download",
                     back_callback=back_callback,
                     action_prefix=action_prefix,
-                    title="🧩 *Обработка файлов (источник)*",
+                    title="рџ§© *РћР±СЂР°Р±РѕС‚РєР° С„Р°Р№Р»РѕРІ (РёСЃС‚РѕС‡РЅРёРє)*",
                 )
         elif data.startswith('supplier_stock_processing_mail|'):
             parts = data.split('|')
@@ -1215,7 +1215,7 @@ def settings_callback_handler(update, context):
                     source_kind="mail",
                     back_callback=back_callback,
                     action_prefix=action_prefix,
-                    title="🧩 *Обработка файлов (почта)*",
+                    title="рџ§© *РћР±СЂР°Р±РѕС‚РєР° С„Р°Р№Р»РѕРІ (РїРѕС‡С‚Р°)*",
                 )
             elif action == 'add':
                 supplier_stock_start_processing_rule_menu(
@@ -1262,7 +1262,7 @@ def settings_callback_handler(update, context):
                     source_kind="mail",
                     back_callback=back_callback,
                     action_prefix=action_prefix,
-                    title="🧩 *Обработка файлов (почта)*",
+                    title="рџ§© *РћР±СЂР°Р±РѕС‚РєР° С„Р°Р№Р»РѕРІ (РїРѕС‡С‚Р°)*",
                 )
         elif data == 'supplier_stock_noop':
             query.answer(" ", show_alert=False)
@@ -1279,10 +1279,10 @@ def settings_callback_handler(update, context):
             current_temp_dir = _format_current_hint(config.get("mail", {}).get("temp_dir"))
             _supplier_stock_remember_prompt_message(context, query)
             query.edit_message_text(
-                "Введите путь к временному каталогу для почтовых файлов:\n"
-                f"Текущее значение: {current_temp_dir}",
+                "Р’РІРµРґРёС‚Рµ РїСѓС‚СЊ Рє РІСЂРµРјРµРЅРЅРѕРјСѓ РєР°С‚Р°Р»РѕРіСѓ РґР»СЏ РїРѕС‡С‚РѕРІС‹С… С„Р°Р№Р»РѕРІ:\n"
+                f"РўРµРєСѓС‰РµРµ Р·РЅР°С‡РµРЅРёРµ: {current_temp_dir}",
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_mail')]
+                    [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='supplier_stock_mail')]
                 ])
             )
         elif data == 'supplier_stock_mail_archive_dir':
@@ -1291,10 +1291,10 @@ def settings_callback_handler(update, context):
             current_archive_dir = _format_current_hint(config.get("mail", {}).get("archive_dir"))
             _supplier_stock_remember_prompt_message(context, query)
             query.edit_message_text(
-                "Введите путь к каталогу архива для почтовых файлов:\n"
-                f"Текущее значение: {current_archive_dir}",
+                "Р’РІРµРґРёС‚Рµ РїСѓС‚СЊ Рє РєР°С‚Р°Р»РѕРіСѓ Р°СЂС…РёРІР° РґР»СЏ РїРѕС‡С‚РѕРІС‹С… С„Р°Р№Р»РѕРІ:\n"
+                f"РўРµРєСѓС‰РµРµ Р·РЅР°С‡РµРЅРёРµ: {current_archive_dir}",
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_mail')]
+                    [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='supplier_stock_mail')]
                 ])
             )
         elif data == 'supplier_stock_archive_cleanup_mail':
@@ -1304,10 +1304,10 @@ def settings_callback_handler(update, context):
             current_value = _format_archive_cleanup_days(config.get("archive_cleanup_days"))
             _supplier_stock_remember_prompt_message(context, query)
             query.edit_message_text(
-                "Введите период очистки архива в днях (0 — отключить):\n"
-                f"Текущее значение: {current_value}",
+                "Р’РІРµРґРёС‚Рµ РїРµСЂРёРѕРґ РѕС‡РёСЃС‚РєРё Р°СЂС…РёРІР° РІ РґРЅСЏС… (0 вЂ” РѕС‚РєР»СЋС‡РёС‚СЊ):\n"
+                f"РўРµРєСѓС‰РµРµ Р·РЅР°С‡РµРЅРёРµ: {current_value}",
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_mail')]
+                    [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='supplier_stock_mail')]
                 ])
             )
         elif data == 'supplier_stock_report_period':
@@ -1316,14 +1316,14 @@ def settings_callback_handler(update, context):
             current_value = config.get("reporting", {}).get("period_days", 7)
             _supplier_stock_remember_prompt_message(context, query)
             query.edit_message_text(
-                "Введите период отчётов в днях (минимум 1):\n"
-                f"Текущее значение: {current_value}",
+                "Р’РІРµРґРёС‚Рµ РїРµСЂРёРѕРґ РѕС‚С‡С‘С‚РѕРІ РІ РґРЅСЏС… (РјРёРЅРёРјСѓРј 1):\n"
+                f"РўРµРєСѓС‰РµРµ Р·РЅР°С‡РµРЅРёРµ: {current_value}",
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("❌ Отмена", callback_data='settings_ext_supplier_stock')]
+                    [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='settings_ext_supplier_stock')]
                 ])
             )
         elif data == 'supplier_stock_mail_unpack_toggle':
-            query.answer("ℹ️ Распаковка теперь на уровне правил", show_alert=False)
+            query.answer("в„№пёЏ Р Р°СЃРїР°РєРѕРІРєР° С‚РµРїРµСЂСЊ РЅР° СѓСЂРѕРІРЅРµ РїСЂР°РІРёР»", show_alert=False)
             show_supplier_stock_mail_settings(update, context)
         elif data == 'supplier_stock_mail_sources':
             show_supplier_stock_mail_sources_menu(update, context)
@@ -1365,7 +1365,7 @@ def settings_callback_handler(update, context):
                     updated = True
                     break
             if not updated:
-                query.answer("⚠️ Правило не найдено", show_alert=False)
+                query.answer("вљ пёЏ РџСЂР°РІРёР»Рѕ РЅРµ РЅР°Р№РґРµРЅРѕ", show_alert=False)
                 return
             config["mail"]["sources"] = sources
             save_supplier_stock_config(config)
@@ -1430,16 +1430,16 @@ def settings_callback_handler(update, context):
             current_temp_dir = _format_current_hint(config.get("download", {}).get("temp_dir"))
             _supplier_stock_remember_prompt_message(context, query)
             query.edit_message_text(
-                "Введите путь к временному каталогу:\n"
-                f"Текущее значение: {current_temp_dir}",
+                "Р’РІРµРґРёС‚Рµ РїСѓС‚СЊ Рє РІСЂРµРјРµРЅРЅРѕРјСѓ РєР°С‚Р°Р»РѕРіСѓ:\n"
+                f"РўРµРєСѓС‰РµРµ Р·РЅР°С‡РµРЅРёРµ: {current_temp_dir}",
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_download')]
+                    [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='supplier_stock_download')]
                 ])
             )
         elif data == 'supplier_stock_schedule':
             show_supplier_stock_schedule_menu(update, context)
         elif data == 'supplier_stock_unpack_toggle':
-            query.answer("ℹ️ Распаковка теперь на уровне источников", show_alert=False)
+            query.answer("в„№пёЏ Р Р°СЃРїР°РєРѕРІРєР° С‚РµРїРµСЂСЊ РЅР° СѓСЂРѕРІРЅРµ РёСЃС‚РѕС‡РЅРёРєРѕРІ", show_alert=False)
             show_supplier_stock_download_settings(update, context)
         elif data == 'supplier_stock_archive_dir':
             context.user_data['supplier_stock_edit'] = 'archive_dir'
@@ -1447,10 +1447,10 @@ def settings_callback_handler(update, context):
             current_archive_dir = _format_current_hint(config.get("download", {}).get("archive_dir"))
             _supplier_stock_remember_prompt_message(context, query)
             query.edit_message_text(
-                "Введите путь к каталогу архива:\n"
-                f"Текущее значение: {current_archive_dir}",
+                "Р’РІРµРґРёС‚Рµ РїСѓС‚СЊ Рє РєР°С‚Р°Р»РѕРіСѓ Р°СЂС…РёРІР°:\n"
+                f"РўРµРєСѓС‰РµРµ Р·РЅР°С‡РµРЅРёРµ: {current_archive_dir}",
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_download')]
+                    [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='supplier_stock_download')]
                 ])
             )
         elif data == 'supplier_stock_archive_cleanup_download':
@@ -1460,10 +1460,10 @@ def settings_callback_handler(update, context):
             current_value = _format_archive_cleanup_days(config.get("archive_cleanup_days"))
             _supplier_stock_remember_prompt_message(context, query)
             query.edit_message_text(
-                "Введите период очистки архива в днях (0 — отключить):\n"
-                f"Текущее значение: {current_value}",
+                "Р’РІРµРґРёС‚Рµ РїРµСЂРёРѕРґ РѕС‡РёСЃС‚РєРё Р°СЂС…РёРІР° РІ РґРЅСЏС… (0 вЂ” РѕС‚РєР»СЋС‡РёС‚СЊ):\n"
+                f"РўРµРєСѓС‰РµРµ Р·РЅР°С‡РµРЅРёРµ: {current_value}",
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_download')]
+                    [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='supplier_stock_download')]
                 ])
             )
         elif data == 'supplier_stock_unpack_toggle':
@@ -1488,11 +1488,11 @@ def settings_callback_handler(update, context):
             )
             _supplier_stock_remember_prompt_message(context, query)
             query.edit_message_text(
-                "Введите одно или несколько времен запуска (HH:MM).\n"
-                "Разделители: пробел, запятая или точка с запятой.\n"
-                f"Текущее значение: {current_time}",
+                "Р’РІРµРґРёС‚Рµ РѕРґРЅРѕ РёР»Рё РЅРµСЃРєРѕР»СЊРєРѕ РІСЂРµРјРµРЅ Р·Р°РїСѓСЃРєР° (HH:MM).\n"
+                "Р Р°Р·РґРµР»РёС‚РµР»Рё: РїСЂРѕР±РµР», Р·Р°РїСЏС‚Р°СЏ РёР»Рё С‚РѕС‡РєР° СЃ Р·Р°РїСЏС‚РѕР№.\n"
+                f"РўРµРєСѓС‰РµРµ Р·РЅР°С‡РµРЅРёРµ: {current_time}",
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_schedule')]
+                    [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='supplier_stock_schedule')]
                 ])
             )
         elif data == 'supplier_stock_sources':
@@ -1537,7 +1537,7 @@ def settings_callback_handler(update, context):
                     updated = True
                     break
             if not updated:
-                query.answer("⚠️ Источник не найден", show_alert=False)
+                query.answer("вљ пёЏ РСЃС‚РѕС‡РЅРёРє РЅРµ РЅР°Р№РґРµРЅ", show_alert=False)
                 return
             config["download"]["sources"] = sources
             save_supplier_stock_config(config)
@@ -1568,7 +1568,7 @@ def settings_callback_handler(update, context):
             save_supplier_stock_config(config)
             show_supplier_stock_sources_menu(update, context)
         
-        # Подпункты
+        # РџРѕРґРїСѓРЅРєС‚С‹
         elif data == 'backup_times':
             show_backup_times(update, context)
         elif data == 'settings_backup_proxmox':
@@ -1602,7 +1602,7 @@ def settings_callback_handler(update, context):
             server_name = data.replace('settings_zfs_toggle_', '')
             toggle_zfs_server(update, context, server_name)
         
-        # Новые обработчики для настроек БД
+        # РќРѕРІС‹Рµ РѕР±СЂР°Р±РѕС‚С‡РёРєРё РґР»СЏ РЅР°СЃС‚СЂРѕРµРє Р‘Р”
         elif data == 'settings_db_main':
             show_backup_databases_settings(update, context)
         elif data == 'settings_db_add_category':
@@ -1614,21 +1614,21 @@ def settings_callback_handler(update, context):
         elif data == 'settings_db_view_all':
             view_all_databases_handler(update, context)
         
-        # Обработчики для новых пунктов меню
+        # РћР±СЂР°Р±РѕС‚С‡РёРєРё РґР»СЏ РЅРѕРІС‹С… РїСѓРЅРєС‚РѕРІ РјРµРЅСЋ
         elif data == 'manage_chats':
             manage_chats_handler(update, context)
         elif data == 'manage_tamtam_chats':
             manage_tamtam_chats_handler(update, context)
         elif data == 'server_timeouts':
-            show_server_timeouts(update, context)  # Теперь упрощенная версия
+            show_server_timeouts(update, context)  # РўРµРїРµСЂСЊ СѓРїСЂРѕС‰РµРЅРЅР°СЏ РІРµСЂСЃРёСЏ
         elif data == 'settings_add_server':
             add_server_handler(update, context)
         
-        # Обработчики для установки значений
+        # РћР±СЂР°Р±РѕС‚С‡РёРєРё РґР»СЏ СѓСЃС‚Р°РЅРѕРІРєРё Р·РЅР°С‡РµРЅРёР№
         elif data.startswith('set_'):
             handle_setting_input(update, context, data.replace('set_', ''))
         
-        # Управление чатами
+        # РЈРїСЂР°РІР»РµРЅРёРµ С‡Р°С‚Р°РјРё
         elif data == 'add_chat':
             add_chat_handler(update, context)
         elif data == 'remove_chat':
@@ -1638,7 +1638,7 @@ def settings_callback_handler(update, context):
         elif data == 'remove_tamtam_chat':
             remove_tamtam_chat_handler(update, context)
         
-        # Паттерны бэкапов
+        # РџР°С‚С‚РµСЂРЅС‹ Р±СЌРєР°РїРѕРІ
         elif data == 'view_patterns':
             view_patterns_handler(update, context)
         elif data == 'add_pattern':
@@ -1710,7 +1710,7 @@ def settings_callback_handler(update, context):
             pattern_id = data.replace('edit_pattern_', '')
             edit_pattern_handler(update, context, pattern_id)
         
-        # Обработчики для редактирования и удаления категорий БД
+        # РћР±СЂР°Р±РѕС‚С‡РёРєРё РґР»СЏ СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёСЏ Рё СѓРґР°Р»РµРЅРёСЏ РєР°С‚РµРіРѕСЂРёР№ Р‘Р”
         elif data.startswith('settings_db_add_db_'):
             category = data.replace('settings_db_add_db_', '')
             add_database_entry_handler(update, context, category)
@@ -1739,7 +1739,7 @@ def settings_callback_handler(update, context):
             category = data.replace('settings_db_edit_', '')
             edit_database_category_details(update, context, category)
         
-        # Обработчики для серверов
+        # РћР±СЂР°Р±РѕС‚С‡РёРєРё РґР»СЏ СЃРµСЂРІРµСЂРѕРІ
         elif data == 'settings_servers_list':
             show_servers_list(update, context)
         elif data.startswith('settings_delete_server_'):
@@ -1763,7 +1763,7 @@ def settings_callback_handler(update, context):
             ip = data.replace('settings_toggle_server_', '')
             toggle_server_monitoring(update, context, ip)
         
-        # Обработчики для таймаутов серверов
+        # РћР±СЂР°Р±РѕС‚С‡РёРєРё РґР»СЏ С‚Р°Р№РјР°СѓС‚РѕРІ СЃРµСЂРІРµСЂРѕРІ
         elif data == 'set_windows_2025_timeout':
             handle_setting_input(update, context, 'windows_2025_timeout')
         elif data == 'set_domain_servers_timeout':
@@ -1777,17 +1777,17 @@ def settings_callback_handler(update, context):
         elif data == 'set_ping_timeout':
             handle_setting_input(update, context, 'ping_timeout')
         
-        # Обработчики типов серверов
+        # РћР±СЂР°Р±РѕС‚С‡РёРєРё С‚РёРїРѕРІ СЃРµСЂРІРµСЂРѕРІ
         elif data.startswith('server_type_'):
             handle_server_type(update, context)
         
-        # Аутентификация
+        # РђСѓС‚РµРЅС‚РёС„РёРєР°С†РёСЏ
         elif data == 'settings_auth':
             show_auth_settings(update, context)
         elif data == 'ssh_auth_settings':
             show_ssh_auth_settings(update, context)
         
-        # Windows аутентификация
+        # Windows Р°СѓС‚РµРЅС‚РёС„РёРєР°С†РёСЏ
         elif data == 'windows_auth_main':
             show_windows_auth_settings(update, context)
         elif data == 'windows_auth_list':
@@ -1799,15 +1799,15 @@ def settings_callback_handler(update, context):
         elif data == 'windows_auth_manage_types':
             show_windows_auth_manage_types(update, context)
         
-        # Обработчики типов для Windows учетных данных
+        # РћР±СЂР°Р±РѕС‚С‡РёРєРё С‚РёРїРѕРІ РґР»СЏ Windows СѓС‡РµС‚РЅС‹С… РґР°РЅРЅС‹С…
         elif data.startswith('cred_type_'):
             handle_credential_type_selection(update, context)
 
-        # Обработчики управления типами серверов Windows
+        # РћР±СЂР°Р±РѕС‚С‡РёРєРё СѓРїСЂР°РІР»РµРЅРёСЏ С‚РёРїР°РјРё СЃРµСЂРІРµСЂРѕРІ Windows
         elif data.startswith('manage_type_'):
             handle_server_type_management(update, context)
 
-        # Обработчики для управления типами серверов (подтверждение операций)
+        # РћР±СЂР°Р±РѕС‚С‡РёРєРё РґР»СЏ СѓРїСЂР°РІР»РµРЅРёСЏ С‚РёРїР°РјРё СЃРµСЂРІРµСЂРѕРІ (РїРѕРґС‚РІРµСЂР¶РґРµРЅРёРµ РѕРїРµСЂР°С†РёР№)
         elif data.startswith('merge_confirm_'):
             parts = data.replace('merge_confirm_', '').split('_')
             if len(parts) >= 2:
@@ -1819,7 +1819,7 @@ def settings_callback_handler(update, context):
             server_type = data.replace('delete_type_confirm_', '')
             delete_server_type_confirmation(update, context, server_type)
 
-        # Обработчики для выполнения операций с типами серверов
+        # РћР±СЂР°Р±РѕС‚С‡РёРєРё РґР»СЏ РІС‹РїРѕР»РЅРµРЅРёСЏ РѕРїРµСЂР°С†РёР№ СЃ С‚РёРїР°РјРё СЃРµСЂРІРµСЂРѕРІ
         elif data.startswith('merge_execute_'):
             parts = data.replace('merge_execute_', '').split('_')
             if len(parts) >= 2:
@@ -1831,76 +1831,76 @@ def settings_callback_handler(update, context):
             server_type = data.replace('delete_type_execute_', '')
             execute_server_type_delete(update, context, server_type)
 
-        # Обработчики для закрытия меню
+        # РћР±СЂР°Р±РѕС‚С‡РёРєРё РґР»СЏ Р·Р°РєСЂС‹С‚РёСЏ РјРµРЅСЋ
         elif data == 'close':
             try:
                 query.delete_message()
             except:
-                query.edit_message_text("✅ Меню закрыто")
+                query.edit_message_text("вњ… РњРµРЅСЋ Р·Р°РєСЂС‹С‚Рѕ")
         
         else:
-            _safe_query_answer(query, "⚙️ Этот раздел в разработке")
+            _safe_query_answer(query, "вљ™пёЏ Р­С‚РѕС‚ СЂР°Р·РґРµР» РІ СЂР°Р·СЂР°Р±РѕС‚РєРµ")
     
     except Exception as e:
-        print(f"❌ Ошибка в settings_callback_handler: {e}")
-        debug_logger(f"Ошибка в settings_callback_handler: {e}")
-        _safe_query_answer(query, "❌ Произошла ошибка при обработке запроса")
+        print(f"вќЊ РћС€РёР±РєР° РІ settings_callback_handler: {e}")
+        debug_logger(f"РћС€РёР±РєР° РІ settings_callback_handler: {e}")
+        _safe_query_answer(query, "вќЊ РџСЂРѕРёР·РѕС€Р»Р° РѕС€РёР±РєР° РїСЂРё РѕР±СЂР°Р±РѕС‚РєРµ Р·Р°РїСЂРѕСЃР°")
     
     _safe_query_answer(query)
 
 def handle_setting_input(update, context, setting_key):
-    """Обработчик ввода значений настроек - ОБНОВЛЕННАЯ ВЕРСИЯ"""
+    """РћР±СЂР°Р±РѕС‚С‡РёРє РІРІРѕРґР° Р·РЅР°С‡РµРЅРёР№ РЅР°СЃС‚СЂРѕРµРє - РћР‘РќРћР’Р›Р•РќРќРђРЇ Р’Р•Р РЎРРЇ"""
     query = update.callback_query
     query.answer()
     
-    # Сохраняем какое настройку меняем
+    # РЎРѕС…СЂР°РЅСЏРµРј РєР°РєРѕРµ РЅР°СЃС‚СЂРѕР№РєСѓ РјРµРЅСЏРµРј
     context.user_data['editing_setting'] = setting_key
     context.user_data['editing_setting_message_id'] = query.message.message_id
     context.user_data['editing_setting_chat_id'] = query.message.chat_id
     
     setting_descriptions = {
-        # Существующие настройки...
-        'telegram_token': 'Введите новый токен Telegram бота:',
-        'tamtam_token': 'Введите новый токен TamTam бота:',
-        'check_interval': 'Введите новый интервал проверки (в секундах):',
-        'max_fail_time': 'Введите максимальное время простоя (в секундах):',
-        'silent_start': 'Введите час начала тихого режима (0-23):',
-        'silent_end': 'Введите час окончания тихого режима (0-23):',
-        'data_collection': 'Введите время сбора данных (формат HH:MM):',
-        'cpu_warning': 'Введите порог предупреждения для CPU (%):',
-        'cpu_critical': 'Введите критический порог для CPU (%):',
-        'ram_warning': 'Введите порог предупреждения для RAM (%):',
-        'ram_critical': 'Введите критический порог для RAM (%):',
-        'disk_warning': 'Введите порог предупреждения для Disk (%):',
-        'disk_critical': 'Введите критический порог для Disk (%):',
-        'ssh_username': 'Введите имя пользователя SSH:',
-        'ssh_key_path': 'Введите путь к SSH ключу:',
-        'web_port': 'Введите порт веб-интерфейса:',
-        'web_host': 'Введите хост веб-интерфейса:',
-        'backup_alert_hours': 'Введите количество часов для алертов о бэкапах:',
-        'backup_stale_hours': 'Введите количество часов для устаревших бэкапов:',
+        # РЎСѓС‰РµСЃС‚РІСѓСЋС‰РёРµ РЅР°СЃС‚СЂРѕР№РєРё...
+        'telegram_token': 'Р’РІРµРґРёС‚Рµ РЅРѕРІС‹Р№ С‚РѕРєРµРЅ Telegram Р±РѕС‚Р°:',
+        'tamtam_token': 'Р’РІРµРґРёС‚Рµ РЅРѕРІС‹Р№ С‚РѕРєРµРЅ TamTam Р±РѕС‚Р°:',
+        'check_interval': 'Р’РІРµРґРёС‚Рµ РЅРѕРІС‹Р№ РёРЅС‚РµСЂРІР°Р» РїСЂРѕРІРµСЂРєРё (РІ СЃРµРєСѓРЅРґР°С…):',
+        'max_fail_time': 'Р’РІРµРґРёС‚Рµ РјР°РєСЃРёРјР°Р»СЊРЅРѕРµ РІСЂРµРјСЏ РїСЂРѕСЃС‚РѕСЏ (РІ СЃРµРєСѓРЅРґР°С…):',
+        'silent_start': 'Р’РІРµРґРёС‚Рµ С‡Р°СЃ РЅР°С‡Р°Р»Р° С‚РёС…РѕРіРѕ СЂРµР¶РёРјР° (0-23):',
+        'silent_end': 'Р’РІРµРґРёС‚Рµ С‡Р°СЃ РѕРєРѕРЅС‡Р°РЅРёСЏ С‚РёС…РѕРіРѕ СЂРµР¶РёРјР° (0-23):',
+        'data_collection': 'Р’РІРµРґРёС‚Рµ РІСЂРµРјСЏ СЃР±РѕСЂР° РґР°РЅРЅС‹С… (С„РѕСЂРјР°С‚ HH:MM):',
+        'cpu_warning': 'Р’РІРµРґРёС‚Рµ РїРѕСЂРѕРі РїСЂРµРґСѓРїСЂРµР¶РґРµРЅРёСЏ РґР»СЏ CPU (%):',
+        'cpu_critical': 'Р’РІРµРґРёС‚Рµ РєСЂРёС‚РёС‡РµСЃРєРёР№ РїРѕСЂРѕРі РґР»СЏ CPU (%):',
+        'ram_warning': 'Р’РІРµРґРёС‚Рµ РїРѕСЂРѕРі РїСЂРµРґСѓРїСЂРµР¶РґРµРЅРёСЏ РґР»СЏ RAM (%):',
+        'ram_critical': 'Р’РІРµРґРёС‚Рµ РєСЂРёС‚РёС‡РµСЃРєРёР№ РїРѕСЂРѕРі РґР»СЏ RAM (%):',
+        'disk_warning': 'Р’РІРµРґРёС‚Рµ РїРѕСЂРѕРі РїСЂРµРґСѓРїСЂРµР¶РґРµРЅРёСЏ РґР»СЏ Disk (%):',
+        'disk_critical': 'Р’РІРµРґРёС‚Рµ РєСЂРёС‚РёС‡РµСЃРєРёР№ РїРѕСЂРѕРі РґР»СЏ Disk (%):',
+        'ssh_username': 'Р’РІРµРґРёС‚Рµ РёРјСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ SSH:',
+        'ssh_key_path': 'Р’РІРµРґРёС‚Рµ РїСѓС‚СЊ Рє SSH РєР»СЋС‡Сѓ:',
+        'web_port': 'Р’РІРµРґРёС‚Рµ РїРѕСЂС‚ РІРµР±-РёРЅС‚РµСЂС„РµР№СЃР°:',
+        'web_host': 'Р’РІРµРґРёС‚Рµ С…РѕСЃС‚ РІРµР±-РёРЅС‚РµСЂС„РµР№СЃР°:',
+        'backup_alert_hours': 'Р’РІРµРґРёС‚Рµ РєРѕР»РёС‡РµСЃС‚РІРѕ С‡Р°СЃРѕРІ РґР»СЏ Р°Р»РµСЂС‚РѕРІ Рѕ Р±СЌРєР°РїР°С…:',
+        'backup_stale_hours': 'Р’РІРµРґРёС‚Рµ РєРѕР»РёС‡РµСЃС‚РІРѕ С‡Р°СЃРѕРІ РґР»СЏ СѓСЃС‚Р°СЂРµРІС€РёС… Р±СЌРєР°РїРѕРІ:',
         
-        # Новые таймауты серверов
-        'windows_2025_timeout': 'Введите таймаут для Windows 2025 серверов (в секундах):',
-        'domain_servers_timeout': 'Введите таймаут для доменных серверов (в секундах):',
-        'admin_servers_timeout': 'Введите таймаут для Admin серверов (в секундах):',
-        'standard_windows_timeout': 'Введите таймаут для стандартных Windows серверов (в секундах):',
-        'linux_timeout': 'Введите таймаут для Linux серверов (в секундах):',
-        'ping_timeout': 'Введите таймаут для Ping серверов (в секундах):',
+        # РќРѕРІС‹Рµ С‚Р°Р№РјР°СѓС‚С‹ СЃРµСЂРІРµСЂРѕРІ
+        'windows_2025_timeout': 'Р’РІРµРґРёС‚Рµ С‚Р°Р№РјР°СѓС‚ РґР»СЏ Windows 2025 СЃРµСЂРІРµСЂРѕРІ (РІ СЃРµРєСѓРЅРґР°С…):',
+        'domain_servers_timeout': 'Р’РІРµРґРёС‚Рµ С‚Р°Р№РјР°СѓС‚ РґР»СЏ РґРѕРјРµРЅРЅС‹С… СЃРµСЂРІРµСЂРѕРІ (РІ СЃРµРєСѓРЅРґР°С…):',
+        'admin_servers_timeout': 'Р’РІРµРґРёС‚Рµ С‚Р°Р№РјР°СѓС‚ РґР»СЏ Admin СЃРµСЂРІРµСЂРѕРІ (РІ СЃРµРєСѓРЅРґР°С…):',
+        'standard_windows_timeout': 'Р’РІРµРґРёС‚Рµ С‚Р°Р№РјР°СѓС‚ РґР»СЏ СЃС‚Р°РЅРґР°СЂС‚РЅС‹С… Windows СЃРµСЂРІРµСЂРѕРІ (РІ СЃРµРєСѓРЅРґР°С…):',
+        'linux_timeout': 'Р’РІРµРґРёС‚Рµ С‚Р°Р№РјР°СѓС‚ РґР»СЏ Linux СЃРµСЂРІРµСЂРѕРІ (РІ СЃРµРєСѓРЅРґР°С…):',
+        'ping_timeout': 'Р’РІРµРґРёС‚Рµ С‚Р°Р№РјР°СѓС‚ РґР»СЏ Ping СЃРµСЂРІРµСЂРѕРІ (РІ СЃРµРєСѓРЅРґР°С…):',
     }
     
-    message = setting_descriptions.get(setting_key, f'Введите новое значение для {setting_key}:')
+    message = setting_descriptions.get(setting_key, f'Р’РІРµРґРёС‚Рµ РЅРѕРІРѕРµ Р·РЅР°С‡РµРЅРёРµ РґР»СЏ {setting_key}:')
     
     query.edit_message_text(
         message,
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data='settings_main')]
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='settings_main')]
         ])
     )
 
 def handle_setting_value(update, context):
-    """Обработчик получения значения настройки - ОБНОВЛЕННАЯ ВЕРСИЯ"""
-    # Сначала проверяем, не добавляется ли Windows учетная запись
+    """РћР±СЂР°Р±РѕС‚С‡РёРє РїРѕР»СѓС‡РµРЅРёСЏ Р·РЅР°С‡РµРЅРёСЏ РЅР°СЃС‚СЂРѕР№РєРё - РћР‘РќРћР’Р›Р•РќРќРђРЇ Р’Р•Р РЎРРЇ"""
+    # РЎРЅР°С‡Р°Р»Р° РїСЂРѕРІРµСЂСЏРµРј, РЅРµ РґРѕР±Р°РІР»СЏРµС‚СЃСЏ Р»Рё Windows СѓС‡РµС‚РЅР°СЏ Р·Р°РїРёСЃСЊ
     if context.user_data.get('adding_windows_cred'):
         return handle_windows_credential_input(update, context)
 
@@ -1923,59 +1923,59 @@ def handle_setting_value(update, context):
     ):
         return supplier_stock_handle_input(update, context)
     
-    # Проверяем, не создается ли тип серверов
+    # РџСЂРѕРІРµСЂСЏРµРј, РЅРµ СЃРѕР·РґР°РµС‚СЃСЏ Р»Рё С‚РёРї СЃРµСЂРІРµСЂРѕРІ
     if context.user_data.get('creating_server_type'):
         return handle_server_type_creation(update, context)
     
-    # Проверяем, не редактируется ли тип серверов
+    # РџСЂРѕРІРµСЂСЏРµРј, РЅРµ СЂРµРґР°РєС‚РёСЂСѓРµС‚СЃСЏ Р»Рё С‚РёРї СЃРµСЂРІРµСЂРѕРІ
     if context.user_data.get('editing_server_type'):
         return handle_server_type_editing(update, context)
 
-    # Проверяем, не редактируется ли сервер
+    # РџСЂРѕРІРµСЂСЏРµРј, РЅРµ СЂРµРґР°РєС‚РёСЂСѓРµС‚СЃСЏ Р»Рё СЃРµСЂРІРµСЂ
     if context.user_data.get('editing_server'):
         return handle_server_edit_input(update, context)
     
-    # Затем проверяем, не добавляется ли сервер
+    # Р—Р°С‚РµРј РїСЂРѕРІРµСЂСЏРµРј, РЅРµ РґРѕР±Р°РІР»СЏРµС‚СЃСЏ Р»Рё СЃРµСЂРІРµСЂ
     if context.user_data.get('adding_server'):
         return handle_server_input(update, context)
     
-    # Затем проверяем, не добавляется ли категория БД
+    # Р—Р°С‚РµРј РїСЂРѕРІРµСЂСЏРµРј, РЅРµ РґРѕР±Р°РІР»СЏРµС‚СЃСЏ Р»Рё РєР°С‚РµРіРѕСЂРёСЏ Р‘Р”
     if context.user_data.get('adding_db_category'):
         return handle_db_category_input(update, context)
 
-    # Проверяем, не добавляется ли хост Proxmox
+    # РџСЂРѕРІРµСЂСЏРµРј, РЅРµ РґРѕР±Р°РІР»СЏРµС‚СЃСЏ Р»Рё С…РѕСЃС‚ Proxmox
     if context.user_data.get('adding_proxmox_host'):
         return handle_proxmox_host_input(update, context)
 
-    # Проверяем, не редактируется ли хост Proxmox
+    # РџСЂРѕРІРµСЂСЏРµРј, РЅРµ СЂРµРґР°РєС‚РёСЂСѓРµС‚СЃСЏ Р»Рё С…РѕСЃС‚ Proxmox
     if context.user_data.get('editing_proxmox_host'):
         return handle_proxmox_host_edit_input(update, context)
 
-    # Проверяем, не добавляется ли ZFS сервер
+    # РџСЂРѕРІРµСЂСЏРµРј, РЅРµ РґРѕР±Р°РІР»СЏРµС‚СЃСЏ Р»Рё ZFS СЃРµСЂРІРµСЂ
     if context.user_data.get('adding_zfs_server'):
         return handle_zfs_server_input(update, context)
 
-    # Проверяем, не редактируется ли имя ZFS сервера
+    # РџСЂРѕРІРµСЂСЏРµРј, РЅРµ СЂРµРґР°РєС‚РёСЂСѓРµС‚СЃСЏ Р»Рё РёРјСЏ ZFS СЃРµСЂРІРµСЂР°
     if context.user_data.get('editing_zfs_server_name'):
         return handle_zfs_server_name_edit_input(update, context)
 
-    # Проверяем, не добавляется ли база данных
+    # РџСЂРѕРІРµСЂСЏРµРј, РЅРµ РґРѕР±Р°РІР»СЏРµС‚СЃСЏ Р»Рё Р±Р°Р·Р° РґР°РЅРЅС‹С…
     if context.user_data.get('adding_db_entry'):
         return handle_db_entry_input(update, context)
 
-    # Проверяем, не редактируется ли база данных
+    # РџСЂРѕРІРµСЂСЏРµРј, РЅРµ СЂРµРґР°РєС‚РёСЂСѓРµС‚СЃСЏ Р»Рё Р±Р°Р·Р° РґР°РЅРЅС‹С…
     if context.user_data.get('editing_db_entry'):
         return handle_db_entry_edit_input(update, context)
 
-    # Проверяем, не добавляется ли паттерн бэкапов
+    # РџСЂРѕРІРµСЂСЏРµРј, РЅРµ РґРѕР±Р°РІР»СЏРµС‚СЃСЏ Р»Рё РїР°С‚С‚РµСЂРЅ Р±СЌРєР°РїРѕРІ
     if context.user_data.get('adding_backup_pattern'):
         return handle_backup_pattern_input(update, context)
 
-    # Проверяем, не редактируется ли паттерн бэкапов
+    # РџСЂРѕРІРµСЂСЏРµРј, РЅРµ СЂРµРґР°РєС‚РёСЂСѓРµС‚СЃСЏ Р»Рё РїР°С‚С‚РµСЂРЅ Р±СЌРєР°РїРѕРІ
     if context.user_data.get('editing_backup_pattern'):
         return handle_backup_pattern_edit_input(update, context)
 
-    # Проверяем, не редактируется ли дефолтный паттерн БД
+    # РџСЂРѕРІРµСЂСЏРµРј, РЅРµ СЂРµРґР°РєС‚РёСЂСѓРµС‚СЃСЏ Р»Рё РґРµС„РѕР»С‚РЅС‹Р№ РїР°С‚С‚РµСЂРЅ Р‘Р”
     if context.user_data.get('editing_default_db_pattern'):
         return handle_default_db_pattern_edit_input(update, context)
 
@@ -1985,7 +1985,7 @@ def handle_setting_value(update, context):
     if context.user_data.get('removing_tamtam_chat'):
         return handle_tamtam_chat_remove_input(update, context)
     
-    # Если это обычная настройка
+    # Р•СЃР»Рё СЌС‚Рѕ РѕР±С‹С‡РЅР°СЏ РЅР°СЃС‚СЂРѕР№РєР°
     if 'editing_setting' not in context.user_data:
         return
         
@@ -1993,7 +1993,7 @@ def handle_setting_value(update, context):
     new_value = update.message.text
     
     try:
-        # Определяем тип данных и преобразуем
+        # РћРїСЂРµРґРµР»СЏРµРј С‚РёРї РґР°РЅРЅС‹С… Рё РїСЂРµРѕР±СЂР°Р·СѓРµРј
         setting_types = {
             'check_interval': 'int', 'max_fail_time': 'int', 'silent_start': 'int', 'silent_end': 'int',
             'cpu_warning': 'int', 'cpu_critical': 'int', 'ram_warning': 'int', 'ram_critical': 'int',
@@ -2004,12 +2004,12 @@ def handle_setting_value(update, context):
         if setting_key in setting_types and setting_types[setting_key] == 'int':
             new_value = int(new_value)
         elif setting_key == 'data_collection':
-            # Проверяем формат времени
+            # РџСЂРѕРІРµСЂСЏРµРј С„РѕСЂРјР°С‚ РІСЂРµРјРµРЅРё
             import re
             if not re.match(r'^\d{1,2}:\d{2}$', new_value):
-                raise ValueError("Неверный формат времени. Используйте HH:MM")
+                raise ValueError("РќРµРІРµСЂРЅС‹Р№ С„РѕСЂРјР°С‚ РІСЂРµРјРµРЅРё. РСЃРїРѕР»СЊР·СѓР№С‚Рµ HH:MM")
         
-        # Сохраняем настройку
+        # РЎРѕС…СЂР°РЅСЏРµРј РЅР°СЃС‚СЂРѕР№РєСѓ
         category_map = {
             'telegram_token': 'telegram',
             'tamtam_token': 'tamtam',
@@ -2032,7 +2032,7 @@ def handle_setting_value(update, context):
         
         settings_manager.set_setting(db_key, new_value, category)
         
-        # Очищаем контекст
+        # РћС‡РёС‰Р°РµРј РєРѕРЅС‚РµРєСЃС‚
         del context.user_data['editing_setting']
         prompt_message_id = context.user_data.pop('editing_setting_message_id', None)
         prompt_chat_id = context.user_data.pop('editing_setting_chat_id', None)
@@ -2043,19 +2043,19 @@ def handle_setting_value(update, context):
                 pass
         
         update.message.reply_text(
-            f"✅ Настройка {db_key} успешно обновлена!",
+            f"вњ… РќР°СЃС‚СЂРѕР№РєР° {db_key} СѓСЃРїРµС€РЅРѕ РѕР±РЅРѕРІР»РµРЅР°!",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("⚙️ Вернуться к настройкам", callback_data='settings_main')]
+                [InlineKeyboardButton("вљ™пёЏ Р’РµСЂРЅСѓС‚СЊСЃСЏ Рє РЅР°СЃС‚СЂРѕР№РєР°Рј", callback_data='settings_main')]
             ])
         )
         
     except ValueError as e:
-        update.message.reply_text(f"❌ Ошибка: {e}\nПопробуйте еще раз:")
+        update.message.reply_text(f"вќЊ РћС€РёР±РєР°: {e}\nРџРѕРїСЂРѕР±СѓР№С‚Рµ РµС‰Рµ СЂР°Р·:")
     except Exception as e:
-        update.message.reply_text(f"❌ Ошибка сохранения: {e}")
+        update.message.reply_text(f"вќЊ РћС€РёР±РєР° СЃРѕС…СЂР°РЅРµРЅРёСЏ: {e}")
         
 def show_web_settings(update, context):
-    """Показать настройки веб-интерфейса - С КНОПКОЙ ЗАКРЫТЬ"""
+    """РџРѕРєР°Р·Р°С‚СЊ РЅР°СЃС‚СЂРѕР№РєРё РІРµР±-РёРЅС‚РµСЂС„РµР№СЃР° - РЎ РљРќРћРџРљРћР™ Р—РђРљР Р«РўР¬"""
     query = update.callback_query
     query.answer()
     
@@ -2063,17 +2063,17 @@ def show_web_settings(update, context):
     web_host = settings_manager.get_setting('WEB_HOST', '0.0.0.0')
     
     message = (
-        "🌐 *Настройки веб-интерфейса*\n\n"
-        f"• Порт: {web_port}\n"
-        f"• Хост: {web_host}\n\n"
-        "Выберите параметр для изменения:"
+        "рџЊђ *РќР°СЃС‚СЂРѕР№РєРё РІРµР±-РёРЅС‚РµСЂС„РµР№СЃР°*\n\n"
+        f"вЂў РџРѕСЂС‚: {web_port}\n"
+        f"вЂў РҐРѕСЃС‚: {web_host}\n\n"
+        "Р’С‹Р±РµСЂРёС‚Рµ РїР°СЂР°РјРµС‚СЂ РґР»СЏ РёР·РјРµРЅРµРЅРёСЏ:"
     )
     
     keyboard = [
-        [InlineKeyboardButton("🔌 Порт веб-интерфейса", callback_data='set_web_port')],
-        [InlineKeyboardButton("🌐 Хост веб-интерфейса", callback_data='set_web_host')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("рџ”Њ РџРѕСЂС‚ РІРµР±-РёРЅС‚РµСЂС„РµР№СЃР°", callback_data='set_web_port')],
+        [InlineKeyboardButton("рџЊђ РҐРѕСЃС‚ РІРµР±-РёРЅС‚РµСЂС„РµР№СЃР°", callback_data='set_web_host')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_main'),
+         InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
     ]
     
     query.edit_message_text(
@@ -2083,7 +2083,7 @@ def show_web_settings(update, context):
     )
 
 def get_settings_handlers():
-    """Получить обработчики для настроек"""
+    """РџРѕР»СѓС‡РёС‚СЊ РѕР±СЂР°Р±РѕС‚С‡РёРєРё РґР»СЏ РЅР°СЃС‚СЂРѕРµРє"""
     return [
         CommandHandler("settings", settings_command),
         CallbackQueryHandler(settings_callback_handler, pattern='^settings_'),
@@ -2094,32 +2094,32 @@ def get_settings_handlers():
     ]
 
 def show_auth_settings(update, context):
-    """Показать настройки аутентификации - ОБНОВЛЕННАЯ ВЕРСИЯ"""
+    """РџРѕРєР°Р·Р°С‚СЊ РЅР°СЃС‚СЂРѕР№РєРё Р°СѓС‚РµРЅС‚РёС„РёРєР°С†РёРё - РћР‘РќРћР’Р›Р•РќРќРђРЇ Р’Р•Р РЎРРЇ"""
     query = update.callback_query
     query.answer()
     
     ssh_username = settings_manager.get_setting('SSH_USERNAME', 'root')
     ssh_key_path = settings_manager.get_setting('SSH_KEY_PATH', '/root/.ssh/id_rsa')
     
-    # Получаем статистику по Windows учетным данным
+    # РџРѕР»СѓС‡Р°РµРј СЃС‚Р°С‚РёСЃС‚РёРєСѓ РїРѕ Windows СѓС‡РµС‚РЅС‹Рј РґР°РЅРЅС‹Рј
     windows_creds = settings_manager.get_windows_credentials()
     
     message = (
-        "🔐 *Настройки аутентификации*\n\n"
-        "*SSH аутентификация:*\n"
-        f"• Пользователь: `{ssh_username}`\n"
-        f"• Путь к ключу: `{ssh_key_path}`\n\n"
-        "*Windows аутентификация:*\n"
-        f"• Учетных записей: {len(windows_creds)}\n"
-        f"• Типов серверов: {len(settings_manager.get_windows_server_types())}\n\n"
-        "Выберите раздел для настройки:"
+        "рџ”ђ *РќР°СЃС‚СЂРѕР№РєРё Р°СѓС‚РµРЅС‚РёС„РёРєР°С†РёРё*\n\n"
+        "*SSH Р°СѓС‚РµРЅС‚РёС„РёРєР°С†РёСЏ:*\n"
+        f"вЂў РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ: `{ssh_username}`\n"
+        f"вЂў РџСѓС‚СЊ Рє РєР»СЋС‡Сѓ: `{ssh_key_path}`\n\n"
+        "*Windows Р°СѓС‚РµРЅС‚РёС„РёРєР°С†РёСЏ:*\n"
+        f"вЂў РЈС‡РµС‚РЅС‹С… Р·Р°РїРёСЃРµР№: {len(windows_creds)}\n"
+        f"вЂў РўРёРїРѕРІ СЃРµСЂРІРµСЂРѕРІ: {len(settings_manager.get_windows_server_types())}\n\n"
+        "Р’С‹Р±РµСЂРёС‚Рµ СЂР°Р·РґРµР» РґР»СЏ РЅР°СЃС‚СЂРѕР№РєРё:"
     )
     
     keyboard = [
-        [InlineKeyboardButton("👤 SSH аутентификация", callback_data='ssh_auth_settings')],
-        [InlineKeyboardButton("🖥️ Windows аутентификация", callback_data='windows_auth_main')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("рџ‘¤ SSH Р°СѓС‚РµРЅС‚РёС„РёРєР°С†РёСЏ", callback_data='ssh_auth_settings')],
+        [InlineKeyboardButton("рџ–ҐпёЏ Windows Р°СѓС‚РµРЅС‚РёС„РёРєР°С†РёСЏ", callback_data='windows_auth_main')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_main'),
+         InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
     ]
     
     query.edit_message_text(
@@ -2129,7 +2129,7 @@ def show_auth_settings(update, context):
     )
 
 def show_ssh_auth_settings(update, context):
-    """Показать настройки SSH аутентификации"""
+    """РџРѕРєР°Р·Р°С‚СЊ РЅР°СЃС‚СЂРѕР№РєРё SSH Р°СѓС‚РµРЅС‚РёС„РёРєР°С†РёРё"""
     query = update.callback_query
     query.answer()
     
@@ -2137,17 +2137,17 @@ def show_ssh_auth_settings(update, context):
     ssh_key_path = settings_manager.get_setting('SSH_KEY_PATH', '/root/.ssh/id_rsa')
     
     message = (
-        "👤 *SSH аутентификация*\n\n"
-        f"• SSH пользователь: `{ssh_username}`\n"
-        f"• Путь к SSH ключу: `{ssh_key_path}`\n\n"
-        "Выберите параметр для изменения:"
+        "рџ‘¤ *SSH Р°СѓС‚РµРЅС‚РёС„РёРєР°С†РёСЏ*\n\n"
+        f"вЂў SSH РїРѕР»СЊР·РѕРІР°С‚РµР»СЊ: `{ssh_username}`\n"
+        f"вЂў РџСѓС‚СЊ Рє SSH РєР»СЋС‡Сѓ: `{ssh_key_path}`\n\n"
+        "Р’С‹Р±РµСЂРёС‚Рµ РїР°СЂР°РјРµС‚СЂ РґР»СЏ РёР·РјРµРЅРµРЅРёСЏ:"
     )
     
     keyboard = [
-        [InlineKeyboardButton("👤 SSH пользователь", callback_data='set_ssh_username')],
-        [InlineKeyboardButton("🔑 Путь к SSH ключу", callback_data='set_ssh_key_path')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_auth'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("рџ‘¤ SSH РїРѕР»СЊР·РѕРІР°С‚РµР»СЊ", callback_data='set_ssh_username')],
+        [InlineKeyboardButton("рџ”‘ РџСѓС‚СЊ Рє SSH РєР»СЋС‡Сѓ", callback_data='set_ssh_key_path')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_auth'),
+         InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
     ]
     
     query.edit_message_text(
@@ -2157,7 +2157,7 @@ def show_ssh_auth_settings(update, context):
     )
 
 def show_servers_settings(update, context):
-    """Показать настройки серверов - С КНОПКОЙ ЗАКРЫТЬ"""
+    """РџРѕРєР°Р·Р°С‚СЊ РЅР°СЃС‚СЂРѕР№РєРё СЃРµСЂРІРµСЂРѕРІ - РЎ РљРќРћРџРљРћР™ Р—РђРљР Р«РўР¬"""
     query = update.callback_query
     query.answer()
     
@@ -2168,7 +2168,7 @@ def show_servers_settings(update, context):
     linux_servers = [s for s in servers if s['type'] == 'ssh']
     ping_servers = [s for s in servers if s['type'] == 'ping']
     
-    # Сбрасываем состояния редактирования, если вернулись в меню
+    # РЎР±СЂР°СЃС‹РІР°РµРј СЃРѕСЃС‚РѕСЏРЅРёСЏ СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёСЏ, РµСЃР»Рё РІРµСЂРЅСѓР»РёСЃСЊ РІ РјРµРЅСЋ
     context.user_data.pop('adding_server', None)
     context.user_data.pop('editing_server', None)
     context.user_data.pop('server_stage', None)
@@ -2177,21 +2177,21 @@ def show_servers_settings(update, context):
     context.user_data.pop('edit_server_data', None)
 
     message = (
-        "🖥️ *Настройки серверов*\n\n"
-        f"• Windows серверов: {len(windows_servers)}\n"
-        f"• Linux серверов: {len(linux_servers)}\n"
-        f"• Ping серверов: {len(ping_servers)}\n"
-        f"• Всего серверов: {len(servers)}\n"
-        f"• Активных: {len(enabled_servers)}\n"
-        f"• Приостановлено: {len(paused_servers)}\n\n"
-        "Выберите действие:"
+        "рџ–ҐпёЏ *РќР°СЃС‚СЂРѕР№РєРё СЃРµСЂРІРµСЂРѕРІ*\n\n"
+        f"вЂў Windows СЃРµСЂРІРµСЂРѕРІ: {len(windows_servers)}\n"
+        f"вЂў Linux СЃРµСЂРІРµСЂРѕРІ: {len(linux_servers)}\n"
+        f"вЂў Ping СЃРµСЂРІРµСЂРѕРІ: {len(ping_servers)}\n"
+        f"вЂў Р’СЃРµРіРѕ СЃРµСЂРІРµСЂРѕРІ: {len(servers)}\n"
+        f"вЂў РђРєС‚РёРІРЅС‹С…: {len(enabled_servers)}\n"
+        f"вЂў РџСЂРёРѕСЃС‚Р°РЅРѕРІР»РµРЅРѕ: {len(paused_servers)}\n\n"
+        "Р’С‹Р±РµСЂРёС‚Рµ РґРµР№СЃС‚РІРёРµ:"
     )
     
     keyboard = [
-        [InlineKeyboardButton("📋 Список серверов", callback_data='settings_servers_list')],
-        [InlineKeyboardButton("➕ Добавить сервер", callback_data='settings_add_server')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("рџ“‹ РЎРїРёСЃРѕРє СЃРµСЂРІРµСЂРѕРІ", callback_data='settings_servers_list')],
+        [InlineKeyboardButton("вћ• Р”РѕР±Р°РІРёС‚СЊ СЃРµСЂРІРµСЂ", callback_data='settings_add_server')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_main'),
+         InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
     ]
     
     query.edit_message_text(
@@ -2201,31 +2201,31 @@ def show_servers_settings(update, context):
     )
 
 def _get_server_by_ip(servers, ip):
-    """Найти сервер по IP из списка"""
+    """РќР°Р№С‚Рё СЃРµСЂРІРµСЂ РїРѕ IP РёР· СЃРїРёСЃРєР°"""
     for server in servers:
         if server.get('ip') == ip:
             return server
     return None
 
 def show_servers_list(update, context):
-    """Показать список серверов с действиями"""
+    """РџРѕРєР°Р·Р°С‚СЊ СЃРїРёСЃРѕРє СЃРµСЂРІРµСЂРѕРІ СЃ РґРµР№СЃС‚РІРёСЏРјРё"""
     query = update.callback_query
     query.answer()
 
     servers = settings_manager.get_all_servers(include_disabled=True)
 
-    # Сбрасываем состояния редактирования при показе списка
+    # РЎР±СЂР°СЃС‹РІР°РµРј СЃРѕСЃС‚РѕСЏРЅРёСЏ СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёСЏ РїСЂРё РїРѕРєР°Р·Рµ СЃРїРёСЃРєР°
     context.user_data.pop('editing_server', None)
     context.user_data.pop('edit_server_stage', None)
     context.user_data.pop('edit_server_ip', None)
     context.user_data.pop('edit_server_data', None)
 
     if not servers:
-        message = "📋 *Список серверов*\n\n❌ Серверы не настроены."
+        message = "рџ“‹ *РЎРїРёСЃРѕРє СЃРµСЂРІРµСЂРѕРІ*\n\nвќЊ РЎРµСЂРІРµСЂС‹ РЅРµ РЅР°СЃС‚СЂРѕРµРЅС‹."
         keyboard = [
-            [InlineKeyboardButton("➕ Добавить сервер", callback_data='settings_add_server')],
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("вћ• Р”РѕР±Р°РІРёС‚СЊ СЃРµСЂРІРµСЂ", callback_data='settings_add_server')],
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_servers'),
+             InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
         ]
         query.edit_message_text(
             message,
@@ -2234,25 +2234,25 @@ def show_servers_list(update, context):
         )
         return
 
-    message_lines = ["📋 *Список серверов*\n"]
+    message_lines = ["рџ“‹ *РЎРїРёСЃРѕРє СЃРµСЂРІРµСЂРѕРІ*\n"]
     for server in servers:
-        status_icon = "🟢" if server.get('enabled', True) else "⏸️"
-        status_text = "мониторинг" if server.get('enabled', True) else "пауза"
+        status_icon = "рџџў" if server.get('enabled', True) else "вЏёпёЏ"
+        status_text = "РјРѕРЅРёС‚РѕСЂРёРЅРі" if server.get('enabled', True) else "РїР°СѓР·Р°"
         message_lines.append(
-            f"• {status_icon} {server['name']} (`{server['ip']}`) — {server['type'].upper()} — {status_text}"
+            f"вЂў {status_icon} {server['name']} (`{server['ip']}`) вЂ” {server['type'].upper()} вЂ” {status_text}"
         )
 
     keyboard = [
         [
-            InlineKeyboardButton("↩️ Назад", callback_data='settings_servers'),
-            InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+            InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_servers'),
+            InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')
         ]
     ]
     for server in servers:
-        toggle_text = "⏸️ Пауза" if server.get('enabled', True) else "▶️ Возобновить"
+        toggle_text = "вЏёпёЏ РџР°СѓР·Р°" if server.get('enabled', True) else "в–¶пёЏ Р’РѕР·РѕР±РЅРѕРІРёС‚СЊ"
         keyboard.append([
             InlineKeyboardButton(
-                f"✏️ {server['name']}",
+                f"вњЏпёЏ {server['name']}",
                 callback_data=f"settings_edit_server_{server['ip']}"
             ),
             InlineKeyboardButton(
@@ -2260,13 +2260,13 @@ def show_servers_list(update, context):
                 callback_data=f"settings_toggle_server_{server['ip']}"
             ),
             InlineKeyboardButton(
-                "🗑️",
+                "рџ—‘пёЏ",
                 callback_data=f"settings_delete_server_{server['ip']}"
             )
         ])
 
     keyboard.append([
-        InlineKeyboardButton("➕ Добавить сервер", callback_data='settings_add_server')
+        InlineKeyboardButton("вћ• Р”РѕР±Р°РІРёС‚СЊ СЃРµСЂРІРµСЂ", callback_data='settings_add_server')
     ])
     query.edit_message_text(
         "\n".join(message_lines),
@@ -2275,7 +2275,7 @@ def show_servers_list(update, context):
     )
 
 def delete_server_confirmation(update, context, ip):
-    """Подтверждение удаления сервера"""
+    """РџРѕРґС‚РІРµСЂР¶РґРµРЅРёРµ СѓРґР°Р»РµРЅРёСЏ СЃРµСЂРІРµСЂР°"""
     query = update.callback_query
     query.answer()
 
@@ -2283,22 +2283,22 @@ def delete_server_confirmation(update, context, ip):
     server = _get_server_by_ip(servers, ip)
     if not server:
         query.edit_message_text(
-            "❌ Сервер не найден.",
+            "вќЊ РЎРµСЂРІРµСЂ РЅРµ РЅР°Р№РґРµРЅ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_servers_list')]
             ])
         )
         return
 
     message = (
-        "🗑️ *Удаление сервера*\n\n"
-        f"Сервер: *{server['name']}* (`{server['ip']}`)\n"
-        "Подтвердите удаление:"
+        "рџ—‘пёЏ *РЈРґР°Р»РµРЅРёРµ СЃРµСЂРІРµСЂР°*\n\n"
+        f"РЎРµСЂРІРµСЂ: *{server['name']}* (`{server['ip']}`)\n"
+        "РџРѕРґС‚РІРµСЂРґРёС‚Рµ СѓРґР°Р»РµРЅРёРµ:"
     )
 
     keyboard = [
-        [InlineKeyboardButton("✅ Удалить", callback_data=f"settings_confirm_delete_server_{ip}")],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
+        [InlineKeyboardButton("вњ… РЈРґР°Р»РёС‚СЊ", callback_data=f"settings_confirm_delete_server_{ip}")],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_servers_list')]
     ]
 
     query.edit_message_text(
@@ -2308,26 +2308,26 @@ def delete_server_confirmation(update, context, ip):
     )
 
 def delete_server_execute(update, context, ip):
-    """Удалить сервер"""
+    """РЈРґР°Р»РёС‚СЊ СЃРµСЂРІРµСЂ"""
     query = update.callback_query
     query.answer()
 
     success = settings_manager.delete_server(ip)
     if success:
-        message = f"✅ Сервер `{ip}` удален."
+        message = f"вњ… РЎРµСЂРІРµСЂ `{ip}` СѓРґР°Р»РµРЅ."
     else:
-        message = f"❌ Не удалось удалить сервер `{ip}`."
+        message = f"вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ СѓРґР°Р»РёС‚СЊ СЃРµСЂРІРµСЂ `{ip}`."
 
     query.edit_message_text(
         message,
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад к списку", callback_data='settings_servers_list')]
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ Рє СЃРїРёСЃРєСѓ", callback_data='settings_servers_list')]
         ])
     )
 
 def show_server_edit_menu(update, context, ip):
-    """Меню редактирования сервера"""
+    """РњРµРЅСЋ СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёСЏ СЃРµСЂРІРµСЂР°"""
     query = update.callback_query
     query.answer()
 
@@ -2335,29 +2335,29 @@ def show_server_edit_menu(update, context, ip):
     server = _get_server_by_ip(servers, ip)
     if not server:
         query.edit_message_text(
-            "❌ Сервер не найден.",
+            "вќЊ РЎРµСЂРІРµСЂ РЅРµ РЅР°Р№РґРµРЅ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_servers_list')]
             ])
         )
         return
 
-    status_text = "🟢 Включен" if server.get('enabled', True) else "⏸️ Приостановлен"
+    status_text = "рџџў Р’РєР»СЋС‡РµРЅ" if server.get('enabled', True) else "вЏёпёЏ РџСЂРёРѕСЃС‚Р°РЅРѕРІР»РµРЅ"
     message = (
-        "✏️ *Редактирование сервера*\n\n"
-        f"• Имя: *{server['name']}*\n"
-        f"• IP: `{server['ip']}`\n"
-        f"• Тип: *{server['type'].upper()}*\n\n"
-        f"• Статус: *{status_text}*\n\n"
-        "Выберите действие:"
+        "вњЏпёЏ *Р РµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ СЃРµСЂРІРµСЂР°*\n\n"
+        f"вЂў РРјСЏ: *{server['name']}*\n"
+        f"вЂў IP: `{server['ip']}`\n"
+        f"вЂў РўРёРї: *{server['type'].upper()}*\n\n"
+        f"вЂў РЎС‚Р°С‚СѓСЃ: *{status_text}*\n\n"
+        "Р’С‹Р±РµСЂРёС‚Рµ РґРµР№СЃС‚РІРёРµ:"
     )
 
-    toggle_text = "⏸️ Приостановить мониторинг" if server.get('enabled', True) else "▶️ Возобновить мониторинг"
+    toggle_text = "вЏёпёЏ РџСЂРёРѕСЃС‚Р°РЅРѕРІРёС‚СЊ РјРѕРЅРёС‚РѕСЂРёРЅРі" if server.get('enabled', True) else "в–¶пёЏ Р’РѕР·РѕР±РЅРѕРІРёС‚СЊ РјРѕРЅРёС‚РѕСЂРёРЅРі"
     keyboard = [
-        [InlineKeyboardButton("📝 Изменить имя", callback_data=f"settings_edit_server_name_{ip}")],
-        [InlineKeyboardButton("🔧 Изменить тип", callback_data=f"settings_edit_server_type_{ip}")],
+        [InlineKeyboardButton("рџ“ќ РР·РјРµРЅРёС‚СЊ РёРјСЏ", callback_data=f"settings_edit_server_name_{ip}")],
+        [InlineKeyboardButton("рџ”§ РР·РјРµРЅРёС‚СЊ С‚РёРї", callback_data=f"settings_edit_server_type_{ip}")],
         [InlineKeyboardButton(toggle_text, callback_data=f"settings_toggle_server_{ip}")],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_servers_list')]
     ]
 
     query.edit_message_text(
@@ -2367,7 +2367,7 @@ def show_server_edit_menu(update, context, ip):
     )
 
 def toggle_server_monitoring(update, context, ip):
-    """Переключить мониторинг сервера"""
+    """РџРµСЂРµРєР»СЋС‡РёС‚СЊ РјРѕРЅРёС‚РѕСЂРёРЅРі СЃРµСЂРІРµСЂР°"""
     query = update.callback_query
     query.answer()
 
@@ -2375,9 +2375,9 @@ def toggle_server_monitoring(update, context, ip):
     server = _get_server_by_ip(servers, ip)
     if not server:
         query.edit_message_text(
-            "❌ Сервер не найден.",
+            "вќЊ РЎРµСЂРІРµСЂ РЅРµ РЅР°Р№РґРµРЅ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_servers_list')]
             ])
         )
         return
@@ -2386,25 +2386,25 @@ def toggle_server_monitoring(update, context, ip):
     success = settings_manager.set_server_enabled(ip, new_status)
 
     if success:
-        status_text = "🟢 Мониторинг включен" if new_status else "⏸️ Мониторинг приостановлен"
+        status_text = "рџџў РњРѕРЅРёС‚РѕСЂРёРЅРі РІРєР»СЋС‡РµРЅ" if new_status else "вЏёпёЏ РњРѕРЅРёС‚РѕСЂРёРЅРі РїСЂРёРѕСЃС‚Р°РЅРѕРІР»РµРЅ"
         message = (
-            "✅ Статус мониторинга обновлен.\n\n"
-            f"• Сервер: *{server.get('name', ip)}*\n"
-            f"• Статус: *{status_text}*"
+            "вњ… РЎС‚Р°С‚СѓСЃ РјРѕРЅРёС‚РѕСЂРёРЅРіР° РѕР±РЅРѕРІР»РµРЅ.\n\n"
+            f"вЂў РЎРµСЂРІРµСЂ: *{server.get('name', ip)}*\n"
+            f"вЂў РЎС‚Р°С‚СѓСЃ: *{status_text}*"
         )
     else:
-        message = "❌ Не удалось обновить статус мониторинга."
+        message = "вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ РѕР±РЅРѕРІРёС‚СЊ СЃС‚Р°С‚СѓСЃ РјРѕРЅРёС‚РѕСЂРёРЅРіР°."
 
     query.edit_message_text(
         message,
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад к списку", callback_data='settings_servers_list')]
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ Рє СЃРїРёСЃРєСѓ", callback_data='settings_servers_list')]
         ])
     )
 
 def start_server_name_edit(update, context, ip):
-    """Запуск редактирования имени сервера"""
+    """Р—Р°РїСѓСЃРє СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёСЏ РёРјРµРЅРё СЃРµСЂРІРµСЂР°"""
     query = update.callback_query
     query.answer()
 
@@ -2412,9 +2412,9 @@ def start_server_name_edit(update, context, ip):
     server = _get_server_by_ip(servers, ip)
     if not server:
         query.edit_message_text(
-            "❌ Сервер не найден.",
+            "вќЊ РЎРµСЂРІРµСЂ РЅРµ РЅР°Р№РґРµРЅ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_servers_list')]
             ])
         )
         return
@@ -2425,14 +2425,14 @@ def start_server_name_edit(update, context, ip):
     context.user_data['edit_server_data'] = server
 
     query.edit_message_text(
-        "📝 Введите новое имя сервера:",
+        "рџ“ќ Р’РІРµРґРёС‚Рµ РЅРѕРІРѕРµ РёРјСЏ СЃРµСЂРІРµСЂР°:",
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data='settings_servers_list')]
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='settings_servers_list')]
         ])
     )
 
 def start_server_type_edit(update, context, ip):
-    """Запуск редактирования типа сервера"""
+    """Р—Р°РїСѓСЃРє СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёСЏ С‚РёРїР° СЃРµСЂРІРµСЂР°"""
     query = update.callback_query
     query.answer()
 
@@ -2440,9 +2440,9 @@ def start_server_type_edit(update, context, ip):
     server = _get_server_by_ip(servers, ip)
     if not server:
         query.edit_message_text(
-            "❌ Сервер не найден.",
+            "вќЊ РЎРµСЂРІРµСЂ РЅРµ РЅР°Р№РґРµРЅ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_servers_list')]
             ])
         )
         return
@@ -2453,19 +2453,19 @@ def start_server_type_edit(update, context, ip):
     context.user_data['edit_server_data'] = server
 
     keyboard = [
-        [InlineKeyboardButton("🖥️ Windows (RDP)", callback_data=f"settings_edit_server_type_select_rdp_{ip}")],
-        [InlineKeyboardButton("🐧 Linux (SSH)", callback_data=f"settings_edit_server_type_select_ssh_{ip}")],
-        [InlineKeyboardButton("📡 Ping Only", callback_data=f"settings_edit_server_type_select_ping_{ip}")],
-        [InlineKeyboardButton("❌ Отмена", callback_data='settings_servers_list')]
+        [InlineKeyboardButton("рџ–ҐпёЏ Windows (RDP)", callback_data=f"settings_edit_server_type_select_rdp_{ip}")],
+        [InlineKeyboardButton("рџђ§ Linux (SSH)", callback_data=f"settings_edit_server_type_select_ssh_{ip}")],
+        [InlineKeyboardButton("рџ“Ў Ping Only", callback_data=f"settings_edit_server_type_select_ping_{ip}")],
+        [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='settings_servers_list')]
     ]
 
     query.edit_message_text(
-        "🔧 Выберите новый тип сервера:",
+        "рџ”§ Р’С‹Р±РµСЂРёС‚Рµ РЅРѕРІС‹Р№ С‚РёРї СЃРµСЂРІРµСЂР°:",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
 def handle_server_type_selection(update, context):
-    """Обработчик выбора нового типа сервера"""
+    """РћР±СЂР°Р±РѕС‚С‡РёРє РІС‹Р±РѕСЂР° РЅРѕРІРѕРіРѕ С‚РёРїР° СЃРµСЂРІРµСЂР°"""
     query = update.callback_query
     query.answer()
 
@@ -2476,9 +2476,9 @@ def handle_server_type_selection(update, context):
     parts = data.split('_')
     if len(parts) < 2:
         query.edit_message_text(
-            "❌ Неверный формат выбора типа.",
+            "вќЊ РќРµРІРµСЂРЅС‹Р№ С„РѕСЂРјР°С‚ РІС‹Р±РѕСЂР° С‚РёРїР°.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_servers_list')]
             ])
         )
         return
@@ -2492,9 +2492,9 @@ def handle_server_type_selection(update, context):
 
     if not server:
         query.edit_message_text(
-            "❌ Сервер не найден.",
+            "вќЊ РЎРµСЂРІРµСЂ РЅРµ РЅР°Р№РґРµРЅ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers_list')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_servers_list')]
             ])
         )
         return
@@ -2515,23 +2515,23 @@ def handle_server_type_selection(update, context):
 
     if success:
         message = (
-            "✅ Тип сервера обновлен.\n\n"
-            f"• Сервер: *{server.get('name', ip)}*\n"
-            f"• Новый тип: *{server_type.upper()}*"
+            "вњ… РўРёРї СЃРµСЂРІРµСЂР° РѕР±РЅРѕРІР»РµРЅ.\n\n"
+            f"вЂў РЎРµСЂРІРµСЂ: *{server.get('name', ip)}*\n"
+            f"вЂў РќРѕРІС‹Р№ С‚РёРї: *{server_type.upper()}*"
         )
     else:
-        message = "❌ Не удалось обновить тип сервера."
+        message = "вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ РѕР±РЅРѕРІРёС‚СЊ С‚РёРї СЃРµСЂРІРµСЂР°."
 
     query.edit_message_text(
         message,
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад к списку", callback_data='settings_servers_list')]
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ Рє СЃРїРёСЃРєСѓ", callback_data='settings_servers_list')]
         ])
     )
 
 def handle_server_edit_input(update, context):
-    """Обработчик ввода для редактирования сервера"""
+    """РћР±СЂР°Р±РѕС‚С‡РёРє РІРІРѕРґР° РґР»СЏ СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёСЏ СЃРµСЂРІРµСЂР°"""
     if not context.user_data.get('editing_server'):
         return
 
@@ -2541,13 +2541,13 @@ def handle_server_edit_input(update, context):
 
     new_name = update.message.text.strip()
     if not new_name:
-        update.message.reply_text("❌ Имя не может быть пустым. Попробуйте снова:")
+        update.message.reply_text("вќЊ РРјСЏ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
         return
 
     server = context.user_data.get('edit_server_data') or {}
     ip = context.user_data.get('edit_server_ip')
     if not ip:
-        update.message.reply_text("❌ Не удалось определить сервер.")
+        update.message.reply_text("вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ РѕРїСЂРµРґРµР»РёС‚СЊ СЃРµСЂРІРµСЂ.")
         return
 
     success = settings_manager.add_server(
@@ -2566,23 +2566,23 @@ def handle_server_edit_input(update, context):
 
     if success:
         message = (
-            "✅ Имя сервера обновлено.\n\n"
-            f"• IP: `{ip}`\n"
-            f"• Новое имя: *{new_name}*"
+            "вњ… РРјСЏ СЃРµСЂРІРµСЂР° РѕР±РЅРѕРІР»РµРЅРѕ.\n\n"
+            f"вЂў IP: `{ip}`\n"
+            f"вЂў РќРѕРІРѕРµ РёРјСЏ: *{new_name}*"
         )
     else:
-        message = "❌ Не удалось обновить имя сервера."
+        message = "вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ РѕР±РЅРѕРІРёС‚СЊ РёРјСЏ СЃРµСЂРІРµСЂР°."
 
     update.message.reply_text(
         message,
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад к списку", callback_data='settings_servers_list')]
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ Рє СЃРїРёСЃРєСѓ", callback_data='settings_servers_list')]
         ])
     )
 
 def show_backup_times(update, context):
-    """Показать настройки временных интервалов бэкапов - С КНОПКОЙ ЗАКРЫТЬ"""
+    """РџРѕРєР°Р·Р°С‚СЊ РЅР°СЃС‚СЂРѕР№РєРё РІСЂРµРјРµРЅРЅС‹С… РёРЅС‚РµСЂРІР°Р»РѕРІ Р±СЌРєР°РїРѕРІ - РЎ РљРќРћРџРљРћР™ Р—РђРљР Р«РўР¬"""
     query = update.callback_query
     query.answer()
     
@@ -2590,17 +2590,17 @@ def show_backup_times(update, context):
     stale_hours = settings_manager.get_setting('BACKUP_STALE_HOURS', 36)
     
     message = (
-        "⏰ *Временные интервалы бэкапов*\n\n"
-        f"• Алерты через: {alert_hours} часов\n"
-        f"• Устаревание через: {stale_hours} часов\n\n"
-        "Выберите параметр для изменения:"
+        "вЏ° *Р’СЂРµРјРµРЅРЅС‹Рµ РёРЅС‚РµСЂРІР°Р»С‹ Р±СЌРєР°РїРѕРІ*\n\n"
+        f"вЂў РђР»РµСЂС‚С‹ С‡РµСЂРµР·: {alert_hours} С‡Р°СЃРѕРІ\n"
+        f"вЂў РЈСЃС‚Р°СЂРµРІР°РЅРёРµ С‡РµСЂРµР·: {stale_hours} С‡Р°СЃРѕРІ\n\n"
+        "Р’С‹Р±РµСЂРёС‚Рµ РїР°СЂР°РјРµС‚СЂ РґР»СЏ РёР·РјРµРЅРµРЅРёСЏ:"
     )
     
     keyboard = [
-        [InlineKeyboardButton("🚨 Часы для алертов", callback_data='set_backup_alert_hours')],
-        [InlineKeyboardButton("📅 Часы для устаревания", callback_data='set_backup_stale_hours')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("рџљЁ Р§Р°СЃС‹ РґР»СЏ Р°Р»РµСЂС‚РѕРІ", callback_data='set_backup_alert_hours')],
+        [InlineKeyboardButton("рџ“… Р§Р°СЃС‹ РґР»СЏ СѓСЃС‚Р°СЂРµРІР°РЅРёСЏ", callback_data='set_backup_stale_hours')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_backup'),
+         InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
     ]
     
     query.edit_message_text(
@@ -2610,11 +2610,11 @@ def show_backup_times(update, context):
     )
 
 def show_backup_databases_settings(update, context):
-    """Показать настройки баз данных для бэкапов - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
+    """РџРѕРєР°Р·Р°С‚СЊ РЅР°СЃС‚СЂРѕР№РєРё Р±Р°Р· РґР°РЅРЅС‹С… РґР»СЏ Р±СЌРєР°РїРѕРІ - РРЎРџР РђР’Р›Р•РќРќРђРЇ Р’Р•Р РЎРРЇ"""
     query = update.callback_query
     query.answer()
 
-    # Сбрасываем состояния добавления/редактирования БД при выходе в меню
+    # РЎР±СЂР°СЃС‹РІР°РµРј СЃРѕСЃС‚РѕСЏРЅРёСЏ РґРѕР±Р°РІР»РµРЅРёСЏ/СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёСЏ Р‘Р” РїСЂРё РІС‹С…РѕРґРµ РІ РјРµРЅСЋ
     context.user_data.pop('adding_db_entry', None)
     context.user_data.pop('editing_db_entry', None)
     context.user_data.pop('db_entry_category', None)
@@ -2622,20 +2622,20 @@ def show_backup_databases_settings(update, context):
     
     db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
     
-    message = "🗃️ *Настройки баз данных для бэкапов*\n\n"
+    message = "рџ—ѓпёЏ *РќР°СЃС‚СЂРѕР№РєРё Р±Р°Р· РґР°РЅРЅС‹С… РґР»СЏ Р±СЌРєР°РїРѕРІ*\n\n"
     
     if not db_config:
-        message += "❌ *Базы данных не настроены*\n\n"
+        message += "вќЊ *Р‘Р°Р·С‹ РґР°РЅРЅС‹С… РЅРµ РЅР°СЃС‚СЂРѕРµРЅС‹*\n\n"
     else:
         for category, databases in db_config.items():
             if not isinstance(databases, dict):
                 databases = {}
-            message += f"*{category.upper()}* ({len(databases)} БД):\n"
+            message += f"*{category.upper()}* ({len(databases)} Р‘Р”):\n"
             for db_key in databases.keys():
-                message += f"• `{db_key}`\n"
+                message += f"вЂў `{db_key}`\n"
             message += "\n"
     
-    message += "Выберите действие:"
+    message += "Р’С‹Р±РµСЂРёС‚Рµ РґРµР№СЃС‚РІРёРµ:"
     
     keyboard = []
 
@@ -2643,17 +2643,17 @@ def show_backup_databases_settings(update, context):
         if not isinstance(databases, dict):
             databases = {}
         keyboard.append([InlineKeyboardButton(
-            f"➕ Добавить БД в {category}",
+            f"вћ• Р”РѕР±Р°РІРёС‚СЊ Р‘Р” РІ {category}",
             callback_data=f"settings_db_add_db_{category}"
         )])
         row = []
         for db_key in databases.keys():
             row.append(InlineKeyboardButton(
-                f"✏️ {db_key}",
+                f"вњЏпёЏ {db_key}",
                 callback_data=f"settings_db_edit_db_{category}__{db_key}"
             ))
             row.append(InlineKeyboardButton(
-                f"🗑️ {db_key}",
+                f"рџ—‘пёЏ {db_key}",
                 callback_data=f"settings_db_delete_db_{category}__{db_key}"
             ))
             if len(row) == 2:
@@ -2663,11 +2663,11 @@ def show_backup_databases_settings(update, context):
             keyboard.append(row)
 
     keyboard.extend([
-        [InlineKeyboardButton("📋 Просмотр всех БД", callback_data='settings_db_view_all')],
-        [InlineKeyboardButton("➕ Добавить категорию БД", callback_data='settings_db_add_category')],
-        [InlineKeyboardButton("🗑️ Удалить категорию", callback_data='settings_db_delete_category')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_backup_db'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("рџ“‹ РџСЂРѕСЃРјРѕС‚СЂ РІСЃРµС… Р‘Р”", callback_data='settings_db_view_all')],
+        [InlineKeyboardButton("вћ• Р”РѕР±Р°РІРёС‚СЊ РєР°С‚РµРіРѕСЂРёСЋ Р‘Р”", callback_data='settings_db_add_category')],
+        [InlineKeyboardButton("рџ—‘пёЏ РЈРґР°Р»РёС‚СЊ РєР°С‚РµРіРѕСЂРёСЋ", callback_data='settings_db_delete_category')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_ext_backup_db'),
+         InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
     ])
     
     query.edit_message_text(
@@ -2677,30 +2677,30 @@ def show_backup_databases_settings(update, context):
     )
 
 def show_backup_databases(update, context):
-    """Показать настройки баз данных для бэкапов - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
+    """РџРѕРєР°Р·Р°С‚СЊ РЅР°СЃС‚СЂРѕР№РєРё Р±Р°Р· РґР°РЅРЅС‹С… РґР»СЏ Р±СЌРєР°РїРѕРІ - РРЎРџР РђР’Р›Р•РќРќРђРЇ Р’Р•Р РЎРРЇ"""
     query = update.callback_query
     query.answer()
     
     db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
     
-    message = "🗃️ *Настройки баз данных для бэкапов*\n\n"
+    message = "рџ—ѓпёЏ *РќР°СЃС‚СЂРѕР№РєРё Р±Р°Р· РґР°РЅРЅС‹С… РґР»СЏ Р±СЌРєР°РїРѕРІ*\n\n"
     
     for category, databases in db_config.items():
-        message += f"*{category.upper()}* ({len(databases)} БД):\n"
+        message += f"*{category.upper()}* ({len(databases)} Р‘Р”):\n"
         for db_key, db_name in list(databases.items())[:3]:
-            message += f"• {db_name}\n"
+            message += f"вЂў {db_name}\n"
         if len(databases) > 3:
-            message += f"• ... и еще {len(databases) - 3} БД\n"
+            message += f"вЂў ... Рё РµС‰Рµ {len(databases) - 3} Р‘Р”\n"
         message += "\n"
     
-    message += "Выберите действие:"
+    message += "Р’С‹Р±РµСЂРёС‚Рµ РґРµР№СЃС‚РІРёРµ:"
     
     keyboard = [
-        [InlineKeyboardButton("📋 Просмотр всех БД", callback_data='view_all_databases')],
-        [InlineKeyboardButton("➕ Добавить БД", callback_data='add_database'),
-         InlineKeyboardButton("✏️ Редактировать БД", callback_data='edit_databases')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_backup_db'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("рџ“‹ РџСЂРѕСЃРјРѕС‚СЂ РІСЃРµС… Р‘Р”", callback_data='view_all_databases')],
+        [InlineKeyboardButton("вћ• Р”РѕР±Р°РІРёС‚СЊ Р‘Р”", callback_data='add_database'),
+         InlineKeyboardButton("вњЏпёЏ Р РµРґР°РєС‚РёСЂРѕРІР°С‚СЊ Р‘Р”", callback_data='edit_databases')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_ext_backup_db'),
+         InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
     ]
     
     query.edit_message_text(
@@ -2710,39 +2710,39 @@ def show_backup_databases(update, context):
     )
 
 def show_settings_extensions_menu(update, context):
-    """Показать меню расширений в настройках"""
+    """РџРѕРєР°Р·Р°С‚СЊ РјРµРЅСЋ СЂР°СЃС€РёСЂРµРЅРёР№ РІ РЅР°СЃС‚СЂРѕР№РєР°С…"""
     query = update.callback_query
     query.answer()
 
-    message = "🧩 *Расширения*\n\nВыберите раздел:"
+    message = "рџ§© *Р Р°СЃС€РёСЂРµРЅРёСЏ*\n\nР’С‹Р±РµСЂРёС‚Рµ СЂР°Р·РґРµР»:"
 
     keyboard = []
 
     if extension_manager.is_extension_enabled('backup_monitor'):
-        keyboard.append([InlineKeyboardButton("💾 Бэкапы Proxmox", callback_data='settings_ext_backup_proxmox')])
+        keyboard.append([InlineKeyboardButton("рџ’ѕ Р‘СЌРєР°РїС‹ Proxmox", callback_data='settings_ext_backup_proxmox')])
 
     if extension_manager.is_extension_enabled('database_backup_monitor'):
-        keyboard.append([InlineKeyboardButton("🗃️ Бэкапы БД", callback_data='settings_ext_backup_db')])
+        keyboard.append([InlineKeyboardButton("рџ—ѓпёЏ Р‘СЌРєР°РїС‹ Р‘Р”", callback_data='settings_ext_backup_db')])
 
     if extension_manager.is_extension_enabled('mail_backup_monitor'):
-        keyboard.append([InlineKeyboardButton("📬 Бэкапы почты", callback_data='settings_ext_backup_mail')])
+        keyboard.append([InlineKeyboardButton("рџ“¬ Р‘СЌРєР°РїС‹ РїРѕС‡С‚С‹", callback_data='settings_ext_backup_mail')])
 
     if extension_manager.is_extension_enabled('stock_load_monitor'):
-        keyboard.append([InlineKeyboardButton("📦 Загрузка остатков 1С", callback_data='settings_ext_stock_load')])
+        keyboard.append([InlineKeyboardButton("рџ“¦ Р—Р°РіСЂСѓР·РєР° РѕСЃС‚Р°С‚РєРѕРІ 1РЎ", callback_data='settings_ext_stock_load')])
 
     if extension_manager.is_extension_enabled(SUPPLIER_STOCK_EXTENSION_ID):
-        keyboard.append([InlineKeyboardButton("📦 Остатки поставщиков", callback_data='settings_ext_supplier_stock')])
+        keyboard.append([InlineKeyboardButton("рџ“¦ РћСЃС‚Р°С‚РєРё РїРѕСЃС‚Р°РІС‰РёРєРѕРІ", callback_data='settings_ext_supplier_stock')])
 
     if extension_manager.is_extension_enabled('zfs_monitor'):
-        keyboard.append([InlineKeyboardButton("🧊 ZFS", callback_data='settings_zfs')])
+        keyboard.append([InlineKeyboardButton("рџ§Љ ZFS", callback_data='settings_zfs')])
 
     if extension_manager.is_extension_enabled('resource_monitor'):
-        keyboard.append([InlineKeyboardButton("💻 Ресурсы", callback_data='settings_resources')])
+        keyboard.append([InlineKeyboardButton("рџ’» Р РµСЃСѓСЂСЃС‹", callback_data='settings_resources')])
 
     keyboard.extend([
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_main'),
+         InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
     ])
 
     query.edit_message_text(
@@ -2752,14 +2752,14 @@ def show_settings_extensions_menu(update, context):
     )
 
 def show_extensions_settings_menu(update, context):
-    """Показать управление расширениями с возвратом в настройки"""
+    """РџРѕРєР°Р·Р°С‚СЊ СѓРїСЂР°РІР»РµРЅРёРµ СЂР°СЃС€РёСЂРµРЅРёСЏРјРё СЃ РІРѕР·РІСЂР°С‚РѕРј РІ РЅР°СЃС‚СЂРѕР№РєРё"""
     query = update.callback_query
     query.answer()
 
     extensions_status = extension_manager.get_extensions_status()
 
-    message = "🛠️ *Управление расширениями*\n\n"
-    message += "📊 *Статус расширений:*\n\n"
+    message = "рџ› пёЏ *РЈРїСЂР°РІР»РµРЅРёРµ СЂР°СЃС€РёСЂРµРЅРёСЏРјРё*\n\n"
+    message += "рџ“Љ *РЎС‚Р°С‚СѓСЃ СЂР°СЃС€РёСЂРµРЅРёР№:*\n\n"
 
     keyboard = []
 
@@ -2767,12 +2767,12 @@ def show_extensions_settings_menu(update, context):
         enabled = status_info['enabled']
         ext_info = status_info['info']
 
-        status_icon = "🟢" if enabled else "🔴"
-        toggle_text = "🔴 Выключить" if enabled else "🟢 Включить"
+        status_icon = "рџџў" if enabled else "рџ”ґ"
+        toggle_text = "рџ”ґ Р’С‹РєР»СЋС‡РёС‚СЊ" if enabled else "рџџў Р’РєР»СЋС‡РёС‚СЊ"
 
         message += f"{status_icon} *{ext_info['name']}*\n"
         message += f"   {ext_info['description']}\n"
-        message += f"   Статус: {'Включено' if enabled else 'Отключено'}\n\n"
+        message += f"   РЎС‚Р°С‚СѓСЃ: {'Р’РєР»СЋС‡РµРЅРѕ' if enabled else 'РћС‚РєР»СЋС‡РµРЅРѕ'}\n\n"
 
         keyboard.append([
             InlineKeyboardButton(
@@ -2782,11 +2782,11 @@ def show_extensions_settings_menu(update, context):
         ])
 
     keyboard.extend([
-        [InlineKeyboardButton("📊 Включить все", callback_data='settings_ext_enable_all')],
-        [InlineKeyboardButton("📋 Отключить все", callback_data='settings_ext_disable_all')],
+        [InlineKeyboardButton("рџ“Љ Р’РєР»СЋС‡РёС‚СЊ РІСЃРµ", callback_data='settings_ext_enable_all')],
+        [InlineKeyboardButton("рџ“‹ РћС‚РєР»СЋС‡РёС‚СЊ РІСЃРµ", callback_data='settings_ext_disable_all')],
         [
-            InlineKeyboardButton("↩️ Назад", callback_data='settings_extensions'),
-            InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+            InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_extensions'),
+            InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')
         ]
     ])
 
@@ -2797,12 +2797,12 @@ def show_extensions_settings_menu(update, context):
     )
 
 def show_mail_backup_settings(update, context):
-    """Показать настройки бэкапов почты в разделе расширений"""
+    """РџРѕРєР°Р·Р°С‚СЊ РЅР°СЃС‚СЂРѕР№РєРё Р±СЌРєР°РїРѕРІ РїРѕС‡С‚С‹ РІ СЂР°Р·РґРµР»Рµ СЂР°СЃС€РёСЂРµРЅРёР№"""
     query = update.callback_query
     query.answer()
 
     pattern_count = 0
-    source_label = "база"
+    source_label = "Р±Р°Р·Р°"
     patterns = settings_manager.get_backup_patterns()
     if isinstance(patterns, str):
         try:
@@ -2819,20 +2819,20 @@ def show_mail_backup_settings(update, context):
         fallback_patterns = _get_mail_fallback_patterns()
         pattern_count = len(fallback_patterns)
         if pattern_count:
-            source_label = "по умолчанию"
+            source_label = "РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ"
         else:
-            source_label = "не настроены"
+            source_label = "РЅРµ РЅР°СЃС‚СЂРѕРµРЅС‹"
 
     message = (
-        "📬 *Бэкапы почты*\n\n"
-        f"Паттернов: {pattern_count} ({source_label})\n\n"
-        "Выберите раздел:"
+        "рџ“¬ *Р‘СЌРєР°РїС‹ РїРѕС‡С‚С‹*\n\n"
+        f"РџР°С‚С‚РµСЂРЅРѕРІ: {pattern_count} ({source_label})\n\n"
+        "Р’С‹Р±РµСЂРёС‚Рµ СЂР°Р·РґРµР»:"
     )
 
     keyboard = [
-        [InlineKeyboardButton("🔍 Паттерны", callback_data='settings_patterns_mail')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_extensions'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("рџ”Ќ РџР°С‚С‚РµСЂРЅС‹", callback_data='settings_patterns_mail')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_extensions'),
+         InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
     ]
 
     query.edit_message_text(
@@ -2842,12 +2842,12 @@ def show_mail_backup_settings(update, context):
     )
 
 def show_stock_load_settings(update, context):
-    """Показать настройки загрузки остатков 1С в разделе расширений."""
+    """РџРѕРєР°Р·Р°С‚СЊ РЅР°СЃС‚СЂРѕР№РєРё Р·Р°РіСЂСѓР·РєРё РѕСЃС‚Р°С‚РєРѕРІ 1РЎ РІ СЂР°Р·РґРµР»Рµ СЂР°СЃС€РёСЂРµРЅРёР№."""
     query = update.callback_query
     query.answer()
 
     pattern_count = 0
-    source_label = "база"
+    source_label = "Р±Р°Р·Р°"
     patterns = settings_manager.get_backup_patterns()
     if isinstance(patterns, str):
         try:
@@ -2865,20 +2865,20 @@ def show_stock_load_settings(update, context):
         fallback_patterns = _get_stock_load_fallback_patterns()
         pattern_count = sum(len(value) for value in fallback_patterns.values())
         if pattern_count:
-            source_label = "по умолчанию"
+            source_label = "РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ"
         else:
-            source_label = "не настроены"
+            source_label = "РЅРµ РЅР°СЃС‚СЂРѕРµРЅС‹"
 
     message = (
-        "📦 *Загрузка остатков 1С*\n\n"
-        f"Паттернов: {pattern_count} ({source_label})\n\n"
-        "Выберите раздел:"
+        "рџ“¦ *Р—Р°РіСЂСѓР·РєР° РѕСЃС‚Р°С‚РєРѕРІ 1РЎ*\n\n"
+        f"РџР°С‚С‚РµСЂРЅРѕРІ: {pattern_count} ({source_label})\n\n"
+        "Р’С‹Р±РµСЂРёС‚Рµ СЂР°Р·РґРµР»:"
     )
 
     keyboard = [
-        [InlineKeyboardButton("🔍 Паттерны", callback_data='settings_patterns_stock')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_extensions'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("рџ”Ќ РџР°С‚С‚РµСЂРЅС‹", callback_data='settings_patterns_stock')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_extensions'),
+         InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
     ]
 
     query.edit_message_text(
@@ -2888,7 +2888,7 @@ def show_stock_load_settings(update, context):
     )
 
 def show_supplier_stock_settings(update, context):
-    """Показать настройки получения файлов остатков поставщиков."""
+    """РџРѕРєР°Р·Р°С‚СЊ РЅР°СЃС‚СЂРѕР№РєРё РїРѕР»СѓС‡РµРЅРёСЏ С„Р°Р№Р»РѕРІ РѕСЃС‚Р°С‚РєРѕРІ РїРѕСЃС‚Р°РІС‰РёРєРѕРІ."""
     query = update.callback_query
     query.answer()
 
@@ -2922,32 +2922,32 @@ def show_supplier_stock_settings(update, context):
     sources = download.get("sources", [])
     schedule = download.get("schedule", {})
     mail_settings = config.get("mail", {})
-    mail_status = "🟢 Включено" if mail_settings.get("enabled") else "🔴 Выключено"
+    mail_status = "рџџў Р’РєР»СЋС‡РµРЅРѕ" if mail_settings.get("enabled") else "рџ”ґ Р’С‹РєР»СЋС‡РµРЅРѕ"
     mail_rules = len(mail_settings.get("sources", []))
 
-    schedule_state = "🟢 Включено" if schedule.get("enabled") else "🔴 Выключено"
-    schedule_time = schedule.get("time", "не задано")
+    schedule_state = "рџџў Р’РєР»СЋС‡РµРЅРѕ" if schedule.get("enabled") else "рџ”ґ Р’С‹РєР»СЋС‡РµРЅРѕ"
+    schedule_time = schedule.get("time", "РЅРµ Р·Р°РґР°РЅРѕ")
 
     reporting_days = config.get("reporting", {}).get("period_days", 7)
     message = (
-        "📦 *Остатки поставщиков*\n\n"
-        f"Источников: {len(sources)}\n"
-        f"Расписание: {schedule_state} ({schedule_time})\n\n"
-        "📧 *Почтовые сообщения (остатки)*\n\n"
-        f"Статус: {mail_status}\n"
-        f"Правил: {mail_rules}\n\n"
-        "🗓 *Отчёты*\n"
-        f"Период: {reporting_days} дн.\n\n"
-        "Выберите раздел:"
+        "рџ“¦ *РћСЃС‚Р°С‚РєРё РїРѕСЃС‚Р°РІС‰РёРєРѕРІ*\n\n"
+        f"РСЃС‚РѕС‡РЅРёРєРѕРІ: {len(sources)}\n"
+        f"Р Р°СЃРїРёСЃР°РЅРёРµ: {schedule_state} ({schedule_time})\n\n"
+        "рџ“§ *РџРѕС‡С‚РѕРІС‹Рµ СЃРѕРѕР±С‰РµРЅРёСЏ (РѕСЃС‚Р°С‚РєРё)*\n\n"
+        f"РЎС‚Р°С‚СѓСЃ: {mail_status}\n"
+        f"РџСЂР°РІРёР»: {mail_rules}\n\n"
+        "рџ—“ *РћС‚С‡С‘С‚С‹*\n"
+        f"РџРµСЂРёРѕРґ: {reporting_days} РґРЅ.\n\n"
+        "Р’С‹Р±РµСЂРёС‚Рµ СЂР°Р·РґРµР»:"
     )
 
     keyboard = [
-        [InlineKeyboardButton("🌐 Скачивание файлов", callback_data='supplier_stock_download')],
-        [InlineKeyboardButton("📧 Почтовые сообщения", callback_data='supplier_stock_mail')],
-        [InlineKeyboardButton("🗓 Период отчётов", callback_data='supplier_stock_report_period')],
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_extensions'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("рџЊђ РЎРєР°С‡РёРІР°РЅРёРµ С„Р°Р№Р»РѕРІ", callback_data='supplier_stock_download')],
+        [InlineKeyboardButton("рџ“§ РџРѕС‡С‚РѕРІС‹Рµ СЃРѕРѕР±С‰РµРЅРёСЏ", callback_data='supplier_stock_mail')],
+        [InlineKeyboardButton("рџ—“ РџРµСЂРёРѕРґ РѕС‚С‡С‘С‚РѕРІ", callback_data='supplier_stock_report_period')],
+        [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_extensions'),
+         InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
     ]
 
     query.edit_message_text(
@@ -2957,53 +2957,53 @@ def show_supplier_stock_settings(update, context):
     )
 
 def _format_supplier_stock_timestamp(value: str | None) -> str:
-    """Сформировать читаемое время запуска."""
+    """РЎС„РѕСЂРјРёСЂРѕРІР°С‚СЊ С‡РёС‚Р°РµРјРѕРµ РІСЂРµРјСЏ Р·Р°РїСѓСЃРєР°."""
     if not value:
-        return "неизвестно"
+        return "РЅРµРёР·РІРµСЃС‚РЅРѕ"
     try:
         return datetime.fromisoformat(value).strftime("%Y-%m-%d %H:%M")
     except ValueError:
         return str(value)
 
-def _supplier_stock_status_label(status: str | None, fallback: str = "неизвестно") -> str:
-    """Сформировать короткую метку статуса."""
+def _supplier_stock_status_label(status: str | None, fallback: str = "РЅРµРёР·РІРµСЃС‚РЅРѕ") -> str:
+    """РЎС„РѕСЂРјРёСЂРѕРІР°С‚СЊ РєРѕСЂРѕС‚РєСѓСЋ РјРµС‚РєСѓ СЃС‚Р°С‚СѓСЃР°."""
     if status == "success":
-        return "🟢 успешно"
+        return "рџџў СѓСЃРїРµС€РЅРѕ"
     if status == "error":
-        return "🔴 ошибка"
+        return "рџ”ґ РѕС€РёР±РєР°"
     if status == "skipped":
-        return "⚪️ пропущено"
-    return f"🟡 {fallback}"
+        return "вљЄпёЏ РїСЂРѕРїСѓС‰РµРЅРѕ"
+    return f"рџџЎ {fallback}"
 
 def _supplier_stock_processing_status(processing: dict | None) -> str:
-    """Определить статус обработки."""
+    """РћРїСЂРµРґРµР»РёС‚СЊ СЃС‚Р°С‚СѓСЃ РѕР±СЂР°Р±РѕС‚РєРё."""
     if not processing:
-        return "⏭️ не запускалась"
+        return "вЏ­пёЏ РЅРµ Р·Р°РїСѓСЃРєР°Р»Р°СЃСЊ"
     if processing.get("status") == "skipped":
-        return "⚪️ пропущено"
+        return "вљЄпёЏ РїСЂРѕРїСѓС‰РµРЅРѕ"
     results = processing.get("results") or []
     if not results:
-        return "🟡 нет результатов"
+        return "рџџЎ РЅРµС‚ СЂРµР·СѓР»СЊС‚Р°С‚РѕРІ"
     statuses = [item.get("status") for item in results if isinstance(item, dict)]
     if not statuses:
-        return "🟡 нет результатов"
+        return "рџџЎ РЅРµС‚ СЂРµР·СѓР»СЊС‚Р°С‚РѕРІ"
     if all(status == "success" for status in statuses):
-        return "🟢 успешно"
+        return "рџџў СѓСЃРїРµС€РЅРѕ"
     if any(status == "error" for status in statuses):
-        return "🔴 ошибка"
+        return "рџ”ґ РѕС€РёР±РєР°"
     if all(status == "skipped" for status in statuses):
-        return "⚪️ пропущено"
-    return "🟡 частично"
+        return "вљЄпёЏ РїСЂРѕРїСѓС‰РµРЅРѕ"
+    return "рџџЎ С‡Р°СЃС‚РёС‡РЅРѕ"
 
 def _supplier_stock_transfer_status(transfer: dict | None) -> str:
-    """Определить статус выгрузки."""
+    """РћРїСЂРµРґРµР»РёС‚СЊ СЃС‚Р°С‚СѓСЃ РІС‹РіСЂСѓР·РєРё."""
     if not transfer:
-        return "⏭️ не запускалась"
+        return "вЏ­пёЏ РЅРµ Р·Р°РїСѓСЃРєР°Р»Р°СЃСЊ"
     status = transfer.get("status")
     if status == "skipped":
-        return "⚪️ пропущено"
+        return "вљЄпёЏ РїСЂРѕРїСѓС‰РµРЅРѕ"
     if status and status != "success":
-        return "🔴 ошибка"
+        return "рџ”ґ РѕС€РёР±РєР°"
     items = transfer.get("items") or []
     ftp_items = transfer.get("ftp_ork", {}).get("items") or []
     statuses = [
@@ -3012,15 +3012,15 @@ def _supplier_stock_transfer_status(transfer: dict | None) -> str:
         if isinstance(item, dict)
     ]
     if not statuses:
-        return "🟡 нет файлов"
+        return "рџџЎ РЅРµС‚ С„Р°Р№Р»РѕРІ"
     if all(status == "success" for status in statuses):
-        return "🟢 успешно"
+        return "рџџў СѓСЃРїРµС€РЅРѕ"
     if any(status == "error" for status in statuses):
-        return "🔴 ошибка"
-    return "🟡 частично"
+        return "рџ”ґ РѕС€РёР±РєР°"
+    return "рџџЎ С‡Р°СЃС‚РёС‡РЅРѕ"
 
 def _supplier_stock_stage_label(is_ok: bool) -> str:
-    return "ОК" if is_ok else "не ОК"
+    return "РћРљ" if is_ok else "РЅРµ РћРљ"
 
 def _supplier_stock_processing_ok(processing: dict | None) -> bool:
     if not processing:
@@ -3079,52 +3079,52 @@ def _build_supplier_stock_daily_summary(
     return summary
 
 def _supplier_stock_processing_mode_label(value: str | None) -> str:
-    """Сформировать читаемую метку режима обработки."""
+    """РЎС„РѕСЂРјРёСЂРѕРІР°С‚СЊ С‡РёС‚Р°РµРјСѓСЋ РјРµС‚РєСѓ СЂРµР¶РёРјР° РѕР±СЂР°Р±РѕС‚РєРё."""
     mode = (value or "table").strip().lower()
     if mode == "iek_json":
         return "IEK JSON"
-    return "Табличный"
+    return "РўР°Р±Р»РёС‡РЅС‹Р№"
 
 def show_supplier_stock_reports(update, context, source_kind: str = "download") -> None:
-    """Показать результаты загрузки, обработки и выгрузки остатков поставщиков."""
+    """РџРѕРєР°Р·Р°С‚СЊ СЂРµР·СѓР»СЊС‚Р°С‚С‹ Р·Р°РіСЂСѓР·РєРё, РѕР±СЂР°Р±РѕС‚РєРё Рё РІС‹РіСЂСѓР·РєРё РѕСЃС‚Р°С‚РєРѕРІ РїРѕСЃС‚Р°РІС‰РёРєРѕРІ."""
     query = update.callback_query
     query.answer()
 
     if not extension_manager.is_extension_enabled(SUPPLIER_STOCK_EXTENSION_ID):
         query.edit_message_text(
-            "📦 Остатки поставщиков отключены в настройках.",
+            "рџ“¦ РћСЃС‚Р°С‚РєРё РїРѕСЃС‚Р°РІС‰РёРєРѕРІ РѕС‚РєР»СЋС‡РµРЅС‹ РІ РЅР°СЃС‚СЂРѕР№РєР°С….",
             reply_markup=InlineKeyboardMarkup(
-                [[InlineKeyboardButton("🏠 На главную", callback_data='main_menu')]]
+                [[InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')]]
             ),
         )
         return
 
     reporting_days = 1
     reports = get_supplier_stock_reports(limit=None, period_days=reporting_days, source_kind=source_kind)
-    title = "полученные скачиванием" if source_kind == "download" else "полученные по почте"
+    title = "РїРѕР»СѓС‡РµРЅРЅС‹Рµ СЃРєР°С‡РёРІР°РЅРёРµРј" if source_kind == "download" else "РїРѕР»СѓС‡РµРЅРЅС‹Рµ РїРѕ РїРѕС‡С‚Рµ"
     message_lines = [
-        "📦 *Остатки поставщиков — результаты*",
+        "рџ“¦ *РћСЃС‚Р°С‚РєРё РїРѕСЃС‚Р°РІС‰РёРєРѕРІ вЂ” СЂРµР·СѓР»СЊС‚Р°С‚С‹*",
         "",
-        f"Группа: {title}",
-        "Период: последние 24 часа",
+        f"Р“СЂСѓРїРїР°: {title}",
+        "РџРµСЂРёРѕРґ: РїРѕСЃР»РµРґРЅРёРµ 24 С‡Р°СЃР°",
         "",
     ]
     summary = _build_supplier_stock_daily_summary(reports, source_kind)
     if not summary:
-        message_lines.append("⚪️ За сутки данных нет.")
+        message_lines.append("вљЄпёЏ Р—Р° СЃСѓС‚РєРё РґР°РЅРЅС‹С… РЅРµС‚.")
     else:
-        message_lines.append("Кликни источник, чтобы открыть историю за сутки.")
+        message_lines.append("РљР»РёРєРЅРё РёСЃС‚РѕС‡РЅРёРє, С‡С‚РѕР±С‹ РѕС‚РєСЂС‹С‚СЊ РёСЃС‚РѕСЂРёСЋ Р·Р° СЃСѓС‚РєРё.")
         for entry in summary:
-            source_name = _escape_pattern_text(entry.get("source_name") or "неизвестный источник")
+            source_name = _escape_pattern_text(entry.get("source_name") or "РЅРµРёР·РІРµСЃС‚РЅС‹Р№ РёСЃС‚РѕС‡РЅРёРє")
             receive_label = _supplier_stock_stage_label(entry["receive_ok"])
             processing_label = _supplier_stock_stage_label(entry["processing_ok"])
             transfer_label = _supplier_stock_stage_label(entry["transfer_ok"])
             message_lines.extend([
                 "",
-                f"• *{source_name}*",
-                f"  📥 Загрузка: {receive_label}",
-                f"  🧩 Обработка: {processing_label}",
-                f"  📤 Выгрузка: {transfer_label}",
+                f"вЂў *{source_name}*",
+                f"  рџ“Ґ Р—Р°РіСЂСѓР·РєР°: {receive_label}",
+                f"  рџ§© РћР±СЂР°Р±РѕС‚РєР°: {processing_label}",
+                f"  рџ“¤ Р’С‹РіСЂСѓР·РєР°: {transfer_label}",
             ])
 
     def _split_message(lines: list[str], max_length: int = 3500) -> list[str]:
@@ -3147,8 +3147,8 @@ def show_supplier_stock_reports(update, context, source_kind: str = "download") 
     message_chunks = _split_message(message_lines)
     keyboard = [
         [
-            InlineKeyboardButton("⬇️ Скачивание", callback_data='supplier_stock_reports_download'),
-            InlineKeyboardButton("📧 Почта", callback_data='supplier_stock_reports_mail'),
+            InlineKeyboardButton("в¬‡пёЏ РЎРєР°С‡РёРІР°РЅРёРµ", callback_data='supplier_stock_reports_download'),
+            InlineKeyboardButton("рџ“§ РџРѕС‡С‚Р°", callback_data='supplier_stock_reports_mail'),
         ],
     ]
     entry_map: dict[str, dict] = {}
@@ -3161,14 +3161,14 @@ def show_supplier_stock_reports(update, context, source_kind: str = "download") 
             source_label = source_name[:24]
             row = [
                 InlineKeyboardButton(
-                    f"📊 {source_label}",
+                    f"рџ“Љ {source_label}",
                     callback_data=f'supplier_stock_report_source_day|{source_kind}|{source_id}',
                 )
             ]
             if not (item.get("receive_ok") and item.get("processing_ok") and item.get("transfer_ok")):
                 row.append(
                     InlineKeyboardButton(
-                        "❗ Детали",
+                        "вќ— Р”РµС‚Р°Р»Рё",
                         callback_data=f'supplier_stock_report_entry|{entry_key}',
                     )
                 )
@@ -3176,10 +3176,10 @@ def show_supplier_stock_reports(update, context, source_kind: str = "download") 
         context.user_data["supplier_stock_report_entries"] = entry_map
         context.user_data["supplier_stock_report_entries_kind"] = source_kind
     keyboard.extend([
-        [InlineKeyboardButton("🔄 Обновить", callback_data=f'supplier_stock_reports_{source_kind}')],
-        [InlineKeyboardButton("🛠️ Настройки", callback_data='settings_ext_supplier_stock')],
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-        [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
+        [InlineKeyboardButton("рџ”„ РћР±РЅРѕРІРёС‚СЊ", callback_data=f'supplier_stock_reports_{source_kind}')],
+        [InlineKeyboardButton("рџ› пёЏ РќР°СЃС‚СЂРѕР№РєРё", callback_data='settings_ext_supplier_stock')],
+        [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+        [InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')],
     ])
 
     query.edit_message_text(
@@ -3196,7 +3196,7 @@ def show_supplier_stock_reports(update, context, source_kind: str = "download") 
 
 
 def show_supplier_stock_report_sources(update, context, source_kind: str = "download") -> None:
-    """Показать список источников остатков с текущими статусами."""
+    """РџРѕРєР°Р·Р°С‚СЊ СЃРїРёСЃРѕРє РёСЃС‚РѕС‡РЅРёРєРѕРІ РѕСЃС‚Р°С‚РєРѕРІ СЃ С‚РµРєСѓС‰РёРјРё СЃС‚Р°С‚СѓСЃР°РјРё."""
     query = update.callback_query
     query.answer()
 
@@ -3204,34 +3204,34 @@ def show_supplier_stock_report_sources(update, context, source_kind: str = "down
     reporting_days = config.get("reporting", {}).get("period_days", 7)
     grouped = summarize_supplier_stock_reports(period_days=reporting_days)
     sources = grouped.get(source_kind, [])
-    group_label = "полученные скачиванием" if source_kind == "download" else "полученные по почте"
+    group_label = "РїРѕР»СѓС‡РµРЅРЅС‹Рµ СЃРєР°С‡РёРІР°РЅРёРµРј" if source_kind == "download" else "РїРѕР»СѓС‡РµРЅРЅС‹Рµ РїРѕ РїРѕС‡С‚Рµ"
 
     message_lines = [
-        "📦 *Остатки поставщиков — источники*",
+        "рџ“¦ *РћСЃС‚Р°С‚РєРё РїРѕСЃС‚Р°РІС‰РёРєРѕРІ вЂ” РёСЃС‚РѕС‡РЅРёРєРё*",
         "",
-        f"Группа: {group_label}",
-        f"Период: {reporting_days} дн.",
+        f"Р“СЂСѓРїРїР°: {group_label}",
+        f"РџРµСЂРёРѕРґ: {reporting_days} РґРЅ.",
         "",
     ]
 
     if not sources:
-        message_lines.append("⚪️ Источников за период нет.")
+        message_lines.append("вљЄпёЏ РСЃС‚РѕС‡РЅРёРєРѕРІ Р·Р° РїРµСЂРёРѕРґ РЅРµС‚.")
     else:
         for entry in sources:
-            source_name = entry.get("source_name") or entry.get("source_id") or "неизвестный источник"
+            source_name = entry.get("source_name") or entry.get("source_id") or "РЅРµРёР·РІРµСЃС‚РЅС‹Р№ РёСЃС‚РѕС‡РЅРёРє"
             time_label = _format_supplier_stock_timestamp(entry.get("timestamp"))
             message_lines.extend([
                 "",
-                f"• *{_escape_pattern_text(source_name)}* ({_escape_pattern_text(time_label)})",
-                f"  📥 Загрузка: {entry.get('receive', {}).get('icon', '⚪️')}",
-                f"  🧩 Обработка: {entry.get('processing', {}).get('icon', '⚪️')}",
-                f"  📤 Выгрузка: {entry.get('transfer', {}).get('icon', '⚪️')}",
+                f"вЂў *{_escape_pattern_text(source_name)}* ({_escape_pattern_text(time_label)})",
+                f"  рџ“Ґ Р—Р°РіСЂСѓР·РєР°: {entry.get('receive', {}).get('icon', 'вљЄпёЏ')}",
+                f"  рџ§© РћР±СЂР°Р±РѕС‚РєР°: {entry.get('processing', {}).get('icon', 'вљЄпёЏ')}",
+                f"  рџ“¤ Р’С‹РіСЂСѓР·РєР°: {entry.get('transfer', {}).get('icon', 'вљЄпёЏ')}",
             ])
 
     keyboard = [
         [
-            InlineKeyboardButton("⬇️ Скачивание", callback_data='supplier_stock_reports_sources_download'),
-            InlineKeyboardButton("📧 Почта", callback_data='supplier_stock_reports_sources_mail'),
+            InlineKeyboardButton("в¬‡пёЏ РЎРєР°С‡РёРІР°РЅРёРµ", callback_data='supplier_stock_reports_sources_download'),
+            InlineKeyboardButton("рџ“§ РџРѕС‡С‚Р°", callback_data='supplier_stock_reports_sources_mail'),
         ],
     ]
     if sources:
@@ -3242,7 +3242,7 @@ def show_supplier_stock_report_sources(update, context, source_kind: str = "down
                 continue
             row.append(
                 InlineKeyboardButton(
-                    f"📊 {source_id}",
+                    f"рџ“Љ {source_id}",
                     callback_data=f'supplier_stock_report_source|{source_kind}|{source_id}',
                 )
             )
@@ -3252,9 +3252,9 @@ def show_supplier_stock_report_sources(update, context, source_kind: str = "down
         if row:
             keyboard.append(row)
     keyboard.extend([
-        [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_reports_{source_kind}')],
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-        [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=f'supplier_stock_reports_{source_kind}')],
+        [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+        [InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')],
     ])
 
     query.edit_message_text(
@@ -3271,15 +3271,15 @@ def show_supplier_stock_report_source_stats(
     source_kind: str = "download",
     period_days: int | None = None,
 ) -> None:
-    """Показать подробную статистику по источнику остатков."""
+    """РџРѕРєР°Р·Р°С‚СЊ РїРѕРґСЂРѕР±РЅСѓСЋ СЃС‚Р°С‚РёСЃС‚РёРєСѓ РїРѕ РёСЃС‚РѕС‡РЅРёРєСѓ РѕСЃС‚Р°С‚РєРѕРІ."""
     query = update.callback_query
     query.answer()
 
     if not source_id:
         query.edit_message_text(
-            "⚪️ Источник не выбран.",
+            "вљЄпёЏ РСЃС‚РѕС‡РЅРёРє РЅРµ РІС‹Р±СЂР°РЅ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_reports_sources_{source_kind}')],
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=f'supplier_stock_reports_sources_{source_kind}')],
             ]),
         )
         return
@@ -3294,39 +3294,39 @@ def show_supplier_stock_report_source_stats(
     entries = stats.get("entries", [])
 
     message_lines = [
-        "📦 *Остатки поставщиков — статистика источника*",
+        "рџ“¦ *РћСЃС‚Р°С‚РєРё РїРѕСЃС‚Р°РІС‰РёРєРѕРІ вЂ” СЃС‚Р°С‚РёСЃС‚РёРєР° РёСЃС‚РѕС‡РЅРёРєР°*",
         "",
-        f"Источник: {_escape_pattern_text(source_id)}",
-        f"Группа: {'полученные скачиванием' if source_kind == 'download' else 'полученные по почте'}",
-        f"Период: {reporting_days} дн.",
+        f"РСЃС‚РѕС‡РЅРёРє: {_escape_pattern_text(source_id)}",
+        f"Р“СЂСѓРїРїР°: {'РїРѕР»СѓС‡РµРЅРЅС‹Рµ СЃРєР°С‡РёРІР°РЅРёРµРј' if source_kind == 'download' else 'РїРѕР»СѓС‡РµРЅРЅС‹Рµ РїРѕ РїРѕС‡С‚Рµ'}",
+        f"РџРµСЂРёРѕРґ: {reporting_days} РґРЅ.",
         "",
-        f"Всего запусков: {summary.get('total', 0)}",
-        f"📥 Успешно: {summary.get('receive_success', 0)} | Ошибок: {summary.get('receive_error', 0)}",
-        f"🧩 Успешно: {summary.get('processing_success', 0)} | Ошибок: {summary.get('processing_error', 0)}",
-        f"📤 Успешно: {summary.get('transfer_success', 0)} | Ошибок: {summary.get('transfer_error', 0)}",
+        f"Р’СЃРµРіРѕ Р·Р°РїСѓСЃРєРѕРІ: {summary.get('total', 0)}",
+        f"рџ“Ґ РЈСЃРїРµС€РЅРѕ: {summary.get('receive_success', 0)} | РћС€РёР±РѕРє: {summary.get('receive_error', 0)}",
+        f"рџ§© РЈСЃРїРµС€РЅРѕ: {summary.get('processing_success', 0)} | РћС€РёР±РѕРє: {summary.get('processing_error', 0)}",
+        f"рџ“¤ РЈСЃРїРµС€РЅРѕ: {summary.get('transfer_success', 0)} | РћС€РёР±РѕРє: {summary.get('transfer_error', 0)}",
         "",
-        "*Последние события:*",
+        "*РџРѕСЃР»РµРґРЅРёРµ СЃРѕР±С‹С‚РёСЏ:*",
     ]
 
     if not entries:
-        message_lines.append("⚪️ Записей пока нет.")
+        message_lines.append("вљЄпёЏ Р—Р°РїРёСЃРµР№ РїРѕРєР° РЅРµС‚.")
     else:
         for entry in entries[:10]:
             time_label = _format_supplier_stock_timestamp(entry.get("timestamp"))
             message_lines.extend([
                 "",
-                f"• {_escape_pattern_text(time_label)}",
-                f"  📥 {entry.get('receive', {}).get('icon', '⚪️')}",
-                f"  🧩 {entry.get('processing', {}).get('icon', '⚪️')}",
-                f"  📤 {entry.get('transfer', {}).get('icon', '⚪️')}",
+                f"вЂў {_escape_pattern_text(time_label)}",
+                f"  рџ“Ґ {entry.get('receive', {}).get('icon', 'вљЄпёЏ')}",
+                f"  рџ§© {entry.get('processing', {}).get('icon', 'вљЄпёЏ')}",
+                f"  рџ“¤ {entry.get('transfer', {}).get('icon', 'вљЄпёЏ')}",
             ])
             if entry.get("error"):
-                message_lines.append(f"  ❗ Ошибка: {_escape_pattern_text(entry.get('error'))}")
+                message_lines.append(f"  вќ— РћС€РёР±РєР°: {_escape_pattern_text(entry.get('error'))}")
 
     keyboard = [
-        [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_reports_sources_{source_kind}')],
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-        [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=f'supplier_stock_reports_sources_{source_kind}')],
+        [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+        [InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')],
     ]
 
     query.edit_message_text(
@@ -3337,7 +3337,7 @@ def show_supplier_stock_report_source_stats(
 
 
 def show_supplier_stock_report_entry_details(update, context, entry_key: str) -> None:
-    """Показать детали последнего запуска по источнику."""
+    """РџРѕРєР°Р·Р°С‚СЊ РґРµС‚Р°Р»Рё РїРѕСЃР»РµРґРЅРµРіРѕ Р·Р°РїСѓСЃРєР° РїРѕ РёСЃС‚РѕС‡РЅРёРєСѓ."""
     query = update.callback_query
     query.answer()
 
@@ -3346,15 +3346,15 @@ def show_supplier_stock_report_entry_details(update, context, entry_key: str) ->
     summary = entry_map.get(entry_key)
     if not summary:
         query.edit_message_text(
-            "⚪️ Детали недоступны, обновите результаты.",
+            "вљЄпёЏ Р”РµС‚Р°Р»Рё РЅРµРґРѕСЃС‚СѓРїРЅС‹, РѕР±РЅРѕРІРёС‚Рµ СЂРµР·СѓР»СЊС‚Р°С‚С‹.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_reports_{source_kind}')],
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=f'supplier_stock_reports_{source_kind}')],
             ]),
         )
         return
 
     entry = summary.get("entry", {})
-    source_id = summary.get("source_id") or entry.get("source_id") or "неизвестно"
+    source_id = summary.get("source_id") or entry.get("source_id") or "РЅРµРёР·РІРµСЃС‚РЅРѕ"
     source_name = entry.get("source_name") or source_id
     time_label = _format_supplier_stock_timestamp(entry.get("timestamp"))
     download_status = _supplier_stock_status_label(entry.get("status"))
@@ -3364,31 +3364,31 @@ def show_supplier_stock_report_entry_details(update, context, entry_key: str) ->
         processing_info.get("transfer") if processing_info else None
     )
     if entry.get("status") != "success":
-        processing_status = "⏭️ не запускалась"
-        transfer_status = "⏭️ не запускалась"
+        processing_status = "вЏ­пёЏ РЅРµ Р·Р°РїСѓСЃРєР°Р»Р°СЃСЊ"
+        transfer_status = "вЏ­пёЏ РЅРµ Р·Р°РїСѓСЃРєР°Р»Р°СЃСЊ"
 
     message_lines = [
-        "📦 *Остатки поставщиков — подробности*",
+        "рџ“¦ *РћСЃС‚Р°С‚РєРё РїРѕСЃС‚Р°РІС‰РёРєРѕРІ вЂ” РїРѕРґСЂРѕР±РЅРѕСЃС‚Рё*",
         "",
-        f"Источник: {_escape_pattern_text(source_name)}",
-        f"Группа: {'полученные скачиванием' if source_kind == 'download' else 'полученные по почте'}",
-        f"Запуск: {_escape_pattern_text(time_label)}",
+        f"РСЃС‚РѕС‡РЅРёРє: {_escape_pattern_text(source_name)}",
+        f"Р“СЂСѓРїРїР°: {'РїРѕР»СѓС‡РµРЅРЅС‹Рµ СЃРєР°С‡РёРІР°РЅРёРµРј' if source_kind == 'download' else 'РїРѕР»СѓС‡РµРЅРЅС‹Рµ РїРѕ РїРѕС‡С‚Рµ'}",
+        f"Р—Р°РїСѓСЃРє: {_escape_pattern_text(time_label)}",
         "",
-        f"📥 Загрузка: {download_status}",
-        f"🧩 Обработка: {processing_status}",
-        f"📤 Выгрузка: {transfer_status}",
+        f"рџ“Ґ Р—Р°РіСЂСѓР·РєР°: {download_status}",
+        f"рџ§© РћР±СЂР°Р±РѕС‚РєР°: {processing_status}",
+        f"рџ“¤ Р’С‹РіСЂСѓР·РєР°: {transfer_status}",
     ]
     if entry.get("error"):
-        message_lines.append(f"\n❗ Ошибка: {_escape_pattern_text(entry.get('error'))}")
+        message_lines.append(f"\nвќ— РћС€РёР±РєР°: {_escape_pattern_text(entry.get('error'))}")
 
     keyboard = [
         [InlineKeyboardButton(
-            "📊 История источника",
+            "рџ“Љ РСЃС‚РѕСЂРёСЏ РёСЃС‚РѕС‡РЅРёРєР°",
             callback_data=f'supplier_stock_report_source_day|{source_kind}|{source_id}',
         )],
-        [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_reports_{source_kind}')],
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-        [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=f'supplier_stock_reports_{source_kind}')],
+        [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+        [InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')],
     ]
 
     query.edit_message_text(
@@ -3398,7 +3398,7 @@ def show_supplier_stock_report_entry_details(update, context, entry_key: str) ->
     )
 
 def show_supplier_stock_download_settings(update, context):
-    """Показать настройки скачивания файлов остатков поставщиков."""
+    """РџРѕРєР°Р·Р°С‚СЊ РЅР°СЃС‚СЂРѕР№РєРё СЃРєР°С‡РёРІР°РЅРёСЏ С„Р°Р№Р»РѕРІ РѕСЃС‚Р°С‚РєРѕРІ РїРѕСЃС‚Р°РІС‰РёРєРѕРІ."""
     query = update.callback_query
     query.answer()
 
@@ -3410,33 +3410,33 @@ def show_supplier_stock_download_settings(update, context):
     sources = download.get("sources", [])
     schedule = download.get("schedule", {})
     unpack_enabled = sum(1 for source in sources if source.get("unpack_archive"))
-    unpack_state = f"{unpack_enabled}/{len(sources)}" if sources else "нет"
-    schedule_state = "🟢 Включено" if schedule.get("enabled") else "🔴 Выключено"
-    schedule_time = schedule.get("time", "не задано")
+    unpack_state = f"{unpack_enabled}/{len(sources)}" if sources else "РЅРµС‚"
+    schedule_state = "рџџў Р’РєР»СЋС‡РµРЅРѕ" if schedule.get("enabled") else "рџ”ґ Р’С‹РєР»СЋС‡РµРЅРѕ"
+    schedule_time = schedule.get("time", "РЅРµ Р·Р°РґР°РЅРѕ")
     archive_cleanup = _format_archive_cleanup_days(config.get("archive_cleanup_days"))
 
     message = (
-        "📦 *Скачивание файлов остатков*\n\n"
-        f"Временный каталог: `{temp_dir}`\n"
-        f"Архив: `{download.get('archive_dir', '')}`\n"
-        f"Очистка архива: {archive_cleanup}\n"
-        f"Распаковка в источниках: {unpack_state}\n"
-        f"Источников: {len(sources)}\n"
-        f"Расписание: {schedule_state} ({schedule_time})\n\n"
-        "Выберите действие:"
+        "рџ“¦ *РЎРєР°С‡РёРІР°РЅРёРµ С„Р°Р№Р»РѕРІ РѕСЃС‚Р°С‚РєРѕРІ*\n\n"
+        f"Р’СЂРµРјРµРЅРЅС‹Р№ РєР°С‚Р°Р»РѕРі: `{temp_dir}`\n"
+        f"РђСЂС…РёРІ: `{download.get('archive_dir', '')}`\n"
+        f"РћС‡РёСЃС‚РєР° Р°СЂС…РёРІР°: {archive_cleanup}\n"
+        f"Р Р°СЃРїР°РєРѕРІРєР° РІ РёСЃС‚РѕС‡РЅРёРєР°С…: {unpack_state}\n"
+        f"РСЃС‚РѕС‡РЅРёРєРѕРІ: {len(sources)}\n"
+        f"Р Р°СЃРїРёСЃР°РЅРёРµ: {schedule_state} ({schedule_time})\n\n"
+        "Р’С‹Р±РµСЂРёС‚Рµ РґРµР№СЃС‚РІРёРµ:"
     )
 
     keyboard = [
-        [InlineKeyboardButton("📁 Временный каталог", callback_data='supplier_stock_temp_dir')],
-        [InlineKeyboardButton("🗄️ Каталог архива", callback_data='supplier_stock_archive_dir')],
-        [InlineKeyboardButton("🧹 Период очистки архива", callback_data='supplier_stock_archive_cleanup_download')],
-        [InlineKeyboardButton("⏰ Расписание", callback_data='supplier_stock_schedule')],
-        [InlineKeyboardButton("📦 Источники", callback_data='supplier_stock_sources')],
-        [InlineKeyboardButton("📤 Ресурсы выгрузки", callback_data='supplier_stock_resources')],
-        [InlineKeyboardButton("📡 FTP ОРК", callback_data='supplier_stock_ftp')],
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_supplier_stock'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("рџ“Ѓ Р’СЂРµРјРµРЅРЅС‹Р№ РєР°С‚Р°Р»РѕРі", callback_data='supplier_stock_temp_dir')],
+        [InlineKeyboardButton("рџ—„пёЏ РљР°С‚Р°Р»РѕРі Р°СЂС…РёРІР°", callback_data='supplier_stock_archive_dir')],
+        [InlineKeyboardButton("рџ§№ РџРµСЂРёРѕРґ РѕС‡РёСЃС‚РєРё Р°СЂС…РёРІР°", callback_data='supplier_stock_archive_cleanup_download')],
+        [InlineKeyboardButton("вЏ° Р Р°СЃРїРёСЃР°РЅРёРµ", callback_data='supplier_stock_schedule')],
+        [InlineKeyboardButton("рџ“¦ РСЃС‚РѕС‡РЅРёРєРё", callback_data='supplier_stock_sources')],
+        [InlineKeyboardButton("рџ“¤ Р РµСЃСѓСЂСЃС‹ РІС‹РіСЂСѓР·РєРё", callback_data='supplier_stock_resources')],
+        [InlineKeyboardButton("рџ“Ў FTP РћР Рљ", callback_data='supplier_stock_ftp')],
+        [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_ext_supplier_stock'),
+         InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
     ]
 
     query.edit_message_text(
@@ -3446,7 +3446,7 @@ def show_supplier_stock_download_settings(update, context):
     )
 
 def show_supplier_stock_mail_settings(update, context):
-    """Показать настройки получения остатков через почту."""
+    """РџРѕРєР°Р·Р°С‚СЊ РЅР°СЃС‚СЂРѕР№РєРё РїРѕР»СѓС‡РµРЅРёСЏ РѕСЃС‚Р°С‚РєРѕРІ С‡РµСЂРµР· РїРѕС‡С‚Сѓ."""
     query = update.callback_query
     query.answer()
 
@@ -3462,34 +3462,34 @@ def show_supplier_stock_mail_settings(update, context):
     config = get_supplier_stock_config()
     mail_settings = config.get("mail", {})
     sources = mail_settings.get("sources", [])
-    status_text = "🟢 Включено" if mail_settings.get("enabled") else "🔴 Выключено"
+    status_text = "рџџў Р’РєР»СЋС‡РµРЅРѕ" if mail_settings.get("enabled") else "рџ”ґ Р’С‹РєР»СЋС‡РµРЅРѕ"
     temp_dir = mail_settings.get("temp_dir") or ""
     archive_dir = mail_settings.get("archive_dir") or ""
     unpack_enabled = sum(1 for source in sources if source.get("unpack_archive"))
-    unpack_state = f"{unpack_enabled}/{len(sources)}" if sources else "нет"
+    unpack_state = f"{unpack_enabled}/{len(sources)}" if sources else "РЅРµС‚"
     archive_cleanup = _format_archive_cleanup_days(config.get("archive_cleanup_days"))
     message = (
-        "📧 *Почтовые сообщения (остатки)*\n\n"
-        f"Статус: {status_text}\n"
-        f"Временный каталог: `{_escape_pattern_text(temp_dir)}`\n"
-        f"Архив: `{_escape_pattern_text(archive_dir)}`\n"
-        f"Очистка архива: {archive_cleanup}\n"
-        f"Распаковка в правилах: {unpack_state}\n"
-        f"Правил: {len(sources)}\n\n"
-        "Выберите действие:"
+        "рџ“§ *РџРѕС‡С‚РѕРІС‹Рµ СЃРѕРѕР±С‰РµРЅРёСЏ (РѕСЃС‚Р°С‚РєРё)*\n\n"
+        f"РЎС‚Р°С‚СѓСЃ: {status_text}\n"
+        f"Р’СЂРµРјРµРЅРЅС‹Р№ РєР°С‚Р°Р»РѕРі: `{_escape_pattern_text(temp_dir)}`\n"
+        f"РђСЂС…РёРІ: `{_escape_pattern_text(archive_dir)}`\n"
+        f"РћС‡РёСЃС‚РєР° Р°СЂС…РёРІР°: {archive_cleanup}\n"
+        f"Р Р°СЃРїР°РєРѕРІРєР° РІ РїСЂР°РІРёР»Р°С…: {unpack_state}\n"
+        f"РџСЂР°РІРёР»: {len(sources)}\n\n"
+        "Р’С‹Р±РµСЂРёС‚Рµ РґРµР№СЃС‚РІРёРµ:"
     )
 
     keyboard = [
-        [InlineKeyboardButton("🔁 Включить/выключить", callback_data='supplier_stock_mail_toggle')],
-        [InlineKeyboardButton("📁 Временный каталог", callback_data='supplier_stock_mail_temp_dir')],
-        [InlineKeyboardButton("🗄️ Каталог архива", callback_data='supplier_stock_mail_archive_dir')],
-        [InlineKeyboardButton("🧹 Период очистки архива", callback_data='supplier_stock_archive_cleanup_mail')],
-        [InlineKeyboardButton("📎 Правила вложений", callback_data='supplier_stock_mail_sources')],
-        [InlineKeyboardButton("📤 Ресурсы выгрузки", callback_data='supplier_stock_resources')],
-        [InlineKeyboardButton("📡 FTP ОРК", callback_data='supplier_stock_ftp')],
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_supplier_stock'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("рџ”Ѓ Р’РєР»СЋС‡РёС‚СЊ/РІС‹РєР»СЋС‡РёС‚СЊ", callback_data='supplier_stock_mail_toggle')],
+        [InlineKeyboardButton("рџ“Ѓ Р’СЂРµРјРµРЅРЅС‹Р№ РєР°С‚Р°Р»РѕРі", callback_data='supplier_stock_mail_temp_dir')],
+        [InlineKeyboardButton("рџ—„пёЏ РљР°С‚Р°Р»РѕРі Р°СЂС…РёРІР°", callback_data='supplier_stock_mail_archive_dir')],
+        [InlineKeyboardButton("рџ§№ РџРµСЂРёРѕРґ РѕС‡РёСЃС‚РєРё Р°СЂС…РёРІР°", callback_data='supplier_stock_archive_cleanup_mail')],
+        [InlineKeyboardButton("рџ“Ћ РџСЂР°РІРёР»Р° РІР»РѕР¶РµРЅРёР№", callback_data='supplier_stock_mail_sources')],
+        [InlineKeyboardButton("рџ“¤ Р РµСЃСѓСЂСЃС‹ РІС‹РіСЂСѓР·РєРё", callback_data='supplier_stock_resources')],
+        [InlineKeyboardButton("рџ“Ў FTP РћР Рљ", callback_data='supplier_stock_ftp')],
+        [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_ext_supplier_stock'),
+         InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
     ]
 
     query.edit_message_text(
@@ -3500,7 +3500,7 @@ def show_supplier_stock_mail_settings(update, context):
 
 
 def show_supplier_stock_resources_menu(update, context):
-    """Показать список ресурсов выгрузки по умолчанию."""
+    """РџРѕРєР°Р·Р°С‚СЊ СЃРїРёСЃРѕРє СЂРµСЃСѓСЂСЃРѕРІ РІС‹РіСЂСѓР·РєРё РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ."""
     query = update.callback_query
     query.answer()
 
@@ -3515,26 +3515,26 @@ def show_supplier_stock_resources_menu(update, context):
     resources = config.get("resources", [])
 
     if not resources:
-        message = "📤 *Ресурсы выгрузки*\n\n❌ Ресурсы не настроены."
+        message = "рџ“¤ *Р РµСЃСѓСЂСЃС‹ РІС‹РіСЂСѓР·РєРё*\n\nвќЊ Р РµСЃСѓСЂСЃС‹ РЅРµ РЅР°СЃС‚СЂРѕРµРЅС‹."
     else:
-        message_lines = ["📤 *Ресурсы выгрузки*\n"]
+        message_lines = ["рџ“¤ *Р РµСЃСѓСЂСЃС‹ РІС‹РіСЂСѓР·РєРё*\n"]
         for index, resource in enumerate(resources, start=1):
-            name = _escape_pattern_text(resource.get("name") or resource.get("id") or f"Ресурс {index}")
-            unc_path = _escape_pattern_text(resource.get("unc_path") or "не задано")
-            login = _escape_pattern_text(resource.get("login") or "не задано")
+            name = _escape_pattern_text(resource.get("name") or resource.get("id") or f"Р РµСЃСѓСЂСЃ {index}")
+            unc_path = _escape_pattern_text(resource.get("unc_path") or "РЅРµ Р·Р°РґР°РЅРѕ")
+            login = _escape_pattern_text(resource.get("login") or "РЅРµ Р·Р°РґР°РЅРѕ")
             enabled = resource.get("enabled", True)
-            status_icon = "🟢" if enabled else "🔴"
+            status_icon = "рџџў" if enabled else "рџ”ґ"
             message_lines.append(
                 (
                     f"{index}. {status_icon} *{name}*\n"
-                    f"   • UNC: `{unc_path}`\n"
-                    f"   • Логин: `{login}`\n"
+                    f"   вЂў UNC: `{unc_path}`\n"
+                    f"   вЂў Р›РѕРіРёРЅ: `{login}`\n"
                 )
             )
         message = "\n".join(message_lines)
 
     keyboard = [
-        [InlineKeyboardButton("➕ Добавить ресурс", callback_data='supplier_stock_resource_add')],
+        [InlineKeyboardButton("вћ• Р”РѕР±Р°РІРёС‚СЊ СЂРµСЃСѓСЂСЃ", callback_data='supplier_stock_resource_add')],
     ]
 
     for resource in resources:
@@ -3542,10 +3542,10 @@ def show_supplier_stock_resources_menu(update, context):
         if not resource_id:
             continue
         enabled = resource.get("enabled", True)
-        toggle_text = "⛔️ Выключить" if enabled else "✅ Включить"
+        toggle_text = "в›”пёЏ Р’С‹РєР»СЋС‡РёС‚СЊ" if enabled else "вњ… Р’РєР»СЋС‡РёС‚СЊ"
         keyboard.append([
             InlineKeyboardButton(
-                f"⚙️ {resource.get('name', resource_id)}",
+                f"вљ™пёЏ {resource.get('name', resource_id)}",
                 callback_data=f'supplier_stock_resource_settings|{resource_id}'
             ),
             InlineKeyboardButton(
@@ -3555,15 +3555,15 @@ def show_supplier_stock_resources_menu(update, context):
         ])
         keyboard.append([
             InlineKeyboardButton(
-                "🗑️",
+                "рџ—‘пёЏ",
                 callback_data=f'supplier_stock_resource_delete_{resource_id}'
             ),
         ])
 
-    keyboard.append([InlineKeyboardButton("🏠 На главную", callback_data='main_menu')])
+    keyboard.append([InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')])
     keyboard.append([
-        InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_supplier_stock'),
-        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+        InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_ext_supplier_stock'),
+        InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')
     ])
 
     query.edit_message_text(
@@ -3574,7 +3574,7 @@ def show_supplier_stock_resources_menu(update, context):
 
 
 def show_supplier_stock_resource_settings(update, context, resource_id: str) -> None:
-    """Показать настройки конкретного ресурса выгрузки."""
+    """РџРѕРєР°Р·Р°С‚СЊ РЅР°СЃС‚СЂРѕР№РєРё РєРѕРЅРєСЂРµС‚РЅРѕРіРѕ СЂРµСЃСѓСЂСЃР° РІС‹РіСЂСѓР·РєРё."""
     query = update.callback_query
     query.answer()
 
@@ -3588,42 +3588,42 @@ def show_supplier_stock_resource_settings(update, context, resource_id: str) -> 
 
     if not resource:
         query.edit_message_text(
-            "❌ Ресурс не найден.",
+            "вќЊ Р РµСЃСѓСЂСЃ РЅРµ РЅР°Р№РґРµРЅ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_resources')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_resources')]
             ])
         )
         return
 
     name = _escape_pattern_text(resource.get("name") or resource_id)
-    unc_path = _escape_pattern_text(resource.get("unc_path") or "не задано")
-    login = _escape_pattern_text(resource.get("login") or "не задано")
-    password = "задано" if resource.get("password") else "не задано"
-    status_icon = "🟢" if resource.get("enabled", True) else "🔴"
+    unc_path = _escape_pattern_text(resource.get("unc_path") or "РЅРµ Р·Р°РґР°РЅРѕ")
+    login = _escape_pattern_text(resource.get("login") or "РЅРµ Р·Р°РґР°РЅРѕ")
+    password = "Р·Р°РґР°РЅРѕ" if resource.get("password") else "РЅРµ Р·Р°РґР°РЅРѕ"
+    status_icon = "рџџў" if resource.get("enabled", True) else "рџ”ґ"
 
     message = (
-        "⚙️ *Ресурс выгрузки*\n\n"
+        "вљ™пёЏ *Р РµСЃСѓСЂСЃ РІС‹РіСЂСѓР·РєРё*\n\n"
         f"{status_icon} *{name}*\n"
-        f"• UNC путь: `{unc_path}`\n"
-        f"• Логин: `{login}`\n"
-        f"• Пароль: `{password}`\n\n"
-        "Выберите настройку:"
+        f"вЂў UNC РїСѓС‚СЊ: `{unc_path}`\n"
+        f"вЂў Р›РѕРіРёРЅ: `{login}`\n"
+        f"вЂў РџР°СЂРѕР»СЊ: `{password}`\n\n"
+        "Р’С‹Р±РµСЂРёС‚Рµ РЅР°СЃС‚СЂРѕР№РєСѓ:"
     )
 
     keyboard = [
         [
-            InlineKeyboardButton("✏️ Название", callback_data=f'supplier_stock_resource_field|{resource_id}|name'),
-            InlineKeyboardButton("📂 UNC путь", callback_data=f'supplier_stock_resource_field|{resource_id}|unc_path'),
+            InlineKeyboardButton("вњЏпёЏ РќР°Р·РІР°РЅРёРµ", callback_data=f'supplier_stock_resource_field|{resource_id}|name'),
+            InlineKeyboardButton("рџ“‚ UNC РїСѓС‚СЊ", callback_data=f'supplier_stock_resource_field|{resource_id}|unc_path'),
         ],
         [
-            InlineKeyboardButton("👤 Логин", callback_data=f'supplier_stock_resource_field|{resource_id}|login'),
-            InlineKeyboardButton("🔐 Пароль", callback_data=f'supplier_stock_resource_field|{resource_id}|password'),
+            InlineKeyboardButton("рџ‘¤ Р›РѕРіРёРЅ", callback_data=f'supplier_stock_resource_field|{resource_id}|login'),
+            InlineKeyboardButton("рџ”ђ РџР°СЂРѕР»СЊ", callback_data=f'supplier_stock_resource_field|{resource_id}|password'),
         ],
-        [InlineKeyboardButton("🔁 Включить/выключить", callback_data=f'supplier_stock_resource_toggle_{resource_id}')],
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
+        [InlineKeyboardButton("рџ”Ѓ Р’РєР»СЋС‡РёС‚СЊ/РІС‹РєР»СЋС‡РёС‚СЊ", callback_data=f'supplier_stock_resource_toggle_{resource_id}')],
+        [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
         [
-            InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_resources'),
-            InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+            InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_resources'),
+            InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')
         ],
     ]
 
@@ -3635,7 +3635,7 @@ def show_supplier_stock_resource_settings(update, context, resource_id: str) -> 
 
 
 def show_supplier_stock_ftp_settings(update, context) -> None:
-    """Показать настройки FTP ОРК."""
+    """РџРѕРєР°Р·Р°С‚СЊ РЅР°СЃС‚СЂРѕР№РєРё FTP РћР Рљ."""
     query = update.callback_query
     query.answer()
 
@@ -3643,28 +3643,28 @@ def show_supplier_stock_ftp_settings(update, context) -> None:
 
     config = get_supplier_stock_config()
     ftp_settings = config.get("ftp_ork", {})
-    host = _escape_pattern_text(ftp_settings.get("host") or "не задано")
-    login = _escape_pattern_text(ftp_settings.get("login") or "не задано")
-    password = "задано" if ftp_settings.get("password") else "не задано"
+    host = _escape_pattern_text(ftp_settings.get("host") or "РЅРµ Р·Р°РґР°РЅРѕ")
+    login = _escape_pattern_text(ftp_settings.get("login") or "РЅРµ Р·Р°РґР°РЅРѕ")
+    password = "Р·Р°РґР°РЅРѕ" if ftp_settings.get("password") else "РЅРµ Р·Р°РґР°РЅРѕ"
 
     message = (
-        "📡 *FTP ОРК*\n\n"
+        "рџ“Ў *FTP РћР Рљ*\n\n"
         f"HOST FTP: `{host}`\n"
-        f"Логин FTP: `{login}`\n"
-        f"Пароль FTP: `{password}`\n\n"
-        "Выберите параметр:"
+        f"Р›РѕРіРёРЅ FTP: `{login}`\n"
+        f"РџР°СЂРѕР»СЊ FTP: `{password}`\n\n"
+        "Р’С‹Р±РµСЂРёС‚Рµ РїР°СЂР°РјРµС‚СЂ:"
     )
 
     keyboard = [
         [
-            InlineKeyboardButton("🌐 HOST FTP", callback_data='supplier_stock_ftp_field|host'),
-            InlineKeyboardButton("👤 Логин FTP", callback_data='supplier_stock_ftp_field|login'),
+            InlineKeyboardButton("рџЊђ HOST FTP", callback_data='supplier_stock_ftp_field|host'),
+            InlineKeyboardButton("рџ‘¤ Р›РѕРіРёРЅ FTP", callback_data='supplier_stock_ftp_field|login'),
         ],
-        [InlineKeyboardButton("🔐 Пароль FTP", callback_data='supplier_stock_ftp_field|password')],
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
+        [InlineKeyboardButton("рџ”ђ РџР°СЂРѕР»СЊ FTP", callback_data='supplier_stock_ftp_field|password')],
+        [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
         [
-            InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_supplier_stock'),
-            InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+            InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_ext_supplier_stock'),
+            InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')
         ],
     ]
 
@@ -3681,9 +3681,9 @@ def show_supplier_stock_processing_menu(
     source_kind: str | None = None,
     back_callback: str = "settings_ext_supplier_stock",
     action_prefix: str = "supplier_stock_processing",
-    title: str = "🧩 *Обработка файлов остатков*",
+    title: str = "рџ§© *РћР±СЂР°Р±РѕС‚РєР° С„Р°Р№Р»РѕРІ РѕСЃС‚Р°С‚РєРѕРІ*",
 ):
-    """Показать настройки обработки полученных файлов остатков."""
+    """РџРѕРєР°Р·Р°С‚СЊ РЅР°СЃС‚СЂРѕР№РєРё РѕР±СЂР°Р±РѕС‚РєРё РїРѕР»СѓС‡РµРЅРЅС‹С… С„Р°Р№Р»РѕРІ РѕСЃС‚Р°С‚РєРѕРІ."""
     query = update.callback_query
     query.answer()
 
@@ -3713,29 +3713,29 @@ def show_supplier_stock_processing_menu(
         ]
 
     if not rules:
-        message = f"{title}\n\n❌ Правила обработки не настроены."
+        message = f"{title}\n\nвќЊ РџСЂР°РІРёР»Р° РѕР±СЂР°Р±РѕС‚РєРё РЅРµ РЅР°СЃС‚СЂРѕРµРЅС‹."
     else:
         message_lines = [f"{title}\n"]
         for index, rule in enumerate(rules, start=1):
-            name = _escape_pattern_text(rule.get("name") or rule.get("id") or f"Правило {index}")
-            source_file = _escape_pattern_text(rule.get("source_file") or "не задано")
+            name = _escape_pattern_text(rule.get("name") or rule.get("id") or f"РџСЂР°РІРёР»Рѕ {index}")
+            source_file = _escape_pattern_text(rule.get("source_file") or "РЅРµ Р·Р°РґР°РЅРѕ")
             enabled = rule.get("enabled", True)
             active = rule.get("active", False)
-            status_icon = "🟢" if enabled else "🔴"
-            processing_text = "обработка" if rule.get("requires_processing", True) else "без обработки"
-            active_text = "да" if active else "нет"
+            status_icon = "рџџў" if enabled else "рџ”ґ"
+            processing_text = "РѕР±СЂР°Р±РѕС‚РєР°" if rule.get("requires_processing", True) else "Р±РµР· РѕР±СЂР°Р±РѕС‚РєРё"
+            active_text = "РґР°" if active else "РЅРµС‚"
             message_lines.append(
                 (
-                    f"{index}. {status_icon}{'⭐' if active else ''} *{name}*\n"
-                    f"   • Файл источника: `{source_file}`\n"
-                    f"   • Режим: `{processing_text}`\n"
-                    f"   • Активно: `{active_text}`\n"
+                    f"{index}. {status_icon}{'в­ђ' if active else ''} *{name}*\n"
+                    f"   вЂў Р¤Р°Р№Р» РёСЃС‚РѕС‡РЅРёРєР°: `{source_file}`\n"
+                    f"   вЂў Р РµР¶РёРј: `{processing_text}`\n"
+                    f"   вЂў РђРєС‚РёРІРЅРѕ: `{active_text}`\n"
                 )
             )
         message = "\n".join(message_lines)
 
     keyboard = [
-        [InlineKeyboardButton("➕ Добавить правило", callback_data=f'{action_prefix}|add')],
+        [InlineKeyboardButton("вћ• Р”РѕР±Р°РІРёС‚СЊ РїСЂР°РІРёР»Рѕ", callback_data=f'{action_prefix}|add')],
     ]
 
     for rule in rules:
@@ -3744,11 +3744,11 @@ def show_supplier_stock_processing_menu(
             continue
         enabled = rule.get("enabled", True)
         active = rule.get("active", False)
-        toggle_text = "⛔️ Выключить" if enabled else "✅ Включить"
-        active_text = "⛔️ Отключить активность" if active else "⭐ Включить активность"
+        toggle_text = "в›”пёЏ Р’С‹РєР»СЋС‡РёС‚СЊ" if enabled else "вњ… Р’РєР»СЋС‡РёС‚СЊ"
+        active_text = "в›”пёЏ РћС‚РєР»СЋС‡РёС‚СЊ Р°РєС‚РёРІРЅРѕСЃС‚СЊ" if active else "в­ђ Р’РєР»СЋС‡РёС‚СЊ Р°РєС‚РёРІРЅРѕСЃС‚СЊ"
         keyboard.append([
             InlineKeyboardButton(
-                f"✏️ {rule.get('name', rule_id)}",
+                f"вњЏпёЏ {rule.get('name', rule_id)}",
                 callback_data=f'{action_prefix}|edit|{rule_id}'
             ),
             InlineKeyboardButton(
@@ -3756,7 +3756,7 @@ def show_supplier_stock_processing_menu(
                 callback_data=f'{action_prefix}|toggle|{rule_id}'
             ),
             InlineKeyboardButton(
-                "🗑️",
+                "рџ—‘пёЏ",
                 callback_data=f'{action_prefix}|delete|{rule_id}'
             ),
         ])
@@ -3767,10 +3767,10 @@ def show_supplier_stock_processing_menu(
             ),
         ])
 
-    keyboard.append([InlineKeyboardButton("🏠 На главную", callback_data='main_menu')])
+    keyboard.append([InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')])
     keyboard.append([
-        InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+        InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=back_callback),
+        InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')
     ])
 
     query.edit_message_text(
@@ -3946,21 +3946,21 @@ def _processing_rule_matches_source(
 
 def _processing_rule_summary(data: dict) -> str:
     requires_processing = data.get("requires_processing", True)
-    processing_text = "да" if requires_processing else "нет"
-    name = _escape_pattern_text(data.get("name") or "не задано")
-    source_file = _escape_pattern_text(data.get("source_file") or "не задано")
-    output_name = _escape_pattern_text(data.get("output_name") or "не задано")
+    processing_text = "РґР°" if requires_processing else "РЅРµС‚"
+    name = _escape_pattern_text(data.get("name") or "РЅРµ Р·Р°РґР°РЅРѕ")
+    source_file = _escape_pattern_text(data.get("source_file") or "РЅРµ Р·Р°РґР°РЅРѕ")
+    output_name = _escape_pattern_text(data.get("output_name") or "РЅРµ Р·Р°РґР°РЅРѕ")
     lines = [
-        "🧩 *Настройка обработки*\n",
-        f"• Название: `{name}`",
-        f"• Файл источника: `{source_file}`",
-        f"• Требуется обработка: `{processing_text}`",
+        "рџ§© *РќР°СЃС‚СЂРѕР№РєР° РѕР±СЂР°Р±РѕС‚РєРё*\n",
+        f"вЂў РќР°Р·РІР°РЅРёРµ: `{name}`",
+        f"вЂў Р¤Р°Р№Р» РёСЃС‚РѕС‡РЅРёРєР°: `{source_file}`",
+        f"вЂў РўСЂРµР±СѓРµС‚СЃСЏ РѕР±СЂР°Р±РѕС‚РєР°: `{processing_text}`",
     ]
     if requires_processing:
         data_row = data.get("data_row")
-        lines.append(f"• Первая строка с данными: `{data_row or 'не задано'}`")
+        lines.append(f"вЂў РџРµСЂРІР°СЏ СЃС‚СЂРѕРєР° СЃ РґР°РЅРЅС‹РјРё: `{data_row or 'РЅРµ Р·Р°РґР°РЅРѕ'}`")
     else:
-        lines.append(f"• Имя файла на выходе: `{output_name}`")
+        lines.append(f"вЂў РРјСЏ С„Р°Р№Р»Р° РЅР° РІС‹С…РѕРґРµ: `{output_name}`")
     return "\n".join(lines)
 
 def show_supplier_stock_processing_rule_menu(update, context) -> None:
@@ -3981,13 +3981,13 @@ def show_supplier_stock_processing_rule_menu(update, context) -> None:
     variant_index = 0 if variants_count else None
     message = _processing_rule_summary(data)
 
-    toggle_text = "✅ Требуется обработка" if requires_processing else "⛔️ Обработка не требуется"
+    toggle_text = "вњ… РўСЂРµР±СѓРµС‚СЃСЏ РѕР±СЂР°Р±РѕС‚РєР°" if requires_processing else "в›”пёЏ РћР±СЂР°Р±РѕС‚РєР° РЅРµ С‚СЂРµР±СѓРµС‚СЃСЏ"
 
-    keyboard = [[InlineKeyboardButton("— Настройки правила —", callback_data='supplier_stock_noop')]]
+    keyboard = [[InlineKeyboardButton("вЂ” РќР°СЃС‚СЂРѕР№РєРё РїСЂР°РІРёР»Р° вЂ”", callback_data='supplier_stock_noop')]]
     if not data.get("source_id"):
         keyboard.extend([
-            [InlineKeyboardButton("✏️ Название", callback_data='supplier_stock_processing_rule|field|name')],
-            [InlineKeyboardButton("📄 Файл источника", callback_data='supplier_stock_processing_rule|field|source_file')],
+            [InlineKeyboardButton("вњЏпёЏ РќР°Р·РІР°РЅРёРµ", callback_data='supplier_stock_processing_rule|field|name')],
+            [InlineKeyboardButton("рџ“„ Р¤Р°Р№Р» РёСЃС‚РѕС‡РЅРёРєР°", callback_data='supplier_stock_processing_rule|field|source_file')],
         ])
     keyboard.append([InlineKeyboardButton(toggle_text, callback_data='supplier_stock_processing_rule|toggle_processing')])
 
@@ -3995,60 +3995,60 @@ def show_supplier_stock_processing_rule_menu(update, context) -> None:
         variant = _ensure_processing_variant(data, variant_index or 0)
         orc = variant.get("orc", {})
         orc_enabled = orc.get("enabled", False)
-        orc_text = "да" if orc_enabled else "нет"
+        orc_text = "РґР°" if orc_enabled else "РЅРµС‚"
         keyboard.extend([
-            [InlineKeyboardButton("📍 Первая строка с данными", callback_data='supplier_stock_processing_rule|field|data_row')],
+            [InlineKeyboardButton("рџ“Ќ РџРµСЂРІР°СЏ СЃС‚СЂРѕРєР° СЃ РґР°РЅРЅС‹РјРё", callback_data='supplier_stock_processing_rule|field|data_row')],
             [
                 InlineKeyboardButton(
-                    "🔎 Номер колонки с артикулом",
+                    "рџ”Ћ РќРѕРјРµСЂ РєРѕР»РѕРЅРєРё СЃ Р°СЂС‚РёРєСѓР»РѕРј",
                     callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_col'
                 )
             ],
             [
                 InlineKeyboardButton(
-                    "🧪 Условия отбора артикулов",
+                    "рџ§Є РЈСЃР»РѕРІРёСЏ РѕС‚Р±РѕСЂР° Р°СЂС‚РёРєСѓР»РѕРІ",
                     callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_filter'
                 )
             ],
             [
                 InlineKeyboardButton(
-                    "🧪 Условия отбора по еще одной колонке",
+                    "рџ§Є РЈСЃР»РѕРІРёСЏ РѕС‚Р±РѕСЂР° РїРѕ РµС‰Рµ РѕРґРЅРѕР№ РєРѕР»РѕРЅРєРµ",
                     callback_data=f'supplier_stock_processing_variant|field|{variant_index}|extra_filter'
                 )
             ],
             [
                 InlineKeyboardButton(
-                    "🏷️ Префикс в артикуле",
+                    "рџЏ·пёЏ РџСЂРµС„РёРєСЃ РІ Р°СЂС‚РёРєСѓР»Рµ",
                     callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_prefix'
                 )
             ],
             [
                 InlineKeyboardButton(
-                    "🏷️ Постфикс артикула",
+                    "рџЏ·пёЏ РџРѕСЃС‚С„РёРєСЃ Р°СЂС‚РёРєСѓР»Р°",
                     callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_postfix'
                 )
             ],
             [
                 InlineKeyboardButton(
-                    "🧹 Изменение входящего артикула",
+                    "рџ§№ РР·РјРµРЅРµРЅРёРµ РІС…РѕРґСЏС‰РµРіРѕ Р°СЂС‚РёРєСѓР»Р°",
                     callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_transform'
                 )
             ],
             [
                 InlineKeyboardButton(
-                    "📊 Колонки с данными",
+                    "рџ“Љ РљРѕР»РѕРЅРєРё СЃ РґР°РЅРЅС‹РјРё",
                     callback_data=f'supplier_stock_processing_columns|menu|{variant_index}'
                 )
             ],
             [
                 InlineKeyboardButton(
-                    "🧾 Формат файла на выходе",
+                    "рџ§ѕ Р¤РѕСЂРјР°С‚ С„Р°Р№Р»Р° РЅР° РІС‹С…РѕРґРµ",
                     callback_data=f'supplier_stock_processing_variant|field|{variant_index}|output_format'
                 )
             ],
             [
                 InlineKeyboardButton(
-                    f"📦 Файл для ОРК: {orc_text}",
+                    f"рџ“¦ Р¤Р°Р№Р» РґР»СЏ РћР Рљ: {orc_text}",
                     callback_data=f'supplier_stock_processing_variant|toggle_orc|{variant_index}'
                 )
             ],
@@ -4056,19 +4056,19 @@ def show_supplier_stock_processing_rule_menu(update, context) -> None:
         if orc_enabled:
             keyboard.append([
                 InlineKeyboardButton(
-                    "⚙️ Настройки файла ОРК",
+                    "вљ™пёЏ РќР°СЃС‚СЂРѕР№РєРё С„Р°Р№Р»Р° РћР Рљ",
                     callback_data=f'supplier_stock_processing_orc|menu|{variant_index}'
                 )
             ])
     else:
         keyboard.append([
-            InlineKeyboardButton("📄 Имя файла на выходе", callback_data='supplier_stock_processing_rule|field|output_name')
+            InlineKeyboardButton("рџ“„ РРјСЏ С„Р°Р№Р»Р° РЅР° РІС‹С…РѕРґРµ", callback_data='supplier_stock_processing_rule|field|output_name')
         ])
 
-    keyboard.append([InlineKeyboardButton("🏠 На главную", callback_data='main_menu')])
+    keyboard.append([InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')])
     keyboard.append([
-        InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_processing_rule|back'),
-        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+        InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_processing_rule|back'),
+        InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')
     ])
 
     query.edit_message_text(
@@ -4085,138 +4085,138 @@ def show_supplier_stock_processing_variant_menu(update, context, variant_index: 
     variant = _ensure_processing_variant(data, variant_index)
     context.user_data['supplier_stock_processing_rule_data'] = data
 
-    article_col = variant.get("article_col") or "не задано"
-    article_filter = _escape_pattern_text(variant.get("article_filter") or "не задано")
+    article_col = variant.get("article_col") or "РЅРµ Р·Р°РґР°РЅРѕ"
+    article_filter = _escape_pattern_text(variant.get("article_filter") or "РЅРµ Р·Р°РґР°РЅРѕ")
     extra_filter_col = variant.get("extra_filter_col")
     extra_filter = variant.get("extra_filter")
     if extra_filter_col and extra_filter:
-        extra_filter_text = f"№{extra_filter_col}: {_escape_pattern_text(extra_filter)}"
+        extra_filter_text = f"в„–{extra_filter_col}: {_escape_pattern_text(extra_filter)}"
     else:
-        extra_filter_text = "не задано"
-    article_prefix = _escape_pattern_text(variant.get("article_prefix") or "не задано")
-    article_postfix = _escape_pattern_text(variant.get("article_postfix") or "не задано")
+        extra_filter_text = "РЅРµ Р·Р°РґР°РЅРѕ"
+    article_prefix = _escape_pattern_text(variant.get("article_prefix") or "РЅРµ Р·Р°РґР°РЅРѕ")
+    article_postfix = _escape_pattern_text(variant.get("article_postfix") or "РЅРµ Р·Р°РґР°РЅРѕ")
     article_transform = variant.get("article_transform") or {}
     transform_pattern = article_transform.get("pattern") or ""
     transform_replacement = article_transform.get("replacement") or ""
     if transform_pattern:
         transform_text = f"{_escape_pattern_text(transform_pattern)} => {_escape_pattern_text(transform_replacement)}"
     else:
-        transform_text = "не задано"
+        transform_text = "РЅРµ Р·Р°РґР°РЅРѕ"
     data_columns_count = variant.get("data_columns_count") or max(
         len(variant.get("data_columns", [])),
         len(variant.get("output_names", [])),
     )
     if data_columns_count:
         _sync_variant_columns(variant, data_columns_count)
-    output_format = variant.get("output_format") or "не задано"
+    output_format = variant.get("output_format") or "РЅРµ Р·Р°РґР°РЅРѕ"
     orc = variant.get("orc", {})
     orc_enabled = orc.get("enabled", False)
-    orc_text = "да" if orc_enabled else "нет"
-    orc_column = orc.get("column") or "не задано"
+    orc_text = "РґР°" if orc_enabled else "РЅРµС‚"
+    orc_column = orc.get("column") or "РЅРµ Р·Р°РґР°РЅРѕ"
     orc_input_index = orc.get("input_index")
     orc_output_index = orc.get("output_index")
     orc_output_format = orc.get("output_format")
     orc_output_name = _escape_pattern_text(orc.get("output_name") or "")
     if orc_output_format:
         orc_output_text = orc_output_format
-    elif output_format != "не задано":
-        orc_output_text = f"как основной ({output_format})"
+    elif output_format != "РЅРµ Р·Р°РґР°РЅРѕ":
+        orc_output_text = f"РєР°Рє РѕСЃРЅРѕРІРЅРѕР№ ({output_format})"
     else:
-        orc_output_text = "не задано"
+        orc_output_text = "РЅРµ Р·Р°РґР°РЅРѕ"
 
     message = (
-        "📦 *Настройка файла обработки*\n\n"
-        f"• Номер колонки с артикулом: `{article_col}`\n"
-        f"• Условия отбора артикулов: `{article_filter}`\n"
-        f"• Условия отбора по доп. колонке: `{extra_filter_text}`\n"
-        f"• Префикс артикула: `{article_prefix}`\n"
-        f"• Постфикс артикула: `{article_postfix}`\n"
-        f"• Изменение входящего артикула: `{transform_text}`\n"
-        f"• Колонки с данными: `{data_columns_count or 'не задано'}`\n"
-        f"• Формат файла на выходе: `{output_format}`\n"
-        f"• Файл для ОРК: `{orc_text}`"
+        "рџ“¦ *РќР°СЃС‚СЂРѕР№РєР° С„Р°Р№Р»Р° РѕР±СЂР°Р±РѕС‚РєРё*\n\n"
+        f"вЂў РќРѕРјРµСЂ РєРѕР»РѕРЅРєРё СЃ Р°СЂС‚РёРєСѓР»РѕРј: `{article_col}`\n"
+        f"вЂў РЈСЃР»РѕРІРёСЏ РѕС‚Р±РѕСЂР° Р°СЂС‚РёРєСѓР»РѕРІ: `{article_filter}`\n"
+        f"вЂў РЈСЃР»РѕРІРёСЏ РѕС‚Р±РѕСЂР° РїРѕ РґРѕРї. РєРѕР»РѕРЅРєРµ: `{extra_filter_text}`\n"
+        f"вЂў РџСЂРµС„РёРєСЃ Р°СЂС‚РёРєСѓР»Р°: `{article_prefix}`\n"
+        f"вЂў РџРѕСЃС‚С„РёРєСЃ Р°СЂС‚РёРєСѓР»Р°: `{article_postfix}`\n"
+        f"вЂў РР·РјРµРЅРµРЅРёРµ РІС…РѕРґСЏС‰РµРіРѕ Р°СЂС‚РёРєСѓР»Р°: `{transform_text}`\n"
+        f"вЂў РљРѕР»РѕРЅРєРё СЃ РґР°РЅРЅС‹РјРё: `{data_columns_count or 'РЅРµ Р·Р°РґР°РЅРѕ'}`\n"
+        f"вЂў Р¤РѕСЂРјР°С‚ С„Р°Р№Р»Р° РЅР° РІС‹С…РѕРґРµ: `{output_format}`\n"
+        f"вЂў Р¤Р°Р№Р» РґР»СЏ РћР Рљ: `{orc_text}`"
     )
     if orc_enabled:
         message += (
-            f"\n• Колонка данных для ОРК: `{orc_column}`"
-            f"\n• Формат файла ОРК на выходе: `{_escape_pattern_text(orc_output_text)}`"
-            f"\n• Имя выходного файла ОРК: `{orc_output_name or 'по умолчанию (_orc)'}`"
+            f"\nвЂў РљРѕР»РѕРЅРєР° РґР°РЅРЅС‹С… РґР»СЏ РћР Рљ: `{orc_column}`"
+            f"\nвЂў Р¤РѕСЂРјР°С‚ С„Р°Р№Р»Р° РћР Рљ РЅР° РІС‹С…РѕРґРµ: `{_escape_pattern_text(orc_output_text)}`"
+            f"\nвЂў РРјСЏ РІС‹С…РѕРґРЅРѕРіРѕ С„Р°Р№Р»Р° РћР Рљ: `{orc_output_name or 'РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ (_orc)'}`"
         )
         if orc_input_index:
-            message += f"\n• Файл источника (вход): `№{orc_input_index}`"
+            message += f"\nвЂў Р¤Р°Р№Р» РёСЃС‚РѕС‡РЅРёРєР° (РІС…РѕРґ): `в„–{orc_input_index}`"
         if orc_output_index:
-            output_label = f"№{orc_output_index}"
+            output_label = f"в„–{orc_output_index}"
             if data_columns_count and orc_output_index <= data_columns_count:
                 names = variant.get("output_names", [])
                 name_value = names[orc_output_index - 1] if orc_output_index - 1 < len(names) else ""
                 if name_value:
                     output_label = f"{orc_output_index}. {_escape_pattern_text(name_value)}"
-            message += f"\n• Файл источника (выход): `{output_label}`"
+            message += f"\nвЂў Р¤Р°Р№Р» РёСЃС‚РѕС‡РЅРёРєР° (РІС‹С…РѕРґ): `{output_label}`"
 
     keyboard = [
-        [InlineKeyboardButton("— Настройки файла —", callback_data='supplier_stock_noop')],
-        [InlineKeyboardButton("🔎 Номер колонки с артикулом", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_col')],
-        [InlineKeyboardButton("🧪 Условия отбора артикулов", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_filter')],
+        [InlineKeyboardButton("вЂ” РќР°СЃС‚СЂРѕР№РєРё С„Р°Р№Р»Р° вЂ”", callback_data='supplier_stock_noop')],
+        [InlineKeyboardButton("рџ”Ћ РќРѕРјРµСЂ РєРѕР»РѕРЅРєРё СЃ Р°СЂС‚РёРєСѓР»РѕРј", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_col')],
+        [InlineKeyboardButton("рџ§Є РЈСЃР»РѕРІРёСЏ РѕС‚Р±РѕСЂР° Р°СЂС‚РёРєСѓР»РѕРІ", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_filter')],
         [
             InlineKeyboardButton(
-                "🧪 Условия отбора по еще одной колонке",
+                "рџ§Є РЈСЃР»РѕРІРёСЏ РѕС‚Р±РѕСЂР° РїРѕ РµС‰Рµ РѕРґРЅРѕР№ РєРѕР»РѕРЅРєРµ",
                 callback_data=f'supplier_stock_processing_variant|field|{variant_index}|extra_filter'
             )
         ],
-        [InlineKeyboardButton("🏷️ Префикс в артикуле", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_prefix')],
-        [InlineKeyboardButton("🏷️ Постфикс артикула", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_postfix')],
-        [InlineKeyboardButton("🧹 Изменение входящего артикула", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_transform')],
+        [InlineKeyboardButton("рџЏ·пёЏ РџСЂРµС„РёРєСЃ РІ Р°СЂС‚РёРєСѓР»Рµ", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_prefix')],
+        [InlineKeyboardButton("рџЏ·пёЏ РџРѕСЃС‚С„РёРєСЃ Р°СЂС‚РёРєСѓР»Р°", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_postfix')],
+        [InlineKeyboardButton("рџ§№ РР·РјРµРЅРµРЅРёРµ РІС…РѕРґСЏС‰РµРіРѕ Р°СЂС‚РёРєСѓР»Р°", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|article_transform')],
     ]
 
-    keyboard.append([InlineKeyboardButton("— Колонки с данными —", callback_data='supplier_stock_noop')])
+    keyboard.append([InlineKeyboardButton("вЂ” РљРѕР»РѕРЅРєРё СЃ РґР°РЅРЅС‹РјРё вЂ”", callback_data='supplier_stock_noop')])
     keyboard.append([
-        InlineKeyboardButton("➕ Добавить колонку", callback_data=f'supplier_stock_processing_variant|add_column|{variant_index}')
+        InlineKeyboardButton("вћ• Р”РѕР±Р°РІРёС‚СЊ РєРѕР»РѕРЅРєСѓ", callback_data=f'supplier_stock_processing_variant|add_column|{variant_index}')
     ])
 
     if data_columns_count:
         for idx in range(data_columns_count):
             label = variant.get("data_columns", [])
-            value = label[idx] if idx < len(label) else "не задано"
+            value = label[idx] if idx < len(label) else "РЅРµ Р·Р°РґР°РЅРѕ"
             keyboard.append([
                 InlineKeyboardButton(
-                    f"📈 Колонка {idx + 1}: {value or 'не задано'}",
+                    f"рџ“€ РљРѕР»РѕРЅРєР° {idx + 1}: {value or 'РЅРµ Р·Р°РґР°РЅРѕ'}",
                     callback_data=f'supplier_stock_processing_variant|field|{variant_index}|data_column|{idx}'
                 )
             ])
-        keyboard.append([InlineKeyboardButton("— Имена файлов —", callback_data='supplier_stock_noop')])
+        keyboard.append([InlineKeyboardButton("вЂ” РРјРµРЅР° С„Р°Р№Р»РѕРІ вЂ”", callback_data='supplier_stock_noop')])
         for idx in range(data_columns_count):
             names = variant.get("output_names", [])
-            name_value = names[idx] if idx < len(names) else "не задано"
+            name_value = names[idx] if idx < len(names) else "РЅРµ Р·Р°РґР°РЅРѕ"
             keyboard.append([
                 InlineKeyboardButton(
-                    f"📄 Имя файла {idx + 1}: {name_value or 'не задано'}",
+                    f"рџ“„ РРјСЏ С„Р°Р№Р»Р° {idx + 1}: {name_value or 'РЅРµ Р·Р°РґР°РЅРѕ'}",
                     callback_data=f'supplier_stock_processing_variant|field|{variant_index}|output_name|{idx}'
                 )
             ])
 
     keyboard.extend([
-        [InlineKeyboardButton("🧾 Формат файла на выходе", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|output_format')],
-        [InlineKeyboardButton(f"📦 Файл для ОРК: {orc_text}", callback_data=f'supplier_stock_processing_variant|toggle_orc|{variant_index}')],
+        [InlineKeyboardButton("рџ§ѕ Р¤РѕСЂРјР°С‚ С„Р°Р№Р»Р° РЅР° РІС‹С…РѕРґРµ", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|output_format')],
+        [InlineKeyboardButton(f"рџ“¦ Р¤Р°Р№Р» РґР»СЏ РћР Рљ: {orc_text}", callback_data=f'supplier_stock_processing_variant|toggle_orc|{variant_index}')],
     ])
 
     if orc_enabled:
         keyboard.extend([
-            [InlineKeyboardButton("— Файл для ОРК —", callback_data='supplier_stock_noop')],
-            [InlineKeyboardButton("🏷️ Префикс в артикуле", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_prefix')],
-            [InlineKeyboardButton("📦 Stor", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_stor')],
-            [InlineKeyboardButton("📈 Колонка с данными", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_column')],
+            [InlineKeyboardButton("вЂ” Р¤Р°Р№Р» РґР»СЏ РћР Рљ вЂ”", callback_data='supplier_stock_noop')],
+            [InlineKeyboardButton("рџЏ·пёЏ РџСЂРµС„РёРєСЃ РІ Р°СЂС‚РёРєСѓР»Рµ", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_prefix')],
+            [InlineKeyboardButton("рџ“¦ Stor", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_stor')],
+            [InlineKeyboardButton("рџ“€ РљРѕР»РѕРЅРєР° СЃ РґР°РЅРЅС‹РјРё", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_column')],
             [
                 InlineKeyboardButton(
-                    "🧾 Формат файла ОРК на выходе",
+                    "рџ§ѕ Р¤РѕСЂРјР°С‚ С„Р°Р№Р»Р° РћР Рљ РЅР° РІС‹С…РѕРґРµ",
                     callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_output_format'
                 )
             ],
         ])
 
-    keyboard.append([InlineKeyboardButton("🏠 На главную", callback_data='main_menu')])
+    keyboard.append([InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')])
     keyboard.append([
-        InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_processing_rule|menu'),
-        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+        InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_processing_rule|menu'),
+        InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')
     ])
 
     query.edit_message_text(
@@ -4246,52 +4246,52 @@ def show_supplier_stock_processing_columns_menu(update, context, variant_index: 
     use_article_filter = variant.get("use_article_filter")
     if use_article_filter is None:
         use_article_filter = bool(variant.get("article_filter"))
-    filter_text = "да" if use_article_filter else "нет"
+    filter_text = "РґР°" if use_article_filter else "РЅРµС‚"
     message_lines = [
-        "📊 *Колонки с данными*\n",
-        f"Количество колонок: `{data_columns_count or 0}`",
-        f"Использовать условия отбора артикулов: `{filter_text}`",
+        "рџ“Љ *РљРѕР»РѕРЅРєРё СЃ РґР°РЅРЅС‹РјРё*\n",
+        f"РљРѕР»РёС‡РµСЃС‚РІРѕ РєРѕР»РѕРЅРѕРє: `{data_columns_count or 0}`",
+        f"РСЃРїРѕР»СЊР·РѕРІР°С‚СЊ СѓСЃР»РѕРІРёСЏ РѕС‚Р±РѕСЂР° Р°СЂС‚РёРєСѓР»РѕРІ: `{filter_text}`",
     ]
     for idx in range(data_columns_count or 0):
-        col_value = columns[idx] if idx < len(columns) else "не задано"
-        name_value = names[idx] if idx < len(names) else "не задано"
+        col_value = columns[idx] if idx < len(columns) else "РЅРµ Р·Р°РґР°РЅРѕ"
+        name_value = names[idx] if idx < len(names) else "РЅРµ Р·Р°РґР°РЅРѕ"
         filter_enabled = column_filters[idx] if idx < len(column_filters) else True
-        filter_text_line = "да" if filter_enabled else "нет"
+        filter_text_line = "РґР°" if filter_enabled else "РЅРµС‚"
         message_lines.append(
-            f"{idx + 1}. Колонка: `{col_value or 'не задано'}` → файл: `{_escape_pattern_text(name_value)}`"
-            f" (фильтр: `{filter_text_line}`)"
+            f"{idx + 1}. РљРѕР»РѕРЅРєР°: `{col_value or 'РЅРµ Р·Р°РґР°РЅРѕ'}` в†’ С„Р°Р№Р»: `{_escape_pattern_text(name_value)}`"
+            f" (С„РёР»СЊС‚СЂ: `{filter_text_line}`)"
         )
     message = "\n".join(message_lines)
 
     toggle_text = (
-        "✅ Использовать условия отбора артикулов"
+        "вњ… РСЃРїРѕР»СЊР·РѕРІР°С‚СЊ СѓСЃР»РѕРІРёСЏ РѕС‚Р±РѕСЂР° Р°СЂС‚РёРєСѓР»РѕРІ"
         if use_article_filter
-        else "⛔️ Не использовать условия отбора артикулов"
+        else "в›”пёЏ РќРµ РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ СѓСЃР»РѕРІРёСЏ РѕС‚Р±РѕСЂР° Р°СЂС‚РёРєСѓР»РѕРІ"
     )
     keyboard = [
-        [InlineKeyboardButton("— Колонки с данными —", callback_data='supplier_stock_noop')],
+        [InlineKeyboardButton("вЂ” РљРѕР»РѕРЅРєРё СЃ РґР°РЅРЅС‹РјРё вЂ”", callback_data='supplier_stock_noop')],
         [InlineKeyboardButton(toggle_text, callback_data=f'supplier_stock_processing_columns|toggle_article_filter|{variant_index}')],
-        [InlineKeyboardButton("➕ Добавить колонку", callback_data=f'supplier_stock_processing_columns|add_column|{variant_index}')],
+        [InlineKeyboardButton("вћ• Р”РѕР±Р°РІРёС‚СЊ РєРѕР»РѕРЅРєСѓ", callback_data=f'supplier_stock_processing_columns|add_column|{variant_index}')],
     ]
 
     if data_columns_count:
         for idx in range(data_columns_count):
-            value = columns[idx] if idx < len(columns) else "не задано"
+            value = columns[idx] if idx < len(columns) else "РЅРµ Р·Р°РґР°РЅРѕ"
             keyboard.append([
                 InlineKeyboardButton(
-                    f"📈 Колонка {idx + 1}: {value or 'не задано'}",
+                    f"рџ“€ РљРѕР»РѕРЅРєР° {idx + 1}: {value or 'РЅРµ Р·Р°РґР°РЅРѕ'}",
                     callback_data=f'supplier_stock_processing_variant|field|{variant_index}|data_column|{idx}'
                 ),
                 InlineKeyboardButton(
-                    "🗑️",
+                    "рџ—‘пёЏ",
                     callback_data=f'supplier_stock_processing_columns|remove_column|{variant_index}|{idx}'
                 ),
             ])
             filter_enabled = column_filters[idx] if idx < len(column_filters) else True
             filter_toggle_text = (
-                f"✅ Фильтр артикулов {idx + 1}"
+                f"вњ… Р¤РёР»СЊС‚СЂ Р°СЂС‚РёРєСѓР»РѕРІ {idx + 1}"
                 if filter_enabled
-                else f"⛔️ Фильтр артикулов {idx + 1}"
+                else f"в›”пёЏ Р¤РёР»СЊС‚СЂ Р°СЂС‚РёРєСѓР»РѕРІ {idx + 1}"
             )
             keyboard.append([
                 InlineKeyboardButton(
@@ -4299,20 +4299,20 @@ def show_supplier_stock_processing_columns_menu(update, context, variant_index: 
                     callback_data=f'supplier_stock_processing_columns|tac|{variant_index}|{idx}'
                 )
             ])
-        keyboard.append([InlineKeyboardButton("— Имена файлов —", callback_data='supplier_stock_noop')])
+        keyboard.append([InlineKeyboardButton("вЂ” РРјРµРЅР° С„Р°Р№Р»РѕРІ вЂ”", callback_data='supplier_stock_noop')])
         for idx in range(data_columns_count):
-            name_value = names[idx] if idx < len(names) else "не задано"
+            name_value = names[idx] if idx < len(names) else "РЅРµ Р·Р°РґР°РЅРѕ"
             keyboard.append([
                 InlineKeyboardButton(
-                    f"📄 Имя файла {idx + 1}: {name_value or 'не задано'}",
+                    f"рџ“„ РРјСЏ С„Р°Р№Р»Р° {idx + 1}: {name_value or 'РЅРµ Р·Р°РґР°РЅРѕ'}",
                     callback_data=f'supplier_stock_processing_variant|field|{variant_index}|output_name|{idx}'
                 )
             ])
 
-    keyboard.append([InlineKeyboardButton("🏠 На главную", callback_data='main_menu')])
+    keyboard.append([InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')])
     keyboard.append([
-        InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_processing_rule|menu'),
-        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+        InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_processing_rule|menu'),
+        InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')
     ])
 
     query.edit_message_text(
@@ -4330,9 +4330,9 @@ def show_supplier_stock_processing_orc_menu(update, context, variant_index: int)
     context.user_data['supplier_stock_processing_rule_data'] = data
 
     orc = variant.get("orc", {})
-    orc_prefix = _escape_pattern_text(orc.get("prefix") or "не задано")
-    orc_stor = _escape_pattern_text(orc.get("stor") or "не задано")
-    orc_column = orc.get("column") or "не задано"
+    orc_prefix = _escape_pattern_text(orc.get("prefix") or "РЅРµ Р·Р°РґР°РЅРѕ")
+    orc_stor = _escape_pattern_text(orc.get("stor") or "РЅРµ Р·Р°РґР°РЅРѕ")
+    orc_column = orc.get("column") or "РЅРµ Р·Р°РґР°РЅРѕ"
     orc_input_index = orc.get("input_index")
     orc_output_index = orc.get("output_index")
     base_output_format = variant.get("output_format")
@@ -4341,9 +4341,9 @@ def show_supplier_stock_processing_orc_menu(update, context, variant_index: int)
     if orc_output_format:
         orc_output_text = orc_output_format
     elif base_output_format:
-        orc_output_text = f"как основной ({base_output_format})"
+        orc_output_text = f"РєР°Рє РѕСЃРЅРѕРІРЅРѕР№ ({base_output_format})"
     else:
-        orc_output_text = "не задано"
+        orc_output_text = "РЅРµ Р·Р°РґР°РЅРѕ"
 
     config = get_supplier_stock_config()
     source_kind, source = _resolve_processing_rule_source(data, config)
@@ -4360,72 +4360,72 @@ def show_supplier_stock_processing_orc_menu(update, context, variant_index: int)
     output_names = variant.get("output_names", [])
 
     message_lines = [
-        "📦 *Файл для ОРК*\n",
-        f"• Префикс в артикуле: `{orc_prefix}`",
-        f"• Stor: `{orc_stor}`",
-        f"• Колонка с данными: `{orc_column}`",
-        f"• Формат файла ОРК на выходе: `{_escape_pattern_text(orc_output_text)}`",
-        f"• Имя выходного файла ОРК: `{orc_output_name or 'по умолчанию (_orc)'}`",
+        "рџ“¦ *Р¤Р°Р№Р» РґР»СЏ РћР Рљ*\n",
+        f"вЂў РџСЂРµС„РёРєСЃ РІ Р°СЂС‚РёРєСѓР»Рµ: `{orc_prefix}`",
+        f"вЂў Stor: `{orc_stor}`",
+        f"вЂў РљРѕР»РѕРЅРєР° СЃ РґР°РЅРЅС‹РјРё: `{orc_column}`",
+        f"вЂў Р¤РѕСЂРјР°С‚ С„Р°Р№Р»Р° РћР Рљ РЅР° РІС‹С…РѕРґРµ: `{_escape_pattern_text(orc_output_text)}`",
+        f"вЂў РРјСЏ РІС‹С…РѕРґРЅРѕРіРѕ С„Р°Р№Р»Р° РћР Рљ: `{orc_output_name or 'РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ (_orc)'}`",
     ]
     if input_count > 1:
-        input_label = f"№{orc_input_index}" if orc_input_index else "не задано"
-        message_lines.append(f"• Файл источника (вход): `{input_label}`")
+        input_label = f"в„–{orc_input_index}" if orc_input_index else "РЅРµ Р·Р°РґР°РЅРѕ"
+        message_lines.append(f"вЂў Р¤Р°Р№Р» РёСЃС‚РѕС‡РЅРёРєР° (РІС…РѕРґ): `{input_label}`")
     if data_columns_count > 1:
-        output_label = "не задано"
+        output_label = "РЅРµ Р·Р°РґР°РЅРѕ"
         if orc_output_index:
-            output_label = f"№{orc_output_index}"
+            output_label = f"в„–{orc_output_index}"
             if orc_output_index <= data_columns_count:
                 name_value = output_names[orc_output_index - 1] if orc_output_index - 1 < len(output_names) else ""
                 if name_value:
                     output_label = f"{orc_output_index}. {_escape_pattern_text(name_value)}"
-        message_lines.append(f"• Файл источника (выход): `{output_label}`")
+        message_lines.append(f"вЂў Р¤Р°Р№Р» РёСЃС‚РѕС‡РЅРёРєР° (РІС‹С…РѕРґ): `{output_label}`")
     message = "\n".join(message_lines)
 
     keyboard = [
-        [InlineKeyboardButton("— Файл для ОРК —", callback_data='supplier_stock_noop')],
-        [InlineKeyboardButton("🏷️ Префикс в артикуле", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_prefix')],
-        [InlineKeyboardButton("📦 Stor", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_stor')],
-        [InlineKeyboardButton("📈 Колонка с данными", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_column')],
+        [InlineKeyboardButton("вЂ” Р¤Р°Р№Р» РґР»СЏ РћР Рљ вЂ”", callback_data='supplier_stock_noop')],
+        [InlineKeyboardButton("рџЏ·пёЏ РџСЂРµС„РёРєСЃ РІ Р°СЂС‚РёРєСѓР»Рµ", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_prefix')],
+        [InlineKeyboardButton("рџ“¦ Stor", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_stor')],
+        [InlineKeyboardButton("рџ“€ РљРѕР»РѕРЅРєР° СЃ РґР°РЅРЅС‹РјРё", callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_column')],
         [
             InlineKeyboardButton(
-                "📄 Имя выходного файла ОРК",
+                "рџ“„ РРјСЏ РІС‹С…РѕРґРЅРѕРіРѕ С„Р°Р№Р»Р° РћР Рљ",
                 callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_output_name'
             )
         ],
         [
             InlineKeyboardButton(
-                "🧾 Формат файла ОРК на выходе",
+                "рџ§ѕ Р¤РѕСЂРјР°С‚ С„Р°Р№Р»Р° РћР Рљ РЅР° РІС‹С…РѕРґРµ",
                 callback_data=f'supplier_stock_processing_variant|field|{variant_index}|orc_output_format'
             )
         ],
     ]
 
     if input_count > 1:
-        keyboard.append([InlineKeyboardButton("— Файл источника (вход) —", callback_data='supplier_stock_noop')])
+        keyboard.append([InlineKeyboardButton("вЂ” Р¤Р°Р№Р» РёСЃС‚РѕС‡РЅРёРєР° (РІС…РѕРґ) вЂ”", callback_data='supplier_stock_noop')])
         for idx in range(1, input_count + 1):
-            selected = "✅" if orc_input_index == idx else "📥"
+            selected = "вњ…" if orc_input_index == idx else "рџ“Ґ"
             keyboard.append([
                 InlineKeyboardButton(
-                    f"{selected} Вход {idx}",
+                    f"{selected} Р’С…РѕРґ {idx}",
                     callback_data=f'supplier_stock_processing_orc|set_input|{variant_index}|{idx}'
                 )
             ])
         if orc_input_index:
             keyboard.append([
                 InlineKeyboardButton(
-                    "🚫 Сбросить выбор входа",
+                    "рџљ« РЎР±СЂРѕСЃРёС‚СЊ РІС‹Р±РѕСЂ РІС…РѕРґР°",
                     callback_data=f'supplier_stock_processing_orc|clear_input|{variant_index}'
                 )
             ])
 
     if data_columns_count > 1:
-        keyboard.append([InlineKeyboardButton("— Файл источника (выход) —", callback_data='supplier_stock_noop')])
+        keyboard.append([InlineKeyboardButton("вЂ” Р¤Р°Р№Р» РёСЃС‚РѕС‡РЅРёРєР° (РІС‹С…РѕРґ) вЂ”", callback_data='supplier_stock_noop')])
         for idx in range(1, data_columns_count + 1):
             name_value = output_names[idx - 1] if idx - 1 < len(output_names) else ""
-            label = f"Выход {idx}"
+            label = f"Р’С‹С…РѕРґ {idx}"
             if name_value:
                 label = f"{idx}. {name_value}"
-            selected = "✅" if orc_output_index == idx else "📤"
+            selected = "вњ…" if orc_output_index == idx else "рџ“¤"
             keyboard.append([
                 InlineKeyboardButton(
                     f"{selected} {label}",
@@ -4435,15 +4435,15 @@ def show_supplier_stock_processing_orc_menu(update, context, variant_index: int)
         if orc_output_index:
             keyboard.append([
                 InlineKeyboardButton(
-                    "🚫 Сбросить выбор выхода",
+                    "рџљ« РЎР±СЂРѕСЃРёС‚СЊ РІС‹Р±РѕСЂ РІС‹С…РѕРґР°",
                     callback_data=f'supplier_stock_processing_orc|clear_output|{variant_index}'
                 )
             ])
 
-    keyboard.append([InlineKeyboardButton("🏠 На главную", callback_data='main_menu')])
+    keyboard.append([InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')])
     keyboard.append([
-        InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_processing_rule|menu'),
-        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+        InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_processing_rule|menu'),
+        InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')
     ])
 
     query.edit_message_text(
@@ -4475,9 +4475,9 @@ def supplier_stock_start_processing_rule_menu(
         rule = next((item for item in rules if str(item.get("id")) == rule_id), None)
         if not rule:
             query.edit_message_text(
-                "❌ Правило не найдено.",
+                "вќЊ РџСЂР°РІРёР»Рѕ РЅРµ РЅР°Р№РґРµРЅРѕ.",
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]
+                    [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=back_callback)]
                 ])
             )
             return
@@ -4521,9 +4521,9 @@ def supplier_stock_start_processing_field_edit(
     rule_data = context.user_data.get("supplier_stock_processing_rule_data", {})
     if rule_data.get("source_id") and field in ("name", "source_file"):
         query.edit_message_text(
-            "ℹ️ Название и файл источника берутся из настроек источника.",
+            "в„№пёЏ РќР°Р·РІР°РЅРёРµ Рё С„Р°Р№Р» РёСЃС‚РѕС‡РЅРёРєР° Р±РµСЂСѓС‚СЃСЏ РёР· РЅР°СЃС‚СЂРѕРµРє РёСЃС‚РѕС‡РЅРёРєР°.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_processing_rule|menu')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_processing_rule|menu')]
             ])
         )
         return
@@ -4533,56 +4533,56 @@ def supplier_stock_start_processing_field_edit(
     context.user_data['supplier_stock_processing_item_index'] = item_index
 
     prompts = {
-        "name": "Введите название правила:",
-        "source_file": "Введите имя файла источника:",
-        "data_row": "Введите номер первой строки с данными:",
-        "output_name": "Введите имя файла на выходе (можно использовать {index}, {name}, {filename}):",
-        "article_col": "Введите номер колонки с артикулом:",
+        "name": "Р’РІРµРґРёС‚Рµ РЅР°Р·РІР°РЅРёРµ РїСЂР°РІРёР»Р°:",
+        "source_file": "Р’РІРµРґРёС‚Рµ РёРјСЏ С„Р°Р№Р»Р° РёСЃС‚РѕС‡РЅРёРєР°:",
+        "data_row": "Р’РІРµРґРёС‚Рµ РЅРѕРјРµСЂ РїРµСЂРІРѕР№ СЃС‚СЂРѕРєРё СЃ РґР°РЅРЅС‹РјРё:",
+        "output_name": "Р’РІРµРґРёС‚Рµ РёРјСЏ С„Р°Р№Р»Р° РЅР° РІС‹С…РѕРґРµ (РјРѕР¶РЅРѕ РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ {index}, {name}, {filename}):",
+        "article_col": "Р’РІРµРґРёС‚Рµ РЅРѕРјРµСЂ РєРѕР»РѕРЅРєРё СЃ Р°СЂС‚РёРєСѓР»РѕРј:",
         "article_filter": (
-            "Введите условия отбора артикулов (regex) или '-' для всех.\n\n"
-            "Примеры:\n"
-            "• $1 ~ /^[0-9]/ && $col+0 > 0\n"
-            "• $1 ~ /^[A-Z].*/ && $4 ~ /^[0-9]+$/\n"
-            "• grep -E '^DKS [0-9A-Z]{6,},'\n"
-            "• gsub(/^\\./, \"\", art); gsub(/[A-Za-z]+$/, \"\", art);\n"
-            "• ($3+0 > 0) && ($4 == \"Москва\")"
+            "Р’РІРµРґРёС‚Рµ СѓСЃР»РѕРІРёСЏ РѕС‚Р±РѕСЂР° Р°СЂС‚РёРєСѓР»РѕРІ (regex) РёР»Рё '-' РґР»СЏ РІСЃРµС….\n\n"
+            "РџСЂРёРјРµСЂС‹:\n"
+            "вЂў $1 ~ /^[0-9]/ && $col+0 > 0\n"
+            "вЂў $1 ~ /^[A-Z].*/ && $4 ~ /^[0-9]+$/\n"
+            "вЂў grep -E '^DKS [0-9A-Z]{6,},'\n"
+            "вЂў gsub(/^\\./, \"\", art); gsub(/[A-Za-z]+$/, \"\", art);\n"
+            "вЂў ($3+0 > 0) && ($4 == \"РњРѕСЃРєРІР°\")"
         ),
         "extra_filter": (
-            "Введите номер колонки и условие отбора (regex) через ';'.\n"
-            "Пример: 4;^Москва$\n"
-            "Или '-' чтобы отключить дополнительный фильтр."
+            "Р’РІРµРґРёС‚Рµ РЅРѕРјРµСЂ РєРѕР»РѕРЅРєРё Рё СѓСЃР»РѕРІРёРµ РѕС‚Р±РѕСЂР° (regex) С‡РµСЂРµР· ';'.\n"
+            "РџСЂРёРјРµСЂ: 4;^РњРѕСЃРєРІР°$\n"
+            "РР»Рё '-' С‡С‚РѕР±С‹ РѕС‚РєР»СЋС‡РёС‚СЊ РґРѕРїРѕР»РЅРёС‚РµР»СЊРЅС‹Р№ С„РёР»СЊС‚СЂ."
         ),
         "article_prefix": (
-            "Введите префикс артикула (или '-' если не нужен). "
-            "Если нужен пробел в конце, можно указать \\s:"
+            "Р’РІРµРґРёС‚Рµ РїСЂРµС„РёРєСЃ Р°СЂС‚РёРєСѓР»Р° (РёР»Рё '-' РµСЃР»Рё РЅРµ РЅСѓР¶РµРЅ). "
+            "Р•СЃР»Рё РЅСѓР¶РµРЅ РїСЂРѕР±РµР» РІ РєРѕРЅС†Рµ, РјРѕР¶РЅРѕ СѓРєР°Р·Р°С‚СЊ \\s:"
         ),
-        "article_postfix": "Введите постфикс артикула (или '-' если не нужен). Пробелы в конце сохраняются:",
+        "article_postfix": "Р’РІРµРґРёС‚Рµ РїРѕСЃС‚С„РёРєСЃ Р°СЂС‚РёРєСѓР»Р° (РёР»Рё '-' РµСЃР»Рё РЅРµ РЅСѓР¶РµРЅ). РџСЂРѕР±РµР»С‹ РІ РєРѕРЅС†Рµ СЃРѕС…СЂР°РЅСЏСЋС‚СЃСЏ:",
         "article_transform": (
-            "Введите правило изменения артикула (regex) или '-' чтобы отключить.\n\n"
-            "Формат: паттерн => замена (замена может быть пустой).\n"
-            "Примеры:\n"
-            "• ^0+ =>\n"
-            "• [^0-9A-Za-z]+ =>\n"
-            "• \\s+ => -"
+            "Р’РІРµРґРёС‚Рµ РїСЂР°РІРёР»Рѕ РёР·РјРµРЅРµРЅРёСЏ Р°СЂС‚РёРєСѓР»Р° (regex) РёР»Рё '-' С‡С‚РѕР±С‹ РѕС‚РєР»СЋС‡РёС‚СЊ.\n\n"
+            "Р¤РѕСЂРјР°С‚: РїР°С‚С‚РµСЂРЅ => Р·Р°РјРµРЅР° (Р·Р°РјРµРЅР° РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚РѕР№).\n"
+            "РџСЂРёРјРµСЂС‹:\n"
+            "вЂў ^0+ =>\n"
+            "вЂў [^0-9A-Za-z]+ =>\n"
+            "вЂў \\s+ => -"
         ),
-        "data_column": "Введите номер колонки с данными:",
-        "output_format": "Введите формат выходного файла (xls, xlsx, csv):",
-        "orc_prefix": "Введите префикс артикула для файла ОРК (или '-' если не нужен):",
-        "orc_stor": "Введите параметр Stor для файла ОРК:",
-        "orc_column": "Введите номер колонки с данными для файла ОРК:",
+        "data_column": "Р’РІРµРґРёС‚Рµ РЅРѕРјРµСЂ РєРѕР»РѕРЅРєРё СЃ РґР°РЅРЅС‹РјРё:",
+        "output_format": "Р’РІРµРґРёС‚Рµ С„РѕСЂРјР°С‚ РІС‹С…РѕРґРЅРѕРіРѕ С„Р°Р№Р»Р° (xls, xlsx, csv):",
+        "orc_prefix": "Р’РІРµРґРёС‚Рµ РїСЂРµС„РёРєСЃ Р°СЂС‚РёРєСѓР»Р° РґР»СЏ С„Р°Р№Р»Р° РћР Рљ (РёР»Рё '-' РµСЃР»Рё РЅРµ РЅСѓР¶РµРЅ):",
+        "orc_stor": "Р’РІРµРґРёС‚Рµ РїР°СЂР°РјРµС‚СЂ Stor РґР»СЏ С„Р°Р№Р»Р° РћР Рљ:",
+        "orc_column": "Р’РІРµРґРёС‚Рµ РЅРѕРјРµСЂ РєРѕР»РѕРЅРєРё СЃ РґР°РЅРЅС‹РјРё РґР»СЏ С„Р°Р№Р»Р° РћР Рљ:",
         "orc_output_name": (
-            "Введите имя выходного файла ОРК "
-            "(можно использовать {index}, {name}, {filename}) "
-            "или '-' чтобы использовать добавление _orc:"
+            "Р’РІРµРґРёС‚Рµ РёРјСЏ РІС‹С…РѕРґРЅРѕРіРѕ С„Р°Р№Р»Р° РћР Рљ "
+            "(РјРѕР¶РЅРѕ РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ {index}, {name}, {filename}) "
+            "РёР»Рё '-' С‡С‚РѕР±С‹ РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ РґРѕР±Р°РІР»РµРЅРёРµ _orc:"
         ),
         "orc_output_format": (
-            "Введите формат файла ОРК на выходе (xls, xlsx, csv) "
-            "или '-' чтобы использовать формат основного файла:"
+            "Р’РІРµРґРёС‚Рµ С„РѕСЂРјР°С‚ С„Р°Р№Р»Р° РћР Рљ РЅР° РІС‹С…РѕРґРµ (xls, xlsx, csv) "
+            "РёР»Рё '-' С‡С‚РѕР±С‹ РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ С„РѕСЂРјР°С‚ РѕСЃРЅРѕРІРЅРѕРіРѕ С„Р°Р№Р»Р°:"
         ),
     }
-    prompt = prompts.get(field, "Введите значение:")
+    prompt = prompts.get(field, "Р’РІРµРґРёС‚Рµ Р·РЅР°С‡РµРЅРёРµ:")
     if field == "output_name" and variant_index is not None:
-        prompt = "Введите имя выходного файла (можно использовать {index}, {name}, {filename}):"
+        prompt = "Р’РІРµРґРёС‚Рµ РёРјСЏ РІС‹С…РѕРґРЅРѕРіРѕ С„Р°Р№Р»Р° (РјРѕР¶РЅРѕ РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ {index}, {name}, {filename}):"
 
     current_value = None
     if variant_index is not None:
@@ -4634,7 +4634,7 @@ def supplier_stock_start_processing_field_edit(
                 if orc.get("output_format"):
                     current_value = orc.get("output_format")
                 elif variant.get("output_format"):
-                    current_value = f"как основной ({variant.get('output_format')})"
+                    current_value = f"РєР°Рє РѕСЃРЅРѕРІРЅРѕР№ ({variant.get('output_format')})"
     else:
         if field == "name":
             current_value = rule_data.get("name")
@@ -4651,9 +4651,9 @@ def supplier_stock_start_processing_field_edit(
         back_callback = f'supplier_stock_processing_variant|menu|{variant_index}'
     _supplier_stock_remember_prompt_message(context, query)
     query.edit_message_text(
-        f"{prompt}\n\nТекущее значение: {current_hint}",
+        f"{prompt}\n\nРўРµРєСѓС‰РµРµ Р·РЅР°С‡РµРЅРёРµ: {current_hint}",
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=back_callback)]
         ])
     )
 
@@ -4663,31 +4663,31 @@ def _validate_processing_rule(data: dict) -> list[str]:
         variants = data.get("variants", [])
         variants_count = len(variants)
         if not variants_count:
-            missing.append("файлы обработки")
+            missing.append("С„Р°Р№Р»С‹ РѕР±СЂР°Р±РѕС‚РєРё")
         if not data.get("data_row"):
-            missing.append("первая строка с данными")
+            missing.append("РїРµСЂРІР°СЏ СЃС‚СЂРѕРєР° СЃ РґР°РЅРЅС‹РјРё")
         for idx in range(variants_count):
             variant = _ensure_processing_variant(data, idx)
             if not variant.get("article_col"):
-                missing.append(f"колонка артикула (файл {idx + 1})")
+                missing.append(f"РєРѕР»РѕРЅРєР° Р°СЂС‚РёРєСѓР»Р° (С„Р°Р№Р» {idx + 1})")
             columns_count = variant.get("data_columns_count") or max(
                 len(variant.get("data_columns", [])),
                 len(variant.get("output_names", [])),
             )
             if not columns_count:
-                missing.append(f"кол-во колонок (файл {idx + 1})")
+                missing.append(f"РєРѕР»-РІРѕ РєРѕР»РѕРЅРѕРє (С„Р°Р№Р» {idx + 1})")
             columns = variant.get("data_columns", [])
             if any(col is None for col in columns) or len(columns) < columns_count:
-                missing.append(f"колонки данных (файл {idx + 1})")
+                missing.append(f"РєРѕР»РѕРЅРєРё РґР°РЅРЅС‹С… (С„Р°Р№Р» {idx + 1})")
             names = variant.get("output_names", [])
             if len(names) < columns_count or any(not name for name in names):
-                missing.append(f"имена файлов (файл {idx + 1})")
+                missing.append(f"РёРјРµРЅР° С„Р°Р№Р»РѕРІ (С„Р°Р№Р» {idx + 1})")
             if not variant.get("output_format"):
-                missing.append(f"формат файла (файл {idx + 1})")
+                missing.append(f"С„РѕСЂРјР°С‚ С„Р°Р№Р»Р° (С„Р°Р№Р» {idx + 1})")
             orc = variant.get("orc", {})
             if orc.get("enabled"):
                 if not orc.get("stor"):
-                    missing.append(f"Stor ОРК (файл {idx + 1})")
+                    missing.append(f"Stor РћР Рљ (С„Р°Р№Р» {idx + 1})")
     return missing
 
 def _save_processing_rule_data(update, context) -> bool:
@@ -4700,7 +4700,7 @@ def _save_processing_rule_data(update, context) -> bool:
     context.user_data["supplier_stock_processing_rule_data"] = data
     missing = _validate_processing_rule(data)
     if missing:
-        query.answer("Заполните: " + ", ".join(missing), show_alert=True)
+        query.answer("Р—Р°РїРѕР»РЅРёС‚Рµ: " + ", ".join(missing), show_alert=True)
         return False
     edit_id = context.user_data.get('supplier_stock_processing_rule_edit_id') or data.get("id")
     _save_supplier_stock_processing_rule(context, data, edit_id=edit_id)
@@ -4738,9 +4738,9 @@ def _show_processing_rule_back_menu(update, context, back_callback: str) -> None
         return
 
     update.callback_query.edit_message_text(
-        "✅ Настройки сохранены.",
+        "вњ… РќР°СЃС‚СЂРѕР№РєРё СЃРѕС…СЂР°РЅРµРЅС‹.",
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=back_callback)]
         ])
     )
 
@@ -4753,14 +4753,14 @@ def supplier_stock_save_processing_rule(update, context) -> None:
     context.user_data['supplier_stock_processing_rule_dirty'] = False
     back_callback = context.user_data.get('supplier_stock_processing_back', 'supplier_stock_processing')
     query.edit_message_text(
-        "✅ Настройки сохранены.",
+        "вњ… РќР°СЃС‚СЂРѕР№РєРё СЃРѕС…СЂР°РЅРµРЅС‹.",
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=back_callback)]
         ])
     )
 
 def show_supplier_stock_mail_sources_menu(update, context):
-    """Показать список правил вложений для почты."""
+    """РџРѕРєР°Р·Р°С‚СЊ СЃРїРёСЃРѕРє РїСЂР°РІРёР» РІР»РѕР¶РµРЅРёР№ РґР»СЏ РїРѕС‡С‚С‹."""
     query = update.callback_query
     query.answer()
 
@@ -4776,37 +4776,37 @@ def show_supplier_stock_mail_sources_menu(update, context):
     sources = config.get("mail", {}).get("sources", [])
 
     if not sources:
-        message = "📎 *Правила вложений*\n\n❌ Правила не настроены."
+        message = "рџ“Ћ *РџСЂР°РІРёР»Р° РІР»РѕР¶РµРЅРёР№*\n\nвќЊ РџСЂР°РІРёР»Р° РЅРµ РЅР°СЃС‚СЂРѕРµРЅС‹."
     else:
-        message_lines = ["📎 *Правила вложений*\n"]
+        message_lines = ["рџ“Ћ *РџСЂР°РІРёР»Р° РІР»РѕР¶РµРЅРёР№*\n"]
         for index, source in enumerate(sources, start=1):
-            name = _escape_pattern_text(source.get("name") or source.get("id") or f"Правило {index}")
-            sender = _escape_pattern_text(source.get("sender_pattern") or "любой")
-            subject = _escape_pattern_text(source.get("subject_pattern") or "любой")
+            name = _escape_pattern_text(source.get("name") or source.get("id") or f"РџСЂР°РІРёР»Рѕ {index}")
+            sender = _escape_pattern_text(source.get("sender_pattern") or "Р»СЋР±РѕР№")
+            subject = _escape_pattern_text(source.get("subject_pattern") or "Р»СЋР±РѕР№")
             mime_pattern = _escape_pattern_text(source.get("mime_pattern") or "application/.*")
-            filename_pattern = _escape_pattern_text(source.get("filename_pattern") or "любой")
+            filename_pattern = _escape_pattern_text(source.get("filename_pattern") or "Р»СЋР±РѕР№")
             expected = source.get("expected_attachments", 1)
-            output_template = _escape_pattern_text(source.get("output_template") or "не задано")
+            output_template = _escape_pattern_text(source.get("output_template") or "РЅРµ Р·Р°РґР°РЅРѕ")
             enabled = source.get("enabled", True)
             unpack_enabled = source.get("unpack_archive", False)
-            status_icon = "🟢" if enabled else "🔴"
-            unpack_text = "да" if unpack_enabled else "нет"
+            status_icon = "рџџў" if enabled else "рџ”ґ"
+            unpack_text = "РґР°" if unpack_enabled else "РЅРµС‚"
             message_lines.append(
                 (
                     f"{index}. {status_icon} *{name}*\n"
-                    f"   • Отправитель: `{sender}`\n"
-                    f"   • Тема: `{subject}`\n"
-                    f"   • MIME: `{mime_pattern}`\n"
-                    f"   • Имя файла: `{filename_pattern}`\n"
-                    f"   • Ожидается: `{expected}`\n"
-                    f"   • Шаблон: `{output_template}`\n"
-                    f"   • Распаковка: `{unpack_text}`\n"
+                    f"   вЂў РћС‚РїСЂР°РІРёС‚РµР»СЊ: `{sender}`\n"
+                    f"   вЂў РўРµРјР°: `{subject}`\n"
+                    f"   вЂў MIME: `{mime_pattern}`\n"
+                    f"   вЂў РРјСЏ С„Р°Р№Р»Р°: `{filename_pattern}`\n"
+                    f"   вЂў РћР¶РёРґР°РµС‚СЃСЏ: `{expected}`\n"
+                    f"   вЂў РЁР°Р±Р»РѕРЅ: `{output_template}`\n"
+                    f"   вЂў Р Р°СЃРїР°РєРѕРІРєР°: `{unpack_text}`\n"
                 )
             )
         message = "\n".join(message_lines)
 
     keyboard = [
-        [InlineKeyboardButton("➕ Добавить правило", callback_data='supplier_stock_mail_source_add')],
+        [InlineKeyboardButton("вћ• Р”РѕР±Р°РІРёС‚СЊ РїСЂР°РІРёР»Рѕ", callback_data='supplier_stock_mail_source_add')],
     ]
 
     for source in sources:
@@ -4815,11 +4815,11 @@ def show_supplier_stock_mail_sources_menu(update, context):
             continue
         enabled = source.get("enabled", True)
         unpack_enabled = source.get("unpack_archive", False)
-        toggle_text = "⛔️ Выключить" if enabled else "✅ Включить"
-        unpack_text = "📦 Распаковка: вкл" if unpack_enabled else "📦 Распаковка: выкл"
+        toggle_text = "в›”пёЏ Р’С‹РєР»СЋС‡РёС‚СЊ" if enabled else "вњ… Р’РєР»СЋС‡РёС‚СЊ"
+        unpack_text = "рџ“¦ Р Р°СЃРїР°РєРѕРІРєР°: РІРєР»" if unpack_enabled else "рџ“¦ Р Р°СЃРїР°РєРѕРІРєР°: РІС‹РєР»"
         keyboard.append([
             InlineKeyboardButton(
-                f"⚙️ {source.get('name', source_id)}",
+                f"вљ™пёЏ {source.get('name', source_id)}",
                 callback_data=f'supplier_stock_mail_source_settings|{source_id}'
             ),
             InlineKeyboardButton(
@@ -4833,15 +4833,15 @@ def show_supplier_stock_mail_sources_menu(update, context):
                 callback_data=f'supplier_stock_mail_source_unpack_toggle_{source_id}'
             ),
             InlineKeyboardButton(
-                "🗑️",
+                "рџ—‘пёЏ",
                 callback_data=f'supplier_stock_mail_source_delete_{source_id}'
             ),
         ])
 
-    keyboard.append([InlineKeyboardButton("🏠 На главную", callback_data='main_menu')])
+    keyboard.append([InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')])
     keyboard.append([
-        InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail'),
-        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+        InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_mail'),
+        InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')
     ])
 
     query.edit_message_text(
@@ -4851,7 +4851,7 @@ def show_supplier_stock_mail_sources_menu(update, context):
     )
 
 def show_supplier_stock_schedule_menu(update, context):
-    """Показать меню расписания загрузки остатков поставщиков."""
+    """РџРѕРєР°Р·Р°С‚СЊ РјРµРЅСЋ СЂР°СЃРїРёСЃР°РЅРёСЏ Р·Р°РіСЂСѓР·РєРё РѕСЃС‚Р°С‚РєРѕРІ РїРѕСЃС‚Р°РІС‰РёРєРѕРІ."""
     query = update.callback_query
     query.answer()
 
@@ -4859,22 +4859,22 @@ def show_supplier_stock_schedule_menu(update, context):
 
     config = get_supplier_stock_config()
     schedule = config.get("download", {}).get("schedule", {})
-    schedule_state = "🟢 Включено" if schedule.get("enabled") else "🔴 Выключено"
-    schedule_time = schedule.get("time", "не задано")
+    schedule_state = "рџџў Р’РєР»СЋС‡РµРЅРѕ" if schedule.get("enabled") else "рџ”ґ Р’С‹РєР»СЋС‡РµРЅРѕ"
+    schedule_time = schedule.get("time", "РЅРµ Р·Р°РґР°РЅРѕ")
 
     message = (
-        "⏰ *Расписание загрузки остатков*\n\n"
-        f"Статус: {schedule_state}\n"
-        f"Время: {schedule_time}\n\n"
-        "Выберите действие:"
+        "вЏ° *Р Р°СЃРїРёСЃР°РЅРёРµ Р·Р°РіСЂСѓР·РєРё РѕСЃС‚Р°С‚РєРѕРІ*\n\n"
+        f"РЎС‚Р°С‚СѓСЃ: {schedule_state}\n"
+        f"Р’СЂРµРјСЏ: {schedule_time}\n\n"
+        "Р’С‹Р±РµСЂРёС‚Рµ РґРµР№СЃС‚РІРёРµ:"
     )
 
     keyboard = [
-        [InlineKeyboardButton("🔁 Включить/выключить", callback_data='supplier_stock_schedule_toggle')],
-        [InlineKeyboardButton("🕒 Изменить время", callback_data='supplier_stock_schedule_time')],
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_download'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("рџ”Ѓ Р’РєР»СЋС‡РёС‚СЊ/РІС‹РєР»СЋС‡РёС‚СЊ", callback_data='supplier_stock_schedule_toggle')],
+        [InlineKeyboardButton("рџ•’ РР·РјРµРЅРёС‚СЊ РІСЂРµРјСЏ", callback_data='supplier_stock_schedule_time')],
+        [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_download'),
+         InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
     ]
 
     query.edit_message_text(
@@ -4884,7 +4884,7 @@ def show_supplier_stock_schedule_menu(update, context):
     )
 
 def show_supplier_stock_sources_menu(update, context):
-    """Показать список источников файлов остатков."""
+    """РџРѕРєР°Р·Р°С‚СЊ СЃРїРёСЃРѕРє РёСЃС‚РѕС‡РЅРёРєРѕРІ С„Р°Р№Р»РѕРІ РѕСЃС‚Р°С‚РєРѕРІ."""
     query = update.callback_query
     query.answer()
 
@@ -4900,33 +4900,33 @@ def show_supplier_stock_sources_menu(update, context):
     sources = config.get("download", {}).get("sources", [])
 
     if not sources:
-        message = "📦 *Источники файлов остатков*\n\n❌ Источники не настроены."
+        message = "рџ“¦ *РСЃС‚РѕС‡РЅРёРєРё С„Р°Р№Р»РѕРІ РѕСЃС‚Р°С‚РєРѕРІ*\n\nвќЊ РСЃС‚РѕС‡РЅРёРєРё РЅРµ РЅР°СЃС‚СЂРѕРµРЅС‹."
     else:
-        message_lines = ["📦 *Источники файлов остатков*\n"]
+        message_lines = ["рџ“¦ *РСЃС‚РѕС‡РЅРёРєРё С„Р°Р№Р»РѕРІ РѕСЃС‚Р°С‚РєРѕРІ*\n"]
         for index, source in enumerate(sources, start=1):
-            name = _escape_pattern_text(source.get("name") or source.get("id") or f"Источник {index}")
-            url = _escape_pattern_text(source.get("url") or "URL не задан")
-            output_name = _escape_pattern_text(source.get("output_name") or "не задано")
+            name = _escape_pattern_text(source.get("name") or source.get("id") or f"РСЃС‚РѕС‡РЅРёРє {index}")
+            url = _escape_pattern_text(source.get("url") or "URL РЅРµ Р·Р°РґР°РЅ")
+            output_name = _escape_pattern_text(source.get("output_name") or "РЅРµ Р·Р°РґР°РЅРѕ")
             method = _escape_pattern_text(source.get("method") or "http")
             processing_mode = _escape_pattern_text(_supplier_stock_processing_mode_label(source.get("processing_mode")))
             enabled = source.get("enabled", True)
             unpack_enabled = source.get("unpack_archive", False)
-            status_icon = "🟢" if enabled else "🔴"
-            unpack_text = "да" if unpack_enabled else "нет"
+            status_icon = "рџџў" if enabled else "рџ”ґ"
+            unpack_text = "РґР°" if unpack_enabled else "РЅРµС‚"
             message_lines.append(
                 (
                     f"{index}. {status_icon} *{name}*\n"
-                    f"   • URL: `{url}`\n"
-                    f"   • Файл: `{output_name}`\n"
-                    f"   • Метод: `{method}`\n"
-                    f"   • Обработка: `{processing_mode}`\n"
-                    f"   • Распаковка: `{unpack_text}`\n"
+                    f"   вЂў URL: `{url}`\n"
+                    f"   вЂў Р¤Р°Р№Р»: `{output_name}`\n"
+                    f"   вЂў РњРµС‚РѕРґ: `{method}`\n"
+                    f"   вЂў РћР±СЂР°Р±РѕС‚РєР°: `{processing_mode}`\n"
+                    f"   вЂў Р Р°СЃРїР°РєРѕРІРєР°: `{unpack_text}`\n"
                 )
             )
         message = "\n".join(message_lines)
 
     keyboard = [
-        [InlineKeyboardButton("➕ Добавить источник", callback_data='supplier_stock_source_add')],
+        [InlineKeyboardButton("вћ• Р”РѕР±Р°РІРёС‚СЊ РёСЃС‚РѕС‡РЅРёРє", callback_data='supplier_stock_source_add')],
     ]
 
     for source in sources:
@@ -4935,11 +4935,11 @@ def show_supplier_stock_sources_menu(update, context):
             continue
         enabled = source.get("enabled", True)
         unpack_enabled = source.get("unpack_archive", False)
-        toggle_text = "⛔️ Выключить" if enabled else "✅ Включить"
-        unpack_text = "📦 Распаковка: вкл" if unpack_enabled else "📦 Распаковка: выкл"
+        toggle_text = "в›”пёЏ Р’С‹РєР»СЋС‡РёС‚СЊ" if enabled else "вњ… Р’РєР»СЋС‡РёС‚СЊ"
+        unpack_text = "рџ“¦ Р Р°СЃРїР°РєРѕРІРєР°: РІРєР»" if unpack_enabled else "рџ“¦ Р Р°СЃРїР°РєРѕРІРєР°: РІС‹РєР»"
         keyboard.append([
             InlineKeyboardButton(
-                f"⚙️ {source.get('name', source_id)}",
+                f"вљ™пёЏ {source.get('name', source_id)}",
                 callback_data=f'supplier_stock_source_settings|{source_id}'
             ),
             InlineKeyboardButton(
@@ -4953,15 +4953,15 @@ def show_supplier_stock_sources_menu(update, context):
                 callback_data=f'supplier_stock_source_unpack_toggle_{source_id}'
             ),
             InlineKeyboardButton(
-                "🗑️",
+                "рџ—‘пёЏ",
                 callback_data=f'supplier_stock_source_delete_{source_id}'
             ),
         ])
 
-    keyboard.append([InlineKeyboardButton("🏠 На главную", callback_data='main_menu')])
+    keyboard.append([InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')])
     keyboard.append([
-        InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_download'),
-        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+        InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_download'),
+        InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')
     ])
 
     query.edit_message_text(
@@ -4971,7 +4971,7 @@ def show_supplier_stock_sources_menu(update, context):
     )
 
 def show_supplier_stock_source_settings(update, context, source_id: str):
-    """Показать настройки конкретного источника остатков."""
+    """РџРѕРєР°Р·Р°С‚СЊ РЅР°СЃС‚СЂРѕР№РєРё РєРѕРЅРєСЂРµС‚РЅРѕРіРѕ РёСЃС‚РѕС‡РЅРёРєР° РѕСЃС‚Р°С‚РєРѕРІ."""
     query = update.callback_query
     query.answer()
 
@@ -4987,30 +4987,30 @@ def show_supplier_stock_source_settings(update, context, source_id: str):
 
     if not source:
         query.edit_message_text(
-            "❌ Источник не найден.",
+            "вќЊ РСЃС‚РѕС‡РЅРёРє РЅРµ РЅР°Р№РґРµРЅ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_sources')]
             ])
         )
         return
 
     name = _escape_pattern_text(source.get("name") or source_id)
-    url = _escape_pattern_text(source.get("url") or "не задан")
-    output_name = _escape_pattern_text(source.get("output_name") or "не задано")
+    url = _escape_pattern_text(source.get("url") or "РЅРµ Р·Р°РґР°РЅ")
+    output_name = _escape_pattern_text(source.get("output_name") or "РЅРµ Р·Р°РґР°РЅРѕ")
     method = _escape_pattern_text(source.get("method") or "http")
     processing_mode = source.get("processing_mode") or "table"
     processing_label = _escape_pattern_text(_supplier_stock_processing_mode_label(processing_mode))
     discover = source.get("discover")
-    discover_text = "не задано"
+    discover_text = "РЅРµ Р·Р°РґР°РЅРѕ"
     if isinstance(discover, dict):
         discover_text = _escape_pattern_text(
             f"{discover.get('url', '')} | {discover.get('pattern', '')} | {discover.get('prefix', '')}"
         )
     vars_map = source.get("vars") or {}
-    vars_text = ", ".join([f"{key}={value}" for key, value in vars_map.items()]) if vars_map else "не задано"
-    auth_state = "задано" if source.get("auth") else "не задано"
+    vars_text = ", ".join([f"{key}={value}" for key, value in vars_map.items()]) if vars_map else "РЅРµ Р·Р°РґР°РЅРѕ"
+    auth_state = "Р·Р°РґР°РЅРѕ" if source.get("auth") else "РЅРµ Р·Р°РґР°РЅРѕ"
     pre_request = source.get("pre_request") or {}
-    pre_request_text = "не задано"
+    pre_request_text = "РЅРµ Р·Р°РґР°РЅРѕ"
     if pre_request:
         pre_request_text = _escape_pattern_text(f"{pre_request.get('url', '')} | {pre_request.get('data', '')}")
     options = []
@@ -5018,14 +5018,14 @@ def show_supplier_stock_source_settings(update, context, source_id: str):
         options.append("headers")
     if source.get("append"):
         options.append("append")
-    options_text = ", ".join(options) if options else "не задано"
-    upload_subdir = _escape_pattern_text(source.get("upload_subdir") or "не задано")
+    options_text = ", ".join(options) if options else "РЅРµ Р·Р°РґР°РЅРѕ"
+    upload_subdir = _escape_pattern_text(source.get("upload_subdir") or "РЅРµ Р·Р°РґР°РЅРѕ")
     individual_dir = source.get("individual_directory") or {}
     individual_enabled = individual_dir.get("enabled", False)
-    individual_status = "вкл" if individual_enabled else "выкл"
-    individual_path = _escape_pattern_text(individual_dir.get("unc_path") or "не задано")
-    status_icon = "🟢" if source.get("enabled", True) else "🔴"
-    unpack_text = "вкл" if source.get("unpack_archive", False) else "выкл"
+    individual_status = "РІРєР»" if individual_enabled else "РІС‹РєР»"
+    individual_path = _escape_pattern_text(individual_dir.get("unc_path") or "РЅРµ Р·Р°РґР°РЅРѕ")
+    status_icon = "рџџў" if source.get("enabled", True) else "рџ”ґ"
+    unpack_text = "РІРєР»" if source.get("unpack_archive", False) else "РІС‹РєР»"
 
     rules = config.get("processing", {}).get("rules", [])
     matched_rules = [
@@ -5039,105 +5039,105 @@ def show_supplier_stock_source_settings(update, context, source_id: str):
         orc_stores = iek_settings.get("orc_stores", [])
         outputs = iek_settings.get("outputs", {})
         stores_text = _escape_pattern_text(
-            ", ".join([f"{key}={value}" for key, value in stores.items()]) or "не задано"
+            ", ".join([f"{key}={value}" for key, value in stores.items()]) or "РЅРµ Р·Р°РґР°РЅРѕ"
         )
         orc_text = _escape_pattern_text(
             ", ".join([f"{item.get('key')}={item.get('stor')}" for item in orc_stores if isinstance(item, dict)])
-            or "не задано"
+            or "РЅРµ Р·Р°РґР°РЅРѕ"
         )
         outputs_text = _escape_pattern_text(
-            ", ".join([f"{key}={value}" for key, value in outputs.items()]) or "не задано"
+            ", ".join([f"{key}={value}" for key, value in outputs.items()]) or "РЅРµ Р·Р°РґР°РЅРѕ"
         )
-        prefix_text = _escape_pattern_text(iek_settings.get("prefix") or "не задано")
+        prefix_text = _escape_pattern_text(iek_settings.get("prefix") or "РЅРµ Р·Р°РґР°РЅРѕ")
         msk_stores = iek_settings.get("msk_stores", [])
-        msk_text = _escape_pattern_text(", ".join(msk_stores) or "не задано")
-        nsk_text = _escape_pattern_text(iek_settings.get("nsk_store") or "не задано")
+        msk_text = _escape_pattern_text(", ".join(msk_stores) or "РЅРµ Р·Р°РґР°РЅРѕ")
+        nsk_text = _escape_pattern_text(iek_settings.get("nsk_store") or "РЅРµ Р·Р°РґР°РЅРѕ")
         iek_section = [
-            "⚙️ *IEK JSON*",
-            f"• Склады: `{stores_text}`",
-            f"• МСК склады: `{msk_text}`",
-            f"• НСК склад: `{nsk_text}`",
-            f"• ORK stor: `{orc_text}`",
-            f"• Префикс артикула: `{prefix_text}`",
-            f"• Файлы: `{outputs_text}`",
+            "вљ™пёЏ *IEK JSON*",
+            f"вЂў РЎРєР»Р°РґС‹: `{stores_text}`",
+            f"вЂў РњРЎРљ СЃРєР»Р°РґС‹: `{msk_text}`",
+            f"вЂў РќРЎРљ СЃРєР»Р°Рґ: `{nsk_text}`",
+            f"вЂў ORK stor: `{orc_text}`",
+            f"вЂў РџСЂРµС„РёРєСЃ Р°СЂС‚РёРєСѓР»Р°: `{prefix_text}`",
+            f"вЂў Р¤Р°Р№Р»С‹: `{outputs_text}`",
         ]
 
     message_lines = [
-        f"⚙️ *Источник остатков*\n",
+        f"вљ™пёЏ *РСЃС‚РѕС‡РЅРёРє РѕСЃС‚Р°С‚РєРѕРІ*\n",
         f"{status_icon} *{name}*",
-        f"• URL: `{url}`",
-        f"• Файл: `{output_name}`",
-        f"• Метод: `{method}`",
-        f"• Обработка: `{processing_label}`",
-        f"• Поиск ссылки: `{discover_text}`",
-        f"• Переменные: `{_escape_pattern_text(vars_text)}`",
-        f"• Авторизация: `{auth_state}`",
-        f"• Предзапрос: `{pre_request_text}`",
-        f"• Опции: `{_escape_pattern_text(options_text)}`",
-        f"• Подкаталог выгрузки: `{upload_subdir}`",
-        f"• Индивидуальный каталог: `{individual_status}`",
-        f"• UNC индивидуального каталога: `{individual_path}`",
-        f"• Распаковка: `{unpack_text}`",
+        f"вЂў URL: `{url}`",
+        f"вЂў Р¤Р°Р№Р»: `{output_name}`",
+        f"вЂў РњРµС‚РѕРґ: `{method}`",
+        f"вЂў РћР±СЂР°Р±РѕС‚РєР°: `{processing_label}`",
+        f"вЂў РџРѕРёСЃРє СЃСЃС‹Р»РєРё: `{discover_text}`",
+        f"вЂў РџРµСЂРµРјРµРЅРЅС‹Рµ: `{_escape_pattern_text(vars_text)}`",
+        f"вЂў РђРІС‚РѕСЂРёР·Р°С†РёСЏ: `{auth_state}`",
+        f"вЂў РџСЂРµРґР·Р°РїСЂРѕСЃ: `{pre_request_text}`",
+        f"вЂў РћРїС†РёРё: `{_escape_pattern_text(options_text)}`",
+        f"вЂў РџРѕРґРєР°С‚Р°Р»РѕРі РІС‹РіСЂСѓР·РєРё: `{upload_subdir}`",
+        f"вЂў РРЅРґРёРІРёРґСѓР°Р»СЊРЅС‹Р№ РєР°С‚Р°Р»РѕРі: `{individual_status}`",
+        f"вЂў UNC РёРЅРґРёРІРёРґСѓР°Р»СЊРЅРѕРіРѕ РєР°С‚Р°Р»РѕРіР°: `{individual_path}`",
+        f"вЂў Р Р°СЃРїР°РєРѕРІРєР°: `{unpack_text}`",
     ]
     if iek_section:
         message_lines.extend(["", *iek_section])
     message_lines.extend([
-        "\n🧩 *Обработка файлов*",
-        f"Правил: {len(matched_rules)}",
+        "\nрџ§© *РћР±СЂР°Р±РѕС‚РєР° С„Р°Р№Р»РѕРІ*",
+        f"РџСЂР°РІРёР»: {len(matched_rules)}",
     ])
     if matched_rules:
         for index, rule in enumerate(matched_rules, start=1):
-            rule_name = _escape_pattern_text(rule.get("name") or rule.get("id") or f"Правило {index}")
-            source_file = _escape_pattern_text(rule.get("source_file") or "не задано")
+            rule_name = _escape_pattern_text(rule.get("name") or rule.get("id") or f"РџСЂР°РІРёР»Рѕ {index}")
+            source_file = _escape_pattern_text(rule.get("source_file") or "РЅРµ Р·Р°РґР°РЅРѕ")
             enabled = rule.get("enabled", True)
-            status = "🟢" if enabled else "🔴"
+            status = "рџџў" if enabled else "рџ”ґ"
             message_lines.append(f"{index}. {status} *{rule_name}* (`{source_file}`)")
 
-    message_lines.append("\nВыберите настройку:")
+    message_lines.append("\nР’С‹Р±РµСЂРёС‚Рµ РЅР°СЃС‚СЂРѕР№РєСѓ:")
     message = "\n".join(message_lines)
 
     keyboard = [
-        [InlineKeyboardButton("— Настройки источника —", callback_data='supplier_stock_noop')],
+        [InlineKeyboardButton("вЂ” РќР°СЃС‚СЂРѕР№РєРё РёСЃС‚РѕС‡РЅРёРєР° вЂ”", callback_data='supplier_stock_noop')],
         [
-            InlineKeyboardButton("✏️ Название", callback_data=f'supplier_stock_source_field|{source_id}|name'),
-            InlineKeyboardButton("🔗 URL", callback_data=f'supplier_stock_source_field|{source_id}|url'),
+            InlineKeyboardButton("вњЏпёЏ РќР°Р·РІР°РЅРёРµ", callback_data=f'supplier_stock_source_field|{source_id}|name'),
+            InlineKeyboardButton("рџ”— URL", callback_data=f'supplier_stock_source_field|{source_id}|url'),
         ],
         [
-            InlineKeyboardButton("🔎 Поиск ссылки", callback_data=f'supplier_stock_source_field|{source_id}|discover'),
-            InlineKeyboardButton("🧩 Переменные", callback_data=f'supplier_stock_source_field|{source_id}|vars'),
+            InlineKeyboardButton("рџ”Ћ РџРѕРёСЃРє СЃСЃС‹Р»РєРё", callback_data=f'supplier_stock_source_field|{source_id}|discover'),
+            InlineKeyboardButton("рџ§© РџРµСЂРµРјРµРЅРЅС‹Рµ", callback_data=f'supplier_stock_source_field|{source_id}|vars'),
         ],
         [
-            InlineKeyboardButton("📄 Имя файла", callback_data=f'supplier_stock_source_field|{source_id}|output_name'),
-            InlineKeyboardButton("🔐 Авторизация", callback_data=f'supplier_stock_source_field|{source_id}|auth'),
+            InlineKeyboardButton("рџ“„ РРјСЏ С„Р°Р№Р»Р°", callback_data=f'supplier_stock_source_field|{source_id}|output_name'),
+            InlineKeyboardButton("рџ”ђ РђРІС‚РѕСЂРёР·Р°С†РёСЏ", callback_data=f'supplier_stock_source_field|{source_id}|auth'),
         ],
         [
-            InlineKeyboardButton("📬 Предзапрос", callback_data=f'supplier_stock_source_field|{source_id}|pre_request'),
-            InlineKeyboardButton("⚙️ Опции", callback_data=f'supplier_stock_source_field|{source_id}|options'),
+            InlineKeyboardButton("рџ“¬ РџСЂРµРґР·Р°РїСЂРѕСЃ", callback_data=f'supplier_stock_source_field|{source_id}|pre_request'),
+            InlineKeyboardButton("вљ™пёЏ РћРїС†РёРё", callback_data=f'supplier_stock_source_field|{source_id}|options'),
         ],
         [
-            InlineKeyboardButton("🧩 Тип обработки", callback_data=f'supplier_stock_source_field|{source_id}|processing_mode'),
-            InlineKeyboardButton("📂 Подкаталог выгрузки", callback_data=f'supplier_stock_source_field|{source_id}|upload_subdir'),
+            InlineKeyboardButton("рџ§© РўРёРї РѕР±СЂР°Р±РѕС‚РєРё", callback_data=f'supplier_stock_source_field|{source_id}|processing_mode'),
+            InlineKeyboardButton("рџ“‚ РџРѕРґРєР°С‚Р°Р»РѕРі РІС‹РіСЂСѓР·РєРё", callback_data=f'supplier_stock_source_field|{source_id}|upload_subdir'),
         ],
     ]
     if processing_mode == "iek_json":
         keyboard.append([
-            InlineKeyboardButton("⚙️ IEK JSON", callback_data=f'supplier_stock_source_iek_settings|{source_id}')
+            InlineKeyboardButton("вљ™пёЏ IEK JSON", callback_data=f'supplier_stock_source_iek_settings|{source_id}')
         ])
     keyboard.extend([
         [
-            InlineKeyboardButton("📁 Индивидуальный каталог", callback_data=f'supplier_stock_source_individual|{source_id}'),
+            InlineKeyboardButton("рџ“Ѓ РРЅРґРёРІРёРґСѓР°Р»СЊРЅС‹Р№ РєР°С‚Р°Р»РѕРі", callback_data=f'supplier_stock_source_individual|{source_id}'),
         ],
         [
-            InlineKeyboardButton("🔁 Включить/выключить", callback_data=f'supplier_stock_source_toggle_{source_id}'),
-            InlineKeyboardButton(f"📦 Распаковка: {unpack_text}", callback_data=f'supplier_stock_source_unpack_toggle_{source_id}')
+            InlineKeyboardButton("рџ”Ѓ Р’РєР»СЋС‡РёС‚СЊ/РІС‹РєР»СЋС‡РёС‚СЊ", callback_data=f'supplier_stock_source_toggle_{source_id}'),
+            InlineKeyboardButton(f"рџ“¦ Р Р°СЃРїР°РєРѕРІРєР°: {unpack_text}", callback_data=f'supplier_stock_source_unpack_toggle_{source_id}')
         ],
-        [InlineKeyboardButton("— Обработка файлов —", callback_data='supplier_stock_noop')],
-        [InlineKeyboardButton("📋 Правила обработки", callback_data=f'supplier_stock_processing_source|{source_id}|menu')],
-        [InlineKeyboardButton("➕ Добавить правило", callback_data=f'supplier_stock_processing_source|{source_id}|add')],
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
+        [InlineKeyboardButton("вЂ” РћР±СЂР°Р±РѕС‚РєР° С„Р°Р№Р»РѕРІ вЂ”", callback_data='supplier_stock_noop')],
+        [InlineKeyboardButton("рџ“‹ РџСЂР°РІРёР»Р° РѕР±СЂР°Р±РѕС‚РєРё", callback_data=f'supplier_stock_processing_source|{source_id}|menu')],
+        [InlineKeyboardButton("вћ• Р”РѕР±Р°РІРёС‚СЊ РїСЂР°РІРёР»Рѕ", callback_data=f'supplier_stock_processing_source|{source_id}|add')],
+        [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
         [
-            InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources'),
-            InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+            InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_sources'),
+            InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')
         ],
     ])
 
@@ -5149,7 +5149,7 @@ def show_supplier_stock_source_settings(update, context, source_id: str):
 
 
 def show_supplier_stock_source_individual_settings(update, context, source_id: str) -> None:
-    """Показать настройки индивидуального каталога источника."""
+    """РџРѕРєР°Р·Р°С‚СЊ РЅР°СЃС‚СЂРѕР№РєРё РёРЅРґРёРІРёРґСѓР°Р»СЊРЅРѕРіРѕ РєР°С‚Р°Р»РѕРіР° РёСЃС‚РѕС‡РЅРёРєР°."""
     query = update.callback_query
     query.answer()
 
@@ -5159,37 +5159,37 @@ def show_supplier_stock_source_individual_settings(update, context, source_id: s
 
     if not source:
         query.edit_message_text(
-            "❌ Источник не найден.",
+            "вќЊ РСЃС‚РѕС‡РЅРёРє РЅРµ РЅР°Р№РґРµРЅ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_sources')]
             ])
         )
         return
 
     individual_dir = source.get("individual_directory") or {}
     enabled = individual_dir.get("enabled", False)
-    status_text = "🟢 Включено" if enabled else "🔴 Выключено"
-    unc_path = _escape_pattern_text(individual_dir.get("unc_path") or "не задано")
-    login = _escape_pattern_text(individual_dir.get("login") or "не задано")
-    password = "задано" if individual_dir.get("password") else "не задано"
+    status_text = "рџџў Р’РєР»СЋС‡РµРЅРѕ" if enabled else "рџ”ґ Р’С‹РєР»СЋС‡РµРЅРѕ"
+    unc_path = _escape_pattern_text(individual_dir.get("unc_path") or "РЅРµ Р·Р°РґР°РЅРѕ")
+    login = _escape_pattern_text(individual_dir.get("login") or "РЅРµ Р·Р°РґР°РЅРѕ")
+    password = "Р·Р°РґР°РЅРѕ" if individual_dir.get("password") else "РЅРµ Р·Р°РґР°РЅРѕ"
 
     message = (
-        "📁 *Индивидуальный каталог*\n\n"
-        f"Статус: {status_text}\n"
-        f"UNC путь: `{unc_path}`\n"
-        f"Логин: `{login}`\n"
-        f"Пароль: `{password}`\n\n"
-        "Выберите действие:"
+        "рџ“Ѓ *РРЅРґРёРІРёРґСѓР°Р»СЊРЅС‹Р№ РєР°С‚Р°Р»РѕРі*\n\n"
+        f"РЎС‚Р°С‚СѓСЃ: {status_text}\n"
+        f"UNC РїСѓС‚СЊ: `{unc_path}`\n"
+        f"Р›РѕРіРёРЅ: `{login}`\n"
+        f"РџР°СЂРѕР»СЊ: `{password}`\n\n"
+        "Р’С‹Р±РµСЂРёС‚Рµ РґРµР№СЃС‚РІРёРµ:"
     )
 
     keyboard = [
-        [InlineKeyboardButton("🔁 Включить/выключить", callback_data=f'supplier_stock_source_individual_toggle_{source_id}')],
+        [InlineKeyboardButton("рџ”Ѓ Р’РєР»СЋС‡РёС‚СЊ/РІС‹РєР»СЋС‡РёС‚СЊ", callback_data=f'supplier_stock_source_individual_toggle_{source_id}')],
         [
-            InlineKeyboardButton("📂 UNC путь", callback_data=f'supplier_stock_source_field|{source_id}|individual_path'),
-            InlineKeyboardButton("👤 Логин", callback_data=f'supplier_stock_source_field|{source_id}|individual_login'),
+            InlineKeyboardButton("рџ“‚ UNC РїСѓС‚СЊ", callback_data=f'supplier_stock_source_field|{source_id}|individual_path'),
+            InlineKeyboardButton("рџ‘¤ Р›РѕРіРёРЅ", callback_data=f'supplier_stock_source_field|{source_id}|individual_login'),
         ],
-        [InlineKeyboardButton("🔐 Пароль", callback_data=f'supplier_stock_source_field|{source_id}|individual_password')],
-        [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_source_settings|{source_id}')],
+        [InlineKeyboardButton("рџ”ђ РџР°СЂРѕР»СЊ", callback_data=f'supplier_stock_source_field|{source_id}|individual_password')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=f'supplier_stock_source_settings|{source_id}')],
     ]
 
     query.edit_message_text(
@@ -5200,7 +5200,7 @@ def show_supplier_stock_source_individual_settings(update, context, source_id: s
 
 
 def show_supplier_stock_source_iek_settings(update, context, source_id: str) -> None:
-    """Показать настройки обработки IEK JSON."""
+    """РџРѕРєР°Р·Р°С‚СЊ РЅР°СЃС‚СЂРѕР№РєРё РѕР±СЂР°Р±РѕС‚РєРё IEK JSON."""
     query = update.callback_query
     query.answer()
 
@@ -5210,9 +5210,9 @@ def show_supplier_stock_source_iek_settings(update, context, source_id: str) -> 
 
     if not source:
         query.edit_message_text(
-            "❌ Источник не найден.",
+            "вќЊ РСЃС‚РѕС‡РЅРёРє РЅРµ РЅР°Р№РґРµРЅ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_sources')]
             ])
         )
         return
@@ -5222,41 +5222,41 @@ def show_supplier_stock_source_iek_settings(update, context, source_id: str) -> 
     orc_stores = iek_settings.get("orc_stores", [])
     outputs = iek_settings.get("outputs", {})
 
-    stores_text = _escape_pattern_text(", ".join([f"{key}={value}" for key, value in stores.items()]) or "не задано")
+    stores_text = _escape_pattern_text(", ".join([f"{key}={value}" for key, value in stores.items()]) or "РЅРµ Р·Р°РґР°РЅРѕ")
     orc_text = _escape_pattern_text(
         ", ".join([f"{item.get('key')}={item.get('stor')}" for item in orc_stores if isinstance(item, dict)])
-        or "не задано"
+        or "РЅРµ Р·Р°РґР°РЅРѕ"
     )
     outputs_text = _escape_pattern_text(
-        ", ".join([f"{key}={value}" for key, value in outputs.items()]) or "не задано"
+        ", ".join([f"{key}={value}" for key, value in outputs.items()]) or "РЅРµ Р·Р°РґР°РЅРѕ"
     )
-    prefix_text = _escape_pattern_text(iek_settings.get("prefix") or "не задано")
+    prefix_text = _escape_pattern_text(iek_settings.get("prefix") or "РЅРµ Р·Р°РґР°РЅРѕ")
     msk_stores = iek_settings.get("msk_stores", [])
-    msk_text = _escape_pattern_text(", ".join(msk_stores) or "не задано")
-    nsk_text = _escape_pattern_text(iek_settings.get("nsk_store") or "не задано")
+    msk_text = _escape_pattern_text(", ".join(msk_stores) or "РЅРµ Р·Р°РґР°РЅРѕ")
+    nsk_text = _escape_pattern_text(iek_settings.get("nsk_store") or "РЅРµ Р·Р°РґР°РЅРѕ")
 
     message = (
-        "⚙️ *IEK JSON*\n\n"
-        f"Склады: `{stores_text}`\n"
-        f"МСК склады: `{msk_text}`\n"
-        f"НСК склад: `{nsk_text}`\n"
-        f"ОРК stor: `{orc_text}`\n"
-        f"Префикс артикула: `{prefix_text}`\n"
-        f"Файлы: `{outputs_text}`\n\n"
-        "Выберите действие:"
+        "вљ™пёЏ *IEK JSON*\n\n"
+        f"РЎРєР»Р°РґС‹: `{stores_text}`\n"
+        f"РњРЎРљ СЃРєР»Р°РґС‹: `{msk_text}`\n"
+        f"РќРЎРљ СЃРєР»Р°Рґ: `{nsk_text}`\n"
+        f"РћР Рљ stor: `{orc_text}`\n"
+        f"РџСЂРµС„РёРєСЃ Р°СЂС‚РёРєСѓР»Р°: `{prefix_text}`\n"
+        f"Р¤Р°Р№Р»С‹: `{outputs_text}`\n\n"
+        "Р’С‹Р±РµСЂРёС‚Рµ РґРµР№СЃС‚РІРёРµ:"
     )
 
     keyboard = [
-        [InlineKeyboardButton("🗺️ Склады", callback_data=f'supplier_stock_source_iek_field|{source_id}|stores')],
-        [InlineKeyboardButton("📍 МСК склады", callback_data=f'supplier_stock_source_iek_field|{source_id}|msk_stores')],
-        [InlineKeyboardButton("📍 НСК склад", callback_data=f'supplier_stock_source_iek_field|{source_id}|nsk_store')],
-        [InlineKeyboardButton("🧾 ORK stor", callback_data=f'supplier_stock_source_iek_field|{source_id}|orc_stores')],
-        [InlineKeyboardButton("🏷️ Префикс артикула", callback_data=f'supplier_stock_source_iek_field|{source_id}|prefix')],
-        [InlineKeyboardButton("📄 Файлы", callback_data=f'supplier_stock_source_iek_field|{source_id}|outputs')],
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
+        [InlineKeyboardButton("рџ—єпёЏ РЎРєР»Р°РґС‹", callback_data=f'supplier_stock_source_iek_field|{source_id}|stores')],
+        [InlineKeyboardButton("рџ“Ќ РњРЎРљ СЃРєР»Р°РґС‹", callback_data=f'supplier_stock_source_iek_field|{source_id}|msk_stores')],
+        [InlineKeyboardButton("рџ“Ќ РќРЎРљ СЃРєР»Р°Рґ", callback_data=f'supplier_stock_source_iek_field|{source_id}|nsk_store')],
+        [InlineKeyboardButton("рџ§ѕ ORK stor", callback_data=f'supplier_stock_source_iek_field|{source_id}|orc_stores')],
+        [InlineKeyboardButton("рџЏ·пёЏ РџСЂРµС„РёРєСЃ Р°СЂС‚РёРєСѓР»Р°", callback_data=f'supplier_stock_source_iek_field|{source_id}|prefix')],
+        [InlineKeyboardButton("рџ“„ Р¤Р°Р№Р»С‹", callback_data=f'supplier_stock_source_iek_field|{source_id}|outputs')],
+        [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
         [
-            InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_source_settings|{source_id}'),
-            InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+            InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=f'supplier_stock_source_settings|{source_id}'),
+            InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')
         ],
     ]
 
@@ -5267,7 +5267,7 @@ def show_supplier_stock_source_iek_settings(update, context, source_id: str) -> 
     )
 
 def show_supplier_stock_mail_source_settings(update, context, source_id: str):
-    """Показать настройки правила вложений."""
+    """РџРѕРєР°Р·Р°С‚СЊ РЅР°СЃС‚СЂРѕР№РєРё РїСЂР°РІРёР»Р° РІР»РѕР¶РµРЅРёР№."""
     query = update.callback_query
     query.answer()
 
@@ -5281,29 +5281,29 @@ def show_supplier_stock_mail_source_settings(update, context, source_id: str):
 
     if not source:
         query.edit_message_text(
-            "❌ Правило не найдено.",
+            "вќЊ РџСЂР°РІРёР»Рѕ РЅРµ РЅР°Р№РґРµРЅРѕ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail_sources')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_mail_sources')]
             ])
         )
         return
 
     name = _escape_pattern_text(source.get("name") or source_id)
-    sender = _escape_pattern_text(source.get("sender_pattern") or "любой")
-    subject = _escape_pattern_text(source.get("subject_pattern") or "любой")
+    sender = _escape_pattern_text(source.get("sender_pattern") or "Р»СЋР±РѕР№")
+    subject = _escape_pattern_text(source.get("subject_pattern") or "Р»СЋР±РѕР№")
     mime_pattern = _escape_pattern_text(source.get("mime_pattern") or "application/.*")
-    filename_pattern = _escape_pattern_text(source.get("filename_pattern") or "любой")
+    filename_pattern = _escape_pattern_text(source.get("filename_pattern") or "Р»СЋР±РѕР№")
     expected = source.get("expected_attachments", 1)
-    output_template = _escape_pattern_text(source.get("output_template") or "не задано")
+    output_template = _escape_pattern_text(source.get("output_template") or "РЅРµ Р·Р°РґР°РЅРѕ")
     enabled = source.get("enabled", True)
     unpack_enabled = source.get("unpack_archive", False)
-    status_icon = "🟢" if enabled else "🔴"
-    unpack_text = "вкл" if unpack_enabled else "выкл"
-    upload_subdir = _escape_pattern_text(source.get("upload_subdir") or "не задано")
+    status_icon = "рџџў" if enabled else "рџ”ґ"
+    unpack_text = "РІРєР»" if unpack_enabled else "РІС‹РєР»"
+    upload_subdir = _escape_pattern_text(source.get("upload_subdir") or "РЅРµ Р·Р°РґР°РЅРѕ")
     individual_dir = source.get("individual_directory") or {}
     individual_enabled = individual_dir.get("enabled", False)
-    individual_status = "вкл" if individual_enabled else "выкл"
-    individual_path = _escape_pattern_text(individual_dir.get("unc_path") or "не задано")
+    individual_status = "РІРєР»" if individual_enabled else "РІС‹РєР»"
+    individual_path = _escape_pattern_text(individual_dir.get("unc_path") or "РЅРµ Р·Р°РґР°РЅРѕ")
 
     rules = config.get("processing", {}).get("rules", [])
     matched_rules = [
@@ -5312,64 +5312,64 @@ def show_supplier_stock_mail_source_settings(update, context, source_id: str):
     ]
 
     message_lines = [
-        "📎 *Правило вложений*\n",
+        "рџ“Ћ *РџСЂР°РІРёР»Рѕ РІР»РѕР¶РµРЅРёР№*\n",
         f"{status_icon} *{name}*",
-        f"• Отправитель: `{sender}`",
-        f"• Тема: `{subject}`",
-        f"• MIME: `{mime_pattern}`",
-        f"• Имя файла: `{filename_pattern}`",
-        f"• Ожидается: `{expected}`",
-        f"• Шаблон: `{output_template}`",
-        f"• Подкаталог выгрузки: `{upload_subdir}`",
-        f"• Индивидуальный каталог: `{individual_status}`",
-        f"• UNC индивидуального каталога: `{individual_path}`",
-        f"• Распаковка: `{unpack_text}`\n",
-        "🧩 *Обработка файлов*",
-        f"Правил: {len(matched_rules)}",
+        f"вЂў РћС‚РїСЂР°РІРёС‚РµР»СЊ: `{sender}`",
+        f"вЂў РўРµРјР°: `{subject}`",
+        f"вЂў MIME: `{mime_pattern}`",
+        f"вЂў РРјСЏ С„Р°Р№Р»Р°: `{filename_pattern}`",
+        f"вЂў РћР¶РёРґР°РµС‚СЃСЏ: `{expected}`",
+        f"вЂў РЁР°Р±Р»РѕРЅ: `{output_template}`",
+        f"вЂў РџРѕРґРєР°С‚Р°Р»РѕРі РІС‹РіСЂСѓР·РєРё: `{upload_subdir}`",
+        f"вЂў РРЅРґРёРІРёРґСѓР°Р»СЊРЅС‹Р№ РєР°С‚Р°Р»РѕРі: `{individual_status}`",
+        f"вЂў UNC РёРЅРґРёРІРёРґСѓР°Р»СЊРЅРѕРіРѕ РєР°С‚Р°Р»РѕРіР°: `{individual_path}`",
+        f"вЂў Р Р°СЃРїР°РєРѕРІРєР°: `{unpack_text}`\n",
+        "рџ§© *РћР±СЂР°Р±РѕС‚РєР° С„Р°Р№Р»РѕРІ*",
+        f"РџСЂР°РІРёР»: {len(matched_rules)}",
     ]
     if matched_rules:
         for index, rule in enumerate(matched_rules, start=1):
-            rule_name = _escape_pattern_text(rule.get("name") or rule.get("id") or f"Правило {index}")
-            source_file = _escape_pattern_text(rule.get("source_file") or "не задано")
+            rule_name = _escape_pattern_text(rule.get("name") or rule.get("id") or f"РџСЂР°РІРёР»Рѕ {index}")
+            source_file = _escape_pattern_text(rule.get("source_file") or "РЅРµ Р·Р°РґР°РЅРѕ")
             enabled_rule = rule.get("enabled", True)
-            status = "🟢" if enabled_rule else "🔴"
+            status = "рџџў" if enabled_rule else "рџ”ґ"
             message_lines.append(f"{index}. {status} *{rule_name}* (`{source_file}`)")
 
-    message_lines.append("\nВыберите настройку:")
+    message_lines.append("\nР’С‹Р±РµСЂРёС‚Рµ РЅР°СЃС‚СЂРѕР№РєСѓ:")
     message = "\n".join(message_lines)
 
     keyboard = [
-        [InlineKeyboardButton("— Настройки правила —", callback_data='supplier_stock_noop')],
+        [InlineKeyboardButton("вЂ” РќР°СЃС‚СЂРѕР№РєРё РїСЂР°РІРёР»Р° вЂ”", callback_data='supplier_stock_noop')],
         [
-            InlineKeyboardButton("✏️ Название", callback_data=f'supplier_stock_mail_field|{source_id}|name'),
-            InlineKeyboardButton("👤 Отправитель", callback_data=f'supplier_stock_mail_field|{source_id}|sender'),
+            InlineKeyboardButton("вњЏпёЏ РќР°Р·РІР°РЅРёРµ", callback_data=f'supplier_stock_mail_field|{source_id}|name'),
+            InlineKeyboardButton("рџ‘¤ РћС‚РїСЂР°РІРёС‚РµР»СЊ", callback_data=f'supplier_stock_mail_field|{source_id}|sender'),
         ],
         [
-            InlineKeyboardButton("📝 Тема", callback_data=f'supplier_stock_mail_field|{source_id}|subject'),
-            InlineKeyboardButton("🧾 MIME", callback_data=f'supplier_stock_mail_field|{source_id}|mime'),
+            InlineKeyboardButton("рџ“ќ РўРµРјР°", callback_data=f'supplier_stock_mail_field|{source_id}|subject'),
+            InlineKeyboardButton("рџ§ѕ MIME", callback_data=f'supplier_stock_mail_field|{source_id}|mime'),
         ],
         [
-            InlineKeyboardButton("📄 Имя файла", callback_data=f'supplier_stock_mail_field|{source_id}|filename'),
-            InlineKeyboardButton("🔢 Кол-во вложений", callback_data=f'supplier_stock_mail_field|{source_id}|expected'),
+            InlineKeyboardButton("рџ“„ РРјСЏ С„Р°Р№Р»Р°", callback_data=f'supplier_stock_mail_field|{source_id}|filename'),
+            InlineKeyboardButton("рџ”ў РљРѕР»-РІРѕ РІР»РѕР¶РµРЅРёР№", callback_data=f'supplier_stock_mail_field|{source_id}|expected'),
         ],
         [
-            InlineKeyboardButton("📦 Шаблон файла", callback_data=f'supplier_stock_mail_field|{source_id}|output'),
+            InlineKeyboardButton("рџ“¦ РЁР°Р±Р»РѕРЅ С„Р°Р№Р»Р°", callback_data=f'supplier_stock_mail_field|{source_id}|output'),
         ],
         [
-            InlineKeyboardButton("📂 Подкаталог выгрузки", callback_data=f'supplier_stock_mail_field|{source_id}|upload_subdir'),
-            InlineKeyboardButton("📁 Индивидуальный каталог", callback_data=f'supplier_stock_mail_source_individual|{source_id}'),
+            InlineKeyboardButton("рџ“‚ РџРѕРґРєР°С‚Р°Р»РѕРі РІС‹РіСЂСѓР·РєРё", callback_data=f'supplier_stock_mail_field|{source_id}|upload_subdir'),
+            InlineKeyboardButton("рџ“Ѓ РРЅРґРёРІРёРґСѓР°Р»СЊРЅС‹Р№ РєР°С‚Р°Р»РѕРі", callback_data=f'supplier_stock_mail_source_individual|{source_id}'),
         ],
         [
-            InlineKeyboardButton("🔁 Включить/выключить", callback_data=f'supplier_stock_mail_source_toggle_{source_id}'),
-            InlineKeyboardButton(f"📦 Распаковка: {unpack_text}", callback_data=f'supplier_stock_mail_source_unpack_toggle_{source_id}')
+            InlineKeyboardButton("рџ”Ѓ Р’РєР»СЋС‡РёС‚СЊ/РІС‹РєР»СЋС‡РёС‚СЊ", callback_data=f'supplier_stock_mail_source_toggle_{source_id}'),
+            InlineKeyboardButton(f"рџ“¦ Р Р°СЃРїР°РєРѕРІРєР°: {unpack_text}", callback_data=f'supplier_stock_mail_source_unpack_toggle_{source_id}')
         ],
-        [InlineKeyboardButton("— Обработка файлов —", callback_data='supplier_stock_noop')],
-        [InlineKeyboardButton("📋 Правила обработки", callback_data=f'supplier_stock_processing_mail|{source_id}|menu')],
-        [InlineKeyboardButton("➕ Добавить правило", callback_data=f'supplier_stock_processing_mail|{source_id}|add')],
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
+        [InlineKeyboardButton("вЂ” РћР±СЂР°Р±РѕС‚РєР° С„Р°Р№Р»РѕРІ вЂ”", callback_data='supplier_stock_noop')],
+        [InlineKeyboardButton("рџ“‹ РџСЂР°РІРёР»Р° РѕР±СЂР°Р±РѕС‚РєРё", callback_data=f'supplier_stock_processing_mail|{source_id}|menu')],
+        [InlineKeyboardButton("вћ• Р”РѕР±Р°РІРёС‚СЊ РїСЂР°РІРёР»Рѕ", callback_data=f'supplier_stock_processing_mail|{source_id}|add')],
+        [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
         [
-            InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail_sources'),
-            InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+            InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_mail_sources'),
+            InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')
         ],
     ]
 
@@ -5381,7 +5381,7 @@ def show_supplier_stock_mail_source_settings(update, context, source_id: str):
 
 
 def show_supplier_stock_mail_source_individual_settings(update, context, source_id: str) -> None:
-    """Показать настройки индивидуального каталога правила вложений."""
+    """РџРѕРєР°Р·Р°С‚СЊ РЅР°СЃС‚СЂРѕР№РєРё РёРЅРґРёРІРёРґСѓР°Р»СЊРЅРѕРіРѕ РєР°С‚Р°Р»РѕРіР° РїСЂР°РІРёР»Р° РІР»РѕР¶РµРЅРёР№."""
     query = update.callback_query
     query.answer()
 
@@ -5391,37 +5391,37 @@ def show_supplier_stock_mail_source_individual_settings(update, context, source_
 
     if not source:
         query.edit_message_text(
-            "❌ Правило не найдено.",
+            "вќЊ РџСЂР°РІРёР»Рѕ РЅРµ РЅР°Р№РґРµРЅРѕ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail_sources')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_mail_sources')]
             ])
         )
         return
 
     individual_dir = source.get("individual_directory") or {}
     enabled = individual_dir.get("enabled", False)
-    status_text = "🟢 Включено" if enabled else "🔴 Выключено"
-    unc_path = _escape_pattern_text(individual_dir.get("unc_path") or "не задано")
-    login = _escape_pattern_text(individual_dir.get("login") or "не задано")
-    password = "задано" if individual_dir.get("password") else "не задано"
+    status_text = "рџџў Р’РєР»СЋС‡РµРЅРѕ" if enabled else "рџ”ґ Р’С‹РєР»СЋС‡РµРЅРѕ"
+    unc_path = _escape_pattern_text(individual_dir.get("unc_path") or "РЅРµ Р·Р°РґР°РЅРѕ")
+    login = _escape_pattern_text(individual_dir.get("login") or "РЅРµ Р·Р°РґР°РЅРѕ")
+    password = "Р·Р°РґР°РЅРѕ" if individual_dir.get("password") else "РЅРµ Р·Р°РґР°РЅРѕ"
 
     message = (
-        "📁 *Индивидуальный каталог*\n\n"
-        f"Статус: {status_text}\n"
-        f"UNC путь: `{unc_path}`\n"
-        f"Логин: `{login}`\n"
-        f"Пароль: `{password}`\n\n"
-        "Выберите действие:"
+        "рџ“Ѓ *РРЅРґРёРІРёРґСѓР°Р»СЊРЅС‹Р№ РєР°С‚Р°Р»РѕРі*\n\n"
+        f"РЎС‚Р°С‚СѓСЃ: {status_text}\n"
+        f"UNC РїСѓС‚СЊ: `{unc_path}`\n"
+        f"Р›РѕРіРёРЅ: `{login}`\n"
+        f"РџР°СЂРѕР»СЊ: `{password}`\n\n"
+        "Р’С‹Р±РµСЂРёС‚Рµ РґРµР№СЃС‚РІРёРµ:"
     )
 
     keyboard = [
-        [InlineKeyboardButton("🔁 Включить/выключить", callback_data=f'supplier_stock_mail_source_individual_toggle_{source_id}')],
+        [InlineKeyboardButton("рџ”Ѓ Р’РєР»СЋС‡РёС‚СЊ/РІС‹РєР»СЋС‡РёС‚СЊ", callback_data=f'supplier_stock_mail_source_individual_toggle_{source_id}')],
         [
-            InlineKeyboardButton("📂 UNC путь", callback_data=f'supplier_stock_mail_field|{source_id}|individual_path'),
-            InlineKeyboardButton("👤 Логин", callback_data=f'supplier_stock_mail_field|{source_id}|individual_login'),
+            InlineKeyboardButton("рџ“‚ UNC РїСѓС‚СЊ", callback_data=f'supplier_stock_mail_field|{source_id}|individual_path'),
+            InlineKeyboardButton("рџ‘¤ Р›РѕРіРёРЅ", callback_data=f'supplier_stock_mail_field|{source_id}|individual_login'),
         ],
-        [InlineKeyboardButton("🔐 Пароль", callback_data=f'supplier_stock_mail_field|{source_id}|individual_password')],
-        [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_mail_source_settings|{source_id}')],
+        [InlineKeyboardButton("рџ”ђ РџР°СЂРѕР»СЊ", callback_data=f'supplier_stock_mail_field|{source_id}|individual_password')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=f'supplier_stock_mail_source_settings|{source_id}')],
     ]
 
     query.edit_message_text(
@@ -5431,7 +5431,7 @@ def show_supplier_stock_mail_source_individual_settings(update, context, source_
     )
 
 def supplier_stock_start_source_field_edit(update, context, source_id: str, field: str) -> None:
-    """Запросить изменение конкретного поля источника."""
+    """Р—Р°РїСЂРѕСЃРёС‚СЊ РёР·РјРµРЅРµРЅРёРµ РєРѕРЅРєСЂРµС‚РЅРѕРіРѕ РїРѕР»СЏ РёСЃС‚РѕС‡РЅРёРєР°."""
     query = update.callback_query
     query.answer()
 
@@ -5441,9 +5441,9 @@ def supplier_stock_start_source_field_edit(update, context, source_id: str, fiel
 
     if not source:
         query.edit_message_text(
-            "❌ Источник не найден.",
+            "вќЊ РСЃС‚РѕС‡РЅРёРє РЅРµ РЅР°Р№РґРµРЅ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_sources')]
             ])
         )
         return
@@ -5452,19 +5452,19 @@ def supplier_stock_start_source_field_edit(update, context, source_id: str, fiel
     context.user_data['supplier_stock_source_field_id'] = source_id
 
     prompts = {
-        "name": "Введите название источника (или '-' чтобы оставить):",
-        "url": "Введите URL для скачивания (или '-' чтобы оставить):",
-        "discover": "Введите параметры поиска URL (URL | regex | prefix), '-' чтобы оставить или 'none' чтобы очистить:",
-        "vars": "Введите переменные подстановки key=value через запятую, '-' чтобы оставить или 'none' чтобы очистить:",
-        "output_name": "Введите имя файла назначения (или '-' чтобы оставить):",
-        "auth": "Введите login:password, '-' чтобы оставить или 'none' чтобы очистить:",
-        "pre_request": "Введите URL | данные для предзапроса, '-' чтобы оставить или 'none' чтобы очистить:",
-        "options": "Введите опции (headers, append) через запятую, '-' чтобы оставить или 'none' чтобы очистить:",
-        "processing_mode": "Введите тип обработки (`table` или `iek\\_json`), '-' чтобы оставить:",
-        "upload_subdir": "Введите подкаталог для выгрузки (или '-' чтобы оставить, 'none' чтобы очистить):",
-        "individual_path": "Введите UNC путь индивидуального каталога (или '-' чтобы оставить, 'none' чтобы очистить):",
-        "individual_login": "Введите логин индивидуального каталога (или '-' чтобы оставить, 'none' чтобы очистить):",
-        "individual_password": "Введите пароль индивидуального каталога (или '-' чтобы оставить, 'none' чтобы очистить):",
+        "name": "Р’РІРµРґРёС‚Рµ РЅР°Р·РІР°РЅРёРµ РёСЃС‚РѕС‡РЅРёРєР° (РёР»Рё '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ):",
+        "url": "Р’РІРµРґРёС‚Рµ URL РґР»СЏ СЃРєР°С‡РёРІР°РЅРёСЏ (РёР»Рё '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ):",
+        "discover": "Р’РІРµРґРёС‚Рµ РїР°СЂР°РјРµС‚СЂС‹ РїРѕРёСЃРєР° URL (URL | regex | prefix), '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ РёР»Рё 'none' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ:",
+        "vars": "Р’РІРµРґРёС‚Рµ РїРµСЂРµРјРµРЅРЅС‹Рµ РїРѕРґСЃС‚Р°РЅРѕРІРєРё key=value С‡РµСЂРµР· Р·Р°РїСЏС‚СѓСЋ, '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ РёР»Рё 'none' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ:",
+        "output_name": "Р’РІРµРґРёС‚Рµ РёРјСЏ С„Р°Р№Р»Р° РЅР°Р·РЅР°С‡РµРЅРёСЏ (РёР»Рё '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ):",
+        "auth": "Р’РІРµРґРёС‚Рµ login:password, '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ РёР»Рё 'none' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ:",
+        "pre_request": "Р’РІРµРґРёС‚Рµ URL | РґР°РЅРЅС‹Рµ РґР»СЏ РїСЂРµРґР·Р°РїСЂРѕСЃР°, '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ РёР»Рё 'none' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ:",
+        "options": "Р’РІРµРґРёС‚Рµ РѕРїС†РёРё (headers, append) С‡РµСЂРµР· Р·Р°РїСЏС‚СѓСЋ, '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ РёР»Рё 'none' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ:",
+        "processing_mode": "Р’РІРµРґРёС‚Рµ С‚РёРї РѕР±СЂР°Р±РѕС‚РєРё (`table` РёР»Рё `iek\\_json`), '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ:",
+        "upload_subdir": "Р’РІРµРґРёС‚Рµ РїРѕРґРєР°С‚Р°Р»РѕРі РґР»СЏ РІС‹РіСЂСѓР·РєРё (РёР»Рё '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ, 'none' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ):",
+        "individual_path": "Р’РІРµРґРёС‚Рµ UNC РїСѓС‚СЊ РёРЅРґРёРІРёРґСѓР°Р»СЊРЅРѕРіРѕ РєР°С‚Р°Р»РѕРіР° (РёР»Рё '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ, 'none' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ):",
+        "individual_login": "Р’РІРµРґРёС‚Рµ Р»РѕРіРёРЅ РёРЅРґРёРІРёРґСѓР°Р»СЊРЅРѕРіРѕ РєР°С‚Р°Р»РѕРіР° (РёР»Рё '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ, 'none' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ):",
+        "individual_password": "Р’РІРµРґРёС‚Рµ РїР°СЂРѕР»СЊ РёРЅРґРёРІРёРґСѓР°Р»СЊРЅРѕРіРѕ РєР°С‚Р°Р»РѕРіР° (РёР»Рё '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ, 'none' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ):",
     }
 
     current_values = {
@@ -5473,31 +5473,31 @@ def supplier_stock_start_source_field_edit(update, context, source_id: str, fiel
         "discover": source.get("discover") or "-",
         "vars": source.get("vars") or "-",
         "output_name": source.get("output_name") or "-",
-        "auth": "задано" if source.get("auth") else "-",
+        "auth": "Р·Р°РґР°РЅРѕ" if source.get("auth") else "-",
         "pre_request": source.get("pre_request") or "-",
         "options": "headers/append" if (source.get("include_headers") or source.get("append")) else "-",
         "processing_mode": source.get("processing_mode") or "table",
         "upload_subdir": source.get("upload_subdir") or "-",
         "individual_path": (source.get("individual_directory") or {}).get("unc_path") or "-",
         "individual_login": (source.get("individual_directory") or {}).get("login") or "-",
-        "individual_password": "задано" if (source.get("individual_directory") or {}).get("password") else "-",
+        "individual_password": "Р·Р°РґР°РЅРѕ" if (source.get("individual_directory") or {}).get("password") else "-",
     }
 
-    prompt = prompts.get(field, "Введите значение:")
+    prompt = prompts.get(field, "Р’РІРµРґРёС‚Рµ Р·РЅР°С‡РµРЅРёРµ:")
     current_value = current_values.get(field, "-")
     if isinstance(current_value, dict):
         current_value = json.dumps(current_value, ensure_ascii=False)
     _supplier_stock_remember_prompt_message(context, query)
     query.edit_message_text(
-        f"{prompt}\n\nТекущее значение: `{_escape_pattern_text(str(current_value))}`",
+        f"{prompt}\n\nРўРµРєСѓС‰РµРµ Р·РЅР°С‡РµРЅРёРµ: `{_escape_pattern_text(str(current_value))}`",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data=f'supplier_stock_source_settings|{source_id}')]
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data=f'supplier_stock_source_settings|{source_id}')]
         ])
     )
 
 def supplier_stock_start_source_iek_field_edit(update, context, source_id: str, field: str) -> None:
-    """Запросить изменение параметров IEK JSON."""
+    """Р—Р°РїСЂРѕСЃРёС‚СЊ РёР·РјРµРЅРµРЅРёРµ РїР°СЂР°РјРµС‚СЂРѕРІ IEK JSON."""
     query = update.callback_query
     query.answer()
 
@@ -5507,9 +5507,9 @@ def supplier_stock_start_source_iek_field_edit(update, context, source_id: str, 
 
     if not source:
         query.edit_message_text(
-            "❌ Источник не найден.",
+            "вќЊ РСЃС‚РѕС‡РЅРёРє РЅРµ РЅР°Р№РґРµРЅ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_sources')]
             ])
         )
         return
@@ -5518,12 +5518,12 @@ def supplier_stock_start_source_iek_field_edit(update, context, source_id: str, 
     context.user_data['supplier_stock_source_iek_field_id'] = source_id
 
     prompts = {
-        "stores": "Введите склады в формате key=uuid через запятую:",
-        "msk_stores": "Введите список складов МСК через запятую (например: sherbinka, chehov):",
-        "nsk_store": "Введите ключ склада НСК (например: novosibirsk):",
-        "orc_stores": "Введите ORK stor в формате key=stor через запятую:",
-        "prefix": "Введите префикс артикула для ORK (или 'none' чтобы очистить):",
-        "outputs": "Введите имена файлов в формате orig=..., msk=..., nsk=..., orc=... через запятую:",
+        "stores": "Р’РІРµРґРёС‚Рµ СЃРєР»Р°РґС‹ РІ С„РѕСЂРјР°С‚Рµ key=uuid С‡РµСЂРµР· Р·Р°РїСЏС‚СѓСЋ:",
+        "msk_stores": "Р’РІРµРґРёС‚Рµ СЃРїРёСЃРѕРє СЃРєР»Р°РґРѕРІ РњРЎРљ С‡РµСЂРµР· Р·Р°РїСЏС‚СѓСЋ (РЅР°РїСЂРёРјРµСЂ: sherbinka, chehov):",
+        "nsk_store": "Р’РІРµРґРёС‚Рµ РєР»СЋС‡ СЃРєР»Р°РґР° РќРЎРљ (РЅР°РїСЂРёРјРµСЂ: novosibirsk):",
+        "orc_stores": "Р’РІРµРґРёС‚Рµ ORK stor РІ С„РѕСЂРјР°С‚Рµ key=stor С‡РµСЂРµР· Р·Р°РїСЏС‚СѓСЋ:",
+        "prefix": "Р’РІРµРґРёС‚Рµ РїСЂРµС„РёРєСЃ Р°СЂС‚РёРєСѓР»Р° РґР»СЏ ORK (РёР»Рё 'none' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ):",
+        "outputs": "Р’РІРµРґРёС‚Рµ РёРјРµРЅР° С„Р°Р№Р»РѕРІ РІ С„РѕСЂРјР°С‚Рµ orig=..., msk=..., nsk=..., orc=... С‡РµСЂРµР· Р·Р°РїСЏС‚СѓСЋ:",
     }
 
     iek_settings = source.get("iek_json") or {}
@@ -5536,24 +5536,24 @@ def supplier_stock_start_source_iek_field_edit(update, context, source_id: str, 
         "outputs": iek_settings.get("outputs") or "-",
     }
 
-    prompt = prompts.get(field, "Введите значение:")
+    prompt = prompts.get(field, "Р’РІРµРґРёС‚Рµ Р·РЅР°С‡РµРЅРёРµ:")
     current_value = current_values.get(field, "-")
     if isinstance(current_value, (dict, list)):
         current_value = json.dumps(current_value, ensure_ascii=False)
 
     _supplier_stock_remember_prompt_message(context, query)
     query.edit_message_text(
-        f"{prompt}\n\nТекущее значение: `{_escape_pattern_text(str(current_value))}`",
+        f"{prompt}\n\nРўРµРєСѓС‰РµРµ Р·РЅР°С‡РµРЅРёРµ: `{_escape_pattern_text(str(current_value))}`",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data=f'supplier_stock_source_iek_settings|{source_id}')],
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data=f'supplier_stock_source_iek_settings|{source_id}')],
+            [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+            [InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')],
         ])
     )
 
 def supplier_stock_start_mail_source_field_edit(update, context, source_id: str, field: str) -> None:
-    """Запросить изменение конкретного поля правила вложений."""
+    """Р—Р°РїСЂРѕСЃРёС‚СЊ РёР·РјРµРЅРµРЅРёРµ РєРѕРЅРєСЂРµС‚РЅРѕРіРѕ РїРѕР»СЏ РїСЂР°РІРёР»Р° РІР»РѕР¶РµРЅРёР№."""
     query = update.callback_query
     query.answer()
 
@@ -5563,9 +5563,9 @@ def supplier_stock_start_mail_source_field_edit(update, context, source_id: str,
 
     if not source:
         query.edit_message_text(
-            "❌ Правило не найдено.",
+            "вќЊ РџСЂР°РІРёР»Рѕ РЅРµ РЅР°Р№РґРµРЅРѕ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail_sources')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_mail_sources')]
             ])
         )
         return
@@ -5574,17 +5574,17 @@ def supplier_stock_start_mail_source_field_edit(update, context, source_id: str,
     context.user_data['supplier_stock_mail_source_field_id'] = source_id
 
     prompts = {
-        "name": "Введите название правила (или '-' чтобы оставить):",
-        "sender": "Введите regex/адрес отправителя, '-' чтобы оставить или 'none' чтобы очистить:",
-        "subject": "Введите regex темы письма, '-' чтобы оставить или 'none' чтобы очистить:",
-        "mime": "Введите MIME-фильтр, '-' чтобы оставить или 'none' чтобы очистить:",
-        "filename": "Введите regex имени вложения, '-' чтобы оставить или 'none' чтобы очистить:",
-        "expected": "Введите количество ожидаемых вложений (или '-' чтобы оставить):",
-        "output": "Введите шаблон имени выходного файла (или '-' чтобы оставить):",
-        "upload_subdir": "Введите подкаталог для выгрузки (или '-' чтобы оставить, 'none' чтобы очистить):",
-        "individual_path": "Введите UNC путь индивидуального каталога (или '-' чтобы оставить, 'none' чтобы очистить):",
-        "individual_login": "Введите логин индивидуального каталога (или '-' чтобы оставить, 'none' чтобы очистить):",
-        "individual_password": "Введите пароль индивидуального каталога (или '-' чтобы оставить, 'none' чтобы очистить):",
+        "name": "Р’РІРµРґРёС‚Рµ РЅР°Р·РІР°РЅРёРµ РїСЂР°РІРёР»Р° (РёР»Рё '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ):",
+        "sender": "Р’РІРµРґРёС‚Рµ regex/Р°РґСЂРµСЃ РѕС‚РїСЂР°РІРёС‚РµР»СЏ, '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ РёР»Рё 'none' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ:",
+        "subject": "Р’РІРµРґРёС‚Рµ regex С‚РµРјС‹ РїРёСЃСЊРјР°, '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ РёР»Рё 'none' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ:",
+        "mime": "Р’РІРµРґРёС‚Рµ MIME-С„РёР»СЊС‚СЂ, '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ РёР»Рё 'none' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ:",
+        "filename": "Р’РІРµРґРёС‚Рµ regex РёРјРµРЅРё РІР»РѕР¶РµРЅРёСЏ, '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ РёР»Рё 'none' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ:",
+        "expected": "Р’РІРµРґРёС‚Рµ РєРѕР»РёС‡РµСЃС‚РІРѕ РѕР¶РёРґР°РµРјС‹С… РІР»РѕР¶РµРЅРёР№ (РёР»Рё '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ):",
+        "output": "Р’РІРµРґРёС‚Рµ С€Р°Р±Р»РѕРЅ РёРјРµРЅРё РІС‹С…РѕРґРЅРѕРіРѕ С„Р°Р№Р»Р° (РёР»Рё '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ):",
+        "upload_subdir": "Р’РІРµРґРёС‚Рµ РїРѕРґРєР°С‚Р°Р»РѕРі РґР»СЏ РІС‹РіСЂСѓР·РєРё (РёР»Рё '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ, 'none' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ):",
+        "individual_path": "Р’РІРµРґРёС‚Рµ UNC РїСѓС‚СЊ РёРЅРґРёРІРёРґСѓР°Р»СЊРЅРѕРіРѕ РєР°С‚Р°Р»РѕРіР° (РёР»Рё '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ, 'none' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ):",
+        "individual_login": "Р’РІРµРґРёС‚Рµ Р»РѕРіРёРЅ РёРЅРґРёРІРёРґСѓР°Р»СЊРЅРѕРіРѕ РєР°С‚Р°Р»РѕРіР° (РёР»Рё '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ, 'none' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ):",
+        "individual_password": "Р’РІРµРґРёС‚Рµ РїР°СЂРѕР»СЊ РёРЅРґРёРІРёРґСѓР°Р»СЊРЅРѕРіРѕ РєР°С‚Р°Р»РѕРіР° (РёР»Рё '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ, 'none' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ):",
     }
 
     current_values = {
@@ -5598,23 +5598,23 @@ def supplier_stock_start_mail_source_field_edit(update, context, source_id: str,
         "upload_subdir": source.get("upload_subdir") or "-",
         "individual_path": (source.get("individual_directory") or {}).get("unc_path") or "-",
         "individual_login": (source.get("individual_directory") or {}).get("login") or "-",
-        "individual_password": "задано" if (source.get("individual_directory") or {}).get("password") else "-",
+        "individual_password": "Р·Р°РґР°РЅРѕ" if (source.get("individual_directory") or {}).get("password") else "-",
     }
 
-    prompt = prompts.get(field, "Введите значение:")
+    prompt = prompts.get(field, "Р’РІРµРґРёС‚Рµ Р·РЅР°С‡РµРЅРёРµ:")
     current_value = current_values.get(field, "-")
     _supplier_stock_remember_prompt_message(context, query)
     query.edit_message_text(
-        f"{prompt}\n\nТекущее значение: `{_escape_pattern_text(str(current_value))}`",
+        f"{prompt}\n\nРўРµРєСѓС‰РµРµ Р·РЅР°С‡РµРЅРёРµ: `{_escape_pattern_text(str(current_value))}`",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data=f'supplier_stock_mail_source_settings|{source_id}')]
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data=f'supplier_stock_mail_source_settings|{source_id}')]
         ])
     )
 
 
 def supplier_stock_start_resource_wizard(update, context) -> None:
-    """Запуск мастера добавления ресурса выгрузки."""
+    """Р—Р°РїСѓСЃРє РјР°СЃС‚РµСЂР° РґРѕР±Р°РІР»РµРЅРёСЏ СЂРµСЃСѓСЂСЃР° РІС‹РіСЂСѓР·РєРё."""
     query = update.callback_query
     query.answer()
 
@@ -5623,16 +5623,16 @@ def supplier_stock_start_resource_wizard(update, context) -> None:
     context.user_data['supplier_stock_resource_add'] = True
 
     query.edit_message_text(
-        "➕ *Новый ресурс выгрузки*\n\nВведите название ресурса:",
+        "вћ• *РќРѕРІС‹Р№ СЂРµСЃСѓСЂСЃ РІС‹РіСЂСѓР·РєРё*\n\nР’РІРµРґРёС‚Рµ РЅР°Р·РІР°РЅРёРµ СЂРµСЃСѓСЂСЃР°:",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_resources')]
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='supplier_stock_resources')]
         ])
     )
 
 
 def supplier_stock_start_resource_field_edit(update, context, resource_id: str, field: str) -> None:
-    """Запросить изменение поля ресурса выгрузки."""
+    """Р—Р°РїСЂРѕСЃРёС‚СЊ РёР·РјРµРЅРµРЅРёРµ РїРѕР»СЏ СЂРµСЃСѓСЂСЃР° РІС‹РіСЂСѓР·РєРё."""
     query = update.callback_query
     query.answer()
 
@@ -5642,9 +5642,9 @@ def supplier_stock_start_resource_field_edit(update, context, resource_id: str, 
 
     if not resource:
         query.edit_message_text(
-            "❌ Ресурс не найден.",
+            "вќЊ Р РµСЃСѓСЂСЃ РЅРµ РЅР°Р№РґРµРЅ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_resources')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_resources')]
             ])
         )
         return
@@ -5653,41 +5653,41 @@ def supplier_stock_start_resource_field_edit(update, context, resource_id: str, 
     context.user_data['supplier_stock_resource_field_id'] = resource_id
 
     prompts = {
-        "name": "Введите название ресурса (или '-' чтобы оставить):",
-        "unc_path": "Введите UNC путь корневого каталога (или '-' чтобы оставить):",
-        "login": "Введите логин ресурса (или '-' чтобы оставить, 'none' чтобы очистить):",
-        "password": "Введите пароль ресурса (или '-' чтобы оставить, 'none' чтобы очистить):",
+        "name": "Р’РІРµРґРёС‚Рµ РЅР°Р·РІР°РЅРёРµ СЂРµСЃСѓСЂСЃР° (РёР»Рё '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ):",
+        "unc_path": "Р’РІРµРґРёС‚Рµ UNC РїСѓС‚СЊ РєРѕСЂРЅРµРІРѕРіРѕ РєР°С‚Р°Р»РѕРіР° (РёР»Рё '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ):",
+        "login": "Р’РІРµРґРёС‚Рµ Р»РѕРіРёРЅ СЂРµСЃСѓСЂСЃР° (РёР»Рё '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ, 'none' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ):",
+        "password": "Р’РІРµРґРёС‚Рµ РїР°СЂРѕР»СЊ СЂРµСЃСѓСЂСЃР° (РёР»Рё '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ, 'none' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ):",
     }
 
     current_values = {
         "name": resource.get("name") or resource_id,
         "unc_path": resource.get("unc_path") or "-",
         "login": resource.get("login") or "-",
-        "password": "задано" if resource.get("password") else "-",
+        "password": "Р·Р°РґР°РЅРѕ" if resource.get("password") else "-",
     }
 
-    prompt = prompts.get(field, "Введите значение:")
+    prompt = prompts.get(field, "Р’РІРµРґРёС‚Рµ Р·РЅР°С‡РµРЅРёРµ:")
     current_value = current_values.get(field, "-")
     _supplier_stock_remember_prompt_message(context, query)
     query.edit_message_text(
-        f"{prompt}\n\nТекущее значение: `{_escape_pattern_text(str(current_value))}`",
+        f"{prompt}\n\nРўРµРєСѓС‰РµРµ Р·РЅР°С‡РµРЅРёРµ: `{_escape_pattern_text(str(current_value))}`",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data=f'supplier_stock_resource_settings|{resource_id}')]
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data=f'supplier_stock_resource_settings|{resource_id}')]
         ])
     )
 
 
 def supplier_stock_start_ftp_field_edit(update, context, field: str) -> None:
-    """Запросить изменение параметра FTP."""
+    """Р—Р°РїСЂРѕСЃРёС‚СЊ РёР·РјРµРЅРµРЅРёРµ РїР°СЂР°РјРµС‚СЂР° FTP."""
     query = update.callback_query
     query.answer()
 
     context.user_data['supplier_stock_ftp_field'] = field
     prompts = {
-        "host": "Введите HOST FTP (или '-' чтобы оставить):",
-        "login": "Введите логин FTP (или '-' чтобы оставить, 'none' чтобы очистить):",
-        "password": "Введите пароль FTP (или '-' чтобы оставить, 'none' чтобы очистить):",
+        "host": "Р’РІРµРґРёС‚Рµ HOST FTP (РёР»Рё '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ):",
+        "login": "Р’РІРµРґРёС‚Рµ Р»РѕРіРёРЅ FTP (РёР»Рё '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ, 'none' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ):",
+        "password": "Р’РІРµРґРёС‚Рµ РїР°СЂРѕР»СЊ FTP (РёР»Рё '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ, 'none' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ):",
     }
 
     config = get_supplier_stock_config()
@@ -5695,16 +5695,16 @@ def supplier_stock_start_ftp_field_edit(update, context, field: str) -> None:
     current_values = {
         "host": ftp_settings.get("host") or "-",
         "login": ftp_settings.get("login") or "-",
-        "password": "задано" if ftp_settings.get("password") else "-",
+        "password": "Р·Р°РґР°РЅРѕ" if ftp_settings.get("password") else "-",
     }
-    prompt = prompts.get(field, "Введите значение:")
+    prompt = prompts.get(field, "Р’РІРµРґРёС‚Рµ Р·РЅР°С‡РµРЅРёРµ:")
     current_value = current_values.get(field, "-")
     _supplier_stock_remember_prompt_message(context, query)
     query.edit_message_text(
-        f"{prompt}\n\nТекущее значение: `{_escape_pattern_text(str(current_value))}`",
+        f"{prompt}\n\nРўРµРєСѓС‰РµРµ Р·РЅР°С‡РµРЅРёРµ: `{_escape_pattern_text(str(current_value))}`",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_ftp')]
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='supplier_stock_ftp')]
         ])
     )
 
@@ -5715,7 +5715,7 @@ def supplier_stock_start_processing_wizard(
     source_kind: str | None = None,
     back_callback: str = "settings_ext_supplier_stock",
 ) -> None:
-    """Запуск мастера добавления правила обработки."""
+    """Р—Р°РїСѓСЃРє РјР°СЃС‚РµСЂР° РґРѕР±Р°РІР»РµРЅРёСЏ РїСЂР°РІРёР»Р° РѕР±СЂР°Р±РѕС‚РєРё."""
     query = update.callback_query
     query.answer()
 
@@ -5738,10 +5738,10 @@ def supplier_stock_start_processing_wizard(
         context.user_data['supplier_stock_processing_data']['source_kind'] = source_kind
 
     query.edit_message_text(
-        "➕ *Новое правило обработки*\n\nВведите название правила:",
+        "вћ• *РќРѕРІРѕРµ РїСЂР°РІРёР»Рѕ РѕР±СЂР°Р±РѕС‚РєРё*\n\nР’РІРµРґРёС‚Рµ РЅР°Р·РІР°РЅРёРµ РїСЂР°РІРёР»Р°:",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data=back_callback)]
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data=back_callback)]
         ])
     )
 
@@ -5753,7 +5753,7 @@ def supplier_stock_start_processing_edit_wizard(
     source_kind: str | None = None,
     back_callback: str = "settings_ext_supplier_stock",
 ) -> None:
-    """Запуск мастера редактирования правила обработки."""
+    """Р—Р°РїСѓСЃРє РјР°СЃС‚РµСЂР° СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёСЏ РїСЂР°РІРёР»Р° РѕР±СЂР°Р±РѕС‚РєРё."""
     query = update.callback_query
     query.answer()
 
@@ -5769,9 +5769,9 @@ def supplier_stock_start_processing_edit_wizard(
 
     if not rule:
         query.edit_message_text(
-            "❌ Правило не найдено.",
+            "вќЊ РџСЂР°РІРёР»Рѕ РЅРµ РЅР°Р№РґРµРЅРѕ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=back_callback)]
             ])
         )
         return
@@ -5790,17 +5790,17 @@ def supplier_stock_start_processing_edit_wizard(
         context.user_data['supplier_stock_processing_data']['source_kind'] = source_kind
 
     query.edit_message_text(
-        f"✏️ *Редактирование правила обработки*\n\n"
-        f"Текущее имя: `{_escape_pattern_text(rule.get('name'))}`\n"
-        "Введите новое имя (или '-' чтобы оставить текущее):",
+        f"вњЏпёЏ *Р РµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ РїСЂР°РІРёР»Р° РѕР±СЂР°Р±РѕС‚РєРё*\n\n"
+        f"РўРµРєСѓС‰РµРµ РёРјСЏ: `{_escape_pattern_text(rule.get('name'))}`\n"
+        "Р’РІРµРґРёС‚Рµ РЅРѕРІРѕРµ РёРјСЏ (РёР»Рё '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ С‚РµРєСѓС‰РµРµ):",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data=back_callback)]
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data=back_callback)]
         ])
     )
 
 def supplier_stock_handle_processing_input(update, context):
-    """Обработка ввода мастера настройки обработки."""
+    """РћР±СЂР°Р±РѕС‚РєР° РІРІРѕРґР° РјР°СЃС‚РµСЂР° РЅР°СЃС‚СЂРѕР№РєРё РѕР±СЂР°Р±РѕС‚РєРё."""
     stage = context.user_data.get('supplier_stock_processing_stage')
     data = context.user_data.get('supplier_stock_processing_data', {})
     raw_input = update.message.text or ""
@@ -5845,7 +5845,7 @@ def supplier_stock_handle_processing_input(update, context):
             if field == 'article_col':
                 article_col = _parse_positive_int(user_input_stripped)
                 if article_col is None:
-                    update.message.reply_text("❌ Введите целое число больше 0.")
+                    update.message.reply_text("вќЊ Р’РІРµРґРёС‚Рµ С†РµР»РѕРµ С‡РёСЃР»Рѕ Р±РѕР»СЊС€Рµ 0.")
                     return None
                 variant['article_col'] = article_col
             elif field == 'article_filter':
@@ -5861,16 +5861,16 @@ def supplier_stock_handle_processing_input(update, context):
                     variant.pop('extra_filter_col', None)
                 else:
                     if ';' not in user_input_stripped:
-                        update.message.reply_text("❌ Укажите номер колонки и условие через ';'.")
+                        update.message.reply_text("вќЊ РЈРєР°Р¶РёС‚Рµ РЅРѕРјРµСЂ РєРѕР»РѕРЅРєРё Рё СѓСЃР»РѕРІРёРµ С‡РµСЂРµР· ';'.")
                         return None
                     col_part, filter_part = user_input_stripped.split(';', 1)
                     extra_filter_col = _parse_positive_int(col_part.strip())
                     extra_filter_value = filter_part.strip()
                     if extra_filter_col is None:
-                        update.message.reply_text("❌ Номер колонки должен быть целым числом больше 0.")
+                        update.message.reply_text("вќЊ РќРѕРјРµСЂ РєРѕР»РѕРЅРєРё РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ С†РµР»С‹Рј С‡РёСЃР»РѕРј Р±РѕР»СЊС€Рµ 0.")
                         return None
                     if not extra_filter_value:
-                        update.message.reply_text("❌ Укажите условие отбора после ';'.")
+                        update.message.reply_text("вќЊ РЈРєР°Р¶РёС‚Рµ СѓСЃР»РѕРІРёРµ РѕС‚Р±РѕСЂР° РїРѕСЃР»Рµ ';'.")
                         return None
                     variant['extra_filter_col'] = extra_filter_col
                     variant['extra_filter'] = extra_filter_value
@@ -5903,7 +5903,7 @@ def supplier_stock_handle_processing_input(update, context):
                         pattern_value = raw_value.strip()
                         replacement_value = ""
                     if not pattern_value:
-                        update.message.reply_text("❌ Укажите regex-паттерн для изменения артикула.")
+                        update.message.reply_text("вќЊ РЈРєР°Р¶РёС‚Рµ regex-РїР°С‚С‚РµСЂРЅ РґР»СЏ РёР·РјРµРЅРµРЅРёСЏ Р°СЂС‚РёРєСѓР»Р°.")
                         return None
                     variant['article_transform'] = {
                         "pattern": pattern_value,
@@ -5912,34 +5912,34 @@ def supplier_stock_handle_processing_input(update, context):
             elif field == 'data_columns_count':
                 columns_count = _parse_positive_int(user_input_stripped)
                 if columns_count is None:
-                    update.message.reply_text("❌ Введите целое число больше 0.")
+                    update.message.reply_text("вќЊ Р’РІРµРґРёС‚Рµ С†РµР»РѕРµ С‡РёСЃР»Рѕ Р±РѕР»СЊС€Рµ 0.")
                     return None
                 _sync_variant_columns(variant, columns_count)
             elif field == 'data_column':
                 col_value = _parse_positive_int(user_input_stripped)
                 if col_value is None:
-                    update.message.reply_text("❌ Введите целое число больше 0.")
+                    update.message.reply_text("вќЊ Р’РІРµРґРёС‚Рµ С†РµР»РѕРµ С‡РёСЃР»Рѕ Р±РѕР»СЊС€Рµ 0.")
                     return None
                 columns = list(variant.get("data_columns", []))
                 if item_index is None or item_index >= len(columns):
-                    update.message.reply_text("❌ Неверный индекс колонки.")
+                    update.message.reply_text("вќЊ РќРµРІРµСЂРЅС‹Р№ РёРЅРґРµРєСЃ РєРѕР»РѕРЅРєРё.")
                     return None
                 columns[item_index] = col_value
                 variant['data_columns'] = columns
             elif field == 'output_name':
                 if not user_input_stripped:
-                    update.message.reply_text("❌ Имя файла не может быть пустым. Попробуйте снова:")
+                    update.message.reply_text("вќЊ РРјСЏ С„Р°Р№Р»Р° РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
                     return None
                 names = list(variant.get("output_names", []))
                 if item_index is None or item_index >= len(names):
-                    update.message.reply_text("❌ Неверный индекс файла.")
+                    update.message.reply_text("вќЊ РќРµРІРµСЂРЅС‹Р№ РёРЅРґРµРєСЃ С„Р°Р№Р»Р°.")
                     return None
                 names[item_index] = user_input_stripped
                 variant['output_names'] = names
             elif field == 'output_format':
                 format_value = user_input_stripped.lower()
                 if format_value not in ('xls', 'xlsx', 'csv'):
-                    update.message.reply_text("❌ Допустимые форматы: xls, xlsx, csv.")
+                    update.message.reply_text("вќЊ Р”РѕРїСѓСЃС‚РёРјС‹Рµ С„РѕСЂРјР°С‚С‹: xls, xlsx, csv.")
                     return None
                 variant['output_format'] = format_value
             elif field == 'orc_prefix':
@@ -5951,7 +5951,7 @@ def supplier_stock_handle_processing_input(update, context):
                 variant['orc'] = orc
             elif field == 'orc_stor':
                 if not user_input_stripped:
-                    update.message.reply_text("❌ Stor не может быть пустым. Попробуйте снова:")
+                    update.message.reply_text("вќЊ Stor РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
                     return None
                 orc = variant.get("orc", {})
                 orc['stor'] = user_input_stripped
@@ -5959,7 +5959,7 @@ def supplier_stock_handle_processing_input(update, context):
             elif field == 'orc_column':
                 col_value = _parse_positive_int(user_input_stripped)
                 if col_value is None:
-                    update.message.reply_text("❌ Введите целое число больше 0.")
+                    update.message.reply_text("вќЊ Р’РІРµРґРёС‚Рµ С†РµР»РѕРµ С‡РёСЃР»Рѕ Р±РѕР»СЊС€Рµ 0.")
                     return None
                 orc = variant.get("orc", {})
                 orc['column'] = col_value
@@ -5979,7 +5979,7 @@ def supplier_stock_handle_processing_input(update, context):
                 else:
                     format_value = user_input_stripped.lower()
                     if format_value not in ('xls', 'xlsx', 'csv'):
-                        update.message.reply_text("❌ Допустимые форматы: xls, xlsx, csv.")
+                        update.message.reply_text("вќЊ Р”РѕРїСѓСЃС‚РёРјС‹Рµ С„РѕСЂРјР°С‚С‹: xls, xlsx, csv.")
                         return None
                     orc = variant.get("orc", {})
                     orc['output_format'] = format_value
@@ -5988,43 +5988,43 @@ def supplier_stock_handle_processing_input(update, context):
         else:
             if field == 'name':
                 if not user_input_stripped:
-                    update.message.reply_text("❌ Название не может быть пустым. Попробуйте снова:")
+                    update.message.reply_text("вќЊ РќР°Р·РІР°РЅРёРµ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
                     return None
                 rule_data['name'] = user_input_stripped
             elif field == 'source_file':
                 if not user_input_stripped:
-                    update.message.reply_text("❌ Имя файла не может быть пустым. Попробуйте снова:")
+                    update.message.reply_text("вќЊ РРјСЏ С„Р°Р№Р»Р° РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
                     return None
                 rule_data['source_file'] = user_input_stripped
             elif field == 'data_row':
                 data_row = _parse_positive_int(user_input_stripped)
                 if data_row is None:
-                    update.message.reply_text("❌ Введите целое число больше 0.")
+                    update.message.reply_text("вќЊ Р’РІРµРґРёС‚Рµ С†РµР»РѕРµ С‡РёСЃР»Рѕ Р±РѕР»СЊС€Рµ 0.")
                     return None
                 rule_data['data_row'] = data_row
             elif field == 'output_name':
                 if not user_input_stripped:
-                    update.message.reply_text("❌ Имя файла не может быть пустым. Попробуйте снова:")
+                    update.message.reply_text("вќЊ РРјСЏ С„Р°Р№Р»Р° РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
                     return None
                 rule_data['output_name'] = user_input_stripped
             else:
-                update.message.reply_text("❌ Не удалось определить вариант настройки.")
+                update.message.reply_text("вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ РѕРїСЂРµРґРµР»РёС‚СЊ РІР°СЂРёР°РЅС‚ РЅР°СЃС‚СЂРѕР№РєРё.")
                 return None
         context.user_data['supplier_stock_processing_rule_data'] = rule_data
         context.user_data['supplier_stock_processing_rule_dirty'] = True
         _supplier_stock_close_prompt_message(context)
         if variant_index is None:
             update.message.reply_text(
-                "✅ Готово.",
+                "вњ… Р“РѕС‚РѕРІРѕ.",
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_processing_rule|menu')]
+                    [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_processing_rule|menu')]
                 ])
             )
         else:
             update.message.reply_text(
-                "✅ Готово.",
+                "вњ… Р“РѕС‚РѕРІРѕ.",
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_processing_variant|menu|{variant_index}')]
+                    [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=f'supplier_stock_processing_variant|menu|{variant_index}')]
                 ])
             )
         _persist_processing_rule_data(context)
@@ -6032,13 +6032,13 @@ def supplier_stock_handle_processing_input(update, context):
 
     if stage == 'name':
         if not user_input_stripped:
-            update.message.reply_text("❌ Название не может быть пустым. Попробуйте снова:")
+            update.message.reply_text("вќЊ РќР°Р·РІР°РЅРёРµ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return None
         data['name'] = user_input_stripped
         data['id'] = _slugify_supplier_source_id(user_input_stripped)
         context.user_data['supplier_stock_processing_stage'] = 'source_file'
         context.user_data['supplier_stock_processing_data'] = data
-        update.message.reply_text("Введите файл источника (например: supplier_1_orig.xls):")
+        update.message.reply_text("Р’РІРµРґРёС‚Рµ С„Р°Р№Р» РёСЃС‚РѕС‡РЅРёРєР° (РЅР°РїСЂРёРјРµСЂ: supplier_1_orig.xls):")
         return None
 
     if stage == 'edit_name':
@@ -6047,8 +6047,8 @@ def supplier_stock_handle_processing_input(update, context):
         context.user_data['supplier_stock_processing_stage'] = 'edit_source_file'
         context.user_data['supplier_stock_processing_data'] = data
         update.message.reply_text(
-            f"Текущий файл источника: {data.get('source_file', '-')}\n"
-            "Введите новый файл источника (или '-' чтобы оставить текущее):"
+            f"РўРµРєСѓС‰РёР№ С„Р°Р№Р» РёСЃС‚РѕС‡РЅРёРєР°: {data.get('source_file', '-')}\n"
+            "Р’РІРµРґРёС‚Рµ РЅРѕРІС‹Р№ С„Р°Р№Р» РёСЃС‚РѕС‡РЅРёРєР° (РёР»Рё '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ С‚РµРєСѓС‰РµРµ):"
         )
         return None
 
@@ -6058,21 +6058,21 @@ def supplier_stock_handle_processing_input(update, context):
         context.user_data['supplier_stock_processing_stage'] = 'edit_reconfigure'
         context.user_data['supplier_stock_processing_data'] = data
         update.message.reply_text(
-            "Перенастроить обработку? (да/нет):"
+            "РџРµСЂРµРЅР°СЃС‚СЂРѕРёС‚СЊ РѕР±СЂР°Р±РѕС‚РєСѓ? (РґР°/РЅРµС‚):"
         )
         return None
 
     if stage == 'edit_reconfigure':
         reconfigure = _parse_yes_no(user_input_stripped)
         if reconfigure is None:
-            update.message.reply_text("❌ Ответьте 'да' или 'нет'.")
+            update.message.reply_text("вќЊ РћС‚РІРµС‚СЊС‚Рµ 'РґР°' РёР»Рё 'РЅРµС‚'.")
             return None
         if not reconfigure:
             _save_supplier_stock_processing_rule(context, data, edit_id=data.get("id"))
             update.message.reply_text(
-                "✅ Правило обновлено.",
+                "вњ… РџСЂР°РІРёР»Рѕ РѕР±РЅРѕРІР»РµРЅРѕ.",
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]
+                    [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=back_callback)]
                 ])
             )
             return None
@@ -6082,82 +6082,82 @@ def supplier_stock_handle_processing_input(update, context):
         data.pop('requires_processing', None)
         context.user_data['supplier_stock_processing_stage'] = 'needs_processing'
         context.user_data['supplier_stock_processing_data'] = data
-        update.message.reply_text("Требуется обработка файла? (да/нет):")
+        update.message.reply_text("РўСЂРµР±СѓРµС‚СЃСЏ РѕР±СЂР°Р±РѕС‚РєР° С„Р°Р№Р»Р°? (РґР°/РЅРµС‚):")
         return None
 
     if stage == 'source_file':
         if not user_input_stripped:
-            update.message.reply_text("❌ Файл источника не может быть пустым. Попробуйте снова:")
+            update.message.reply_text("вќЊ Р¤Р°Р№Р» РёСЃС‚РѕС‡РЅРёРєР° РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return None
         data['source_file'] = user_input_stripped
         context.user_data['supplier_stock_processing_stage'] = 'needs_processing'
         context.user_data['supplier_stock_processing_data'] = data
-        update.message.reply_text("Требуется обработка файла? (да/нет):")
+        update.message.reply_text("РўСЂРµР±СѓРµС‚СЃСЏ РѕР±СЂР°Р±РѕС‚РєР° С„Р°Р№Р»Р°? (РґР°/РЅРµС‚):")
         return None
 
     if stage == 'needs_processing':
         needs_processing = _parse_yes_no(user_input_stripped)
         if needs_processing is None:
-            update.message.reply_text("❌ Ответьте 'да' или 'нет'.")
+            update.message.reply_text("вќЊ РћС‚РІРµС‚СЊС‚Рµ 'РґР°' РёР»Рё 'РЅРµС‚'.")
             return None
         data['requires_processing'] = needs_processing
         if not needs_processing:
             edit_id = data.get("id") if context.user_data.get('supplier_stock_processing_edit') else None
             _save_supplier_stock_processing_rule(context, data, edit_id=edit_id)
-            done_text = "✅ Правило обновлено." if context.user_data.get('supplier_stock_processing_edit') else "✅ Правило добавлено."
+            done_text = "вњ… РџСЂР°РІРёР»Рѕ РѕР±РЅРѕРІР»РµРЅРѕ." if context.user_data.get('supplier_stock_processing_edit') else "вњ… РџСЂР°РІРёР»Рѕ РґРѕР±Р°РІР»РµРЅРѕ."
             update.message.reply_text(
                 done_text,
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]
+                    [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=back_callback)]
                 ])
             )
             return None
         context.user_data['supplier_stock_processing_stage'] = 'variants_count'
         context.user_data['supplier_stock_processing_data'] = data
-        update.message.reply_text("Сколько вариантов конечных файлов требуется? (число):")
+        update.message.reply_text("РЎРєРѕР»СЊРєРѕ РІР°СЂРёР°РЅС‚РѕРІ РєРѕРЅРµС‡РЅС‹С… С„Р°Р№Р»РѕРІ С‚СЂРµР±СѓРµС‚СЃСЏ? (С‡РёСЃР»Рѕ):")
         return None
 
     if stage == 'variants_count':
         variants_count = _parse_positive_int(user_input_stripped)
         if variants_count is None:
-            update.message.reply_text("❌ Введите целое число больше 0.")
+            update.message.reply_text("вќЊ Р’РІРµРґРёС‚Рµ С†РµР»РѕРµ С‡РёСЃР»Рѕ Р±РѕР»СЊС€Рµ 0.")
             return None
         data['variants_count'] = variants_count
         data['variants'] = []
         context.user_data['supplier_stock_processing_variant_index'] = 0
         context.user_data['supplier_stock_processing_stage'] = 'data_row'
         context.user_data['supplier_stock_processing_data'] = data
-        update.message.reply_text("Введите номер первой строки с данными (например: 2):")
+        update.message.reply_text("Р’РІРµРґРёС‚Рµ РЅРѕРјРµСЂ РїРµСЂРІРѕР№ СЃС‚СЂРѕРєРё СЃ РґР°РЅРЅС‹РјРё (РЅР°РїСЂРёРјРµСЂ: 2):")
         return None
 
     if stage == 'data_row':
         data_row = _parse_positive_int(user_input_stripped)
         if data_row is None:
-            update.message.reply_text("❌ Введите целое число больше 0.")
+            update.message.reply_text("вќЊ Р’РІРµРґРёС‚Рµ С†РµР»РѕРµ С‡РёСЃР»Рѕ Р±РѕР»СЊС€Рµ 0.")
             return None
         data['data_row'] = data_row
         context.user_data['supplier_stock_processing_stage'] = 'variant_article_col'
         context.user_data['supplier_stock_processing_data'] = data
-        update.message.reply_text("Введите номер колонки с артикулом:")
+        update.message.reply_text("Р’РІРµРґРёС‚Рµ РЅРѕРјРµСЂ РєРѕР»РѕРЅРєРё СЃ Р°СЂС‚РёРєСѓР»РѕРј:")
         return None
 
     if stage == 'variant_article_col':
         article_col = _parse_positive_int(user_input_stripped)
         if article_col is None:
-            update.message.reply_text("❌ Введите целое число больше 0.")
+            update.message.reply_text("вќЊ Р’РІРµРґРёС‚Рµ С†РµР»РѕРµ С‡РёСЃР»Рѕ Р±РѕР»СЊС€Рµ 0.")
             return None
         context.user_data['supplier_stock_processing_current_variant'] = {
             "article_col": article_col,
         }
         context.user_data['supplier_stock_processing_stage'] = 'variant_article_filter'
         update.message.reply_text(
-            "Введите условия отбора артикулов (regex) или '-' для всех.\n\n"
-            "Примеры условий:\n"
-            "• $1 ~ /^[0-9]/ && $col+0 > 0\n"
-            "• $1 ~ /^[A-Z].*/ && $4 ~ /^[0-9]+$/\n"
-            "• grep -E '^DKS [0-9A-Z]{6,},'\n"
-            "• gsub(/^\./, \"\", art); gsub(/[A-Za-z]+$/, \"\", art);\n"
-            "• ($3+0 > 0) && ($4 == \"Москва\")"
+            "Р’РІРµРґРёС‚Рµ СѓСЃР»РѕРІРёСЏ РѕС‚Р±РѕСЂР° Р°СЂС‚РёРєСѓР»РѕРІ (regex) РёР»Рё '-' РґР»СЏ РІСЃРµС….\n\n"
+            "РџСЂРёРјРµСЂС‹ СѓСЃР»РѕРІРёР№:\n"
+            "вЂў $1 ~ /^[0-9]/ && $col+0 > 0\n"
+            "вЂў $1 ~ /^[A-Z].*/ && $4 ~ /^[0-9]+$/\n"
+            "вЂў grep -E '^DKS [0-9A-Z]{6,},'\n"
+            "вЂў gsub(/^\./, \"\", art); gsub(/[A-Za-z]+$/, \"\", art);\n"
+            "вЂў ($3+0 > 0) && ($4 == \"РњРѕСЃРєРІР°\")"
         )
         return None
 
@@ -6168,8 +6168,8 @@ def supplier_stock_handle_processing_input(update, context):
         context.user_data['supplier_stock_processing_current_variant'] = variant
         context.user_data['supplier_stock_processing_stage'] = 'variant_prefix'
         update.message.reply_text(
-            "Введите префикс артикула (или '-' если не нужен). "
-            "Пробелы в конце сохраняются, либо используйте \\s."
+            "Р’РІРµРґРёС‚Рµ РїСЂРµС„РёРєСЃ Р°СЂС‚РёРєСѓР»Р° (РёР»Рё '-' РµСЃР»Рё РЅРµ РЅСѓР¶РµРЅ). "
+            "РџСЂРѕР±РµР»С‹ РІ РєРѕРЅС†Рµ СЃРѕС…СЂР°РЅСЏСЋС‚СЃСЏ, Р»РёР±Рѕ РёСЃРїРѕР»СЊР·СѓР№С‚Рµ \\s."
         )
         return None
 
@@ -6182,8 +6182,8 @@ def supplier_stock_handle_processing_input(update, context):
         context.user_data['supplier_stock_processing_current_variant'] = variant
         context.user_data['supplier_stock_processing_stage'] = 'variant_postfix'
         update.message.reply_text(
-            "Введите постфикс артикула (или '-' если не нужен). "
-            "Пробелы в конце сохраняются."
+            "Р’РІРµРґРёС‚Рµ РїРѕСЃС‚С„РёРєСЃ Р°СЂС‚РёРєСѓР»Р° (РёР»Рё '-' РµСЃР»Рё РЅРµ РЅСѓР¶РµРЅ). "
+            "РџСЂРѕР±РµР»С‹ РІ РєРѕРЅС†Рµ СЃРѕС…СЂР°РЅСЏСЋС‚СЃСЏ."
         )
         return None
 
@@ -6198,24 +6198,24 @@ def supplier_stock_handle_processing_input(update, context):
             variant['article_postfix'] = raw_value
         context.user_data['supplier_stock_processing_current_variant'] = variant
         context.user_data['supplier_stock_processing_stage'] = 'data_columns_count'
-        update.message.reply_text("Сколько колонок с данными нужно использовать? (число):")
+        update.message.reply_text("РЎРєРѕР»СЊРєРѕ РєРѕР»РѕРЅРѕРє СЃ РґР°РЅРЅС‹РјРё РЅСѓР¶РЅРѕ РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ? (С‡РёСЃР»Рѕ):")
         return None
 
     if stage == 'data_columns_count':
         columns_count = _parse_positive_int(user_input_stripped)
         if columns_count is None:
-            update.message.reply_text("❌ Введите целое число больше 0.")
+            update.message.reply_text("вќЊ Р’РІРµРґРёС‚Рµ С†РµР»РѕРµ С‡РёСЃР»Рѕ Р±РѕР»СЊС€Рµ 0.")
             return None
         context.user_data['supplier_stock_processing_data_columns_expected'] = columns_count
         context.user_data['supplier_stock_processing_data_columns'] = []
         context.user_data['supplier_stock_processing_stage'] = 'data_column'
-        update.message.reply_text("Введите номер колонки с данными 1 из %d:" % columns_count)
+        update.message.reply_text("Р’РІРµРґРёС‚Рµ РЅРѕРјРµСЂ РєРѕР»РѕРЅРєРё СЃ РґР°РЅРЅС‹РјРё 1 РёР· %d:" % columns_count)
         return None
 
     if stage == 'data_column':
         col_value = _parse_positive_int(user_input_stripped)
         if col_value is None:
-            update.message.reply_text("❌ Введите целое число больше 0.")
+            update.message.reply_text("вќЊ Р’РІРµРґРёС‚Рµ С†РµР»РѕРµ С‡РёСЃР»Рѕ Р±РѕР»СЊС€Рµ 0.")
             return None
         columns = context.user_data.get('supplier_stock_processing_data_columns', [])
         columns.append(col_value)
@@ -6223,7 +6223,7 @@ def supplier_stock_handle_processing_input(update, context):
         expected = context.user_data.get('supplier_stock_processing_data_columns_expected', 0)
         if len(columns) < expected:
             update.message.reply_text(
-                "Введите номер колонки с данными %d из %d:" % (len(columns) + 1, expected)
+                "Р’РІРµРґРёС‚Рµ РЅРѕРјРµСЂ РєРѕР»РѕРЅРєРё СЃ РґР°РЅРЅС‹РјРё %d РёР· %d:" % (len(columns) + 1, expected)
             )
             return None
         variant = context.user_data.get('supplier_stock_processing_current_variant', {})
@@ -6233,14 +6233,14 @@ def supplier_stock_handle_processing_input(update, context):
         context.user_data['supplier_stock_processing_output_names'] = []
         context.user_data['supplier_stock_processing_stage'] = 'output_name'
         update.message.reply_text(
-            "Введите имя выходного файла для колонки 1 из %d "
-            "(можно использовать {index}, {name}, {filename}):" % expected
+            "Р’РІРµРґРёС‚Рµ РёРјСЏ РІС‹С…РѕРґРЅРѕРіРѕ С„Р°Р№Р»Р° РґР»СЏ РєРѕР»РѕРЅРєРё 1 РёР· %d "
+            "(РјРѕР¶РЅРѕ РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ {index}, {name}, {filename}):" % expected
         )
         return None
 
     if stage == 'output_name':
         if not user_input_stripped:
-            update.message.reply_text("❌ Имя файла не может быть пустым. Попробуйте снова:")
+            update.message.reply_text("вќЊ РРјСЏ С„Р°Р№Р»Р° РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return None
         names = context.user_data.get('supplier_stock_processing_output_names', [])
         names.append(user_input_stripped)
@@ -6248,33 +6248,33 @@ def supplier_stock_handle_processing_input(update, context):
         expected = context.user_data.get('supplier_stock_processing_output_names_expected', 0)
         if len(names) < expected:
             update.message.reply_text(
-                "Введите имя выходного файла для колонки %d из %d "
-                "(можно использовать {index}, {name}, {filename}):" % (len(names) + 1, expected)
+                "Р’РІРµРґРёС‚Рµ РёРјСЏ РІС‹С…РѕРґРЅРѕРіРѕ С„Р°Р№Р»Р° РґР»СЏ РєРѕР»РѕРЅРєРё %d РёР· %d "
+                "(РјРѕР¶РЅРѕ РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ {index}, {name}, {filename}):" % (len(names) + 1, expected)
             )
             return None
         variant = context.user_data.get('supplier_stock_processing_current_variant', {})
         variant['output_names'] = names
         context.user_data['supplier_stock_processing_current_variant'] = variant
         context.user_data['supplier_stock_processing_stage'] = 'output_format'
-        update.message.reply_text("Введите формат выходного файла (xls, xlsx, csv):")
+        update.message.reply_text("Р’РІРµРґРёС‚Рµ С„РѕСЂРјР°С‚ РІС‹С…РѕРґРЅРѕРіРѕ С„Р°Р№Р»Р° (xls, xlsx, csv):")
         return None
 
     if stage == 'output_format':
         format_value = user_input_stripped.lower()
         if format_value not in ('xls', 'xlsx', 'csv'):
-            update.message.reply_text("❌ Допустимые форматы: xls, xlsx, csv.")
+            update.message.reply_text("вќЊ Р”РѕРїСѓСЃС‚РёРјС‹Рµ С„РѕСЂРјР°С‚С‹: xls, xlsx, csv.")
             return None
         variant = context.user_data.get('supplier_stock_processing_current_variant', {})
         variant['output_format'] = format_value
         context.user_data['supplier_stock_processing_current_variant'] = variant
         context.user_data['supplier_stock_processing_stage'] = 'orc_required'
-        update.message.reply_text("Нужно формировать отдельный файл для ОРК? (да/нет):")
+        update.message.reply_text("РќСѓР¶РЅРѕ С„РѕСЂРјРёСЂРѕРІР°С‚СЊ РѕС‚РґРµР»СЊРЅС‹Р№ С„Р°Р№Р» РґР»СЏ РћР Рљ? (РґР°/РЅРµС‚):")
         return None
 
     if stage == 'orc_required':
         orc_required = _parse_yes_no(user_input_stripped)
         if orc_required is None:
-            update.message.reply_text("❌ Ответьте 'да' или 'нет'.")
+            update.message.reply_text("вќЊ РћС‚РІРµС‚СЊС‚Рµ 'РґР°' РёР»Рё 'РЅРµС‚'.")
             return None
         variant = context.user_data.get('supplier_stock_processing_current_variant', {})
         variant['orc'] = {"enabled": orc_required}
@@ -6283,8 +6283,8 @@ def supplier_stock_handle_processing_input(update, context):
             return _supplier_stock_finish_variant(update, context, data)
         context.user_data['supplier_stock_processing_stage'] = 'orc_prefix'
         update.message.reply_text(
-            "Введите префикс артикула для файла ОРК (или '-' если не нужен). "
-            "Пробелы в конце сохраняются."
+            "Р’РІРµРґРёС‚Рµ РїСЂРµС„РёРєСЃ Р°СЂС‚РёРєСѓР»Р° РґР»СЏ С„Р°Р№Р»Р° РћР Рљ (РёР»Рё '-' РµСЃР»Рё РЅРµ РЅСѓР¶РµРЅ). "
+            "РџСЂРѕР±РµР»С‹ РІ РєРѕРЅС†Рµ СЃРѕС…СЂР°РЅСЏСЋС‚СЃСЏ."
         )
         return None
 
@@ -6296,23 +6296,23 @@ def supplier_stock_handle_processing_input(update, context):
             variant['orc']['prefix'] = user_input
         context.user_data['supplier_stock_processing_current_variant'] = variant
         context.user_data['supplier_stock_processing_stage'] = 'orc_stor'
-        update.message.reply_text("Введите параметр Stor для файла ОРК:")
+        update.message.reply_text("Р’РІРµРґРёС‚Рµ РїР°СЂР°РјРµС‚СЂ Stor РґР»СЏ С„Р°Р№Р»Р° РћР Рљ:")
         return None
 
     if stage == 'orc_stor':
         if not user_input_stripped:
-            update.message.reply_text("❌ Stor не может быть пустым. Попробуйте снова:")
+            update.message.reply_text("вќЊ Stor РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return None
         variant = context.user_data.get('supplier_stock_processing_current_variant', {})
         variant['orc']['stor'] = user_input_stripped
         context.user_data['supplier_stock_processing_current_variant'] = variant
         return _supplier_stock_finish_variant(update, context, data)
 
-    update.message.reply_text("❌ Не удалось определить шаг мастера. Попробуйте снова.")
+    update.message.reply_text("вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ РѕРїСЂРµРґРµР»РёС‚СЊ С€Р°Рі РјР°СЃС‚РµСЂР°. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°.")
     return None
 
 def supplier_stock_start_source_wizard(update, context):
-    """Запуск мастера добавления источника остатков."""
+    """Р—Р°РїСѓСЃРє РјР°СЃС‚РµСЂР° РґРѕР±Р°РІР»РµРЅРёСЏ РёСЃС‚РѕС‡РЅРёРєР° РѕСЃС‚Р°С‚РєРѕРІ."""
     query = update.callback_query
     query.answer()
 
@@ -6321,15 +6321,15 @@ def supplier_stock_start_source_wizard(update, context):
     context.user_data['supplier_stock_add_source'] = True
 
     query.edit_message_text(
-        "➕ *Новый источник остатков*\n\nВведите название источника:",
+        "вћ• *РќРѕРІС‹Р№ РёСЃС‚РѕС‡РЅРёРє РѕСЃС‚Р°С‚РєРѕРІ*\n\nР’РІРµРґРёС‚Рµ РЅР°Р·РІР°РЅРёРµ РёСЃС‚РѕС‡РЅРёРєР°:",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_sources')]
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='supplier_stock_sources')]
         ])
     )
 
 def supplier_stock_start_edit_wizard(update, context, source_id: str):
-    """Запуск мастера редактирования источника остатков."""
+    """Р—Р°РїСѓСЃРє РјР°СЃС‚РµСЂР° СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёСЏ РёСЃС‚РѕС‡РЅРёРєР° РѕСЃС‚Р°С‚РєРѕРІ."""
     query = update.callback_query
     query.answer()
 
@@ -6339,9 +6339,9 @@ def supplier_stock_start_edit_wizard(update, context, source_id: str):
 
     if not source:
         query.edit_message_text(
-            "❌ Источник не найден.",
+            "вќЊ РСЃС‚РѕС‡РЅРёРє РЅРµ РЅР°Р№РґРµРЅ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_sources')]
             ])
         )
         return
@@ -6351,16 +6351,16 @@ def supplier_stock_start_edit_wizard(update, context, source_id: str):
     context.user_data['supplier_stock_edit_source_id'] = source_id
 
     query.edit_message_text(
-        f"✏️ *Редактирование источника*\n\nТекущее имя: `{_escape_pattern_text(source.get('name'))}`\n"
-        "Введите новое имя (или '-' чтобы оставить текущее):",
+        f"вњЏпёЏ *Р РµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ РёСЃС‚РѕС‡РЅРёРєР°*\n\nРўРµРєСѓС‰РµРµ РёРјСЏ: `{_escape_pattern_text(source.get('name'))}`\n"
+        "Р’РІРµРґРёС‚Рµ РЅРѕРІРѕРµ РёРјСЏ (РёР»Рё '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ С‚РµРєСѓС‰РµРµ):",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_sources')]
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='supplier_stock_sources')]
         ])
     )
 
 def supplier_stock_handle_input(update, context):
-    """Обработчик ввода для настроек остатков поставщиков."""
+    """РћР±СЂР°Р±РѕС‚С‡РёРє РІРІРѕРґР° РґР»СЏ РЅР°СЃС‚СЂРѕРµРє РѕСЃС‚Р°С‚РєРѕРІ РїРѕСЃС‚Р°РІС‰РёРєРѕРІ."""
     if context.user_data.get('supplier_stock_source_iek_field'):
         return supplier_stock_handle_source_iek_field_input(update, context)
     if context.user_data.get('supplier_stock_resource_field'):
@@ -6392,14 +6392,14 @@ def supplier_stock_handle_input(update, context):
     return None
 
 def _supplier_stock_remember_prompt_message(context, query):
-    """Запомнить сообщение с запросом ввода параметра."""
+    """Р—Р°РїРѕРјРЅРёС‚СЊ СЃРѕРѕР±С‰РµРЅРёРµ СЃ Р·Р°РїСЂРѕСЃРѕРј РІРІРѕРґР° РїР°СЂР°РјРµС‚СЂР°."""
     if not query or not query.message:
         return
     context.user_data['supplier_stock_prompt_message_id'] = query.message.message_id
     context.user_data['supplier_stock_prompt_chat_id'] = query.message.chat_id
 
 def _supplier_stock_close_prompt_message(context):
-    """Удалить сообщение с запросом ввода параметра."""
+    """РЈРґР°Р»РёС‚СЊ СЃРѕРѕР±С‰РµРЅРёРµ СЃ Р·Р°РїСЂРѕСЃРѕРј РІРІРѕРґР° РїР°СЂР°РјРµС‚СЂР°."""
     message_id = context.user_data.pop('supplier_stock_prompt_message_id', None)
     chat_id = context.user_data.pop('supplier_stock_prompt_chat_id', None)
     if not message_id or not chat_id:
@@ -6410,14 +6410,14 @@ def _supplier_stock_close_prompt_message(context):
         pass
 
 def supplier_stock_handle_edit_input(update, context):
-    """Обработка ввода для изменения настроек остатков поставщиков."""
+    """РћР±СЂР°Р±РѕС‚РєР° РІРІРѕРґР° РґР»СЏ РёР·РјРµРЅРµРЅРёСЏ РЅР°СЃС‚СЂРѕРµРє РѕСЃС‚Р°С‚РєРѕРІ РїРѕСЃС‚Р°РІС‰РёРєРѕРІ."""
     field = context.user_data.get('supplier_stock_edit')
     if not field:
         return None
 
     message = update.message
     if not message or not message.text:
-        debug_logger("⚠️ supplier_stock_handle_edit_input: получено пустое сообщение.")
+        debug_logger("вљ пёЏ supplier_stock_handle_edit_input: РїРѕР»СѓС‡РµРЅРѕ РїСѓСЃС‚РѕРµ СЃРѕРѕР±С‰РµРЅРёРµ.")
         return None
 
     user_input = message.text.strip()
@@ -6425,16 +6425,16 @@ def supplier_stock_handle_edit_input(update, context):
 
     if field == 'temp_dir':
         if not user_input:
-            update.message.reply_text("❌ Путь не может быть пустым. Попробуйте снова:")
+            update.message.reply_text("вќЊ РџСѓС‚СЊ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return None
         config['download']['temp_dir'] = user_input
         save_supplier_stock_config(config)
         context.user_data.pop('supplier_stock_edit', None)
         _supplier_stock_close_prompt_message(context)
         update.message.reply_text(
-            "✅ Временный каталог обновлен.",
+            "вњ… Р’СЂРµРјРµРЅРЅС‹Р№ РєР°С‚Р°Р»РѕРі РѕР±РЅРѕРІР»РµРЅ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_download')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_download')]
             ])
         )
         return None
@@ -6443,7 +6443,7 @@ def supplier_stock_handle_edit_input(update, context):
         schedule_times = parse_supplier_stock_schedule_times(user_input)
         if not schedule_times:
             update.message.reply_text(
-                "❌ Неверный формат времени. Используйте HH:MM и разделители: пробел, запятая или ;"
+                "вќЊ РќРµРІРµСЂРЅС‹Р№ С„РѕСЂРјР°С‚ РІСЂРµРјРµРЅРё. РСЃРїРѕР»СЊР·СѓР№С‚Рµ HH:MM Рё СЂР°Р·РґРµР»РёС‚РµР»Рё: РїСЂРѕР±РµР», Р·Р°РїСЏС‚Р°СЏ РёР»Рё ;"
             )
             return None
         config['download']['schedule']['time'] = ', '.join(schedule_times)
@@ -6451,9 +6451,9 @@ def supplier_stock_handle_edit_input(update, context):
         context.user_data.pop('supplier_stock_edit', None)
         _supplier_stock_close_prompt_message(context)
         update.message.reply_text(
-            "✅ Время расписания обновлено.",
+            "вњ… Р’СЂРµРјСЏ СЂР°СЃРїРёСЃР°РЅРёСЏ РѕР±РЅРѕРІР»РµРЅРѕ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_schedule')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_schedule')]
             ])
         )
         return None
@@ -6462,10 +6462,10 @@ def supplier_stock_handle_edit_input(update, context):
         try:
             cleanup_days = int(user_input)
         except ValueError:
-            update.message.reply_text("❌ Введите целое число дней (0 — отключить).")
+            update.message.reply_text("вќЊ Р’РІРµРґРёС‚Рµ С†РµР»РѕРµ С‡РёСЃР»Рѕ РґРЅРµР№ (0 вЂ” РѕС‚РєР»СЋС‡РёС‚СЊ).")
             return None
         if cleanup_days < 0:
-            update.message.reply_text("❌ Период не может быть отрицательным.")
+            update.message.reply_text("вќЊ РџРµСЂРёРѕРґ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РѕС‚СЂРёС†Р°С‚РµР»СЊРЅС‹Рј.")
             return None
         config["archive_cleanup_days"] = cleanup_days
         save_supplier_stock_config(config)
@@ -6473,9 +6473,9 @@ def supplier_stock_handle_edit_input(update, context):
         back_callback = context.user_data.pop('supplier_stock_archive_cleanup_back', 'supplier_stock_download')
         _supplier_stock_close_prompt_message(context)
         update.message.reply_text(
-            "✅ Период очистки архива обновлен.",
+            "вњ… РџРµСЂРёРѕРґ РѕС‡РёСЃС‚РєРё Р°СЂС…РёРІР° РѕР±РЅРѕРІР»РµРЅ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=back_callback)]
             ])
         )
         return None
@@ -6484,35 +6484,35 @@ def supplier_stock_handle_edit_input(update, context):
         try:
             period_days = int(user_input)
         except ValueError:
-            update.message.reply_text("❌ Введите целое число дней (минимум 1).")
+            update.message.reply_text("вќЊ Р’РІРµРґРёС‚Рµ С†РµР»РѕРµ С‡РёСЃР»Рѕ РґРЅРµР№ (РјРёРЅРёРјСѓРј 1).")
             return None
         if period_days < 1:
-            update.message.reply_text("❌ Период должен быть минимум 1 день.")
+            update.message.reply_text("вќЊ РџРµСЂРёРѕРґ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РјРёРЅРёРјСѓРј 1 РґРµРЅСЊ.")
             return None
         config.setdefault("reporting", {})["period_days"] = period_days
         save_supplier_stock_config(config)
         context.user_data.pop('supplier_stock_edit', None)
         _supplier_stock_close_prompt_message(context)
         update.message.reply_text(
-            "✅ Период отчётов обновлён.",
+            "вњ… РџРµСЂРёРѕРґ РѕС‚С‡С‘С‚РѕРІ РѕР±РЅРѕРІР»С‘РЅ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_supplier_stock')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_ext_supplier_stock')]
             ])
         )
         return None
 
     if field == 'archive_dir':
         if not user_input:
-            update.message.reply_text("❌ Путь не может быть пустым. Попробуйте снова:")
+            update.message.reply_text("вќЊ РџСѓС‚СЊ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return None
         config['download']['archive_dir'] = user_input
         save_supplier_stock_config(config)
         context.user_data.pop('supplier_stock_edit', None)
         _supplier_stock_close_prompt_message(context)
         update.message.reply_text(
-            "✅ Каталог архива обновлен.",
+            "вњ… РљР°С‚Р°Р»РѕРі Р°СЂС…РёРІР° РѕР±РЅРѕРІР»РµРЅ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_download')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_download')]
             ])
         )
         return None
@@ -6520,7 +6520,7 @@ def supplier_stock_handle_edit_input(update, context):
     return None
 
 def supplier_stock_handle_mail_edit_input(update, context):
-    """Обработка ввода для общих настроек почты остатков."""
+    """РћР±СЂР°Р±РѕС‚РєР° РІРІРѕРґР° РґР»СЏ РѕР±С‰РёС… РЅР°СЃС‚СЂРѕРµРє РїРѕС‡С‚С‹ РѕСЃС‚Р°С‚РєРѕРІ."""
     field = context.user_data.get('supplier_stock_mail_edit')
     if not field:
         return None
@@ -6530,32 +6530,32 @@ def supplier_stock_handle_mail_edit_input(update, context):
 
     if field == 'temp_dir':
         if not user_input:
-            update.message.reply_text("❌ Путь не может быть пустым. Попробуйте снова:")
+            update.message.reply_text("вќЊ РџСѓС‚СЊ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return None
         config["mail"]["temp_dir"] = user_input
         save_supplier_stock_config(config)
         context.user_data.pop('supplier_stock_mail_edit', None)
         _supplier_stock_close_prompt_message(context)
         update.message.reply_text(
-            "✅ Временный каталог обновлен.",
+            "вњ… Р’СЂРµРјРµРЅРЅС‹Р№ РєР°С‚Р°Р»РѕРі РѕР±РЅРѕРІР»РµРЅ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_mail')]
             ])
         )
         return None
 
     if field == 'archive_dir':
         if not user_input:
-            update.message.reply_text("❌ Путь не может быть пустым. Попробуйте снова:")
+            update.message.reply_text("вќЊ РџСѓС‚СЊ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return None
         config["mail"]["archive_dir"] = user_input
         save_supplier_stock_config(config)
         context.user_data.pop('supplier_stock_mail_edit', None)
         _supplier_stock_close_prompt_message(context)
         update.message.reply_text(
-            "✅ Каталог архива обновлен.",
+            "вњ… РљР°С‚Р°Р»РѕРі Р°СЂС…РёРІР° РѕР±РЅРѕРІР»РµРЅ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_mail')]
             ])
         )
         return None
@@ -6563,7 +6563,7 @@ def supplier_stock_handle_mail_edit_input(update, context):
     return None
 
 def supplier_stock_start_mail_source_wizard(update, context):
-    """Запуск мастера добавления правила вложений почты."""
+    """Р—Р°РїСѓСЃРє РјР°СЃС‚РµСЂР° РґРѕР±Р°РІР»РµРЅРёСЏ РїСЂР°РІРёР»Р° РІР»РѕР¶РµРЅРёР№ РїРѕС‡С‚С‹."""
     query = update.callback_query
     query.answer()
 
@@ -6572,15 +6572,15 @@ def supplier_stock_start_mail_source_wizard(update, context):
     context.user_data['supplier_stock_mail_add_source'] = True
 
     query.edit_message_text(
-        "➕ *Новое правило вложений*\n\nВведите название правила:",
+        "вћ• *РќРѕРІРѕРµ РїСЂР°РІРёР»Рѕ РІР»РѕР¶РµРЅРёР№*\n\nР’РІРµРґРёС‚Рµ РЅР°Р·РІР°РЅРёРµ РїСЂР°РІРёР»Р°:",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_mail_sources')]
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='supplier_stock_mail_sources')]
         ])
     )
 
 def supplier_stock_start_mail_edit_wizard(update, context, source_id: str):
-    """Запуск мастера редактирования правила вложений почты."""
+    """Р—Р°РїСѓСЃРє РјР°СЃС‚РµСЂР° СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёСЏ РїСЂР°РІРёР»Р° РІР»РѕР¶РµРЅРёР№ РїРѕС‡С‚С‹."""
     query = update.callback_query
     query.answer()
 
@@ -6590,9 +6590,9 @@ def supplier_stock_start_mail_edit_wizard(update, context, source_id: str):
 
     if not source:
         query.edit_message_text(
-            "❌ Правило не найдено.",
+            "вќЊ РџСЂР°РІРёР»Рѕ РЅРµ РЅР°Р№РґРµРЅРѕ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail_sources')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_mail_sources')]
             ])
         )
         return
@@ -6602,32 +6602,32 @@ def supplier_stock_start_mail_edit_wizard(update, context, source_id: str):
     context.user_data['supplier_stock_mail_edit_source_id'] = source_id
 
     query.edit_message_text(
-        f"✏️ *Редактирование правила*\n\n"
-        f"Текущее имя: `{_escape_pattern_text(source.get('name'))}`\n"
-        "Введите новое имя (или '-' чтобы оставить текущее):",
+        f"вњЏпёЏ *Р РµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ РїСЂР°РІРёР»Р°*\n\n"
+        f"РўРµРєСѓС‰РµРµ РёРјСЏ: `{_escape_pattern_text(source.get('name'))}`\n"
+        "Р’РІРµРґРёС‚Рµ РЅРѕРІРѕРµ РёРјСЏ (РёР»Рё '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ С‚РµРєСѓС‰РµРµ):",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data='supplier_stock_mail_sources')]
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='supplier_stock_mail_sources')]
         ])
     )
 
 def supplier_stock_handle_mail_source_input(update, context):
-    """Обработка ввода в мастере добавления правила вложений."""
+    """РћР±СЂР°Р±РѕС‚РєР° РІРІРѕРґР° РІ РјР°СЃС‚РµСЂРµ РґРѕР±Р°РІР»РµРЅРёСЏ РїСЂР°РІРёР»Р° РІР»РѕР¶РµРЅРёР№."""
     stage = context.user_data.get('supplier_stock_mail_source_stage')
     source_data = context.user_data.get('supplier_stock_mail_source_data', {})
     user_input = update.message.text.strip()
 
     if stage == 'name':
         if not user_input:
-            update.message.reply_text("❌ Название не может быть пустым. Попробуйте снова:")
+            update.message.reply_text("вќЊ РќР°Р·РІР°РЅРёРµ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return None
         source_data['name'] = user_input
         source_data['id'] = _slugify_supplier_source_id(user_input)
         context.user_data['supplier_stock_mail_source_stage'] = 'sender'
         context.user_data['supplier_stock_mail_source_data'] = source_data
         update.message.reply_text(
-            "Введите regex или адрес отправителя (например: sender@example.com) "
-            "или '-' чтобы принимать любые письма:"
+            "Р’РІРµРґРёС‚Рµ regex РёР»Рё Р°РґСЂРµСЃ РѕС‚РїСЂР°РІРёС‚РµР»СЏ (РЅР°РїСЂРёРјРµСЂ: sender@example.com) "
+            "РёР»Рё '-' С‡С‚РѕР±С‹ РїСЂРёРЅРёРјР°С‚СЊ Р»СЋР±С‹Рµ РїРёСЃСЊРјР°:"
         )
         return None
 
@@ -6637,7 +6637,7 @@ def supplier_stock_handle_mail_source_input(update, context):
         context.user_data['supplier_stock_mail_source_stage'] = 'subject'
         context.user_data['supplier_stock_mail_source_data'] = source_data
         update.message.reply_text(
-            "Введите regex для темы письма или '-' чтобы принимать любую тему:"
+            "Р’РІРµРґРёС‚Рµ regex РґР»СЏ С‚РµРјС‹ РїРёСЃСЊРјР° РёР»Рё '-' С‡С‚РѕР±С‹ РїСЂРёРЅРёРјР°С‚СЊ Р»СЋР±СѓСЋ С‚РµРјСѓ:"
         )
         return None
 
@@ -6647,8 +6647,8 @@ def supplier_stock_handle_mail_source_input(update, context):
         context.user_data['supplier_stock_mail_source_stage'] = 'mime'
         context.user_data['supplier_stock_mail_source_data'] = source_data
         update.message.reply_text(
-            "Введите MIME-фильтр (например: application/vnd.ms-excel) "
-            "или '-' чтобы использовать application/.*:"
+            "Р’РІРµРґРёС‚Рµ MIME-С„РёР»СЊС‚СЂ (РЅР°РїСЂРёРјРµСЂ: application/vnd.ms-excel) "
+            "РёР»Рё '-' С‡С‚РѕР±С‹ РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ application/.*:"
         )
         return None
 
@@ -6658,7 +6658,7 @@ def supplier_stock_handle_mail_source_input(update, context):
         context.user_data['supplier_stock_mail_source_stage'] = 'filename'
         context.user_data['supplier_stock_mail_source_data'] = source_data
         update.message.reply_text(
-            "Введите regex для имени вложения или '-' чтобы принимать любые файлы:"
+            "Р’РІРµРґРёС‚Рµ regex РґР»СЏ РёРјРµРЅРё РІР»РѕР¶РµРЅРёСЏ РёР»Рё '-' С‡С‚РѕР±С‹ РїСЂРёРЅРёРјР°С‚СЊ Р»СЋР±С‹Рµ С„Р°Р№Р»С‹:"
         )
         return None
 
@@ -6668,27 +6668,27 @@ def supplier_stock_handle_mail_source_input(update, context):
         context.user_data['supplier_stock_mail_source_stage'] = 'expected'
         context.user_data['supplier_stock_mail_source_data'] = source_data
         update.message.reply_text(
-            "Введите количество ожидаемых вложений (например: 1 или 2):"
+            "Р’РІРµРґРёС‚Рµ РєРѕР»РёС‡РµСЃС‚РІРѕ РѕР¶РёРґР°РµРјС‹С… РІР»РѕР¶РµРЅРёР№ (РЅР°РїСЂРёРјРµСЂ: 1 РёР»Рё 2):"
         )
         return None
 
     if stage == 'expected':
         expected = _parse_expected_attachments(user_input)
         if expected is None:
-            update.message.reply_text("❌ Введите целое число больше 0.")
+            update.message.reply_text("вќЊ Р’РІРµРґРёС‚Рµ С†РµР»РѕРµ С‡РёСЃР»Рѕ Р±РѕР»СЊС€Рµ 0.")
             return None
         source_data['expected_attachments'] = expected
         context.user_data['supplier_stock_mail_source_stage'] = 'output'
         context.user_data['supplier_stock_mail_source_data'] = source_data
         update.message.reply_text(
-            "Введите шаблон имени выходного файла "
-            "(например: supplier_{index}_orig.xls, доступны {index}, {name}):"
+            "Р’РІРµРґРёС‚Рµ С€Р°Р±Р»РѕРЅ РёРјРµРЅРё РІС‹С…РѕРґРЅРѕРіРѕ С„Р°Р№Р»Р° "
+            "(РЅР°РїСЂРёРјРµСЂ: supplier_{index}_orig.xls, РґРѕСЃС‚СѓРїРЅС‹ {index}, {name}):"
         )
         return None
 
     if stage == 'output':
         if not user_input:
-            update.message.reply_text("❌ Шаблон не может быть пустым. Попробуйте снова:")
+            update.message.reply_text("вќЊ РЁР°Р±Р»РѕРЅ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return None
         source_data['output_template'] = user_input
         source_data.setdefault('enabled', True)
@@ -6706,18 +6706,18 @@ def supplier_stock_handle_mail_source_input(update, context):
         context.user_data.pop('supplier_stock_mail_source_data', None)
 
         update.message.reply_text(
-            "✅ Правило добавлено.",
+            "вњ… РџСЂР°РІРёР»Рѕ РґРѕР±Р°РІР»РµРЅРѕ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail_sources')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_mail_sources')]
             ])
         )
         return None
 
-    update.message.reply_text("❌ Не удалось определить шаг мастера. Попробуйте снова.")
+    update.message.reply_text("вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ РѕРїСЂРµРґРµР»РёС‚СЊ С€Р°Рі РјР°СЃС‚РµСЂР°. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°.")
     return None
 
 def supplier_stock_handle_mail_source_edit_input(update, context):
-    """Обработка ввода при редактировании правила вложений."""
+    """РћР±СЂР°Р±РѕС‚РєР° РІРІРѕРґР° РїСЂРё СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёРё РїСЂР°РІРёР»Р° РІР»РѕР¶РµРЅРёР№."""
     stage = context.user_data.get('supplier_stock_mail_edit_source_stage')
     source_id = context.user_data.get('supplier_stock_mail_edit_source_id')
     user_input = update.message.text.strip()
@@ -6727,8 +6727,8 @@ def supplier_stock_handle_mail_source_edit_input(update, context):
     source = next((item for item in sources if str(item.get("id")) == source_id), None)
 
     if not source:
-        update.message.reply_text("❌ Правило не найдено.", reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail_sources')]
+        update.message.reply_text("вќЊ РџСЂР°РІРёР»Рѕ РЅРµ РЅР°Р№РґРµРЅРѕ.", reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_mail_sources')]
         ]))
         return None
 
@@ -6740,13 +6740,13 @@ def supplier_stock_handle_mail_source_edit_input(update, context):
         context.user_data['supplier_stock_mail_edit_source_stage'] = 'sender'
         current_sender = source.get("sender_pattern") or "-"
         update.message.reply_text(
-            "Введите regex/адрес отправителя, '-' чтобы оставить текущее или 'none' чтобы очистить.\n"
-            f"Текущее значение: {current_sender}"
+            "Р’РІРµРґРёС‚Рµ regex/Р°РґСЂРµСЃ РѕС‚РїСЂР°РІРёС‚РµР»СЏ, '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ С‚РµРєСѓС‰РµРµ РёР»Рё 'none' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ.\n"
+            f"РўРµРєСѓС‰РµРµ Р·РЅР°С‡РµРЅРёРµ: {current_sender}"
         )
         return None
 
     if stage == 'sender':
-        if user_input.lower() in ('none', 'нет'):
+        if user_input.lower() in ('none', 'РЅРµС‚'):
             source.pop('sender_pattern', None)
         elif user_input not in ('-',):
             source['sender_pattern'] = user_input
@@ -6755,13 +6755,13 @@ def supplier_stock_handle_mail_source_edit_input(update, context):
         context.user_data['supplier_stock_mail_edit_source_stage'] = 'subject'
         current_subject = source.get("subject_pattern") or "-"
         update.message.reply_text(
-            "Введите regex для темы письма, '-' чтобы оставить текущее или 'none' чтобы очистить.\n"
-            f"Текущее значение: {current_subject}"
+            "Р’РІРµРґРёС‚Рµ regex РґР»СЏ С‚РµРјС‹ РїРёСЃСЊРјР°, '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ С‚РµРєСѓС‰РµРµ РёР»Рё 'none' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ.\n"
+            f"РўРµРєСѓС‰РµРµ Р·РЅР°С‡РµРЅРёРµ: {current_subject}"
         )
         return None
 
     if stage == 'subject':
-        if user_input.lower() in ('none', 'нет'):
+        if user_input.lower() in ('none', 'РЅРµС‚'):
             source.pop('subject_pattern', None)
         elif user_input not in ('-',):
             source['subject_pattern'] = user_input
@@ -6770,13 +6770,13 @@ def supplier_stock_handle_mail_source_edit_input(update, context):
         context.user_data['supplier_stock_mail_edit_source_stage'] = 'mime'
         current_mime = source.get("mime_pattern") or "-"
         update.message.reply_text(
-            "Введите MIME-фильтр, '-' чтобы оставить текущее или 'none' чтобы очистить.\n"
-            f"Текущее значение: {current_mime}"
+            "Р’РІРµРґРёС‚Рµ MIME-С„РёР»СЊС‚СЂ, '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ С‚РµРєСѓС‰РµРµ РёР»Рё 'none' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ.\n"
+            f"РўРµРєСѓС‰РµРµ Р·РЅР°С‡РµРЅРёРµ: {current_mime}"
         )
         return None
 
     if stage == 'mime':
-        if user_input.lower() in ('none', 'нет'):
+        if user_input.lower() in ('none', 'РЅРµС‚'):
             source.pop('mime_pattern', None)
         elif user_input not in ('-',):
             source['mime_pattern'] = user_input
@@ -6785,13 +6785,13 @@ def supplier_stock_handle_mail_source_edit_input(update, context):
         context.user_data['supplier_stock_mail_edit_source_stage'] = 'filename'
         current_filename = source.get("filename_pattern") or "-"
         update.message.reply_text(
-            "Введите regex для имени вложения, '-' чтобы оставить текущее или 'none' чтобы очистить.\n"
-            f"Текущее значение: {current_filename}"
+            "Р’РІРµРґРёС‚Рµ regex РґР»СЏ РёРјРµРЅРё РІР»РѕР¶РµРЅРёСЏ, '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ С‚РµРєСѓС‰РµРµ РёР»Рё 'none' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ.\n"
+            f"РўРµРєСѓС‰РµРµ Р·РЅР°С‡РµРЅРёРµ: {current_filename}"
         )
         return None
 
     if stage == 'filename':
-        if user_input.lower() in ('none', 'нет'):
+        if user_input.lower() in ('none', 'РЅРµС‚'):
             source.pop('filename_pattern', None)
         elif user_input not in ('-',):
             source['filename_pattern'] = user_input
@@ -6800,8 +6800,8 @@ def supplier_stock_handle_mail_source_edit_input(update, context):
         context.user_data['supplier_stock_mail_edit_source_stage'] = 'expected'
         current_expected = source.get("expected_attachments", 1)
         update.message.reply_text(
-            "Введите количество ожидаемых вложений, '-' чтобы оставить текущее.\n"
-            f"Текущее значение: {current_expected}"
+            "Р’РІРµРґРёС‚Рµ РєРѕР»РёС‡РµСЃС‚РІРѕ РѕР¶РёРґР°РµРјС‹С… РІР»РѕР¶РµРЅРёР№, '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ С‚РµРєСѓС‰РµРµ.\n"
+            f"РўРµРєСѓС‰РµРµ Р·РЅР°С‡РµРЅРёРµ: {current_expected}"
         )
         return None
 
@@ -6809,7 +6809,7 @@ def supplier_stock_handle_mail_source_edit_input(update, context):
         if user_input not in ('-',):
             expected = _parse_expected_attachments(user_input)
             if expected is None:
-                update.message.reply_text("❌ Введите целое число больше 0 или '-'.")
+                update.message.reply_text("вќЊ Р’РІРµРґРёС‚Рµ С†РµР»РѕРµ С‡РёСЃР»Рѕ Р±РѕР»СЊС€Рµ 0 РёР»Рё '-'.")
                 return None
             source['expected_attachments'] = expected
         config["mail"]["sources"] = sources
@@ -6817,8 +6817,8 @@ def supplier_stock_handle_mail_source_edit_input(update, context):
         context.user_data['supplier_stock_mail_edit_source_stage'] = 'output'
         current_output = source.get("output_template") or "-"
         update.message.reply_text(
-            "Введите шаблон имени выходного файла, '-' чтобы оставить текущее.\n"
-            f"Текущее значение: {current_output}"
+            "Р’РІРµРґРёС‚Рµ С€Р°Р±Р»РѕРЅ РёРјРµРЅРё РІС‹С…РѕРґРЅРѕРіРѕ С„Р°Р№Р»Р°, '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ С‚РµРєСѓС‰РµРµ.\n"
+            f"РўРµРєСѓС‰РµРµ Р·РЅР°С‡РµРЅРёРµ: {current_output}"
         )
         return None
 
@@ -6833,18 +6833,18 @@ def supplier_stock_handle_mail_source_edit_input(update, context):
         context.user_data.pop('supplier_stock_mail_edit_source_id', None)
 
         update.message.reply_text(
-            "✅ Правило обновлено.",
+            "вњ… РџСЂР°РІРёР»Рѕ РѕР±РЅРѕРІР»РµРЅРѕ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail_sources')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_mail_sources')]
             ])
         )
         return None
 
-    update.message.reply_text("❌ Не удалось определить шаг редактирования. Попробуйте снова.")
+    update.message.reply_text("вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ РѕРїСЂРµРґРµР»РёС‚СЊ С€Р°Рі СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёСЏ. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°.")
     return None
 
 def supplier_stock_handle_source_field_input(update, context):
-    """Обработка ввода при редактировании отдельного поля источника."""
+    """РћР±СЂР°Р±РѕС‚РєР° РІРІРѕРґР° РїСЂРё СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёРё РѕС‚РґРµР»СЊРЅРѕРіРѕ РїРѕР»СЏ РёСЃС‚РѕС‡РЅРёРєР°."""
     field = context.user_data.get('supplier_stock_source_field')
     source_id = context.user_data.get('supplier_stock_source_field_id')
     user_input = (update.message.text or "").strip()
@@ -6857,8 +6857,8 @@ def supplier_stock_handle_source_field_input(update, context):
     source = next((item for item in sources if str(item.get("id")) == source_id), None)
 
     if not source:
-        update.message.reply_text("❌ Источник не найден.", reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources')]
+        update.message.reply_text("вќЊ РСЃС‚РѕС‡РЅРёРє РЅРµ РЅР°Р№РґРµРЅ.", reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_sources')]
         ]))
         return None
 
@@ -6866,7 +6866,7 @@ def supplier_stock_handle_source_field_input(update, context):
         if user_input in ('-', ''):
             pass
         elif not user_input:
-            update.message.reply_text("❌ Название не может быть пустым. Попробуйте снова:")
+            update.message.reply_text("вќЊ РќР°Р·РІР°РЅРёРµ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return None
         else:
             source['name'] = user_input
@@ -6874,77 +6874,77 @@ def supplier_stock_handle_source_field_input(update, context):
         if user_input in ('-', ''):
             pass
         elif not user_input:
-            update.message.reply_text("❌ URL не может быть пустым. Попробуйте снова:")
+            update.message.reply_text("вќЊ URL РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return None
         else:
             source['url'] = user_input
     elif field == 'discover':
         if user_input in ('-', ''):
             pass
-        elif user_input.lower() in ('none', 'нет'):
+        elif user_input.lower() in ('none', 'РЅРµС‚'):
             source.pop('discover', None)
         else:
             discover = _parse_supplier_discover(user_input)
             if discover is None:
                 update.message.reply_text(
-                    "❌ Формат должен быть URL | regex | prefix, '-' или 'none'. Попробуйте снова:"
+                    "вќЊ Р¤РѕСЂРјР°С‚ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ URL | regex | prefix, '-' РёР»Рё 'none'. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:"
                 )
                 return None
             source['discover'] = discover
     elif field == 'vars':
         if user_input in ('-', ''):
             pass
-        elif user_input.lower() in ('none', 'нет'):
+        elif user_input.lower() in ('none', 'РЅРµС‚'):
             source.pop('vars', None)
         else:
             vars_map = _parse_supplier_vars(user_input)
             if vars_map is None:
-                update.message.reply_text("❌ Формат должен быть key=value, разделители запятая/новая строка.")
+                update.message.reply_text("вќЊ Р¤РѕСЂРјР°С‚ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ key=value, СЂР°Р·РґРµР»РёС‚РµР»Рё Р·Р°РїСЏС‚Р°СЏ/РЅРѕРІР°СЏ СЃС‚СЂРѕРєР°.")
                 return None
             source['vars'] = vars_map
     elif field == 'output_name':
         if user_input in ('-', ''):
             pass
         elif not user_input:
-            update.message.reply_text("❌ Имя файла не может быть пустым. Попробуйте снова:")
+            update.message.reply_text("вќЊ РРјСЏ С„Р°Р№Р»Р° РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return None
         else:
             source['output_name'] = user_input
     elif field == 'auth':
         if user_input in ('-', ''):
             pass
-        elif user_input.lower() in ('none', 'нет'):
+        elif user_input.lower() in ('none', 'РЅРµС‚'):
             source.pop('auth', None)
         else:
             if ':' not in user_input:
-                update.message.reply_text("❌ Формат должен быть login:password или 'none'. Попробуйте снова:")
+                update.message.reply_text("вќЊ Р¤РѕСЂРјР°С‚ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ login:password РёР»Рё 'none'. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
                 return None
             username, password = user_input.split(':', 1)
             source['auth'] = {'username': username, 'password': password}
     elif field == 'pre_request':
         if user_input in ('-', ''):
             pass
-        elif user_input.lower() in ('none', 'нет'):
+        elif user_input.lower() in ('none', 'РЅРµС‚'):
             source.pop('pre_request', None)
         else:
             pre_request = _parse_supplier_pre_request(user_input)
             if pre_request is None:
                 update.message.reply_text(
-                    "❌ Формат должен быть URL | данные, '-' или 'none'. Попробуйте снова:"
+                    "вќЊ Р¤РѕСЂРјР°С‚ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ URL | РґР°РЅРЅС‹Рµ, '-' РёР»Рё 'none'. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:"
                 )
                 return None
             source['pre_request'] = pre_request
     elif field == 'options':
         if user_input in ('-', ''):
             pass
-        elif user_input.lower() in ('none', 'нет'):
+        elif user_input.lower() in ('none', 'РЅРµС‚'):
             source.pop('include_headers', None)
             source.pop('append', None)
         else:
             options = _parse_supplier_options(user_input)
             if options is None:
                 update.message.reply_text(
-                    "❌ Формат должен быть списком через запятую (headers, append), '-' или 'none'."
+                    "вќЊ Р¤РѕСЂРјР°С‚ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ СЃРїРёСЃРєРѕРј С‡РµСЂРµР· Р·Р°РїСЏС‚СѓСЋ (headers, append), '-' РёР»Рё 'none'."
                 )
                 return None
             source.update(options)
@@ -6954,7 +6954,7 @@ def supplier_stock_handle_source_field_input(update, context):
         else:
             mode = _normalize_supplier_processing_mode(user_input)
             if not mode:
-                update.message.reply_text("❌ Допустимые значения: table, iek_json.")
+                update.message.reply_text("вќЊ Р”РѕРїСѓСЃС‚РёРјС‹Рµ Р·РЅР°С‡РµРЅРёСЏ: table, iek_json.")
                 return None
             source['processing_mode'] = mode
             if mode == "iek_json":
@@ -6962,7 +6962,7 @@ def supplier_stock_handle_source_field_input(update, context):
     elif field == 'upload_subdir':
         if user_input in ('-', ''):
             pass
-        elif user_input.lower() in ('none', 'нет'):
+        elif user_input.lower() in ('none', 'РЅРµС‚'):
             source.pop('upload_subdir', None)
         else:
             source['upload_subdir'] = user_input
@@ -6970,7 +6970,7 @@ def supplier_stock_handle_source_field_input(update, context):
         individual_dir = source.setdefault('individual_directory', {})
         if user_input in ('-', ''):
             pass
-        elif user_input.lower() in ('none', 'нет'):
+        elif user_input.lower() in ('none', 'РЅРµС‚'):
             individual_dir.pop('unc_path', None)
         else:
             individual_dir['unc_path'] = user_input
@@ -6978,7 +6978,7 @@ def supplier_stock_handle_source_field_input(update, context):
         individual_dir = source.setdefault('individual_directory', {})
         if user_input in ('-', ''):
             pass
-        elif user_input.lower() in ('none', 'нет'):
+        elif user_input.lower() in ('none', 'РЅРµС‚'):
             individual_dir.pop('login', None)
         else:
             individual_dir['login'] = user_input
@@ -6986,12 +6986,12 @@ def supplier_stock_handle_source_field_input(update, context):
         individual_dir = source.setdefault('individual_directory', {})
         if user_input in ('-', ''):
             pass
-        elif user_input.lower() in ('none', 'нет'):
+        elif user_input.lower() in ('none', 'РЅРµС‚'):
             individual_dir.pop('password', None)
         else:
             individual_dir['password'] = user_input
     else:
-        update.message.reply_text("❌ Не удалось определить поле настройки.")
+        update.message.reply_text("вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ РѕРїСЂРµРґРµР»РёС‚СЊ РїРѕР»Рµ РЅР°СЃС‚СЂРѕР№РєРё.")
         return None
 
     config["download"]["sources"] = sources
@@ -7002,15 +7002,15 @@ def supplier_stock_handle_source_field_input(update, context):
     _supplier_stock_close_prompt_message(context)
 
     update.message.reply_text(
-        "✅ Настройка обновлена.",
+        "вњ… РќР°СЃС‚СЂРѕР№РєР° РѕР±РЅРѕРІР»РµРЅР°.",
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_source_settings|{source_id}')]
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=f'supplier_stock_source_settings|{source_id}')]
         ])
     )
     return None
 
 def supplier_stock_handle_source_iek_field_input(update, context):
-    """Обработка ввода при редактировании параметров IEK JSON."""
+    """РћР±СЂР°Р±РѕС‚РєР° РІРІРѕРґР° РїСЂРё СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёРё РїР°СЂР°РјРµС‚СЂРѕРІ IEK JSON."""
     field = context.user_data.get('supplier_stock_source_iek_field')
     source_id = context.user_data.get('supplier_stock_source_iek_field_id')
     user_input = (update.message.text or "").strip()
@@ -7023,8 +7023,8 @@ def supplier_stock_handle_source_iek_field_input(update, context):
     source = next((item for item in sources if str(item.get("id")) == source_id), None)
 
     if not source:
-        update.message.reply_text("❌ Источник не найден.", reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources')]
+        update.message.reply_text("вќЊ РСЃС‚РѕС‡РЅРёРє РЅРµ РЅР°Р№РґРµРЅ.", reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_sources')]
         ]))
         return None
 
@@ -7037,61 +7037,61 @@ def supplier_stock_handle_source_iek_field_input(update, context):
         context.user_data.pop('supplier_stock_source_iek_field_id', None)
         _supplier_stock_close_prompt_message(context)
         update.message.reply_text(
-            "✅ Настройка обновлена.",
+            "вњ… РќР°СЃС‚СЂРѕР№РєР° РѕР±РЅРѕРІР»РµРЅР°.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_source_iek_settings|{source_id}')],
-                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=f'supplier_stock_source_iek_settings|{source_id}')],
+                [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+                [InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')],
             ])
         )
         return None
     if field == "stores":
-        if user_input.lower() in ("none", "нет"):
+        if user_input.lower() in ("none", "РЅРµС‚"):
             iek_settings["stores"] = {}
         else:
             parsed = _parse_supplier_vars(user_input)
             if parsed is None:
-                update.message.reply_text("❌ Формат должен быть key=uuid через запятую/новую строку.")
+                update.message.reply_text("вќЊ Р¤РѕСЂРјР°С‚ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ key=uuid С‡РµСЂРµР· Р·Р°РїСЏС‚СѓСЋ/РЅРѕРІСѓСЋ СЃС‚СЂРѕРєСѓ.")
                 return None
             iek_settings["stores"] = parsed
     elif field == "msk_stores":
-        if user_input.lower() in ("none", "нет"):
+        if user_input.lower() in ("none", "РЅРµС‚"):
             iek_settings["msk_stores"] = []
         else:
             if not user_input:
-                update.message.reply_text("❌ Список не может быть пустым.")
+                update.message.reply_text("вќЊ РЎРїРёСЃРѕРє РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј.")
                 return None
             iek_settings["msk_stores"] = [item.strip() for item in re.split(r"[,\n]+", user_input) if item.strip()]
     elif field == "nsk_store":
-        if user_input.lower() in ("none", "нет"):
+        if user_input.lower() in ("none", "РЅРµС‚"):
             iek_settings["nsk_store"] = ""
         else:
             if not user_input:
-                update.message.reply_text("❌ Значение не может быть пустым.")
+                update.message.reply_text("вќЊ Р—РЅР°С‡РµРЅРёРµ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј.")
                 return None
             iek_settings["nsk_store"] = user_input
     elif field == "orc_stores":
-        if user_input.lower() in ("none", "нет"):
+        if user_input.lower() in ("none", "РЅРµС‚"):
             iek_settings["orc_stores"] = []
         else:
             parsed = _parse_supplier_vars(user_input)
             if parsed is None:
-                update.message.reply_text("❌ Формат должен быть key=stor через запятую/новую строку.")
+                update.message.reply_text("вќЊ Р¤РѕСЂРјР°С‚ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ key=stor С‡РµСЂРµР· Р·Р°РїСЏС‚СѓСЋ/РЅРѕРІСѓСЋ СЃС‚СЂРѕРєСѓ.")
                 return None
             iek_settings["orc_stores"] = [{"key": key, "stor": value} for key, value in parsed.items()]
     elif field == "prefix":
-        iek_settings["prefix"] = "" if user_input.lower() in ("none", "нет") else user_input
+        iek_settings["prefix"] = "" if user_input.lower() in ("none", "РЅРµС‚") else user_input
     elif field == "outputs":
-        if user_input.lower() in ("none", "нет"):
+        if user_input.lower() in ("none", "РЅРµС‚"):
             iek_settings["outputs"] = {}
         else:
             parsed = _parse_supplier_vars(user_input)
             if parsed is None:
-                update.message.reply_text("❌ Формат должен быть orig=..., msk=..., nsk=..., orc=... через запятую.")
+                update.message.reply_text("вќЊ Р¤РѕСЂРјР°С‚ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ orig=..., msk=..., nsk=..., orc=... С‡РµСЂРµР· Р·Р°РїСЏС‚СѓСЋ.")
                 return None
             iek_settings["outputs"] = parsed
     else:
-        update.message.reply_text("❌ Не удалось определить поле настройки.")
+        update.message.reply_text("вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ РѕРїСЂРµРґРµР»РёС‚СЊ РїРѕР»Рµ РЅР°СЃС‚СЂРѕР№РєРё.")
         return None
 
     source["iek_json"] = iek_settings
@@ -7103,17 +7103,17 @@ def supplier_stock_handle_source_iek_field_input(update, context):
     _supplier_stock_close_prompt_message(context)
 
     update.message.reply_text(
-        "✅ Настройка обновлена.",
+        "вњ… РќР°СЃС‚СЂРѕР№РєР° РѕР±РЅРѕРІР»РµРЅР°.",
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_source_iek_settings|{source_id}')],
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=f'supplier_stock_source_iek_settings|{source_id}')],
+            [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+            [InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')],
         ])
     )
     return None
 
 def supplier_stock_handle_mail_source_field_input(update, context):
-    """Обработка ввода при редактировании отдельного поля правила вложений."""
+    """РћР±СЂР°Р±РѕС‚РєР° РІРІРѕРґР° РїСЂРё СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёРё РѕС‚РґРµР»СЊРЅРѕРіРѕ РїРѕР»СЏ РїСЂР°РІРёР»Р° РІР»РѕР¶РµРЅРёР№."""
     field = context.user_data.get('supplier_stock_mail_source_field')
     source_id = context.user_data.get('supplier_stock_mail_source_field_id')
     user_input = (update.message.text or "").strip()
@@ -7126,8 +7126,8 @@ def supplier_stock_handle_mail_source_field_input(update, context):
     source = next((item for item in sources if str(item.get("id")) == source_id), None)
 
     if not source:
-        update.message.reply_text("❌ Правило не найдено.", reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_mail_sources')]
+        update.message.reply_text("вќЊ РџСЂР°РІРёР»Рѕ РЅРµ РЅР°Р№РґРµРЅРѕ.", reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_mail_sources')]
         ]))
         return None
 
@@ -7135,35 +7135,35 @@ def supplier_stock_handle_mail_source_field_input(update, context):
         if user_input in ('-', ''):
             pass
         elif not user_input:
-            update.message.reply_text("❌ Название не может быть пустым. Попробуйте снова:")
+            update.message.reply_text("вќЊ РќР°Р·РІР°РЅРёРµ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return None
         else:
             source['name'] = user_input
     elif field == 'sender':
         if user_input in ('-', ''):
             pass
-        elif user_input.lower() in ('none', 'нет'):
+        elif user_input.lower() in ('none', 'РЅРµС‚'):
             source.pop('sender_pattern', None)
         else:
             source['sender_pattern'] = user_input
     elif field == 'subject':
         if user_input in ('-', ''):
             pass
-        elif user_input.lower() in ('none', 'нет'):
+        elif user_input.lower() in ('none', 'РЅРµС‚'):
             source.pop('subject_pattern', None)
         else:
             source['subject_pattern'] = user_input
     elif field == 'mime':
         if user_input in ('-', ''):
             pass
-        elif user_input.lower() in ('none', 'нет'):
+        elif user_input.lower() in ('none', 'РЅРµС‚'):
             source.pop('mime_pattern', None)
         else:
             source['mime_pattern'] = user_input
     elif field == 'filename':
         if user_input in ('-', ''):
             pass
-        elif user_input.lower() in ('none', 'нет'):
+        elif user_input.lower() in ('none', 'РЅРµС‚'):
             source.pop('filename_pattern', None)
         else:
             source['filename_pattern'] = user_input
@@ -7173,21 +7173,21 @@ def supplier_stock_handle_mail_source_field_input(update, context):
         else:
             expected = _parse_expected_attachments(user_input)
             if expected is None:
-                update.message.reply_text("❌ Введите целое число больше 0.")
+                update.message.reply_text("вќЊ Р’РІРµРґРёС‚Рµ С†РµР»РѕРµ С‡РёСЃР»Рѕ Р±РѕР»СЊС€Рµ 0.")
                 return None
             source['expected_attachments'] = expected
     elif field == 'output':
         if user_input in ('-', ''):
             pass
         elif not user_input:
-            update.message.reply_text("❌ Шаблон не может быть пустым. Попробуйте снова:")
+            update.message.reply_text("вќЊ РЁР°Р±Р»РѕРЅ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return None
         else:
             source['output_template'] = user_input
     elif field == 'upload_subdir':
         if user_input in ('-', ''):
             pass
-        elif user_input.lower() in ('none', 'нет'):
+        elif user_input.lower() in ('none', 'РЅРµС‚'):
             source.pop('upload_subdir', None)
         else:
             source['upload_subdir'] = user_input
@@ -7195,7 +7195,7 @@ def supplier_stock_handle_mail_source_field_input(update, context):
         individual_dir = source.setdefault('individual_directory', {})
         if user_input in ('-', ''):
             pass
-        elif user_input.lower() in ('none', 'нет'):
+        elif user_input.lower() in ('none', 'РЅРµС‚'):
             individual_dir.pop('unc_path', None)
         else:
             individual_dir['unc_path'] = user_input
@@ -7203,7 +7203,7 @@ def supplier_stock_handle_mail_source_field_input(update, context):
         individual_dir = source.setdefault('individual_directory', {})
         if user_input in ('-', ''):
             pass
-        elif user_input.lower() in ('none', 'нет'):
+        elif user_input.lower() in ('none', 'РЅРµС‚'):
             individual_dir.pop('login', None)
         else:
             individual_dir['login'] = user_input
@@ -7211,12 +7211,12 @@ def supplier_stock_handle_mail_source_field_input(update, context):
         individual_dir = source.setdefault('individual_directory', {})
         if user_input in ('-', ''):
             pass
-        elif user_input.lower() in ('none', 'нет'):
+        elif user_input.lower() in ('none', 'РЅРµС‚'):
             individual_dir.pop('password', None)
         else:
             individual_dir['password'] = user_input
     else:
-        update.message.reply_text("❌ Не удалось определить поле настройки.")
+        update.message.reply_text("вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ РѕРїСЂРµРґРµР»РёС‚СЊ РїРѕР»Рµ РЅР°СЃС‚СЂРѕР№РєРё.")
         return None
 
     config["mail"]["sources"] = sources
@@ -7227,39 +7227,39 @@ def supplier_stock_handle_mail_source_field_input(update, context):
     _supplier_stock_close_prompt_message(context)
 
     update.message.reply_text(
-        "✅ Настройка обновлена.",
+        "вњ… РќР°СЃС‚СЂРѕР№РєР° РѕР±РЅРѕРІР»РµРЅР°.",
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_mail_source_settings|{source_id}')]
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=f'supplier_stock_mail_source_settings|{source_id}')]
         ])
     )
     return None
 
 
 def supplier_stock_handle_resource_input(update, context):
-    """Обработка ввода в мастере добавления ресурса выгрузки."""
+    """РћР±СЂР°Р±РѕС‚РєР° РІРІРѕРґР° РІ РјР°СЃС‚РµСЂРµ РґРѕР±Р°РІР»РµРЅРёСЏ СЂРµСЃСѓСЂСЃР° РІС‹РіСЂСѓР·РєРё."""
     stage = context.user_data.get('supplier_stock_resource_stage')
     resource_data = context.user_data.get('supplier_stock_resource_data', {})
     user_input = (update.message.text or "").strip()
 
     if stage == 'name':
         if not user_input:
-            update.message.reply_text("❌ Название не может быть пустым. Попробуйте снова:")
+            update.message.reply_text("вќЊ РќР°Р·РІР°РЅРёРµ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return None
         resource_data['name'] = user_input
         resource_data['id'] = _slugify_supplier_source_id(user_input)
         context.user_data['supplier_stock_resource_stage'] = 'unc_path'
         context.user_data['supplier_stock_resource_data'] = resource_data
-        update.message.reply_text("Введите UNC путь корневого каталога:")
+        update.message.reply_text("Р’РІРµРґРёС‚Рµ UNC РїСѓС‚СЊ РєРѕСЂРЅРµРІРѕРіРѕ РєР°С‚Р°Р»РѕРіР°:")
         return None
 
     if stage == 'unc_path':
         if not user_input:
-            update.message.reply_text("❌ UNC путь не может быть пустым. Попробуйте снова:")
+            update.message.reply_text("вќЊ UNC РїСѓС‚СЊ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return None
         resource_data['unc_path'] = user_input
         context.user_data['supplier_stock_resource_stage'] = 'login'
         context.user_data['supplier_stock_resource_data'] = resource_data
-        update.message.reply_text("Введите логин ресурса (или '-' чтобы пропустить):")
+        update.message.reply_text("Р’РІРµРґРёС‚Рµ Р»РѕРіРёРЅ СЂРµСЃСѓСЂСЃР° (РёР»Рё '-' С‡С‚РѕР±С‹ РїСЂРѕРїСѓСЃС‚РёС‚СЊ):")
         return None
 
     if stage == 'login':
@@ -7267,7 +7267,7 @@ def supplier_stock_handle_resource_input(update, context):
             resource_data['login'] = user_input
         context.user_data['supplier_stock_resource_stage'] = 'password'
         context.user_data['supplier_stock_resource_data'] = resource_data
-        update.message.reply_text("Введите пароль ресурса (или '-' чтобы пропустить):")
+        update.message.reply_text("Р’РІРµРґРёС‚Рµ РїР°СЂРѕР»СЊ СЂРµСЃСѓСЂСЃР° (РёР»Рё '-' С‡С‚РѕР±С‹ РїСЂРѕРїСѓСЃС‚РёС‚СЊ):")
         return None
 
     if stage == 'password':
@@ -7286,19 +7286,19 @@ def supplier_stock_handle_resource_input(update, context):
         context.user_data.pop('supplier_stock_resource_data', None)
 
         update.message.reply_text(
-            "✅ Ресурс добавлен.",
+            "вњ… Р РµСЃСѓСЂСЃ РґРѕР±Р°РІР»РµРЅ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_resources')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_resources')]
             ])
         )
         return None
 
-    update.message.reply_text("❌ Не удалось определить шаг мастера. Попробуйте снова.")
+    update.message.reply_text("вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ РѕРїСЂРµРґРµР»РёС‚СЊ С€Р°Рі РјР°СЃС‚РµСЂР°. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°.")
     return None
 
 
 def supplier_stock_handle_resource_field_input(update, context):
-    """Обработка ввода при редактировании ресурса выгрузки."""
+    """РћР±СЂР°Р±РѕС‚РєР° РІРІРѕРґР° РїСЂРё СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёРё СЂРµСЃСѓСЂСЃР° РІС‹РіСЂСѓР·РєРё."""
     field = context.user_data.get('supplier_stock_resource_field')
     resource_id = context.user_data.get('supplier_stock_resource_field_id')
     user_input = (update.message.text or "").strip()
@@ -7311,8 +7311,8 @@ def supplier_stock_handle_resource_field_input(update, context):
     resource = next((item for item in resources if str(item.get("id")) == resource_id), None)
 
     if not resource:
-        update.message.reply_text("❌ Ресурс не найден.", reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_resources')]
+        update.message.reply_text("вќЊ Р РµСЃСѓСЂСЃ РЅРµ РЅР°Р№РґРµРЅ.", reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_resources')]
         ]))
         return None
 
@@ -7320,7 +7320,7 @@ def supplier_stock_handle_resource_field_input(update, context):
         if user_input in ('-', ''):
             pass
         elif not user_input:
-            update.message.reply_text("❌ Название не может быть пустым. Попробуйте снова:")
+            update.message.reply_text("вќЊ РќР°Р·РІР°РЅРёРµ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return None
         else:
             resource['name'] = user_input
@@ -7328,26 +7328,26 @@ def supplier_stock_handle_resource_field_input(update, context):
         if user_input in ('-', ''):
             pass
         elif not user_input:
-            update.message.reply_text("❌ UNC путь не может быть пустым. Попробуйте снова:")
+            update.message.reply_text("вќЊ UNC РїСѓС‚СЊ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return None
         else:
             resource['unc_path'] = user_input
     elif field == 'login':
         if user_input in ('-', ''):
             pass
-        elif user_input.lower() in ('none', 'нет'):
+        elif user_input.lower() in ('none', 'РЅРµС‚'):
             resource.pop('login', None)
         else:
             resource['login'] = user_input
     elif field == 'password':
         if user_input in ('-', ''):
             pass
-        elif user_input.lower() in ('none', 'нет'):
+        elif user_input.lower() in ('none', 'РЅРµС‚'):
             resource.pop('password', None)
         else:
             resource['password'] = user_input
     else:
-        update.message.reply_text("❌ Не удалось определить поле настройки.")
+        update.message.reply_text("вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ РѕРїСЂРµРґРµР»РёС‚СЊ РїРѕР»Рµ РЅР°СЃС‚СЂРѕР№РєРё.")
         return None
 
     config["resources"] = resources
@@ -7358,16 +7358,16 @@ def supplier_stock_handle_resource_field_input(update, context):
     _supplier_stock_close_prompt_message(context)
 
     update.message.reply_text(
-        "✅ Настройка обновлена.",
+        "вњ… РќР°СЃС‚СЂРѕР№РєР° РѕР±РЅРѕРІР»РµРЅР°.",
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data=f'supplier_stock_resource_settings|{resource_id}')]
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=f'supplier_stock_resource_settings|{resource_id}')]
         ])
     )
     return None
 
 
 def supplier_stock_handle_ftp_input(update, context):
-    """Обработка ввода для настроек FTP ОРК."""
+    """РћР±СЂР°Р±РѕС‚РєР° РІРІРѕРґР° РґР»СЏ РЅР°СЃС‚СЂРѕРµРє FTP РћР Рљ."""
     field = context.user_data.get('supplier_stock_ftp_field')
     user_input = (update.message.text or "").strip()
 
@@ -7381,26 +7381,26 @@ def supplier_stock_handle_ftp_input(update, context):
         if user_input in ('-', ''):
             pass
         elif not user_input:
-            update.message.reply_text("❌ HOST FTP не может быть пустым. Попробуйте снова:")
+            update.message.reply_text("вќЊ HOST FTP РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return None
         else:
             ftp_settings['host'] = user_input
     elif field == 'login':
         if user_input in ('-', ''):
             pass
-        elif user_input.lower() in ('none', 'нет'):
+        elif user_input.lower() in ('none', 'РЅРµС‚'):
             ftp_settings.pop('login', None)
         else:
             ftp_settings['login'] = user_input
     elif field == 'password':
         if user_input in ('-', ''):
             pass
-        elif user_input.lower() in ('none', 'нет'):
+        elif user_input.lower() in ('none', 'РЅРµС‚'):
             ftp_settings.pop('password', None)
         else:
             ftp_settings['password'] = user_input
     else:
-        update.message.reply_text("❌ Не удалось определить поле настройки.")
+        update.message.reply_text("вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ РѕРїСЂРµРґРµР»РёС‚СЊ РїРѕР»Рµ РЅР°СЃС‚СЂРѕР№РєРё.")
         return None
 
     config["ftp_ork"] = ftp_settings
@@ -7410,45 +7410,45 @@ def supplier_stock_handle_ftp_input(update, context):
     _supplier_stock_close_prompt_message(context)
 
     update.message.reply_text(
-        "✅ Настройка обновлена.",
+        "вњ… РќР°СЃС‚СЂРѕР№РєР° РѕР±РЅРѕРІР»РµРЅР°.",
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_ftp')]
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_ftp')]
         ])
     )
     return None
 
 def supplier_stock_handle_source_input(update, context):
-    """Обработка ввода в мастере добавления источника."""
+    """РћР±СЂР°Р±РѕС‚РєР° РІРІРѕРґР° РІ РјР°СЃС‚РµСЂРµ РґРѕР±Р°РІР»РµРЅРёСЏ РёСЃС‚РѕС‡РЅРёРєР°."""
     stage = context.user_data.get('supplier_stock_source_stage')
     source_data = context.user_data.get('supplier_stock_source_data', {})
     user_input = update.message.text.strip()
 
     if stage == 'name':
         if not user_input:
-            update.message.reply_text("❌ Название не может быть пустым. Попробуйте снова:")
+            update.message.reply_text("вќЊ РќР°Р·РІР°РЅРёРµ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return None
         source_data['name'] = user_input
         source_data['id'] = _slugify_supplier_source_id(user_input)
         context.user_data['supplier_stock_source_stage'] = 'url'
         context.user_data['supplier_stock_source_data'] = source_data
         update.message.reply_text(
-            "Введите URL для скачивания. "
-            "Можно использовать переменные формата подстановки вида {abc} "
-            "для дальнейшей подмены значений."
+            "Р’РІРµРґРёС‚Рµ URL РґР»СЏ СЃРєР°С‡РёРІР°РЅРёСЏ. "
+            "РњРѕР¶РЅРѕ РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ РїРµСЂРµРјРµРЅРЅС‹Рµ С„РѕСЂРјР°С‚Р° РїРѕРґСЃС‚Р°РЅРѕРІРєРё РІРёРґР° {abc} "
+            "РґР»СЏ РґР°Р»СЊРЅРµР№С€РµР№ РїРѕРґРјРµРЅС‹ Р·РЅР°С‡РµРЅРёР№."
         )
         return None
 
     if stage == 'url':
         if not user_input:
-            update.message.reply_text("❌ URL не может быть пустым. Попробуйте снова:")
+            update.message.reply_text("вќЊ URL РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return None
         source_data['url'] = user_input
         context.user_data['supplier_stock_source_stage'] = 'discover'
         context.user_data['supplier_stock_source_data'] = source_data
         update.message.reply_text(
-            "Если нужно искать ссылку на странице, введите URL, regex и префикс через '|'.\n"
-            "Пример: http://site/page | ostatki_msk_ot_[^\"']*\\.xls | http://site/f/\n"
-            "Введите '-' если не нужно:"
+            "Р•СЃР»Рё РЅСѓР¶РЅРѕ РёСЃРєР°С‚СЊ СЃСЃС‹Р»РєСѓ РЅР° СЃС‚СЂР°РЅРёС†Рµ, РІРІРµРґРёС‚Рµ URL, regex Рё РїСЂРµС„РёРєСЃ С‡РµСЂРµР· '|'.\n"
+            "РџСЂРёРјРµСЂ: http://site/page | ostatki_msk_ot_[^\"']*\\.xls | http://site/f/\n"
+            "Р’РІРµРґРёС‚Рµ '-' РµСЃР»Рё РЅРµ РЅСѓР¶РЅРѕ:"
         )
         return None
 
@@ -7457,7 +7457,7 @@ def supplier_stock_handle_source_input(update, context):
             discover = _parse_supplier_discover(user_input)
             if discover is None:
                 update.message.reply_text(
-                    "❌ Формат должен быть URL | regex | prefix (префикс можно оставить пустым)."
+                    "вќЊ Р¤РѕСЂРјР°С‚ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ URL | regex | prefix (РїСЂРµС„РёРєСЃ РјРѕР¶РЅРѕ РѕСЃС‚Р°РІРёС‚СЊ РїСѓСЃС‚С‹Рј)."
                 )
                 return None
             source_data['discover'] = discover
@@ -7465,9 +7465,9 @@ def supplier_stock_handle_source_input(update, context):
         context.user_data['supplier_stock_source_stage'] = 'vars'
         context.user_data['supplier_stock_source_data'] = source_data
         update.message.reply_text(
-            "Введите ранее указанные переменные подстановки в формате key=value через запятую "
-            "(пример: abc=DKC_Maga_Del_1200_$(date '%d.%m.%Y').zip). "
-            "Введите '-' если не нужно:"
+            "Р’РІРµРґРёС‚Рµ СЂР°РЅРµРµ СѓРєР°Р·Р°РЅРЅС‹Рµ РїРµСЂРµРјРµРЅРЅС‹Рµ РїРѕРґСЃС‚Р°РЅРѕРІРєРё РІ С„РѕСЂРјР°С‚Рµ key=value С‡РµСЂРµР· Р·Р°РїСЏС‚СѓСЋ "
+            "(РїСЂРёРјРµСЂ: abc=DKC_Maga_Del_1200_$(date '%d.%m.%Y').zip). "
+            "Р’РІРµРґРёС‚Рµ '-' РµСЃР»Рё РЅРµ РЅСѓР¶РЅРѕ:"
         )
         return None
 
@@ -7475,34 +7475,34 @@ def supplier_stock_handle_source_input(update, context):
         if user_input not in ('-', ''):
             vars_map = _parse_supplier_vars(user_input)
             if vars_map is None:
-                update.message.reply_text("❌ Формат должен быть key=value, разделители запятая/новая строка.")
+                update.message.reply_text("вќЊ Р¤РѕСЂРјР°С‚ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ key=value, СЂР°Р·РґРµР»РёС‚РµР»Рё Р·Р°РїСЏС‚Р°СЏ/РЅРѕРІР°СЏ СЃС‚СЂРѕРєР°.")
                 return None
             source_data['vars'] = vars_map
 
         context.user_data['supplier_stock_source_stage'] = 'output_name'
         context.user_data['supplier_stock_source_data'] = source_data
         update.message.reply_text(
-            "Введите имя файла назначения (например: dkc_orig.zip):"
+            "Р’РІРµРґРёС‚Рµ РёРјСЏ С„Р°Р№Р»Р° РЅР°Р·РЅР°С‡РµРЅРёСЏ (РЅР°РїСЂРёРјРµСЂ: dkc_orig.zip):"
         )
         return None
 
     if stage == 'output_name':
         if not user_input:
-            update.message.reply_text("❌ Имя файла не может быть пустым. Попробуйте снова:")
+            update.message.reply_text("вќЊ РРјСЏ С„Р°Р№Р»Р° РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return None
         source_data['output_name'] = user_input
         context.user_data['supplier_stock_source_stage'] = 'auth'
         context.user_data['supplier_stock_source_data'] = source_data
         update.message.reply_text(
-            "Введите логин и пароль через двоеточие (login:password) "
-            "или '-' чтобы пропустить и сохранить:"
+            "Р’РІРµРґРёС‚Рµ Р»РѕРіРёРЅ Рё РїР°СЂРѕР»СЊ С‡РµСЂРµР· РґРІРѕРµС‚РѕС‡РёРµ (login:password) "
+            "РёР»Рё '-' С‡С‚РѕР±С‹ РїСЂРѕРїСѓСЃС‚РёС‚СЊ Рё СЃРѕС…СЂР°РЅРёС‚СЊ:"
         )
         return None
 
     if stage == 'auth':
-        if user_input not in ('-', 'нет', 'Нет', 'none', 'None'):
+        if user_input not in ('-', 'РЅРµС‚', 'РќРµС‚', 'none', 'None'):
             if ':' not in user_input:
-                update.message.reply_text("❌ Формат должен быть login:password или '-'. Попробуйте снова:")
+                update.message.reply_text("вќЊ Р¤РѕСЂРјР°С‚ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ login:password РёР»Рё '-'. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
                 return None
             username, password = user_input.split(':', 1)
             source_data['auth'] = {'username': username, 'password': password}
@@ -7510,10 +7510,10 @@ def supplier_stock_handle_source_input(update, context):
         context.user_data['supplier_stock_source_stage'] = 'pre_request'
         context.user_data['supplier_stock_source_data'] = source_data
         update.message.reply_text(
-            "Если нужен предварительный POST-запрос для авторизации, "
-            "введите URL и данные через '|'.\n"
-            "Пример: http://www.owen.ru/dealers | login=...&password=...&iTask=login\n"
-            "Введите '-' если не нужно:"
+            "Р•СЃР»Рё РЅСѓР¶РµРЅ РїСЂРµРґРІР°СЂРёС‚РµР»СЊРЅС‹Р№ POST-Р·Р°РїСЂРѕСЃ РґР»СЏ Р°РІС‚РѕСЂРёР·Р°С†РёРё, "
+            "РІРІРµРґРёС‚Рµ URL Рё РґР°РЅРЅС‹Рµ С‡РµСЂРµР· '|'.\n"
+            "РџСЂРёРјРµСЂ: http://www.owen.ru/dealers | login=...&password=...&iTask=login\n"
+            "Р’РІРµРґРёС‚Рµ '-' РµСЃР»Рё РЅРµ РЅСѓР¶РЅРѕ:"
         )
         return None
 
@@ -7522,7 +7522,7 @@ def supplier_stock_handle_source_input(update, context):
             pre_request = _parse_supplier_pre_request(user_input)
             if pre_request is None:
                 update.message.reply_text(
-                    "❌ Формат должен быть URL | данные. Попробуйте снова или введите '-'."
+                    "вќЊ Р¤РѕСЂРјР°С‚ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ URL | РґР°РЅРЅС‹Рµ. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР° РёР»Рё РІРІРµРґРёС‚Рµ '-'."
                 )
                 return None
             source_data['pre_request'] = pre_request
@@ -7530,9 +7530,9 @@ def supplier_stock_handle_source_input(update, context):
         context.user_data['supplier_stock_source_stage'] = 'options'
         context.user_data['supplier_stock_source_data'] = source_data
         update.message.reply_text(
-            "Введите дополнительные параметры сохранения: headers (с заголовками), append (дописывать).\n"
-            "Пример: headers, append\n"
-            "Введите '-' если не нужно:"
+            "Р’РІРµРґРёС‚Рµ РґРѕРїРѕР»РЅРёС‚РµР»СЊРЅС‹Рµ РїР°СЂР°РјРµС‚СЂС‹ СЃРѕС…СЂР°РЅРµРЅРёСЏ: headers (СЃ Р·Р°РіРѕР»РѕРІРєР°РјРё), append (РґРѕРїРёСЃС‹РІР°С‚СЊ).\n"
+            "РџСЂРёРјРµСЂ: headers, append\n"
+            "Р’РІРµРґРёС‚Рµ '-' РµСЃР»Рё РЅРµ РЅСѓР¶РЅРѕ:"
         )
         return None
 
@@ -7541,7 +7541,7 @@ def supplier_stock_handle_source_input(update, context):
             options = _parse_supplier_options(user_input)
             if options is None:
                 update.message.reply_text(
-                    "❌ Формат должен быть списком через запятую (headers, append)."
+                    "вќЊ Р¤РѕСЂРјР°С‚ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ СЃРїРёСЃРєРѕРј С‡РµСЂРµР· Р·Р°РїСЏС‚СѓСЋ (headers, append)."
                 )
                 return None
             source_data.update(options)
@@ -7562,18 +7562,18 @@ def supplier_stock_handle_source_input(update, context):
         context.user_data.pop('supplier_stock_source_data', None)
 
         update.message.reply_text(
-            "✅ Источник добавлен.",
+            "вњ… РСЃС‚РѕС‡РЅРёРє РґРѕР±Р°РІР»РµРЅ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_sources')]
             ])
         )
         return None
 
-    update.message.reply_text("❌ Не удалось определить шаг мастера. Попробуйте снова.")
+    update.message.reply_text("вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ РѕРїСЂРµРґРµР»РёС‚СЊ С€Р°Рі РјР°СЃС‚РµСЂР°. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°.")
     return None
 
 def supplier_stock_handle_source_edit_input(update, context):
-    """Обработка ввода при редактировании источника остатков."""
+    """РћР±СЂР°Р±РѕС‚РєР° РІРІРѕРґР° РїСЂРё СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёРё РёСЃС‚РѕС‡РЅРёРєР° РѕСЃС‚Р°С‚РєРѕРІ."""
     stage = context.user_data.get('supplier_stock_edit_source_stage')
     source_id = context.user_data.get('supplier_stock_edit_source_id')
     user_input = update.message.text.strip()
@@ -7583,8 +7583,8 @@ def supplier_stock_handle_source_edit_input(update, context):
     source = next((item for item in sources if str(item.get("id")) == source_id), None)
 
     if not source:
-        update.message.reply_text("❌ Источник не найден.", reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources')]
+        update.message.reply_text("вќЊ РСЃС‚РѕС‡РЅРёРє РЅРµ РЅР°Р№РґРµРЅ.", reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_sources')]
         ]))
         return None
 
@@ -7595,9 +7595,9 @@ def supplier_stock_handle_source_edit_input(update, context):
             save_supplier_stock_config(config)
         context.user_data['supplier_stock_edit_source_stage'] = 'url'
         update.message.reply_text(
-            "Введите новый URL (или '-' чтобы оставить текущее). "
-            "Можно использовать переменные формата подстановки вида {abc} "
-            "для дальнейшей подмены значений:\n"
+            "Р’РІРµРґРёС‚Рµ РЅРѕРІС‹Р№ URL (РёР»Рё '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ С‚РµРєСѓС‰РµРµ). "
+            "РњРѕР¶РЅРѕ РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ РїРµСЂРµРјРµРЅРЅС‹Рµ С„РѕСЂРјР°С‚Р° РїРѕРґСЃС‚Р°РЅРѕРІРєРё РІРёРґР° {abc} "
+            "РґР»СЏ РґР°Р»СЊРЅРµР№С€РµР№ РїРѕРґРјРµРЅС‹ Р·РЅР°С‡РµРЅРёР№:\n"
             f"{source.get('url')}"
         )
         return None
@@ -7609,14 +7609,14 @@ def supplier_stock_handle_source_edit_input(update, context):
             save_supplier_stock_config(config)
         context.user_data['supplier_stock_edit_source_stage'] = 'discover'
         update.message.reply_text(
-            "Введите параметры поиска ссылки на странице в формате URL | regex | prefix, "
-            "'-' чтобы оставить текущее или 'none' чтобы очистить.\n"
-            "Пример: http://site/page | ostatki_msk_ot_[^\"']*\\.xls | http://site/f/"
+            "Р’РІРµРґРёС‚Рµ РїР°СЂР°РјРµС‚СЂС‹ РїРѕРёСЃРєР° СЃСЃС‹Р»РєРё РЅР° СЃС‚СЂР°РЅРёС†Рµ РІ С„РѕСЂРјР°С‚Рµ URL | regex | prefix, "
+            "'-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ С‚РµРєСѓС‰РµРµ РёР»Рё 'none' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ.\n"
+            "РџСЂРёРјРµСЂ: http://site/page | ostatki_msk_ot_[^\"']*\\.xls | http://site/f/"
         )
         return None
 
     if stage == 'discover':
-        if user_input.lower() in ('none', 'нет'):
+        if user_input.lower() in ('none', 'РЅРµС‚'):
             source.pop('discover', None)
             config["download"]["sources"] = sources
             save_supplier_stock_config(config)
@@ -7624,7 +7624,7 @@ def supplier_stock_handle_source_edit_input(update, context):
             discover = _parse_supplier_discover(user_input)
             if discover is None:
                 update.message.reply_text(
-                    "❌ Формат должен быть URL | regex | prefix, '-' или 'none'. Попробуйте снова:"
+                    "вќЊ Р¤РѕСЂРјР°С‚ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ URL | regex | prefix, '-' РёР»Рё 'none'. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:"
                 )
                 return None
             source['discover'] = discover
@@ -7633,21 +7633,21 @@ def supplier_stock_handle_source_edit_input(update, context):
 
         context.user_data['supplier_stock_edit_source_stage'] = 'vars'
         update.message.reply_text(
-            "Введите ранее указанные переменные подстановки в формате key=value через запятую "
-            "(пример: abc=DKC_Maga_Del_1200_$(date '%d.%m.%Y').zip). "
-            "'-' чтобы оставить текущее или 'none' чтобы очистить:"
+            "Р’РІРµРґРёС‚Рµ СЂР°РЅРµРµ СѓРєР°Р·Р°РЅРЅС‹Рµ РїРµСЂРµРјРµРЅРЅС‹Рµ РїРѕРґСЃС‚Р°РЅРѕРІРєРё РІ С„РѕСЂРјР°С‚Рµ key=value С‡РµСЂРµР· Р·Р°РїСЏС‚СѓСЋ "
+            "(РїСЂРёРјРµСЂ: abc=DKC_Maga_Del_1200_$(date '%d.%m.%Y').zip). "
+            "'-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ С‚РµРєСѓС‰РµРµ РёР»Рё 'none' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ:"
         )
         return None
 
     if stage == 'vars':
-        if user_input.lower() in ('none', 'нет'):
+        if user_input.lower() in ('none', 'РЅРµС‚'):
             source.pop('vars', None)
             config["download"]["sources"] = sources
             save_supplier_stock_config(config)
         elif user_input not in ('-',):
             vars_map = _parse_supplier_vars(user_input)
             if vars_map is None:
-                update.message.reply_text("❌ Формат должен быть key=value, разделители запятая/новая строка.")
+                update.message.reply_text("вќЊ Р¤РѕСЂРјР°С‚ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ key=value, СЂР°Р·РґРµР»РёС‚РµР»Рё Р·Р°РїСЏС‚Р°СЏ/РЅРѕРІР°СЏ СЃС‚СЂРѕРєР°.")
                 return None
             source['vars'] = vars_map
             config["download"]["sources"] = sources
@@ -7655,8 +7655,8 @@ def supplier_stock_handle_source_edit_input(update, context):
 
         context.user_data['supplier_stock_edit_source_stage'] = 'output_name'
         update.message.reply_text(
-            f"Текущий файл назначения: {source.get('output_name')}\n"
-            "Введите новое имя файла назначения (или '-' чтобы оставить текущее):"
+            f"РўРµРєСѓС‰РёР№ С„Р°Р№Р» РЅР°Р·РЅР°С‡РµРЅРёСЏ: {source.get('output_name')}\n"
+            "Р’РІРµРґРёС‚Рµ РЅРѕРІРѕРµ РёРјСЏ С„Р°Р№Р»Р° РЅР°Р·РЅР°С‡РµРЅРёСЏ (РёР»Рё '-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ С‚РµРєСѓС‰РµРµ):"
         )
         return None
 
@@ -7667,17 +7667,17 @@ def supplier_stock_handle_source_edit_input(update, context):
             save_supplier_stock_config(config)
         context.user_data['supplier_stock_edit_source_stage'] = 'auth'
         update.message.reply_text(
-            "Введите логин и пароль через двоеточие (login:password), "
-            "'-' чтобы оставить текущее или 'none' чтобы очистить:"
+            "Р’РІРµРґРёС‚Рµ Р»РѕРіРёРЅ Рё РїР°СЂРѕР»СЊ С‡РµСЂРµР· РґРІРѕРµС‚РѕС‡РёРµ (login:password), "
+            "'-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ С‚РµРєСѓС‰РµРµ РёР»Рё 'none' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ:"
         )
         return None
 
     if stage == 'auth':
-        if user_input.lower() in ('none', 'нет'):
+        if user_input.lower() in ('none', 'РЅРµС‚'):
             source.pop('auth', None)
         elif user_input not in ('-',):
             if ':' not in user_input:
-                update.message.reply_text("❌ Формат должен быть login:password, '-' или 'none'. Попробуйте снова:")
+                update.message.reply_text("вќЊ Р¤РѕСЂРјР°С‚ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ login:password, '-' РёР»Рё 'none'. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
                 return None
             username, password = user_input.split(':', 1)
             source['auth'] = {'username': username, 'password': password}
@@ -7689,20 +7689,20 @@ def supplier_stock_handle_source_edit_input(update, context):
         current_pre_url = current_pre.get("url", "-")
         current_pre_data = current_pre.get("data", "-")
         update.message.reply_text(
-            "Введите предварительный POST-запрос для авторизации в формате URL | данные, "
-            "'-' чтобы оставить текущее или 'none' чтобы очистить.\n"
-            f"Текущее значение: {current_pre_url} | {current_pre_data}"
+            "Р’РІРµРґРёС‚Рµ РїСЂРµРґРІР°СЂРёС‚РµР»СЊРЅС‹Р№ POST-Р·Р°РїСЂРѕСЃ РґР»СЏ Р°РІС‚РѕСЂРёР·Р°С†РёРё РІ С„РѕСЂРјР°С‚Рµ URL | РґР°РЅРЅС‹Рµ, "
+            "'-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ С‚РµРєСѓС‰РµРµ РёР»Рё 'none' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ.\n"
+            f"РўРµРєСѓС‰РµРµ Р·РЅР°С‡РµРЅРёРµ: {current_pre_url} | {current_pre_data}"
         )
         return None
 
     if stage == 'pre_request':
-        if user_input.lower() in ('none', 'нет'):
+        if user_input.lower() in ('none', 'РЅРµС‚'):
             source.pop('pre_request', None)
         elif user_input not in ('-',):
             pre_request = _parse_supplier_pre_request(user_input)
             if pre_request is None:
                 update.message.reply_text(
-                    "❌ Формат должен быть URL | данные, '-' или 'none'. Попробуйте снова:"
+                    "вќЊ Р¤РѕСЂРјР°С‚ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ URL | РґР°РЅРЅС‹Рµ, '-' РёР»Рё 'none'. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:"
                 )
                 return None
             source['pre_request'] = pre_request
@@ -7718,21 +7718,21 @@ def supplier_stock_handle_source_edit_input(update, context):
             current_options.append("append")
         current_label = ", ".join(current_options) if current_options else "-"
         update.message.reply_text(
-            "Введите дополнительные параметры сохранения: headers (с заголовками), append (дописывать). "
-            "'-' чтобы оставить текущее или 'none' чтобы очистить.\n"
-            f"Текущее значение: {current_label}"
+            "Р’РІРµРґРёС‚Рµ РґРѕРїРѕР»РЅРёС‚РµР»СЊРЅС‹Рµ РїР°СЂР°РјРµС‚СЂС‹ СЃРѕС…СЂР°РЅРµРЅРёСЏ: headers (СЃ Р·Р°РіРѕР»РѕРІРєР°РјРё), append (РґРѕРїРёСЃС‹РІР°С‚СЊ). "
+            "'-' С‡С‚РѕР±С‹ РѕСЃС‚Р°РІРёС‚СЊ С‚РµРєСѓС‰РµРµ РёР»Рё 'none' С‡С‚РѕР±С‹ РѕС‡РёСЃС‚РёС‚СЊ.\n"
+            f"РўРµРєСѓС‰РµРµ Р·РЅР°С‡РµРЅРёРµ: {current_label}"
         )
         return None
 
     if stage == 'options':
-        if user_input.lower() in ('none', 'нет'):
+        if user_input.lower() in ('none', 'РЅРµС‚'):
             source.pop('include_headers', None)
             source.pop('append', None)
         elif user_input not in ('-',):
             options = _parse_supplier_options(user_input)
             if options is None:
                 update.message.reply_text(
-                    "❌ Формат должен быть списком через запятую (headers, append), '-' или 'none'."
+                    "вќЊ Р¤РѕСЂРјР°С‚ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ СЃРїРёСЃРєРѕРј С‡РµСЂРµР· Р·Р°РїСЏС‚СѓСЋ (headers, append), '-' РёР»Рё 'none'."
                 )
                 return None
             source.update(options)
@@ -7745,14 +7745,14 @@ def supplier_stock_handle_source_edit_input(update, context):
         context.user_data.pop('supplier_stock_edit_source_id', None)
 
         update.message.reply_text(
-            "✅ Источник обновлен.",
+            "вњ… РСЃС‚РѕС‡РЅРёРє РѕР±РЅРѕРІР»РµРЅ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='supplier_stock_sources')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='supplier_stock_sources')]
             ])
         )
         return None
 
-    update.message.reply_text("❌ Не удалось определить шаг редактирования. Попробуйте снова.")
+    update.message.reply_text("вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ РѕРїСЂРµРґРµР»РёС‚СЊ С€Р°Рі СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёСЏ. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°.")
     return None
 
 def _slugify_supplier_source_id(value: str) -> str:
@@ -7772,9 +7772,9 @@ def _parse_yes_no(value: str) -> bool | None:
     if not value:
         return None
     lowered = value.strip().lower()
-    if lowered in ('да', 'yes', 'y', 'true', '1'):
+    if lowered in ('РґР°', 'yes', 'y', 'true', '1'):
         return True
-    if lowered in ('нет', 'no', 'n', 'false', '0'):
+    if lowered in ('РЅРµС‚', 'no', 'n', 'false', '0'):
         return False
     return None
 
@@ -7782,7 +7782,7 @@ def _normalize_supplier_processing_mode(value: str) -> str | None:
     if not value:
         return None
     lowered = value.strip().lower()
-    if lowered in ("table", "табличный", "таблица"):
+    if lowered in ("table", "С‚Р°Р±Р»РёС‡РЅС‹Р№", "С‚Р°Р±Р»РёС†Р°"):
         return "table"
     if lowered in ("iek_json", "iek", "json"):
         return "iek_json"
@@ -7852,8 +7852,8 @@ def _supplier_stock_finish_variant(update, context, data: dict):
         context.user_data.pop('supplier_stock_processing_output_names', None)
         context.user_data.pop('supplier_stock_processing_current_variant', None)
         update.message.reply_text(
-            f"Настройка варианта {current_index + 1} из {total}.\n"
-            "Введите номер колонки с артикулом:"
+            f"РќР°СЃС‚СЂРѕР№РєР° РІР°СЂРёР°РЅС‚Р° {current_index + 1} РёР· {total}.\n"
+            "Р’РІРµРґРёС‚Рµ РЅРѕРјРµСЂ РєРѕР»РѕРЅРєРё СЃ Р°СЂС‚РёРєСѓР»РѕРј:"
         )
         return None
 
@@ -7861,9 +7861,9 @@ def _supplier_stock_finish_variant(update, context, data: dict):
     _save_supplier_stock_processing_rule(context, data, edit_id=edit_id)
     back_callback = context.user_data.get('supplier_stock_processing_back', 'supplier_stock_processing')
     update.message.reply_text(
-        "✅ Правило обработки сохранено.",
+        "вњ… РџСЂР°РІРёР»Рѕ РѕР±СЂР°Р±РѕС‚РєРё СЃРѕС…СЂР°РЅРµРЅРѕ.",
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)]
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=back_callback)]
         ])
     )
     return None
@@ -7927,7 +7927,7 @@ def _parse_supplier_options(raw_value: str) -> dict | None:
     for part in parts:
         if part in ("headers", "header"):
             options["include_headers"] = True
-        elif part in ("append", "дописать"):
+        elif part in ("append", "РґРѕРїРёСЃР°С‚СЊ"):
             options["append"] = True
         else:
             return None
@@ -7948,7 +7948,7 @@ def _enable_all_extensions_settings(query):
         success, _ = extension_manager.enable_extension(ext_id)
         if success:
             enabled += 1
-    query.answer(f"✅ Включено {enabled} расширений")
+    query.answer(f"вњ… Р’РєР»СЋС‡РµРЅРѕ {enabled} СЂР°СЃС€РёСЂРµРЅРёР№")
 
 def _disable_all_extensions_settings(query):
     disabled = 0
@@ -7956,50 +7956,50 @@ def _disable_all_extensions_settings(query):
         success, _ = extension_manager.disable_extension(ext_id)
         if success:
             disabled += 1
-    query.answer(f"✅ Отключено {disabled} расширений")
+    query.answer(f"вњ… РћС‚РєР»СЋС‡РµРЅРѕ {disabled} СЂР°СЃС€РёСЂРµРЅРёР№")
 
 def show_db_patterns_menu(update, context):
-    """Показать паттерны для БД"""
+    """РџРѕРєР°Р·Р°С‚СЊ РїР°С‚С‚РµСЂРЅС‹ РґР»СЏ Р‘Р”"""
     context.user_data['patterns_filter'] = 'db'
     context.user_data['patterns_back'] = 'settings_ext_backup_db'
     context.user_data['patterns_add'] = 'add_pattern'
-    context.user_data['patterns_title'] = "🗃️ *Паттерны бэкапов БД*"
+    context.user_data['patterns_title'] = "рџ—ѓпёЏ *РџР°С‚С‚РµСЂРЅС‹ Р±СЌРєР°РїРѕРІ Р‘Р”*"
     view_patterns_handler(update, context)
 
 def show_proxmox_patterns_menu(update, context):
-    """Показать паттерны для Proxmox"""
+    """РџРѕРєР°Р·Р°С‚СЊ РїР°С‚С‚РµСЂРЅС‹ РґР»СЏ Proxmox"""
     context.user_data['patterns_filter'] = 'proxmox'
     context.user_data['patterns_back'] = 'settings_ext_backup_proxmox'
     context.user_data['patterns_add'] = 'add_proxmox_pattern'
-    context.user_data['patterns_title'] = "🖥️ *Паттерны бэкапов Proxmox*"
+    context.user_data['patterns_title'] = "рџ–ҐпёЏ *РџР°С‚С‚РµСЂРЅС‹ Р±СЌРєР°РїРѕРІ Proxmox*"
     view_patterns_handler(update, context)
 
 def show_zfs_patterns_menu(update, context):
-    """Показать паттерны для ZFS"""
+    """РџРѕРєР°Р·Р°С‚СЊ РїР°С‚С‚РµСЂРЅС‹ РґР»СЏ ZFS"""
     context.user_data['patterns_filter'] = 'zfs'
     context.user_data['patterns_back'] = 'settings_zfs'
     context.user_data['patterns_add'] = 'add_zfs_pattern'
-    context.user_data['patterns_title'] = "🧊 *Паттерны ZFS*"
+    context.user_data['patterns_title'] = "рџ§Љ *РџР°С‚С‚РµСЂРЅС‹ ZFS*"
     view_patterns_handler(update, context)
 
 def show_mail_patterns_menu(update, context):
-    """Показать паттерны для бэкапов почты"""
+    """РџРѕРєР°Р·Р°С‚СЊ РїР°С‚С‚РµСЂРЅС‹ РґР»СЏ Р±СЌРєР°РїРѕРІ РїРѕС‡С‚С‹"""
     context.user_data['patterns_filter'] = 'mail'
     context.user_data['patterns_back'] = 'settings_ext_backup_mail'
     context.user_data['patterns_add'] = 'add_mail_pattern'
-    context.user_data['patterns_title'] = "📬 *Паттерны бэкапов почты*"
+    context.user_data['patterns_title'] = "рџ“¬ *РџР°С‚С‚РµСЂРЅС‹ Р±СЌРєР°РїРѕРІ РїРѕС‡С‚С‹*"
     view_patterns_handler(update, context)
 
 def show_stock_load_patterns_menu(update, context):
-    """Показать паттерны для загрузки остатков."""
+    """РџРѕРєР°Р·Р°С‚СЊ РїР°С‚С‚РµСЂРЅС‹ РґР»СЏ Р·Р°РіСЂСѓР·РєРё РѕСЃС‚Р°С‚РєРѕРІ."""
     context.user_data['patterns_filter'] = 'stock_load'
     context.user_data['patterns_back'] = 'settings_ext_stock_load'
     context.user_data['patterns_add'] = 'add_stock_pattern'
-    context.user_data['patterns_title'] = "📦 *Паттерны загрузки остатков*"
+    context.user_data['patterns_title'] = "рџ“¦ *РџР°С‚С‚РµСЂРЅС‹ Р·Р°РіСЂСѓР·РєРё РѕСЃС‚Р°С‚РєРѕРІ*"
     view_patterns_handler(update, context)
 
 def show_backup_proxmox_settings(update, context):
-    """Показать настройки бэкапов Proxmox"""
+    """РџРѕРєР°Р·Р°С‚СЊ РЅР°СЃС‚СЂРѕР№РєРё Р±СЌРєР°РїРѕРІ Proxmox"""
     query = update.callback_query
     query.answer()
 
@@ -8007,20 +8007,20 @@ def show_backup_proxmox_settings(update, context):
     if not isinstance(proxmox_hosts, dict):
         proxmox_hosts = {}
 
-    message = "🖥️ *Бэкапы Proxmox*\n\n"
+    message = "рџ–ҐпёЏ *Р‘СЌРєР°РїС‹ Proxmox*\n\n"
     if not proxmox_hosts:
-        message += "❌ Хосты не настроены.\n\n"
+        message += "вќЊ РҐРѕСЃС‚С‹ РЅРµ РЅР°СЃС‚СЂРѕРµРЅС‹.\n\n"
     else:
-        message += f"Хостов в списке: {len(proxmox_hosts)}\n\n"
+        message += f"РҐРѕСЃС‚РѕРІ РІ СЃРїРёСЃРєРµ: {len(proxmox_hosts)}\n\n"
 
-    message += "Выберите действие:"
+    message += "Р’С‹Р±РµСЂРёС‚Рµ РґРµР№СЃС‚РІРёРµ:"
 
     keyboard = [
-        [InlineKeyboardButton("📋 Список хостов", callback_data='settings_proxmox_list')],
-        [InlineKeyboardButton("➕ Добавить хост", callback_data='settings_proxmox_add')],
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_backup_proxmox'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("рџ“‹ РЎРїРёСЃРѕРє С…РѕСЃС‚РѕРІ", callback_data='settings_proxmox_list')],
+        [InlineKeyboardButton("вћ• Р”РѕР±Р°РІРёС‚СЊ С…РѕСЃС‚", callback_data='settings_proxmox_add')],
+        [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_ext_backup_proxmox'),
+         InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
     ]
 
     query.edit_message_text(
@@ -8030,7 +8030,7 @@ def show_backup_proxmox_settings(update, context):
     )
 
 def show_proxmox_hosts_list(update, context):
-    """Показать список хостов Proxmox"""
+    """РџРѕРєР°Р·Р°С‚СЊ СЃРїРёСЃРѕРє С…РѕСЃС‚РѕРІ Proxmox"""
     query = update.callback_query
     query.answer()
 
@@ -8038,16 +8038,16 @@ def show_proxmox_hosts_list(update, context):
     if not isinstance(proxmox_hosts, dict):
         proxmox_hosts = {}
 
-    message = "📋 *Хосты Proxmox*\n\n"
+    message = "рџ“‹ *РҐРѕСЃС‚С‹ Proxmox*\n\n"
     if not proxmox_hosts:
-        message += "❌ Хосты не настроены."
+        message += "вќЊ РҐРѕСЃС‚С‹ РЅРµ РЅР°СЃС‚СЂРѕРµРЅС‹."
     else:
         for host_name in sorted(proxmox_hosts.keys()):
             host_value = proxmox_hosts.get(host_name)
             enabled = True
             if isinstance(host_value, dict):
                 enabled = host_value.get('enabled', True)
-            status_icon = "🟢" if enabled else "🔴"
+            status_icon = "рџџў" if enabled else "рџ”ґ"
             message += f"{status_icon} `{host_name}`\n"
 
     keyboard = []
@@ -8056,14 +8056,14 @@ def show_proxmox_hosts_list(update, context):
         enabled = True
         if isinstance(host_value, dict):
             enabled = host_value.get('enabled', True)
-        toggle_text = "⛔️ Отключить" if enabled else "✅ Включить"
+        toggle_text = "в›”пёЏ РћС‚РєР»СЋС‡РёС‚СЊ" if enabled else "вњ… Р’РєР»СЋС‡РёС‚СЊ"
         keyboard.append([
             InlineKeyboardButton(
-                f"✏️ {host_name}",
+                f"вњЏпёЏ {host_name}",
                 callback_data=f"settings_proxmox_edit_{host_name}"
             ),
             InlineKeyboardButton(
-                f"🗑️ {host_name}",
+                f"рџ—‘пёЏ {host_name}",
                 callback_data=f"settings_proxmox_delete_{host_name}"
             ),
         ])
@@ -8075,9 +8075,9 @@ def show_proxmox_hosts_list(update, context):
         ])
 
     keyboard.append([
-        InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
-        InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox'),
-        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+        InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu'),
+        InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_backup_proxmox'),
+        InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')
     ])
 
     query.edit_message_text(
@@ -8087,25 +8087,25 @@ def show_proxmox_hosts_list(update, context):
     )
 
 def add_proxmox_host_handler(update, context):
-    """Добавить хост Proxmox"""
+    """Р”РѕР±Р°РІРёС‚СЊ С…РѕСЃС‚ Proxmox"""
     query = update.callback_query
     query.answer()
 
     context.user_data['adding_proxmox_host'] = True
 
     query.edit_message_text(
-        "➕ *Добавление Proxmox хоста*\n\n"
-        "Введите имя хоста (как в письмах бэкапов):",
+        "вћ• *Р”РѕР±Р°РІР»РµРЅРёРµ Proxmox С…РѕСЃС‚Р°*\n\n"
+        "Р’РІРµРґРёС‚Рµ РёРјСЏ С…РѕСЃС‚Р° (РєР°Рє РІ РїРёСЃСЊРјР°С… Р±СЌРєР°РїРѕРІ):",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data='settings_backup_proxmox'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='settings_backup_proxmox'),
+             InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
         ])
     )
 
 def delete_proxmox_host(update, context, host_name):
-    """Удалить хост Proxmox"""
+    """РЈРґР°Р»РёС‚СЊ С…РѕСЃС‚ Proxmox"""
     query = update.callback_query
     query.answer()
 
@@ -8115,11 +8115,11 @@ def delete_proxmox_host(update, context, host_name):
 
     if host_name not in proxmox_hosts:
         query.edit_message_text(
-            "❌ Хост не найден.",
+            "вќЊ РҐРѕСЃС‚ РЅРµ РЅР°Р№РґРµРЅ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox'),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+                [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_backup_proxmox'),
+                 InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
             ])
         )
         return
@@ -8128,23 +8128,23 @@ def delete_proxmox_host(update, context, host_name):
     settings_manager.set_setting('PROXMOX_HOSTS', proxmox_hosts)
 
     query.edit_message_text(
-        f"✅ Хост `{host_name}` удалён.",
+        f"вњ… РҐРѕСЃС‚ `{host_name}` СѓРґР°Р»С‘РЅ.",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_backup_proxmox'),
+             InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
         ])
     )
 
 def handle_proxmox_host_input(update, context):
-    """Обработчик добавления хоста Proxmox"""
+    """РћР±СЂР°Р±РѕС‚С‡РёРє РґРѕР±Р°РІР»РµРЅРёСЏ С…РѕСЃС‚Р° Proxmox"""
     if 'adding_proxmox_host' not in context.user_data:
         return
 
     host_name = update.message.text.strip()
     if not host_name:
-        update.message.reply_text("❌ Имя хоста не может быть пустым. Попробуйте снова:")
+        update.message.reply_text("вќЊ РРјСЏ С…РѕСЃС‚Р° РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
         return
 
     proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
@@ -8152,26 +8152,26 @@ def handle_proxmox_host_input(update, context):
         proxmox_hosts = {}
 
     if host_name in proxmox_hosts:
-        update.message.reply_text("❌ Такой хост уже есть. Введите другой:")
+        update.message.reply_text("вќЊ РўР°РєРѕР№ С…РѕСЃС‚ СѓР¶Рµ РµСЃС‚СЊ. Р’РІРµРґРёС‚Рµ РґСЂСѓРіРѕР№:")
         return
 
     proxmox_hosts[host_name] = {'enabled': True}
     settings_manager.set_setting('PROXMOX_HOSTS', proxmox_hosts)
 
     update.message.reply_text(
-        f"✅ Хост `{host_name}` добавлен.",
+        f"вњ… РҐРѕСЃС‚ `{host_name}` РґРѕР±Р°РІР»РµРЅ.",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_backup_proxmox'),
+             InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
         ])
     )
 
     context.user_data.pop('adding_proxmox_host', None)
 
 def edit_proxmox_host_handler(update, context, host_name):
-    """Начать редактирование хоста Proxmox"""
+    """РќР°С‡Р°С‚СЊ СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ С…РѕСЃС‚Р° Proxmox"""
     query = update.callback_query
     query.answer()
 
@@ -8181,11 +8181,11 @@ def edit_proxmox_host_handler(update, context, host_name):
 
     if host_name not in proxmox_hosts:
         query.edit_message_text(
-            "❌ Хост не найден.",
+            "вќЊ РҐРѕСЃС‚ РЅРµ РЅР°Р№РґРµРЅ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox'),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+                [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_backup_proxmox'),
+                 InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
             ])
         )
         return
@@ -8194,25 +8194,25 @@ def edit_proxmox_host_handler(update, context, host_name):
     context.user_data['editing_proxmox_host_name'] = host_name
 
     query.edit_message_text(
-        "✏️ *Редактирование хоста Proxmox*\n\n"
-        f"Текущий хост: `{host_name}`\n\n"
-        "Введите новое имя хоста:",
+        "вњЏпёЏ *Р РµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ С…РѕСЃС‚Р° Proxmox*\n\n"
+        f"РўРµРєСѓС‰РёР№ С…РѕСЃС‚: `{host_name}`\n\n"
+        "Р’РІРµРґРёС‚Рµ РЅРѕРІРѕРµ РёРјСЏ С…РѕСЃС‚Р°:",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data='settings_backup_proxmox'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='settings_backup_proxmox'),
+             InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
         ])
     )
 
 def handle_proxmox_host_edit_input(update, context):
-    """Обработчик редактирования хоста Proxmox"""
+    """РћР±СЂР°Р±РѕС‚С‡РёРє СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёСЏ С…РѕСЃС‚Р° Proxmox"""
     if 'editing_proxmox_host' not in context.user_data:
         return
 
     new_host_name = update.message.text.strip()
     if not new_host_name:
-        update.message.reply_text("❌ Имя хоста не может быть пустым. Попробуйте снова:")
+        update.message.reply_text("вќЊ РРјСЏ С…РѕСЃС‚Р° РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
         return
 
     proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
@@ -8221,13 +8221,13 @@ def handle_proxmox_host_edit_input(update, context):
 
     old_host_name = context.user_data.get('editing_proxmox_host_name')
     if not old_host_name or old_host_name not in proxmox_hosts:
-        update.message.reply_text("❌ Хост не найден.")
+        update.message.reply_text("вќЊ РҐРѕСЃС‚ РЅРµ РЅР°Р№РґРµРЅ.")
         context.user_data.pop('editing_proxmox_host', None)
         context.user_data.pop('editing_proxmox_host_name', None)
         return
 
     if new_host_name in proxmox_hosts and new_host_name != old_host_name:
-        update.message.reply_text("❌ Такой хост уже есть. Введите другой:")
+        update.message.reply_text("вќЊ РўР°РєРѕР№ С…РѕСЃС‚ СѓР¶Рµ РµСЃС‚СЊ. Р’РІРµРґРёС‚Рµ РґСЂСѓРіРѕР№:")
         return
 
     host_value = proxmox_hosts.pop(old_host_name, None)
@@ -8237,12 +8237,12 @@ def handle_proxmox_host_edit_input(update, context):
     settings_manager.set_setting('PROXMOX_HOSTS', proxmox_hosts)
 
     update.message.reply_text(
-        f"✅ Хост обновлён: `{new_host_name}`",
+        f"вњ… РҐРѕСЃС‚ РѕР±РЅРѕРІР»С‘РЅ: `{new_host_name}`",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_backup_proxmox'),
+             InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
         ])
     )
 
@@ -8250,7 +8250,7 @@ def handle_proxmox_host_edit_input(update, context):
     context.user_data.pop('editing_proxmox_host_name', None)
 
 def toggle_proxmox_host(update, context, host_name):
-    """Включить/отключить мониторинг хоста Proxmox"""
+    """Р’РєР»СЋС‡РёС‚СЊ/РѕС‚РєР»СЋС‡РёС‚СЊ РјРѕРЅРёС‚РѕСЂРёРЅРі С…РѕСЃС‚Р° Proxmox"""
     query = update.callback_query
     query.answer()
 
@@ -8260,11 +8260,11 @@ def toggle_proxmox_host(update, context, host_name):
 
     if host_name not in proxmox_hosts:
         query.edit_message_text(
-            "❌ Хост не найден.",
+            "вќЊ РҐРѕСЃС‚ РЅРµ РЅР°Р№РґРµРЅ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox'),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+                [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_backup_proxmox'),
+                 InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
             ])
         )
         return
@@ -8280,44 +8280,44 @@ def toggle_proxmox_host(update, context, host_name):
     proxmox_hosts[host_name] = host_value
     settings_manager.set_setting('PROXMOX_HOSTS', proxmox_hosts)
 
-    status_text = "включен" if host_value['enabled'] else "отключен"
+    status_text = "РІРєР»СЋС‡РµРЅ" if host_value['enabled'] else "РѕС‚РєР»СЋС‡РµРЅ"
     query.edit_message_text(
-        f"✅ Мониторинг хоста `{host_name}` {status_text}.",
+        f"вњ… РњРѕРЅРёС‚РѕСЂРёРЅРі С…РѕСЃС‚Р° `{host_name}` {status_text}.",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_proxmox'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_backup_proxmox'),
+             InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
         ])
     )
 
 def show_zfs_settings(update, context):
-    """Показать настройки ZFS"""
+    """РџРѕРєР°Р·Р°С‚СЊ РЅР°СЃС‚СЂРѕР№РєРё ZFS"""
     query = update.callback_query
     query.answer()
 
     show_zfs_main_menu(update, context)
 
 def show_zfs_main_menu(update, context):
-    """Показать меню ZFS из главного меню"""
+    """РџРѕРєР°Р·Р°С‚СЊ РјРµРЅСЋ ZFS РёР· РіР»Р°РІРЅРѕРіРѕ РјРµРЅСЋ"""
     query = update.callback_query
     query.answer()
 
     keyboard = [
-        [InlineKeyboardButton("📋 Хосты", callback_data='settings_zfs_list')],
-        [InlineKeyboardButton("🔍 Паттерны", callback_data='settings_patterns_zfs')],
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("рџ“‹ РҐРѕСЃС‚С‹", callback_data='settings_zfs_list')],
+        [InlineKeyboardButton("рџ”Ќ РџР°С‚С‚РµСЂРЅС‹", callback_data='settings_patterns_zfs')],
+        [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu'),
+         InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
     ]
 
     query.edit_message_text(
-        "🧊 *Мониторинг ZFS*\n\nВыберите раздел:",
+        "рџ§Љ *РњРѕРЅРёС‚РѕСЂРёРЅРі ZFS*\n\nР’С‹Р±РµСЂРёС‚Рµ СЂР°Р·РґРµР»:",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
 def show_zfs_status_summary(update, context):
-    """Показать последние статусы ZFS массивов"""
+    """РџРѕРєР°Р·Р°С‚СЊ РїРѕСЃР»РµРґРЅРёРµ СЃС‚Р°С‚СѓСЃС‹ ZFS РјР°СЃСЃРёРІРѕРІ"""
     query = update.callback_query
     query.answer()
 
@@ -8334,11 +8334,11 @@ def show_zfs_status_summary(update, context):
     db_path = BACKUP_DATABASE_CONFIG.get("backups_db")
     if not db_path:
         query.edit_message_text(
-            "🧊 *ZFS статусы*\n\n❌ База бэкапов не настроена.",
+            "рџ§Љ *ZFS СЃС‚Р°С‚СѓСЃС‹*\n\nвќЊ Р‘Р°Р·Р° Р±СЌРєР°РїРѕРІ РЅРµ РЅР°СЃС‚СЂРѕРµРЅР°.",
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+                [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+                [InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
             ])
         )
         return
@@ -8365,12 +8365,12 @@ def show_zfs_status_summary(update, context):
     except Exception as exc:
         if "no such table: zfs_pool_status" in str(exc):
             query.edit_message_text(
-                "🧊 *ZFS статусы*\n\n❌ Таблица ZFS ещё не создана.\n"
-                "Дождитесь первого письма или перезапустите мониторинг.",
+                "рџ§Љ *ZFS СЃС‚Р°С‚СѓСЃС‹*\n\nвќЊ РўР°Р±Р»РёС†Р° ZFS РµС‰С‘ РЅРµ СЃРѕР·РґР°РЅР°.\n"
+                "Р”РѕР¶РґРёС‚РµСЃСЊ РїРµСЂРІРѕРіРѕ РїРёСЃСЊРјР° РёР»Рё РїРµСЂРµР·Р°РїСѓСЃС‚РёС‚Рµ РјРѕРЅРёС‚РѕСЂРёРЅРі.",
                 parse_mode='Markdown',
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                    [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+                    [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+                    [InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
                 ])
             )
             conn.close()
@@ -8385,12 +8385,12 @@ def show_zfs_status_summary(update, context):
         rows = []
 
     if not rows:
-        message = "📊 *ZFS статусы*\n\n❌ Данных нет."
+        message = "рџ“Љ *ZFS СЃС‚Р°С‚СѓСЃС‹*\n\nвќЊ Р”Р°РЅРЅС‹С… РЅРµС‚."
     else:
         def _md(value: object) -> str:
             return escape_markdown(str(value or ""), version=1)
 
-        message = "📊 *ZFS статусы (последние)*\n\n"
+        message = "рџ“Љ *ZFS СЃС‚Р°С‚СѓСЃС‹ (РїРѕСЃР»РµРґРЅРёРµ)*\n\n"
         current_server = None
         for server_name, pool_name, pool_state, received_at in rows:
             if server_name != current_server:
@@ -8399,12 +8399,12 @@ def show_zfs_status_summary(update, context):
                 message += f"*{_md(server_name)}*\n"
                 current_server = server_name
             message += (
-                f"• {_md(pool_name)}: `{_md(pool_state)}` ({_md(received_at)})\n"
+                f"вЂў {_md(pool_name)}: `{_md(pool_state)}` ({_md(received_at)})\n"
             )
 
     keyboard = [
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-        [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+        [InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
     ]
 
     query.edit_message_text(
@@ -8414,7 +8414,7 @@ def show_zfs_status_summary(update, context):
     )
 
 def show_zfs_servers_list(update, context):
-    """Показать список ZFS серверов"""
+    """РџРѕРєР°Р·Р°С‚СЊ СЃРїРёСЃРѕРє ZFS СЃРµСЂРІРµСЂРѕРІ"""
     query = update.callback_query
     query.answer()
 
@@ -8422,16 +8422,16 @@ def show_zfs_servers_list(update, context):
     if not isinstance(zfs_servers, dict):
         zfs_servers = {}
 
-    message = "📋 *ZFS серверы*\n\n"
+    message = "рџ“‹ *ZFS СЃРµСЂРІРµСЂС‹*\n\n"
     if not zfs_servers:
-        message += "❌ Серверы не настроены."
+        message += "вќЊ РЎРµСЂРІРµСЂС‹ РЅРµ РЅР°СЃС‚СЂРѕРµРЅС‹."
     else:
         for server_name in sorted(zfs_servers.keys()):
             server_value = zfs_servers.get(server_name, {})
             enabled = True
             if isinstance(server_value, dict):
                 enabled = server_value.get('enabled', True)
-            status_icon = "🟢" if enabled else "🔴"
+            status_icon = "рџџў" if enabled else "рџ”ґ"
             message += f"{status_icon} `{server_name}`\n"
 
     keyboard = []
@@ -8440,16 +8440,16 @@ def show_zfs_servers_list(update, context):
         enabled = True
         if isinstance(server_value, dict):
             enabled = server_value.get('enabled', True)
-        toggle_text = "⛔️ Отключить" if enabled else "✅ Включить"
+        toggle_text = "в›”пёЏ РћС‚РєР»СЋС‡РёС‚СЊ" if enabled else "вњ… Р’РєР»СЋС‡РёС‚СЊ"
         keyboard.append([
             InlineKeyboardButton(
-                f"✏️ {server_name}",
+                f"вњЏпёЏ {server_name}",
                 callback_data=f"settings_zfs_edit_name_{server_name}"
             ),
         ])
         keyboard.append([
             InlineKeyboardButton(
-                f"🗑️ {server_name}",
+                f"рџ—‘пёЏ {server_name}",
                 callback_data=f"settings_zfs_delete_{server_name}"
             ),
             InlineKeyboardButton(
@@ -8459,13 +8459,13 @@ def show_zfs_servers_list(update, context):
         ])
 
     keyboard.append([
-        InlineKeyboardButton("➕ Добавить сервер", callback_data='settings_zfs_add')
+        InlineKeyboardButton("вћ• Р”РѕР±Р°РІРёС‚СЊ СЃРµСЂРІРµСЂ", callback_data='settings_zfs_add')
     ])
 
     keyboard.append([
-        InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
-        InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs'),
-        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+        InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu'),
+        InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_zfs'),
+        InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')
     ])
 
     query.edit_message_text(
@@ -8475,7 +8475,7 @@ def show_zfs_servers_list(update, context):
     )
 
 def add_zfs_server_handler(update, context):
-    """Добавить ZFS сервер"""
+    """Р”РѕР±Р°РІРёС‚СЊ ZFS СЃРµСЂРІРµСЂ"""
     query = update.callback_query
     query.answer()
 
@@ -8483,18 +8483,18 @@ def add_zfs_server_handler(update, context):
     context.user_data['zfs_server_stage'] = 'name'
 
     query.edit_message_text(
-        "➕ *Добавление ZFS сервера*\n\n"
-        "Введите имя сервера (как приходит в теме письма):",
+        "вћ• *Р”РѕР±Р°РІР»РµРЅРёРµ ZFS СЃРµСЂРІРµСЂР°*\n\n"
+        "Р’РІРµРґРёС‚Рµ РёРјСЏ СЃРµСЂРІРµСЂР° (РєР°Рє РїСЂРёС…РѕРґРёС‚ РІ С‚РµРјРµ РїРёСЃСЊРјР°):",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data='settings_zfs'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='settings_zfs'),
+             InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
         ])
     )
 
 def delete_zfs_server(update, context, server_name):
-    """Удалить ZFS сервер"""
+    """РЈРґР°Р»РёС‚СЊ ZFS СЃРµСЂРІРµСЂ"""
     query = update.callback_query
     query.answer()
 
@@ -8504,11 +8504,11 @@ def delete_zfs_server(update, context, server_name):
 
     if server_name not in zfs_servers:
         query.edit_message_text(
-            "❌ Сервер не найден.",
+            "вќЊ РЎРµСЂРІРµСЂ РЅРµ РЅР°Р№РґРµРЅ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs'),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+                [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_zfs'),
+                 InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
             ])
         )
         return
@@ -8518,17 +8518,17 @@ def delete_zfs_server(update, context, server_name):
     _delete_zfs_server_statuses(server_name)
 
     query.edit_message_text(
-        f"✅ Сервер `{server_name}` удалён.",
+        f"вњ… РЎРµСЂРІРµСЂ `{server_name}` СѓРґР°Р»С‘РЅ.",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_zfs'),
+             InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
         ])
     )
 
 def handle_zfs_server_input(update, context):
-    """Обработчик добавления ZFS сервера"""
+    """РћР±СЂР°Р±РѕС‚С‡РёРє РґРѕР±Р°РІР»РµРЅРёСЏ ZFS СЃРµСЂРІРµСЂР°"""
     if 'adding_zfs_server' not in context.user_data:
         return
 
@@ -8537,7 +8537,7 @@ def handle_zfs_server_input(update, context):
 
     if stage == 'name':
         if not user_input:
-            update.message.reply_text("❌ Имя сервера не может быть пустым. Попробуйте снова:")
+            update.message.reply_text("вќЊ РРјСЏ СЃРµСЂРІРµСЂР° РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return
 
         zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
@@ -8545,7 +8545,7 @@ def handle_zfs_server_input(update, context):
             zfs_servers = {}
 
         if user_input in zfs_servers:
-            update.message.reply_text("❌ Такой сервер уже есть. Введите другой:")
+            update.message.reply_text("вќЊ РўР°РєРѕР№ СЃРµСЂРІРµСЂ СѓР¶Рµ РµСЃС‚СЊ. Р’РІРµРґРёС‚Рµ РґСЂСѓРіРѕР№:")
             return
 
         zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
@@ -8558,13 +8558,13 @@ def handle_zfs_server_input(update, context):
         settings_manager.set_setting('ZFS_SERVERS', zfs_servers)
 
         update.message.reply_text(
-            "✅ Сервер добавлен.\n"
-            f"Имя: `{user_input}`",
+            "вњ… РЎРµСЂРІРµСЂ РґРѕР±Р°РІР»РµРЅ.\n"
+            f"РРјСЏ: `{user_input}`",
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs'),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+                [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_zfs'),
+                 InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
             ])
         )
 
@@ -8572,7 +8572,7 @@ def handle_zfs_server_input(update, context):
         context.user_data.pop('zfs_server_stage', None)
 
 def edit_zfs_server_name_handler(update, context, server_name):
-    """Начать редактирование имени ZFS сервера"""
+    """РќР°С‡Р°С‚СЊ СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ РёРјРµРЅРё ZFS СЃРµСЂРІРµСЂР°"""
     query = update.callback_query
     query.answer()
 
@@ -8582,11 +8582,11 @@ def edit_zfs_server_name_handler(update, context, server_name):
 
     if server_name not in zfs_servers:
         query.edit_message_text(
-            "❌ Сервер не найден.",
+            "вќЊ РЎРµСЂРІРµСЂ РЅРµ РЅР°Р№РґРµРЅ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs'),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+                [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_zfs'),
+                 InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
             ])
         )
         return
@@ -8595,25 +8595,25 @@ def edit_zfs_server_name_handler(update, context, server_name):
     context.user_data['editing_zfs_server_old_name'] = server_name
 
     query.edit_message_text(
-        "✏️ *Редактирование ZFS сервера*\n\n"
-        f"Текущее имя: `{server_name}`\n\n"
-        "Введите новое имя сервера:",
+        "вњЏпёЏ *Р РµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ ZFS СЃРµСЂРІРµСЂР°*\n\n"
+        f"РўРµРєСѓС‰РµРµ РёРјСЏ: `{server_name}`\n\n"
+        "Р’РІРµРґРёС‚Рµ РЅРѕРІРѕРµ РёРјСЏ СЃРµСЂРІРµСЂР°:",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data='settings_zfs'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='settings_zfs'),
+             InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
         ])
     )
 
 def handle_zfs_server_name_edit_input(update, context):
-    """Обработчик редактирования имени ZFS сервера"""
+    """РћР±СЂР°Р±РѕС‚С‡РёРє СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёСЏ РёРјРµРЅРё ZFS СЃРµСЂРІРµСЂР°"""
     if 'editing_zfs_server_name' not in context.user_data:
         return
 
     new_name = update.message.text.strip()
     if not new_name:
-        update.message.reply_text("❌ Имя сервера не может быть пустым. Попробуйте снова:")
+        update.message.reply_text("вќЊ РРјСЏ СЃРµСЂРІРµСЂР° РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
         return
 
     zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
@@ -8622,13 +8622,13 @@ def handle_zfs_server_name_edit_input(update, context):
 
     old_name = context.user_data.get('editing_zfs_server_old_name')
     if not old_name or old_name not in zfs_servers:
-        update.message.reply_text("❌ Сервер не найден.")
+        update.message.reply_text("вќЊ РЎРµСЂРІРµСЂ РЅРµ РЅР°Р№РґРµРЅ.")
         context.user_data.pop('editing_zfs_server_name', None)
         context.user_data.pop('editing_zfs_server_old_name', None)
         return
 
     if new_name in zfs_servers and new_name != old_name:
-        update.message.reply_text("❌ Такой сервер уже есть. Введите другой:")
+        update.message.reply_text("вќЊ РўР°РєРѕР№ СЃРµСЂРІРµСЂ СѓР¶Рµ РµСЃС‚СЊ. Р’РІРµРґРёС‚Рµ РґСЂСѓРіРѕР№:")
         return
 
     server_value = zfs_servers.pop(old_name, None)
@@ -8639,12 +8639,12 @@ def handle_zfs_server_name_edit_input(update, context):
     _rename_zfs_server_statuses(old_name, new_name)
 
     update.message.reply_text(
-        f"✅ Сервер обновлён: `{new_name}`",
+        f"вњ… РЎРµСЂРІРµСЂ РѕР±РЅРѕРІР»С‘РЅ: `{new_name}`",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_zfs'),
+             InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
         ])
     )
 
@@ -8652,7 +8652,7 @@ def handle_zfs_server_name_edit_input(update, context):
     context.user_data.pop('editing_zfs_server_old_name', None)
 
 def toggle_zfs_server(update, context, server_name):
-    """Включить/отключить мониторинг ZFS сервера"""
+    """Р’РєР»СЋС‡РёС‚СЊ/РѕС‚РєР»СЋС‡РёС‚СЊ РјРѕРЅРёС‚РѕСЂРёРЅРі ZFS СЃРµСЂРІРµСЂР°"""
     query = update.callback_query
     query.answer()
 
@@ -8662,11 +8662,11 @@ def toggle_zfs_server(update, context, server_name):
 
     if server_name not in zfs_servers:
         query.edit_message_text(
-            "❌ Сервер не найден.",
+            "вќЊ РЎРµСЂРІРµСЂ РЅРµ РЅР°Р№РґРµРЅ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs'),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+                [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_zfs'),
+                 InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
             ])
         )
         return
@@ -8682,19 +8682,19 @@ def toggle_zfs_server(update, context, server_name):
     zfs_servers[server_name] = server_value
     settings_manager.set_setting('ZFS_SERVERS', zfs_servers)
 
-    status_text = "включен" if server_value['enabled'] else "отключен"
+    status_text = "РІРєР»СЋС‡РµРЅ" if server_value['enabled'] else "РѕС‚РєР»СЋС‡РµРЅ"
     query.edit_message_text(
-        f"✅ Мониторинг сервера `{server_name}` {status_text}.",
+        f"вњ… РњРѕРЅРёС‚РѕСЂРёРЅРі СЃРµСЂРІРµСЂР° `{server_name}` {status_text}.",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_zfs'),
+             InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
         ])
     )
 
 def _delete_zfs_server_statuses(server_name: str) -> None:
-    """Удалить статусы ZFS сервера из БД бэкапов."""
+    """РЈРґР°Р»РёС‚СЊ СЃС‚Р°С‚СѓСЃС‹ ZFS СЃРµСЂРІРµСЂР° РёР· Р‘Р” Р±СЌРєР°РїРѕРІ."""
     db_path = BACKUP_DATABASE_CONFIG.get("backups_db")
     if not db_path:
         return
@@ -8709,12 +8709,12 @@ def _delete_zfs_server_statuses(server_name: str) -> None:
         conn.commit()
     except Exception as exc:
         if "no such table: zfs_pool_status" not in str(exc):
-            debug_logger(f"⚠️ Не удалось удалить статусы ZFS сервера: {exc}")
+            debug_logger(f"вљ пёЏ РќРµ СѓРґР°Р»РѕСЃСЊ СѓРґР°Р»РёС‚СЊ СЃС‚Р°С‚СѓСЃС‹ ZFS СЃРµСЂРІРµСЂР°: {exc}")
     finally:
         conn.close()
 
 def _rename_zfs_server_statuses(old_name: str, new_name: str) -> None:
-    """Переименовать статусы ZFS сервера в БД бэкапов."""
+    """РџРµСЂРµРёРјРµРЅРѕРІР°С‚СЊ СЃС‚Р°С‚СѓСЃС‹ ZFS СЃРµСЂРІРµСЂР° РІ Р‘Р” Р±СЌРєР°РїРѕРІ."""
     db_path = BACKUP_DATABASE_CONFIG.get("backups_db")
     if not db_path:
         return
@@ -8729,168 +8729,168 @@ def _rename_zfs_server_statuses(old_name: str, new_name: str) -> None:
         conn.commit()
     except Exception as exc:
         if "no such table: zfs_pool_status" not in str(exc):
-            debug_logger(f"⚠️ Не удалось переименовать статусы ZFS сервера: {exc}")
+            debug_logger(f"вљ пёЏ РќРµ СѓРґР°Р»РѕСЃСЊ РїРµСЂРµРёРјРµРЅРѕРІР°С‚СЊ СЃС‚Р°С‚СѓСЃС‹ ZFS СЃРµСЂРІРµСЂР°: {exc}")
     finally:
         conn.close()
 
 def handle_setting_input(update, context, setting_key):
-    """Обработчик ввода значений настроек"""
+    """РћР±СЂР°Р±РѕС‚С‡РёРє РІРІРѕРґР° Р·РЅР°С‡РµРЅРёР№ РЅР°СЃС‚СЂРѕРµРє"""
     query = update.callback_query
     query.answer()
     
-    # Сохраняем какое настройку меняем
+    # РЎРѕС…СЂР°РЅСЏРµРј РєР°РєРѕРµ РЅР°СЃС‚СЂРѕР№РєСѓ РјРµРЅСЏРµРј
     context.user_data['editing_setting'] = setting_key
     context.user_data['editing_setting_message_id'] = query.message.message_id
     context.user_data['editing_setting_chat_id'] = query.message.chat_id
     
     setting_descriptions = {
-        'telegram_token': 'Введите новый токен Telegram бота:',
-        'check_interval': 'Введите новый интервал проверки (в секундах):',
-        'max_fail_time': 'Введите максимальное время простоя (в секундах):',
-        'silent_start': 'Введите час начала тихого режима (0-23):',
-        'silent_end': 'Введите час окончания тихого режима (0-23):',
-        'data_collection': 'Введите время сбора данных (формат HH:MM):',
-        'cpu_warning': 'Введите порог предупреждения для CPU (%):',
-        'cpu_critical': 'Введите критический порог для CPU (%):',
-        'ram_warning': 'Введите порог предупреждения для RAM (%):',
-        'ram_critical': 'Введите критический порог для RAM (%):',
-        'disk_warning': 'Введите порог предупреждения для Disk (%):',
-        'disk_critical': 'Введите критический порог для Disk (%):',
-        'ssh_username': 'Введите имя пользователя SSH:',
-        'ssh_key_path': 'Введите путь к SSH ключу:',
-        'web_port': 'Введите порт веб-интерфейса:',
-        'web_host': 'Введите хост веб-интерфейса:',
-        'backup_alert_hours': 'Введите количество часов для алертов о бэкапах:',
-        'backup_stale_hours': 'Введите количество часов для устаревших бэкапов:',
+        'telegram_token': 'Р’РІРµРґРёС‚Рµ РЅРѕРІС‹Р№ С‚РѕРєРµРЅ Telegram Р±РѕС‚Р°:',
+        'check_interval': 'Р’РІРµРґРёС‚Рµ РЅРѕРІС‹Р№ РёРЅС‚РµСЂРІР°Р» РїСЂРѕРІРµСЂРєРё (РІ СЃРµРєСѓРЅРґР°С…):',
+        'max_fail_time': 'Р’РІРµРґРёС‚Рµ РјР°РєСЃРёРјР°Р»СЊРЅРѕРµ РІСЂРµРјСЏ РїСЂРѕСЃС‚РѕСЏ (РІ СЃРµРєСѓРЅРґР°С…):',
+        'silent_start': 'Р’РІРµРґРёС‚Рµ С‡Р°СЃ РЅР°С‡Р°Р»Р° С‚РёС…РѕРіРѕ СЂРµР¶РёРјР° (0-23):',
+        'silent_end': 'Р’РІРµРґРёС‚Рµ С‡Р°СЃ РѕРєРѕРЅС‡Р°РЅРёСЏ С‚РёС…РѕРіРѕ СЂРµР¶РёРјР° (0-23):',
+        'data_collection': 'Р’РІРµРґРёС‚Рµ РІСЂРµРјСЏ СЃР±РѕСЂР° РґР°РЅРЅС‹С… (С„РѕСЂРјР°С‚ HH:MM):',
+        'cpu_warning': 'Р’РІРµРґРёС‚Рµ РїРѕСЂРѕРі РїСЂРµРґСѓРїСЂРµР¶РґРµРЅРёСЏ РґР»СЏ CPU (%):',
+        'cpu_critical': 'Р’РІРµРґРёС‚Рµ РєСЂРёС‚РёС‡РµСЃРєРёР№ РїРѕСЂРѕРі РґР»СЏ CPU (%):',
+        'ram_warning': 'Р’РІРµРґРёС‚Рµ РїРѕСЂРѕРі РїСЂРµРґСѓРїСЂРµР¶РґРµРЅРёСЏ РґР»СЏ RAM (%):',
+        'ram_critical': 'Р’РІРµРґРёС‚Рµ РєСЂРёС‚РёС‡РµСЃРєРёР№ РїРѕСЂРѕРі РґР»СЏ RAM (%):',
+        'disk_warning': 'Р’РІРµРґРёС‚Рµ РїРѕСЂРѕРі РїСЂРµРґСѓРїСЂРµР¶РґРµРЅРёСЏ РґР»СЏ Disk (%):',
+        'disk_critical': 'Р’РІРµРґРёС‚Рµ РєСЂРёС‚РёС‡РµСЃРєРёР№ РїРѕСЂРѕРі РґР»СЏ Disk (%):',
+        'ssh_username': 'Р’РІРµРґРёС‚Рµ РёРјСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ SSH:',
+        'ssh_key_path': 'Р’РІРµРґРёС‚Рµ РїСѓС‚СЊ Рє SSH РєР»СЋС‡Сѓ:',
+        'web_port': 'Р’РІРµРґРёС‚Рµ РїРѕСЂС‚ РІРµР±-РёРЅС‚РµСЂС„РµР№СЃР°:',
+        'web_host': 'Р’РІРµРґРёС‚Рµ С…РѕСЃС‚ РІРµР±-РёРЅС‚РµСЂС„РµР№СЃР°:',
+        'backup_alert_hours': 'Р’РІРµРґРёС‚Рµ РєРѕР»РёС‡РµСЃС‚РІРѕ С‡Р°СЃРѕРІ РґР»СЏ Р°Р»РµСЂС‚РѕРІ Рѕ Р±СЌРєР°РїР°С…:',
+        'backup_stale_hours': 'Р’РІРµРґРёС‚Рµ РєРѕР»РёС‡РµСЃС‚РІРѕ С‡Р°СЃРѕРІ РґР»СЏ СѓСЃС‚Р°СЂРµРІС€РёС… Р±СЌРєР°РїРѕРІ:',
     }
     
-    message = setting_descriptions.get(setting_key, f'Введите новое значение для {setting_key}:')
+    message = setting_descriptions.get(setting_key, f'Р’РІРµРґРёС‚Рµ РЅРѕРІРѕРµ Р·РЅР°С‡РµРЅРёРµ РґР»СЏ {setting_key}:')
     
     query.edit_message_text(
         message,
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data='settings_main')]
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='settings_main')]
         ])
     )
 
 def add_database_category_handler(update, context):
-    """Обработчик добавления категории БД"""
+    """РћР±СЂР°Р±РѕС‚С‡РёРє РґРѕР±Р°РІР»РµРЅРёСЏ РєР°С‚РµРіРѕСЂРёРё Р‘Р”"""
     query = update.callback_query
     query.answer()
     
     query.edit_message_text(
-        "➕ *Добавление категории баз данных*\n\n"
-        "Эта функция находится в разработке.\n"
-        "Скоро здесь можно будет добавлять новые категории БД для мониторинга.",
+        "вћ• *Р”РѕР±Р°РІР»РµРЅРёРµ РєР°С‚РµРіРѕСЂРёРё Р±Р°Р· РґР°РЅРЅС‹С…*\n\n"
+        "Р­С‚Р° С„СѓРЅРєС†РёСЏ РЅР°С…РѕРґРёС‚СЃСЏ РІ СЂР°Р·СЂР°Р±РѕС‚РєРµ.\n"
+        "РЎРєРѕСЂРѕ Р·РґРµСЃСЊ РјРѕР¶РЅРѕ Р±СѓРґРµС‚ РґРѕР±Р°РІР»СЏС‚СЊ РЅРѕРІС‹Рµ РєР°С‚РµРіРѕСЂРёРё Р‘Р” РґР»СЏ РјРѕРЅРёС‚РѕСЂРёРЅРіР°.",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_databases')]
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_backup_databases')]
         ])
     )
 
 def edit_database_category_handler(update, context):
-    """Обработчик редактирования категории БД"""
+    """РћР±СЂР°Р±РѕС‚С‡РёРє СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёСЏ РєР°С‚РµРіРѕСЂРёРё Р‘Р”"""
     query = update.callback_query
     query.answer()
     
     db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
     
     if not db_config:
-        keyboard = [[InlineKeyboardButton("➕ Добавить категорию", callback_data='backup_db_add_category')]]
+        keyboard = [[InlineKeyboardButton("вћ• Р”РѕР±Р°РІРёС‚СЊ РєР°С‚РµРіРѕСЂРёСЋ", callback_data='backup_db_add_category')]]
     else:
         keyboard = []
         for category in db_config.keys():
-            keyboard.append([InlineKeyboardButton(f"✏️ {category}", callback_data=f'edit_category_{category}')])
+            keyboard.append([InlineKeyboardButton(f"вњЏпёЏ {category}", callback_data=f'edit_category_{category}')])
     
-    keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_databases')])
+    keyboard.append([InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_backup_databases')])
     
     query.edit_message_text(
-        "✏️ *Редактирование категорий баз данных*\n\n"
-        "Выберите категорию для редактирования:",
+        "вњЏпёЏ *Р РµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ РєР°С‚РµРіРѕСЂРёР№ Р±Р°Р· РґР°РЅРЅС‹С…*\n\n"
+        "Р’С‹Р±РµСЂРёС‚Рµ РєР°С‚РµРіРѕСЂРёСЋ РґР»СЏ СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёСЏ:",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
 def delete_database_category_handler(update, context):
-    """Обработчик удаления категории БД"""
+    """РћР±СЂР°Р±РѕС‚С‡РёРє СѓРґР°Р»РµРЅРёСЏ РєР°С‚РµРіРѕСЂРёРё Р‘Р”"""
     query = update.callback_query
     query.answer()
     
     db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
     
     if not db_config:
-        keyboard = [[InlineKeyboardButton("➕ Добавить категорию", callback_data='backup_db_add_category')]]
+        keyboard = [[InlineKeyboardButton("вћ• Р”РѕР±Р°РІРёС‚СЊ РєР°С‚РµРіРѕСЂРёСЋ", callback_data='backup_db_add_category')]]
     else:
         keyboard = []
         for category in db_config.keys():
-            keyboard.append([InlineKeyboardButton(f"🗑️ {category}", callback_data=f'delete_category_{category}')])
+            keyboard.append([InlineKeyboardButton(f"рџ—‘пёЏ {category}", callback_data=f'delete_category_{category}')])
     
-    keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_databases')])
+    keyboard.append([InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_backup_databases')])
     
     query.edit_message_text(
-        "🗑️ *Удаление категории баз данных*\n\n"
-        "Выберите категорию для удаления:",
+        "рџ—‘пёЏ *РЈРґР°Р»РµРЅРёРµ РєР°С‚РµРіРѕСЂРёРё Р±Р°Р· РґР°РЅРЅС‹С…*\n\n"
+        "Р’С‹Р±РµСЂРёС‚Рµ РєР°С‚РµРіРѕСЂРёСЋ РґР»СЏ СѓРґР°Р»РµРЅРёСЏ:",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
 def view_all_databases_handler(update, context):
-    """Обработчик просмотра всех БД"""
+    """РћР±СЂР°Р±РѕС‚С‡РёРє РїСЂРѕСЃРјРѕС‚СЂР° РІСЃРµС… Р‘Р”"""
     query = update.callback_query
     query.answer()
     
     db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
     
-    message = "📋 *Все базы данных для мониторинга*\n\n"
+    message = "рџ“‹ *Р’СЃРµ Р±Р°Р·С‹ РґР°РЅРЅС‹С… РґР»СЏ РјРѕРЅРёС‚РѕСЂРёРЅРіР°*\n\n"
     
     if not db_config:
-        message += "❌ *Нет настроенных баз данных*\n\n"
-        message += "Добавьте категории и базы данных в настройках."
+        message += "вќЊ *РќРµС‚ РЅР°СЃС‚СЂРѕРµРЅРЅС‹С… Р±Р°Р· РґР°РЅРЅС‹С…*\n\n"
+        message += "Р”РѕР±Р°РІСЊС‚Рµ РєР°С‚РµРіРѕСЂРёРё Рё Р±Р°Р·С‹ РґР°РЅРЅС‹С… РІ РЅР°СЃС‚СЂРѕР№РєР°С…."
     else:
         total_dbs = 0
         for category, databases in db_config.items():
-            message += f"📁 *{category.upper()}* ({len(databases)} БД):\n"
+            message += f"рџ“Ѓ *{category.upper()}* ({len(databases)} Р‘Р”):\n"
             for db_key, db_name in databases.items():
-                message += f"   • {db_name}\n"
+                message += f"   вЂў {db_name}\n"
                 total_dbs += 1
             message += "\n"
         
-        message += f"*Итого:* {total_dbs} баз данных в {len(db_config)} категориях"
+        message += f"*РС‚РѕРіРѕ:* {total_dbs} Р±Р°Р· РґР°РЅРЅС‹С… РІ {len(db_config)} РєР°С‚РµРіРѕСЂРёСЏС…"
     
     query.edit_message_text(
         message,
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_databases')]
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_backup_databases')]
         ])
     )
 
 def manage_chats_handler(update, context):
-    """Управление чатами - ИСПРАВЛЕННАЯ ВЕРСИЯ БЕЗ КНОПКИ СПИСКА ВСЕХ ЧАТОВ"""
+    """РЈРїСЂР°РІР»РµРЅРёРµ С‡Р°С‚Р°РјРё - РРЎРџР РђР’Р›Р•РќРќРђРЇ Р’Р•Р РЎРРЇ Р‘Р•Р— РљРќРћРџРљР РЎРџРРЎРљРђ Р’РЎР•РҐ Р§РђРўРћР’"""
     query = update.callback_query
     query.answer()
     
     chat_ids = settings_manager.get_setting('CHAT_IDS', [])
     
-    message = "💬 *Управление чатами*\n\n"
-    message += f"Текущее количество чатов: {len(chat_ids)}\n\n"
+    message = "рџ’¬ *РЈРїСЂР°РІР»РµРЅРёРµ С‡Р°С‚Р°РјРё*\n\n"
+    message += f"РўРµРєСѓС‰РµРµ РєРѕР»РёС‡РµСЃС‚РІРѕ С‡Р°С‚РѕРІ: {len(chat_ids)}\n\n"
     
     if chat_ids:
-        message += "*Текущие чаты:*\n"
+        message += "*РўРµРєСѓС‰РёРµ С‡Р°С‚С‹:*\n"
         for i, chat_id in enumerate(chat_ids[:5], 1):
             message += f"{i}. `{chat_id}`\n"
         if len(chat_ids) > 5:
-            message += f"... и еще {len(chat_ids) - 5} чатов\n"
+            message += f"... Рё РµС‰Рµ {len(chat_ids) - 5} С‡Р°С‚РѕРІ\n"
     else:
-        message += "❌ *Чаты не настроены*\n"
+        message += "вќЊ *Р§Р°С‚С‹ РЅРµ РЅР°СЃС‚СЂРѕРµРЅС‹*\n"
     
-    message += "\nВыберите действие:"
+    message += "\nР’С‹Р±РµСЂРёС‚Рµ РґРµР№СЃС‚РІРёРµ:"
     
     keyboard = [
-        [InlineKeyboardButton("➕ Добавить чат", callback_data='add_chat')],
-        [InlineKeyboardButton("🗑️ Удалить чат", callback_data='remove_chat')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_telegram'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("вћ• Р”РѕР±Р°РІРёС‚СЊ С‡Р°С‚", callback_data='add_chat')],
+        [InlineKeyboardButton("рџ—‘пёЏ РЈРґР°Р»РёС‚СЊ С‡Р°С‚", callback_data='remove_chat')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_telegram'),
+         InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
     ]
     
     query.edit_message_text(
@@ -8900,31 +8900,31 @@ def manage_chats_handler(update, context):
     )
 
 def manage_tamtam_chats_handler(update, context):
-    """Управление чатами TamTam."""
+    """РЈРїСЂР°РІР»РµРЅРёРµ С‡Р°С‚Р°РјРё TamTam."""
     query = update.callback_query
     query.answer()
 
     tamtam_chat_ids = settings_manager.get_setting('TAMTAM_CHAT_IDS', [])
 
-    message = "🟠 *Управление TamTam чатами*\n\n"
-    message += f"Текущее количество чатов: {len(tamtam_chat_ids)}\n\n"
+    message = "рџџ  *РЈРїСЂР°РІР»РµРЅРёРµ TamTam С‡Р°С‚Р°РјРё*\n\n"
+    message += f"РўРµРєСѓС‰РµРµ РєРѕР»РёС‡РµСЃС‚РІРѕ С‡Р°С‚РѕРІ: {len(tamtam_chat_ids)}\n\n"
 
     if tamtam_chat_ids:
-        message += "*Текущие чаты:*\n"
+        message += "*РўРµРєСѓС‰РёРµ С‡Р°С‚С‹:*\n"
         for i, chat_id in enumerate(tamtam_chat_ids[:5], 1):
             message += f"{i}. `{chat_id}`\n"
         if len(tamtam_chat_ids) > 5:
-            message += f"... и еще {len(tamtam_chat_ids) - 5} чатов\n"
+            message += f"... Рё РµС‰Рµ {len(tamtam_chat_ids) - 5} С‡Р°С‚РѕРІ\n"
     else:
-        message += "❌ *Чаты не настроены*\n"
+        message += "вќЊ *Р§Р°С‚С‹ РЅРµ РЅР°СЃС‚СЂРѕРµРЅС‹*\n"
 
-    message += "\nВыберите действие:"
+    message += "\nР’С‹Р±РµСЂРёС‚Рµ РґРµР№СЃС‚РІРёРµ:"
 
     keyboard = [
-        [InlineKeyboardButton("➕ Добавить чат", callback_data='add_tamtam_chat')],
-        [InlineKeyboardButton("🗑️ Удалить чат", callback_data='remove_tamtam_chat')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_telegram'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("вћ• Р”РѕР±Р°РІРёС‚СЊ С‡Р°С‚", callback_data='add_tamtam_chat')],
+        [InlineKeyboardButton("рџ—‘пёЏ РЈРґР°Р»РёС‚СЊ С‡Р°С‚", callback_data='remove_tamtam_chat')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_telegram'),
+         InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
     ]
 
     query.edit_message_text(
@@ -8934,72 +8934,72 @@ def manage_tamtam_chats_handler(update, context):
     )
 
 def show_server_timeouts(update, context):
-    """Таймауты серверов - УПРОЩЕННАЯ БЕЗ MARKDOWN ВЕРСИЯ"""
+    """РўР°Р№РјР°СѓС‚С‹ СЃРµСЂРІРµСЂРѕРІ - РЈРџР РћР©Р•РќРќРђРЇ Р‘Р•Р— MARKDOWN Р’Р•Р РЎРРЇ"""
     query = update.callback_query
     query.answer()
     
     timeouts = settings_manager.get_setting('SERVER_TIMEOUTS', {})
     
-    # Простой текст без Markdown
-    message = "⏰ Таймауты серверов\n\n"
+    # РџСЂРѕСЃС‚РѕР№ С‚РµРєСЃС‚ Р±РµР· Markdown
+    message = "вЏ° РўР°Р№РјР°СѓС‚С‹ СЃРµСЂРІРµСЂРѕРІ\n\n"
     
     if timeouts:
         for server_type, timeout in timeouts.items():
-            message += f"• {server_type}: {timeout} сек\n"
+            message += f"вЂў {server_type}: {timeout} СЃРµРє\n"
     else:
-        message += "❌ Таймауты не настроены\n"
-        message += "Используются значения по умолчанию.\n\n"
-        message += "Таймауты по умолчанию:\n"
-        message += "• Windows 2025: 35 сек\n"
-        message += "• Доменные серверы: 20 сек\n"
-        message += "• Admin серверы: 25 сек\n"
-        message += "• Стандартные Windows: 30 сек\n"
-        message += "• Linux серверы: 15 сек\n"
-        message += "• Ping серверы: 10 сек\n"
+        message += "вќЊ РўР°Р№РјР°СѓС‚С‹ РЅРµ РЅР°СЃС‚СЂРѕРµРЅС‹\n"
+        message += "РСЃРїРѕР»СЊР·СѓСЋС‚СЃСЏ Р·РЅР°С‡РµРЅРёСЏ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ.\n\n"
+        message += "РўР°Р№РјР°СѓС‚С‹ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ:\n"
+        message += "вЂў Windows 2025: 35 СЃРµРє\n"
+        message += "вЂў Р”РѕРјРµРЅРЅС‹Рµ СЃРµСЂРІРµСЂС‹: 20 СЃРµРє\n"
+        message += "вЂў Admin СЃРµСЂРІРµСЂС‹: 25 СЃРµРє\n"
+        message += "вЂў РЎС‚Р°РЅРґР°СЂС‚РЅС‹Рµ Windows: 30 СЃРµРє\n"
+        message += "вЂў Linux СЃРµСЂРІРµСЂС‹: 15 СЃРµРє\n"
+        message += "вЂў Ping СЃРµСЂРІРµСЂС‹: 10 СЃРµРє\n"
     
-    message += "\nВыберите параметр для изменения:"
+    message += "\nР’С‹Р±РµСЂРёС‚Рµ РїР°СЂР°РјРµС‚СЂ РґР»СЏ РёР·РјРµРЅРµРЅРёСЏ:"
     
     keyboard = [
-        [InlineKeyboardButton("🖥️ Windows 2025", callback_data='set_windows_2025_timeout')],
-        [InlineKeyboardButton("🌐 Доменные серверы", callback_data='set_domain_servers_timeout')],
-        [InlineKeyboardButton("🔧 Admin серверы", callback_data='set_admin_servers_timeout')],
-        [InlineKeyboardButton("💻 Стандартные Windows", callback_data='set_standard_windows_timeout')],
-        [InlineKeyboardButton("🐧 Linux серверы", callback_data='set_linux_timeout')],
-        [InlineKeyboardButton("📡 Ping серверы", callback_data='set_ping_timeout')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_monitoring'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("рџ–ҐпёЏ Windows 2025", callback_data='set_windows_2025_timeout')],
+        [InlineKeyboardButton("рџЊђ Р”РѕРјРµРЅРЅС‹Рµ СЃРµСЂРІРµСЂС‹", callback_data='set_domain_servers_timeout')],
+        [InlineKeyboardButton("рџ”§ Admin СЃРµСЂРІРµСЂС‹", callback_data='set_admin_servers_timeout')],
+        [InlineKeyboardButton("рџ’» РЎС‚Р°РЅРґР°СЂС‚РЅС‹Рµ Windows", callback_data='set_standard_windows_timeout')],
+        [InlineKeyboardButton("рџђ§ Linux СЃРµСЂРІРµСЂС‹", callback_data='set_linux_timeout')],
+        [InlineKeyboardButton("рџ“Ў Ping СЃРµСЂРІРµСЂС‹", callback_data='set_ping_timeout')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_monitoring'),
+         InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
     ]
     
     query.edit_message_text(
-        message,  # Без parse_mode
+        message,  # Р‘РµР· parse_mode
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
 def add_server_handler(update, context):
-    """Добавить сервер - ОСНОВНАЯ РЕАЛИЗАЦИЯ"""
+    """Р”РѕР±Р°РІРёС‚СЊ СЃРµСЂРІРµСЂ - РћРЎРќРћР’РќРђРЇ Р Р•РђР›РР—РђР¦РРЇ"""
     query = update.callback_query
     query.answer()
     
-    # Сохраняем состояние добавления сервера
+    # РЎРѕС…СЂР°РЅСЏРµРј СЃРѕСЃС‚РѕСЏРЅРёРµ РґРѕР±Р°РІР»РµРЅРёСЏ СЃРµСЂРІРµСЂР°
     context.user_data['adding_server'] = True
     context.user_data['server_stage'] = 'ip'
     
     message = (
-        "➕ *Добавление сервера*\n\n"
-        "Введите IP-адрес сервера:\n\n"
-        "_Пример: 192.168.5.000_"
+        "вћ• *Р”РѕР±Р°РІР»РµРЅРёРµ СЃРµСЂРІРµСЂР°*\n\n"
+        "Р’РІРµРґРёС‚Рµ IP-Р°РґСЂРµСЃ СЃРµСЂРІРµСЂР°:\n\n"
+        "_РџСЂРёРјРµСЂ: 192.168.6.000_"
     )
     
     query.edit_message_text(
         message,
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data='settings_servers')]
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='settings_servers')]
         ])
     )
 
 def handle_server_input(update, context):
-    """Обработчик ввода данных сервера"""
+    """РћР±СЂР°Р±РѕС‚С‡РёРє РІРІРѕРґР° РґР°РЅРЅС‹С… СЃРµСЂРІРµСЂР°"""
     if 'adding_server' not in context.user_data or not context.user_data['adding_server']:
         return
     
@@ -9008,19 +9008,19 @@ def handle_server_input(update, context):
     
     try:
         if stage == 'ip':
-            # Проверка IP-адреса
+            # РџСЂРѕРІРµСЂРєР° IP-Р°РґСЂРµСЃР°
             import re
             ip_pattern = r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$'
             if not re.match(ip_pattern, user_input):
-                update.message.reply_text("❌ Неверный формат IP-адреса. Попробуйте снова:")
+                update.message.reply_text("вќЊ РќРµРІРµСЂРЅС‹Р№ С„РѕСЂРјР°С‚ IP-Р°РґСЂРµСЃР°. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
                 return
             
             context.user_data['server_ip'] = user_input
             context.user_data['server_stage'] = 'name'
             
             update.message.reply_text(
-                "📝 Введите имя сервера:\n\n"
-                "_Пример: web-server-01_",
+                "рџ“ќ Р’РІРµРґРёС‚Рµ РёРјСЏ СЃРµСЂРІРµСЂР°:\n\n"
+                "_РџСЂРёРјРµСЂ: web-server-01_",
                 parse_mode='Markdown'
             )
             
@@ -9029,24 +9029,24 @@ def handle_server_input(update, context):
             context.user_data['server_stage'] = 'type'
             
             keyboard = [
-                [InlineKeyboardButton("🖥️ Windows (RDP)", callback_data='server_type_rdp')],
-                [InlineKeyboardButton("🐧 Linux (SSH)", callback_data='server_type_ssh')],
-                [InlineKeyboardButton("📡 Ping Only", callback_data='server_type_ping')],
-                [InlineKeyboardButton("❌ Отмена", callback_data='settings_servers')]
+                [InlineKeyboardButton("рџ–ҐпёЏ Windows (RDP)", callback_data='server_type_rdp')],
+                [InlineKeyboardButton("рџђ§ Linux (SSH)", callback_data='server_type_ssh')],
+                [InlineKeyboardButton("рџ“Ў Ping Only", callback_data='server_type_ping')],
+                [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='settings_servers')]
             ]
             
             update.message.reply_text(
-                "🔧 Выберите тип сервера:",
+                "рџ”§ Р’С‹Р±РµСЂРёС‚Рµ С‚РёРї СЃРµСЂРІРµСЂР°:",
                 reply_markup=InlineKeyboardMarkup(keyboard)
             )
             
     except Exception as e:
-        update.message.reply_text(f"❌ Ошибка: {e}")
-        # Сбрасываем состояние при ошибке
+        update.message.reply_text(f"вќЊ РћС€РёР±РєР°: {e}")
+        # РЎР±СЂР°СЃС‹РІР°РµРј СЃРѕСЃС‚РѕСЏРЅРёРµ РїСЂРё РѕС€РёР±РєРµ
         context.user_data['adding_server'] = False
 
 def handle_server_type(update, context):
-    """Обработчик выбора типа сервера"""
+    """РћР±СЂР°Р±РѕС‚С‡РёРє РІС‹Р±РѕСЂР° С‚РёРїР° СЃРµСЂРІРµСЂР°"""
     query = update.callback_query
     query.answer()
     
@@ -9058,132 +9058,132 @@ def handle_server_type(update, context):
     server_name = context.user_data.get('server_name')
     
     try:
-        # Добавляем сервер в базу
+        # Р”РѕР±Р°РІР»СЏРµРј СЃРµСЂРІРµСЂ РІ Р±Р°Р·Сѓ
         success = settings_manager.add_server(server_ip, server_name, server_type)
         
         if success:
-            message = f"✅ *Сервер добавлен!*\n\n• IP: `{server_ip}`\n• Имя: `{server_name}`\n• Тип: `{server_type}`"
+            message = f"вњ… *РЎРµСЂРІРµСЂ РґРѕР±Р°РІР»РµРЅ!*\n\nвЂў IP: `{server_ip}`\nвЂў РРјСЏ: `{server_name}`\nвЂў РўРёРї: `{server_type}`"
             
-            # Очищаем состояние
+            # РћС‡РёС‰Р°РµРј СЃРѕСЃС‚РѕСЏРЅРёРµ
             context.user_data['adding_server'] = False
             context.user_data.pop('server_ip', None)
             context.user_data.pop('server_name', None)
             context.user_data.pop('server_stage', None)
         else:
-            message = "❌ Ошибка при добавлении сервера"
+            message = "вќЊ РћС€РёР±РєР° РїСЂРё РґРѕР±Р°РІР»РµРЅРёРё СЃРµСЂРІРµСЂР°"
         
         query.edit_message_text(
             message,
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад к серверам", callback_data='settings_servers'),
-                 InlineKeyboardButton("➕ Добавить еще", callback_data='settings_add_server')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ Рє СЃРµСЂРІРµСЂР°Рј", callback_data='settings_servers'),
+                 InlineKeyboardButton("вћ• Р”РѕР±Р°РІРёС‚СЊ РµС‰Рµ", callback_data='settings_add_server')]
             ])
         )
         
     except Exception as e:
-        query.edit_message_text(f"❌ Ошибка: {e}")
+        query.edit_message_text(f"вќЊ РћС€РёР±РєР°: {e}")
 
 def view_all_databases_handler(update, context):
-    """Просмотр всех БД - ОСНОВНАЯ РЕАЛИЗАЦИЯ"""
+    """РџСЂРѕСЃРјРѕС‚СЂ РІСЃРµС… Р‘Р” - РћРЎРќРћР’РќРђРЇ Р Р•РђР›РР—РђР¦РРЇ"""
     query = update.callback_query
     query.answer()
     
     db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
     
     if not db_config:
-        message = "📋 *Все базы данных*\n\n❌ *Нет настроенных баз данных*"
+        message = "рџ“‹ *Р’СЃРµ Р±Р°Р·С‹ РґР°РЅРЅС‹С…*\n\nвќЊ *РќРµС‚ РЅР°СЃС‚СЂРѕРµРЅРЅС‹С… Р±Р°Р· РґР°РЅРЅС‹С…*"
     else:
-        message = "📋 *Все базы данных*\n\n"
+        message = "рџ“‹ *Р’СЃРµ Р±Р°Р·С‹ РґР°РЅРЅС‹С…*\n\n"
         total_dbs = 0
         
         for category, databases in db_config.items():
-            message += f"📁 *{category.upper()}* ({len(databases)} БД):\n"
+            message += f"рџ“Ѓ *{category.upper()}* ({len(databases)} Р‘Р”):\n"
             for db_key, db_name in databases.items():
-                message += f"   • {db_name}\n"
+                message += f"   вЂў {db_name}\n"
                 total_dbs += 1
             message += "\n"
         
-        message += f"*Итого:* {total_dbs} баз данных в {len(db_config)} категориях"
+        message += f"*РС‚РѕРіРѕ:* {total_dbs} Р±Р°Р· РґР°РЅРЅС‹С… РІ {len(db_config)} РєР°С‚РµРіРѕСЂРёСЏС…"
     
     query.edit_message_text(
         message,
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_db_main'),
+             InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
         ])
     )
 
 def add_database_category_handler(update, context):
-    """Добавить категорию БД - ОСНОВНАЯ РЕАЛИЗАЦИЯ"""
+    """Р”РѕР±Р°РІРёС‚СЊ РєР°С‚РµРіРѕСЂРёСЋ Р‘Р” - РћРЎРќРћР’РќРђРЇ Р Р•РђР›РР—РђР¦РРЇ"""
     query = update.callback_query
     query.answer()
     
     context.user_data['adding_db_category'] = True
     
     message = (
-        "➕ *Добавление категории БД*\n\n"
-        "Введите название новой категории:\n\n"
-        "_Пример: company, client, backup_"
+        "вћ• *Р”РѕР±Р°РІР»РµРЅРёРµ РєР°С‚РµРіРѕСЂРёРё Р‘Р”*\n\n"
+        "Р’РІРµРґРёС‚Рµ РЅР°Р·РІР°РЅРёРµ РЅРѕРІРѕР№ РєР°С‚РµРіРѕСЂРёРё:\n\n"
+        "_РџСЂРёРјРµСЂ: company, client, backup_"
     )
     
     query.edit_message_text(
         message,
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data='settings_db_main')]
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='settings_db_main')]
         ])
     )
 
 def edit_databases_handler(update, context):
-    """Редактировать БД - ОСНОВНАЯ РЕАЛИЗАЦИЯ"""
+    """Р РµРґР°РєС‚РёСЂРѕРІР°С‚СЊ Р‘Р” - РћРЎРќРћР’РќРђРЇ Р Р•РђР›РР—РђР¦РРЇ"""
     query = update.callback_query
     query.answer()
     
     db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
     
     if not db_config:
-        keyboard = [[InlineKeyboardButton("➕ Добавить категорию", callback_data='settings_db_add_category')]]
+        keyboard = [[InlineKeyboardButton("вћ• Р”РѕР±Р°РІРёС‚СЊ РєР°С‚РµРіРѕСЂРёСЋ", callback_data='settings_db_add_category')]]
     else:
         keyboard = []
         for category in db_config.keys():
-            keyboard.append([InlineKeyboardButton(f"✏️ {category}", callback_data=f'settings_db_edit_{category}')])
+            keyboard.append([InlineKeyboardButton(f"вњЏпёЏ {category}", callback_data=f'settings_db_edit_{category}')])
     
-    keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')])
+    keyboard.append([InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_db_main')])
     
     query.edit_message_text(
-        "✏️ *Редактирование баз данных*\n\n"
-        "Выберите категорию для редактирования:",
+        "вњЏпёЏ *Р РµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ Р±Р°Р· РґР°РЅРЅС‹С…*\n\n"
+        "Р’С‹Р±РµСЂРёС‚Рµ РєР°С‚РµРіРѕСЂРёСЋ РґР»СЏ СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёСЏ:",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
 def delete_database_category_handler(update, context):
-    """Удалить категорию БД - ОСНОВНАЯ РЕАЛИЗАЦИЯ"""
+    """РЈРґР°Р»РёС‚СЊ РєР°С‚РµРіРѕСЂРёСЋ Р‘Р” - РћРЎРќРћР’РќРђРЇ Р Р•РђР›РР—РђР¦РРЇ"""
     query = update.callback_query
     query.answer()
     
     db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
     
     if not db_config:
-        keyboard = [[InlineKeyboardButton("➕ Добавить категорию", callback_data='settings_db_add_category')]]
+        keyboard = [[InlineKeyboardButton("вћ• Р”РѕР±Р°РІРёС‚СЊ РєР°С‚РµРіРѕСЂРёСЋ", callback_data='settings_db_add_category')]]
     else:
         keyboard = []
         for category in db_config.keys():
-            keyboard.append([InlineKeyboardButton(f"🗑️ {category}", callback_data=f'settings_db_delete_{category}')])
+            keyboard.append([InlineKeyboardButton(f"рџ—‘пёЏ {category}", callback_data=f'settings_db_delete_{category}')])
     
-    keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')])
+    keyboard.append([InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_db_main')])
     
     query.edit_message_text(
-        "🗑️ *Удаление категории БД*\n\n"
-        "Выберите категорию для удаления:",
+        "рџ—‘пёЏ *РЈРґР°Р»РµРЅРёРµ РєР°С‚РµРіРѕСЂРёРё Р‘Р”*\n\n"
+        "Р’С‹Р±РµСЂРёС‚Рµ РєР°С‚РµРіРѕСЂРёСЋ РґР»СЏ СѓРґР°Р»РµРЅРёСЏ:",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
 def edit_database_category_details(update, context, category):
-    """Показать детали категории БД"""
+    """РџРѕРєР°Р·Р°С‚СЊ РґРµС‚Р°Р»Рё РєР°С‚РµРіРѕСЂРёРё Р‘Р”"""
     query = update.callback_query
     query.answer()
 
@@ -9194,34 +9194,34 @@ def edit_database_category_details(update, context, category):
 
     if databases is None:
         query.edit_message_text(
-            "❌ Категория не найдена.",
+            "вќЊ РљР°С‚РµРіРѕСЂРёСЏ РЅРµ РЅР°Р№РґРµРЅР°.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_db_main')]
             ])
         )
         return
 
-    message = f"✏️ *Категория {category}*\n\n"
+    message = f"вњЏпёЏ *РљР°С‚РµРіРѕСЂРёСЏ {category}*\n\n"
     if not databases:
-        message += "❌ В этой категории нет баз данных.\n"
+        message += "вќЊ Р’ СЌС‚РѕР№ РєР°С‚РµРіРѕСЂРёРё РЅРµС‚ Р±Р°Р· РґР°РЅРЅС‹С….\n"
     else:
-        message += "Список баз данных:\n"
+        message += "РЎРїРёСЃРѕРє Р±Р°Р· РґР°РЅРЅС‹С…:\n"
         for db_key, db_name in databases.items():
-            message += f"• {db_name} (`{db_key}`)\n"
+            message += f"вЂў {db_name} (`{db_key}`)\n"
 
-    message += "\nВыберите действие:"
+    message += "\nР’С‹Р±РµСЂРёС‚Рµ РґРµР№СЃС‚РІРёРµ:"
 
-    keyboard = [[InlineKeyboardButton("➕ Добавить БД", callback_data=f"settings_db_add_db_{category}")]]
+    keyboard = [[InlineKeyboardButton("вћ• Р”РѕР±Р°РІРёС‚СЊ Р‘Р”", callback_data=f"settings_db_add_db_{category}")]]
     for db_key, db_name in databases.items():
-        button_text = f"✏️ {db_name}"
+        button_text = f"вњЏпёЏ {db_name}"
         keyboard.append([
             InlineKeyboardButton(button_text, callback_data=f"settings_db_edit_db_{category}__{db_key}"),
-            InlineKeyboardButton(f"🗑️ {db_name}", callback_data=f"settings_db_delete_db_{category}__{db_key}")
+            InlineKeyboardButton(f"рџ—‘пёЏ {db_name}", callback_data=f"settings_db_delete_db_{category}__{db_key}")
         ])
 
     keyboard.append([
-        InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
-        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+        InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_db_main'),
+        InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')
     ])
 
     query.edit_message_text(
@@ -9231,38 +9231,38 @@ def edit_database_category_details(update, context, category):
     )
 
 def add_database_entry_handler(update, context, category):
-    """Запуск добавления базы данных в категорию"""
+    """Р—Р°РїСѓСЃРє РґРѕР±Р°РІР»РµРЅРёСЏ Р±Р°Р·С‹ РґР°РЅРЅС‹С… РІ РєР°С‚РµРіРѕСЂРёСЋ"""
     query = update.callback_query
     query.answer()
 
     db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
     if category not in db_config:
         query.edit_message_text(
-            "❌ Категория не найдена.",
+            "вќЊ РљР°С‚РµРіРѕСЂРёСЏ РЅРµ РЅР°Р№РґРµРЅР°.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_db_main')]
             ])
         )
         return
 
-    # Инициализируем состояние добавления БД
+    # РРЅРёС†РёР°Р»РёР·РёСЂСѓРµРј СЃРѕСЃС‚РѕСЏРЅРёРµ РґРѕР±Р°РІР»РµРЅРёСЏ Р‘Р”
     context.user_data['adding_db_entry'] = True
     context.user_data['db_entry_category'] = category
     context.user_data.pop('db_entry_key', None)
 
     query.edit_message_text(
-        "➕ *Добавление базы данных*\n\n"
-        f"Категория: *{category}*\n\n"
-        "Введите ключ базы данных (латиница/цифры/символы `_`, `-`, `.`):\n\n"
-        "_Пример: trade, client_db_01_",
+        "вћ• *Р”РѕР±Р°РІР»РµРЅРёРµ Р±Р°Р·С‹ РґР°РЅРЅС‹С…*\n\n"
+        f"РљР°С‚РµРіРѕСЂРёСЏ: *{category}*\n\n"
+        "Р’РІРµРґРёС‚Рµ РєР»СЋС‡ Р±Р°Р·С‹ РґР°РЅРЅС‹С… (Р»Р°С‚РёРЅРёС†Р°/С†РёС„СЂС‹/СЃРёРјРІРѕР»С‹ `_`, `-`, `.`):\n\n"
+        "_РџСЂРёРјРµСЂ: trade, client_db_01_",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data='settings_db_main')]
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='settings_db_main')]
         ])
     )
 
 def edit_database_entry_handler(update, context, category, db_key):
-    """Запуск редактирования базы данных"""
+    """Р—Р°РїСѓСЃРє СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёСЏ Р±Р°Р·С‹ РґР°РЅРЅС‹С…"""
     query = update.callback_query
     query.answer()
 
@@ -9274,9 +9274,9 @@ def edit_database_entry_handler(update, context, category, db_key):
         databases = {}
     if db_key not in databases:
         query.edit_message_text(
-            "❌ База данных не найдена.",
+            "вќЊ Р‘Р°Р·Р° РґР°РЅРЅС‹С… РЅРµ РЅР°Р№РґРµРЅР°.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_db_main')]
             ])
         )
         return
@@ -9286,18 +9286,18 @@ def edit_database_entry_handler(update, context, category, db_key):
     context.user_data['db_entry_key'] = db_key
 
     query.edit_message_text(
-        "✏️ *Редактирование базы данных*\n\n"
-        f"Категория: *{category}*\n"
-        f"Ключ: `{db_key}`\n"
-        "Введите новый ключ:",
+        "вњЏпёЏ *Р РµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ Р±Р°Р·С‹ РґР°РЅРЅС‹С…*\n\n"
+        f"РљР°С‚РµРіРѕСЂРёСЏ: *{category}*\n"
+        f"РљР»СЋС‡: `{db_key}`\n"
+        "Р’РІРµРґРёС‚Рµ РЅРѕРІС‹Р№ РєР»СЋС‡:",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data='settings_db_main')]
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='settings_db_main')]
         ])
     )
 
 def delete_database_entry_confirmation(update, context, category, db_key):
-    """Подтверждение удаления базы данных"""
+    """РџРѕРґС‚РІРµСЂР¶РґРµРЅРёРµ СѓРґР°Р»РµРЅРёСЏ Р±Р°Р·С‹ РґР°РЅРЅС‹С…"""
     query = update.callback_query
     query.answer()
 
@@ -9309,28 +9309,28 @@ def delete_database_entry_confirmation(update, context, category, db_key):
 
     if db_name is None:
         query.edit_message_text(
-            "❌ База данных не найдена.",
+            "вќЊ Р‘Р°Р·Р° РґР°РЅРЅС‹С… РЅРµ РЅР°Р№РґРµРЅР°.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_db_main')]
             ])
         )
         return
 
     query.edit_message_text(
-        "🗑️ *Удаление базы данных*\n\n"
-        f"Категория: *{category}*\n"
-        f"База: `{db_name}`\n\n"
-        "Удалить?",
+        "рџ—‘пёЏ *РЈРґР°Р»РµРЅРёРµ Р±Р°Р·С‹ РґР°РЅРЅС‹С…*\n\n"
+        f"РљР°С‚РµРіРѕСЂРёСЏ: *{category}*\n"
+        f"Р‘Р°Р·Р°: `{db_name}`\n\n"
+        "РЈРґР°Р»РёС‚СЊ?",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("✅ Удалить", callback_data=f"settings_db_delete_db_confirm_{category}__{db_key}")],
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("вњ… РЈРґР°Р»РёС‚СЊ", callback_data=f"settings_db_delete_db_confirm_{category}__{db_key}")],
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_db_main'),
+             InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
         ])
     )
 
 def delete_database_entry_execute(update, context, category, db_key):
-    """Удаление базы данных"""
+    """РЈРґР°Р»РµРЅРёРµ Р±Р°Р·С‹ РґР°РЅРЅС‹С…"""
     query = update.callback_query
     query.answer()
 
@@ -9342,9 +9342,9 @@ def delete_database_entry_execute(update, context, category, db_key):
 
     if db_name is None:
         query.edit_message_text(
-            "❌ База данных не найдена.",
+            "вќЊ Р‘Р°Р·Р° РґР°РЅРЅС‹С… РЅРµ РЅР°Р№РґРµРЅР°.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_db_main')]
             ])
         )
         return
@@ -9353,57 +9353,57 @@ def delete_database_entry_execute(update, context, category, db_key):
     settings_manager.set_setting('DATABASE_CONFIG', db_config)
 
     query.edit_message_text(
-        "✅ *База данных удалена!*\n\n"
-        f"Категория: *{category}*\n"
-        f"База: `{db_name}`",
+        "вњ… *Р‘Р°Р·Р° РґР°РЅРЅС‹С… СѓРґР°Р»РµРЅР°!*\n\n"
+        f"РљР°С‚РµРіРѕСЂРёСЏ: *{category}*\n"
+        f"Р‘Р°Р·Р°: `{db_name}`",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_db_main'),
+             InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
         ])
     )
 
 def delete_database_category_confirmation(update, context, category):
-    """Подтверждение удаления категории БД"""
+    """РџРѕРґС‚РІРµСЂР¶РґРµРЅРёРµ СѓРґР°Р»РµРЅРёСЏ РєР°С‚РµРіРѕСЂРёРё Р‘Р”"""
     query = update.callback_query
     query.answer()
 
     db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
     if category not in db_config:
         query.edit_message_text(
-            "❌ Категория не найдена.",
+            "вќЊ РљР°С‚РµРіРѕСЂРёСЏ РЅРµ РЅР°Р№РґРµРЅР°.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_db_main')]
             ])
         )
         return
 
     message = (
-        "🗑️ *Удаление категории БД*\n\n"
-        f"Категория: *{category}*\n"
-        "Подтвердите удаление:"
+        "рџ—‘пёЏ *РЈРґР°Р»РµРЅРёРµ РєР°С‚РµРіРѕСЂРёРё Р‘Р”*\n\n"
+        f"РљР°С‚РµРіРѕСЂРёСЏ: *{category}*\n"
+        "РџРѕРґС‚РІРµСЂРґРёС‚Рµ СѓРґР°Р»РµРЅРёРµ:"
     )
 
     query.edit_message_text(
         message,
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("✅ Удалить", callback_data=f"settings_db_delete_confirm_{category}")],
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
+            [InlineKeyboardButton("вњ… РЈРґР°Р»РёС‚СЊ", callback_data=f"settings_db_delete_confirm_{category}")],
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_db_main')]
         ])
     )
 
 def delete_database_category_execute(update, context, category):
-    """Удалить категорию БД"""
+    """РЈРґР°Р»РёС‚СЊ РєР°С‚РµРіРѕСЂРёСЋ Р‘Р”"""
     query = update.callback_query
     query.answer()
 
     db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
     if category not in db_config:
         query.edit_message_text(
-            "❌ Категория не найдена.",
+            "вќЊ РљР°С‚РµРіРѕСЂРёСЏ РЅРµ РЅР°Р№РґРµРЅР°.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_db_main')]
             ])
         )
         return
@@ -9412,25 +9412,25 @@ def delete_database_category_execute(update, context, category):
     settings_manager.set_setting('DATABASE_CONFIG', db_config)
 
     query.edit_message_text(
-        f"✅ Категория *{category}* удалена.",
+        f"вњ… РљР°С‚РµРіРѕСЂРёСЏ *{category}* СѓРґР°Р»РµРЅР°.",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_db_main'),
+             InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
         ])
     )
     
 def not_implemented_handler(update, context, feature_name=""):
-    """Обработчик для функций в разработке"""
+    """РћР±СЂР°Р±РѕС‚С‡РёРє РґР»СЏ С„СѓРЅРєС†РёР№ РІ СЂР°Р·СЂР°Р±РѕС‚РєРµ"""
     query = update.callback_query
     query.answer()
     
-    message = f"🛠️ *Функция в разработке*\n\n"
+    message = f"рџ› пёЏ *Р¤СѓРЅРєС†РёСЏ РІ СЂР°Р·СЂР°Р±РѕС‚РєРµ*\n\n"
     if feature_name:
-        message += f"Функция '{feature_name}' находится в разработке.\n"
-    message += "Скоро здесь будет доступна новая функциональность."
+        message += f"Р¤СѓРЅРєС†РёСЏ '{feature_name}' РЅР°С…РѕРґРёС‚СЃСЏ РІ СЂР°Р·СЂР°Р±РѕС‚РєРµ.\n"
+    message += "РЎРєРѕСЂРѕ Р·РґРµСЃСЊ Р±СѓРґРµС‚ РґРѕСЃС‚СѓРїРЅР° РЅРѕРІР°СЏ С„СѓРЅРєС†РёРѕРЅР°Р»СЊРЅРѕСЃС‚СЊ."
     
-    # Определяем откуда пришел запрос для кнопки "Назад"
+    # РћРїСЂРµРґРµР»СЏРµРј РѕС‚РєСѓРґР° РїСЂРёС€РµР» Р·Р°РїСЂРѕСЃ РґР»СЏ РєРЅРѕРїРєРё "РќР°Р·Р°Рґ"
     back_button = 'settings_main'
     if hasattr(query, 'data'):
         if 'telegram' in query.data:
@@ -9446,52 +9446,52 @@ def not_implemented_handler(update, context, feature_name=""):
         message,
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data=back_button),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=back_button),
+             InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
         ])
     )
 
 def handle_db_category_input(update, context):
-    """Обработчик ввода категории БД"""
+    """РћР±СЂР°Р±РѕС‚С‡РёРє РІРІРѕРґР° РєР°С‚РµРіРѕСЂРёРё Р‘Р”"""
     if 'adding_db_category' not in context.user_data:
         return
     
     category_name = update.message.text.strip()
     
     try:
-        # Получаем текущую конфигурацию БД
+        # РџРѕР»СѓС‡Р°РµРј С‚РµРєСѓС‰СѓСЋ РєРѕРЅС„РёРіСѓСЂР°С†РёСЋ Р‘Р”
         db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
         
-        # Добавляем новую категорию
+        # Р”РѕР±Р°РІР»СЏРµРј РЅРѕРІСѓСЋ РєР°С‚РµРіРѕСЂРёСЋ
         if category_name not in db_config:
             db_config[category_name] = {}
             settings_manager.set_setting('DATABASE_CONFIG', db_config)
             
             update.message.reply_text(
-                f"✅ *Категория '{category_name}' добавлена!*\n\n"
-                "Теперь вы можете добавить базы данных в эту категорию.",
+                f"вњ… *РљР°С‚РµРіРѕСЂРёСЏ '{category_name}' РґРѕР±Р°РІР»РµРЅР°!*\n\n"
+                "РўРµРїРµСЂСЊ РІС‹ РјРѕР¶РµС‚Рµ РґРѕР±Р°РІРёС‚СЊ Р±Р°Р·С‹ РґР°РЅРЅС‹С… РІ СЌС‚Сѓ РєР°С‚РµРіРѕСЂРёСЋ.",
                 parse_mode='Markdown',
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("✏️ Добавить БД", callback_data=f'settings_db_edit_{category_name}'),
-                     InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
+                    [InlineKeyboardButton("вњЏпёЏ Р”РѕР±Р°РІРёС‚СЊ Р‘Р”", callback_data=f'settings_db_edit_{category_name}'),
+                     InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_db_main')]
                 ])
             )
         else:
             update.message.reply_text(
-                f"❌ Категория '{category_name}' уже существует!",
+                f"вќЊ РљР°С‚РµРіРѕСЂРёСЏ '{category_name}' СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚!",
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
+                    [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_db_main')]
                 ])
             )
     
     except Exception as e:
-        update.message.reply_text(f"❌ Ошибка: {e}")
+        update.message.reply_text(f"вќЊ РћС€РёР±РєР°: {e}")
     
-    # Очищаем состояние
+    # РћС‡РёС‰Р°РµРј СЃРѕСЃС‚РѕСЏРЅРёРµ
     context.user_data['adding_db_category'] = False
 
 def handle_db_entry_input(update, context):
-    """Обработчик добавления базы данных"""
+    """РћР±СЂР°Р±РѕС‚С‡РёРє РґРѕР±Р°РІР»РµРЅРёСЏ Р±Р°Р·С‹ РґР°РЅРЅС‹С…"""
     if 'adding_db_entry' not in context.user_data:
         return
 
@@ -9499,7 +9499,7 @@ def handle_db_entry_input(update, context):
     category = context.user_data.get('db_entry_category')
 
     if not category:
-        update.message.reply_text("❌ Категория не найдена. Попробуйте снова.")
+        update.message.reply_text("вќЊ РљР°С‚РµРіРѕСЂРёСЏ РЅРµ РЅР°Р№РґРµРЅР°. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°.")
         context.user_data['adding_db_entry'] = False
         return
 
@@ -9511,15 +9511,15 @@ def handle_db_entry_input(update, context):
         databases = {}
 
     if not user_input:
-        update.message.reply_text("❌ Ключ не может быть пустым. Попробуйте снова:")
+        update.message.reply_text("вќЊ РљР»СЋС‡ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
         return
 
     if ' ' in user_input:
-        update.message.reply_text("❌ Ключ не должен содержать пробелы. Попробуйте снова:")
+        update.message.reply_text("вќЊ РљР»СЋС‡ РЅРµ РґРѕР»Р¶РµРЅ СЃРѕРґРµСЂР¶Р°С‚СЊ РїСЂРѕР±РµР»С‹. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
         return
 
     if user_input in databases:
-        update.message.reply_text("❌ Такой ключ уже существует. Введите другой:")
+        update.message.reply_text("вќЊ РўР°РєРѕР№ РєР»СЋС‡ СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚. Р’РІРµРґРёС‚Рµ РґСЂСѓРіРѕР№:")
         return
 
     databases[user_input] = user_input
@@ -9527,13 +9527,13 @@ def handle_db_entry_input(update, context):
     settings_manager.set_setting('DATABASE_CONFIG', db_config)
 
     update.message.reply_text(
-        "✅ *База данных добавлена!*\n\n"
-        f"Категория: *{category}*\n"
-        f"Ключ: `{user_input}`",
+        "вњ… *Р‘Р°Р·Р° РґР°РЅРЅС‹С… РґРѕР±Р°РІР»РµРЅР°!*\n\n"
+        f"РљР°С‚РµРіРѕСЂРёСЏ: *{category}*\n"
+        f"РљР»СЋС‡: `{user_input}`",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
-             InlineKeyboardButton("✏️ Добавить еще", callback_data=f'settings_db_add_db_{category}')]
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_db_main'),
+             InlineKeyboardButton("вњЏпёЏ Р”РѕР±Р°РІРёС‚СЊ РµС‰Рµ", callback_data=f'settings_db_add_db_{category}')]
         ])
     )
 
@@ -9542,7 +9542,7 @@ def handle_db_entry_input(update, context):
     context.user_data.pop('db_entry_key', None)
 
 def handle_db_entry_edit_input(update, context):
-    """Обработчик редактирования базы данных"""
+    """РћР±СЂР°Р±РѕС‚С‡РёРє СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёСЏ Р±Р°Р·С‹ РґР°РЅРЅС‹С…"""
     if 'editing_db_entry' not in context.user_data:
         return
 
@@ -9551,24 +9551,24 @@ def handle_db_entry_edit_input(update, context):
     db_key = context.user_data.get('db_entry_key')
 
     if not category or not db_key:
-        update.message.reply_text("❌ Не удалось определить базу данных. Попробуйте снова.")
+        update.message.reply_text("вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ РѕРїСЂРµРґРµР»РёС‚СЊ Р±Р°Р·Сѓ РґР°РЅРЅС‹С…. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°.")
         context.user_data['editing_db_entry'] = False
         return
 
     if not user_input:
-        update.message.reply_text("❌ Ключ не может быть пустым. Попробуйте снова:")
+        update.message.reply_text("вќЊ РљР»СЋС‡ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
         return
 
     db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
     databases = db_config.get(category, {})
 
     if db_key not in databases:
-        update.message.reply_text("❌ База данных не найдена.")
+        update.message.reply_text("вќЊ Р‘Р°Р·Р° РґР°РЅРЅС‹С… РЅРµ РЅР°Р№РґРµРЅР°.")
         context.user_data['editing_db_entry'] = False
         return
 
     if user_input in databases and user_input != db_key:
-        update.message.reply_text("❌ Такой ключ уже существует. Введите другой:")
+        update.message.reply_text("вќЊ РўР°РєРѕР№ РєР»СЋС‡ СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚. Р’РІРµРґРёС‚Рµ РґСЂСѓРіРѕР№:")
         return
 
     databases.pop(db_key, None)
@@ -9577,13 +9577,13 @@ def handle_db_entry_edit_input(update, context):
     settings_manager.set_setting('DATABASE_CONFIG', db_config)
 
     update.message.reply_text(
-        "✅ *База данных обновлена!*\n\n"
-        f"Категория: *{category}*\n"
-        f"Новый ключ: `{user_input}`",
+        "вњ… *Р‘Р°Р·Р° РґР°РЅРЅС‹С… РѕР±РЅРѕРІР»РµРЅР°!*\n\n"
+        f"РљР°С‚РµРіРѕСЂРёСЏ: *{category}*\n"
+        f"РќРѕРІС‹Р№ РєР»СЋС‡: `{user_input}`",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
-             InlineKeyboardButton("✏️ Редактировать еще", callback_data=f'settings_db_edit_{category}')]
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_db_main'),
+             InlineKeyboardButton("вњЏпёЏ Р РµРґР°РєС‚РёСЂРѕРІР°С‚СЊ РµС‰Рµ", callback_data=f'settings_db_edit_{category}')]
         ])
     )
 
@@ -9592,15 +9592,15 @@ def handle_db_entry_edit_input(update, context):
     context.user_data.pop('db_entry_key', None)
     
 def show_windows_auth_settings(update, context):
-    """Показать настройки аутентификации Windows - ОСНОВНОЕ МЕНЮ"""
+    """РџРѕРєР°Р·Р°С‚СЊ РЅР°СЃС‚СЂРѕР№РєРё Р°СѓС‚РµРЅС‚РёС„РёРєР°С†РёРё Windows - РћРЎРќРћР’РќРћР• РњР•РќР®"""
     query = update.callback_query
     query.answer()
     
-    # Получаем статистику по учетным данным
+    # РџРѕР»СѓС‡Р°РµРј СЃС‚Р°С‚РёСЃС‚РёРєСѓ РїРѕ СѓС‡РµС‚РЅС‹Рј РґР°РЅРЅС‹Рј
     credentials = settings_manager.get_windows_credentials()
     server_types = settings_manager.get_windows_server_types()
     
-    # Группируем по типам серверов
+    # Р“СЂСѓРїРїРёСЂСѓРµРј РїРѕ С‚РёРїР°Рј СЃРµСЂРІРµСЂРѕРІ
     stats = {}
     for cred in credentials:
         server_type = cred['server_type']
@@ -9608,26 +9608,26 @@ def show_windows_auth_settings(update, context):
             stats[server_type] = 0
         stats[server_type] += 1
     
-    message = "🖥️ *Управление аутентификацией Windows*\n\n"
-    message += f"• Всего учетных записей: {len(credentials)}\n"
-    message += f"• Типов серверов: {len(server_types)}\n\n"
+    message = "рџ–ҐпёЏ *РЈРїСЂР°РІР»РµРЅРёРµ Р°СѓС‚РµРЅС‚РёС„РёРєР°С†РёРµР№ Windows*\n\n"
+    message += f"вЂў Р’СЃРµРіРѕ СѓС‡РµС‚РЅС‹С… Р·Р°РїРёСЃРµР№: {len(credentials)}\n"
+    message += f"вЂў РўРёРїРѕРІ СЃРµСЂРІРµСЂРѕРІ: {len(server_types)}\n\n"
     
     if stats:
-        message += "*Учетные данные по типам:*\n"
+        message += "*РЈС‡РµС‚РЅС‹Рµ РґР°РЅРЅС‹Рµ РїРѕ С‚РёРїР°Рј:*\n"
         for server_type, count in stats.items():
-            message += f"• {server_type}: {count} учетных записей\n"
+            message += f"вЂў {server_type}: {count} СѓС‡РµС‚РЅС‹С… Р·Р°РїРёСЃРµР№\n"
     else:
-        message += "❌ *Учетные данные не настроены*\n"
+        message += "вќЊ *РЈС‡РµС‚РЅС‹Рµ РґР°РЅРЅС‹Рµ РЅРµ РЅР°СЃС‚СЂРѕРµРЅС‹*\n"
     
-    message += "\nВыберите действие:"
+    message += "\nР’С‹Р±РµСЂРёС‚Рµ РґРµР№СЃС‚РІРёРµ:"
     
     keyboard = [
-        [InlineKeyboardButton("👥 Просмотр всех учетных записей", callback_data='windows_auth_list')],
-        [InlineKeyboardButton("➕ Добавить учетную запись", callback_data='windows_auth_add')],
-        [InlineKeyboardButton("📊 Учетные данные по типам", callback_data='windows_auth_by_type')],
-        [InlineKeyboardButton("⚙️ Управление типами серверов", callback_data='windows_auth_manage_types')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_auth'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("рџ‘Ґ РџСЂРѕСЃРјРѕС‚СЂ РІСЃРµС… СѓС‡РµС‚РЅС‹С… Р·Р°РїРёСЃРµР№", callback_data='windows_auth_list')],
+        [InlineKeyboardButton("вћ• Р”РѕР±Р°РІРёС‚СЊ СѓС‡РµС‚РЅСѓСЋ Р·Р°РїРёСЃСЊ", callback_data='windows_auth_add')],
+        [InlineKeyboardButton("рџ“Љ РЈС‡РµС‚РЅС‹Рµ РґР°РЅРЅС‹Рµ РїРѕ С‚РёРїР°Рј", callback_data='windows_auth_by_type')],
+        [InlineKeyboardButton("вљ™пёЏ РЈРїСЂР°РІР»РµРЅРёРµ С‚РёРїР°РјРё СЃРµСЂРІРµСЂРѕРІ", callback_data='windows_auth_manage_types')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_auth'),
+         InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
     ]
     
     query.edit_message_text(
@@ -9636,30 +9636,30 @@ def show_windows_auth_settings(update, context):
     )
 
 def show_windows_auth_list(update, context):
-    """Показать список всех учетных записей Windows"""
+    """РџРѕРєР°Р·Р°С‚СЊ СЃРїРёСЃРѕРє РІСЃРµС… СѓС‡РµС‚РЅС‹С… Р·Р°РїРёСЃРµР№ Windows"""
     query = update.callback_query
     query.answer()
     
     credentials = settings_manager.get_windows_credentials()
     
-    message = "👥 *Все учетные записи Windows*\n\n"
+    message = "рџ‘Ґ *Р’СЃРµ СѓС‡РµС‚РЅС‹Рµ Р·Р°РїРёСЃРё Windows*\n\n"
     
     if not credentials:
-        message += "❌ *Учетные записи не найдены*\n"
+        message += "вќЊ *РЈС‡РµС‚РЅС‹Рµ Р·Р°РїРёСЃРё РЅРµ РЅР°Р№РґРµРЅС‹*\n"
     else:
         for i, cred in enumerate(credentials, 1):
-            status = "🟢" if cred['enabled'] else "🔴"
-            message += f"{status} *{cred['server_type']}* (приоритет: {cred['priority']})\n"
-            message += f"   Пользователь: `{cred['username']}`\n"
-            message += f"   Пароль: `{'*' * 8}`\n"
+            status = "рџџў" if cred['enabled'] else "рџ”ґ"
+            message += f"{status} *{cred['server_type']}* (РїСЂРёРѕСЂРёС‚РµС‚: {cred['priority']})\n"
+            message += f"   РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ: `{cred['username']}`\n"
+            message += f"   РџР°СЂРѕР»СЊ: `{'*' * 8}`\n"
             message += f"   ID: {cred['id']}\n\n"
     
     keyboard = [
-        [InlineKeyboardButton("➕ Добавить учетную запись", callback_data='windows_auth_add')],
-        [InlineKeyboardButton("✏️ Редактировать", callback_data='windows_auth_edit')],
-        [InlineKeyboardButton("🗑️ Удалить", callback_data='windows_auth_delete')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='windows_auth_main'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("вћ• Р”РѕР±Р°РІРёС‚СЊ СѓС‡РµС‚РЅСѓСЋ Р·Р°РїРёСЃСЊ", callback_data='windows_auth_add')],
+        [InlineKeyboardButton("вњЏпёЏ Р РµРґР°РєС‚РёСЂРѕРІР°С‚СЊ", callback_data='windows_auth_edit')],
+        [InlineKeyboardButton("рџ—‘пёЏ РЈРґР°Р»РёС‚СЊ", callback_data='windows_auth_delete')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='windows_auth_main'),
+         InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
     ]
     
     query.edit_message_text(
@@ -9669,57 +9669,57 @@ def show_windows_auth_list(update, context):
     )
 
 def show_windows_auth_add(update, context):
-    """Показать форму добавления учетной записи Windows"""
+    """РџРѕРєР°Р·Р°С‚СЊ С„РѕСЂРјСѓ РґРѕР±Р°РІР»РµРЅРёСЏ СѓС‡РµС‚РЅРѕР№ Р·Р°РїРёСЃРё Windows"""
     query = update.callback_query
     query.answer()
     
-    # Начинаем процесс добавления
+    # РќР°С‡РёРЅР°РµРј РїСЂРѕС†РµСЃСЃ РґРѕР±Р°РІР»РµРЅРёСЏ
     context.user_data['adding_windows_cred'] = True
     context.user_data['cred_stage'] = 'username'
     
     message = (
-        "➕ *Добавление учетной записи Windows*\n\n"
-        "Введите имя пользователя:\n\n"
-        "_Пример: Administrator_"
+        "вћ• *Р”РѕР±Р°РІР»РµРЅРёРµ СѓС‡РµС‚РЅРѕР№ Р·Р°РїРёСЃРё Windows*\n\n"
+        "Р’РІРµРґРёС‚Рµ РёРјСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ:\n\n"
+        "_РџСЂРёРјРµСЂ: Administrator_"
     )
     
     query.edit_message_text(
         message,
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data='windows_auth_main')]
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='windows_auth_main')]
         ])
     )
 
 def show_windows_auth_by_type(update, context):
-    """Показать учетные данные по типам серверов"""
+    """РџРѕРєР°Р·Р°С‚СЊ СѓС‡РµС‚РЅС‹Рµ РґР°РЅРЅС‹Рµ РїРѕ С‚РёРїР°Рј СЃРµСЂРІРµСЂРѕРІ"""
     query = update.callback_query
     query.answer()
     
     server_types = settings_manager.get_windows_server_types()
     
-    message = "📊 *Учетные данные по типам серверов*\n\n"
+    message = "рџ“Љ *РЈС‡РµС‚РЅС‹Рµ РґР°РЅРЅС‹Рµ РїРѕ С‚РёРїР°Рј СЃРµСЂРІРµСЂРѕРІ*\n\n"
     
     if not server_types:
-        message += "❌ *Типы серверов не настроены*\n"
+        message += "вќЊ *РўРёРїС‹ СЃРµСЂРІРµСЂРѕРІ РЅРµ РЅР°СЃС‚СЂРѕРµРЅС‹*\n"
     else:
         for server_type in server_types:
             credentials = settings_manager.get_windows_credentials(server_type)
-            message += f"*{server_type}* ({len(credentials)} учетных записей):\n"
+            message += f"*{server_type}* ({len(credentials)} СѓС‡РµС‚РЅС‹С… Р·Р°РїРёСЃРµР№):\n"
             
-            for cred in credentials[:3]:  # Показываем первые 3
-                status = "🟢" if cred['enabled'] else "🔴"
-                message += f"  {status} {cred['username']} (приоритет: {cred['priority']})\n"
+            for cred in credentials[:3]:  # РџРѕРєР°Р·С‹РІР°РµРј РїРµСЂРІС‹Рµ 3
+                status = "рџџў" if cred['enabled'] else "рџ”ґ"
+                message += f"  {status} {cred['username']} (РїСЂРёРѕСЂРёС‚РµС‚: {cred['priority']})\n"
             
             if len(credentials) > 3:
-                message += f"  ... и еще {len(credentials) - 3} учетных записей\n"
+                message += f"  ... Рё РµС‰Рµ {len(credentials) - 3} СѓС‡РµС‚РЅС‹С… Р·Р°РїРёСЃРµР№\n"
             message += "\n"
     
     keyboard = [
-        [InlineKeyboardButton("👥 Просмотр всех", callback_data='windows_auth_list')],
-        [InlineKeyboardButton("➕ Добавить учетную запись", callback_data='windows_auth_add')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='windows_auth_main'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("рџ‘Ґ РџСЂРѕСЃРјРѕС‚СЂ РІСЃРµС…", callback_data='windows_auth_list')],
+        [InlineKeyboardButton("вћ• Р”РѕР±Р°РІРёС‚СЊ СѓС‡РµС‚РЅСѓСЋ Р·Р°РїРёСЃСЊ", callback_data='windows_auth_add')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='windows_auth_main'),
+         InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
     ]
     
     query.edit_message_text(
@@ -9729,7 +9729,7 @@ def show_windows_auth_by_type(update, context):
     )
 
 def handle_windows_credential_input(update, context):
-    """Обработчик ввода данных учетной записи Windows"""
+    """РћР±СЂР°Р±РѕС‚С‡РёРє РІРІРѕРґР° РґР°РЅРЅС‹С… СѓС‡РµС‚РЅРѕР№ Р·Р°РїРёСЃРё Windows"""
     if 'adding_windows_cred' not in context.user_data:
         return
     
@@ -9742,11 +9742,11 @@ def handle_windows_credential_input(update, context):
             context.user_data['cred_stage'] = 'password'
             
             update.message.reply_text(
-                "🔒 Введите пароль:\n\n"
-                "_Пароль будет сохранен в зашифрованном виде_",
+                "рџ”’ Р’РІРµРґРёС‚Рµ РїР°СЂРѕР»СЊ:\n\n"
+                "_РџР°СЂРѕР»СЊ Р±СѓРґРµС‚ СЃРѕС…СЂР°РЅРµРЅ РІ Р·Р°С€РёС„СЂРѕРІР°РЅРЅРѕРј РІРёРґРµ_",
                 parse_mode='Markdown',
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("❌ Отмена", callback_data='windows_auth_main')]
+                    [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='windows_auth_main')]
                 ])
             )
             
@@ -9754,18 +9754,18 @@ def handle_windows_credential_input(update, context):
             context.user_data['cred_password'] = user_input
             context.user_data['cred_stage'] = 'server_type'
             
-            # Предлагаем стандартные типы серверов
+            # РџСЂРµРґР»Р°РіР°РµРј СЃС‚Р°РЅРґР°СЂС‚РЅС‹Рµ С‚РёРїС‹ СЃРµСЂРІРµСЂРѕРІ
             keyboard = [
-                [InlineKeyboardButton("🖥️ Windows 2025", callback_data='cred_type_windows_2025')],
-                [InlineKeyboardButton("🌐 Доменные серверы", callback_data='cred_type_domain_servers')],
-                [InlineKeyboardButton("🔧 Admin серверы", callback_data='cred_type_admin_servers')],
-                [InlineKeyboardButton("💻 Стандартные Windows", callback_data='cred_type_standard_windows')],
-                [InlineKeyboardButton("⚙️ Другой тип", callback_data='cred_type_custom')],
-                [InlineKeyboardButton("❌ Отмена", callback_data='windows_auth_main')]
+                [InlineKeyboardButton("рџ–ҐпёЏ Windows 2025", callback_data='cred_type_windows_2025')],
+                [InlineKeyboardButton("рџЊђ Р”РѕРјРµРЅРЅС‹Рµ СЃРµСЂРІРµСЂС‹", callback_data='cred_type_domain_servers')],
+                [InlineKeyboardButton("рџ”§ Admin СЃРµСЂРІРµСЂС‹", callback_data='cred_type_admin_servers')],
+                [InlineKeyboardButton("рџ’» РЎС‚Р°РЅРґР°СЂС‚РЅС‹Рµ Windows", callback_data='cred_type_standard_windows')],
+                [InlineKeyboardButton("вљ™пёЏ Р”СЂСѓРіРѕР№ С‚РёРї", callback_data='cred_type_custom')],
+                [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='windows_auth_main')]
             ]
             
             update.message.reply_text(
-                "🖥️ Выберите тип серверов для этих учетных данных:",
+                "рџ–ҐпёЏ Р’С‹Р±РµСЂРёС‚Рµ С‚РёРї СЃРµСЂРІРµСЂРѕРІ РґР»СЏ СЌС‚РёС… СѓС‡РµС‚РЅС‹С… РґР°РЅРЅС‹С…:",
                 reply_markup=InlineKeyboardMarkup(keyboard)
             )
             
@@ -9774,11 +9774,11 @@ def handle_windows_credential_input(update, context):
             context.user_data['cred_stage'] = 'priority'
             
             update.message.reply_text(
-                "📊 Введите приоритет (число):\n\n"
-                "_Учетные данные с более высоким приоритетом будут использоваться первыми_",
+                "рџ“Љ Р’РІРµРґРёС‚Рµ РїСЂРёРѕСЂРёС‚РµС‚ (С‡РёСЃР»Рѕ):\n\n"
+                "_РЈС‡РµС‚РЅС‹Рµ РґР°РЅРЅС‹Рµ СЃ Р±РѕР»РµРµ РІС‹СЃРѕРєРёРј РїСЂРёРѕСЂРёС‚РµС‚РѕРј Р±СѓРґСѓС‚ РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊСЃСЏ РїРµСЂРІС‹РјРё_",
                 parse_mode='Markdown',
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("❌ Отмена", callback_data='windows_auth_main')]
+                    [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='windows_auth_main')]
                 ])
             )
             
@@ -9787,7 +9787,7 @@ def handle_windows_credential_input(update, context):
                 priority = int(user_input)
                 context.user_data['cred_priority'] = priority
                 
-                # Сохраняем учетные данные
+                # РЎРѕС…СЂР°РЅСЏРµРј СѓС‡РµС‚РЅС‹Рµ РґР°РЅРЅС‹Рµ
                 username = context.user_data['cred_username']
                 password = context.user_data['cred_password']
                 server_type = context.user_data['cred_server_type']
@@ -9797,36 +9797,36 @@ def handle_windows_credential_input(update, context):
                 )
                 
                 if success:
-                    # Очищаем контекст
+                    # РћС‡РёС‰Р°РµРј РєРѕРЅС‚РµРєСЃС‚
                     for key in ['adding_windows_cred', 'cred_stage', 'cred_username', 
                                'cred_password', 'cred_server_type', 'cred_priority']:
                         context.user_data.pop(key, None)
                     
                     update.message.reply_text(
-                        f"✅ *Учетная запись добавлена!*\n\n"
-                        f"• Пользователь: `{username}`\n"
-                        f"• Тип серверов: `{server_type}`\n"
-                        f"• Приоритет: `{priority}`",
+                        f"вњ… *РЈС‡РµС‚РЅР°СЏ Р·Р°РїРёСЃСЊ РґРѕР±Р°РІР»РµРЅР°!*\n\n"
+                        f"вЂў РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ: `{username}`\n"
+                        f"вЂў РўРёРї СЃРµСЂРІРµСЂРѕРІ: `{server_type}`\n"
+                        f"вЂў РџСЂРёРѕСЂРёС‚РµС‚: `{priority}`",
                         parse_mode='Markdown',
                         reply_markup=InlineKeyboardMarkup([
-                            [InlineKeyboardButton("➕ Добавить еще", callback_data='windows_auth_add'),
-                             InlineKeyboardButton("👥 Просмотр всех", callback_data='windows_auth_list')],
-                            [InlineKeyboardButton("↩️ Назад", callback_data='windows_auth_main')]
+                            [InlineKeyboardButton("вћ• Р”РѕР±Р°РІРёС‚СЊ РµС‰Рµ", callback_data='windows_auth_add'),
+                             InlineKeyboardButton("рџ‘Ґ РџСЂРѕСЃРјРѕС‚СЂ РІСЃРµС…", callback_data='windows_auth_list')],
+                            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='windows_auth_main')]
                         ])
                     )
                 else:
-                    update.message.reply_text("❌ Ошибка при сохранении учетных данных")
+                    update.message.reply_text("вќЊ РћС€РёР±РєР° РїСЂРё СЃРѕС…СЂР°РЅРµРЅРёРё СѓС‡РµС‚РЅС‹С… РґР°РЅРЅС‹С…")
                     
             except ValueError:
-                update.message.reply_text("❌ Приоритет должен быть числом. Попробуйте снова:")
+                update.message.reply_text("вќЊ РџСЂРёРѕСЂРёС‚РµС‚ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ С‡РёСЃР»РѕРј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
                 
     except Exception as e:
-        update.message.reply_text(f"❌ Ошибка: {e}")
-        # Сбрасываем состояние при ошибке
+        update.message.reply_text(f"вќЊ РћС€РёР±РєР°: {e}")
+        # РЎР±СЂР°СЃС‹РІР°РµРј СЃРѕСЃС‚РѕСЏРЅРёРµ РїСЂРё РѕС€РёР±РєРµ
         context.user_data['adding_windows_cred'] = False
 
 def handle_credential_type_selection(update, context):
-    """Обработчик выбора типа сервера для учетных данных"""
+    """РћР±СЂР°Р±РѕС‚С‡РёРє РІС‹Р±РѕСЂР° С‚РёРїР° СЃРµСЂРІРµСЂР° РґР»СЏ СѓС‡РµС‚РЅС‹С… РґР°РЅРЅС‹С…"""
     query = update.callback_query
     query.answer()
     
@@ -9845,11 +9845,11 @@ def handle_credential_type_selection(update, context):
     if cred_type == 'custom':
         context.user_data['cred_stage'] = 'server_type_custom'
         query.edit_message_text(
-            "✏️ Введите название типа серверов:\n\n"
-            "_Пример: backup_servers, web_servers_",
+            "вњЏпёЏ Р’РІРµРґРёС‚Рµ РЅР°Р·РІР°РЅРёРµ С‚РёРїР° СЃРµСЂРІРµСЂРѕРІ:\n\n"
+            "_РџСЂРёРјРµСЂ: backup_servers, web_servers_",
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("❌ Отмена", callback_data='windows_auth_main')]
+                [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='windows_auth_main')]
             ])
         )
     else:
@@ -9857,53 +9857,53 @@ def handle_credential_type_selection(update, context):
         context.user_data['cred_stage'] = 'priority'
         
         query.edit_message_text(
-            "📊 Введите приоритет (число):\n\n"
-            "_Учетные данные с более высоким приоритетом будут использоваться первыми_",
+            "рџ“Љ Р’РІРµРґРёС‚Рµ РїСЂРёРѕСЂРёС‚РµС‚ (С‡РёСЃР»Рѕ):\n\n"
+            "_РЈС‡РµС‚РЅС‹Рµ РґР°РЅРЅС‹Рµ СЃ Р±РѕР»РµРµ РІС‹СЃРѕРєРёРј РїСЂРёРѕСЂРёС‚РµС‚РѕРј Р±СѓРґСѓС‚ РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊСЃСЏ РїРµСЂРІС‹РјРё_",
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("❌ Отмена", callback_data='windows_auth_main')]
+                [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='windows_auth_main')]
             ])
         )
 
 def show_windows_auth_manage_types(update, context):
-    """Управление типами серверов - ОБНОВЛЕННАЯ ВЕРСИЯ С НАСТРОЙКАМИ"""
+    """РЈРїСЂР°РІР»РµРЅРёРµ С‚РёРїР°РјРё СЃРµСЂРІРµСЂРѕРІ - РћР‘РќРћР’Р›Р•РќРќРђРЇ Р’Р•Р РЎРРЇ РЎ РќРђРЎРўР РћР™РљРђРњР"""
     query = update.callback_query
     query.answer()
     
     server_types = settings_manager.get_windows_server_types()
     
-    message = "⚙️ *Управление типами серверов*\n\n"
+    message = "вљ™пёЏ *РЈРїСЂР°РІР»РµРЅРёРµ С‚РёРїР°РјРё СЃРµСЂРІРµСЂРѕРІ*\n\n"
     
     if not server_types:
-        message += "❌ *Типы серверов не настроены*\n"
+        message += "вќЊ *РўРёРїС‹ СЃРµСЂРІРµСЂРѕРІ РЅРµ РЅР°СЃС‚СЂРѕРµРЅС‹*\n"
     else:
-        message += "*Существующие типы:*\n"
+        message += "*РЎСѓС‰РµСЃС‚РІСѓСЋС‰РёРµ С‚РёРїС‹:*\n"
         for server_type in server_types:
             credentials = settings_manager.get_windows_credentials(server_type)
             enabled_count = sum(1 for cred in credentials if cred['enabled'])
-            message += f"• *{server_type}*: {enabled_count}/{len(credentials)} активных учетных записей\n"
+            message += f"вЂў *{server_type}*: {enabled_count}/{len(credentials)} Р°РєС‚РёРІРЅС‹С… СѓС‡РµС‚РЅС‹С… Р·Р°РїРёСЃРµР№\n"
     
-    message += "\n*Доступные действия:*\n"
-    message += "• *Переименовать тип* - изменить название типа серверов\n"
-    message += "• *Объединить типы* - объединить два типа в один\n"
-    message += "• *Удалить тип* - удалить тип (учетные записи сохранятся)\n"
+    message += "\n*Р”РѕСЃС‚СѓРїРЅС‹Рµ РґРµР№СЃС‚РІРёСЏ:*\n"
+    message += "вЂў *РџРµСЂРµРёРјРµРЅРѕРІР°С‚СЊ С‚РёРї* - РёР·РјРµРЅРёС‚СЊ РЅР°Р·РІР°РЅРёРµ С‚РёРїР° СЃРµСЂРІРµСЂРѕРІ\n"
+    message += "вЂў *РћР±СЉРµРґРёРЅРёС‚СЊ С‚РёРїС‹* - РѕР±СЉРµРґРёРЅРёС‚СЊ РґРІР° С‚РёРїР° РІ РѕРґРёРЅ\n"
+    message += "вЂў *РЈРґР°Р»РёС‚СЊ С‚РёРї* - СѓРґР°Р»РёС‚СЊ С‚РёРї (СѓС‡РµС‚РЅС‹Рµ Р·Р°РїРёСЃРё СЃРѕС…СЂР°РЅСЏС‚СЃСЏ)\n"
     
     keyboard = []
     
-    # Кнопки для каждого типа серверов
+    # РљРЅРѕРїРєРё РґР»СЏ РєР°Р¶РґРѕРіРѕ С‚РёРїР° СЃРµСЂРІРµСЂРѕРІ
     for server_type in server_types:
         keyboard.append([
-            InlineKeyboardButton(f"✏️ {server_type}", callback_data=f'manage_type_edit_{server_type}'),
-            InlineKeyboardButton(f"🔄 {server_type}", callback_data=f'manage_type_merge_{server_type}')
+            InlineKeyboardButton(f"вњЏпёЏ {server_type}", callback_data=f'manage_type_edit_{server_type}'),
+            InlineKeyboardButton(f"рџ”„ {server_type}", callback_data=f'manage_type_merge_{server_type}')
         ])
     
-    # Общие действия
+    # РћР±С‰РёРµ РґРµР№СЃС‚РІРёСЏ
     keyboard.extend([
-        [InlineKeyboardButton("➕ Создать новый тип", callback_data='manage_type_create')],
-        [InlineKeyboardButton("🗑️ Удалить тип", callback_data='manage_type_delete')],
-        [InlineKeyboardButton("📊 Статистика по типам", callback_data='manage_type_stats')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='windows_auth_main'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("вћ• РЎРѕР·РґР°С‚СЊ РЅРѕРІС‹Р№ С‚РёРї", callback_data='manage_type_create')],
+        [InlineKeyboardButton("рџ—‘пёЏ РЈРґР°Р»РёС‚СЊ С‚РёРї", callback_data='manage_type_delete')],
+        [InlineKeyboardButton("рџ“Љ РЎС‚Р°С‚РёСЃС‚РёРєР° РїРѕ С‚РёРїР°Рј", callback_data='manage_type_stats')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='windows_auth_main'),
+         InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
     ])
     
     query.edit_message_text(
@@ -9913,7 +9913,7 @@ def show_windows_auth_manage_types(update, context):
     )
 
 def handle_server_type_management(update, context):
-    """Обработчик управления типами серверов"""
+    """РћР±СЂР°Р±РѕС‚С‡РёРє СѓРїСЂР°РІР»РµРЅРёСЏ С‚РёРїР°РјРё СЃРµСЂРІРµСЂРѕРІ"""
     query = update.callback_query
     data = query.data
     
@@ -9932,24 +9932,24 @@ def handle_server_type_management(update, context):
        
 
 def create_server_type_handler(update, context):
-    """Создание нового типа серверов"""
+    """РЎРѕР·РґР°РЅРёРµ РЅРѕРІРѕРіРѕ С‚РёРїР° СЃРµСЂРІРµСЂРѕРІ"""
     query = update.callback_query
     query.answer()
     
     context.user_data['creating_server_type'] = True
     
     query.edit_message_text(
-        "➕ *Создание нового типа серверов*\n\n"
-        "Введите название для нового типа:\n\n"
-        "_Пример: web_servers, database_servers, backup_servers_",
+        "вћ• *РЎРѕР·РґР°РЅРёРµ РЅРѕРІРѕРіРѕ С‚РёРїР° СЃРµСЂРІРµСЂРѕРІ*\n\n"
+        "Р’РІРµРґРёС‚Рµ РЅР°Р·РІР°РЅРёРµ РґР»СЏ РЅРѕРІРѕРіРѕ С‚РёРїР°:\n\n"
+        "_РџСЂРёРјРµСЂ: web_servers, database_servers, backup_servers_",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data='windows_auth_manage_types')]
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='windows_auth_manage_types')]
         ])
     )
 
 def edit_server_type_handler(update, context, old_type):
-    """Редактирование типа серверов"""
+    """Р РµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ С‚РёРїР° СЃРµСЂРІРµСЂРѕРІ"""
     query = update.callback_query
     query.answer()
     
@@ -9959,45 +9959,45 @@ def edit_server_type_handler(update, context, old_type):
     credentials = settings_manager.get_windows_credentials(old_type)
     
     query.edit_message_text(
-        f"✏️ *Редактирование типа серверов*\n\n"
-        f"Текущее название: *{old_type}*\n"
-        f"Количество учетных записей: {len(credentials)}\n\n"
-        "Введите новое название для этого типа:",
+        f"вњЏпёЏ *Р РµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ С‚РёРїР° СЃРµСЂРІРµСЂРѕРІ*\n\n"
+        f"РўРµРєСѓС‰РµРµ РЅР°Р·РІР°РЅРёРµ: *{old_type}*\n"
+        f"РљРѕР»РёС‡РµСЃС‚РІРѕ СѓС‡РµС‚РЅС‹С… Р·Р°РїРёСЃРµР№: {len(credentials)}\n\n"
+        "Р’РІРµРґРёС‚Рµ РЅРѕРІРѕРµ РЅР°Р·РІР°РЅРёРµ РґР»СЏ СЌС‚РѕРіРѕ С‚РёРїР°:",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data='windows_auth_manage_types')]
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='windows_auth_manage_types')]
         ])
     )
 
 def merge_server_type_handler(update, context, source_type):
-    """Объединение типов серверов"""
+    """РћР±СЉРµРґРёРЅРµРЅРёРµ С‚РёРїРѕРІ СЃРµСЂРІРµСЂРѕРІ"""
     query = update.callback_query
     query.answer()
     
     server_types = settings_manager.get_windows_server_types()
-    # Исключаем текущий тип из списка для объединения
+    # РСЃРєР»СЋС‡Р°РµРј С‚РµРєСѓС‰РёР№ С‚РёРї РёР· СЃРїРёСЃРєР° РґР»СЏ РѕР±СЉРµРґРёРЅРµРЅРёСЏ
     target_types = [t for t in server_types if t != source_type]
     
     if not target_types:
-        query.answer("❌ Нет других типов для объединения")
+        query.answer("вќЊ РќРµС‚ РґСЂСѓРіРёС… С‚РёРїРѕРІ РґР»СЏ РѕР±СЉРµРґРёРЅРµРЅРёСЏ")
         return
     
-    message = f"🔄 *Объединение типов серверов*\n\n"
-    message += f"Источник: *{source_type}*\n"
-    message += f"Учетных записей: {len(settings_manager.get_windows_credentials(source_type))}\n\n"
-    message += "Выберите целевой тип для объединения:"
+    message = f"рџ”„ *РћР±СЉРµРґРёРЅРµРЅРёРµ С‚РёРїРѕРІ СЃРµСЂРІРµСЂРѕРІ*\n\n"
+    message += f"РСЃС‚РѕС‡РЅРёРє: *{source_type}*\n"
+    message += f"РЈС‡РµС‚РЅС‹С… Р·Р°РїРёСЃРµР№: {len(settings_manager.get_windows_credentials(source_type))}\n\n"
+    message += "Р’С‹Р±РµСЂРёС‚Рµ С†РµР»РµРІРѕР№ С‚РёРї РґР»СЏ РѕР±СЉРµРґРёРЅРµРЅРёСЏ:"
     
     keyboard = []
     for target_type in target_types:
         cred_count = len(settings_manager.get_windows_credentials(target_type))
         keyboard.append([
             InlineKeyboardButton(
-                f"🔄 {target_type} ({cred_count})", 
+                f"рџ”„ {target_type} ({cred_count})", 
                 callback_data=f'merge_confirm_{source_type}_{target_type}'
             )
         ])
     
-    keyboard.append([InlineKeyboardButton("❌ Отмена", callback_data='windows_auth_manage_types')])
+    keyboard.append([InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='windows_auth_manage_types')])
     
     query.edit_message_text(
         message,
@@ -10006,28 +10006,28 @@ def merge_server_type_handler(update, context, source_type):
     )
 
 def delete_server_type_handler(update, context):
-    """Удаление типа серверов"""
+    """РЈРґР°Р»РµРЅРёРµ С‚РёРїР° СЃРµСЂРІРµСЂРѕРІ"""
     query = update.callback_query
     query.answer()
     
     server_types = settings_manager.get_windows_server_types()
     
-    message = "🗑️ *Удаление типа серверов*\n\n"
-    message += "Выберите тип для удаления:\n\n"
-    message += "*Внимание:* При удалении типа все учетные записи этого типа будут перемещены в тип 'default'"
+    message = "рџ—‘пёЏ *РЈРґР°Р»РµРЅРёРµ С‚РёРїР° СЃРµСЂРІРµСЂРѕРІ*\n\n"
+    message += "Р’С‹Р±РµСЂРёС‚Рµ С‚РёРї РґР»СЏ СѓРґР°Р»РµРЅРёСЏ:\n\n"
+    message += "*Р’РЅРёРјР°РЅРёРµ:* РџСЂРё СѓРґР°Р»РµРЅРёРё С‚РёРїР° РІСЃРµ СѓС‡РµС‚РЅС‹Рµ Р·Р°РїРёСЃРё СЌС‚РѕРіРѕ С‚РёРїР° Р±СѓРґСѓС‚ РїРµСЂРµРјРµС‰РµРЅС‹ РІ С‚РёРї 'default'"
     
     keyboard = []
     for server_type in server_types:
-        if server_type != 'default':  # Не позволяем удалить тип 'default'
+        if server_type != 'default':  # РќРµ РїРѕР·РІРѕР»СЏРµРј СѓРґР°Р»РёС‚СЊ С‚РёРї 'default'
             cred_count = len(settings_manager.get_windows_credentials(server_type))
             keyboard.append([
                 InlineKeyboardButton(
-                    f"🗑️ {server_type} ({cred_count})", 
+                    f"рџ—‘пёЏ {server_type} ({cred_count})", 
                     callback_data=f'delete_type_confirm_{server_type}'
                 )
             ])
     
-    keyboard.append([InlineKeyboardButton("❌ Отмена", callback_data='windows_auth_manage_types')])
+    keyboard.append([InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='windows_auth_manage_types')])
     
     query.edit_message_text(
         message,
@@ -10036,13 +10036,13 @@ def delete_server_type_handler(update, context):
     )
 
 def show_server_type_stats(update, context):
-    """Показать статистику по типам серверов"""
+    """РџРѕРєР°Р·Р°С‚СЊ СЃС‚Р°С‚РёСЃС‚РёРєСѓ РїРѕ С‚РёРїР°Рј СЃРµСЂРІРµСЂРѕРІ"""
     query = update.callback_query
     query.answer()
     
     server_types = settings_manager.get_windows_server_types()
     
-    message = "📊 *Статистика по типам серверов*\n\n"
+    message = "рџ“Љ *РЎС‚Р°С‚РёСЃС‚РёРєР° РїРѕ С‚РёРїР°Рј СЃРµСЂРІРµСЂРѕРІ*\n\n"
     
     total_credentials = 0
     for server_type in server_types:
@@ -10051,160 +10051,160 @@ def show_server_type_stats(update, context):
         total_credentials += len(credentials)
         
         message += f"*{server_type}*\n"
-        message += f"• Всего учетных записей: {len(credentials)}\n"
-        message += f"• Активных: {enabled_count}\n"
-        message += f"• Неактивных: {len(credentials) - enabled_count}\n\n"
+        message += f"вЂў Р’СЃРµРіРѕ СѓС‡РµС‚РЅС‹С… Р·Р°РїРёСЃРµР№: {len(credentials)}\n"
+        message += f"вЂў РђРєС‚РёРІРЅС‹С…: {enabled_count}\n"
+        message += f"вЂў РќРµР°РєС‚РёРІРЅС‹С…: {len(credentials) - enabled_count}\n\n"
     
-    message += f"*Общая статистика:*\n"
-    message += f"• Типов серверов: {len(server_types)}\n"
-    message += f"• Всего учетных записей: {total_credentials}\n"
-    message += f"• Среднее на тип: {total_credentials / len(server_types):.1f} учетных записей"
+    message += f"*РћР±С‰Р°СЏ СЃС‚Р°С‚РёСЃС‚РёРєР°:*\n"
+    message += f"вЂў РўРёРїРѕРІ СЃРµСЂРІРµСЂРѕРІ: {len(server_types)}\n"
+    message += f"вЂў Р’СЃРµРіРѕ СѓС‡РµС‚РЅС‹С… Р·Р°РїРёСЃРµР№: {total_credentials}\n"
+    message += f"вЂў РЎСЂРµРґРЅРµРµ РЅР° С‚РёРї: {total_credentials / len(server_types):.1f} СѓС‡РµС‚РЅС‹С… Р·Р°РїРёСЃРµР№"
     
     query.edit_message_text(
         message,
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🔄 Обновить", callback_data='manage_type_stats')],
-            [InlineKeyboardButton("↩️ Назад", callback_data='windows_auth_manage_types'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("рџ”„ РћР±РЅРѕРІРёС‚СЊ", callback_data='manage_type_stats')],
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='windows_auth_manage_types'),
+             InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
         ])
     )
 
 def merge_server_types_confirmation(update, context, source_type, target_type):
-    """Подтверждение объединения типов серверов"""
+    """РџРѕРґС‚РІРµСЂР¶РґРµРЅРёРµ РѕР±СЉРµРґРёРЅРµРЅРёСЏ С‚РёРїРѕРІ СЃРµСЂРІРµСЂРѕРІ"""
     query = update.callback_query
     query.answer()
     
     source_creds = settings_manager.get_windows_credentials(source_type)
     target_creds = settings_manager.get_windows_credentials(target_type)
     
-    message = f"🔄 *Подтверждение объединения*\n\n"
-    message += f"*Источник:* {source_type}\n"
-    message += f"• Учетных записей: {len(source_creds)}\n\n"
-    message += f"*Цель:* {target_type}\n"
-    message += f"• Учетных записей: {len(target_creds)}\n\n"
-    message += f"*После объединения:*\n"
-    message += f"• Тип {source_type} будет удален\n"
-    message += f"• Все учетные записи будут перемещены в {target_type}\n"
-    message += f"• Итоговое количество: {len(source_creds) + len(target_creds)} учетных записей\n\n"
-    message += "Вы уверены, что хотите выполнить объединение?"
+    message = f"рџ”„ *РџРѕРґС‚РІРµСЂР¶РґРµРЅРёРµ РѕР±СЉРµРґРёРЅРµРЅРёСЏ*\n\n"
+    message += f"*РСЃС‚РѕС‡РЅРёРє:* {source_type}\n"
+    message += f"вЂў РЈС‡РµС‚РЅС‹С… Р·Р°РїРёСЃРµР№: {len(source_creds)}\n\n"
+    message += f"*Р¦РµР»СЊ:* {target_type}\n"
+    message += f"вЂў РЈС‡РµС‚РЅС‹С… Р·Р°РїРёСЃРµР№: {len(target_creds)}\n\n"
+    message += f"*РџРѕСЃР»Рµ РѕР±СЉРµРґРёРЅРµРЅРёСЏ:*\n"
+    message += f"вЂў РўРёРї {source_type} Р±СѓРґРµС‚ СѓРґР°Р»РµРЅ\n"
+    message += f"вЂў Р’СЃРµ СѓС‡РµС‚РЅС‹Рµ Р·Р°РїРёСЃРё Р±СѓРґСѓС‚ РїРµСЂРµРјРµС‰РµРЅС‹ РІ {target_type}\n"
+    message += f"вЂў РС‚РѕРіРѕРІРѕРµ РєРѕР»РёС‡РµСЃС‚РІРѕ: {len(source_creds) + len(target_creds)} СѓС‡РµС‚РЅС‹С… Р·Р°РїРёСЃРµР№\n\n"
+    message += "Р’С‹ СѓРІРµСЂРµРЅС‹, С‡С‚Рѕ С…РѕС‚РёС‚Рµ РІС‹РїРѕР»РЅРёС‚СЊ РѕР±СЉРµРґРёРЅРµРЅРёРµ?"
     
     query.edit_message_text(
         message,
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
             [
-                InlineKeyboardButton("✅ Да, объединить", callback_data=f'merge_execute_{source_type}_{target_type}'),
-                InlineKeyboardButton("❌ Отмена", callback_data='windows_auth_manage_types')
+                InlineKeyboardButton("вњ… Р”Р°, РѕР±СЉРµРґРёРЅРёС‚СЊ", callback_data=f'merge_execute_{source_type}_{target_type}'),
+                InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='windows_auth_manage_types')
             ]
         ])
     )
 
 def delete_server_type_confirmation(update, context, server_type):
-    """Подтверждение удаления типа серверов"""
+    """РџРѕРґС‚РІРµСЂР¶РґРµРЅРёРµ СѓРґР°Р»РµРЅРёСЏ С‚РёРїР° СЃРµСЂРІРµСЂРѕРІ"""
     query = update.callback_query
     query.answer()
     
     credentials = settings_manager.get_windows_credentials(server_type)
     
-    message = f"🗑️ *Подтверждение удаления*\n\n"
-    message += f"Тип: *{server_type}*\n"
-    message += f"Учетных записей: {len(credentials)}\n\n"
-    message += "*Внимание:* Все учетные записи этого типа будут перемещены в тип 'default'\n\n"
-    message += "Вы уверены, что хотите удалить этот тип?"
+    message = f"рџ—‘пёЏ *РџРѕРґС‚РІРµСЂР¶РґРµРЅРёРµ СѓРґР°Р»РµРЅРёСЏ*\n\n"
+    message += f"РўРёРї: *{server_type}*\n"
+    message += f"РЈС‡РµС‚РЅС‹С… Р·Р°РїРёСЃРµР№: {len(credentials)}\n\n"
+    message += "*Р’РЅРёРјР°РЅРёРµ:* Р’СЃРµ СѓС‡РµС‚РЅС‹Рµ Р·Р°РїРёСЃРё СЌС‚РѕРіРѕ С‚РёРїР° Р±СѓРґСѓС‚ РїРµСЂРµРјРµС‰РµРЅС‹ РІ С‚РёРї 'default'\n\n"
+    message += "Р’С‹ СѓРІРµСЂРµРЅС‹, С‡С‚Рѕ С…РѕС‚РёС‚Рµ СѓРґР°Р»РёС‚СЊ СЌС‚РѕС‚ С‚РёРї?"
     
     query.edit_message_text(
         message,
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
             [
-                InlineKeyboardButton("✅ Да, удалить", callback_data=f'delete_type_execute_{server_type}'),
-                InlineKeyboardButton("❌ Отмена", callback_data='windows_auth_manage_types')
+                InlineKeyboardButton("вњ… Р”Р°, СѓРґР°Р»РёС‚СЊ", callback_data=f'delete_type_execute_{server_type}'),
+                InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data='windows_auth_manage_types')
             ]
         ])
     )
 
 def execute_server_type_merge(update, context, source_type, target_type):
-    """Выполнение объединения типов серверов"""
+    """Р’С‹РїРѕР»РЅРµРЅРёРµ РѕР±СЉРµРґРёРЅРµРЅРёСЏ С‚РёРїРѕРІ СЃРµСЂРІРµСЂРѕРІ"""
     query = update.callback_query
     query.answer()
     
     try:
-        # Получаем учетные данные исходного типа
+        # РџРѕР»СѓС‡Р°РµРј СѓС‡РµС‚РЅС‹Рµ РґР°РЅРЅС‹Рµ РёСЃС…РѕРґРЅРѕРіРѕ С‚РёРїР°
         source_credentials = settings_manager.get_windows_credentials(source_type)
         
-        # Обновляем тип для каждой учетной записи
+        # РћР±РЅРѕРІР»СЏРµРј С‚РёРї РґР»СЏ РєР°Р¶РґРѕР№ СѓС‡РµС‚РЅРѕР№ Р·Р°РїРёСЃРё
         for cred in source_credentials:
             settings_manager.update_windows_credential(
                 cred['id'], 
                 server_type=target_type
             )
         
-        message = f"✅ *Типы серверов объединены!*\n\n"
-        message += f"• Тип *{source_type}* удален\n"
-        message += f"• Все учетные записи перемещены в *{target_type}*\n"
-        message += f"• Перемещено учетных записей: {len(source_credentials)}"
+        message = f"вњ… *РўРёРїС‹ СЃРµСЂРІРµСЂРѕРІ РѕР±СЉРµРґРёРЅРµРЅС‹!*\n\n"
+        message += f"вЂў РўРёРї *{source_type}* СѓРґР°Р»РµРЅ\n"
+        message += f"вЂў Р’СЃРµ СѓС‡РµС‚РЅС‹Рµ Р·Р°РїРёСЃРё РїРµСЂРµРјРµС‰РµРЅС‹ РІ *{target_type}*\n"
+        message += f"вЂў РџРµСЂРµРјРµС‰РµРЅРѕ СѓС‡РµС‚РЅС‹С… Р·Р°РїРёСЃРµР№: {len(source_credentials)}"
         
         query.edit_message_text(
             message,
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ К управлению типами", callback_data='windows_auth_manage_types')]
+                [InlineKeyboardButton("в†©пёЏ Рљ СѓРїСЂР°РІР»РµРЅРёСЋ С‚РёРїР°РјРё", callback_data='windows_auth_manage_types')]
             ])
         )
         
     except Exception as e:
-        query.edit_message_text(f"❌ Ошибка при объединении типов: {str(e)}")
+        query.edit_message_text(f"вќЊ РћС€РёР±РєР° РїСЂРё РѕР±СЉРµРґРёРЅРµРЅРёРё С‚РёРїРѕРІ: {str(e)}")
 
 def execute_server_type_delete(update, context, server_type):
-    """Выполнение удаления типа серверов"""
+    """Р’С‹РїРѕР»РЅРµРЅРёРµ СѓРґР°Р»РµРЅРёСЏ С‚РёРїР° СЃРµСЂРІРµСЂРѕРІ"""
     query = update.callback_query
     query.answer()
     
     try:
-        # Получаем учетные данные удаляемого типа
+        # РџРѕР»СѓС‡Р°РµРј СѓС‡РµС‚РЅС‹Рµ РґР°РЅРЅС‹Рµ СѓРґР°Р»СЏРµРјРѕРіРѕ С‚РёРїР°
         credentials = settings_manager.get_windows_credentials(server_type)
         
-        # Перемещаем все учетные записи в тип 'default'
+        # РџРµСЂРµРјРµС‰Р°РµРј РІСЃРµ СѓС‡РµС‚РЅС‹Рµ Р·Р°РїРёСЃРё РІ С‚РёРї 'default'
         for cred in credentials:
             settings_manager.update_windows_credential(
                 cred['id'], 
                 server_type='default'
             )
         
-        message = f"✅ *Тип серверов удален!*\n\n"
-        message += f"• Тип *{server_type}* удален\n"
-        message += f"• Все учетные записи перемещены в тип 'default'\n"
-        message += f"• Перемещено учетных записей: {len(credentials)}"
+        message = f"вњ… *РўРёРї СЃРµСЂРІРµСЂРѕРІ СѓРґР°Р»РµРЅ!*\n\n"
+        message += f"вЂў РўРёРї *{server_type}* СѓРґР°Р»РµРЅ\n"
+        message += f"вЂў Р’СЃРµ СѓС‡РµС‚РЅС‹Рµ Р·Р°РїРёСЃРё РїРµСЂРµРјРµС‰РµРЅС‹ РІ С‚РёРї 'default'\n"
+        message += f"вЂў РџРµСЂРµРјРµС‰РµРЅРѕ СѓС‡РµС‚РЅС‹С… Р·Р°РїРёСЃРµР№: {len(credentials)}"
         
         query.edit_message_text(
             message,
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ К управлению типами", callback_data='windows_auth_manage_types')]
+                [InlineKeyboardButton("в†©пёЏ Рљ СѓРїСЂР°РІР»РµРЅРёСЋ С‚РёРїР°РјРё", callback_data='windows_auth_manage_types')]
             ])
         )
         
     except Exception as e:
-        query.edit_message_text(f"❌ Ошибка при удалении типа: {str(e)}")
+        query.edit_message_text(f"вќЊ РћС€РёР±РєР° РїСЂРё СѓРґР°Р»РµРЅРёРё С‚РёРїР°: {str(e)}")
 
 def handle_server_type_creation(update, context):
-    """Обработчик создания нового типа серверов"""
+    """РћР±СЂР°Р±РѕС‚С‡РёРє СЃРѕР·РґР°РЅРёСЏ РЅРѕРІРѕРіРѕ С‚РёРїР° СЃРµСЂРІРµСЂРѕРІ"""
     new_type = update.message.text.strip()
     
     try:
-        # Проверяем, не существует ли уже такой тип
+        # РџСЂРѕРІРµСЂСЏРµРј, РЅРµ СЃСѓС‰РµСЃС‚РІСѓРµС‚ Р»Рё СѓР¶Рµ С‚Р°РєРѕР№ С‚РёРї
         existing_types = settings_manager.get_windows_server_types()
         if new_type in existing_types:
             update.message.reply_text(
-                f"❌ Тип '{new_type}' уже существует!",
+                f"вќЊ РўРёРї '{new_type}' СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚!",
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("↩️ Назад", callback_data='windows_auth_manage_types')]
+                    [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='windows_auth_manage_types')]
                 ])
             )
             return
         
-        # Создаем новую учетную запись с этим типом (можно пустую)
+        # РЎРѕР·РґР°РµРј РЅРѕРІСѓСЋ СѓС‡РµС‚РЅСѓСЋ Р·Р°РїРёСЃСЊ СЃ СЌС‚РёРј С‚РёРїРѕРј (РјРѕР¶РЅРѕ РїСѓСЃС‚СѓСЋ)
         success = settings_manager.add_windows_credential(
             username=f"user_{new_type}",
             password="temp_password",
@@ -10213,48 +10213,48 @@ def handle_server_type_creation(update, context):
         )
         
         if success:
-            # Сразу удаляем временную учетную запись, если нужно
-            # или оставляем как шаблон
+            # РЎСЂР°Р·Сѓ СѓРґР°Р»СЏРµРј РІСЂРµРјРµРЅРЅСѓСЋ СѓС‡РµС‚РЅСѓСЋ Р·Р°РїРёСЃСЊ, РµСЃР»Рё РЅСѓР¶РЅРѕ
+            # РёР»Рё РѕСЃС‚Р°РІР»СЏРµРј РєР°Рє С€Р°Р±Р»РѕРЅ
             
             update.message.reply_text(
-                f"✅ *Тип серверов '{new_type}' создан!*\n\n"
-                "Теперь вы можете добавить учетные записи для этого типа.",
+                f"вњ… *РўРёРї СЃРµСЂРІРµСЂРѕРІ '{new_type}' СЃРѕР·РґР°РЅ!*\n\n"
+                "РўРµРїРµСЂСЊ РІС‹ РјРѕР¶РµС‚Рµ РґРѕР±Р°РІРёС‚СЊ СѓС‡РµС‚РЅС‹Рµ Р·Р°РїРёСЃРё РґР»СЏ СЌС‚РѕРіРѕ С‚РёРїР°.",
                 parse_mode='Markdown',
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("➕ Добавить учетную запись", callback_data='windows_auth_add'),
-                     InlineKeyboardButton("↩️ К управлению типами", callback_data='windows_auth_manage_types')]
+                    [InlineKeyboardButton("вћ• Р”РѕР±Р°РІРёС‚СЊ СѓС‡РµС‚РЅСѓСЋ Р·Р°РїРёСЃСЊ", callback_data='windows_auth_add'),
+                     InlineKeyboardButton("в†©пёЏ Рљ СѓРїСЂР°РІР»РµРЅРёСЋ С‚РёРїР°РјРё", callback_data='windows_auth_manage_types')]
                 ])
             )
         else:
-            update.message.reply_text("❌ Ошибка при создании типа")
+            update.message.reply_text("вќЊ РћС€РёР±РєР° РїСЂРё СЃРѕР·РґР°РЅРёРё С‚РёРїР°")
     
     except Exception as e:
-        update.message.reply_text(f"❌ Ошибка: {e}")
+        update.message.reply_text(f"вќЊ РћС€РёР±РєР°: {e}")
     
-    # Очищаем контекст
+    # РћС‡РёС‰Р°РµРј РєРѕРЅС‚РµРєСЃС‚
     context.user_data['creating_server_type'] = False
 
 def handle_server_type_editing(update, context):
-    """Обработчик редактирования типа серверов"""
+    """РћР±СЂР°Р±РѕС‚С‡РёРє СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёСЏ С‚РёРїР° СЃРµСЂРІРµСЂРѕРІ"""
     new_type = update.message.text.strip()
     old_type = context.user_data.get('old_server_type')
     
     try:
-        # Проверяем, не существует ли уже такой тип
+        # РџСЂРѕРІРµСЂСЏРµРј, РЅРµ СЃСѓС‰РµСЃС‚РІСѓРµС‚ Р»Рё СѓР¶Рµ С‚Р°РєРѕР№ С‚РёРї
         existing_types = settings_manager.get_windows_server_types()
         if new_type in existing_types and new_type != old_type:
             update.message.reply_text(
-                f"❌ Тип '{new_type}' уже существует!",
+                f"вќЊ РўРёРї '{new_type}' СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚!",
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("↩️ Назад", callback_data='windows_auth_manage_types')]
+                    [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='windows_auth_manage_types')]
                 ])
             )
             return
         
-        # Получаем все учетные записи старого типа
+        # РџРѕР»СѓС‡Р°РµРј РІСЃРµ СѓС‡РµС‚РЅС‹Рµ Р·Р°РїРёСЃРё СЃС‚Р°СЂРѕРіРѕ С‚РёРїР°
         credentials = settings_manager.get_windows_credentials(old_type)
         
-        # Обновляем тип для каждой учетной записи
+        # РћР±РЅРѕРІР»СЏРµРј С‚РёРї РґР»СЏ РєР°Р¶РґРѕР№ СѓС‡РµС‚РЅРѕР№ Р·Р°РїРёСЃРё
         for cred in credentials:
             settings_manager.update_windows_credential(
                 cred['id'], 
@@ -10262,34 +10262,34 @@ def handle_server_type_editing(update, context):
             )
         
         update.message.reply_text(
-            f"✅ *Тип серверов переименован!*\n\n"
-            f"• Старое название: {old_type}\n"
-            f"• Новое название: {new_type}\n"
-            f"• Обновлено учетных записей: {len(credentials)}",
+            f"вњ… *РўРёРї СЃРµСЂРІРµСЂРѕРІ РїРµСЂРµРёРјРµРЅРѕРІР°РЅ!*\n\n"
+            f"вЂў РЎС‚Р°СЂРѕРµ РЅР°Р·РІР°РЅРёРµ: {old_type}\n"
+            f"вЂў РќРѕРІРѕРµ РЅР°Р·РІР°РЅРёРµ: {new_type}\n"
+            f"вЂў РћР±РЅРѕРІР»РµРЅРѕ СѓС‡РµС‚РЅС‹С… Р·Р°РїРёСЃРµР№: {len(credentials)}",
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ К управлению типами", callback_data='windows_auth_manage_types')]
+                [InlineKeyboardButton("в†©пёЏ Рљ СѓРїСЂР°РІР»РµРЅРёСЋ С‚РёРїР°РјРё", callback_data='windows_auth_manage_types')]
             ])
         )
     
     except Exception as e:
-        update.message.reply_text(f"❌ Ошибка: {e}")
+        update.message.reply_text(f"вќЊ РћС€РёР±РєР°: {e}")
     
-    # Очищаем контекст
+    # РћС‡РёС‰Р°РµРј РєРѕРЅС‚РµРєСЃС‚
     context.user_data['editing_server_type'] = False
     context.user_data.pop('old_server_type', None)
 
-# Обработчики для неработающих кнопок
+# РћР±СЂР°Р±РѕС‚С‡РёРєРё РґР»СЏ РЅРµСЂР°Р±РѕС‚Р°СЋС‰РёС… РєРЅРѕРїРѕРє
 def add_chat_handler(update, context):
-    """Добавить чат - заглушка"""
-    not_implemented_handler(update, context, "Добавление чата")
+    """Р”РѕР±Р°РІРёС‚СЊ С‡Р°С‚ - Р·Р°РіР»СѓС€РєР°"""
+    not_implemented_handler(update, context, "Р”РѕР±Р°РІР»РµРЅРёРµ С‡Р°С‚Р°")
 
 def remove_chat_handler(update, context):
-    """Удалить чат - заглушка"""
-    not_implemented_handler(update, context, "Удаление чата")
+    """РЈРґР°Р»РёС‚СЊ С‡Р°С‚ - Р·Р°РіР»СѓС€РєР°"""
+    not_implemented_handler(update, context, "РЈРґР°Р»РµРЅРёРµ С‡Р°С‚Р°")
 
 def add_tamtam_chat_handler(update, context):
-    """Начать добавление TamTam чата."""
+    """РќР°С‡Р°С‚СЊ РґРѕР±Р°РІР»РµРЅРёРµ TamTam С‡Р°С‚Р°."""
     query = update.callback_query
     query.answer()
 
@@ -10297,28 +10297,28 @@ def add_tamtam_chat_handler(update, context):
     context.user_data.pop('removing_tamtam_chat', None)
 
     query.edit_message_text(
-        "🟠 *Добавление TamTam чата*\n\n"
-        "Отправьте ID чата TamTam одним сообщением.\n"
-        "Например: `1234567890`",
+        "рџџ  *Р”РѕР±Р°РІР»РµРЅРёРµ TamTam С‡Р°С‚Р°*\n\n"
+        "РћС‚РїСЂР°РІСЊС‚Рµ ID С‡Р°С‚Р° TamTam РѕРґРЅРёРј СЃРѕРѕР±С‰РµРЅРёРµРј.\n"
+        "РќР°РїСЂРёРјРµСЂ: `1234567890`",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='manage_tamtam_chats')],
-            [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='manage_tamtam_chats')],
+            [InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
         ])
     )
 
 def remove_tamtam_chat_handler(update, context):
-    """Начать удаление TamTam чата."""
+    """РќР°С‡Р°С‚СЊ СѓРґР°Р»РµРЅРёРµ TamTam С‡Р°С‚Р°."""
     query = update.callback_query
     query.answer()
 
     tamtam_chat_ids = settings_manager.get_setting('TAMTAM_CHAT_IDS', [])
     if not tamtam_chat_ids:
         query.edit_message_text(
-            "❌ Список TamTam чатов пуст.",
+            "вќЊ РЎРїРёСЃРѕРє TamTam С‡Р°С‚РѕРІ РїСѓСЃС‚.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='manage_tamtam_chats')],
-                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='manage_tamtam_chats')],
+                [InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
             ])
         )
         return
@@ -10326,37 +10326,37 @@ def remove_tamtam_chat_handler(update, context):
     context.user_data['removing_tamtam_chat'] = True
     context.user_data.pop('adding_tamtam_chat', None)
 
-    preview = "\n".join(f"• `{chat_id}`" for chat_id in tamtam_chat_ids[:10])
+    preview = "\n".join(f"вЂў `{chat_id}`" for chat_id in tamtam_chat_ids[:10])
     if len(tamtam_chat_ids) > 10:
-        preview += f"\n... и еще {len(tamtam_chat_ids) - 10}"
+        preview += f"\n... Рё РµС‰Рµ {len(tamtam_chat_ids) - 10}"
 
     query.edit_message_text(
-        "🟠 *Удаление TamTam чата*\n\n"
-        "Текущие ID:\n"
+        "рџџ  *РЈРґР°Р»РµРЅРёРµ TamTam С‡Р°С‚Р°*\n\n"
+        "РўРµРєСѓС‰РёРµ ID:\n"
         f"{preview}\n\n"
-        "Отправьте ID, который нужно удалить.",
+        "РћС‚РїСЂР°РІСЊС‚Рµ ID, РєРѕС‚РѕСЂС‹Р№ РЅСѓР¶РЅРѕ СѓРґР°Р»РёС‚СЊ.",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='manage_tamtam_chats')],
-            [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='manage_tamtam_chats')],
+            [InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
         ])
     )
 
 
 def handle_tamtam_chat_add_input(update, context):
-    """Добавляет TamTam chat ID из текстового ввода."""
+    """Р”РѕР±Р°РІР»СЏРµС‚ TamTam chat ID РёР· С‚РµРєСЃС‚РѕРІРѕРіРѕ РІРІРѕРґР°."""
     chat_id = update.message.text.strip()
     if not chat_id:
-        update.message.reply_text("❌ ID чата не может быть пустым. Попробуйте снова.")
+        update.message.reply_text("вќЊ ID С‡Р°С‚Р° РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°.")
         return
 
     tamtam_chat_ids = settings_manager.get_setting('TAMTAM_CHAT_IDS', [])
     if chat_id in tamtam_chat_ids:
         context.user_data.pop('adding_tamtam_chat', None)
         update.message.reply_text(
-            "ℹ️ Этот ID уже есть в списке.",
+            "в„№пёЏ Р­С‚РѕС‚ ID СѓР¶Рµ РµСЃС‚СЊ РІ СЃРїРёСЃРєРµ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🟠 К TamTam чатам", callback_data='manage_tamtam_chats')]
+                [InlineKeyboardButton("рџџ  Рљ TamTam С‡Р°С‚Р°Рј", callback_data='manage_tamtam_chats')]
             ])
         )
         return
@@ -10366,24 +10366,24 @@ def handle_tamtam_chat_add_input(update, context):
     context.user_data.pop('adding_tamtam_chat', None)
 
     update.message.reply_text(
-        f"✅ TamTam чат `{chat_id}` добавлен.",
+        f"вњ… TamTam С‡Р°С‚ `{chat_id}` РґРѕР±Р°РІР»РµРЅ.",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🟠 К TamTam чатам", callback_data='manage_tamtam_chats')]
+            [InlineKeyboardButton("рџџ  Рљ TamTam С‡Р°С‚Р°Рј", callback_data='manage_tamtam_chats')]
         ])
     )
 
 
 def handle_tamtam_chat_remove_input(update, context):
-    """Удаляет TamTam chat ID из списка."""
+    """РЈРґР°Р»СЏРµС‚ TamTam chat ID РёР· СЃРїРёСЃРєР°."""
     chat_id = update.message.text.strip()
     tamtam_chat_ids = settings_manager.get_setting('TAMTAM_CHAT_IDS', [])
 
     if chat_id not in tamtam_chat_ids:
         update.message.reply_text(
-            "❌ Такой ID не найден в списке. Попробуйте снова.",
+            "вќЊ РўР°РєРѕР№ ID РЅРµ РЅР°Р№РґРµРЅ РІ СЃРїРёСЃРєРµ. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🟠 К TamTam чатам", callback_data='manage_tamtam_chats')]
+                [InlineKeyboardButton("рџџ  Рљ TamTam С‡Р°С‚Р°Рј", callback_data='manage_tamtam_chats')]
             ])
         )
         return
@@ -10393,19 +10393,19 @@ def handle_tamtam_chat_remove_input(update, context):
     context.user_data.pop('removing_tamtam_chat', None)
 
     update.message.reply_text(
-        f"✅ TamTam чат `{chat_id}` удалён.",
+        f"вњ… TamTam С‡Р°С‚ `{chat_id}` СѓРґР°Р»С‘РЅ.",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🟠 К TamTam чатам", callback_data='manage_tamtam_chats')]
+            [InlineKeyboardButton("рџџ  Рљ TamTam С‡Р°С‚Р°Рј", callback_data='manage_tamtam_chats')]
         ])
     )
 
 def view_all_settings_handler(update, context):
-    """Просмотр всех настроек - заглушка"""
-    not_implemented_handler(update, context, "Просмотр всех настроек")
+    """РџСЂРѕСЃРјРѕС‚СЂ РІСЃРµС… РЅР°СЃС‚СЂРѕРµРє - Р·Р°РіР»СѓС€РєР°"""
+    not_implemented_handler(update, context, "РџСЂРѕСЃРјРѕС‚СЂ РІСЃРµС… РЅР°СЃС‚СЂРѕРµРє")
 
 def add_pattern_handler(update, context):
-    """Добавить паттерн - заглушка"""
+    """Р”РѕР±Р°РІРёС‚СЊ РїР°С‚С‚РµСЂРЅ - Р·Р°РіР»СѓС€РєР°"""
     query = update.callback_query
     query.answer()
 
@@ -10414,23 +10414,23 @@ def add_pattern_handler(update, context):
     context.user_data['backup_pattern_mode'] = 'db_wizard'
 
     query.edit_message_text(
-        "🧙 *Мастер добавления паттерна БД*\n\n"
-        "Введите тему письма целиком или обязательные фрагменты через `;`/`,`.\n"
-        "Во фрагментах обязательно укажите имя БД из настроек.\n\n"
-        "Пример темы:\n"
+        "рџ§™ *РњР°СЃС‚РµСЂ РґРѕР±Р°РІР»РµРЅРёСЏ РїР°С‚С‚РµСЂРЅР° Р‘Р”*\n\n"
+        "Р’РІРµРґРёС‚Рµ С‚РµРјСѓ РїРёСЃСЊРјР° С†РµР»РёРєРѕРј РёР»Рё РѕР±СЏР·Р°С‚РµР»СЊРЅС‹Рµ С„СЂР°РіРјРµРЅС‚С‹ С‡РµСЂРµР· `;`/`,`.\n"
+        "Р’Рѕ С„СЂР°РіРјРµРЅС‚Р°С… РѕР±СЏР·Р°С‚РµР»СЊРЅРѕ СѓРєР°Р¶РёС‚Рµ РёРјСЏ Р‘Р” РёР· РЅР°СЃС‚СЂРѕРµРє.\n\n"
+        "РџСЂРёРјРµСЂ С‚РµРјС‹:\n"
         "`Backup db company_main completed`\n\n"
-        "Пример фрагментов:\n"
+        "РџСЂРёРјРµСЂ С„СЂР°РіРјРµРЅС‚РѕРІ:\n"
         "`Backup db; company_main; completed`",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
+             InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
         ])
     )
 
 def add_zfs_pattern_handler(update, context):
-    """Добавить паттерн для ZFS"""
+    """Р”РѕР±Р°РІРёС‚СЊ РїР°С‚С‚РµСЂРЅ РґР»СЏ ZFS"""
     query = update.callback_query
     query.answer()
 
@@ -10439,23 +10439,23 @@ def add_zfs_pattern_handler(update, context):
     context.user_data['backup_pattern_mode'] = 'zfs_wizard'
 
     query.edit_message_text(
-        "🧙 *Мастер добавления паттерна ZFS*\n\n"
-        "Введите тему письма целиком или обязательные фрагменты через `;`/`,`.\n"
-        "Во фрагментах обязательно укажите имя ZFS сервера из настроек.\n\n"
-        "Пример темы:\n"
+        "рџ§™ *РњР°СЃС‚РµСЂ РґРѕР±Р°РІР»РµРЅРёСЏ РїР°С‚С‚РµСЂРЅР° ZFS*\n\n"
+        "Р’РІРµРґРёС‚Рµ С‚РµРјСѓ РїРёСЃСЊРјР° С†РµР»РёРєРѕРј РёР»Рё РѕР±СЏР·Р°С‚РµР»СЊРЅС‹Рµ С„СЂР°РіРјРµРЅС‚С‹ С‡РµСЂРµР· `;`/`,`.\n"
+        "Р’Рѕ С„СЂР°РіРјРµРЅС‚Р°С… РѕР±СЏР·Р°С‚РµР»СЊРЅРѕ СѓРєР°Р¶РёС‚Рµ РёРјСЏ ZFS СЃРµСЂРІРµСЂР° РёР· РЅР°СЃС‚СЂРѕРµРє.\n\n"
+        "РџСЂРёРјРµСЂ С‚РµРјС‹:\n"
         "`ZFS alert zfs01: state: ONLINE, state: ONLINE`\n\n"
-        "Пример фрагментов:\n"
+        "РџСЂРёРјРµСЂ С„СЂР°РіРјРµРЅС‚РѕРІ:\n"
         "`ZFS alert; zfs01; state:`",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
+             InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
         ])
     )
 
 def add_proxmox_pattern_handler(update, context):
-    """Добавить паттерн для Proxmox"""
+    """Р”РѕР±Р°РІРёС‚СЊ РїР°С‚С‚РµСЂРЅ РґР»СЏ Proxmox"""
     query = update.callback_query
     query.answer()
 
@@ -10464,21 +10464,21 @@ def add_proxmox_pattern_handler(update, context):
     context.user_data['backup_pattern_mode'] = 'proxmox_wizard'
 
     query.edit_message_text(
-        "🧙 *Мастер добавления паттерна Proxmox*\n\n"
-        "Введите тему письма целиком или обязательные фрагменты через `;`/`,`.\n"
-        "Фрагменты учитываются в указанном порядке.\n\n"
-        "Пример темы:\n"
+        "рџ§™ *РњР°СЃС‚РµСЂ РґРѕР±Р°РІР»РµРЅРёСЏ РїР°С‚С‚РµСЂРЅР° Proxmox*\n\n"
+        "Р’РІРµРґРёС‚Рµ С‚РµРјСѓ РїРёСЃСЊРјР° С†РµР»РёРєРѕРј РёР»Рё РѕР±СЏР·Р°С‚РµР»СЊРЅС‹Рµ С„СЂР°РіРјРµРЅС‚С‹ С‡РµСЂРµР· `;`/`,`.\n"
+        "Р¤СЂР°РіРјРµРЅС‚С‹ СѓС‡РёС‚С‹РІР°СЋС‚СЃСЏ РІ СѓРєР°Р·Р°РЅРЅРѕРј РїРѕСЂСЏРґРєРµ.\n\n"
+        "РџСЂРёРјРµСЂ С‚РµРјС‹:\n"
         "`vzdump backup status`",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
+             InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
         ])
     )
 
 def add_mail_pattern_handler(update, context):
-    """Добавить паттерн для бэкапов почты"""
+    """Р”РѕР±Р°РІРёС‚СЊ РїР°С‚С‚РµСЂРЅ РґР»СЏ Р±СЌРєР°РїРѕРІ РїРѕС‡С‚С‹"""
     query = update.callback_query
     query.answer()
 
@@ -10487,41 +10487,41 @@ def add_mail_pattern_handler(update, context):
     context.user_data['backup_pattern_mode'] = 'mail_wizard'
 
     query.edit_message_text(
-        "🧙 *Мастер добавления паттерна почты*\n\n"
-        "Введите тему письма целиком или обязательные фрагменты через `;`/`,`.\n"
-        "Фрагменты учитываются в указанном порядке.\n\n"
-        "Пример темы:\n"
-        "`Бэкап Zimbra - 52G /backups/zimbra/2025-03-01`\n\n"
-        "Пример фрагментов:\n"
-        "`Бэкап Zimbra; /backups/zimbra`",
+        "рџ§™ *РњР°СЃС‚РµСЂ РґРѕР±Р°РІР»РµРЅРёСЏ РїР°С‚С‚РµСЂРЅР° РїРѕС‡С‚С‹*\n\n"
+        "Р’РІРµРґРёС‚Рµ С‚РµРјСѓ РїРёСЃСЊРјР° С†РµР»РёРєРѕРј РёР»Рё РѕР±СЏР·Р°С‚РµР»СЊРЅС‹Рµ С„СЂР°РіРјРµРЅС‚С‹ С‡РµСЂРµР· `;`/`,`.\n"
+        "Р¤СЂР°РіРјРµРЅС‚С‹ СѓС‡РёС‚С‹РІР°СЋС‚СЃСЏ РІ СѓРєР°Р·Р°РЅРЅРѕРј РїРѕСЂСЏРґРєРµ.\n\n"
+        "РџСЂРёРјРµСЂ С‚РµРјС‹:\n"
+        "`Р‘СЌРєР°Рї Zimbra - 52G /backups/zimbra/2025-03-01`\n\n"
+        "РџСЂРёРјРµСЂ С„СЂР°РіРјРµРЅС‚РѕРІ:\n"
+        "`Р‘СЌРєР°Рї Zimbra; /backups/zimbra`",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
+             InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
         ])
     )
 
 def show_stock_pattern_type_menu(update, context):
-    """Показать выбор типа паттерна для остатков."""
+    """РџРѕРєР°Р·Р°С‚СЊ РІС‹Р±РѕСЂ С‚РёРїР° РїР°С‚С‚РµСЂРЅР° РґР»СЏ РѕСЃС‚Р°С‚РєРѕРІ."""
     query = update.callback_query
     query.answer()
 
     message = (
-        "📦 *Добавление паттерна для загрузки остатков*\n\n"
-        "Выберите, что нужно настроить:"
+        "рџ“¦ *Р”РѕР±Р°РІР»РµРЅРёРµ РїР°С‚С‚РµСЂРЅР° РґР»СЏ Р·Р°РіСЂСѓР·РєРё РѕСЃС‚Р°С‚РєРѕРІ*\n\n"
+        "Р’С‹Р±РµСЂРёС‚Рµ, С‡С‚Рѕ РЅСѓР¶РЅРѕ РЅР°СЃС‚СЂРѕРёС‚СЊ:"
     )
 
     keyboard = [
-        [InlineKeyboardButton("🧾 Тема письма", callback_data='stock_pattern_select_subject')],
-        [InlineKeyboardButton("🗂️ Источник отчета", callback_data='stock_pattern_select_source')],
-        [InlineKeyboardButton("📎 Имя вложения", callback_data='stock_pattern_select_attachment')],
-        [InlineKeyboardButton("📄 Строка файла", callback_data='stock_pattern_select_file_entry')],
-        [InlineKeyboardButton("✅ Успешная загрузка", callback_data='stock_pattern_select_success')],
-        [InlineKeyboardButton("🙈 Игнорировать строки", callback_data='stock_pattern_select_ignore')],
-        [InlineKeyboardButton("❌ Ошибка загрузки", callback_data='stock_pattern_select_failure')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_patterns_stock'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("рџ§ѕ РўРµРјР° РїРёСЃСЊРјР°", callback_data='stock_pattern_select_subject')],
+        [InlineKeyboardButton("рџ—‚пёЏ РСЃС‚РѕС‡РЅРёРє РѕС‚С‡РµС‚Р°", callback_data='stock_pattern_select_source')],
+        [InlineKeyboardButton("рџ“Ћ РРјСЏ РІР»РѕР¶РµРЅРёСЏ", callback_data='stock_pattern_select_attachment')],
+        [InlineKeyboardButton("рџ“„ РЎС‚СЂРѕРєР° С„Р°Р№Р»Р°", callback_data='stock_pattern_select_file_entry')],
+        [InlineKeyboardButton("вњ… РЈСЃРїРµС€РЅР°СЏ Р·Р°РіСЂСѓР·РєР°", callback_data='stock_pattern_select_success')],
+        [InlineKeyboardButton("рџ™€ РРіРЅРѕСЂРёСЂРѕРІР°С‚СЊ СЃС‚СЂРѕРєРё", callback_data='stock_pattern_select_ignore')],
+        [InlineKeyboardButton("вќЊ РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё", callback_data='stock_pattern_select_failure')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_patterns_stock'),
+         InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
     ]
 
     query.edit_message_text(
@@ -10531,7 +10531,7 @@ def show_stock_pattern_type_menu(update, context):
     )
 
 def stock_pattern_select_handler(update, context, pattern_type: str):
-    """Запустить мастер для выбранного типа паттерна остатков."""
+    """Р—Р°РїСѓСЃС‚РёС‚СЊ РјР°СЃС‚РµСЂ РґР»СЏ РІС‹Р±СЂР°РЅРЅРѕРіРѕ С‚РёРїР° РїР°С‚С‚РµСЂРЅР° РѕСЃС‚Р°С‚РєРѕРІ."""
     query = update.callback_query
     query.answer()
 
@@ -10550,69 +10550,69 @@ def stock_pattern_select_handler(update, context, pattern_type: str):
 
     if pattern_type == 'subject':
         prompt = (
-            "🧙 *Мастер добавления темы*\n\n"
-            "Введите тему письма целиком или обязательные фрагменты через `;`/`,`.\n"
-            "Фрагменты учитываются в указанном порядке.\n\n"
-            "Пример:\n"
-            "`Логи загрузки файлов в рабочую базу 07:38:14`"
+            "рџ§™ *РњР°СЃС‚РµСЂ РґРѕР±Р°РІР»РµРЅРёСЏ С‚РµРјС‹*\n\n"
+            "Р’РІРµРґРёС‚Рµ С‚РµРјСѓ РїРёСЃСЊРјР° С†РµР»РёРєРѕРј РёР»Рё РѕР±СЏР·Р°С‚РµР»СЊРЅС‹Рµ С„СЂР°РіРјРµРЅС‚С‹ С‡РµСЂРµР· `;`/`,`.\n"
+            "Р¤СЂР°РіРјРµРЅС‚С‹ СѓС‡РёС‚С‹РІР°СЋС‚СЃСЏ РІ СѓРєР°Р·Р°РЅРЅРѕРј РїРѕСЂСЏРґРєРµ.\n\n"
+            "РџСЂРёРјРµСЂ:\n"
+            "`Р›РѕРіРё Р·Р°РіСЂСѓР·РєРё С„Р°Р№Р»РѕРІ РІ СЂР°Р±РѕС‡СѓСЋ Р±Р°Р·Сѓ 07:38:14`"
         )
     elif pattern_type == 'source':
         prompt = (
-            "🧙 *Мастер добавления источника отчета*\n\n"
-            "Введите название источника и тему письма через `|`.\n"
-            "В теме можно использовать фрагменты через `;`/`,`.\n\n"
-            "Пример:\n"
-            "`Филиал Москва | Логи загрузки файлов в рабочую базу 07:38:14`"
+            "рџ§™ *РњР°СЃС‚РµСЂ РґРѕР±Р°РІР»РµРЅРёСЏ РёСЃС‚РѕС‡РЅРёРєР° РѕС‚С‡РµС‚Р°*\n\n"
+            "Р’РІРµРґРёС‚Рµ РЅР°Р·РІР°РЅРёРµ РёСЃС‚РѕС‡РЅРёРєР° Рё С‚РµРјСѓ РїРёСЃСЊРјР° С‡РµСЂРµР· `|`.\n"
+            "Р’ С‚РµРјРµ РјРѕР¶РЅРѕ РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ С„СЂР°РіРјРµРЅС‚С‹ С‡РµСЂРµР· `;`/`,`.\n\n"
+            "РџСЂРёРјРµСЂ:\n"
+            "`Р¤РёР»РёР°Р» РњРѕСЃРєРІР° | Р›РѕРіРё Р·Р°РіСЂСѓР·РєРё С„Р°Р№Р»РѕРІ РІ СЂР°Р±РѕС‡СѓСЋ Р±Р°Р·Сѓ 07:38:14`"
         )
     elif pattern_type == 'attachment':
         prompt = (
-            "🧙 *Мастер добавления имени вложения*\n\n"
-            "Введите имя файла или фрагменты через `;`/`,`.\n\n"
-            "Пример:\n"
+            "рџ§™ *РњР°СЃС‚РµСЂ РґРѕР±Р°РІР»РµРЅРёСЏ РёРјРµРЅРё РІР»РѕР¶РµРЅРёСЏ*\n\n"
+            "Р’РІРµРґРёС‚Рµ РёРјСЏ С„Р°Р№Р»Р° РёР»Рё С„СЂР°РіРјРµРЅС‚С‹ С‡РµСЂРµР· `;`/`,`.\n\n"
+            "РџСЂРёРјРµСЂ:\n"
             "`LogiLogistam.txt`"
         )
     elif pattern_type == 'file_entry':
         prompt = (
-            "🧙 *Мастер добавления строки файла*\n\n"
-            "Введите строку с названием поставщика и путем к файлу.\n\n"
-            "Пример:\n"
-            "`19.01.26 07:35:36: ЗЭТА  НСК  D:\\Obmen\\OCTATKu\\ЗЭТА\\Остатки ЗЭТА НСК.csv`"
+            "рџ§™ *РњР°СЃС‚РµСЂ РґРѕР±Р°РІР»РµРЅРёСЏ СЃС‚СЂРѕРєРё С„Р°Р№Р»Р°*\n\n"
+            "Р’РІРµРґРёС‚Рµ СЃС‚СЂРѕРєСѓ СЃ РЅР°Р·РІР°РЅРёРµРј РїРѕСЃС‚Р°РІС‰РёРєР° Рё РїСѓС‚РµРј Рє С„Р°Р№Р»Сѓ.\n\n"
+            "РџСЂРёРјРµСЂ:\n"
+            "`19.01.26 07:35:36: Р—Р­РўРђ  РќРЎРљ  D:\\Obmen\\OCTATKu\\Р—Р­РўРђ\\РћСЃС‚Р°С‚РєРё Р—Р­РўРђ РќРЎРљ.csv`"
         )
     elif pattern_type == 'success':
         prompt = (
-            "🧙 *Мастер добавления строки успеха*\n\n"
-            "Введите строку с результатом успешной загрузки.\n\n"
-            "Пример:\n"
-            "`19.01.26 07:35:39: ***Остатки загружены!***   строк 348   07:35:39`"
+            "рџ§™ *РњР°СЃС‚РµСЂ РґРѕР±Р°РІР»РµРЅРёСЏ СЃС‚СЂРѕРєРё СѓСЃРїРµС…Р°*\n\n"
+            "Р’РІРµРґРёС‚Рµ СЃС‚СЂРѕРєСѓ СЃ СЂРµР·СѓР»СЊС‚Р°С‚РѕРј СѓСЃРїРµС€РЅРѕР№ Р·Р°РіСЂСѓР·РєРё.\n\n"
+            "РџСЂРёРјРµСЂ:\n"
+            "`19.01.26 07:35:39: ***РћСЃС‚Р°С‚РєРё Р·Р°РіСЂСѓР¶РµРЅС‹!***   СЃС‚СЂРѕРє 348   07:35:39`"
         )
     elif pattern_type == 'ignore':
         prompt = (
-            "🧙 *Мастер добавления игнорируемой строки*\n\n"
-            "Введите строку или обязательные фрагменты через `;`/`,`.\n"
-            "Эти строки будут пропускаться при разборе.\n\n"
-            "Пример:\n"
-            "`Внимание! Ошибка в номенклатуре Артикул=`"
+            "рџ§™ *РњР°СЃС‚РµСЂ РґРѕР±Р°РІР»РµРЅРёСЏ РёРіРЅРѕСЂРёСЂСѓРµРјРѕР№ СЃС‚СЂРѕРєРё*\n\n"
+            "Р’РІРµРґРёС‚Рµ СЃС‚СЂРѕРєСѓ РёР»Рё РѕР±СЏР·Р°С‚РµР»СЊРЅС‹Рµ С„СЂР°РіРјРµРЅС‚С‹ С‡РµСЂРµР· `;`/`,`.\n"
+            "Р­С‚Рё СЃС‚СЂРѕРєРё Р±СѓРґСѓС‚ РїСЂРѕРїСѓСЃРєР°С‚СЊСЃСЏ РїСЂРё СЂР°Р·Р±РѕСЂРµ.\n\n"
+            "РџСЂРёРјРµСЂ:\n"
+            "`Р’РЅРёРјР°РЅРёРµ! РћС€РёР±РєР° РІ РЅРѕРјРµРЅРєР»Р°С‚СѓСЂРµ РђСЂС‚РёРєСѓР»=`"
         )
     else:
         prompt = (
-            "🧙 *Мастер добавления строки ошибки*\n\n"
-            "Введите строку с ошибкой или обязательные фрагменты через `;`/`,`.\n\n"
-            "Пример:\n"
-            "`--- неудача!!! пустая загрузка`"
+            "рџ§™ *РњР°СЃС‚РµСЂ РґРѕР±Р°РІР»РµРЅРёСЏ СЃС‚СЂРѕРєРё РѕС€РёР±РєРё*\n\n"
+            "Р’РІРµРґРёС‚Рµ СЃС‚СЂРѕРєСѓ СЃ РѕС€РёР±РєРѕР№ РёР»Рё РѕР±СЏР·Р°С‚РµР»СЊРЅС‹Рµ С„СЂР°РіРјРµРЅС‚С‹ С‡РµСЂРµР· `;`/`,`.\n\n"
+            "РџСЂРёРјРµСЂ:\n"
+            "`--- РЅРµСѓРґР°С‡Р°!!! РїСѓСЃС‚Р°СЏ Р·Р°РіСЂСѓР·РєР°`"
         )
 
     query.edit_message_text(
         prompt,
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
+             InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
         ])
     )
 
 def stock_pattern_retry_handler(update, context):
-    """Повторить ввод для паттернов остатков."""
+    """РџРѕРІС‚РѕСЂРёС‚СЊ РІРІРѕРґ РґР»СЏ РїР°С‚С‚РµСЂРЅРѕРІ РѕСЃС‚Р°С‚РєРѕРІ."""
     query = update.callback_query
     query.answer()
 
@@ -10620,7 +10620,7 @@ def stock_pattern_retry_handler(update, context):
     stock_pattern_select_handler(update, context, pattern_type)
 
 def stock_pattern_confirm_handler(update, context):
-    """Подтвердить сохранение паттерна остатков."""
+    """РџРѕРґС‚РІРµСЂРґРёС‚СЊ СЃРѕС…СЂР°РЅРµРЅРёРµ РїР°С‚С‚РµСЂРЅР° РѕСЃС‚Р°С‚РєРѕРІ."""
     query = update.callback_query
     query.answer()
 
@@ -10631,10 +10631,10 @@ def stock_pattern_confirm_handler(update, context):
 
     if not pattern or not pattern_type:
         query.edit_message_text(
-            "❌ Паттерн не найден. Начните добавление заново.",
+            "вќЊ РџР°С‚С‚РµСЂРЅ РЅРµ РЅР°Р№РґРµРЅ. РќР°С‡РЅРёС‚Рµ РґРѕР±Р°РІР»РµРЅРёРµ Р·Р°РЅРѕРІРѕ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)],
-                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=back_callback)],
+                [InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
             ])
         )
         return
@@ -10651,24 +10651,24 @@ def stock_pattern_confirm_handler(update, context):
         )
         conn.commit()
 
-        source_label = context.user_data.get('backup_pattern_source', 'мастер')
-        label_text = f"Метка: *{label}*\n" if label else ""
+        source_label = context.user_data.get('backup_pattern_source', 'РјР°СЃС‚РµСЂ')
+        label_text = f"РњРµС‚РєР°: *{label}*\n" if label else ""
         query.edit_message_text(
-            "✅ *Паттерн добавлен!*\n\n"
-            "Категория: *stock_load*\n"
-            f"Тип: *{pattern_type}*\n"
+            "вњ… *РџР°С‚С‚РµСЂРЅ РґРѕР±Р°РІР»РµРЅ!*\n\n"
+            "РљР°С‚РµРіРѕСЂРёСЏ: *stock_load*\n"
+            f"РўРёРї: *{pattern_type}*\n"
             f"{label_text}"
-            f"Источник: *{source_label}*\n"
-            f"Паттерн: `{pattern}`",
+            f"РСЃС‚РѕС‡РЅРёРє: *{source_label}*\n"
+            f"РџР°С‚С‚РµСЂРЅ: `{pattern}`",
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+                [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=back_callback),
+                 InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
             ])
         )
     except Exception as e:
-        query.edit_message_text(f"❌ Ошибка сохранения: {e}")
+        query.edit_message_text(f"вќЊ РћС€РёР±РєР° СЃРѕС…СЂР°РЅРµРЅРёСЏ: {e}")
     finally:
         context.user_data.pop('adding_backup_pattern', None)
         context.user_data.pop('backup_pattern_stage', None)
@@ -10682,7 +10682,7 @@ def stock_pattern_confirm_handler(update, context):
         context.user_data.pop('backup_pattern_stock_label', None)
 
 def edit_mail_default_pattern_handler(update, context):
-    """Изменить дефолтный паттерн для бэкапов почты"""
+    """РР·РјРµРЅРёС‚СЊ РґРµС„РѕР»С‚РЅС‹Р№ РїР°С‚С‚РµСЂРЅ РґР»СЏ Р±СЌРєР°РїРѕРІ РїРѕС‡С‚С‹"""
     query = update.callback_query
     query.answer()
 
@@ -10694,19 +10694,19 @@ def edit_mail_default_pattern_handler(update, context):
     context.user_data['backup_pattern_mode'] = 'mail'
 
     query.edit_message_text(
-        "✏️ *Изменение паттерна почты*\n\n"
-        f"Текущий паттерн:\n`{current_pattern}`\n\n"
-        "Введите новый regex паттерн темы письма:",
+        "вњЏпёЏ *РР·РјРµРЅРµРЅРёРµ РїР°С‚С‚РµСЂРЅР° РїРѕС‡С‚С‹*\n\n"
+        f"РўРµРєСѓС‰РёР№ РїР°С‚С‚РµСЂРЅ:\n`{current_pattern}`\n\n"
+        "Р’РІРµРґРёС‚Рµ РЅРѕРІС‹Р№ regex РїР°С‚С‚РµСЂРЅ С‚РµРјС‹ РїРёСЃСЊРјР°:",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
+             InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
         ])
     )
 
 def mail_pattern_retry_handler(update, context):
-    """Повторить ввод темы/фрагментов для паттерна почты."""
+    """РџРѕРІС‚РѕСЂРёС‚СЊ РІРІРѕРґ С‚РµРјС‹/С„СЂР°РіРјРµРЅС‚РѕРІ РґР»СЏ РїР°С‚С‚РµСЂРЅР° РїРѕС‡С‚С‹."""
     query = update.callback_query
     query.answer()
 
@@ -10717,19 +10717,19 @@ def mail_pattern_retry_handler(update, context):
     context.user_data.pop('backup_pattern_source', None)
 
     query.edit_message_text(
-        "🧙 *Мастер добавления паттерна почты*\n\n"
-        "Введите тему письма целиком или обязательные фрагменты через `;`/`,`.\n"
-        "Фрагменты учитываются в указанном порядке.",
+        "рџ§™ *РњР°СЃС‚РµСЂ РґРѕР±Р°РІР»РµРЅРёСЏ РїР°С‚С‚РµСЂРЅР° РїРѕС‡С‚С‹*\n\n"
+        "Р’РІРµРґРёС‚Рµ С‚РµРјСѓ РїРёСЃСЊРјР° С†РµР»РёРєРѕРј РёР»Рё РѕР±СЏР·Р°С‚РµР»СЊРЅС‹Рµ С„СЂР°РіРјРµРЅС‚С‹ С‡РµСЂРµР· `;`/`,`.\n"
+        "Р¤СЂР°РіРјРµРЅС‚С‹ СѓС‡РёС‚С‹РІР°СЋС‚СЃСЏ РІ СѓРєР°Р·Р°РЅРЅРѕРј РїРѕСЂСЏРґРєРµ.",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
+             InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
         ])
     )
 
 def mail_pattern_confirm_handler(update, context):
-    """Подтвердить сохранение паттерна почты."""
+    """РџРѕРґС‚РІРµСЂРґРёС‚СЊ СЃРѕС…СЂР°РЅРµРЅРёРµ РїР°С‚С‚РµСЂРЅР° РїРѕС‡С‚С‹."""
     query = update.callback_query
     query.answer()
 
@@ -10738,10 +10738,10 @@ def mail_pattern_confirm_handler(update, context):
 
     if not pattern:
         query.edit_message_text(
-            "❌ Паттерн не найден. Начните добавление заново.",
+            "вќЊ РџР°С‚С‚РµСЂРЅ РЅРµ РЅР°Р№РґРµРЅ. РќР°С‡РЅРёС‚Рµ РґРѕР±Р°РІР»РµРЅРёРµ Р·Р°РЅРѕРІРѕ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)],
-                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=back_callback)],
+                [InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
             ])
         )
         return
@@ -10758,22 +10758,22 @@ def mail_pattern_confirm_handler(update, context):
         )
         conn.commit()
 
-        source_label = context.user_data.get('backup_pattern_source', 'мастер')
+        source_label = context.user_data.get('backup_pattern_source', 'РјР°СЃС‚РµСЂ')
         query.edit_message_text(
-            "✅ *Паттерн добавлен!*\n\n"
-            "Категория: *mail*\n"
-            "Тип: *subject*\n"
-            f"Источник: *{source_label}*\n"
-            f"Паттерн: `{pattern}`",
+            "вњ… *РџР°С‚С‚РµСЂРЅ РґРѕР±Р°РІР»РµРЅ!*\n\n"
+            "РљР°С‚РµРіРѕСЂРёСЏ: *mail*\n"
+            "РўРёРї: *subject*\n"
+            f"РСЃС‚РѕС‡РЅРёРє: *{source_label}*\n"
+            f"РџР°С‚С‚РµСЂРЅ: `{pattern}`",
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+                [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=back_callback),
+                 InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
             ])
         )
     except Exception as e:
-        query.edit_message_text(f"❌ Ошибка сохранения: {e}")
+        query.edit_message_text(f"вќЊ РћС€РёР±РєР° СЃРѕС…СЂР°РЅРµРЅРёСЏ: {e}")
     finally:
         context.user_data.pop('adding_backup_pattern', None)
         context.user_data.pop('backup_pattern_stage', None)
@@ -10785,7 +10785,7 @@ def mail_pattern_confirm_handler(update, context):
         context.user_data.pop('backup_pattern_source', None)
 
 def db_pattern_retry_handler(update, context):
-    """Повторить ввод темы/фрагментов для паттерна БД."""
+    """РџРѕРІС‚РѕСЂРёС‚СЊ РІРІРѕРґ С‚РµРјС‹/С„СЂР°РіРјРµРЅС‚РѕРІ РґР»СЏ РїР°С‚С‚РµСЂРЅР° Р‘Р”."""
     query = update.callback_query
     query.answer()
 
@@ -10798,30 +10798,30 @@ def db_pattern_retry_handler(update, context):
     context.user_data.pop('backup_pattern_db_name', None)
 
     query.edit_message_text(
-        "🧙 *Мастер добавления паттерна БД*\n\n"
-        "Введите тему письма целиком или обязательные фрагменты через `;`/`,`.\n"
-        "Во фрагментах обязательно укажите имя БД из настроек.",
+        "рџ§™ *РњР°СЃС‚РµСЂ РґРѕР±Р°РІР»РµРЅРёСЏ РїР°С‚С‚РµСЂРЅР° Р‘Р”*\n\n"
+        "Р’РІРµРґРёС‚Рµ С‚РµРјСѓ РїРёСЃСЊРјР° С†РµР»РёРєРѕРј РёР»Рё РѕР±СЏР·Р°С‚РµР»СЊРЅС‹Рµ С„СЂР°РіРјРµРЅС‚С‹ С‡РµСЂРµР· `;`/`,`.\n"
+        "Р’Рѕ С„СЂР°РіРјРµРЅС‚Р°С… РѕР±СЏР·Р°С‚РµР»СЊРЅРѕ СѓРєР°Р¶РёС‚Рµ РёРјСЏ Р‘Р” РёР· РЅР°СЃС‚СЂРѕРµРє.",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
+             InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
         ])
     )
 
 def _get_database_categories() -> list[str]:
-    """Получить список категорий БД из настроек."""
+    """РџРѕР»СѓС‡РёС‚СЊ СЃРїРёСЃРѕРє РєР°С‚РµРіРѕСЂРёР№ Р‘Р” РёР· РЅР°СЃС‚СЂРѕРµРє."""
     db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
     if not isinstance(db_config, dict):
         return []
     return sorted([key for key in db_config.keys() if isinstance(key, str)])
 
 def _show_db_pattern_confirm(update, context):
-    """Показать экран подтверждения паттерна БД с выбором категории."""
+    """РџРѕРєР°Р·Р°С‚СЊ СЌРєСЂР°РЅ РїРѕРґС‚РІРµСЂР¶РґРµРЅРёСЏ РїР°С‚С‚РµСЂРЅР° Р‘Р” СЃ РІС‹Р±РѕСЂРѕРј РєР°С‚РµРіРѕСЂРёРё."""
     pattern = context.user_data.get('backup_pattern_generated')
     db_name = context.user_data.get('backup_pattern_db_name', '')
     category = context.user_data.get('backup_pattern_category', '')
-    source_label = context.user_data.get('backup_pattern_source', 'мастер')
+    source_label = context.user_data.get('backup_pattern_source', 'РјР°СЃС‚РµСЂ')
     back_callback = context.user_data.get('patterns_back', 'settings_backup')
 
     if not pattern:
@@ -10832,7 +10832,7 @@ def _show_db_pattern_confirm(update, context):
     if categories:
         row: list[InlineKeyboardButton] = []
         for category_name in categories:
-            label = f"✅ {category_name}" if category_name == category else category_name
+            label = f"вњ… {category_name}" if category_name == category else category_name
             row.append(
                 InlineKeyboardButton(
                     label,
@@ -10846,23 +10846,23 @@ def _show_db_pattern_confirm(update, context):
             keyboard.append(row)
 
     keyboard.extend([
-        [InlineKeyboardButton("✅ Сохранить", callback_data='db_pattern_confirm')],
-        [InlineKeyboardButton("✏️ Ввести заново", callback_data='db_pattern_retry')],
-        [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        [InlineKeyboardButton("вњ… РЎРѕС…СЂР°РЅРёС‚СЊ", callback_data='db_pattern_confirm')],
+        [InlineKeyboardButton("вњЏпёЏ Р’РІРµСЃС‚Рё Р·Р°РЅРѕРІРѕ", callback_data='db_pattern_retry')],
+        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=back_callback),
+         InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
     ])
 
     message = (
-        "✅ *Черновик паттерна готов!*\n\n"
-        f"БД: *{db_name}*\n"
-        f"Категория: *{category}*\n"
-        f"Источник: *{source_label}*\n"
-        f"Паттерн: `{pattern}`\n"
+        "вњ… *Р§РµСЂРЅРѕРІРёРє РїР°С‚С‚РµСЂРЅР° РіРѕС‚РѕРІ!*\n\n"
+        f"Р‘Р”: *{db_name}*\n"
+        f"РљР°С‚РµРіРѕСЂРёСЏ: *{category}*\n"
+        f"РСЃС‚РѕС‡РЅРёРє: *{source_label}*\n"
+        f"РџР°С‚С‚РµСЂРЅ: `{pattern}`\n"
     )
     if categories:
-        message += "\nВыберите категорию перед сохранением:"
+        message += "\nР’С‹Р±РµСЂРёС‚Рµ РєР°С‚РµРіРѕСЂРёСЋ РїРµСЂРµРґ СЃРѕС…СЂР°РЅРµРЅРёРµРј:"
     else:
-        message += "\n⚠️ Нет доступных категорий БД."
+        message += "\nвљ пёЏ РќРµС‚ РґРѕСЃС‚СѓРїРЅС‹С… РєР°С‚РµРіРѕСЂРёР№ Р‘Р”."
 
     query = update.callback_query
     if query:
@@ -10881,12 +10881,12 @@ def _show_db_pattern_confirm(update, context):
     )
 
 def db_pattern_set_category_handler(update, context, category: str):
-    """Выбрать категорию для паттерна БД."""
+    """Р’С‹Р±СЂР°С‚СЊ РєР°С‚РµРіРѕСЂРёСЋ РґР»СЏ РїР°С‚С‚РµСЂРЅР° Р‘Р”."""
     context.user_data['backup_pattern_category'] = category
     _show_db_pattern_confirm(update, context)
 
 def db_pattern_confirm_handler(update, context):
-    """Подтвердить сохранение паттерна БД."""
+    """РџРѕРґС‚РІРµСЂРґРёС‚СЊ СЃРѕС…СЂР°РЅРµРЅРёРµ РїР°С‚С‚РµСЂРЅР° Р‘Р”."""
     query = update.callback_query
     query.answer()
 
@@ -10896,10 +10896,10 @@ def db_pattern_confirm_handler(update, context):
 
     if not pattern or not category:
         query.edit_message_text(
-            "❌ Паттерн не найден. Начните добавление заново.",
+            "вќЊ РџР°С‚С‚РµСЂРЅ РЅРµ РЅР°Р№РґРµРЅ. РќР°С‡РЅРёС‚Рµ РґРѕР±Р°РІР»РµРЅРёРµ Р·Р°РЅРѕРІРѕ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)],
-                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=back_callback)],
+                [InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
             ])
         )
         return
@@ -10916,25 +10916,25 @@ def db_pattern_confirm_handler(update, context):
         )
         conn.commit()
 
-        source_label = context.user_data.get('backup_pattern_source', 'мастер')
+        source_label = context.user_data.get('backup_pattern_source', 'РјР°СЃС‚РµСЂ')
         db_name = context.user_data.get('backup_pattern_db_name', '')
-        db_info = f"БД: *{db_name}*\n" if db_name else ""
+        db_info = f"Р‘Р”: *{db_name}*\n" if db_name else ""
         query.edit_message_text(
-            "✅ *Паттерн добавлен!*\n\n"
+            "вњ… *РџР°С‚С‚РµСЂРЅ РґРѕР±Р°РІР»РµРЅ!*\n\n"
             f"{db_info}"
-            f"Категория: *{category}*\n"
-            "Тип: *subject*\n"
-            f"Источник: *{source_label}*\n"
-            f"Паттерн: `{pattern}`",
+            f"РљР°С‚РµРіРѕСЂРёСЏ: *{category}*\n"
+            "РўРёРї: *subject*\n"
+            f"РСЃС‚РѕС‡РЅРёРє: *{source_label}*\n"
+            f"РџР°С‚С‚РµСЂРЅ: `{pattern}`",
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+                [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=back_callback),
+                 InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
             ])
         )
     except Exception as e:
-        query.edit_message_text(f"❌ Ошибка сохранения: {e}")
+        query.edit_message_text(f"вќЊ РћС€РёР±РєР° СЃРѕС…СЂР°РЅРµРЅРёСЏ: {e}")
     finally:
         context.user_data.pop('adding_backup_pattern', None)
         context.user_data.pop('backup_pattern_stage', None)
@@ -10947,20 +10947,20 @@ def db_pattern_confirm_handler(update, context):
         context.user_data.pop('backup_pattern_db_name', None)
 
 def edit_default_db_pattern_handler(update, context, category: str, index_value: str):
-    """Редактировать дефолтный паттерн БД."""
+    """Р РµРґР°РєС‚РёСЂРѕРІР°С‚СЊ РґРµС„РѕР»С‚РЅС‹Р№ РїР°С‚С‚РµСЂРЅ Р‘Р”."""
     query = update.callback_query
     query.answer()
 
     try:
         index = int(index_value)
     except ValueError:
-        query.edit_message_text("❌ Некорректный индекс паттерна.")
+        query.edit_message_text("вќЊ РќРµРєРѕСЂСЂРµРєС‚РЅС‹Р№ РёРЅРґРµРєСЃ РїР°С‚С‚РµСЂРЅР°.")
         return
 
     db_patterns = _get_database_patterns_setting()
     patterns = db_patterns.get(category, [])
     if index < 1 or index > len(patterns):
-        query.edit_message_text("❌ Паттерн не найден.")
+        query.edit_message_text("вќЊ РџР°С‚С‚РµСЂРЅ РЅРµ РЅР°Р№РґРµРЅ.")
         return
 
     current_pattern = patterns[index - 1]
@@ -10970,33 +10970,33 @@ def edit_default_db_pattern_handler(update, context, category: str, index_value:
 
     back_callback = context.user_data.get('patterns_back', 'settings_backup')
     query.edit_message_text(
-        "✏️ *Редактирование дефолтного паттерна БД*\n\n"
-        f"Категория: *{category}*\n"
-        f"Текущий паттерн: `{current_pattern}`\n\n"
-        "Введите новый regex паттерн темы письма:",
+        "вњЏпёЏ *Р РµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ РґРµС„РѕР»С‚РЅРѕРіРѕ РїР°С‚С‚РµСЂРЅР° Р‘Р”*\n\n"
+        f"РљР°С‚РµРіРѕСЂРёСЏ: *{category}*\n"
+        f"РўРµРєСѓС‰РёР№ РїР°С‚С‚РµСЂРЅ: `{current_pattern}`\n\n"
+        "Р’РІРµРґРёС‚Рµ РЅРѕРІС‹Р№ regex РїР°С‚С‚РµСЂРЅ С‚РµРјС‹ РїРёСЃСЊРјР°:",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data=back_callback),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data=back_callback),
+             InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
         ])
     )
 
 def delete_default_db_pattern_handler(update, context, category: str, index_value: str):
-    """Удалить дефолтный паттерн БД."""
+    """РЈРґР°Р»РёС‚СЊ РґРµС„РѕР»С‚РЅС‹Р№ РїР°С‚С‚РµСЂРЅ Р‘Р”."""
     query = update.callback_query
     query.answer()
 
     try:
         index = int(index_value)
     except ValueError:
-        query.edit_message_text("❌ Некорректный индекс паттерна.")
+        query.edit_message_text("вќЊ РќРµРєРѕСЂСЂРµРєС‚РЅС‹Р№ РёРЅРґРµРєСЃ РїР°С‚С‚РµСЂРЅР°.")
         return
 
     db_patterns = _get_database_patterns_setting()
     patterns = db_patterns.get(category, [])
     if index < 1 or index > len(patterns):
-        query.edit_message_text("❌ Паттерн не найден.")
+        query.edit_message_text("вќЊ РџР°С‚С‚РµСЂРЅ РЅРµ РЅР°Р№РґРµРЅ.")
         return
 
     patterns.pop(index - 1)
@@ -11009,16 +11009,16 @@ def delete_default_db_pattern_handler(update, context, category: str, index_valu
 
     back_callback = context.user_data.get('patterns_back', 'settings_backup')
     query.edit_message_text(
-        "✅ Дефолтный паттерн удалён.",
+        "вњ… Р”РµС„РѕР»С‚РЅС‹Р№ РїР°С‚С‚РµСЂРЅ СѓРґР°Р»С‘РЅ.",
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=back_callback),
+             InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
         ])
     )
 
 def zfs_pattern_retry_handler(update, context):
-    """Повторить ввод темы/фрагментов для паттерна ZFS."""
+    """РџРѕРІС‚РѕСЂРёС‚СЊ РІРІРѕРґ С‚РµРјС‹/С„СЂР°РіРјРµРЅС‚РѕРІ РґР»СЏ РїР°С‚С‚РµСЂРЅР° ZFS."""
     query = update.callback_query
     query.answer()
 
@@ -11029,19 +11029,19 @@ def zfs_pattern_retry_handler(update, context):
     context.user_data.pop('backup_pattern_source', None)
 
     query.edit_message_text(
-        "🧙 *Мастер добавления паттерна ZFS*\n\n"
-        "Введите тему письма целиком или обязательные фрагменты через `;`/`,`.\n"
-        "Во фрагментах обязательно укажите имя ZFS сервера из настроек.",
+        "рџ§™ *РњР°СЃС‚РµСЂ РґРѕР±Р°РІР»РµРЅРёСЏ РїР°С‚С‚РµСЂРЅР° ZFS*\n\n"
+        "Р’РІРµРґРёС‚Рµ С‚РµРјСѓ РїРёСЃСЊРјР° С†РµР»РёРєРѕРј РёР»Рё РѕР±СЏР·Р°С‚РµР»СЊРЅС‹Рµ С„СЂР°РіРјРµРЅС‚С‹ С‡РµСЂРµР· `;`/`,`.\n"
+        "Р’Рѕ С„СЂР°РіРјРµРЅС‚Р°С… РѕР±СЏР·Р°С‚РµР»СЊРЅРѕ СѓРєР°Р¶РёС‚Рµ РёРјСЏ ZFS СЃРµСЂРІРµСЂР° РёР· РЅР°СЃС‚СЂРѕРµРє.",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
+             InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
         ])
     )
 
 def zfs_pattern_confirm_handler(update, context):
-    """Подтвердить сохранение паттерна ZFS."""
+    """РџРѕРґС‚РІРµСЂРґРёС‚СЊ СЃРѕС…СЂР°РЅРµРЅРёРµ РїР°С‚С‚РµСЂРЅР° ZFS."""
     query = update.callback_query
     query.answer()
 
@@ -11050,10 +11050,10 @@ def zfs_pattern_confirm_handler(update, context):
 
     if not pattern:
         query.edit_message_text(
-            "❌ Паттерн не найден. Начните добавление заново.",
+            "вќЊ РџР°С‚С‚РµСЂРЅ РЅРµ РЅР°Р№РґРµРЅ. РќР°С‡РЅРёС‚Рµ РґРѕР±Р°РІР»РµРЅРёРµ Р·Р°РЅРѕРІРѕ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)],
-                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=back_callback)],
+                [InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
             ])
         )
         return
@@ -11070,22 +11070,22 @@ def zfs_pattern_confirm_handler(update, context):
         )
         conn.commit()
 
-        source_label = context.user_data.get('backup_pattern_source', 'мастер')
+        source_label = context.user_data.get('backup_pattern_source', 'РјР°СЃС‚РµСЂ')
         query.edit_message_text(
-            "✅ *Паттерн добавлен!*\n\n"
-            "Категория: *zfs*\n"
-            "Тип: *subject*\n"
-            f"Источник: *{source_label}*\n"
-            f"Паттерн: `{pattern}`",
+            "вњ… *РџР°С‚С‚РµСЂРЅ РґРѕР±Р°РІР»РµРЅ!*\n\n"
+            "РљР°С‚РµРіРѕСЂРёСЏ: *zfs*\n"
+            "РўРёРї: *subject*\n"
+            f"РСЃС‚РѕС‡РЅРёРє: *{source_label}*\n"
+            f"РџР°С‚С‚РµСЂРЅ: `{pattern}`",
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+                [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=back_callback),
+                 InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
             ])
         )
     except Exception as e:
-        query.edit_message_text(f"❌ Ошибка сохранения: {e}")
+        query.edit_message_text(f"вќЊ РћС€РёР±РєР° СЃРѕС…СЂР°РЅРµРЅРёСЏ: {e}")
     finally:
         context.user_data.pop('adding_backup_pattern', None)
         context.user_data.pop('backup_pattern_stage', None)
@@ -11097,7 +11097,7 @@ def zfs_pattern_confirm_handler(update, context):
         context.user_data.pop('backup_pattern_source', None)
 
 def proxmox_pattern_retry_handler(update, context):
-    """Повторить ввод темы/фрагментов для паттерна Proxmox."""
+    """РџРѕРІС‚РѕСЂРёС‚СЊ РІРІРѕРґ С‚РµРјС‹/С„СЂР°РіРјРµРЅС‚РѕРІ РґР»СЏ РїР°С‚С‚РµСЂРЅР° Proxmox."""
     query = update.callback_query
     query.answer()
 
@@ -11108,19 +11108,19 @@ def proxmox_pattern_retry_handler(update, context):
     context.user_data.pop('backup_pattern_source', None)
 
     query.edit_message_text(
-        "🧙 *Мастер добавления паттерна Proxmox*\n\n"
-        "Введите тему письма целиком или обязательные фрагменты через `;`/`,`.\n"
-        "Фрагменты учитываются в указанном порядке.",
+        "рџ§™ *РњР°СЃС‚РµСЂ РґРѕР±Р°РІР»РµРЅРёСЏ РїР°С‚С‚РµСЂРЅР° Proxmox*\n\n"
+        "Р’РІРµРґРёС‚Рµ С‚РµРјСѓ РїРёСЃСЊРјР° С†РµР»РёРєРѕРј РёР»Рё РѕР±СЏР·Р°С‚РµР»СЊРЅС‹Рµ С„СЂР°РіРјРµРЅС‚С‹ С‡РµСЂРµР· `;`/`,`.\n"
+        "Р¤СЂР°РіРјРµРЅС‚С‹ СѓС‡РёС‚С‹РІР°СЋС‚СЃСЏ РІ СѓРєР°Р·Р°РЅРЅРѕРј РїРѕСЂСЏРґРєРµ.",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data=context.user_data.get('patterns_back', 'settings_backup')),
+             InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
         ])
     )
 
 def proxmox_pattern_confirm_handler(update, context):
-    """Подтвердить сохранение паттерна Proxmox."""
+    """РџРѕРґС‚РІРµСЂРґРёС‚СЊ СЃРѕС…СЂР°РЅРµРЅРёРµ РїР°С‚С‚РµСЂРЅР° Proxmox."""
     query = update.callback_query
     query.answer()
 
@@ -11129,10 +11129,10 @@ def proxmox_pattern_confirm_handler(update, context):
 
     if not pattern:
         query.edit_message_text(
-            "❌ Паттерн не найден. Начните добавление заново.",
+            "вќЊ РџР°С‚С‚РµСЂРЅ РЅРµ РЅР°Р№РґРµРЅ. РќР°С‡РЅРёС‚Рµ РґРѕР±Р°РІР»РµРЅРёРµ Р·Р°РЅРѕРІРѕ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)],
-                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=back_callback)],
+                [InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
             ])
         )
         return
@@ -11149,22 +11149,22 @@ def proxmox_pattern_confirm_handler(update, context):
         )
         conn.commit()
 
-        source_label = context.user_data.get('backup_pattern_source', 'мастер')
+        source_label = context.user_data.get('backup_pattern_source', 'РјР°СЃС‚РµСЂ')
         query.edit_message_text(
-            "✅ *Паттерн добавлен!*\n\n"
-            "Категория: *proxmox*\n"
-            "Тип: *subject*\n"
-            f"Источник: *{source_label}*\n"
-            f"Паттерн: `{pattern}`",
+            "вњ… *РџР°С‚С‚РµСЂРЅ РґРѕР±Р°РІР»РµРЅ!*\n\n"
+            "РљР°С‚РµРіРѕСЂРёСЏ: *proxmox*\n"
+            "РўРёРї: *subject*\n"
+            f"РСЃС‚РѕС‡РЅРёРє: *{source_label}*\n"
+            f"РџР°С‚С‚РµСЂРЅ: `{pattern}`",
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+                [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=back_callback),
+                 InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
             ])
         )
     except Exception as e:
-        query.edit_message_text(f"❌ Ошибка сохранения: {e}")
+        query.edit_message_text(f"вќЊ РћС€РёР±РєР° СЃРѕС…СЂР°РЅРµРЅРёСЏ: {e}")
     finally:
         context.user_data.pop('adding_backup_pattern', None)
         context.user_data.pop('backup_pattern_stage', None)
@@ -11176,7 +11176,7 @@ def proxmox_pattern_confirm_handler(update, context):
         context.user_data.pop('backup_pattern_source', None)
 
 def view_patterns_handler(update, context):
-    """Просмотр паттернов"""
+    """РџСЂРѕСЃРјРѕС‚СЂ РїР°С‚С‚РµСЂРЅРѕРІ"""
     query = update.callback_query
     query.answer()
 
@@ -11241,7 +11241,7 @@ def view_patterns_handler(update, context):
         )
     rows = cursor.fetchall()
 
-    title = context.user_data.get('patterns_title', "📋 *Паттерны*")
+    title = context.user_data.get('patterns_title', "рџ“‹ *РџР°С‚С‚РµСЂРЅС‹*")
     display_rows = rows
     if filter_mode == 'db':
         display_rows = []
@@ -11290,7 +11290,7 @@ def view_patterns_handler(update, context):
         fallback_stock_patterns = _get_stock_load_fallback_patterns()
 
     if not display_rows and not fallback_patterns and not fallback_db_patterns and not fallback_stock_patterns:
-        message = f"{title}\n\n❌ Паттерны не настроены."
+        message = f"{title}\n\nвќЊ РџР°С‚С‚РµСЂРЅС‹ РЅРµ РЅР°СЃС‚СЂРѕРµРЅС‹."
     else:
         message = f"{title}\n\n"
         current_category = None
@@ -11307,13 +11307,13 @@ def view_patterns_handler(update, context):
         if fallback_patterns:
             if rows:
                 message += "\n"
-            message += "*mail (по умолчанию)*\n"
+            message += "*mail (РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ)*\n"
             for index, pattern in enumerate(fallback_patterns, start=1):
                 message += f"{index}. subject: `{_escape_pattern_text(pattern)}`\n"
         if fallback_db_patterns:
             if rows or fallback_patterns:
                 message += "\n"
-            message += "*database (по умолчанию)*\n"
+            message += "*database (РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ)*\n"
             for category, patterns in fallback_db_patterns.items():
                 message += f"*{_escape_pattern_text(category)}*\n"
                 for index, pattern in enumerate(patterns, start=1):
@@ -11321,7 +11321,7 @@ def view_patterns_handler(update, context):
         if fallback_stock_patterns:
             if rows or fallback_patterns or fallback_db_patterns:
                 message += "\n"
-            message += "*stock_load (по умолчанию)*\n"
+            message += "*stock_load (РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ)*\n"
             for pattern_type, patterns in fallback_stock_patterns.items():
                 message += f"*{_escape_pattern_text(pattern_type)}*\n"
                 for index, pattern in enumerate(patterns, start=1):
@@ -11334,42 +11334,42 @@ def view_patterns_handler(update, context):
     for index, (pattern_id, pattern_type, pattern, category) in enumerate(display_rows, start=1):
         keyboard.append([
             InlineKeyboardButton(
-                f"✏️ {index}. {category}:{pattern_type}",
+                f"вњЏпёЏ {index}. {category}:{pattern_type}",
                 callback_data=f"edit_pattern_{pattern_id}"
             ),
             InlineKeyboardButton(
-                f"🗑️ {index}. {category}:{pattern_type}",
+                f"рџ—‘пёЏ {index}. {category}:{pattern_type}",
                 callback_data=f"delete_pattern_{pattern_id}"
             )
         ])
 
     if fallback_patterns and filter_mode == 'mail':
         keyboard.append([
-            InlineKeyboardButton("✏️ Изменить дефолтный паттерн", callback_data='edit_mail_default_pattern')
+            InlineKeyboardButton("вњЏпёЏ РР·РјРµРЅРёС‚СЊ РґРµС„РѕР»С‚РЅС‹Р№ РїР°С‚С‚РµСЂРЅ", callback_data='edit_mail_default_pattern')
         ])
     if fallback_db_patterns and filter_mode == 'db':
         for category, patterns in fallback_db_patterns.items():
             for index, _ in enumerate(patterns, start=1):
                 keyboard.append([
                     InlineKeyboardButton(
-                        f"✏️ {category} #{index}",
+                        f"вњЏпёЏ {category} #{index}",
                         callback_data=f"db_default_edit_{category}__{index}"
                     ),
                     InlineKeyboardButton(
-                        f"🗑️ {category} #{index}",
+                        f"рџ—‘пёЏ {category} #{index}",
                         callback_data=f"db_default_delete_{category}__{index}"
                     )
                 ])
 
     add_callback = context.user_data.get('patterns_add')
     if add_callback:
-        keyboard.append([InlineKeyboardButton("➕ Добавить паттерн", callback_data=add_callback)])
+        keyboard.append([InlineKeyboardButton("вћ• Р”РѕР±Р°РІРёС‚СЊ РїР°С‚С‚РµСЂРЅ", callback_data=add_callback)])
 
     back_callback = context.user_data.get('patterns_back', 'settings_backup')
     keyboard.append([
-        InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
-        InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+        InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu'),
+        InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=back_callback),
+        InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')
     ])
 
     query.edit_message_text(
@@ -11379,7 +11379,7 @@ def view_patterns_handler(update, context):
     )
 
 def _get_database_category(db_name):
-    """Получить категорию базы данных по ключу"""
+    """РџРѕР»СѓС‡РёС‚СЊ РєР°С‚РµРіРѕСЂРёСЋ Р±Р°Р·С‹ РґР°РЅРЅС‹С… РїРѕ РєР»СЋС‡Сѓ"""
     db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
     if not isinstance(db_config, dict):
         return "unknown"
@@ -11389,14 +11389,14 @@ def _get_database_category(db_name):
     return "unknown"
 
 def delete_pattern_handler(update, context, pattern_id):
-    """Удалить паттерн"""
+    """РЈРґР°Р»РёС‚СЊ РїР°С‚С‚РµСЂРЅ"""
     query = update.callback_query
     query.answer()
 
     try:
         pattern_id_int = int(pattern_id)
     except ValueError:
-        query.edit_message_text("❌ Некорректный идентификатор паттерна.")
+        query.edit_message_text("вќЊ РќРµРєРѕСЂСЂРµРєС‚РЅС‹Р№ РёРґРµРЅС‚РёС„РёРєР°С‚РѕСЂ РїР°С‚С‚РµСЂРЅР°.")
         return
 
     conn = settings_manager.get_connection()
@@ -11409,23 +11409,23 @@ def delete_pattern_handler(update, context, pattern_id):
 
     back_callback = context.user_data.get('patterns_back', 'settings_backup')
     query.edit_message_text(
-        "✅ Паттерн удалён.",
+        "вњ… РџР°С‚С‚РµСЂРЅ СѓРґР°Р»С‘РЅ.",
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=back_callback),
+             InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
         ])
     )
 
 def edit_pattern_handler(update, context, pattern_id):
-    """Редактировать паттерн"""
+    """Р РµРґР°РєС‚РёСЂРѕРІР°С‚СЊ РїР°С‚С‚РµСЂРЅ"""
     query = update.callback_query
     query.answer()
 
     try:
         pattern_id_int = int(pattern_id)
     except ValueError:
-        query.edit_message_text("❌ Некорректный идентификатор паттерна.")
+        query.edit_message_text("вќЊ РќРµРєРѕСЂСЂРµРєС‚РЅС‹Р№ РёРґРµРЅС‚РёС„РёРєР°С‚РѕСЂ РїР°С‚С‚РµСЂРЅР°.")
         return
 
     conn = settings_manager.get_connection()
@@ -11443,11 +11443,11 @@ def edit_pattern_handler(update, context, pattern_id):
     if not row:
         back_callback = context.user_data.get('patterns_back', 'settings_backup')
         query.edit_message_text(
-            "❌ Паттерн не найден.",
+            "вќЊ РџР°С‚С‚РµСЂРЅ РЅРµ РЅР°Р№РґРµРЅ.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+                [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=back_callback),
+                 InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
             ])
         )
         return
@@ -11475,28 +11475,28 @@ def edit_pattern_handler(update, context, pattern_id):
 
     back_callback = context.user_data.get('patterns_back', 'settings_backup')
     if category in ('zfs', 'proxmox', 'mail'):
-        prompt = "Введите паттерн темы письма:"
+        prompt = "Р’РІРµРґРёС‚Рµ РїР°С‚С‚РµСЂРЅ С‚РµРјС‹ РїРёСЃСЊРјР°:"
     elif category == 'stock_load':
-        prompt = "Введите regex паттерн для выбранного типа:"
+        prompt = "Р’РІРµРґРёС‚Рµ regex РїР°С‚С‚РµСЂРЅ РґР»СЏ РІС‹Р±СЂР°РЅРЅРѕРіРѕ С‚РёРїР°:"
     else:
-        prompt = "Введите тему письма (как приходит в почте):"
+        prompt = "Р’РІРµРґРёС‚Рµ С‚РµРјСѓ РїРёСЃСЊРјР° (РєР°Рє РїСЂРёС…РѕРґРёС‚ РІ РїРѕС‡С‚Рµ):"
 
     query.edit_message_text(
-        "✏️ *Редактирование паттерна*\n\n"
-        f"Категория: *{category}*\n"
-        f"Тип: *{pattern_type}*\n"
-        f"Текущий паттерн: `{pattern}`\n\n"
+        "вњЏпёЏ *Р РµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ РїР°С‚С‚РµСЂРЅР°*\n\n"
+        f"РљР°С‚РµРіРѕСЂРёСЏ: *{category}*\n"
+        f"РўРёРї: *{pattern_type}*\n"
+        f"РўРµРєСѓС‰РёР№ РїР°С‚С‚РµСЂРЅ: `{pattern}`\n\n"
         f"{prompt}",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("❌ Отмена", callback_data=back_callback),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+            [InlineKeyboardButton("вќЊ РћС‚РјРµРЅР°", callback_data=back_callback),
+             InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
         ])
     )
 
 def handle_backup_pattern_input(update, context):
-    """Обработчик добавления паттерна"""
+    """РћР±СЂР°Р±РѕС‚С‡РёРє РґРѕР±Р°РІР»РµРЅРёСЏ РїР°С‚С‚РµСЂРЅР°"""
     if 'adding_backup_pattern' not in context.user_data:
         return
 
@@ -11506,17 +11506,17 @@ def handle_backup_pattern_input(update, context):
 
     if mode == 'db_wizard':
         if stage != 'db_input':
-            update.message.reply_text("❌ Неверный шаг мастера. Попробуйте снова.")
+            update.message.reply_text("вќЊ РќРµРІРµСЂРЅС‹Р№ С€Р°Рі РјР°СЃС‚РµСЂР°. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°.")
             return
 
         if not user_input:
-            update.message.reply_text("❌ Ввод не может быть пустым. Попробуйте снова:")
+            update.message.reply_text("вќЊ Р’РІРѕРґ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return
 
         db_names = _get_database_names()
         if not db_names:
             update.message.reply_text(
-                "❌ Базы данных не настроены. Сначала добавьте БД в настройках."
+                "вќЊ Р‘Р°Р·С‹ РґР°РЅРЅС‹С… РЅРµ РЅР°СЃС‚СЂРѕРµРЅС‹. РЎРЅР°С‡Р°Р»Р° РґРѕР±Р°РІСЊС‚Рµ Р‘Р” РІ РЅР°СЃС‚СЂРѕР№РєР°С…."
             )
             context.user_data.pop('adding_backup_pattern', None)
             context.user_data.pop('backup_pattern_stage', None)
@@ -11531,26 +11531,26 @@ def handle_backup_pattern_input(update, context):
                 fragments,
                 db_names,
             )
-            source_label = "фрагменты"
+            source_label = "С„СЂР°РіРјРµРЅС‚С‹"
         else:
             pattern, db_name = _build_db_pattern_from_subject(
                 user_input,
                 db_names,
             )
-            source_label = "тема письма"
+            source_label = "С‚РµРјР° РїРёСЃСЊРјР°"
 
         if not pattern or not db_name:
             update.message.reply_text(
-                "❌ Не найдено имя БД из настроек.\n"
-                "Добавьте в тему или фрагменты имя БД и попробуйте снова:"
+                "вќЊ РќРµ РЅР°Р№РґРµРЅРѕ РёРјСЏ Р‘Р” РёР· РЅР°СЃС‚СЂРѕРµРє.\n"
+                "Р”РѕР±Р°РІСЊС‚Рµ РІ С‚РµРјСѓ РёР»Рё С„СЂР°РіРјРµРЅС‚С‹ РёРјСЏ Р‘Р” Рё РїРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:"
             )
             return
 
         category = _get_database_category(db_name)
         if category == "unknown":
             update.message.reply_text(
-                "❌ Не удалось определить категорию БД.\n"
-                "Проверьте, что БД есть в настройках."
+                "вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ РѕРїСЂРµРґРµР»РёС‚СЊ РєР°С‚РµРіРѕСЂРёСЋ Р‘Р”.\n"
+                "РџСЂРѕРІРµСЂСЊС‚Рµ, С‡С‚Рѕ Р‘Р” РµСЃС‚СЊ РІ РЅР°СЃС‚СЂРѕР№РєР°С…."
             )
             return
 
@@ -11565,17 +11565,17 @@ def handle_backup_pattern_input(update, context):
 
     if mode == 'zfs_wizard':
         if stage != 'zfs_input':
-            update.message.reply_text("❌ Неверный шаг мастера. Попробуйте снова.")
+            update.message.reply_text("вќЊ РќРµРІРµСЂРЅС‹Р№ С€Р°Рі РјР°СЃС‚РµСЂР°. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°.")
             return
 
         if not user_input:
-            update.message.reply_text("❌ Ввод не может быть пустым. Попробуйте снова:")
+            update.message.reply_text("вќЊ Р’РІРѕРґ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return
 
         server_names = _get_zfs_server_names()
         if not server_names:
             update.message.reply_text(
-                "❌ ZFS серверы не настроены. Сначала добавьте серверы в настройках ZFS."
+                "вќЊ ZFS СЃРµСЂРІРµСЂС‹ РЅРµ РЅР°СЃС‚СЂРѕРµРЅС‹. РЎРЅР°С‡Р°Р»Р° РґРѕР±Р°РІСЊС‚Рµ СЃРµСЂРІРµСЂС‹ РІ РЅР°СЃС‚СЂРѕР№РєР°С… ZFS."
             )
             context.user_data.pop('adding_backup_pattern', None)
             context.user_data.pop('backup_pattern_stage', None)
@@ -11590,22 +11590,22 @@ def handle_backup_pattern_input(update, context):
                 fragments,
                 server_names,
             )
-            source_label = "фрагменты"
+            source_label = "С„СЂР°РіРјРµРЅС‚С‹"
         else:
             pattern, has_server = _build_zfs_pattern_from_subject(
                 user_input,
                 server_names,
             )
-            source_label = "тема письма"
+            source_label = "С‚РµРјР° РїРёСЃСЊРјР°"
 
         if not pattern:
-            update.message.reply_text("❌ Не удалось собрать паттерн. Попробуйте снова:")
+            update.message.reply_text("вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕР±СЂР°С‚СЊ РїР°С‚С‚РµСЂРЅ. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return
 
         if not has_server:
             update.message.reply_text(
-                "❌ Не найдено имя ZFS сервера из настроек.\n"
-                "Добавьте в тему или фрагменты имя сервера и попробуйте снова:"
+                "вќЊ РќРµ РЅР°Р№РґРµРЅРѕ РёРјСЏ ZFS СЃРµСЂРІРµСЂР° РёР· РЅР°СЃС‚СЂРѕРµРє.\n"
+                "Р”РѕР±Р°РІСЊС‚Рµ РІ С‚РµРјСѓ РёР»Рё С„СЂР°РіРјРµРЅС‚С‹ РёРјСЏ СЃРµСЂРІРµСЂР° Рё РїРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:"
             )
             return
 
@@ -11615,27 +11615,27 @@ def handle_backup_pattern_input(update, context):
 
         back_callback = context.user_data.get('patterns_back', 'settings_backup')
         update.message.reply_text(
-            "✅ *Черновик паттерна готов!*\n\n"
-            f"Источник: *{source_label}*\n"
-            f"Паттерн: `{pattern}`\n\n"
-            "Сохранить?",
+            "вњ… *Р§РµСЂРЅРѕРІРёРє РїР°С‚С‚РµСЂРЅР° РіРѕС‚РѕРІ!*\n\n"
+            f"РСЃС‚РѕС‡РЅРёРє: *{source_label}*\n"
+            f"РџР°С‚С‚РµСЂРЅ: `{pattern}`\n\n"
+            "РЎРѕС…СЂР°РЅРёС‚СЊ?",
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("✅ Сохранить", callback_data='zfs_pattern_confirm')],
-                [InlineKeyboardButton("✏️ Ввести заново", callback_data='zfs_pattern_retry')],
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+                [InlineKeyboardButton("вњ… РЎРѕС…СЂР°РЅРёС‚СЊ", callback_data='zfs_pattern_confirm')],
+                [InlineKeyboardButton("вњЏпёЏ Р’РІРµСЃС‚Рё Р·Р°РЅРѕРІРѕ", callback_data='zfs_pattern_retry')],
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=back_callback),
+                 InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
             ])
         )
         return
 
     if mode == 'mail_wizard':
         if stage != 'mail_input':
-            update.message.reply_text("❌ Неверный шаг мастера. Попробуйте снова.")
+            update.message.reply_text("вќЊ РќРµРІРµСЂРЅС‹Р№ С€Р°Рі РјР°СЃС‚РµСЂР°. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°.")
             return
 
         if not user_input:
-            update.message.reply_text("❌ Ввод не может быть пустым. Попробуйте снова:")
+            update.message.reply_text("вќЊ Р’РІРѕРґ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return
 
         fragments = [chunk.strip() for chunk in re.split(r"[;,\n]+", user_input)]
@@ -11643,13 +11643,13 @@ def handle_backup_pattern_input(update, context):
 
         if len(fragments) > 1:
             pattern = _build_mail_pattern_from_fragments(fragments)
-            source_label = "фрагменты"
+            source_label = "С„СЂР°РіРјРµРЅС‚С‹"
         else:
             pattern = _build_mail_pattern_from_subject(user_input)
-            source_label = "тема письма"
+            source_label = "С‚РµРјР° РїРёСЃСЊРјР°"
 
         if not pattern:
-            update.message.reply_text("❌ Не удалось собрать паттерн. Попробуйте снова:")
+            update.message.reply_text("вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕР±СЂР°С‚СЊ РїР°С‚С‚РµСЂРЅ. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return
 
         context.user_data['backup_pattern_generated'] = pattern
@@ -11658,27 +11658,27 @@ def handle_backup_pattern_input(update, context):
 
         back_callback = context.user_data.get('patterns_back', 'settings_backup')
         update.message.reply_text(
-            "✅ *Черновик паттерна готов!*\n\n"
-            f"Источник: *{source_label}*\n"
-            f"Паттерн: `{pattern}`\n\n"
-            "Сохранить?",
+            "вњ… *Р§РµСЂРЅРѕРІРёРє РїР°С‚С‚РµСЂРЅР° РіРѕС‚РѕРІ!*\n\n"
+            f"РСЃС‚РѕС‡РЅРёРє: *{source_label}*\n"
+            f"РџР°С‚С‚РµСЂРЅ: `{pattern}`\n\n"
+            "РЎРѕС…СЂР°РЅРёС‚СЊ?",
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("✅ Сохранить", callback_data='mail_pattern_confirm')],
-                [InlineKeyboardButton("✏️ Ввести заново", callback_data='mail_pattern_retry')],
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+                [InlineKeyboardButton("вњ… РЎРѕС…СЂР°РЅРёС‚СЊ", callback_data='mail_pattern_confirm')],
+                [InlineKeyboardButton("вњЏпёЏ Р’РІРµСЃС‚Рё Р·Р°РЅРѕРІРѕ", callback_data='mail_pattern_retry')],
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=back_callback),
+                 InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
             ])
         )
         return
 
     if mode == 'stock_subject_wizard':
         if stage != 'stock_input':
-            update.message.reply_text("❌ Неверный шаг мастера. Попробуйте снова.")
+            update.message.reply_text("вќЊ РќРµРІРµСЂРЅС‹Р№ С€Р°Рі РјР°СЃС‚РµСЂР°. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°.")
             return
 
         if not user_input:
-            update.message.reply_text("❌ Ввод не может быть пустым. Попробуйте снова:")
+            update.message.reply_text("вќЊ Р’РІРѕРґ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return
 
         fragments = [chunk.strip() for chunk in re.split(r"[;,\n]+", user_input)]
@@ -11686,13 +11686,13 @@ def handle_backup_pattern_input(update, context):
 
         if len(fragments) > 1:
             pattern = _build_stock_pattern_from_fragments(fragments)
-            source_label = "фрагменты"
+            source_label = "С„СЂР°РіРјРµРЅС‚С‹"
         else:
             pattern = _build_stock_subject_pattern(user_input)
-            source_label = "тема письма"
+            source_label = "С‚РµРјР° РїРёСЃСЊРјР°"
 
         if not pattern:
-            update.message.reply_text("❌ Не удалось собрать паттерн. Попробуйте снова:")
+            update.message.reply_text("вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕР±СЂР°С‚СЊ РїР°С‚С‚РµСЂРЅ. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return
 
         context.user_data['backup_pattern_generated'] = pattern
@@ -11701,39 +11701,39 @@ def handle_backup_pattern_input(update, context):
 
         back_callback = context.user_data.get('patterns_back', 'settings_backup')
         update.message.reply_text(
-            "✅ *Черновик паттерна готов!*\n\n"
-            f"Источник: *{source_label}*\n"
-            f"Паттерн: `{pattern}`\n\n"
-            "Сохранить?",
+            "вњ… *Р§РµСЂРЅРѕРІРёРє РїР°С‚С‚РµСЂРЅР° РіРѕС‚РѕРІ!*\n\n"
+            f"РСЃС‚РѕС‡РЅРёРє: *{source_label}*\n"
+            f"РџР°С‚С‚РµСЂРЅ: `{pattern}`\n\n"
+            "РЎРѕС…СЂР°РЅРёС‚СЊ?",
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("✅ Сохранить", callback_data='stock_pattern_confirm')],
-                [InlineKeyboardButton("✏️ Ввести заново", callback_data='stock_pattern_retry')],
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+                [InlineKeyboardButton("вњ… РЎРѕС…СЂР°РЅРёС‚СЊ", callback_data='stock_pattern_confirm')],
+                [InlineKeyboardButton("вњЏпёЏ Р’РІРµСЃС‚Рё Р·Р°РЅРѕРІРѕ", callback_data='stock_pattern_retry')],
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=back_callback),
+                 InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
             ])
         )
         return
 
     if mode == 'stock_source_wizard':
         if stage != 'stock_input':
-            update.message.reply_text("❌ Неверный шаг мастера. Попробуйте снова.")
+            update.message.reply_text("вќЊ РќРµРІРµСЂРЅС‹Р№ С€Р°Рі РјР°СЃС‚РµСЂР°. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°.")
             return
 
         if not user_input:
-            update.message.reply_text("❌ Ввод не может быть пустым. Попробуйте снова:")
+            update.message.reply_text("вќЊ Р’РІРѕРґ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return
 
         if "|" not in user_input:
             update.message.reply_text(
-                "❌ Нужен формат `Название | Тема письма`. Попробуйте снова:"
+                "вќЊ РќСѓР¶РµРЅ С„РѕСЂРјР°С‚ `РќР°Р·РІР°РЅРёРµ | РўРµРјР° РїРёСЃСЊРјР°`. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:"
             )
             return
 
         label_raw, subject_raw = [part.strip() for part in user_input.split("|", 1)]
         if not label_raw or not subject_raw:
             update.message.reply_text(
-                "❌ Название и тема не могут быть пустыми. Попробуйте снова:"
+                "вќЊ РќР°Р·РІР°РЅРёРµ Рё С‚РµРјР° РЅРµ РјРѕРіСѓС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹РјРё. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:"
             )
             return
 
@@ -11741,13 +11741,13 @@ def handle_backup_pattern_input(update, context):
         fragments = [fragment for fragment in fragments if fragment]
         if len(fragments) > 1:
             pattern = _build_stock_pattern_from_fragments(fragments)
-            source_label = "фрагменты"
+            source_label = "С„СЂР°РіРјРµРЅС‚С‹"
         else:
             pattern = _build_stock_subject_pattern(subject_raw)
-            source_label = "тема письма"
+            source_label = "С‚РµРјР° РїРёСЃСЊРјР°"
 
         if not pattern:
-            update.message.reply_text("❌ Не удалось собрать паттерн. Попробуйте снова:")
+            update.message.reply_text("вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕР±СЂР°С‚СЊ РїР°С‚С‚РµСЂРЅ. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return
 
         context.user_data['backup_pattern_generated'] = pattern
@@ -11758,28 +11758,28 @@ def handle_backup_pattern_input(update, context):
 
         back_callback = context.user_data.get('patterns_back', 'settings_backup')
         update.message.reply_text(
-            "✅ *Черновик паттерна готов!*\n\n"
-            f"Источник: *{source_label}*\n"
-            f"Метка: *{label_raw}*\n"
-            f"Паттерн: `{pattern}`\n\n"
-            "Сохранить?",
+            "вњ… *Р§РµСЂРЅРѕРІРёРє РїР°С‚С‚РµСЂРЅР° РіРѕС‚РѕРІ!*\n\n"
+            f"РСЃС‚РѕС‡РЅРёРє: *{source_label}*\n"
+            f"РњРµС‚РєР°: *{label_raw}*\n"
+            f"РџР°С‚С‚РµСЂРЅ: `{pattern}`\n\n"
+            "РЎРѕС…СЂР°РЅРёС‚СЊ?",
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("✅ Сохранить", callback_data='stock_pattern_confirm')],
-                [InlineKeyboardButton("✏️ Ввести заново", callback_data='stock_pattern_retry')],
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+                [InlineKeyboardButton("вњ… РЎРѕС…СЂР°РЅРёС‚СЊ", callback_data='stock_pattern_confirm')],
+                [InlineKeyboardButton("вњЏпёЏ Р’РІРµСЃС‚Рё Р·Р°РЅРѕРІРѕ", callback_data='stock_pattern_retry')],
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=back_callback),
+                 InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
             ])
         )
         return
 
     if mode == 'stock_log_wizard':
         if stage != 'stock_input':
-            update.message.reply_text("❌ Неверный шаг мастера. Попробуйте снова.")
+            update.message.reply_text("вќЊ РќРµРІРµСЂРЅС‹Р№ С€Р°Рі РјР°СЃС‚РµСЂР°. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°.")
             return
 
         if not user_input:
-            update.message.reply_text("❌ Ввод не может быть пустым. Попробуйте снова:")
+            update.message.reply_text("вќЊ Р’РІРѕРґ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return
 
         pattern_type = context.user_data.get('backup_pattern_stock_type', 'file_entry')
@@ -11788,29 +11788,29 @@ def handle_backup_pattern_input(update, context):
 
         if len(fragments) > 1:
             pattern = _build_stock_pattern_from_fragments(fragments)
-            source_label = "фрагменты"
+            source_label = "С„СЂР°РіРјРµРЅС‚С‹"
         else:
             if pattern_type == 'success':
                 pattern = _build_stock_success_pattern(user_input)
-                source_label = "строка лога"
+                source_label = "СЃС‚СЂРѕРєР° Р»РѕРіР°"
             elif pattern_type == 'attachment':
                 pattern = re.escape(user_input.strip()) + r"$"
-                source_label = "имя файла"
+                source_label = "РёРјСЏ С„Р°Р№Р»Р°"
             elif pattern_type == 'ignore':
                 pattern = _build_stock_pattern_from_fragments([user_input])
-                source_label = "строка лога"
+                source_label = "СЃС‚СЂРѕРєР° Р»РѕРіР°"
             elif pattern_type == 'failure':
                 pattern = _build_stock_pattern_from_fragments([user_input])
-                source_label = "строка лога"
+                source_label = "СЃС‚СЂРѕРєР° Р»РѕРіР°"
             else:
                 pattern = (
                     r"^\d{2}\.\d{2}\.\d{2}\s+\d{2}:\d{2}:\d{2}:\s+"
                     r"(?P<supplier>.+?)\s{2,}(?P<path>[A-Za-z]:\\.+)$"
                 )
-                source_label = "строка лога"
+                source_label = "СЃС‚СЂРѕРєР° Р»РѕРіР°"
 
         if not pattern:
-            update.message.reply_text("❌ Не удалось собрать паттерн. Попробуйте снова:")
+            update.message.reply_text("вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕР±СЂР°С‚СЊ РїР°С‚С‚РµСЂРЅ. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return
 
         context.user_data['backup_pattern_generated'] = pattern
@@ -11819,27 +11819,27 @@ def handle_backup_pattern_input(update, context):
 
         back_callback = context.user_data.get('patterns_back', 'settings_backup')
         update.message.reply_text(
-            "✅ *Черновик паттерна готов!*\n\n"
-            f"Источник: *{source_label}*\n"
-            f"Паттерн: `{pattern}`\n\n"
-            "Сохранить?",
+            "вњ… *Р§РµСЂРЅРѕРІРёРє РїР°С‚С‚РµСЂРЅР° РіРѕС‚РѕРІ!*\n\n"
+            f"РСЃС‚РѕС‡РЅРёРє: *{source_label}*\n"
+            f"РџР°С‚С‚РµСЂРЅ: `{pattern}`\n\n"
+            "РЎРѕС…СЂР°РЅРёС‚СЊ?",
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("✅ Сохранить", callback_data='stock_pattern_confirm')],
-                [InlineKeyboardButton("✏️ Ввести заново", callback_data='stock_pattern_retry')],
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+                [InlineKeyboardButton("вњ… РЎРѕС…СЂР°РЅРёС‚СЊ", callback_data='stock_pattern_confirm')],
+                [InlineKeyboardButton("вњЏпёЏ Р’РІРµСЃС‚Рё Р·Р°РЅРѕРІРѕ", callback_data='stock_pattern_retry')],
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=back_callback),
+                 InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
             ])
         )
         return
 
     if mode == 'proxmox_wizard':
         if stage != 'proxmox_input':
-            update.message.reply_text("❌ Неверный шаг мастера. Попробуйте снова.")
+            update.message.reply_text("вќЊ РќРµРІРµСЂРЅС‹Р№ С€Р°Рі РјР°СЃС‚РµСЂР°. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°.")
             return
 
         if not user_input:
-            update.message.reply_text("❌ Ввод не может быть пустым. Попробуйте снова:")
+            update.message.reply_text("вќЊ Р’РІРѕРґ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return
 
         fragments = [chunk.strip() for chunk in re.split(r"[;,\n]+", user_input)]
@@ -11847,13 +11847,13 @@ def handle_backup_pattern_input(update, context):
 
         if len(fragments) > 1:
             pattern = _build_mail_pattern_from_fragments(fragments)
-            source_label = "фрагменты"
+            source_label = "С„СЂР°РіРјРµРЅС‚С‹"
         else:
             pattern = _build_mail_pattern_from_subject(user_input)
-            source_label = "тема письма"
+            source_label = "С‚РµРјР° РїРёСЃСЊРјР°"
 
         if not pattern:
-            update.message.reply_text("❌ Не удалось собрать паттерн. Попробуйте снова:")
+            update.message.reply_text("вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕР±СЂР°С‚СЊ РїР°С‚С‚РµСЂРЅ. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return
 
         context.user_data['backup_pattern_generated'] = pattern
@@ -11862,23 +11862,23 @@ def handle_backup_pattern_input(update, context):
 
         back_callback = context.user_data.get('patterns_back', 'settings_backup')
         update.message.reply_text(
-            "✅ *Черновик паттерна готов!*\n\n"
-            f"Источник: *{source_label}*\n"
-            f"Паттерн: `{pattern}`\n\n"
-            "Сохранить?",
+            "вњ… *Р§РµСЂРЅРѕРІРёРє РїР°С‚С‚РµСЂРЅР° РіРѕС‚РѕРІ!*\n\n"
+            f"РСЃС‚РѕС‡РЅРёРє: *{source_label}*\n"
+            f"РџР°С‚С‚РµСЂРЅ: `{pattern}`\n\n"
+            "РЎРѕС…СЂР°РЅРёС‚СЊ?",
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("✅ Сохранить", callback_data='proxmox_pattern_confirm')],
-                [InlineKeyboardButton("✏️ Ввести заново", callback_data='proxmox_pattern_retry')],
-                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+                [InlineKeyboardButton("вњ… РЎРѕС…СЂР°РЅРёС‚СЊ", callback_data='proxmox_pattern_confirm')],
+                [InlineKeyboardButton("вњЏпёЏ Р’РІРµСЃС‚Рё Р·Р°РЅРѕРІРѕ", callback_data='proxmox_pattern_retry')],
+                [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=back_callback),
+                 InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
             ])
         )
         return
 
     if mode in ('zfs', 'proxmox', 'mail'):
         if not user_input:
-            update.message.reply_text("❌ Паттерн не может быть пустым. Попробуйте снова:")
+            update.message.reply_text("вќЊ РџР°С‚С‚РµСЂРЅ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return
 
         pattern = user_input
@@ -11904,19 +11904,19 @@ def handle_backup_pattern_input(update, context):
             conn.commit()
 
             update.message.reply_text(
-                "✅ *Паттерн добавлен!*\n\n"
-                f"Категория: *{category}*\n"
-                f"Тип: *{pattern_type}*\n"
-                f"Паттерн: `{pattern}`",
+                "вњ… *РџР°С‚С‚РµСЂРЅ РґРѕР±Р°РІР»РµРЅ!*\n\n"
+                f"РљР°С‚РµРіРѕСЂРёСЏ: *{category}*\n"
+                f"РўРёРї: *{pattern_type}*\n"
+                f"РџР°С‚С‚РµСЂРЅ: `{pattern}`",
                 parse_mode='Markdown',
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                    [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-                     InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+                    [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+                    [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=back_callback),
+                     InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
                 ])
             )
         except Exception as e:
-            update.message.reply_text(f"❌ Ошибка сохранения: {e}")
+            update.message.reply_text(f"вќЊ РћС€РёР±РєР° СЃРѕС…СЂР°РЅРµРЅРёСЏ: {e}")
         finally:
             context.user_data.pop('adding_backup_pattern', None)
             context.user_data.pop('backup_pattern_stage', None)
@@ -11928,16 +11928,16 @@ def handle_backup_pattern_input(update, context):
 
     if stage == 'subject':
         if not user_input:
-            update.message.reply_text("❌ Тема не может быть пустой. Попробуйте снова:")
+            update.message.reply_text("вќЊ РўРµРјР° РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚РѕР№. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return
         context.user_data['backup_pattern_subject'] = user_input
         context.user_data['backup_pattern_stage'] = 'db_name'
-        update.message.reply_text("Введите имя базы данных из темы письма:")
+        update.message.reply_text("Р’РІРµРґРёС‚Рµ РёРјСЏ Р±Р°Р·С‹ РґР°РЅРЅС‹С… РёР· С‚РµРјС‹ РїРёСЃСЊРјР°:")
         return
 
     if stage == 'db_name':
         if not user_input:
-            update.message.reply_text("❌ Имя базы не может быть пустым. Попробуйте снова:")
+            update.message.reply_text("вќЊ РРјСЏ Р±Р°Р·С‹ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return
 
         subject = context.user_data.get('backup_pattern_subject')
@@ -11946,7 +11946,7 @@ def handle_backup_pattern_input(update, context):
         escaped_db_name = re.escape(db_name)
         if escaped_db_name not in escaped_subject:
             update.message.reply_text(
-                "❌ Имя базы не найдено в теме письма. Проверьте ввод и попробуйте снова:"
+                "вќЊ РРјСЏ Р±Р°Р·С‹ РЅРµ РЅР°Р№РґРµРЅРѕ РІ С‚РµРјРµ РїРёСЃСЊРјР°. РџСЂРѕРІРµСЂСЊС‚Рµ РІРІРѕРґ Рё РїРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:"
             )
             return
 
@@ -11969,19 +11969,19 @@ def handle_backup_pattern_input(update, context):
             conn.commit()
 
             update.message.reply_text(
-                "✅ *Паттерн добавлен!*\n\n"
-                f"Категория: *{category}*\n"
-                f"Тип: *{pattern_type}*\n"
-                f"Паттерн: `{pattern}`",
+                "вњ… *РџР°С‚С‚РµСЂРЅ РґРѕР±Р°РІР»РµРЅ!*\n\n"
+                f"РљР°С‚РµРіРѕСЂРёСЏ: *{category}*\n"
+                f"РўРёРї: *{pattern_type}*\n"
+                f"РџР°С‚С‚РµСЂРЅ: `{pattern}`",
                 parse_mode='Markdown',
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                    [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-                     InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+                    [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+                    [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=back_callback),
+                     InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
                 ])
             )
         except Exception as e:
-            update.message.reply_text(f"❌ Ошибка сохранения: {e}")
+            update.message.reply_text(f"вќЊ РћС€РёР±РєР° СЃРѕС…СЂР°РЅРµРЅРёСЏ: {e}")
         finally:
             context.user_data.pop('adding_backup_pattern', None)
             context.user_data.pop('backup_pattern_stage', None)
@@ -11991,7 +11991,7 @@ def handle_backup_pattern_input(update, context):
             context.user_data.pop('backup_pattern_mode', None)
 
 def handle_backup_pattern_edit_input(update, context):
-    """Обработчик редактирования паттерна"""
+    """РћР±СЂР°Р±РѕС‚С‡РёРє СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёСЏ РїР°С‚С‚РµСЂРЅР°"""
     if 'editing_backup_pattern' not in context.user_data:
         return
 
@@ -12001,12 +12001,12 @@ def handle_backup_pattern_edit_input(update, context):
 
     if mode in ('zfs', 'proxmox', 'mail', 'stock'):
         if not new_pattern:
-            update.message.reply_text("❌ Паттерн не может быть пустым. Попробуйте снова:")
+            update.message.reply_text("вќЊ РџР°С‚С‚РµСЂРЅ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return
 
         pattern_id = context.user_data.get('editing_backup_pattern_id')
         if not pattern_id:
-            update.message.reply_text("❌ Не найден паттерн для редактирования.")
+            update.message.reply_text("вќЊ РќРµ РЅР°Р№РґРµРЅ РїР°С‚С‚РµСЂРЅ РґР»СЏ СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёСЏ.")
             context.user_data.pop('editing_backup_pattern', None)
             return
 
@@ -12035,19 +12035,19 @@ def handle_backup_pattern_edit_input(update, context):
             conn.commit()
 
             update.message.reply_text(
-                "✅ *Паттерн обновлён!*\n\n"
-                f"Категория: *{category}*\n"
-                f"Тип: *{pattern_type}*\n"
-                f"Паттерн: `{new_pattern}`",
+                "вњ… *РџР°С‚С‚РµСЂРЅ РѕР±РЅРѕРІР»С‘РЅ!*\n\n"
+                f"РљР°С‚РµРіРѕСЂРёСЏ: *{category}*\n"
+                f"РўРёРї: *{pattern_type}*\n"
+                f"РџР°С‚С‚РµСЂРЅ: `{new_pattern}`",
                 parse_mode='Markdown',
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                    [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-                     InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+                    [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+                    [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=back_callback),
+                     InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
                 ])
             )
         except Exception as e:
-            update.message.reply_text(f"❌ Ошибка сохранения: {e}")
+            update.message.reply_text(f"вќЊ РћС€РёР±РєР° СЃРѕС…СЂР°РЅРµРЅРёСЏ: {e}")
         finally:
             context.user_data.pop('editing_backup_pattern', None)
             context.user_data.pop('editing_backup_pattern_id', None)
@@ -12060,16 +12060,16 @@ def handle_backup_pattern_edit_input(update, context):
 
     if stage == 'subject':
         if not new_pattern:
-            update.message.reply_text("❌ Тема не может быть пустой. Попробуйте снова:")
+            update.message.reply_text("вќЊ РўРµРјР° РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚РѕР№. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return
         context.user_data['backup_pattern_subject'] = new_pattern
         context.user_data['backup_pattern_stage'] = 'db_name'
-        update.message.reply_text("Введите имя базы данных из темы письма:")
+        update.message.reply_text("Р’РІРµРґРёС‚Рµ РёРјСЏ Р±Р°Р·С‹ РґР°РЅРЅС‹С… РёР· С‚РµРјС‹ РїРёСЃСЊРјР°:")
         return
 
     if stage == 'db_name':
         if not new_pattern:
-            update.message.reply_text("❌ Имя базы не может быть пустым. Попробуйте снова:")
+            update.message.reply_text("вќЊ РРјСЏ Р±Р°Р·С‹ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
             return
 
         subject = context.user_data.get('backup_pattern_subject')
@@ -12078,13 +12078,13 @@ def handle_backup_pattern_edit_input(update, context):
         escaped_db_name = re.escape(db_name)
         if escaped_db_name not in escaped_subject:
             update.message.reply_text(
-                "❌ Имя базы не найдено в теме письма. Проверьте ввод и попробуйте снова:"
+                "вќЊ РРјСЏ Р±Р°Р·С‹ РЅРµ РЅР°Р№РґРµРЅРѕ РІ С‚РµРјРµ РїРёСЃСЊРјР°. РџСЂРѕРІРµСЂСЊС‚Рµ РІРІРѕРґ Рё РїРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:"
             )
             return
 
         pattern_id = context.user_data.get('editing_backup_pattern_id')
         if not pattern_id:
-            update.message.reply_text("❌ Не найден паттерн для редактирования.")
+            update.message.reply_text("вќЊ РќРµ РЅР°Р№РґРµРЅ РїР°С‚С‚РµСЂРЅ РґР»СЏ СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёСЏ.")
             context.user_data.pop('editing_backup_pattern', None)
             return
 
@@ -12108,19 +12108,19 @@ def handle_backup_pattern_edit_input(update, context):
             conn.commit()
 
             update.message.reply_text(
-                "✅ *Паттерн обновлён!*\n\n"
-                f"Категория: *{category}*\n"
-                f"Тип: *{pattern_type}*\n"
-                f"Паттерн: `{new_pattern}`",
+                "вњ… *РџР°С‚С‚РµСЂРЅ РѕР±РЅРѕРІР»С‘РЅ!*\n\n"
+                f"РљР°С‚РµРіРѕСЂРёСЏ: *{category}*\n"
+                f"РўРёРї: *{pattern_type}*\n"
+                f"РџР°С‚С‚РµСЂРЅ: `{new_pattern}`",
                 parse_mode='Markdown',
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                    [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-                     InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+                    [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+                    [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=back_callback),
+                     InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
                 ])
             )
         except Exception as e:
-            update.message.reply_text(f"❌ Ошибка сохранения: {e}")
+            update.message.reply_text(f"вќЊ РћС€РёР±РєР° СЃРѕС…СЂР°РЅРµРЅРёСЏ: {e}")
         finally:
             context.user_data.pop('editing_backup_pattern', None)
             context.user_data.pop('editing_backup_pattern_id', None)
@@ -12131,23 +12131,23 @@ def handle_backup_pattern_edit_input(update, context):
             context.user_data.pop('backup_pattern_mode', None)
     
 def handle_default_db_pattern_edit_input(update, context):
-    """Обработчик редактирования дефолтного паттерна БД."""
+    """РћР±СЂР°Р±РѕС‚С‡РёРє СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёСЏ РґРµС„РѕР»С‚РЅРѕРіРѕ РїР°С‚С‚РµСЂРЅР° Р‘Р”."""
     new_pattern = update.message.text.strip()
     if not new_pattern:
-        update.message.reply_text("❌ Паттерн не может быть пустым. Попробуйте снова:")
+        update.message.reply_text("вќЊ РџР°С‚С‚РµСЂРЅ РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РїСѓСЃС‚С‹Рј. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°:")
         return
 
     category = context.user_data.get('editing_default_db_category')
     index = context.user_data.get('editing_default_db_index')
     if not category or not index:
-        update.message.reply_text("❌ Не найден паттерн для редактирования.")
+        update.message.reply_text("вќЊ РќРµ РЅР°Р№РґРµРЅ РїР°С‚С‚РµСЂРЅ РґР»СЏ СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёСЏ.")
         context.user_data.pop('editing_default_db_pattern', None)
         return
 
     db_patterns = _get_database_patterns_setting()
     patterns = db_patterns.get(category, [])
     if index < 1 or index > len(patterns):
-        update.message.reply_text("❌ Паттерн не найден.")
+        update.message.reply_text("вќЊ РџР°С‚С‚РµСЂРЅ РЅРµ РЅР°Р№РґРµРЅ.")
         context.user_data.pop('editing_default_db_pattern', None)
         return
 
@@ -12157,14 +12157,14 @@ def handle_default_db_pattern_edit_input(update, context):
 
     back_callback = context.user_data.get('patterns_back', 'settings_backup')
     update.message.reply_text(
-        "✅ *Паттерн обновлён!*\n\n"
-        f"Категория: *{category}*\n"
-        f"Паттерн: `{new_pattern}`",
+        "вњ… *РџР°С‚С‚РµСЂРЅ РѕР±РЅРѕРІР»С‘РЅ!*\n\n"
+        f"РљР°С‚РµРіРѕСЂРёСЏ: *{category}*\n"
+        f"РџР°С‚С‚РµСЂРЅ: `{new_pattern}`",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu')],
+            [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data=back_callback),
+             InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
         ])
     )
 
