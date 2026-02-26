@@ -4,11 +4,11 @@ Server Monitoring System v8.6.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Configuration Manager
-РЎРёСЃС‚РµРјР° РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЃРµСЂРІРµСЂРѕРІ
-Р’РµСЂСЃРёСЏ: 8.6.0
-РђРІС‚РѕСЂ: РђР»РµРєСЃР°РЅРґСЂ РЎСѓС…Р°РЅРѕРІ (c)
-Р›РёС†РµРЅР·РёСЏ: MIT
-РњРµРЅРµРґР¶РµСЂ РєРѕРЅС„РёРіСѓСЂР°С†РёРё
+Система мониторинга серверов
+Версия: 8.6.0
+Автор: Александр Суханов (c)
+Лицензия: MIT
+Менеджер конфигурации
 """
 
 import sqlite3
@@ -24,28 +24,28 @@ try:
 except Exception:
     DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 
-# Р›РѕРіРіРµСЂ РґР»СЏ СЌС‚РѕРіРѕ РјРѕРґСѓР»СЏ
+# Логгер для этого модуля
 _logger = setup_logging("config")
 
 class ConfigManager:
-    """РњРµРЅРµРґР¶РµСЂ РєРѕРЅС„РёРіСѓСЂР°С†РёРё СЃ РїРѕРґРґРµСЂР¶РєРѕР№ Р±Р°Р·С‹ РґР°РЅРЅС‹С…"""
+    """Менеджер конфигурации с поддержкой базы данных"""
     
     def __init__(self, db_path: Optional[str] = None):
         """
-        РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ РјРµРЅРµРґР¶РµСЂР° РєРѕРЅС„РёРіСѓСЂР°С†РёРё
+        Инициализация менеджера конфигурации
         
         Args:
-            db_path: РџСѓС‚СЊ Рє С„Р°Р№Р»Сѓ Р±Р°Р·С‹ РґР°РЅРЅС‹С…
+            db_path: Путь к файлу базы данных
         """
         self.db_path = Path(db_path) if db_path else DATA_DIR / "settings.db"
         self._cache = {}
         self._local = threading.local()
         self._connection = None
         self.init_database()
-        debug_log(f"РњРµРЅРµРґР¶РµСЂ РєРѕРЅС„РёРіСѓСЂР°С†РёРё РёРЅРёС†РёР°Р»РёР·РёСЂРѕРІР°РЅ: {db_path}")
+        debug_log(f"Менеджер конфигурации инициализирован: {db_path}")
     
     def get_connection(self) -> sqlite3.Connection:
-        """РџРѕР»СѓС‡РёС‚СЊ СЃРѕРµРґРёРЅРµРЅРёРµ СЃ Р‘Р” (РѕС‚РґРµР»СЊРЅРѕРµ СЃРѕРµРґРёРЅРµРЅРёРµ РЅР° РїРѕС‚РѕРє)"""
+        """Получить соединение с БД (отдельное соединение на поток)"""
         conn = getattr(self._local, "connection", None)
         if conn is None:
             conn = sqlite3.connect(str(self.db_path), timeout=30)
@@ -54,20 +54,20 @@ class ConfigManager:
         return conn
 
     def close_connection(self) -> None:
-        """Р—Р°РєСЂС‹С‚СЊ СЃРѕРµРґРёРЅРµРЅРёРµ СЃ Р‘Р” (РґР»СЏ С‚РµРєСѓС‰РµРіРѕ РїРѕС‚РѕРєР°)"""
+        """Закрыть соединение с БД (для текущего потока)"""
         conn = getattr(self._local, "connection", None)
         if conn:
             conn.close()
             self._local.connection = None
 
     def init_database(self) -> None:
-        """РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ Р±Р°Р·С‹ РґР°РЅРЅС‹С… РЅР°СЃС‚СЂРѕРµРє"""
+        """Инициализация базы данных настроек"""
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         
         conn = self.get_connection()
         cursor = conn.cursor()
         
-        # РўР°Р±Р»РёС†Р° РѕСЃРЅРѕРІРЅС‹С… РЅР°СЃС‚СЂРѕРµРє
+        # Таблица основных настроек
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS settings (
                 key TEXT PRIMARY KEY,
@@ -80,7 +80,7 @@ class ConfigManager:
             )
         ''')
         
-        # РўР°Р±Р»РёС†Р° СЃРµСЂРІРµСЂРѕРІ
+        # Таблица серверов
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS servers (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -95,7 +95,7 @@ class ConfigManager:
             )
         ''')
         
-        # РўР°Р±Р»РёС†Р° Windows СѓС‡РµС‚РЅС‹С… РґР°РЅРЅС‹С…
+        # Таблица Windows учетных данных
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS windows_credentials (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -108,7 +108,7 @@ class ConfigManager:
             )
         ''')
         
-        # РўР°Р±Р»РёС†Р° РїР°С‚С‚РµСЂРЅРѕРІ Р±СЌРєР°РїРѕРІ
+        # Таблица паттернов бэкапов
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS backup_patterns (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -120,7 +120,7 @@ class ConfigManager:
             )
         ''')
         
-        # РўР°Р±Р»РёС†Р° РєР°С‚РµРіРѕСЂРёР№ Р±Р°Р· РґР°РЅРЅС‹С…
+        # Таблица категорий баз данных
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS database_categories (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -131,7 +131,7 @@ class ConfigManager:
             )
         ''')
         
-        # РўР°Р±Р»РёС†Р° Р±Р°Р· РґР°РЅРЅС‹С…
+        # Таблица баз данных
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS databases (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -150,55 +150,55 @@ class ConfigManager:
         
         conn.commit()
         self.init_default_settings()
-        debug_log("Р‘Р°Р·Р° РґР°РЅРЅС‹С… РЅР°СЃС‚СЂРѕРµРє РёРЅРёС†РёР°Р»РёР·РёСЂРѕРІР°РЅР°")
+        debug_log("База данных настроек инициализирована")
     
     def init_default_settings(self) -> None:
-        """РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ РЅР°СЃС‚СЂРѕРµРє РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ"""
+        """Инициализация настроек по умолчанию"""
         default_settings = [
             # Telegram
-            ('TELEGRAM_TOKEN', '', 'telegram', 'РўРѕРєРµРЅ Telegram Р±РѕС‚Р°', 'string'),
-            ('CHAT_IDS', '[]', 'telegram', 'ID С‡Р°С‚РѕРІ РґР»СЏ СѓРІРµРґРѕРјР»РµРЅРёР№', 'list'),
+            ('TELEGRAM_TOKEN', '', 'telegram', 'Токен Telegram бота', 'string'),
+            ('CHAT_IDS', '[]', 'telegram', 'ID чатов для уведомлений', 'list'),
             
-            # РРЅС‚РµСЂРІР°Р»С‹ РїСЂРѕРІРµСЂРѕРє
-            ('CHECK_INTERVAL', '60', 'monitoring', 'РРЅС‚РµСЂРІР°Р» РїСЂРѕРІРµСЂРєРё СЃРµСЂРІРµСЂРѕРІ (СЃРµРєСѓРЅРґС‹)', 'int'),
-            ('MAX_FAIL_TIME', '900', 'monitoring', 'РњР°РєСЃРёРјР°Р»СЊРЅРѕРµ РІСЂРµРјСЏ РїСЂРѕСЃС‚РѕСЏ РґРѕ Р°Р»РµСЂС‚Р° (СЃРµРєСѓРЅРґС‹)', 'int'),
+            # Интервалы проверок
+            ('CHECK_INTERVAL', '60', 'monitoring', 'Интервал проверки серверов (секунды)', 'int'),
+            ('MAX_FAIL_TIME', '900', 'monitoring', 'Максимальное время простоя до алерта (секунды)', 'int'),
             
-            # Р’СЂРµРјРµРЅРЅС‹Рµ РЅР°СЃС‚СЂРѕР№РєРё
-            ('SILENT_START', '20', 'time', 'РќР°С‡Р°Р»Рѕ С‚РёС…РѕРіРѕ СЂРµР¶РёРјР° (С‡Р°СЃ)', 'int'),
-            ('SILENT_END', '9', 'time', 'РљРѕРЅРµС† С‚РёС…РѕРіРѕ СЂРµР¶РёРјР° (С‡Р°СЃ)', 'int'),
-            ('DATA_COLLECTION_TIME', '08:30', 'time', 'Р’СЂРµРјСЏ СЃР±РѕСЂР° РґР°РЅРЅС‹С… РґР»СЏ РѕС‚С‡РµС‚Р°', 'time'),
+            # Временные настройки
+            ('SILENT_START', '20', 'time', 'Начало тихого режима (час)', 'int'),
+            ('SILENT_END', '9', 'time', 'Конец тихого режима (час)', 'int'),
+            ('DATA_COLLECTION_TIME', '08:30', 'time', 'Время сбора данных для отчета', 'time'),
             
-            # РќР°СЃС‚СЂРѕР№РєРё СЂРµСЃСѓСЂСЃРѕРІ
-            ('RESOURCE_CHECK_INTERVAL', '1800', 'resources', 'РРЅС‚РµСЂРІР°Р» РїСЂРѕРІРµСЂРєРё СЂРµСЃСѓСЂСЃРѕРІ (СЃРµРєСѓРЅРґС‹)', 'int'),
-            ('RESOURCE_ALERT_INTERVAL', '1800', 'resources', 'РРЅС‚РµСЂРІР°Р» РїРѕРІС‚РѕСЂРЅС‹С… Р°Р»РµСЂС‚РѕРІ СЂРµСЃСѓСЂСЃРѕРІ (СЃРµРєСѓРЅРґС‹)', 'int'),
+            # Настройки ресурсов
+            ('RESOURCE_CHECK_INTERVAL', '1800', 'resources', 'Интервал проверки ресурсов (секунды)', 'int'),
+            ('RESOURCE_ALERT_INTERVAL', '1800', 'resources', 'Интервал повторных алертов ресурсов (секунды)', 'int'),
             
-            # РџРѕСЂРѕРіРё СЂРµСЃСѓСЂСЃРѕРІ
-            ('CPU_WARNING', '80', 'resources', 'РџРѕСЂРѕРі РїСЂРµРґСѓРїСЂРµР¶РґРµРЅРёСЏ CPU (%)', 'int'),
-            ('CPU_CRITICAL', '90', 'resources', 'РџРѕСЂРѕРі РєСЂРёС‚РёС‡РµСЃРєРѕРіРѕ CPU (%)', 'int'),
-            ('RAM_WARNING', '85', 'resources', 'РџРѕСЂРѕРі РїСЂРµРґСѓРїСЂРµР¶РґРµРЅРёСЏ RAM (%)', 'int'),
-            ('RAM_CRITICAL', '95', 'resources', 'РџРѕСЂРѕРі РєСЂРёС‚РёС‡РµСЃРєРѕРіРѕ RAM (%)', 'int'),
-            ('DISK_WARNING', '80', 'resources', 'РџРѕСЂРѕРі РїСЂРµРґСѓРїСЂРµР¶РґРµРЅРёСЏ Disk (%)', 'int'),
-            ('DISK_CRITICAL', '90', 'resources', 'РџРѕСЂРѕРі РєСЂРёС‚РёС‡РµСЃРєРѕРіРѕ Disk (%)', 'int'),
+            # Пороги ресурсов
+            ('CPU_WARNING', '80', 'resources', 'Порог предупреждения CPU (%)', 'int'),
+            ('CPU_CRITICAL', '90', 'resources', 'Порог критического CPU (%)', 'int'),
+            ('RAM_WARNING', '85', 'resources', 'Порог предупреждения RAM (%)', 'int'),
+            ('RAM_CRITICAL', '95', 'resources', 'Порог критического RAM (%)', 'int'),
+            ('DISK_WARNING', '80', 'resources', 'Порог предупреждения Disk (%)', 'int'),
+            ('DISK_CRITICAL', '90', 'resources', 'Порог критического Disk (%)', 'int'),
             
-            # РђСѓС‚РµРЅС‚РёС„РёРєР°С†РёСЏ
-            ('SSH_USERNAME', 'root', 'auth', 'РРјСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ SSH', 'string'),
-            ('SSH_KEY_PATH', '/root/.ssh/id_rsa', 'auth', 'РџСѓС‚СЊ Рє SSH РєР»СЋС‡Сѓ', 'string'),
+            # Аутентификация
+            ('SSH_USERNAME', 'root', 'auth', 'Имя пользователя SSH', 'string'),
+            ('SSH_KEY_PATH', '/root/.ssh/id_rsa', 'auth', 'Путь к SSH ключу', 'string'),
             
-            # Р‘СЌРєР°РїС‹
-            ('BACKUP_ALERT_HOURS', '24', 'backup', 'Р§Р°СЃС‹ РґР»СЏ Р°Р»РµСЂС‚РѕРІ Рѕ Р±СЌРєР°РїР°С…', 'int'),
-            ('BACKUP_STALE_HOURS', '36', 'backup', 'Р§Р°СЃС‹ РґР»СЏ СѓСЃС‚Р°СЂРµРІС€РёС… Р±СЌРєР°РїРѕРІ', 'int'),
-            ('ZFS_SERVERS', '{}', 'backup', 'РЎРїРёСЃРѕРє ZFS СЃРµСЂРІРµСЂРѕРІ Рё РјР°СЃСЃРёРІРѕРІ', 'dict'),
+            # Бэкапы
+            ('BACKUP_ALERT_HOURS', '24', 'backup', 'Часы для алертов о бэкапах', 'int'),
+            ('BACKUP_STALE_HOURS', '36', 'backup', 'Часы для устаревших бэкапов', 'int'),
+            ('ZFS_SERVERS', '{}', 'backup', 'Список ZFS серверов и массивов', 'dict'),
             
-            # Р’РµР±-РёРЅС‚РµСЂС„РµР№СЃ
-            ('WEB_PORT', '5000', 'web', 'РџРѕСЂС‚ РІРµР±-РёРЅС‚РµСЂС„РµР№СЃР°', 'int'),
-            ('WEB_HOST', '0.0.0.0', 'web', 'РҐРѕСЃС‚ РІРµР±-РёРЅС‚РµСЂС„РµР№СЃР°', 'string'),
+            # Веб-интерфейс
+            ('WEB_PORT', '5000', 'web', 'Порт веб-интерфейса', 'int'),
+            ('WEB_HOST', '0.0.0.0', 'web', 'Хост веб-интерфейса', 'string'),
             
-            # РћС‚Р»Р°РґРєР°
-            ('DEBUG_MODE', 'False', 'debug', 'Р РµР¶РёРј РѕС‚Р»Р°РґРєРё', 'bool'),
-            ('LOG_LEVEL', 'INFO', 'debug', 'РЈСЂРѕРІРµРЅСЊ Р»РѕРіРёСЂРѕРІР°РЅРёСЏ', 'string'),
+            # Отладка
+            ('DEBUG_MODE', 'False', 'debug', 'Режим отладки', 'bool'),
+            ('LOG_LEVEL', 'INFO', 'debug', 'Уровень логирования', 'string'),
             
-            # РўР°Р№РјР°СѓС‚С‹ СЃРµСЂРІРµСЂРѕРІ
-            ('SERVER_TIMEOUTS', '{}', 'timeouts', 'РўР°Р№РјР°СѓС‚С‹ СЃРµСЂРІРµСЂРѕРІ РїРѕ С‚РёРїР°Рј', 'dict'),
+            # Таймауты серверов
+            ('SERVER_TIMEOUTS', '{}', 'timeouts', 'Таймауты серверов по типам', 'dict'),
         ]
         
         conn = self.get_connection()
@@ -211,7 +211,7 @@ class ConfigManager:
             ''', (key, value, category, description, data_type))
         
         conn.commit()
-        debug_log(f"Р—Р°РіСЂСѓР¶РµРЅРѕ {len(default_settings)} РЅР°СЃС‚СЂРѕРµРє РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ")
+        debug_log(f"Загружено {len(default_settings)} настроек по умолчанию")
     
     def get_setting(
         self, 
@@ -220,15 +220,15 @@ class ConfigManager:
         use_cache: bool = True
     ) -> Any:
         """
-        РџРѕР»СѓС‡РёС‚СЊ Р·РЅР°С‡РµРЅРёРµ РЅР°СЃС‚СЂРѕР№РєРё
+        Получить значение настройки
         
         Args:
-            key: РљР»СЋС‡ РЅР°СЃС‚СЂРѕР№РєРё
-            default: Р—РЅР°С‡РµРЅРёРµ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ
-            use_cache: РСЃРїРѕР»СЊР·РѕРІР°С‚СЊ РєСЌС€
+            key: Ключ настройки
+            default: Значение по умолчанию
+            use_cache: Использовать кэш
             
         Returns:
-            Р—РЅР°С‡РµРЅРёРµ РЅР°СЃС‚СЂРѕР№РєРё
+            Значение настройки
         """
         if use_cache and key in self._cache:
             return self._cache[key]
@@ -239,7 +239,7 @@ class ConfigManager:
             cursor.execute('SELECT value, data_type FROM settings WHERE key = ?', (key,))
             result = cursor.fetchone()
         except Exception as e:
-            error_log(f"РћС€РёР±РєР° С‡С‚РµРЅРёСЏ РЅР°СЃС‚СЂРѕР№РєРё {key}: {e}")
+            error_log(f"Ошибка чтения настройки {key}: {e}")
             self._cache[key] = default
             return default
                 
@@ -249,7 +249,7 @@ class ConfigManager:
         
         value_str, data_type = result
         
-        # РџСЂРµРѕР±СЂР°Р·РѕРІР°РЅРёРµ С‚РёРїРѕРІ
+        # Преобразование типов
         try:
             if data_type == 'int':
                 value = int(value_str) if value_str else default
@@ -266,7 +266,7 @@ class ConfigManager:
             else:  # string
                 value = value_str if value_str else default
         except (json.JSONDecodeError, ValueError) as e:
-            error_log(f"РћС€РёР±РєР° РїСЂРµРѕР±СЂР°Р·РѕРІР°РЅРёСЏ РЅР°СЃС‚СЂРѕР№РєРё {key}: {e}, Р·РЅР°С‡РµРЅРёРµ: {value_str}")
+            error_log(f"Ошибка преобразования настройки {key}: {e}, значение: {value_str}")
             value = default
         
         self._cache[key] = value
@@ -281,19 +281,19 @@ class ConfigManager:
         data_type: str = 'auto'
     ) -> bool:
         """
-        РЈСЃС‚Р°РЅРѕРІРёС‚СЊ Р·РЅР°С‡РµРЅРёРµ РЅР°СЃС‚СЂРѕР№РєРё
+        Установить значение настройки
         
         Args:
-            key: РљР»СЋС‡ РЅР°СЃС‚СЂРѕР№РєРё
-            value: Р—РЅР°С‡РµРЅРёРµ
-            category: РљР°С‚РµРіРѕСЂРёСЏ
-            description: РћРїРёСЃР°РЅРёРµ
-            data_type: РўРёРї РґР°РЅРЅС‹С… (auto/int/float/bool/list/dict/string/time)
+            key: Ключ настройки
+            value: Значение
+            category: Категория
+            description: Описание
+            data_type: Тип данных (auto/int/float/bool/list/dict/string/time)
             
         Returns:
-            True РµСЃР»Рё СѓСЃРїРµС€РЅРѕ
+            True если успешно
         """
-        # РћРїСЂРµРґРµР»СЏРµРј С‚РёРї РґР°РЅРЅС‹С… РµСЃР»Рё auto
+        # Определяем тип данных если auto
         if data_type == 'auto':
             if isinstance(value, int):
                 data_type = 'int'
@@ -327,25 +327,25 @@ class ConfigManager:
             
             conn.commit()
             
-            # РћР±РЅРѕРІР»СЏРµРј РєСЌС€
+            # Обновляем кэш
             self._cache[key] = value
             
-            debug_log(f"РќР°СЃС‚СЂРѕР№РєР° РѕР±РЅРѕРІР»РµРЅР°: {key} = {value_str[:50]}{'...' if len(value_str) > 50 else ''}")
+            debug_log(f"Настройка обновлена: {key} = {value_str[:50]}{'...' if len(value_str) > 50 else ''}")
             return True
             
         except Exception as e:
-            error_log(f"РћС€РёР±РєР° СЃРѕС…СЂР°РЅРµРЅРёСЏ РЅР°СЃС‚СЂРѕР№РєРё {key}: {e}")
+            error_log(f"Ошибка сохранения настройки {key}: {e}")
             return False
     
     def get_all_settings(self, category: Optional[str] = None) -> Dict[str, Any]:
         """
-        РџРѕР»СѓС‡РёС‚СЊ РІСЃРµ РЅР°СЃС‚СЂРѕР№РєРё
+        Получить все настройки
         
         Args:
-            category: Р¤РёР»СЊС‚СЂ РїРѕ РєР°С‚РµРіРѕСЂРёРё
+            category: Фильтр по категории
             
         Returns:
-            РЎР»РѕРІР°СЂСЊ РІСЃРµС… РЅР°СЃС‚СЂРѕРµРє
+            Словарь всех настроек
         """
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -382,17 +382,17 @@ class ConfigManager:
                 else:
                     settings[key] = value_str if value_str else ''
             except (json.JSONDecodeError, ValueError) as e:
-                error_log(f"РћС€РёР±РєР° РїСЂРµРѕР±СЂР°Р·РѕРІР°РЅРёСЏ РЅР°СЃС‚СЂРѕР№РєРё {key}: {e}")
+                error_log(f"Ошибка преобразования настройки {key}: {e}")
                 settings[key] = None
         
         return settings
     
     def get_categories(self) -> List[str]:
         """
-        РџРѕР»СѓС‡РёС‚СЊ СЃРїРёСЃРѕРє РєР°С‚РµРіРѕСЂРёР№ РЅР°СЃС‚СЂРѕРµРє
+        Получить список категорий настроек
         
         Returns:
-            РЎРїРёСЃРѕРє РєР°С‚РµРіРѕСЂРёР№
+            Список категорий
         """
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -404,13 +404,13 @@ class ConfigManager:
     
     def get_servers_by_type(self, server_type: str) -> List[Dict[str, Any]]:
         """
-        РџРѕР»СѓС‡РёС‚СЊ СЃРµСЂРІРµСЂС‹ РїРѕ С‚РёРїСѓ
+        Получить серверы по типу
         
         Args:
-            server_type: РўРёРї СЃРµСЂРІРµСЂР° (rdp, ssh, ping)
+            server_type: Тип сервера (rdp, ssh, ping)
             
         Returns:
-            РЎРїРёСЃРѕРє СЃРµСЂРІРµСЂРѕРІ
+            Список серверов
         """
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -436,13 +436,13 @@ class ConfigManager:
     
     def get_all_servers(self, include_disabled: bool = False) -> List[Dict[str, Any]]:
         """
-        РџРѕР»СѓС‡РёС‚СЊ СЃРїРёСЃРѕРє СЃРµСЂРІРµСЂРѕРІ
+        Получить список серверов
 
         Args:
-            include_disabled: Р’РєР»СЋС‡Р°С‚СЊ РІС‹РєР»СЋС‡РµРЅРЅС‹Рµ СЃРµСЂРІРµСЂС‹
+            include_disabled: Включать выключенные серверы
 
         Returns:
-            РЎРїРёСЃРѕРє СЃРµСЂРІРµСЂРѕРІ
+            Список серверов
         """
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -476,14 +476,14 @@ class ConfigManager:
 
     def set_server_enabled(self, ip: str, enabled: bool) -> bool:
         """
-        Р’РєР»СЋС‡РёС‚СЊ РёР»Рё РІС‹РєР»СЋС‡РёС‚СЊ РјРѕРЅРёС‚РѕСЂРёРЅРі СЃРµСЂРІРµСЂР°
+        Включить или выключить мониторинг сервера
 
         Args:
-            ip: IP Р°РґСЂРµСЃ СЃРµСЂРІРµСЂР°
-            enabled: РќРѕРІС‹Р№ СЃС‚Р°С‚СѓСЃ
+            ip: IP адрес сервера
+            enabled: Новый статус
 
         Returns:
-            True РµСЃР»Рё СѓСЃРїРµС€РЅРѕ
+            True если успешно
         """
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -497,22 +497,22 @@ class ConfigManager:
 
             self._cache = {}
 
-            debug_log(f"РЎРµСЂРІРµСЂ {ip} {'РІРєР»СЋС‡РµРЅ' if enabled else 'РїСЂРёРѕСЃС‚Р°РЅРѕРІР»РµРЅ'}")
+            debug_log(f"Сервер {ip} {'включен' if enabled else 'приостановлен'}")
             return cursor.rowcount > 0
 
         except Exception as e:
-            error_log(f"РћС€РёР±РєР° РёР·РјРµРЅРµРЅРёСЏ СЃС‚Р°С‚СѓСЃР° СЃРµСЂРІРµСЂР° {ip}: {e}")
+            error_log(f"Ошибка изменения статуса сервера {ip}: {e}")
             return False
 
     def get_server_enabled(self, ip: str) -> bool:
         """
-        РџСЂРѕРІРµСЂРёС‚СЊ СЃС‚Р°С‚СѓСЃ РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЃРµСЂРІРµСЂР°
+        Проверить статус мониторинга сервера
 
         Args:
-            ip: IP Р°РґСЂРµСЃ СЃРµСЂРІРµСЂР°
+            ip: IP адрес сервера
 
         Returns:
-            True РµСЃР»Рё СЃРµСЂРІРµСЂ Р°РєС‚РёРІРµРЅ
+            True если сервер активен
         """
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -524,17 +524,17 @@ class ConfigManager:
                 return True
             return bool(row[0])
         except Exception as e:
-            error_log(f"РћС€РёР±РєР° РїРѕР»СѓС‡РµРЅРёСЏ СЃС‚Р°С‚СѓСЃР° СЃРµСЂРІРµСЂР° {ip}: {e}")
+            error_log(f"Ошибка получения статуса сервера {ip}: {e}")
             return True
 
 
     # ------------------------------------------------------------
-    # Backward-compatible API (С‚РѕРЅРєРёР№ Р°РґР°РїС‚РµСЂ)
+    # Backward-compatible API (тонкий адаптер)
     # ------------------------------------------------------------
     def get_servers(self) -> List[Dict[str, Any]]:
         """
         Backward-compatible alias.
-        РЎС‚Р°СЂС‹Р№ РєРѕРґ РѕР¶РёРґР°РµС‚ ConfigManager.get_servers(), РїРѕСЌС‚РѕРјСѓ РѕСЃС‚Р°РІР»СЏРµРј.
+        Старый код ожидает ConfigManager.get_servers(), поэтому оставляем.
         """
         return self.get_all_servers()
 
@@ -561,17 +561,17 @@ class ConfigManager:
         enabled: bool = True
     ) -> bool:
         """
-        Р”РѕР±Р°РІРёС‚СЊ СЃРµСЂРІРµСЂ
+        Добавить сервер
         
         Args:
-            ip: IP Р°РґСЂРµСЃ
-            name: РРјСЏ СЃРµСЂРІРµСЂР°
-            server_type: РўРёРї СЃРµСЂРІРµСЂР°
-            credentials: РЈС‡РµС‚РЅС‹Рµ РґР°РЅРЅС‹Рµ
-            timeout: РўР°Р№РјР°СѓС‚
+            ip: IP адрес
+            name: Имя сервера
+            server_type: Тип сервера
+            credentials: Учетные данные
+            timeout: Таймаут
             
         Returns:
-            True РµСЃР»Рё СѓСЃРїРµС€РЅРѕ
+            True если успешно
         """
         credentials_json = json.dumps(credentials) if credentials else '[]'
         enabled_value = 1 if enabled else 0
@@ -587,25 +587,25 @@ class ConfigManager:
             
             conn.commit()
             
-            # РћС‡РёС‰Р°РµРј РєСЌС€
+            # Очищаем кэш
             self._cache = {}
             
-            debug_log(f"РЎРµСЂРІРµСЂ РґРѕР±Р°РІР»РµРЅ: {name} ({ip}) С‚РёРї: {server_type}")
+            debug_log(f"Сервер добавлен: {name} ({ip}) тип: {server_type}")
             return True
             
         except Exception as e:
-            error_log(f"РћС€РёР±РєР° РґРѕР±Р°РІР»РµРЅРёСЏ СЃРµСЂРІРµСЂР° {ip}: {e}")
+            error_log(f"Ошибка добавления сервера {ip}: {e}")
             return False
     
     def delete_server(self, ip: str) -> bool:
         """
-        РЈРґР°Р»РёС‚СЊ СЃРµСЂРІРµСЂ
+        Удалить сервер
         
         Args:
-            ip: IP Р°РґСЂРµСЃ СЃРµСЂРІРµСЂР°
+            ip: IP адрес сервера
             
         Returns:
-            True РµСЃР»Рё СѓСЃРїРµС€РЅРѕ
+            True если успешно
         """
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -614,22 +614,22 @@ class ConfigManager:
             cursor.execute('DELETE FROM servers WHERE ip = ?', (ip,))
             conn.commit()
             
-            # РћС‡РёС‰Р°РµРј РєСЌС€
+            # Очищаем кэш
             self._cache = {}
             
-            debug_log(f"РЎРµСЂРІРµСЂ СѓРґР°Р»РµРЅ: {ip}")
+            debug_log(f"Сервер удален: {ip}")
             return True
             
         except Exception as e:
-            error_log(f"РћС€РёР±РєР° СѓРґР°Р»РµРЅРёСЏ СЃРµСЂРІРµСЂР° {ip}: {e}")
+            error_log(f"Ошибка удаления сервера {ip}: {e}")
             return False
     
     def get_windows_credentials_db(self) -> Dict[str, List[Dict[str, str]]]:
         """
-        РџРѕР»СѓС‡РёС‚СЊ СѓС‡РµС‚РЅС‹Рµ РґР°РЅРЅС‹Рµ Windows РёР· Р‘Р”
+        Получить учетные данные Windows из БД
         
         Returns:
-            РЎР»РѕРІР°СЂСЊ СѓС‡РµС‚РЅС‹С… РґР°РЅРЅС‹С… РїРѕ С‚РёРїР°Рј СЃРµСЂРІРµСЂРѕРІ
+            Словарь учетных данных по типам серверов
         """
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -654,13 +654,13 @@ class ConfigManager:
     
     def get_windows_credentials(self, server_type: Optional[str] = None) -> List[Dict[str, Any]]:
         """
-        РџРѕР»СѓС‡РёС‚СЊ СѓС‡РµС‚РЅС‹Рµ РґР°РЅРЅС‹Рµ Windows
+        Получить учетные данные Windows
         
         Args:
-            server_type: Р¤РёР»СЊС‚СЂ РїРѕ С‚РёРїСѓ СЃРµСЂРІРµСЂР°
+            server_type: Фильтр по типу сервера
             
         Returns:
-            РЎРїРёСЃРѕРє СѓС‡РµС‚РЅС‹С… РґР°РЅРЅС‹С…
+            Список учетных данных
         """
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -695,10 +695,10 @@ class ConfigManager:
 
     def get_windows_server_types(self) -> List[str]:
         """
-        РџРѕР»СѓС‡РёС‚СЊ СЃРїРёСЃРѕРє С‚РёРїРѕРІ Windows-СЃРµСЂРІРµСЂРѕРІ РёР· Р±Р°Р·С‹
+        Получить список типов Windows-серверов из базы
 
         Returns:
-            РЎРїРёСЃРѕРє СѓРЅРёРєР°Р»СЊРЅС‹С… С‚РёРїРѕРІ СЃРµСЂРІРµСЂРѕРІ
+            Список уникальных типов серверов
         """
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -720,16 +720,16 @@ class ConfigManager:
         priority: int = 0
     ) -> bool:
         """
-        Р”РѕР±Р°РІРёС‚СЊ СѓС‡РµС‚РЅС‹Рµ РґР°РЅРЅС‹Рµ Windows
+        Добавить учетные данные Windows
         
         Args:
-            username: РРјСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ
-            password: РџР°СЂРѕР»СЊ
-            server_type: РўРёРї СЃРµСЂРІРµСЂР°
-            priority: РџСЂРёРѕСЂРёС‚РµС‚
+            username: Имя пользователя
+            password: Пароль
+            server_type: Тип сервера
+            priority: Приоритет
             
         Returns:
-            True РµСЃР»Рё СѓСЃРїРµС€РЅРѕ
+            True если успешно
         """
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -742,11 +742,11 @@ class ConfigManager:
             
             conn.commit()
             
-            debug_log(f"РЈС‡РµС‚РЅС‹Рµ РґР°РЅРЅС‹Рµ РґРѕР±Р°РІР»РµРЅС‹: {username} РґР»СЏ {server_type}")
+            debug_log(f"Учетные данные добавлены: {username} для {server_type}")
             return True
             
         except Exception as e:
-            error_log(f"РћС€РёР±РєР° РґРѕР±Р°РІР»РµРЅРёСЏ СѓС‡РµС‚РЅС‹С… РґР°РЅРЅС‹С…: {e}")
+            error_log(f"Ошибка добавления учетных данных: {e}")
             return False
     
     def update_windows_credential(
@@ -755,14 +755,14 @@ class ConfigManager:
         **kwargs
     ) -> bool:
         """
-        РћР±РЅРѕРІРёС‚СЊ СѓС‡РµС‚РЅС‹Рµ РґР°РЅРЅС‹Рµ Windows
+        Обновить учетные данные Windows
         
         Args:
-            cred_id: ID СѓС‡РµС‚РЅС‹С… РґР°РЅРЅС‹С…
-            **kwargs: РџРѕР»СЏ РґР»СЏ РѕР±РЅРѕРІР»РµРЅРёСЏ
+            cred_id: ID учетных данных
+            **kwargs: Поля для обновления
             
         Returns:
-            True РµСЃР»Рё СѓСЃРїРµС€РЅРѕ
+            True если успешно
         """
         allowed_fields = ['username', 'password', 'server_type', 'priority', 'enabled']
         update_fields = []
@@ -790,22 +790,22 @@ class ConfigManager:
             
             conn.commit()
             
-            debug_log(f"РЈС‡РµС‚РЅС‹Рµ РґР°РЅРЅС‹Рµ РѕР±РЅРѕРІР»РµРЅС‹: ID {cred_id}")
+            debug_log(f"Учетные данные обновлены: ID {cred_id}")
             return True
             
         except Exception as e:
-            error_log(f"РћС€РёР±РєР° РѕР±РЅРѕРІР»РµРЅРёСЏ СѓС‡РµС‚РЅС‹С… РґР°РЅРЅС‹С… ID {cred_id}: {e}")
+            error_log(f"Ошибка обновления учетных данных ID {cred_id}: {e}")
             return False
     
     def delete_windows_credential(self, cred_id: int) -> bool:
         """
-        РЈРґР°Р»РёС‚СЊ СѓС‡РµС‚РЅС‹Рµ РґР°РЅРЅС‹Рµ Windows
+        Удалить учетные данные Windows
         
         Args:
-            cred_id: ID СѓС‡РµС‚РЅС‹С… РґР°РЅРЅС‹С…
+            cred_id: ID учетных данных
             
         Returns:
-            True РµСЃР»Рё СѓСЃРїРµС€РЅРѕ
+            True если успешно
         """
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -814,19 +814,19 @@ class ConfigManager:
             cursor.execute('DELETE FROM windows_credentials WHERE id = ?', (cred_id,))
             conn.commit()
             
-            debug_log(f"РЈС‡РµС‚РЅС‹Рµ РґР°РЅРЅС‹Рµ СѓРґР°Р»РµРЅС‹: ID {cred_id}")
+            debug_log(f"Учетные данные удалены: ID {cred_id}")
             return True
             
         except Exception as e:
-            error_log(f"РћС€РёР±РєР° СѓРґР°Р»РµРЅРёСЏ СѓС‡РµС‚РЅС‹С… РґР°РЅРЅС‹С… ID {cred_id}: {e}")
+            error_log(f"Ошибка удаления учетных данных ID {cred_id}: {e}")
             return False
     
     def get_backup_patterns(self) -> Dict[str, Dict[str, List[str]]]:
         """
-        РџРѕР»СѓС‡РёС‚СЊ РїР°С‚С‚РµСЂРЅС‹ Р±СЌРєР°РїРѕРІ
+        Получить паттерны бэкапов
         
         Returns:
-            РЎР»РѕРІР°СЂСЊ РїР°С‚С‚РµСЂРЅРѕРІ
+            Словарь паттернов
         """
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -849,9 +849,9 @@ class ConfigManager:
         return patterns
     
     def clear_cache(self) -> None:
-        """РћС‡РёСЃС‚РёС‚СЊ РєСЌС€ РЅР°СЃС‚СЂРѕРµРє"""
+        """Очистить кэш настроек"""
         self._cache = {}
-        debug_log("РљСЌС€ РЅР°СЃС‚СЂРѕРµРє РѕС‡РёС‰РµРЅ")
+        debug_log("Кэш настроек очищен")
 
-# Р“Р»РѕР±Р°Р»СЊРЅС‹Р№ СЌРєР·РµРјРїР»СЏСЂ РјРµРЅРµРґР¶РµСЂР° РєРѕРЅС„РёРіСѓСЂР°С†РёРё
+# Глобальный экземпляр менеджера конфигурации
 config_manager = ConfigManager()

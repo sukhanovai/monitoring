@@ -4,11 +4,11 @@ Server Monitoring System v8.6.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 A single router for callbacks.
-РЎРёСЃС‚РµРјР° РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЃРµСЂРІРµСЂРѕРІ
-Р’РµСЂСЃРёСЏ: 8.6.0
-РђРІС‚РѕСЂ: РђР»РµРєСЃР°РЅРґСЂ РЎСѓС…Р°РЅРѕРІ (c)
-Р›РёС†РµРЅР·РёСЏ: MIT
-Р•РґРёРЅС‹Р№ router callbackвЂ™РѕРІ.
+Система мониторинга серверов
+Версия: 8.6.0
+Автор: Александр Суханов (c)
+Лицензия: MIT
+Единый router callback’ов.
 """
 
 import traceback
@@ -42,32 +42,32 @@ def _safe_answer(query, **kwargs):
         query.answer(**kwargs)
     except BadRequest as e:
         # Callback query can be too old or already answered; ignore.
-        debug_log(f"вљ пёЏ callback answer skipped: {e}")
+        debug_log(f"⚠️ callback answer skipped: {e}")
 
 def _server_result_keyboard(server_ip: str) -> InlineKeyboardMarkup:
     row_actions = [
-        InlineKeyboardButton("рџ“Ў Р”РѕСЃС‚СѓРїРЅРѕСЃС‚СЊ", callback_data=f"check_availability_{server_ip}")
+        InlineKeyboardButton("📡 Доступность", callback_data=f"check_availability_{server_ip}")
     ]
     row_menus = [
-        InlineKeyboardButton("рџ–Ґ Р”РѕСЃС‚СѓРїРЅРѕСЃС‚СЊ СЃРµСЂРІРµСЂР°", callback_data="show_availability_menu")
+        InlineKeyboardButton("🖥 Доступность сервера", callback_data="show_availability_menu")
     ]
 
     if extension_manager.is_extension_enabled("resource_monitor"):
-        row_actions.append(InlineKeyboardButton("рџ“Љ Р РµСЃСѓСЂСЃС‹", callback_data=f"check_resources_{server_ip}"))
-        row_menus.append(InlineKeyboardButton("рџ’» Р РµСЃСѓСЂСЃС‹ СЃРµСЂРІРµСЂР°", callback_data="show_resources_menu"))
+        row_actions.append(InlineKeyboardButton("📊 Ресурсы", callback_data=f"check_resources_{server_ip}"))
+        row_menus.append(InlineKeyboardButton("💻 Ресурсы сервера", callback_data="show_resources_menu"))
 
     return InlineKeyboardMarkup([
         row_actions,
         row_menus,
         [
-            InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data="main_menu"),
-            InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data="close"),
+            InlineKeyboardButton("🏠 На главную", callback_data="main_menu"),
+            InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
         ],
     ])
 
 
 def handle_check_single_callback(update, context, server_ip):
-    """РћР±СЂР°Р±РѕС‚РєР° callback РїСЂРѕРІРµСЂРєРё РѕРґРЅРѕРіРѕ СЃРµСЂРІРµСЂР°"""
+    """Обработка callback проверки одного сервера"""
     query = update.callback_query
     _safe_answer(query)
 
@@ -78,22 +78,22 @@ def handle_check_single_callback(update, context, server_ip):
         text=result,
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("рџ“Љ РџСЂРѕРІРµСЂРёС‚СЊ СЂРµСЃСѓСЂСЃС‹", callback_data=f'check_resources_{server_ip}')],
-            [InlineKeyboardButton("рџ”„ РџСЂРѕРІРµСЂРёС‚СЊ СЃРЅРѕРІР°", callback_data=f'check_single_{server_ip}')],
-            [InlineKeyboardButton("в†©пёЏ Р’С‹Р±СЂР°С‚СЊ РґСЂСѓРіРѕР№", callback_data='check_single_menu')],
-            [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu'),
-             InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
+            [InlineKeyboardButton("📊 Проверить ресурсы", callback_data=f'check_resources_{server_ip}')],
+            [InlineKeyboardButton("🔄 Проверить снова", callback_data=f'check_single_{server_ip}')],
+            [InlineKeyboardButton("↩️ Выбрать другой", callback_data='check_single_menu')],
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
     )
 
 
 def handle_check_resources_callback(update, context, server_ip):
-    """РћР±СЂР°Р±РѕС‚РєР° callback РїСЂРѕРІРµСЂРєРё СЂРµСЃСѓСЂСЃРѕРІ СЃРµСЂРІРµСЂР°"""
+    """Обработка callback проверки ресурсов сервера"""
     query = update.callback_query
     _safe_answer(query)
 
     if not extension_manager.is_extension_enabled("resource_monitor"):
-        query.edit_message_text("рџ“Љ РњРѕРЅРёС‚РѕСЂРёРЅРі СЂРµСЃСѓСЂСЃРѕРІ РѕС‚РєР»СЋС‡С‘РЅ")
+        query.edit_message_text("📊 Мониторинг ресурсов отключён")
         return
 
     from bot.handlers.commands import handle_check_server_resources
@@ -103,31 +103,31 @@ def handle_check_resources_callback(update, context, server_ip):
         text=result,
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("рџ”„ РћР±РЅРѕРІРёС‚СЊ", callback_data=f'check_resources_{server_ip}')],
-            [InlineKeyboardButton("рџ“Ў РџСЂРѕРІРµСЂРёС‚СЊ РґРѕСЃС‚СѓРїРЅРѕСЃС‚СЊ", callback_data=f'check_single_{server_ip}')],
-            [InlineKeyboardButton("в†©пёЏ Р’С‹Р±СЂР°С‚СЊ РґСЂСѓРіРѕР№", callback_data='check_resources_menu')],
-            [InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu'),
-             InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
+            [InlineKeyboardButton("🔄 Обновить", callback_data=f'check_resources_{server_ip}')],
+            [InlineKeyboardButton("📡 Проверить доступность", callback_data=f'check_single_{server_ip}')],
+            [InlineKeyboardButton("↩️ Выбрать другой", callback_data='check_resources_menu')],
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
     )
 
 
 def handle_server_selection_menu(update, context, action="check_single"):
-    """РџРѕРєР°Р·С‹РІР°РµС‚ РјРµРЅСЋ РІС‹Р±РѕСЂР° СЃРµСЂРІРµСЂР°"""
+    """Показывает меню выбора сервера"""
     query = update.callback_query
     _safe_answer(query)
 
     from bot.handlers.commands import create_server_selection_keyboard
 
     if action == "check_single":
-        message = "рџ“Ў *Р’С‹Р±РµСЂРёС‚Рµ СЃРµСЂРІРµСЂ РґР»СЏ РїСЂРѕРІРµСЂРєРё РґРѕСЃС‚СѓРїРЅРѕСЃС‚Рё:*"
+        message = "📡 *Выберите сервер для проверки доступности:*"
     elif action == "check_resources":
         if not extension_manager.is_extension_enabled("resource_monitor"):
-            query.edit_message_text("рџ“Љ РњРѕРЅРёС‚РѕСЂРёРЅРі СЂРµСЃСѓСЂСЃРѕРІ РѕС‚РєР»СЋС‡С‘РЅ")
+            query.edit_message_text("📊 Мониторинг ресурсов отключён")
             return
-        message = "рџ“Љ *Р’С‹Р±РµСЂРёС‚Рµ СЃРµСЂРІРµСЂ РґР»СЏ РїСЂРѕРІРµСЂРєРё СЂРµСЃСѓСЂСЃРѕРІ:*"
+        message = "📊 *Выберите сервер для проверки ресурсов:*"
     else:
-        message = "рџ”Ќ *Р’С‹Р±РµСЂРёС‚Рµ СЃРµСЂРІРµСЂ:*"
+        message = "🔍 *Выберите сервер:*"
 
     keyboard = create_server_selection_keyboard(action=action)
 
@@ -138,28 +138,28 @@ def handle_server_selection_menu(update, context, action="check_single"):
     )
 
 def callback_router(update, context):
-    debug_log("рџ§­ ROUTER MARKER v1: entered callback_router()")
+    debug_log("🧭 ROUTER MARKER v1: entered callback_router()")
     try:
         query = update.callback_query
         data = query.data
 
-        debug_log(f"рџ“Ґ CALLBACK DATA: {data}")
+        debug_log(f"📥 CALLBACK DATA: {data}")
 
-        # РґР°Р»СЊС€Рµ РІР°С€ СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёР№ РєРѕРґ router...
+        # дальше ваш существующий код router...
 
     except Exception as e:
-        debug_log(f"рџ’Ґ callback_router crashed: {e}\n{traceback.format_exc()}")
-        # Р¤РѕР»Р»Р±РµРє РїРѕР»СЊР·РѕРІР°С‚РµР»СЋ (С‡С‚РѕР±С‹ РІРёРґРµС‚СЊ РїСЂРѕР±Р»РµРјСѓ РІ Telegram)
+        debug_log(f"💥 callback_router crashed: {e}\n{traceback.format_exc()}")
+        # Фоллбек пользователю (чтобы видеть проблему в Telegram)
         try:
             if update.callback_query:
-                _safe_answer(update.callback_query, text="вќЊ РћС€РёР±РєР° РѕР±СЂР°Р±РѕС‚С‡РёРєР°. РџРѕРґСЂРѕР±РЅРѕСЃС‚Рё РІ Р»РѕРіР°С….", show_alert=True)
+                _safe_answer(update.callback_query, text="❌ Ошибка обработчика. Подробности в логах.", show_alert=True)
         except Exception:
             pass
         
     query = update.callback_query
     data = query.data
 
-    debug_log(f"рџ“Ґ CALLBACK DATA: {data}")
+    debug_log(f"📥 CALLBACK DATA: {data}")
     
     if not check_access(update):
         deny_access(update)
@@ -168,7 +168,7 @@ def callback_router(update, context):
     _safe_answer(query)
 
     # ------------------------------------------------
-    # Р“Р»Р°РІРЅРѕРµ РјРµРЅСЋ
+    # Главное меню
     # ------------------------------------------------
     if data == 'main_menu':
         from bot.menu.handlers import show_main_menu
@@ -179,17 +179,17 @@ def callback_router(update, context):
         show_about_bot(update, context)
 
     # ------------------------------------------------
-    # Р”РћРЎРўРЈРџРќРћРЎРўР¬ Р’РЎР•РҐ РЎР•Р Р’Р•Р РћР’ (СЂСѓС‡РЅР°СЏ РїСЂРѕРІРµСЂРєР°)
+    # ДОСТУПНОСТЬ ВСЕХ СЕРВЕРОВ (ручная проверка)
     # ------------------------------------------------
     elif data == 'manual_check':
         manual_check_handler(update, context)
         
     # ------------------------------------------------
-    # РћР”РРќ РЎР•Р Р’Р•Р  (РґРѕСЃС‚СѓРїРЅРѕСЃС‚СЊ)
+    # ОДИН СЕРВЕР (доступность)
     # ------------------------------------------------
     elif data == 'show_availability_menu':
         query.edit_message_text(
-            "рџ“Ў *Р’С‹Р±РµСЂРёС‚Рµ СЃРµСЂРІРµСЂ РґР»СЏ РїСЂРѕРІРµСЂРєРё РґРѕСЃС‚СѓРїРЅРѕСЃС‚Рё:*",
+            "📡 *Выберите сервер для проверки доступности:*",
             parse_mode='Markdown',
             reply_markup=targeted_checks.create_server_selection_menu(
                 action="check_availability"
@@ -209,14 +209,14 @@ def callback_router(update, context):
         )
 
     # ------------------------------------------------
-    # Р Р•РЎРЈР РЎР« РЎР•Р Р’Р•Р Рђ
+    # РЕСУРСЫ СЕРВЕРА
     # ------------------------------------------------
     elif data == 'show_resources_menu':
         if not extension_manager.is_extension_enabled("resource_monitor"):
-            query.edit_message_text("рџ“Љ РњРѕРЅРёС‚РѕСЂРёРЅРі СЂРµСЃСѓСЂСЃРѕРІ РѕС‚РєР»СЋС‡С‘РЅ")
+            query.edit_message_text("📊 Мониторинг ресурсов отключён")
             return
         query.edit_message_text(
-            "рџ“Љ *Р’С‹Р±РµСЂРёС‚Рµ СЃРµСЂРІРµСЂ РґР»СЏ РїСЂРѕРІРµСЂРєРё СЂРµСЃСѓСЂСЃРѕРІ:*",
+            "📊 *Выберите сервер для проверки ресурсов:*",
             parse_mode='Markdown',
             reply_markup=targeted_checks.create_server_selection_menu(
                 action="check_resources"
@@ -225,7 +225,7 @@ def callback_router(update, context):
 
     elif data.startswith('check_resources_'):
         if not extension_manager.is_extension_enabled("resource_monitor"):
-            query.edit_message_text("рџ“Љ РњРѕРЅРёС‚РѕСЂРёРЅРі СЂРµСЃСѓСЂСЃРѕРІ РѕС‚РєР»СЋС‡С‘РЅ")
+            query.edit_message_text("📊 Мониторинг ресурсов отключён")
             return
         server_id = data.replace('check_resources_', '')
 
@@ -239,14 +239,14 @@ def callback_router(update, context):
         )
 
     # ------------------------------------------------
-    # РџР РћР’Р•Р РљРђ Р Р•РЎРЈР РЎРћР’ Р’РЎР•РҐ РЎР•Р Р’Р•Р РћР’
+    # ПРОВЕРКА РЕСУРСОВ ВСЕХ СЕРВЕРОВ
     # ------------------------------------------------
     elif data == 'check_resources':
         if not extension_manager.is_extension_enabled("resource_monitor"):
-            query.edit_message_text("рџ“Љ РњРѕРЅРёС‚РѕСЂРёРЅРі СЂРµСЃСѓСЂСЃРѕРІ РѕС‚РєР»СЋС‡С‘РЅ")
+            query.edit_message_text("📊 Мониторинг ресурсов отключён")
             return
         query.edit_message_text(
-            "рџ“Љ *Р’С‹Р±РµСЂРёС‚Рµ СЃРµСЂРІРµСЂ РґР»СЏ РїСЂРѕРІРµСЂРєРё СЂРµСЃСѓСЂСЃРѕРІ:*",
+            "📊 *Выберите сервер для проверки ресурсов:*",
             parse_mode='Markdown',
             reply_markup=targeted_checks.create_server_selection_menu(
                 action="check_resources"
@@ -254,7 +254,7 @@ def callback_router(update, context):
         )
 
     # ------------------------------------------------
-    # РЎРўРђРўРЈРЎ / РџР РћР’Р•Р РљРђ / РЈРџР РђР’Р›Р•РќРР• (monitor_core)
+    # СТАТУС / ПРОВЕРКА / УПРАВЛЕНИЕ (monitor_core)
     # ------------------------------------------------
     elif data == 'monitor_status':
         monitor_status(update, context)
@@ -304,12 +304,12 @@ def callback_router(update, context):
         show_zfs_status_summary(update, context)
 
     elif data in ('full_report', 'daily_report'):
-        # РІ monitor_core СЌС‚Рѕ РѕРґРёРЅ Рё С‚РѕС‚ Р¶Рµ handler РІ СЃС‚Р°СЂРѕРј РјРµРЅСЋ
+        # в monitor_core это один и тот же handler в старом меню
         from core.monitor_core import send_morning_report_handler
         send_morning_report_handler(update, context)
 
     # ------------------------------------------------
-    # РќРђРЎРўР РћР™РљР (settings_handlers)
+    # НАСТРОЙКИ (settings_handlers)
     # ------------------------------------------------
     elif data.startswith(('settings_', 'set_', 'manage_', 'ssh_', 'windows_', 'server_type_')) or data in {
         'add_chat',
@@ -317,11 +317,11 @@ def callback_router(update, context):
         'add_tamtam_chat',
         'remove_tamtam_chat',
     }:
-        # settings_handlers СЃР°Рј СЂР°Р·Р±РёСЂР°РµС‚ РІСЃРµ СЌС‚Рё РІРµС‚РєРё
+        # settings_handlers сам разбирает все эти ветки
         settings_callback_handler(update, context)
 
     # ------------------------------------------------
-    # РќРђРЎРўР РћР™РљР Р‘Р­РљРђРџРћР’ (settings_handlers)
+    # НАСТРОЙКИ БЭКАПОВ (settings_handlers)
     # ------------------------------------------------
     elif data in BACKUP_SETTINGS_CALLBACKS or data.startswith(('delete_pattern_', 'edit_pattern_', 'db_default_', 'stock_pattern_select_')):
         settings_callback_handler(update, context)
@@ -330,30 +330,30 @@ def callback_router(update, context):
         settings_callback_handler(update, context)
 
     # ------------------------------------------------
-    # Р Р•РЎРЈР РЎР«: РіСЂСѓРїРїС‹/СЃРїРёСЃРєРё (TargetedChecks)
+    # РЕСУРСЫ: группы/списки (TargetedChecks)
     # ------------------------------------------------
     elif data.startswith('server_group_'):
-        # С„РѕСЂРјР°С‚: server_group_<type>_<action>
-        # РїСЂРёРјРµСЂ: server_group_ssh_check_resources
+        # формат: server_group_<type>_<action>
+        # пример: server_group_ssh_check_resources
         parts = data.split('_', 3)
         # parts = ['server', 'group', '<type>', '<action>']
         if len(parts) == 4:
             server_type = parts[2]
             action = parts[3]
             query.edit_message_text(
-                f"рџ“‹ *Р’С‹Р±РµСЂРёС‚Рµ СЃРµСЂРІРµСЂ:*",
+                f"📋 *Выберите сервер:*",
                 parse_mode='Markdown',
                 reply_markup=targeted_checks.create_server_group_menu(server_type, action)
             )
         else:
-            query.edit_message_text("вќЊ РќРµРєРѕСЂСЂРµРєС‚РЅС‹Рµ РґР°РЅРЅС‹Рµ РјРµРЅСЋ РіСЂСѓРїРїС‹ СЃРµСЂРІРµСЂРѕРІ")
+            query.edit_message_text("❌ Некорректные данные меню группы серверов")
 
-    # (РїРѕ Р¶РµР»Р°РЅРёСЋ) QUICK SEARCH / REFRESH РјРѕР¶РЅРѕ РїСЂРѕСЃС‚Рѕ РіР°СЃРёС‚СЊ
+    # (по желанию) QUICK SEARCH / REFRESH можно просто гасить
     elif data.startswith(('quick_search_', 'refresh_')):
-        _safe_answer(query, text="Р¤СѓРЅРєС†РёСЏ РѕС‚РєР»СЋС‡РµРЅР°", show_alert=False)
+        _safe_answer(query, text="Функция отключена", show_alert=False)
 
     # ------------------------------------------------
-    # Р‘Р­РљРђРџР«
+    # БЭКАПЫ
     # ------------------------------------------------
     elif data.startswith("backup_") or data.startswith("db_"):
         backup_enabled = extension_manager.is_extension_enabled("backup_monitor")
@@ -362,23 +362,23 @@ def callback_router(update, context):
         stock_enabled = extension_manager.is_extension_enabled("stock_load_monitor")
 
         if data.startswith("db_") and not db_enabled:
-            query.edit_message_text("рџ—ѓпёЏ РњРѕРґСѓР»СЊ Р±СЌРєР°РїРѕРІ Р‘Р” РѕС‚РєР»СЋС‡С‘РЅ")
+            query.edit_message_text("🗃️ Модуль бэкапов БД отключён")
             return
 
         if data == "backup_main" and not (backup_enabled or db_enabled or mail_enabled or stock_enabled):
-            query.edit_message_text("рџ’ѕ РњРѕРґСѓР»СЊ Р±СЌРєР°РїРѕРІ РѕС‚РєР»СЋС‡С‘РЅ")
+            query.edit_message_text("💾 Модуль бэкапов отключён")
             return
 
         if data == "backup_databases" and not db_enabled:
-            query.edit_message_text("рџ—ѓпёЏ РњРѕРґСѓР»СЊ Р±СЌРєР°РїРѕРІ Р‘Р” РѕС‚РєР»СЋС‡С‘РЅ")
+            query.edit_message_text("🗃️ Модуль бэкапов БД отключён")
             return
 
         if data == "backup_mail" and not mail_enabled:
-            query.edit_message_text("рџ“¬ РњРѕРґСѓР»СЊ Р±СЌРєР°РїРѕРІ РїРѕС‡С‚С‹ РѕС‚РєР»СЋС‡С‘РЅ")
+            query.edit_message_text("📬 Модуль бэкапов почты отключён")
             return
 
         if data == "backup_stock_loads" and not stock_enabled:
-            query.edit_message_text("рџ“¦ РњРѕРґСѓР»СЊ Р·Р°РіСЂСѓР·РєРё РѕСЃС‚Р°С‚РєРѕРІ РѕС‚РєР»СЋС‡С‘РЅ")
+            query.edit_message_text("📦 Модуль загрузки остатков отключён")
             return
 
         if (
@@ -386,7 +386,7 @@ def callback_router(update, context):
             and data not in ("backup_main", "backup_databases", "backup_mail", "backup_stock_loads")
             and not backup_enabled
         ):
-            query.edit_message_text("рџ’ѕ РњРѕРґСѓР»СЊ Р±СЌРєР°РїРѕРІ Proxmox РѕС‚РєР»СЋС‡С‘РЅ")
+            query.edit_message_text("💾 Модуль бэкапов Proxmox отключён")
             return
 
         from extensions.backup_monitor.bot_handler import backup_callback
@@ -394,7 +394,7 @@ def callback_router(update, context):
         return
 
     # ------------------------------------------------
-    # Р РђРЎРЁРР Р•РќРРЇ
+    # РАСШИРЕНИЯ
     # ------------------------------------------------
     elif data == 'extensions_menu':
         show_extensions_menu(update, context)
@@ -403,7 +403,7 @@ def callback_router(update, context):
         extensions_callback_handler(update, context)
 
     # ------------------------------------------------
-    # Р—Р°РєСЂС‹С‚РёРµ
+    # Закрытие
     # ------------------------------------------------
     elif data == 'close':
         query.delete_message()

@@ -4,11 +4,11 @@ Server Monitoring System v8.6.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Database-backed settings loader
-РЎРёСЃС‚РµРјР° РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЃРµСЂРІРµСЂРѕРІ
-Р’РµСЂСЃРёСЏ: 8.6.0
-РђРІС‚РѕСЂ: РђР»РµРєСЃР°РЅРґСЂ РЎСѓС…Р°РЅРѕРІ (c)
-Р›РёС†РµРЅР·РёСЏ: MIT
-Р—Р°РіСЂСѓР·С‡РёРє РЅР°СЃС‚СЂРѕРµРє РёР· Р±Р°Р·С‹ РґР°РЅРЅС‹С…
+Система мониторинга серверов
+Версия: 8.6.0
+Автор: Александр Суханов (c)
+Лицензия: MIT
+Загрузчик настроек из базы данных
 """
 
 from datetime import time as dt_time
@@ -18,56 +18,56 @@ from core.config_manager import config_manager
 from config import settings as defaults
 from config.settings import *
 
-# Р›РѕРіРіРµСЂ РґР»СЏ СЌС‚РѕРіРѕ РјРѕРґСѓР»СЏ
+# Логгер для этого модуля
 _logger = setup_logging("db_settings")
 
-# Р¤Р»Р°Рі РёСЃРїРѕР»СЊР·РѕРІР°РЅРёСЏ Р‘Р”
+# Флаг использования БД
 USE_DB = True
 
 def get_setting(key: str, default: Any = None) -> Any:
     """
-    Р‘РµР·РѕРїР°СЃРЅРѕРµ РїРѕР»СѓС‡РµРЅРёРµ РЅР°СЃС‚СЂРѕР№РєРё РёР· Р‘Р”
+    Безопасное получение настройки из БД
     
     Args:
-        key: РљР»СЋС‡ РЅР°СЃС‚СЂРѕР№РєРё
-        default: Р—РЅР°С‡РµРЅРёРµ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ
+        key: Ключ настройки
+        default: Значение по умолчанию
         
     Returns:
-        Р—РЅР°С‡РµРЅРёРµ РЅР°СЃС‚СЂРѕР№РєРё
+        Значение настройки
     """
     if USE_DB:
         try:
             return config_manager.get_setting(key, default)
         except Exception as e:
-            error_log(f"РћС€РёР±РєР° РїРѕР»СѓС‡РµРЅРёСЏ РЅР°СЃС‚СЂРѕР№РєРё {key} РёР· Р‘Р”: {e}")
+            error_log(f"Ошибка получения настройки {key} из БД: {e}")
             return default
     return default
 
 def get_json_setting(key: str, default: Any = None) -> Any:
     """
-    РџРѕР»СѓС‡РµРЅРёРµ JSON РЅР°СЃС‚СЂРѕР№РєРё РёР· Р‘Р”
+    Получение JSON настройки из БД
     
     Args:
-        key: РљР»СЋС‡ РЅР°СЃС‚СЂРѕР№РєРё
-        default: Р—РЅР°С‡РµРЅРёРµ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ
+        key: Ключ настройки
+        default: Значение по умолчанию
         
     Returns:
-        Р—РЅР°С‡РµРЅРёРµ РЅР°СЃС‚СЂРѕР№РєРё
+        Значение настройки
     """
     if USE_DB:
         try:
             return config_manager.get_setting(key, default)
         except Exception as e:
-            error_log(f"РћС€РёР±РєР° РїРѕР»СѓС‡РµРЅРёСЏ JSON РЅР°СЃС‚СЂРѕР№РєРё {key}: {e}")
+            error_log(f"Ошибка получения JSON настройки {key}: {e}")
             return default
     return default
 
 def get_windows_credentials_db() -> Dict[str, List[Dict[str, str]]]:
     """
-    РџРѕР»СѓС‡РёС‚СЊ СѓС‡РµС‚РЅС‹Рµ РґР°РЅРЅС‹Рµ Windows РёР· Р‘Р”
+    Получить учетные данные Windows из БД
     
     Returns:
-        РЎР»РѕРІР°СЂСЊ СѓС‡РµС‚РЅС‹С… РґР°РЅРЅС‹С… РїРѕ С‚РёРїР°Рј СЃРµСЂРІРµСЂРѕРІ
+        Словарь учетных данных по типам серверов
     """
     if not USE_DB:
         return {'default': []}
@@ -75,15 +75,15 @@ def get_windows_credentials_db() -> Dict[str, List[Dict[str, str]]]:
     try:
         return config_manager.get_windows_credentials_db()
     except Exception as e:
-        error_log(f"РћС€РёР±РєР° РїРѕР»СѓС‡РµРЅРёСЏ СѓС‡РµС‚РЅС‹С… РґР°РЅРЅС‹С… РёР· Р‘Р”: {e}")
+        error_log(f"Ошибка получения учетных данных из БД: {e}")
         return {'default': []}
 
 def get_windows_server_configs() -> Dict[str, Dict[str, Any]]:
     """
-    РџРѕР»СѓС‡РёС‚СЊ РєРѕРЅС„РёРіСѓСЂР°С†РёСЋ Windows СЃРµСЂРІРµСЂРѕРІ РёР· Р‘Р”
+    Получить конфигурацию Windows серверов из БД
     
     Returns:
-        РљРѕРЅС„РёРіСѓСЂР°С†РёСЏ Windows СЃРµСЂРІРµСЂРѕРІ
+        Конфигурация Windows серверов
     """
     if not USE_DB:
         return {}
@@ -92,10 +92,10 @@ def get_windows_server_configs() -> Dict[str, Dict[str, Any]]:
         configs = {}
         servers = config_manager.get_all_servers()
         
-        # Р“СЂСѓРїРїРёСЂСѓРµРј СЃРµСЂРІРµСЂС‹ РїРѕ С‚РёРїР°Рј
+        # Группируем серверы по типам
         windows_servers = [s for s in servers if s['type'] == 'rdp']
         
-        # РџРѕР»СѓС‡Р°РµРј СѓС‡РµС‚РЅС‹Рµ РґР°РЅРЅС‹Рµ РёР· Р‘Р”
+        # Получаем учетные данные из БД
         credentials_db = get_windows_credentials_db()
         
         default_groups = {
@@ -104,7 +104,7 @@ def get_windows_server_configs() -> Dict[str, Dict[str, Any]]:
         }
         server_groups = get_json_setting('WINDOWS_SERVER_GROUPS', default_groups)
 
-        # windows_2025 СЃРµСЂРІРµСЂС‹
+        # windows_2025 серверы
         win2025_ips = [
             s['ip'] for s in windows_servers
             if s['ip'] in server_groups.get("windows_2025", [])
@@ -114,7 +114,7 @@ def get_windows_server_configs() -> Dict[str, Dict[str, Any]]:
             "credentials": credentials_db.get('windows_2025', [])
         }
 
-        # domain СЃРµСЂРІРµСЂС‹
+        # domain серверы
         domain_ips = [
             s['ip'] for s in windows_servers
             if s['ip'] in server_groups.get("domain_servers", [])
@@ -124,7 +124,7 @@ def get_windows_server_configs() -> Dict[str, Dict[str, Any]]:
             "credentials": credentials_db.get('domain_servers', [])
         }
 
-        # admin СЃРµСЂРІРµСЂС‹
+        # admin серверы
         admin_ips = [
             s['ip'] for s in windows_servers
             if s['ip'] in server_groups.get("admin_servers", [])
@@ -134,7 +134,7 @@ def get_windows_server_configs() -> Dict[str, Dict[str, Any]]:
             "credentials": credentials_db.get('admin_servers', [])
         }
 
-        # standard windows СЃРµСЂРІРµСЂС‹
+        # standard windows серверы
         standard_ips = [
             s['ip'] for s in windows_servers
             if s['ip'] in server_groups.get("standard_windows", [])
@@ -147,15 +147,15 @@ def get_windows_server_configs() -> Dict[str, Dict[str, Any]]:
         return configs
         
     except Exception as e:
-        error_log(f"РћС€РёР±РєР° РїРѕР»СѓС‡РµРЅРёСЏ РєРѕРЅС„РёРіСѓСЂР°С†РёРё СЃРµСЂРІРµСЂРѕРІ РёР· Р‘Р”: {e}")
+        error_log(f"Ошибка получения конфигурации серверов из БД: {e}")
         return {}
 
 def get_servers_config() -> Dict[str, Dict[str, str]]:
     """
-    РџРѕР»СѓС‡РёС‚СЊ РєРѕРЅС„РёРіСѓСЂР°С†РёСЋ СЃРµСЂРІРµСЂРѕРІ РёР· Р‘Р”
+    Получить конфигурацию серверов из БД
     
     Returns:
-        РљРѕРЅС„РёРіСѓСЂР°С†РёСЏ СЃРµСЂРІРµСЂРѕРІ
+        Конфигурация серверов
     """
     if not USE_DB:
         return {"windows_servers": {}, "linux_servers": {}, "ping_servers": {}}
@@ -184,14 +184,14 @@ def get_servers_config() -> Dict[str, Dict[str, str]]:
         return config
         
     except Exception as e:
-        error_log(f"РћС€РёР±РєР° РїРѕР»СѓС‡РµРЅРёСЏ СЃРµСЂРІРµСЂРѕРІ РёР· Р‘Р”: {e}")
+        error_log(f"Ошибка получения серверов из БД: {e}")
         return {"windows_servers": {}, "linux_servers": {}, "ping_servers": {}}
 
 def load_all_settings() -> None:
     """
-    Р—Р°РіСЂСѓР·РёС‚СЊ РІСЃРµ РЅР°СЃС‚СЂРѕР№РєРё РёР· Р‘Р” РІ РіР»РѕР±Р°Р»СЊРЅС‹Рµ РїРµСЂРµРјРµРЅРЅС‹Рµ
+    Загрузить все настройки из БД в глобальные переменные
     
-    Р­С‚Р° С„СѓРЅРєС†РёСЏ РґРѕР»Р¶РЅР° РІС‹Р·С‹РІР°С‚СЊСЃСЏ РїСЂРё РёРЅРёС†РёР°Р»РёР·Р°С†РёРё РїСЂРёР»РѕР¶РµРЅРёСЏ
+    Эта функция должна вызываться при инициализации приложения
     """
     global USE_DB, TELEGRAM_TOKEN, CHAT_IDS, TAMTAM_TOKEN, TAMTAM_CHAT_IDS, CHECK_INTERVAL, MAX_FAIL_TIME
     global SILENT_START, SILENT_END, DATA_COLLECTION_TIME
@@ -206,21 +206,21 @@ def load_all_settings() -> None:
     global BACKUP_DATABASE_CONFIG, DATABASE_BACKUP_CONFIG
     
     if not USE_DB:
-        debug_log("вљ пёЏ РСЃРїРѕР»СЊР·СѓСЋС‚СЃСЏ РЅР°СЃС‚СЂРѕР№РєРё РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ (Р‘Р” РЅРµРґРѕСЃС‚СѓРїРЅР°)")
+        debug_log("⚠️ Используются настройки по умолчанию (БД недоступна)")
         return
     
     try:
-        # === Р‘РђР—РћР’Р«Р• РќРђРЎРўР РћР™РљР ===
+        # === БАЗОВЫЕ НАСТРОЙКИ ===
         TELEGRAM_TOKEN = get_setting('TELEGRAM_TOKEN', defaults.TELEGRAM_TOKEN)
         CHAT_IDS = get_setting('CHAT_IDS', defaults.CHAT_IDS)
         TAMTAM_TOKEN = get_setting('TAMTAM_TOKEN', defaults.TAMTAM_TOKEN)
         TAMTAM_CHAT_IDS = get_setting('TAMTAM_CHAT_IDS', defaults.TAMTAM_CHAT_IDS)
 
-        # === РРќРўР•Р Р’РђР›Р« РџР РћР’Р•Р РћРљ ===
+        # === ИНТЕРВАЛЫ ПРОВЕРОК ===
         CHECK_INTERVAL = get_setting('CHECK_INTERVAL', defaults.CHECK_INTERVAL)
         MAX_FAIL_TIME = get_setting('MAX_FAIL_TIME', defaults.MAX_FAIL_TIME)
 
-        # === Р’Р Р•РњР•РќРќР«Р• РќРђРЎРўР РћР™РљР ===
+        # === ВРЕМЕННЫЕ НАСТРОЙКИ ===
         SILENT_START = get_setting('SILENT_START', defaults.SILENT_START)
         SILENT_END = get_setting('SILENT_END', defaults.SILENT_END)
 
@@ -236,7 +236,7 @@ def load_all_settings() -> None:
         except:
             DATA_COLLECTION_TIME = defaults.DATA_COLLECTION_TIME
 
-        # === РќРђРЎРўР РћР™РљР Р Р•РЎРЈР РЎРћР’ ===
+        # === НАСТРОЙКИ РЕСУРСОВ ===
         RESOURCE_CHECK_INTERVAL = get_setting(
             'RESOURCE_CHECK_INTERVAL',
             defaults.RESOURCE_CHECK_INTERVAL,
@@ -278,35 +278,35 @@ def load_all_settings() -> None:
             defaults.RESOURCE_ALERT_THRESHOLDS,
         )
 
-        # === РђРЈРўР•РќРўРР¤РРљРђР¦РРЇ ===
+        # === АУТЕНТИФИКАЦИЯ ===
         SSH_KEY_PATH = get_setting('SSH_KEY_PATH', defaults.SSH_KEY_PATH)
         SSH_USERNAME = get_setting('SSH_USERNAME', defaults.SSH_USERNAME)
 
-        # === РљРћРќР¤РР“РЈР РђР¦РРЇ WINDOWS РЎР•Р Р’Р•Р РћР’ ===
+        # === КОНФИГУРАЦИЯ WINDOWS СЕРВЕРОВ ===
         WINDOWS_SERVER_CONFIGS = get_windows_server_configs()
         WINDOWS_SERVER_CREDENTIALS = WINDOWS_SERVER_CONFIGS
         WINRM_CONFIGS = []
 
-        # Р—Р°РіСЂСѓР¶Р°РµРј СѓС‡РµС‚РЅС‹Рµ РґР°РЅРЅС‹Рµ РёР· Р‘Р”
+        # Загружаем учетные данные из БД
         windows_creds_db = get_windows_credentials_db()
         if windows_creds_db.get('default'):
             WINRM_CONFIGS = windows_creds_db['default']
 
-        # === РљРћРќР¤РР“РЈР РђР¦РРЇ РЎР•Р Р’Р•Р РћР’ ===
+        # === КОНФИГУРАЦИЯ СЕРВЕРОВ ===
         SERVER_CONFIG = get_servers_config()
 
-        # РђРІС‚РѕРјР°С‚РёС‡РµСЃРєР°СЏ РіРµРЅРµСЂР°С†РёСЏ СЃРїРёСЃРєРѕРІ IP РґР»СЏ РѕР±СЂР°С‚РЅРѕР№ СЃРѕРІРјРµСЃС‚РёРјРѕСЃС‚Рё
+        # Автоматическая генерация списков IP для обратной совместимости
         RDP_SERVERS = list(SERVER_CONFIG["windows_servers"].keys())
         SSH_SERVERS = list(SERVER_CONFIG["linux_servers"].keys())
         PING_SERVERS = list(SERVER_CONFIG["ping_servers"].keys())
 
-        # === РЈРќРР¤РР¦РР РћР’РђРќРќР«Р• РўРђР™РњРђРЈРўР« ===
+        # === УНИФИЦИРОВАННЫЕ ТАЙМАУТЫ ===
         SERVER_TIMEOUTS = get_json_setting(
             'SERVER_TIMEOUTS',
             defaults.SERVER_TIMEOUTS,
         )
 
-        # === Р’Р•Р‘-РРќРўР•Р Р¤Р•Р™РЎ ===
+        # === ВЕБ-ИНТЕРФЕЙС ===
         WEB_PORT = get_setting('WEB_PORT', defaults.WEB_PORT)
         WEB_HOST = get_setting('WEB_HOST', defaults.WEB_HOST)
         MONITOR_SERVER_IP = get_setting(
@@ -314,7 +314,7 @@ def load_all_settings() -> None:
             defaults.MONITOR_SERVER_IP,
         )
 
-        # === РљРћРќР¤РР“РЈР РђР¦РРЇ Р‘Р­РљРђРџРћР’ ===
+        # === КОНФИГУРАЦИЯ БЭКАПОВ ===
         PROXMOX_HOSTS = get_json_setting('PROXMOX_HOSTS', defaults.PROXMOX_HOSTS)
         DUPLICATE_IP_HOSTS = get_json_setting(
             'DUPLICATE_IP_HOSTS',
@@ -332,7 +332,7 @@ def load_all_settings() -> None:
         )
         DATABASE_CONFIG = get_json_setting('DATABASE_CONFIG', defaults.DATABASE_CONFIG)
 
-        # РћР±СЂР°С‚РЅР°СЏ СЃРѕРІРјРµСЃС‚РёРјРѕСЃС‚СЊ РґР»СЏ СЃС‚Р°СЂРѕРіРѕ РєРѕРґР°
+        # Обратная совместимость для старого кода
         BACKUP_DATABASE_CONFIG = {
             'backups_db': BACKUP_DB_FILE,
             'max_backup_age_days': 90
@@ -340,21 +340,21 @@ def load_all_settings() -> None:
 
         DATABASE_BACKUP_CONFIG = DATABASE_CONFIG
         
-        debug_log("вњ… РќР°СЃС‚СЂРѕР№РєРё СѓСЃРїРµС€РЅРѕ Р·Р°РіСЂСѓР¶РµРЅС‹ РёР· Р±Р°Р·С‹ РґР°РЅРЅС‹С…")
+        debug_log("✅ Настройки успешно загружены из базы данных")
         
     except Exception as e:
-        error_log(f"вќЊ РћС€РёР±РєР° Р·Р°РіСЂСѓР·РєРё РЅР°СЃС‚СЂРѕРµРє РёР· Р‘Р”: {e}")
-        debug_log("вљ пёЏ РСЃРїРѕР»СЊР·СѓСЋС‚СЃСЏ РЅР°СЃС‚СЂРѕР№РєРё РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ")
+        error_log(f"❌ Ошибка загрузки настроек из БД: {e}")
+        debug_log("⚠️ Используются настройки по умолчанию")
 
-# === РРќРР¦РРђР›РР—РђР¦РРЇ ===
+# === ИНИЦИАЛИЗАЦИЯ ===
 
-# Р—Р°РіСЂСѓР¶Р°РµРј РЅР°СЃС‚СЂРѕР№РєРё РїСЂРё РёРјРїРѕСЂС‚Рµ РјРѕРґСѓР»СЏ
+# Загружаем настройки при импорте модуля
 load_all_settings()
 
 if USE_DB:
-    debug_log("вњ… config.db_settings Р·Р°РіСЂСѓР¶Р°РµС‚ РЅР°СЃС‚СЂРѕР№РєРё РёР· Р±Р°Р·С‹ РґР°РЅРЅС‹С…")
+    debug_log("✅ config.db_settings загружает настройки из базы данных")
 else:
-    debug_log("вљ пёЏ config.db_settings РёСЃРїРѕР»СЊР·СѓРµС‚ Р·РЅР°С‡РµРЅРёСЏ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ (Р±Р°Р·Р° РґР°РЅРЅС‹С… РЅРµРґРѕСЃС‚СѓРїРЅР°)")
+    debug_log("⚠️ config.db_settings использует значения по умолчанию (база данных недоступна)")
 
-# РЈРґР°Р»СЏРµРј РѕС€РёР±РѕС‡РЅСѓСЋ СЃС‚СЂРѕРєСѓ СЃ __all__.append('monitor')
-# Р’РјРµСЃС‚Рѕ СЌС‚РѕРіРѕ РѕРїСЂРµРґРµР»РёРј __all__ РІРІРµСЂС…Сѓ С„Р°Р№Р»Р°
+# Удаляем ошибочную строку с __all__.append('monitor')
+# Вместо этого определим __all__ вверху файла

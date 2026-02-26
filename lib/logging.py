@@ -4,11 +4,11 @@ Server Monitoring System v8.6.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Unified logging system
-РЎРёСЃС‚РµРјР° РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЃРµСЂРІРµСЂРѕРІ
-Р’РµСЂСЃРёСЏ: 8.6.0
-РђРІС‚РѕСЂ: РђР»РµРєСЃР°РЅРґСЂ РЎСѓС…Р°РЅРѕРІ (c)
-Р›РёС†РµРЅР·РёСЏ: MIT
-Р•РґРёРЅР°СЏ СЃРёСЃС‚РµРјР° Р»РѕРіРёСЂРѕРІР°РЅРёСЏ
+Система мониторинга серверов
+Версия: 8.6.0
+Автор: Александр Суханов (c)
+Лицензия: MIT
+Единая система логирования
 """
 
 import logging
@@ -43,7 +43,7 @@ MONITOR_LOG_FILE = (
     Path(MONITOR_LOG_FILE) if "MONITOR_LOG_FILE" in globals() else LOG_DIR / "monitor.log"
 )
 
-# Р“Р»РѕР±Р°Р»СЊРЅС‹Рµ РїРµСЂРµРјРµРЅРЅС‹Рµ
+# Глобальные переменные
 _loggers = {}
 
 def setup_logging(
@@ -54,24 +54,24 @@ def setup_logging(
     log_file: Optional[Path] = None,
 ) -> logging.Logger:
     """
-    РќР°СЃС‚СЂРѕР№РєР° Р»РѕРіРёСЂРѕРІР°РЅРёСЏ РґР»СЏ РјРѕРґСѓР»СЏ
+    Настройка логирования для модуля
     
     Args:
-        name: РРјСЏ Р»РѕРіРіРµСЂР°
-        level: РЈСЂРѕРІРµРЅСЊ Р»РѕРіРёСЂРѕРІР°РЅРёСЏ (DEBUG, INFO, WARNING, ERROR)
-        log_to_file: Р—Р°РїРёСЃС‹РІР°С‚СЊ Р»Рё РІ С„Р°Р№Р»
-        log_to_console: Р’С‹РІРѕРґРёС‚СЊ Р»Рё РІ РєРѕРЅСЃРѕР»СЊ
+        name: Имя логгера
+        level: Уровень логирования (DEBUG, INFO, WARNING, ERROR)
+        log_to_file: Записывать ли в файл
+        log_to_console: Выводить ли в консоль
         
     Returns:
-        РќР°СЃС‚СЂРѕРµРЅРЅС‹Р№ Р»РѕРіРіРµСЂ
+        Настроенный логгер
     """
     if name in _loggers:
         return _loggers[name]
     
-    # РЎРѕР·РґР°РµРј Р»РѕРіРіРµСЂ
+    # Создаем логгер
     logger = logging.getLogger(name)
     
-    # РЈСЃС‚Р°РЅР°РІР»РёРІР°РµРј СѓСЂРѕРІРµРЅСЊ
+    # Устанавливаем уровень
     if level:
         log_level = getattr(logging, level.upper(), logging.INFO)
     else:
@@ -79,21 +79,21 @@ def setup_logging(
     
     logger.setLevel(log_level)
     
-    # Р¤РѕСЂРјР°С‚С‚РµСЂ
+    # Форматтер
     formatter = logging.Formatter(
         LOG_FORMAT,
         datefmt=LOG_DATE_FORMAT,
     )
     
-    # РћР±СЂР°Р±РѕС‚С‡РёРєРё
+    # Обработчики
     handlers = []
     
     if log_to_file:
-        # РЎРѕР·РґР°РµРј РґРёСЂРµРєС‚РѕСЂРёСЋ РґР»СЏ Р»РѕРіРѕРІ РµСЃР»Рё РЅРµС‚
+        # Создаем директорию для логов если нет
         LOG_DIR.mkdir(parents=True, exist_ok=True)
         target_file = log_file or DEBUG_LOG_FILE
         
-        # Р¤Р°Р№Р»РѕРІС‹Р№ РѕР±СЂР°Р±РѕС‚С‡РёРє СЃ СЂРѕС‚Р°С†РёРµР№
+        # Файловый обработчик с ротацией
         file_handler = logging.handlers.RotatingFileHandler(
             target_file,
             maxBytes=LOG_MAX_BYTES,
@@ -105,13 +105,13 @@ def setup_logging(
         handlers.append(file_handler)
     
     if log_to_console:
-        # РљРѕРЅСЃРѕР»СЊРЅС‹Р№ РѕР±СЂР°Р±РѕС‚С‡РёРє
+        # Консольный обработчик
         console_handler = logging.StreamHandler()
         console_handler.setFormatter(formatter)
         console_handler.setLevel(log_level)
         handlers.append(console_handler)
     
-    # РЈРґР°Р»СЏРµРј СЃС‚Р°СЂС‹Рµ РѕР±СЂР°Р±РѕС‚С‡РёРєРё Рё РґРѕР±Р°РІР»СЏРµРј РЅРѕРІС‹Рµ
+    # Удаляем старые обработчики и добавляем новые
     for handler in logger.handlers[:]:
         logger.removeHandler(handler)
     
@@ -123,14 +123,14 @@ def setup_logging(
 
 def get_logger(name: Optional[str] = None, base_name: str = "monitoring") -> logging.Logger:
     """
-    РџРѕР»СѓС‡РёС‚СЊ РёРјРµРЅРѕРІР°РЅРЅС‹Р№ Р»РѕРіРіРµСЂ
+    Получить именованный логгер
     
     Args:
-        name: РРјСЏ РІР»РѕР¶РµРЅРЅРѕРіРѕ Р»РѕРіРіРµСЂР° (РѕРїС†РёРѕРЅР°Р»СЊРЅРѕ)
-        base_name: Р‘Р°Р·РѕРІРѕРµ РёРјСЏ Р»РѕРіРіРµСЂР°
+        name: Имя вложенного логгера (опционально)
+        base_name: Базовое имя логгера
         
     Returns:
-        Р­РєР·РµРјРїР»СЏСЂ Р»РѕРіРіРµСЂР°
+        Экземпляр логгера
     """
     if name:
         return logging.getLogger(f"{base_name}.{name}")
@@ -138,12 +138,12 @@ def get_logger(name: Optional[str] = None, base_name: str = "monitoring") -> log
 
 def debug_log(message: str, force: bool = False, logger_name: str = "monitoring") -> None:
     """
-    Р¦РµРЅС‚СЂР°Р»РёР·РѕРІР°РЅРЅРѕРµ Р»РѕРіРёСЂРѕРІР°РЅРёРµ РѕС‚Р»Р°РґРєРё
+    Централизованное логирование отладки
     
     Args:
-        message: РЎРѕРѕР±С‰РµРЅРёРµ РґР»СЏ Р»РѕРіРёСЂРѕРІР°РЅРёСЏ
-        force: РџСЂРёРЅСѓРґРёС‚РµР»СЊРЅРѕ Р»РѕРіРёСЂРѕРІР°С‚СЊ РґР°Р¶Рµ РµСЃР»Рё РЅРµ РІ СЂРµР¶РёРјРµ РѕС‚Р»Р°РґРєРё
-        logger_name: РРјСЏ Р»РѕРіРіРµСЂР°
+        message: Сообщение для логирования
+        force: Принудительно логировать даже если не в режиме отладки
+        logger_name: Имя логгера
     """
     logger = setup_logging(logger_name)
     
@@ -153,33 +153,33 @@ def debug_log(message: str, force: bool = False, logger_name: str = "monitoring"
         logger.info(message)
 
 def info_log(message: str, logger_name: str = "monitoring") -> None:
-    """Р›РѕРіРёСЂРѕРІР°РЅРёРµ РёРЅС„РѕСЂРјР°С†РёРѕРЅРЅС‹С… СЃРѕРѕР±С‰РµРЅРёР№"""
+    """Логирование информационных сообщений"""
     logger = setup_logging(logger_name)
     logger.info(message)
 
 def warning_log(message: str, logger_name: str = "monitoring") -> None:
-    """Р›РѕРіРёСЂРѕРІР°РЅРёРµ РїСЂРµРґСѓРїСЂРµР¶РґРµРЅРёР№"""
+    """Логирование предупреждений"""
     logger = setup_logging(logger_name)
     logger.warning(message)
 
 def error_log(message: str, logger_name: str = "monitoring") -> None:
-    """Р›РѕРіРёСЂРѕРІР°РЅРёРµ РѕС€РёР±РѕРє"""
+    """Логирование ошибок"""
     logger = setup_logging(logger_name)
     logger.error(message)
 
 def critical_log(message: str, logger_name: str = "monitoring") -> None:
-    """Р›РѕРіРёСЂРѕРІР°РЅРёРµ РєСЂРёС‚РёС‡РµСЃРєРёС… РѕС€РёР±РѕРє"""
+    """Логирование критических ошибок"""
     logger = setup_logging(logger_name)
     logger.critical(message)
 
 def exception_log(message: str, exc: Exception = None, logger_name: str = "monitoring") -> None:
     """
-    Р›РѕРіРёСЂРѕРІР°РЅРёРµ РёСЃРєР»СЋС‡РµРЅРёР№ СЃ С‚СЂР°СЃСЃРёСЂРѕРІРєРѕР№
+    Логирование исключений с трассировкой
     
     Args:
-        message: РЎРѕРѕР±С‰РµРЅРёРµ РѕР± РѕС€РёР±РєРµ
-        exc: РСЃРєР»СЋС‡РµРЅРёРµ (РѕРїС†РёРѕРЅР°Р»СЊРЅРѕ)
-        logger_name: РРјСЏ Р»РѕРіРіРµСЂР°
+        message: Сообщение об ошибке
+        exc: Исключение (опционально)
+        logger_name: Имя логгера
     """
     logger = setup_logging(logger_name)
     if exc:
@@ -189,15 +189,15 @@ def exception_log(message: str, exc: Exception = None, logger_name: str = "monit
 
 def set_debug_mode(enabled: bool) -> None:
     """
-    Р’РєР»СЋС‡РµРЅРёРµ/РІС‹РєР»СЋС‡РµРЅРёРµ СЂРµР¶РёРјР° РѕС‚Р»Р°РґРєРё
+    Включение/выключение режима отладки
     
     Args:
-        enabled: Р’РєР»СЋС‡РёС‚СЊ СЂРµР¶РёРј РѕС‚Р»Р°РґРєРё
+        enabled: Включить режим отладки
     """
     global DEBUG_MODE
     DEBUG_MODE = enabled
     
-    # РћР±РЅРѕРІР»СЏРµРј СѓСЂРѕРІРЅРё Р»РѕРіРёСЂРѕРІР°РЅРёСЏ Сѓ РІСЃРµС… Р»РѕРіРіРµСЂРѕРІ
+    # Обновляем уровни логирования у всех логгеров
     new_level = logging.DEBUG if enabled else logging.INFO
     
     for logger in _loggers.values():
@@ -205,21 +205,21 @@ def set_debug_mode(enabled: bool) -> None:
         for handler in logger.handlers:
             handler.setLevel(new_level)
     
-    debug_log(f"Р РµР¶РёРј РѕС‚Р»Р°РґРєРё {'РІРєР»СЋС‡РµРЅ' if enabled else 'РІС‹РєР»СЋС‡РµРЅ'}")
+    debug_log(f"Режим отладки {'включен' if enabled else 'выключен'}")
 
 def get_log_file_stats() -> dict:
     """
-    РџРѕР»СѓС‡РёС‚СЊ СЃС‚Р°С‚РёСЃС‚РёРєСѓ РїРѕ Р»РѕРі-С„Р°Р№Р»Р°Рј
+    Получить статистику по лог-файлам
     
     Returns:
-        РЎР»РѕРІР°СЂСЊ СЃРѕ СЃС‚Р°С‚РёСЃС‚РёРєРѕР№
+        Словарь со статистикой
     """
     stats = {}
     
     for log_file, desc in [
-        (DEBUG_LOG_FILE, "РћСЃРЅРѕРІРЅРѕР№ Р»РѕРі"),
-        (BOT_LOG_FILE, "Р›РѕРі Р±РѕС‚Р°"),
-        (MONITOR_LOG_FILE, "Р›РѕРі РјРѕРЅРёС‚РѕСЂРёРЅРіР°"),
+        (DEBUG_LOG_FILE, "Основной лог"),
+        (BOT_LOG_FILE, "Лог бота"),
+        (MONITOR_LOG_FILE, "Лог мониторинга"),
     ]:
         try:
             log_path = Path(log_file)
@@ -232,7 +232,7 @@ def get_log_file_stats() -> dict:
                     "path": str(log_path),
                 }
             else:
-                stats[desc] = {"error": "Р¤Р°Р№Р» РЅРµ СЃСѓС‰РµСЃС‚РІСѓРµС‚"}
+                stats[desc] = {"error": "Файл не существует"}
         except Exception as e:
             stats[desc] = {"error": str(e)}
     
@@ -240,13 +240,13 @@ def get_log_file_stats() -> dict:
 
 def clear_logs(log_type: str = "all") -> dict:
     """
-    РћС‡РёСЃС‚РєР° Р»РѕРі-С„Р°Р№Р»РѕРІ
+    Очистка лог-файлов
     
     Args:
-        log_type: РўРёРї Р»РѕРіР° РґР»СЏ РѕС‡РёСЃС‚РєРё (all, debug, bot, monitor)
+        log_type: Тип лога для очистки (all, debug, bot, monitor)
         
     Returns:
-        РЎР»РѕРІР°СЂСЊ СЃ СЂРµР·СѓР»СЊС‚Р°С‚Р°РјРё
+        Словарь с результатами
     """
     files_to_clear = []
     
@@ -263,16 +263,16 @@ def clear_logs(log_type: str = "all") -> dict:
             file_path = Path(file_path)
             if file_path.exists():
                 file_path.write_text("", encoding="utf-8")
-                results[file_path.name] = "вњ… РћС‡РёС‰РµРЅ"
+                results[file_path.name] = "✅ Очищен"
             else:
-                # РЎРѕР·РґР°РµРј РїСѓСЃС‚РѕР№ С„Р°Р№Р»
+                # Создаем пустой файл
                 file_path.parent.mkdir(parents=True, exist_ok=True)
                 file_path.write_text("", encoding="utf-8")
-                results[file_path.name] = "вњ… РЎРѕР·РґР°РЅ РїСѓСЃС‚РѕР№ С„Р°Р№Р»"
+                results[file_path.name] = "✅ Создан пустой файл"
         except Exception as e:
-            results[Path(file_path).name] = f"вќЊ РћС€РёР±РєР°: {str(e)}"
+            results[Path(file_path).name] = f"❌ Ошибка: {str(e)}"
     
     return results
 
-# РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ Р»РѕРіРіРµСЂР° РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ
+# Инициализация логгера по умолчанию
 default_logger = setup_logging("monitoring")

@@ -4,11 +4,11 @@ Server Monitoring System v8.6.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Unified server checks: resources, availability, list
-РЎРёСЃС‚РµРјР° РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЃРµСЂРІРµСЂРѕРІ
-Р’РµСЂСЃРёСЏ: 8.6.0
-РђРІС‚РѕСЂ: РђР»РµРєСЃР°РЅРґСЂ РЎСѓС…Р°РЅРѕРІ (c)
-Р›РёС†РµРЅР·РёСЏ: MIT
-РЈРЅРёС„РёС†РёСЂРѕРІР°РЅРЅС‹Рµ РїСЂРѕРІРµСЂРєРё СЃРµСЂРІРµСЂРѕРІ: СЂРµСЃСѓСЂСЃС‹, РґРѕСЃС‚СѓРїРЅРѕСЃС‚СЊ, СЃРїРёСЃРѕРє
+Система мониторинга серверов
+Версия: 8.6.0
+Автор: Александр Суханов (c)
+Лицензия: MIT
+Унифицированные проверки серверов: ресурсы, доступность, список
 """
 
 import re
@@ -35,21 +35,21 @@ from core.checker import ServerChecker
 from lib.logging import debug_log
 sys.path.insert(0, str(BASE_DIR))
 
-# Р›РѕРєР°Р»СЊРЅС‹Р№ СЌРєР·РµРјРїР»СЏСЂ РїСЂРѕРІРµСЂСЏСЋС‰РµРіРѕ
+# Локальный экземпляр проверяющего
 _server_checker = ServerChecker()
 
-# === РЎРџРРЎРћРљ РЎР•Р Р’Р•Р РћР’ ===
+# === СПИСОК СЕРВЕРОВ ===
 
 def initialize_servers():
-    """РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ СЃРїРёСЃРєР° СЃРµСЂРІРµСЂРѕРІ РёР· РєРѕРЅС„РёРіСѓСЂР°С†РёРё"""
+    """Инициализация списка серверов из конфигурации"""
     servers = []
     servers_config = get_servers_config()
     if not any(servers_config.values()):
         servers_config = SERVER_CONFIG
         if not any(servers_config.values()):
-            debug_log("вљ пёЏ РљРѕРЅС„РёРіСѓСЂР°С†РёСЏ СЃРµСЂРІРµСЂРѕРІ РїСѓСЃС‚Р°")
+            debug_log("⚠️ Конфигурация серверов пуста")
     
-    # Windows RDP СЃРµСЂРІРµСЂС‹
+    # Windows RDP серверы
     for ip, name in servers_config.get("windows_servers", {}).items():
         servers.append({
             "ip": ip,
@@ -57,7 +57,7 @@ def initialize_servers():
             "type": "rdp"
         })
     
-    # Linux SSH СЃРµСЂРІРµСЂС‹
+    # Linux SSH серверы
     for ip, name in servers_config.get("linux_servers", {}).items():
         servers.append({
             "ip": ip,
@@ -65,7 +65,7 @@ def initialize_servers():
             "type": "ssh"
         })
     
-    # Ping-only СЃРµСЂРІРµСЂС‹
+    # Ping-only серверы
     for ip, name in servers_config.get("ping_servers", {}).items():
         servers.append({
             "ip": ip,
@@ -76,7 +76,7 @@ def initialize_servers():
     return servers
 
 def resolve_hostname(ip):
-    """Р Р°Р·СЂРµС€Р°РµС‚ IP РІ hostname"""
+    """Разрешает IP в hostname"""
     try:
         hostname = socket.gethostbyaddr(ip)[0]
         return hostname
@@ -84,7 +84,7 @@ def resolve_hostname(ip):
         return ip
 
 def get_server_by_ip(ip):
-    """РџРѕР»СѓС‡РёС‚СЊ СЃРµСЂРІРµСЂ РїРѕ IP"""
+    """Получить сервер по IP"""
     servers = initialize_servers()
     for server in servers:
         if server["ip"] == ip:
@@ -92,7 +92,7 @@ def get_server_by_ip(ip):
     return None
 
 def get_server_by_name(name):
-    """РџРѕР»СѓС‡РёС‚СЊ СЃРµСЂРІРµСЂ РїРѕ РёРјРµРЅРё"""
+    """Получить сервер по имени"""
     servers = initialize_servers()
     for server in servers:
         if server["name"] == name:
@@ -100,36 +100,36 @@ def get_server_by_name(name):
     return None
 
 def get_servers_by_type(server_type):
-    """РџРѕР»СѓС‡РёС‚СЊ СЃРµСЂРІРµСЂС‹ РїРѕ С‚РёРїСѓ"""
+    """Получить серверы по типу"""
     servers = initialize_servers()
     return [s for s in servers if s["type"] == server_type]
 
 def servers_command(update, context):
-    """РћР±СЂР°Р±РѕС‚С‡РёРє РєРѕРјР°РЅРґС‹ /servers"""
+    """Обработчик команды /servers"""
     from telegram import InlineKeyboardMarkup, InlineKeyboardButton
     
     servers = initialize_servers()
     
-    # Р“СЂСѓРїРїРёСЂСѓРµРј СЃРµСЂРІРµСЂС‹ РїРѕ С‚РёРїСѓ
+    # Группируем серверы по типу
     by_type = {}
     for server in servers:
         if server["type"] not in by_type:
             by_type[server["type"]] = []
         by_type[server["type"]].append(server)
     
-    message = "рџ“‹ *РЎРїРёСЃРѕРє СЃРµСЂРІРµСЂРѕРІ*\n\n"
+    message = "📋 *Список серверов*\n\n"
     
     for server_type, servers_list in by_type.items():
-        message += f"**{server_type.upper()} СЃРµСЂРІРµСЂС‹ ({len(servers_list)}):**\n"
+        message += f"**{server_type.upper()} серверы ({len(servers_list)}):**\n"
         for server in servers_list:
-            message += f"вЂў {server['name']} ({server['ip']})\n"
+            message += f"• {server['name']} ({server['ip']})\n"
         message += "\n"
     
     keyboard = [
-        [InlineKeyboardButton("в†©пёЏ РќР°Р·Р°Рґ", callback_data='settings_servers')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_servers')],
         [
-            InlineKeyboardButton("рџЏ  РќР° РіР»Р°РІРЅСѓСЋ", callback_data='main_menu'),
-            InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close'),
+            InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
+            InlineKeyboardButton("✖️ Закрыть", callback_data='close'),
         ],
     ]
     
@@ -147,21 +147,21 @@ def servers_command(update, context):
         )
 
 def servers_list_handler(update, context):
-    """РћР±СЂР°Р±РѕС‚С‡РёРє РєРЅРѕРїРєРё СЃРїРёСЃРєР° СЃРµСЂРІРµСЂРѕРІ"""
+    """Обработчик кнопки списка серверов"""
     return servers_command(update, context)
 
-# === РЈРўРР›РРўР« РџР РћР’Р•Р РљР ===
+# === УТИЛИТЫ ПРОВЕРКИ ===
 
 def check_port(ip, port, timeout=5):
-    """РџСЂРѕРІРµСЂРєР° РґРѕСЃС‚СѓРїРЅРѕСЃС‚Рё РїРѕСЂС‚Р°"""
+    """Проверка доступности порта"""
     return net_check_port(ip, port, timeout=timeout)
 
 def check_ping(ip):
-    """РџСЂРѕРІРµСЂРєР° РґРѕСЃС‚СѓРїРЅРѕСЃС‚Рё С‡РµСЂРµР· ping"""
+    """Проверка доступности через ping"""
     return net_check_ping(ip, timeout=10)
 
 def run_ssh_command(ip, command, timeout=10):
-    """Р’С‹РїРѕР»РЅСЏРµС‚ РєРѕРјР°РЅРґСѓ С‡РµСЂРµР· SSH СЃ РѕР±СЂР°Р±РѕС‚РєРѕР№ РѕС€РёР±РѕРє"""
+    """Выполняет команду через SSH с обработкой ошибок"""
     try:
         cmd = f"timeout {timeout} ssh -o ConnectTimeout=8 -o BatchMode=yes -o StrictHostKeyChecking=no -i {SSH_KEY_PATH} {SSH_USERNAME}@{ip} '{command}'"
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=timeout+2)
@@ -172,7 +172,7 @@ def run_ssh_command(ip, command, timeout=10):
         return False, "", str(e)
 
 def get_windows_server_credentials(ip):
-    """Р’РѕР·РІСЂР°С‰Р°РµС‚ СЃРїРµС†РёС„РёС‡РЅС‹Рµ СѓС‡РµС‚РЅС‹Рµ РґР°РЅРЅС‹Рµ РґР»СЏ Windows СЃРµСЂРІРµСЂР°"""
+    """Возвращает специфичные учетные данные для Windows сервера"""
     for server_type, config in WINDOWS_SERVER_CREDENTIALS.items():
         if ip in config["servers"]:
             return config["credentials"]
@@ -180,40 +180,40 @@ def get_windows_server_credentials(ip):
     return WINRM_CONFIGS
 
 def get_windows_server_type(ip):
-    """РћРїСЂРµРґРµР»СЏРµС‚ С‚РёРї Windows СЃРµСЂРІРµСЂР°"""
+    """Определяет тип Windows сервера"""
     for server_type, config in WINDOWS_SERVER_CREDENTIALS.items():
         if ip in config["servers"]:
             return server_type
     return "unknown"
 
-# === Р РђР—Р”Р•Р›Р¬РќР«Р• РџР РћР’Р•Р РљР WINDOWS РЎР•Р Р’Р•Р РћР’ ===
+# === РАЗДЕЛЬНЫЕ ПРОВЕРКИ WINDOWS СЕРВЕРОВ ===
 
 def check_domain_windows_servers(progress_callback=None):
-    """РџСЂРѕРІРµСЂРєР° РґРѕРјРµРЅРЅС‹С… Windows СЃРµСЂРІРµСЂРѕРІ"""
+    """Проверка доменных Windows серверов"""
     servers = [s for s in get_servers_by_type("rdp") 
                if s["ip"] in WINDOWS_SERVER_CREDENTIALS["domain_servers"]["servers"]]
     return check_windows_servers_generic(servers, "domain", progress_callback)
 
 def check_admin_windows_servers(progress_callback=None):
-    """РџСЂРѕРІРµСЂРєР° Windows СЃРµСЂРІРµСЂРѕРІ СЃ СѓС‡РµС‚РєРѕР№ Admin"""
+    """Проверка Windows серверов с учеткой Admin"""
     servers = [s for s in get_servers_by_type("rdp") 
                if s["ip"] in WINDOWS_SERVER_CREDENTIALS["admin_servers"]["servers"]]
     return check_windows_servers_generic(servers, "admin", progress_callback)
 
 def check_standard_windows_servers(progress_callback=None):
-    """РџСЂРѕРІРµСЂРєР° СЃС‚Р°РЅРґР°СЂС‚РЅС‹С… Windows СЃРµСЂРІРµСЂРѕРІ"""
+    """Проверка стандартных Windows серверов"""
     servers = [s for s in get_servers_by_type("rdp") 
                if s["ip"] in WINDOWS_SERVER_CREDENTIALS["standard_windows"]["servers"]]
     return check_windows_servers_generic(servers, "standard", progress_callback)
 
 def check_windows_servers_generic(servers, server_type, progress_callback=None):
-    """РЈРЅРёРІРµСЂСЃР°Р»СЊРЅР°СЏ С„СѓРЅРєС†РёСЏ РїСЂРѕРІРµСЂРєРё Windows СЃРµСЂРІРµСЂРѕРІ"""
+    """Универсальная функция проверки Windows серверов"""
     results = []
     
     for i, server in enumerate(servers):
         if progress_callback:
             progress = (i + 1) / len(servers) * 100
-            progress_callback(progress, f"РџСЂРѕРІРµСЂСЏРµРј {server['name']} ({server_type})...")
+            progress_callback(progress, f"Проверяем {server['name']} ({server_type})...")
         
         try:
             resources = get_windows_resources_improved(server["ip"])
@@ -232,17 +232,17 @@ def check_windows_servers_generic(servers, server_type, progress_callback=None):
     
     return results, len(servers)
 
-# === Р РђР—Р”Р•Р›Р¬РќР«Р• РџР РћР’Р•Р РљР LINUX РЎР•Р Р’Р•Р РћР’ ===
+# === РАЗДЕЛЬНЫЕ ПРОВЕРКИ LINUX СЕРВЕРОВ ===
 
 def check_linux_servers(progress_callback=None):
-    """РџСЂРѕРІРµСЂРєР° РІСЃРµС… Linux СЃРµСЂРІРµСЂРѕРІ"""
+    """Проверка всех Linux серверов"""
     servers = get_servers_by_type("ssh")
     results = []
     
     for i, server in enumerate(servers):
         if progress_callback:
             progress = (i + 1) / len(servers) * 100
-            progress_callback(progress, f"РџСЂРѕРІРµСЂСЏРµРј {server['name']}...")
+            progress_callback(progress, f"Проверяем {server['name']}...")
         
         try:
             resources = get_linux_resources_improved(server["ip"])
@@ -262,13 +262,13 @@ def check_linux_servers(progress_callback=None):
     return results, len(servers)
 
 def check_windows_2025_servers(progress_callback=None):
-    """РџСЂРѕРІРµСЂРєР° Windows Server 2025"""
+    """Проверка Windows Server 2025"""
     servers = [s for s in get_servers_by_type("rdp") 
                if s["ip"] in WINDOWS_SERVER_CREDENTIALS["windows_2025"]["servers"]]
     return check_windows_servers_generic(servers, "windows_2025", progress_callback)
 
 def check_all_servers_by_type():
-    """РџСЂРѕРІРµСЂРєР° РІСЃРµС… СЃРµСЂРІРµСЂРѕРІ РїРѕ С‚РёРїР°Рј"""
+    """Проверка всех серверов по типам"""
     linux_results, linux_total = check_linux_servers()
     win2025_results, win2025_total = check_windows_2025_servers()
     domain_results, domain_total = check_domain_windows_servers()
@@ -287,10 +287,10 @@ def check_all_servers_by_type():
                    admin_results + standard_results)
     return all_results, stats
 
-# === РћРЎРќРћР’РќР«Р• Р¤РЈРќРљР¦РР РџР РћР’Р•Р РљР Р Р•РЎРЈР РЎРћР’ ===
+# === ОСНОВНЫЕ ФУНКЦИИ ПРОВЕРКИ РЕСУРСОВ ===
 
 def get_linux_resources_improved(ip, timeout=20):
-    """РџРѕР»СѓС‡РµРЅРёРµ СЂРµСЃСѓСЂСЃРѕРІ Linux СЃРµСЂРІРµСЂР°"""
+    """Получение ресурсов Linux сервера"""
     if not check_port(ip, 22, 3):
         return None
     
@@ -349,7 +349,7 @@ def get_linux_resources_improved(ip, timeout=20):
     return resources
 
 def get_windows_resources_improved(ip, timeout=30):
-    """РЈР»СѓС‡С€РµРЅРЅРѕРµ РїРѕР»СѓС‡РµРЅРёРµ СЂРµСЃСѓСЂСЃРѕРІ Windows СЃРµСЂРІРµСЂР° СЃ РЅРµСЃРєРѕР»СЊРєРёРјРё РјРµС‚РѕРґР°РјРё"""
+    """Улучшенное получение ресурсов Windows сервера с несколькими методами"""
     if not check_ping(ip):
         return None
 
@@ -363,41 +363,41 @@ def get_windows_resources_improved(ip, timeout=30):
         "server_type": get_windows_server_type(ip)
     }
     
-    # РњРµС‚РѕРґ 1: РџРѕРїСЂРѕР±СѓРµРј WinRM СЃ PowerShell (СЃ РёСЃРїСЂР°РІР»РµРЅРЅРѕР№ РєРѕРґРёСЂРѕРІРєРѕР№)
+    # Метод 1: Попробуем WinRM с PowerShell (с исправленной кодировкой)
     try:
         winrm_result = get_windows_resources_winrm(ip, timeout)
         if winrm_result and any([winrm_result.get("cpu", 0) > 0, winrm_result.get("ram", 0) > 0, winrm_result.get("disk", 0) > 0]):
-            print(f"вњ… WinRM СѓСЃРїРµС€РЅРѕ РїРѕР»СѓС‡РёР» РґР°РЅРЅС‹Рµ РґР»СЏ {ip}: CPU={winrm_result.get('cpu')}%, RAM={winrm_result.get('ram')}%, Disk={winrm_result.get('disk')}%")
+            print(f"✅ WinRM успешно получил данные для {ip}: CPU={winrm_result.get('cpu')}%, RAM={winrm_result.get('ram')}%, Disk={winrm_result.get('disk')}%")
             return winrm_result
         elif winrm_result:
-            print(f"вљ пёЏ WinRM РїРѕРґРєР»СЋС‡РёР»СЃСЏ Рє {ip}, РЅРѕ РЅРµ РїРѕР»СѓС‡РёР» РјРµС‚СЂРёРєРё")
+            print(f"⚠️ WinRM подключился к {ip}, но не получил метрики")
     except Exception as e:
-        print(f"вќЊ WinRM РѕС€РёР±РєР° РґР»СЏ {ip}: {e}")
+        print(f"❌ WinRM ошибка для {ip}: {e}")
     
-    # РњРµС‚РѕРґ 2: РџРѕРїСЂРѕР±СѓРµРј WMI
+    # Метод 2: Попробуем WMI
     try:
         wmi_result = get_windows_resources_wmi(ip, timeout)
         if wmi_result and any([wmi_result.get("cpu", 0) > 0, wmi_result.get("ram", 0) > 0, wmi_result.get("disk", 0) > 0]):
-            print(f"вњ… WMI СѓСЃРїРµС€РЅРѕ РїРѕР»СѓС‡РёР» РґР°РЅРЅС‹Рµ РґР»СЏ {ip}: CPU={wmi_result.get('cpu')}%, RAM={wmi_result.get('ram')}%, Disk={wmi_result.get('disk')}%")
+            print(f"✅ WMI успешно получил данные для {ip}: CPU={wmi_result.get('cpu')}%, RAM={wmi_result.get('ram')}%, Disk={wmi_result.get('disk')}%")
             return wmi_result
     except Exception as e:
-        print(f"вќЊ WMI РѕС€РёР±РєР° РґР»СЏ {ip}: {e}")
+        print(f"❌ WMI ошибка для {ip}: {e}")
     
-    # Р•СЃР»Рё РІСЃРµ РјРµС‚РѕРґС‹ РЅРµ СЃСЂР°Р±РѕС‚Р°Р»Рё, РЅРѕ СЃРµСЂРІРµСЂ РґРѕСЃС‚СѓРїРµРЅ
+    # Если все методы не сработали, но сервер доступен
     if check_port(ip, 3389, 5):
         resources["status"] = "available_no_metrics"
         resources["access_method"] = "RDP_only"
         resources["cpu"] = 0.0
         resources["ram"] = 0.0
         resources["disk"] = 0.0
-        print(f"вљ пёЏ РЎРµСЂРІРµСЂ {ip} РґРѕСЃС‚СѓРїРµРЅ РїРѕ RDP, РЅРѕ РјРµС‚СЂРёРєРё РЅРµ РїРѕР»СѓС‡РµРЅС‹")
+        print(f"⚠️ Сервер {ip} доступен по RDP, но метрики не получены")
         return resources
     
-    print(f"вќЊ РЎРµСЂРІРµСЂ {ip} РЅРµРґРѕСЃС‚СѓРїРµРЅ РґР»СЏ РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЂРµСЃСѓСЂСЃРѕРІ")
+    print(f"❌ Сервер {ip} недоступен для мониторинга ресурсов")
     return None
 
 def get_windows_resources_winrm(ip, timeout=30):
-    """РџРѕР»СѓС‡РµРЅРёРµ СЂРµСЃСѓСЂСЃРѕРІ С‡РµСЂРµР· WinRM СЃ РёСЃРїСЂР°РІР»РµРЅРёРµРј РєРѕРґРёСЂРѕРІРєРё"""
+    """Получение ресурсов через WinRM с исправлением кодировки"""
     try:
         import winrm
         
@@ -409,11 +409,11 @@ def get_windows_resources_winrm(ip, timeout=30):
                 password = cred["password"]
                 domain = ""
                 
-                # Р•СЃР»Рё РёРјСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ СЃРѕРґРµСЂР¶РёС‚ РґРѕРјРµРЅ
+                # Если имя пользователя содержит домен
                 if "\\" in username:
                     domain, username = username.split("\\", 1)
                 
-                # РџРѕРґРєР»СЋС‡Р°РµРјСЃСЏ Рє WinRM
+                # Подключаемся к WinRM
                 if domain:
                     session = winrm.Session(
                         ip,
@@ -431,7 +431,7 @@ def get_windows_resources_winrm(ip, timeout=30):
                         read_timeout_sec=timeout
                     )
                 
-                # РџСЂРѕСЃС‚Р°СЏ РїСЂРѕРІРµСЂРєР° РїРѕРґРєР»СЋС‡РµРЅРёСЏ
+                # Простая проверка подключения
                 result = session.run_cmd('hostname')
                 if result.status_code != 0:
                     continue
@@ -443,7 +443,7 @@ def get_windows_resources_winrm(ip, timeout=30):
                     "access_method": "WinRM"
                 }
                 
-                # РљРѕРјРїР»РµРєСЃРЅС‹Р№ PowerShell СЃРєСЂРёРїС‚ РґР»СЏ РїРѕР»СѓС‡РµРЅРёСЏ РІСЃРµС… РјРµС‚СЂРёРє
+                # Комплексный PowerShell скрипт для получения всех метрик
                 ps_script = """
 # CPU Usage
 $cpu = Get-WmiObject -Class Win32_Processor | Measure-Object -Property LoadPercentage -Average | Select-Object -ExpandProperty Average
@@ -470,7 +470,7 @@ if ($disk) {
                 
                 result = session.run_ps(ps_script)
                 if result.status_code == 0:
-                    # РРЎРџР РђР’Р›Р•РќРР•: РєРѕСЂСЂРµРєС‚РЅР°СЏ РѕР±СЂР°Р±РѕС‚РєР° РІС‹РІРѕРґР° СЃ СѓС‡РµС‚РѕРј РєРѕРґРёСЂРѕРІРєРё
+                    # ИСПРАВЛЕНИЕ: корректная обработка вывода с учетом кодировки
                     output = ""
                     if hasattr(result, 'std_out') and result.std_out:
                         if isinstance(result.std_out, bytes):
@@ -488,7 +488,7 @@ if ($disk) {
                             except (ValueError, TypeError) as e:
                                 print(f"Error parsing resources for {ip}: {e}, parts: {parts}")
                 
-                # Р•СЃР»Рё РїРѕР»СѓС‡РёР»Рё С…РѕС‚СЊ РєР°РєРёРµ-С‚Рѕ РґР°РЅРЅС‹Рµ
+                # Если получили хоть какие-то данные
                 if resources["cpu"] > 0 or resources["ram"] > 0 or resources["disk"] > 0:
                     return resources
                     
@@ -506,7 +506,7 @@ if ($disk) {
         return None
     
 def get_windows_resources_wmi(ip, timeout=30):
-    """РџРѕР»СѓС‡РµРЅРёРµ СЂРµСЃСѓСЂСЃРѕРІ С‡РµСЂРµР· WMI (Р°Р»СЊС‚РµСЂРЅР°С‚РёРІРЅС‹Р№ РјРµС‚РѕРґ)"""
+    """Получение ресурсов через WMI (альтернативный метод)"""
     try:
         import pythoncom
         import wmi
@@ -518,10 +518,10 @@ def get_windows_resources_wmi(ip, timeout=30):
                 username = cred["username"]
                 password = cred["password"]
                 
-                # РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ COM РґР»СЏ WMI
+                # Инициализация COM для WMI
                 pythoncom.CoInitialize()
                 
-                # РџРѕРґРєР»СЋС‡Р°РµРјСЃСЏ Рє WMI
+                # Подключаемся к WMI
                 connection = wmi.WMI(
                     computer=ip,
                     user=username,
@@ -535,7 +535,7 @@ def get_windows_resources_wmi(ip, timeout=30):
                     "access_method": "WMI"
                 }
                 
-                # CPU - СЃСЂРµРґРЅСЏСЏ Р·Р°РіСЂСѓР·РєР° РІСЃРµС… РїСЂРѕС†РµСЃСЃРѕСЂРѕРІ
+                # CPU - средняя загрузка всех процессоров
                 cpu_loads = []
                 for processor in connection.Win32_Processor():
                     if processor.LoadPercentage:
@@ -560,7 +560,7 @@ def get_windows_resources_wmi(ip, timeout=30):
                 
                 pythoncom.CoUninitialize()
                 
-                # Р•СЃР»Рё РїРѕР»СѓС‡РёР»Рё РґР°РЅРЅС‹Рµ
+                # Если получили данные
                 if resources["cpu"] > 0 or resources["ram"] > 0 or resources["disk"] > 0:
                     return resources
                     
@@ -578,9 +578,9 @@ def get_windows_resources_wmi(ip, timeout=30):
         return None
 
 def get_windows_disk_only(ip, timeout=30):
-    """РњРёРЅРёРјР°Р»СЊРЅР°СЏ РїСЂРѕРІРµСЂРєР° - С‚РѕР»СЊРєРѕ РґРёСЃРє С‡РµСЂРµР· СЂР°Р·РЅС‹Рµ РјРµС‚РѕРґС‹"""
+    """Минимальная проверка - только диск через разные методы"""
     try:
-        # РџСЂРѕСЃС‚Р°СЏ РїСЂРѕРІРµСЂРєР° С‡РµСЂРµР· net use (РµСЃР»Рё РґРѕСЃС‚СѓРїРЅС‹ РѕР±С‰РёРµ РїР°РїРєРё)
+        # Простая проверка через net use (если доступны общие папки)
         import subprocess
         
         credentials = get_windows_server_credentials(ip)
@@ -590,14 +590,14 @@ def get_windows_disk_only(ip, timeout=30):
                 username = cred["username"]
                 password = cred["password"]
                 
-                # РџСЂРѕР±СѓРµРј РїРѕРґРєР»СЋС‡РёС‚СЊСЃСЏ Рє Р°РґРјРёРЅРёСЃС‚СЂР°С‚РёРІРЅРѕР№ share
+                # Пробуем подключиться к административной share
                 cmd = f'net use \\\\{ip}\\admin$ {password} /user:{username}'
                 result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=10)
                 
                 if result.returncode == 0:
-                    # Р•СЃР»Рё РїРѕРґРєР»СЋС‡РёР»РёСЃСЊ, РїС‹С‚Р°РµРјСЃСЏ РїРѕР»СѓС‡РёС‚СЊ РёРЅС„РѕСЂРјР°С†РёСЋ Рѕ РґРёСЃРєРµ
+                    # Если подключились, пытаемся получить информацию о диске
                     ps_script = "Get-WmiObject -Class Win32_LogicalDisk -Filter \"DeviceID='C:'\" | Select-Object Size,FreeSpace"
-                    # Р—РґРµСЃСЊ РјРѕР¶РЅРѕ РґРѕР±Р°РІРёС‚СЊ РІС‹РїРѕР»РЅРµРЅРёРµ PowerShell С‡РµСЂРµР· psexec РёР»Рё Р°РЅР°Р»РѕРіРё
+                    # Здесь можно добавить выполнение PowerShell через psexec или аналоги
                     
                     resources = {
                         "cpu": 0.0, "ram": 0.0, "disk": 0.0,
@@ -607,7 +607,7 @@ def get_windows_disk_only(ip, timeout=30):
                         "status": "basic_access"
                     }
                     
-                    # РћС‚РєР»СЋС‡Р°РµРј СЃРѕРµРґРёРЅРµРЅРёРµ
+                    # Отключаем соединение
                     subprocess.run(f'net use \\\\{ip}\\admin$ /delete', shell=True, capture_output=True)
                     return resources
                     
@@ -621,7 +621,7 @@ def get_windows_disk_only(ip, timeout=30):
         return None
         
 def check_resource_thresholds(ip, resources, server_name):
-    """РџСЂРѕРІРµСЂСЏРµС‚ РїСЂРµРІС‹С€РµРЅРёРµ РїРѕСЂРѕРіРѕРІ СЂРµСЃСѓСЂСЃРѕРІ"""
+    """Проверяет превышение порогов ресурсов"""
     alerts = []
     if not resources:
         return alerts
@@ -631,24 +631,24 @@ def check_resource_thresholds(ip, resources, server_name):
     disk = resources.get("disk", 0)
 
     if cpu >= RESOURCE_THRESHOLDS["cpu_critical"]:
-        alerts.append(f"рџљЁ CPU: {cpu}% (РєСЂРёС‚РёС‡РЅРѕ)")
+        alerts.append(f"🚨 CPU: {cpu}% (критично)")
     elif cpu >= RESOURCE_THRESHOLDS["cpu_warning"]:
-        alerts.append(f"вљ пёЏ CPU: {cpu}% (РІС‹СЃРѕРєР°СЏ РЅР°РіСЂСѓР·РєР°)")
+        alerts.append(f"⚠️ CPU: {cpu}% (высокая нагрузка)")
 
     if ram >= RESOURCE_THRESHOLDS["ram_critical"]:
-        alerts.append(f"рџљЁ RAM: {ram}% (РєСЂРёС‚РёС‡РЅРѕ)")
+        alerts.append(f"🚨 RAM: {ram}% (критично)")
     elif ram >= RESOURCE_THRESHOLDS["ram_warning"]:
-        alerts.append(f"вљ пёЏ RAM: {ram}% (РјР°Р»Рѕ СЃРІРѕР±РѕРґРЅРѕР№ РїР°РјСЏС‚Рё)")
+        alerts.append(f"⚠️ RAM: {ram}% (мало свободной памяти)")
 
     if disk >= RESOURCE_THRESHOLDS["disk_critical"]:
-        alerts.append(f"рџљЁ Disk: {disk}% (РєСЂРёС‚РёС‡РЅРѕ)")
+        alerts.append(f"🚨 Disk: {disk}% (критично)")
     elif disk >= RESOURCE_THRESHOLDS["disk_warning"]:
-        alerts.append(f"вљ пёЏ Disk: {disk}% (РјР°Р»Рѕ РјРµСЃС‚Р°)")
+        alerts.append(f"⚠️ Disk: {disk}% (мало места)")
 
     return alerts
 
 def check_server_availability(server):
-    """РЈРЅРёРІРµСЂСЃР°Р»СЊРЅР°СЏ РїСЂРѕРІРµСЂРєР° РґРѕСЃС‚СѓРїРЅРѕСЃС‚Рё СЃРµСЂРІРµСЂР° - Р РђР‘РћР§РђРЇ Р’Р•Р РЎРРЇ"""
+    """Универсальная проверка доступности сервера - РАБОЧАЯ ВЕРСИЯ"""
     try:
         server_type = server.get("type", "ssh")
         ip = server["ip"]
@@ -660,6 +660,6 @@ def check_server_availability(server):
         else:
             return _server_checker.check_ssh_universal(ip)
     except Exception as e:
-        debug_log(f"вќЊ РћС€РёР±РєР° РїСЂРѕРІРµСЂРєРё {server.get('name', 'unknown')}: {e}")
+        debug_log(f"❌ Ошибка проверки {server.get('name', 'unknown')}: {e}")
         return False
     

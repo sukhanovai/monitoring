@@ -4,23 +4,23 @@ Server Monitoring System v8.6.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Utilities: diagnostics, reports, statistics
-РЎРёСЃС‚РµРјР° РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЃРµСЂРІРµСЂРѕРІ
-Р’РµСЂСЃРёСЏ: 8.6.0
-РђРІС‚РѕСЂ: РђР»РµРєСЃР°РЅРґСЂ РЎСѓС…Р°РЅРѕРІ (c)
-Р›РёС†РµРЅР·РёСЏ: MIT
-РЈС‚РёР»РёС‚С‹: РґРёР°РіРЅРѕСЃС‚РёРєР°, РѕС‚С‡РµС‚С‹, СЃС‚Р°С‚РёСЃС‚РёРєР°
+Система мониторинга серверов
+Версия: 8.6.0
+Автор: Александр Суханов (c)
+Лицензия: MIT
+Утилиты: диагностика, отчеты, статистика
 """
 
 import json
 from datetime import datetime, timedelta
 from config.settings import PROC_UPTIME_FILE, STATS_FILE, DATA_DIR
 
-# === Р”РРђР“РќРћРЎРўРРљРђ SSH (РёР· single_check.py) ===
+# === ДИАГНОСТИКА SSH (из single_check.py) ===
 
 def diagnose_ssh_command(update, context):
-    """Р”РёР°РіРЅРѕСЃС‚РёРєР° SSH РїРѕРґРєР»СЋС‡РµРЅРёСЏ Рє РєРѕРЅРєСЂРµС‚РЅРѕРјСѓ СЃРµСЂРІРµСЂСѓ"""
+    """Диагностика SSH подключения к конкретному серверу"""
     if not context.args:
-        update.message.reply_text("вќЊ РЈРєР°Р¶РёС‚Рµ IP РёР»Рё РёРјСЏ СЃРµСЂРІРµСЂР°: /diagnose_ssh <ip>")
+        update.message.reply_text("❌ Укажите IP или имя сервера: /diagnose_ssh <ip>")
         return
 
     target = context.args[0]
@@ -29,66 +29,66 @@ def diagnose_ssh_command(update, context):
     servers = initialize_servers()
     server = None
 
-    # РС‰РµРј СЃРµСЂРІРµСЂ РїРѕ IP РёР»Рё РёРјРµРЅРё
+    # Ищем сервер по IP или имени
     for s in servers:
         if s["ip"] == target or s["name"] == target:
             server = s
             break
 
     if not server:
-        update.message.reply_text(f"вќЊ РЎРµСЂРІРµСЂ {target} РЅРµ РЅР°Р№РґРµРЅ РІ СЃРїРёСЃРєРµ РјРѕРЅРёС‚РѕСЂРёРЅРіР°")
+        update.message.reply_text(f"❌ Сервер {target} не найден в списке мониторинга")
         return
 
-    message = f"рџ”§ *Р”РёР°РіРЅРѕСЃС‚РёРєР° РїРѕРґРєР»СЋС‡РµРЅРёСЏ РґР»СЏ {server['name']} ({server['ip']})*:\n\n"
+    message = f"🔧 *Диагностика подключения для {server['name']} ({server['ip']})*:\n\n"
 
     try:
-        # РџСЂРѕРІРµСЂРєР° РґРѕСЃС‚СѓРїРЅРѕСЃС‚Рё РїРѕСЂС‚Р°
+        # Проверка доступности порта
         port = 22
         from core.monitor_core import check_port
         is_port_open = check_port(server["ip"], port, timeout=10)
-        message += f"РџРѕСЂС‚ {port} (SSH): {'рџџў РћС‚РєСЂС‹С‚' if is_port_open else 'рџ”ґ Р—Р°РєСЂС‹С‚'}\n"
+        message += f"Порт {port} (SSH): {'🟢 Открыт' if is_port_open else '🔴 Закрыт'}\n"
 
         if is_port_open:
-            # РџСЂРѕРІРµСЂРєР° SSH РїРѕРґРєР»СЋС‡РµРЅРёСЏ
+            # Проверка SSH подключения
             from core.monitor_core import check_ssh, check_ssh_alternative
             
-            message += "\n*РџСЂРѕРІРµСЂРєР° Paramiko (РѕСЃРЅРѕРІРЅРѕР№ РјРµС‚РѕРґ):*\n"
+            message += "\n*Проверка Paramiko (основной метод):*\n"
             result1 = check_ssh(server["ip"])
-            message += f"- Р РµР·СѓР»СЊС‚Р°С‚: {'рџџў РЈСЃРїРµС€РЅРѕ' if result1 else 'рџ”ґ РћС€РёР±РєР°'}\n"
+            message += f"- Результат: {'🟢 Успешно' if result1 else '🔴 Ошибка'}\n"
             
-            message += "\n*РџСЂРѕРІРµСЂРєР° СЃРёСЃС‚РµРјРЅС‹Рј SSH (Р°Р»СЊС‚РµСЂРЅР°С‚РёРІРЅС‹Р№ РјРµС‚РѕРґ):*\n"
+            message += "\n*Проверка системным SSH (альтернативный метод):*\n"
             result2 = check_ssh_alternative(server["ip"])
-            message += f"- Р РµР·СѓР»СЊС‚Р°С‚: {'рџџў РЈСЃРїРµС€РЅРѕ' if result2 else 'рџ”ґ РћС€РёР±РєР°'}\n"
+            message += f"- Результат: {'🟢 Успешно' if result2 else '🔴 Ошибка'}\n"
             
             if not result1 and not result2:
-                message += "\nрџ’Ў *Р РµРєРѕРјРµРЅРґР°С†РёРё:*\n"
-                message += "- РџСЂРѕРІРµСЂСЊС‚Рµ РїСЂР°РІРёР»СЊРЅРѕСЃС‚СЊ SSH РєР»СЋС‡Р°\n"
-                message += "- РЈР±РµРґРёС‚РµСЃСЊ, С‡С‚Рѕ РєР»СЋС‡ РґРѕР±Р°РІР»РµРЅ РІ authorized_keys РЅР° СЃРµСЂРІРµСЂРµ\n"
-                message += "- РџСЂРѕРІРµСЂСЊС‚Рµ РЅР°СЃС‚СЂРѕР№РєРё SSH РґРµРјРѕРЅР° РЅР° С†РµР»РµРІРѕРј СЃРµСЂРІРµСЂРµ\n"
+                message += "\n💡 *Рекомендации:*\n"
+                message += "- Проверьте правильность SSH ключа\n"
+                message += "- Убедитесь, что ключ добавлен в authorized_keys на сервере\n"
+                message += "- Проверьте настройки SSH демона на целевом сервере\n"
             elif result2 and not result1:
-                message += "\nвљ пёЏ *РџСЂРѕР±Р»РµРјР° СЃ Paramiko, РЅРѕ СЃРёСЃС‚РµРјРЅС‹Р№ SSH СЂР°Р±РѕС‚Р°РµС‚*\n"
-                message += "Р­С‚Рѕ РёР·РІРµСЃС‚РЅР°СЏ РїСЂРѕР±Р»РµРјР° СЃРѕРІРјРµСЃС‚РёРјРѕСЃС‚Рё. РСЃРїРѕР»СЊР·СѓРµРј РѕР±С…РѕРґРЅС‹Рµ РїСѓС‚Рё.\n"
+                message += "\n⚠️ *Проблема с Paramiko, но системный SSH работает*\n"
+                message += "Это известная проблема совместимости. Используем обходные пути.\n"
             else:
-                message += "\nвњ… РћР±Р° РјРµС‚РѕРґР° СЂР°Р±РѕС‚Р°СЋС‚ РєРѕСЂСЂРµРєС‚РЅРѕ\n"
+                message += "\n✅ Оба метода работают корректно\n"
 
         else:
-            message += "\nвќЊ *РџРѕСЂС‚ SSH Р·Р°РєСЂС‹С‚* - СЃРµСЂРІРµСЂ РЅРµРґРѕСЃС‚СѓРїРµРЅ\n"
+            message += "\n❌ *Порт SSH закрыт* - сервер недоступен\n"
 
     except Exception as e:
-        message += f"\nрџ’Ґ *РћС€РёР±РєР° РґРёР°РіРЅРѕСЃС‚РёРєРё:* {str(e)}\n"
+        message += f"\n💥 *Ошибка диагностики:* {str(e)}\n"
 
     update.message.reply_text(message, parse_mode='Markdown')
 
 def diagnose_menu_handler(update, context):
-    """РћР±СЂР°Р±РѕС‚С‡РёРє РјРµРЅСЋ РґРёР°РіРЅРѕСЃС‚РёРєРё"""
+    """Обработчик меню диагностики"""
     query = update.callback_query
     query.answer()
-    query.edit_message_text("рџ”§ РњРµРЅСЋ РґРёР°РіРЅРѕСЃС‚РёРєРё Р±СѓРґРµС‚ РґРѕСЃС‚СѓРїРЅРѕ РїРѕСЃР»Рµ РїРѕР»РЅРѕР№ РЅР°СЃС‚СЂРѕР№РєРё")
+    query.edit_message_text("🔧 Меню диагностики будет доступно после полной настройки")
 
-# === РЎРўРђРўРРЎРўРРљРђ (РёР· stats_collector.py) ===
+# === СТАТИСТИКА (из stats_collector.py) ===
 
 def save_monitoring_stats():
-    """РЎРѕС…СЂР°РЅСЏРµС‚ СЃС‚Р°С‚РёСЃС‚РёРєСѓ РјРѕРЅРёС‚РѕСЂРёРЅРіР°"""
+    """Сохраняет статистику мониторинга"""
     try:
         stats_data = {
             "last_updated": datetime.now().isoformat(),
@@ -96,7 +96,7 @@ def save_monitoring_stats():
             "daily_stats": get_daily_stats()
         }
         
-        # РЎРѕР·РґР°РµРј РґРёСЂРµРєС‚РѕСЂРёСЋ РµСЃР»Рё РЅРµ СЃСѓС‰РµСЃС‚РІСѓРµС‚
+        # Создаем директорию если не существует
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         STATS_FILE.write_text(
             json.dumps(stats_data, indent=2),
@@ -104,12 +104,12 @@ def save_monitoring_stats():
         )
             
     except Exception as e:
-        print(f"вќЊ РћС€РёР±РєР° СЃРѕС…СЂР°РЅРµРЅРёСЏ СЃС‚Р°С‚РёСЃС‚РёРєРё: {e}")
+        print(f"❌ Ошибка сохранения статистики: {e}")
 
 def get_system_uptime():
-    """РџРѕР»СѓС‡Р°РµС‚ РІСЂРµРјСЏ СЂР°Р±РѕС‚С‹ СЃРёСЃС‚РµРјС‹"""
+    """Получает время работы системы"""
     try:
-        # Р”Р»СЏ Linux СЃРёСЃС‚РµРј
+        # Для Linux систем
         uptime_seconds = float(PROC_UPTIME_FILE.read_text(encoding="utf-8").split()[0])
             
         days = int(uptime_seconds // 86400)
@@ -118,50 +118,50 @@ def get_system_uptime():
         
         return f"{days}d {hours}h {minutes}m"
     except:
-        return "РќРµРёР·РІРµСЃС‚РЅРѕ"
+        return "Неизвестно"
 
 def get_daily_stats():
-    """РџРѕР»СѓС‡Р°РµС‚ РґРЅРµРІРЅСѓСЋ СЃС‚Р°С‚РёСЃС‚РёРєСѓ"""
-    # Р—РґРµСЃСЊ РјРѕР¶РЅРѕ РґРѕР±Р°РІРёС‚СЊ Р»РѕРіРёРєСѓ СЃР±РѕСЂР° РґРЅРµРІРЅРѕР№ СЃС‚Р°С‚РёСЃС‚РёРєРё
+    """Получает дневную статистику"""
+    # Здесь можно добавить логику сбора дневной статистики
     return {
         "date": datetime.now().strftime("%Y-%m-%d"),
         "checks_performed": 0,
         "alerts_sent": 0
     }
 
-# === РћРўР§Р•РўР« (РёР· reports.py) ===
+# === ОТЧЕТЫ (из reports.py) ===
 
 def generate_daily_report():
-    """Р“РµРЅРµСЂРёСЂСѓРµС‚ РµР¶РµРґРЅРµРІРЅС‹Р№ РѕС‚С‡РµС‚"""
-    # Р—Р°РіР»СѓС€РєР° - СЂРµР°Р»РёР·РѕРІР°С‚СЊ Р»РѕРіРёРєСѓ РѕС‚С‡РµС‚РѕРІ
-    return "рџ“Љ Р•Р¶РµРґРЅРµРІРЅС‹Р№ РѕС‚С‡РµС‚ РІ СЂР°Р·СЂР°Р±РѕС‚РєРµ"
+    """Генерирует ежедневный отчет"""
+    # Заглушка - реализовать логику отчетов
+    return "📊 Ежедневный отчет в разработке"
 
 def get_backup_stats():
-    """РЎС‚Р°С‚РёСЃС‚РёРєР° РїРѕ Р±СЌРєР°РїР°Рј РґР»СЏ РѕС‚С‡РµС‚РѕРІ"""
-    # Р—Р°РіР»СѓС€РєР° - СЂРµР°Р»РёР·РѕРІР°С‚СЊ Р»РѕРіРёРєСѓ
+    """Статистика по бэкапам для отчетов"""
+    # Заглушка - реализовать логику
     return {"total": 0, "successful": 0, "failed": 0}
 
-# === РћР‘Р РђР‘РћРўР§РРљР Р”Р›РЇ BOT_MENU ===
+# === ОБРАБОТЧИКИ ДЛЯ BOT_MENU ===
 
 def stats_command(update, context):
-    """РћР±СЂР°Р±РѕС‚С‡РёРє РєРѕРјР°РЅРґС‹ /stats"""
+    """Обработчик команды /stats"""
     from telegram import InlineKeyboardMarkup, InlineKeyboardButton
     
     stats = get_daily_stats()
     uptime = get_system_uptime()
     
     message = (
-        f"рџ“Љ *РЎС‚Р°С‚РёСЃС‚РёРєР° РјРѕРЅРёС‚РѕСЂРёРЅРіР°*\n\n"
-        f"вЂў Р”Р°С‚Р°: {stats['date']}\n"
-        f"вЂў РџСЂРѕРІРµСЂРѕРє РІС‹РїРѕР»РЅРµРЅРѕ: {stats['checks_performed']}\n"
-        f"вЂў РЈРІРµРґРѕРјР»РµРЅРёР№ РѕС‚РїСЂР°РІР»РµРЅРѕ: {stats['alerts_sent']}\n"
-        f"вЂў РђРїС‚Р°Р№Рј СЃРёСЃС‚РµРјС‹: {uptime}\n"
+        f"📊 *Статистика мониторинга*\n\n"
+        f"• Дата: {stats['date']}\n"
+        f"• Проверок выполнено: {stats['checks_performed']}\n"
+        f"• Уведомлений отправлено: {stats['alerts_sent']}\n"
+        f"• Аптайм системы: {uptime}\n"
     )
     
     keyboard = [
-        [InlineKeyboardButton("рџ”„ РћР±РЅРѕРІРёС‚СЊ", callback_data='stats_refresh')],
-        [InlineKeyboardButton("рџ“Љ РЎС‚Р°С‚СѓСЃ РјРѕРЅРёС‚РѕСЂРёРЅРіР°", callback_data='monitor_status')],
-        [InlineKeyboardButton("вњ–пёЏ Р—Р°РєСЂС‹С‚СЊ", callback_data='close')]
+        [InlineKeyboardButton("🔄 Обновить", callback_data='stats_refresh')],
+        [InlineKeyboardButton("📊 Статус мониторинга", callback_data='monitor_status')],
+        [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
     
     if hasattr(update, 'callback_query'):

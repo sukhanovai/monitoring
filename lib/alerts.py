@@ -4,11 +4,11 @@ Server Monitoring System v8.6.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Unified alert system
-РЎРёСЃС‚РµРјР° РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЃРµСЂРІРµСЂРѕРІ
-Р’РµСЂСЃРёСЏ: 8.6.0
-РђРІС‚РѕСЂ: РђР»РµРєСЃР°РЅРґСЂ РЎСѓС…Р°РЅРѕРІ (c)
-Р›РёС†РµРЅР·РёСЏ: MIT
-Р•РґРёРЅР°СЏ СЃРёСЃС‚РµРјР° РѕРїРѕРІРµС‰РµРЅРёР№
+Система мониторинга серверов
+Версия: 8.6.0
+Автор: Александр Суханов (c)
+Лицензия: MIT
+Единая система оповещений
 """
 
 import time
@@ -16,10 +16,10 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime, time as dt_time
 from lib.logging import debug_log, error_log, setup_logging
 
-# Р›РѕРіРіРµСЂ РґР»СЏ СЌС‚РѕРіРѕ РјРѕРґСѓР»СЏ
+# Логгер для этого модуля
 _logger = setup_logging("alerts")
 
-# Р“Р»РѕР±Р°Р»СЊРЅС‹Рµ РїРµСЂРµРјРµРЅРЅС‹Рµ
+# Глобальные переменные
 _telegram_bot = None
 _chat_ids = []
 _tamtam_sender = None
@@ -35,14 +35,14 @@ def configure_alerts(
     thresholds: Optional[Dict[str, Dict[str, Any]]] = None,
 ) -> None:
     """
-    РќР°СЃС‚СЂР°РёРІР°РµС‚ Р±Р°Р·РѕРІС‹Рµ РїР°СЂР°РјРµС‚СЂС‹ Р°Р»РµСЂС‚РѕРІ РёР· РІРЅРµС€РЅРёС… РЅР°СЃС‚СЂРѕРµРє.
+    Настраивает базовые параметры алертов из внешних настроек.
 
     Args:
-        silent_start: Р§Р°СЃ РЅР°С‡Р°Р»Р° С‚РёС…РѕРіРѕ СЂРµР¶РёРјР°
-        silent_end: Р§Р°СЃ РѕРєРѕРЅС‡Р°РЅРёСЏ С‚РёС…РѕРіРѕ СЂРµР¶РёРјР°
-        enabled: Р’РєР»СЋС‡РµРЅС‹ Р»Рё Р°Р»РµСЂС‚С‹
-        cooldown_seconds: РњРёРЅРёРјР°Р»СЊРЅС‹Р№ РёРЅС‚РµСЂРІР°Р» РјРµР¶РґСѓ РѕРґРёРЅР°РєРѕРІС‹РјРё Р°Р»РµСЂС‚Р°РјРё
-        thresholds: РџРµСЂРµРѕРїСЂРµРґРµР»РµРЅРёРµ РїРѕСЂРѕРіРѕРІ РґР»СЏ С‚РёРїРѕРІ Р°Р»РµСЂС‚РѕРІ
+        silent_start: Час начала тихого режима
+        silent_end: Час окончания тихого режима
+        enabled: Включены ли алерты
+        cooldown_seconds: Минимальный интервал между одинаковыми алертами
+        thresholds: Переопределение порогов для типов алертов
     """
     if silent_start is not None:
         _config.silent_start = silent_start
@@ -56,109 +56,109 @@ def configure_alerts(
         _config.thresholds.update(thresholds)
 
 class AlertConfig:
-    """РљРѕРЅС„РёРіСѓСЂР°С†РёСЏ Р°Р»РµСЂС‚РѕРІ"""
+    """Конфигурация алертов"""
     
     def __init__(self):
         self.silent_start = 20  # 20:00
         self.silent_end = 9     # 09:00
         self.enabled = True
-        self.cooldown_seconds = 300  # 5 РјРёРЅСѓС‚ РјРµР¶РґСѓ РѕРґРёРЅР°РєРѕРІС‹РјРё Р°Р»РµСЂС‚Р°РјРё
+        self.cooldown_seconds = 300  # 5 минут между одинаковыми алертами
         self.max_retries = 3
         self.retry_delay = 5
         
-        # РџРѕСЂРѕРіРё РґР»СЏ СЂР°Р·РЅС‹С… С‚РёРїРѕРІ Р°Р»РµСЂС‚РѕРІ
+        # Пороги для разных типов алертов
         self.thresholds = {
             "critical": {"priority": 1, "always_send": True},
             "warning": {"priority": 2, "always_send": False},
             "info": {"priority": 3, "always_send": False}
         }
 
-# Р“Р»РѕР±Р°Р»СЊРЅС‹Р№ СЌРєР·РµРјРїР»СЏСЂ РєРѕРЅС„РёРіСѓСЂР°С†РёРё
+# Глобальный экземпляр конфигурации
 _config = AlertConfig()
 
 def init_telegram_bot(bot_instance, chat_ids: List[str]) -> None:
     """
-    РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ Telegram Р±РѕС‚Р° РґР»СЏ РѕС‚РїСЂР°РІРєРё Р°Р»РµСЂС‚РѕРІ
+    Инициализация Telegram бота для отправки алертов
     
     Args:
-        bot_instance: Р­РєР·РµРјРїР»СЏСЂ Telegram Р±РѕС‚Р°
-        chat_ids: РЎРїРёСЃРѕРє ID С‡Р°С‚РѕРІ РґР»СЏ РѕС‚РїСЂР°РІРєРё
+        bot_instance: Экземпляр Telegram бота
+        chat_ids: Список ID чатов для отправки
     """
     global _telegram_bot, _chat_ids
     _telegram_bot = bot_instance
     _chat_ids = chat_ids
-    debug_log(f"Telegram Р±РѕС‚ РёРЅРёС†РёР°Р»РёР·РёСЂРѕРІР°РЅ РґР»СЏ {len(chat_ids)} С‡Р°С‚РѕРІ")
+    debug_log(f"Telegram бот инициализирован для {len(chat_ids)} чатов")
 
 
 
 def init_tamtam_sender(sender) -> None:
-    """РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ РѕС‚РїСЂР°РІС‰РёРєР° TamTam РґР»СЏ Р°Р»РµСЂС‚РѕРІ."""
+    """Инициализация отправщика TamTam для алертов."""
     global _tamtam_sender
     _tamtam_sender = sender
-    debug_log("TamTam РѕС‚РїСЂР°РІС‰РёРє Р°Р»РµСЂС‚РѕРІ РёРЅРёС†РёР°Р»РёР·РёСЂРѕРІР°РЅ")
+    debug_log("TamTam отправщик алертов инициализирован")
 
 
 def set_silent_override(enabled: Optional[bool]) -> None:
     """
-    РЈСЃС‚Р°РЅРѕРІРёС‚СЊ РїСЂРёРЅСѓРґРёС‚РµР»СЊРЅРѕРµ РїРµСЂРµРѕРїСЂРµРґРµР»РµРЅРёРµ С‚РёС…РѕРіРѕ СЂРµР¶РёРјР°
+    Установить принудительное переопределение тихого режима
     
     Args:
-        enabled: None - Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРёР№ СЂРµР¶РёРј, True - РїСЂРёРЅСѓРґРёС‚РµР»СЊРЅРѕ С‚РёС…РёР№, False - РїСЂРёРЅСѓРґРёС‚РµР»СЊРЅРѕ РіСЂРѕРјРєРёР№
+        enabled: None - автоматический режим, True - принудительно тихий, False - принудительно громкий
     """
     global _silent_override
     old_value = _silent_override
     _silent_override = enabled
     
     status_map = {
-        None: "Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРёР№ СЂРµР¶РёРј",
-        True: "РїСЂРёРЅСѓРґРёС‚РµР»СЊРЅРѕ С‚РёС…РёР№",
-        False: "РїСЂРёРЅСѓРґРёС‚РµР»СЊРЅРѕ РіСЂРѕРјРєРёР№"
+        None: "автоматический режим",
+        True: "принудительно тихий",
+        False: "принудительно громкий"
     }
     
-    debug_log(f"РџРµСЂРµРѕРїСЂРµРґРµР»РµРЅРёРµ С‚РёС…РѕРіРѕ СЂРµР¶РёРјР° РёР·РјРµРЅРµРЅРѕ: {status_map.get(old_value, 'РЅРµРёР·РІРµСЃС‚РЅРѕ')} в†’ {status_map.get(enabled, 'РЅРµРёР·РІРµСЃС‚РЅРѕ')}")
+    debug_log(f"Переопределение тихого режима изменено: {status_map.get(old_value, 'неизвестно')} → {status_map.get(enabled, 'неизвестно')}")
 
 def get_silent_override() -> Optional[bool]:
     """
-    Р’РѕР·РІСЂР°С‰Р°РµС‚ С‚РµРєСѓС‰РёР№ РїСЂРёРЅСѓРґРёС‚РµР»СЊРЅС‹Р№ СЂРµР¶РёРј С‚РёС…РёС… СѓРІРµРґРѕРјР»РµРЅРёР№.
+    Возвращает текущий принудительный режим тихих уведомлений.
     """
     return _silent_override
 
 def is_silent_time() -> bool:
     """
-    РџСЂРѕРІРµСЂСЏРµС‚, РЅР°С…РѕРґРёС‚СЃСЏ Р»Рё С‚РµРєСѓС‰РµРµ РІСЂРµРјСЏ РІ 'С‚РёС…РѕРј' РїРµСЂРёРѕРґРµ
+    Проверяет, находится ли текущее время в 'тихом' периоде
     
     Returns:
-        True РµСЃР»Рё С‚РёС…РёР№ СЂРµР¶РёРј Р°РєС‚РёРІРµРЅ
+        True если тихий режим активен
     """
     global _silent_override
     
-    # Р•СЃР»Рё РµСЃС‚СЊ РїСЂРёРЅСѓРґРёС‚РµР»СЊРЅРѕРµ РїРµСЂРµРѕРїСЂРµРґРµР»РµРЅРёРµ
+    # Если есть принудительное переопределение
     if _silent_override is not None:
-        return _silent_override  # True - С‚РёС…РёР№, False - РіСЂРѕРјРєРёР№
+        return _silent_override  # True - тихий, False - громкий
 
-    # РЎС‚Р°РЅРґР°СЂС‚РЅР°СЏ РїСЂРѕРІРµСЂРєР° РїРѕ РІСЂРµРјРµРЅРё
+    # Стандартная проверка по времени
     current_hour = datetime.now().hour
     
-    # Р•СЃР»Рё РїРµСЂРёРѕРґ РїРµСЂРµС…РѕРґРёС‚ С‡РµСЂРµР· РїРѕР»РЅРѕС‡СЊ (РЅР°РїСЂРёРјРµСЂ, 20:00 - 09:00)
+    # Если период переходит через полночь (например, 20:00 - 09:00)
     if _config.silent_start > _config.silent_end:
         return current_hour >= _config.silent_start or current_hour < _config.silent_end
     
-    # РџРµСЂРёРѕРґ РІ РїСЂРµРґРµР»Р°С… РѕРґРЅРёС… СЃСѓС‚РѕРє
+    # Период в пределах одних суток
     return _config.silent_start <= current_hour < _config.silent_end
 
 def should_send_alert(alert_type: str, force: bool) -> bool:
     """
-    РџСЂРѕРІРµСЂСЏРµС‚, РЅСѓР¶РЅРѕ Р»Рё РѕС‚РїСЂР°РІР»СЏС‚СЊ Р°Р»РµСЂС‚
+    Проверяет, нужно ли отправлять алерт
     
     Args:
-        alert_type: РўРёРї Р°Р»РµСЂС‚Р° (critical, warning, info)
-        force: РџСЂРёРЅСѓРґРёС‚РµР»СЊРЅР°СЏ РѕС‚РїСЂР°РІРєР°
+        alert_type: Тип алерта (critical, warning, info)
+        force: Принудительная отправка
         
     Returns:
-        True РµСЃР»Рё РЅСѓР¶РЅРѕ РѕС‚РїСЂР°РІРёС‚СЊ Р°Р»РµСЂС‚
+        True если нужно отправить алерт
     """
     if not _config.enabled:
-        debug_log("РђР»РµСЂС‚С‹ РѕС‚РєР»СЋС‡РµРЅС‹ РІ РєРѕРЅС„РёРіСѓСЂР°С†РёРё")
+        debug_log("Алерты отключены в конфигурации")
         return False
     
     if force:
@@ -172,9 +172,9 @@ def should_send_alert(alert_type: str, force: bool) -> bool:
         if threshold_config["always_send"]:
             return True
     
-    # РџСЂРѕРІРµСЂСЏРµРј С‚РёС…РёР№ СЂРµР¶РёРј РґР»СЏ РЅРµ-РєСЂРёС‚РёС‡РµСЃРєРёС… Р°Р»РµСЂС‚РѕРІ
+    # Проверяем тихий режим для не-критических алертов
     if alert_type != "critical" and is_silent_time():
-        debug_log("РўРёС…РёР№ СЂРµР¶РёРј Р°РєС‚РёРІРµРЅ, Р°Р»РµСЂС‚ РЅРµ РѕС‚РїСЂР°РІР»СЏРµС‚СЃСЏ")
+        debug_log("Тихий режим активен, алерт не отправляется")
         return False
     
     return True
@@ -187,37 +187,37 @@ def send_alert(
     metadata: Optional[Dict[str, Any]] = None
 ) -> bool:
     """
-    РЈРЅРёРІРµСЂСЃР°Р»СЊРЅР°СЏ С„СѓРЅРєС†РёСЏ РѕС‚РїСЂР°РІРєРё Р°Р»РµСЂС‚РѕРІ
+    Универсальная функция отправки алертов
     
     Args:
-        message: РўРµРєСЃС‚ СЃРѕРѕР±С‰РµРЅРёСЏ
-        alert_type: РўРёРї Р°Р»РµСЂС‚Р° (critical, warning, info)
-        force: РџСЂРёРЅСѓРґРёС‚РµР»СЊРЅР°СЏ РѕС‚РїСЂР°РІРєР°
-        tags: РўРµРіРё РґР»СЏ РєР°С‚РµРіРѕСЂРёР·Р°С†РёРё Р°Р»РµСЂС‚Р°
-        metadata: Р”РѕРїРѕР»РЅРёС‚РµР»СЊРЅС‹Рµ РјРµС‚Р°РґР°РЅРЅС‹Рµ
+        message: Текст сообщения
+        alert_type: Тип алерта (critical, warning, info)
+        force: Принудительная отправка
+        tags: Теги для категоризации алерта
+        metadata: Дополнительные метаданные
         
     Returns:
-        True РµСЃР»Рё СЃРѕРѕР±С‰РµРЅРёРµ РѕС‚РїСЂР°РІР»РµРЅРѕ СѓСЃРїРµС€РЅРѕ
+        True если сообщение отправлено успешно
     """
     if not should_send_alert(alert_type, force):
         return False
     
-    # РџСЂРѕРІРµСЂСЏРµРј РєРґ РґР»СЏ РѕРґРёРЅР°РєРѕРІС‹С… Р°Р»РµСЂС‚РѕРІ
+    # Проверяем кд для одинаковых алертов
     if not force and _is_cooldown_active(message):
-        debug_log(f"РђР»РµСЂС‚ РЅР°С…РѕРґРёС‚СЃСЏ РІ РєРґ: {message[:50]}...")
+        debug_log(f"Алерт находится в кд: {message[:50]}...")
         return False
     
-    # Р”РѕР±Р°РІР»СЏРµРј РїСЂРµС„РёРєСЃ РІ Р·Р°РІРёСЃРёРјРѕСЃС‚Рё РѕС‚ С‚РёРїР° Р°Р»РµСЂС‚Р°
+    # Добавляем префикс в зависимости от типа алерта
     prefixes = {
-        "critical": "рџљЁ ",
-        "warning": "вљ пёЏ ",
-        "info": "в„№пёЏ "
+        "critical": "🚨 ",
+        "warning": "⚠️ ",
+        "info": "ℹ️ "
     }
     
     prefix = prefixes.get(alert_type, "")
     full_message = f"{prefix}{message}"
     
-    # Р›РѕРіРёСЂСѓРµРј Р°Р»РµСЂС‚
+    # Логируем алерт
     log_levels = {
         "critical": error_log,
         "warning": debug_log,
@@ -225,9 +225,9 @@ def send_alert(
     }
     
     log_func = log_levels.get(alert_type, debug_log)
-    log_func(f"РћС‚РїСЂР°РІРєР° Р°Р»РµСЂС‚Р° [{alert_type}]: {message[:100]}...")
+    log_func(f"Отправка алерта [{alert_type}]: {message[:100]}...")
     
-    # РћС‚РїСЂР°РІР»СЏРµРј С‡РµСЂРµР· РІСЃРµ РґРѕСЃС‚СѓРїРЅС‹Рµ РєР°РЅР°Р»С‹
+    # Отправляем через все доступные каналы
     sent = False
     errors = []
     
@@ -237,7 +237,7 @@ def send_alert(
         if telegram_sent:
             sent = True
         else:
-            errors.append("Telegram: РѕС€РёР±РєР° РѕС‚РїСЂР°РІРєРё")
+            errors.append("Telegram: ошибка отправки")
 
     # TamTam
     if _tamtam_sender:
@@ -246,11 +246,11 @@ def send_alert(
             if tamtam_sent:
                 sent = True
             else:
-                errors.append("TamTam: РѕС€РёР±РєР° РѕС‚РїСЂР°РІРєРё")
+                errors.append("TamTam: ошибка отправки")
         except Exception as e:
             errors.append(f"TamTam: {e}")
 
-    # Р—Р°РїРёСЃС‹РІР°РµРј РІ РёСЃС‚РѕСЂРёСЋ
+    # Записываем в историю
     _record_alert({
         "timestamp": datetime.now().isoformat(),
         "message": message,
@@ -265,17 +265,17 @@ def send_alert(
 
 def _send_telegram_alert(message: str, alert_type: str) -> bool:
     """
-    РћС‚РїСЂР°РІРєР° Р°Р»РµСЂС‚Р° С‡РµСЂРµР· Telegram
+    Отправка алерта через Telegram
     
     Args:
-        message: РўРµРєСЃС‚ СЃРѕРѕР±С‰РµРЅРёСЏ
-        alert_type: РўРёРї Р°Р»РµСЂС‚Р°
+        message: Текст сообщения
+        alert_type: Тип алерта
         
     Returns:
-        True РµСЃР»Рё РѕС‚РїСЂР°РІР»РµРЅРѕ СѓСЃРїРµС€РЅРѕ
+        True если отправлено успешно
     """
     if not _telegram_bot or not _chat_ids:
-        error_log("Telegram Р±РѕС‚ РЅРµ РёРЅРёС†РёР°Р»РёР·РёСЂРѕРІР°РЅ")
+        error_log("Telegram бот не инициализирован")
         return False
     
     success_count = 0
@@ -283,7 +283,7 @@ def _send_telegram_alert(message: str, alert_type: str) -> bool:
     
     for i, chat_id in enumerate(_chat_ids):
         try:
-            # Р”Р»СЏ РєСЂРёС‚РёС‡РµСЃРєРёС… Р°Р»РµСЂС‚РѕРІ РґРѕР±Р°РІР»СЏРµРј РґРѕРїРѕР»РЅРёС‚РµР»СЊРЅРѕРµ С„РѕСЂРјР°С‚РёСЂРѕРІР°РЅРёРµ
+            # Для критических алертов добавляем дополнительное форматирование
             if alert_type == "critical":
                 formatted_message = f"*{message}*"
             else:
@@ -296,33 +296,33 @@ def _send_telegram_alert(message: str, alert_type: str) -> bool:
             )
             success_count += 1
             
-            # РќРµР±РѕР»СЊС€Р°СЏ Р·Р°РґРµСЂР¶РєР° РјРµР¶РґСѓ РѕС‚РїСЂР°РІРєР°РјРё С‡С‚РѕР±С‹ РЅРµ РїСЂРµРІС‹СЃРёС‚СЊ Р»РёРјРёС‚С‹
+            # Небольшая задержка между отправками чтобы не превысить лимиты
             if i < total_chats - 1:
                 time.sleep(0.1)
                 
         except Exception as e:
-            error_log(f"РћС€РёР±РєР° РѕС‚РїСЂР°РІРєРё РІ С‡Р°С‚ {chat_id}: {e}")
+            error_log(f"Ошибка отправки в чат {chat_id}: {e}")
     
     success_rate = success_count / total_chats if total_chats > 0 else 0
-    debug_log(f"Telegram Р°Р»РµСЂС‚ РѕС‚РїСЂР°РІР»РµРЅ: {success_count}/{total_chats} СѓСЃРїРµС€РЅРѕ ({success_rate:.0%})")
+    debug_log(f"Telegram алерт отправлен: {success_count}/{total_chats} успешно ({success_rate:.0%})")
     
     return success_count > 0
 
 def _is_cooldown_active(message: str, check_period: int = None) -> bool:
     """
-    РџСЂРѕРІРµСЂСЏРµС‚, Р°РєС‚РёРІРµРЅ Р»Рё РєРґ РґР»СЏ СЃРѕРѕР±С‰РµРЅРёСЏ
+    Проверяет, активен ли кд для сообщения
     
     Args:
-        message: РўРµРєСЃС‚ СЃРѕРѕР±С‰РµРЅРёСЏ
-        check_period: РџРµСЂРёРѕРґ РїСЂРѕРІРµСЂРєРё РІ СЃРµРєСѓРЅРґР°С… (РµСЃР»Рё None, РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РєРѕРЅС„РёРі)
+        message: Текст сообщения
+        check_period: Период проверки в секундах (если None, используется конфиг)
         
     Returns:
-        True РµСЃР»Рё РєРґ Р°РєС‚РёРІРµРЅ
+        True если кд активен
     """
     period = check_period or _config.cooldown_seconds
     now = time.time()
     
-    # РС‰РµРј РїРѕС…РѕР¶РёРµ СЃРѕРѕР±С‰РµРЅРёСЏ РІ РёСЃС‚РѕСЂРёРё
+    # Ищем похожие сообщения в истории
     for alert in reversed(_alert_history):
         if alert["message"] == message and alert["sent"]:
             alert_time = datetime.fromisoformat(alert["timestamp"]).timestamp()
@@ -333,26 +333,26 @@ def _is_cooldown_active(message: str, check_period: int = None) -> bool:
 
 def _record_alert(alert_data: Dict[str, Any]) -> None:
     """
-    Р—Р°РїРёСЃС‹РІР°РµС‚ Р°Р»РµСЂС‚ РІ РёСЃС‚РѕСЂРёСЋ
+    Записывает алерт в историю
     
     Args:
-        alert_data: Р”Р°РЅРЅС‹Рµ Р°Р»РµСЂС‚Р°
+        alert_data: Данные алерта
     """
     global _alert_history
     
     _alert_history.append(alert_data)
     
-    # РћРіСЂР°РЅРёС‡РёРІР°РµРј СЂР°Р·РјРµСЂ РёСЃС‚РѕСЂРёРё
+    # Ограничиваем размер истории
     if len(_alert_history) > _max_history_size:
         _alert_history = _alert_history[-_max_history_size:]
     
-    # Р›РѕРіРёСЂСѓРµРј РІ С„Р°Р№Р» РґР»СЏ РѕС‚Р»Р°РґРєРё
+    # Логируем в файл для отладки
     if alert_data.get("sent"):
-        status = "вњ… РћС‚РїСЂР°РІР»РµРЅ"
+        status = "✅ Отправлен"
     else:
-        status = "вќЊ РќРµ РѕС‚РїСЂР°РІР»РµРЅ"
+        status = "❌ Не отправлен"
     
-    debug_log(f"РђР»РµСЂС‚ Р·Р°РїРёСЃР°РЅ РІ РёСЃС‚РѕСЂРёСЋ: {alert_data['type']} - {status}")
+    debug_log(f"Алерт записан в историю: {alert_data['type']} - {status}")
 
 def get_alert_history(
     limit: int = 50,
@@ -360,15 +360,15 @@ def get_alert_history(
     tags: Optional[List[str]] = None
 ) -> List[Dict[str, Any]]:
     """
-    РџРѕР»СѓС‡РёС‚СЊ РёСЃС‚РѕСЂРёСЋ Р°Р»РµСЂС‚РѕРІ
+    Получить историю алертов
     
     Args:
-        limit: РњР°РєСЃРёРјР°Р»СЊРЅРѕРµ РєРѕР»РёС‡РµСЃС‚РІРѕ Р·Р°РїРёСЃРµР№
-        alert_type: Р¤РёР»СЊС‚СЂ РїРѕ С‚РёРїСѓ Р°Р»РµСЂС‚Р°
-        tags: Р¤РёР»СЊС‚СЂ РїРѕ С‚РµРіР°Рј
+        limit: Максимальное количество записей
+        alert_type: Фильтр по типу алерта
+        tags: Фильтр по тегам
         
     Returns:
-        РЎРїРёСЃРѕРє Р°Р»РµСЂС‚РѕРІ
+        Список алертов
     """
     filtered_history = _alert_history
     
@@ -382,34 +382,34 @@ def get_alert_history(
 
 def clear_alert_history() -> int:
     """
-    РћС‡РёСЃС‚РёС‚СЊ РёСЃС‚РѕСЂРёСЋ Р°Р»РµСЂС‚РѕРІ
+    Очистить историю алертов
     
     Returns:
-        РљРѕР»РёС‡РµСЃС‚РІРѕ СѓРґР°Р»РµРЅРЅС‹С… Р·Р°РїРёСЃРµР№
+        Количество удаленных записей
     """
     global _alert_history
     count = len(_alert_history)
     _alert_history = []
-    debug_log(f"РСЃС‚РѕСЂРёСЏ Р°Р»РµСЂС‚РѕРІ РѕС‡РёС‰РµРЅР°, СѓРґР°Р»РµРЅРѕ {count} Р·Р°РїРёСЃРµР№")
+    debug_log(f"История алертов очищена, удалено {count} записей")
     return count
 
 def get_alert_stats() -> Dict[str, Any]:
     """
-    РџРѕР»СѓС‡РёС‚СЊ СЃС‚Р°С‚РёСЃС‚РёРєСѓ РїРѕ Р°Р»РµСЂС‚Р°Рј
+    Получить статистику по алертам
     
     Returns:
-        РЎР»РѕРІР°СЂСЊ СЃРѕ СЃС‚Р°С‚РёСЃС‚РёРєРѕР№
+        Словарь со статистикой
     """
     now = datetime.now()
     today_start = datetime(now.year, now.month, now.day)
     
-    # Р¤РёР»СЊС‚СЂСѓРµРј Р°Р»РµСЂС‚С‹ Р·Р° СЃРµРіРѕРґРЅСЏ
+    # Фильтруем алерты за сегодня
     today_alerts = [
         a for a in _alert_history 
         if datetime.fromisoformat(a["timestamp"]) >= today_start
     ]
     
-    # Р“СЂСѓРїРїРёСЂСѓРµРј РїРѕ С‚РёРїР°Рј
+    # Группируем по типам
     by_type = {}
     for alert in today_alerts:
         alert_type = alert["type"]
@@ -434,13 +434,13 @@ def configure(
     cooldown_seconds: Optional[int] = None
 ) -> None:
     """
-    РќР°СЃС‚СЂРѕР№РєР° РїР°СЂР°РјРµС‚СЂРѕРІ Р°Р»РµСЂС‚РѕРІ
+    Настройка параметров алертов
     
     Args:
-        silent_start: РќР°С‡Р°Р»Рѕ С‚РёС…РѕРіРѕ СЂРµР¶РёРјР° (0-23)
-        silent_end: РљРѕРЅРµС† С‚РёС…РѕРіРѕ СЂРµР¶РёРјР° (0-23)
-        enabled: Р’РєР»СЋС‡РµРЅС‹ Р»Рё Р°Р»РµСЂС‚С‹
-        cooldown_seconds: РљРґ РјРµР¶РґСѓ РѕРґРёРЅР°РєРѕРІС‹РјРё Р°Р»РµСЂС‚Р°РјРё
+        silent_start: Начало тихого режима (0-23)
+        silent_end: Конец тихого режима (0-23)
+        enabled: Включены ли алерты
+        cooldown_seconds: Кд между одинаковыми алертами
     """
     if silent_start is not None:
         _config.silent_start = silent_start
@@ -451,7 +451,7 @@ def configure(
     if cooldown_seconds is not None:
         _config.cooldown_seconds = cooldown_seconds
     
-    debug_log(f"РљРѕРЅС„РёРіСѓСЂР°С†РёСЏ Р°Р»РµСЂС‚РѕРІ РѕР±РЅРѕРІР»РµРЅР°: silent={_config.silent_start}:00-{_config.silent_end}:00, enabled={_config.enabled}, cooldown={_config.cooldown_seconds}СЃ")
+    debug_log(f"Конфигурация алертов обновлена: silent={_config.silent_start}:00-{_config.silent_end}:00, enabled={_config.enabled}, cooldown={_config.cooldown_seconds}с")
 
-# РђР»РёР°СЃС‹ РґР»СЏ РѕР±СЂР°С‚РЅРѕР№ СЃРѕРІРјРµСЃС‚РёРјРѕСЃС‚Рё
+# Алиасы для обратной совместимости
 send_message = send_alert

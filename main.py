@@ -5,11 +5,11 @@ Server Monitoring System v8.6.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Main launch module
-РЎРёСЃС‚РµРјР° РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЃРµСЂРІРµСЂРѕРІ
-Р’РµСЂСЃРёСЏ: 8.6.0
-РђРІС‚РѕСЂ: РђР»РµРєСЃР°РЅРґСЂ РЎСѓС…Р°РЅРѕРІ (c)
-Р›РёС†РµРЅР·РёСЏ: MIT
-РћСЃРЅРѕРІРЅРѕР№ РјРѕРґСѓР»СЊ Р·Р°РїСѓСЃРєР°
+Система мониторинга серверов
+Версия: 8.6.0
+Автор: Александр Суханов (c)
+Лицензия: MIT
+Основной модуль запуска
 """
 
 import os
@@ -27,56 +27,56 @@ if str(BASE_DIR) not in sys.path:
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
-    """РЎРѕР·РґР°С‘С‚ РїР°СЂСЃРµСЂ Р°СЂРіСѓРјРµРЅС‚РѕРІ РґР»СЏ CLI."""
+    """Создаёт парсер аргументов для CLI."""
     parser = argparse.ArgumentParser(description="Server Monitoring System")
     try:
         from core.task_router import TASK_ROUTES
         parser.add_argument(
             "--check",
             choices=list(TASK_ROUTES.keys()),
-            help="Р’С‹РїРѕР»РЅРёС‚СЊ Р·Р°РґР°С‡Сѓ РїСЂРѕРІРµСЂРєРё Рё Р·Р°РІРµСЂС€РёС‚СЊСЃСЏ",
+            help="Выполнить задачу проверки и завершиться",
         )
     except Exception:
         parser.add_argument(
             "--check",
-            help="Р’С‹РїРѕР»РЅРёС‚СЊ Р·Р°РґР°С‡Сѓ РїСЂРѕРІРµСЂРєРё Рё Р·Р°РІРµСЂС€РёС‚СЊСЃСЏ",
+            help="Выполнить задачу проверки и завершиться",
         )
 
     parser.add_argument(
         "--server",
-        help="IP РёР»Рё РёРјСЏ СЃРµСЂРІРµСЂР° РґР»СЏ С‚РѕС‡РµС‡РЅРѕР№ РїСЂРѕРІРµСЂРєРё",
+        help="IP или имя сервера для точечной проверки",
     )
     parser.add_argument(
         "--mode",
         choices=["availability", "resources"],
         default="availability",
-        help="РўРёРї С‚РѕС‡РµС‡РЅРѕР№ РїСЂРѕРІРµСЂРєРё (РґР»СЏ targeted_checks)",
+        help="Тип точечной проверки (для targeted_checks)",
     )
     parser.add_argument(
         "--reload-servers",
         action="store_true",
-        help="РџСЂРёРЅСѓРґРёС‚РµР»СЊРЅРѕ РїРµСЂРµС‡РёС‚Р°С‚СЊ СЃРїРёСЃРѕРє СЃРµСЂРІРµСЂРѕРІ РїРµСЂРµРґ РїСЂРѕРІРµСЂРєРѕР№",
+        help="Принудительно перечитать список серверов перед проверкой",
     )
     parser.add_argument(
         "--bot",
         action="store_true",
-        help="Р—Р°РїСѓСЃС‚РёС‚СЊ Telegram-Р±РѕС‚Р° (РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ РІРєР»СЋС‡РµРЅРѕ РїСЂРё РѕС‚СЃСѓС‚СЃС‚РІРёРё РґСЂСѓРіРёС… РґРµР№СЃС‚РІРёР№)",
+        help="Запустить Telegram-бота (по умолчанию включено при отсутствии других действий)",
     )
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="РўРµСЃС‚РѕРІС‹Р№ Р·Р°РїСѓСЃРє Р±РµР· СЃРµС‚РµРІС‹С… РґРµР№СЃС‚РІРёР№ Рё РѕРїСЂРѕСЃР° Telegram",
+        help="Тестовый запуск без сетевых действий и опроса Telegram",
     )
     return parser
 
 
 def run_cli_checks(args: argparse.Namespace) -> tuple[bool, int]:
     """
-    РћР±СЂР°Р±Р°С‚С‹РІР°РµС‚ CLI-РєРѕРјР°РЅРґС‹ Р±РµР· Р·Р°РїСѓСЃРєР° Telegram-Р±РѕС‚Р°.
+    Обрабатывает CLI-команды без запуска Telegram-бота.
 
     Returns:
-        handled: Р‘С‹Р» Р»Рё РѕР±СЂР°Р±РѕС‚Р°РЅ CLI-СЂРµР¶РёРј
-        exit_code: РљРѕРґ Р·Р°РІРµСЂС€РµРЅРёСЏ РґР»СЏ sys.exit
+        handled: Был ли обработан CLI-режим
+        exit_code: Код завершения для sys.exit
     """
     if not args.check:
         return False, 0
@@ -99,20 +99,20 @@ def run_cli_checks(args: argparse.Namespace) -> tuple[bool, int]:
     if args.check == "availability":
         up = len(payload.get("up", []))
         down = payload.get("down", [])
-        print(f"рџ“Ў Р”РѕСЃС‚СѓРїРЅРѕСЃС‚СЊ: {up} РґРѕСЃС‚СѓРїРЅРѕ, {len(down)} РЅРµРґРѕСЃС‚СѓРїРЅРѕ")
+        print(f"📡 Доступность: {up} доступно, {len(down)} недоступно")
         if down:
-            print("вљ пёЏ РќРµРґРѕСЃС‚СѓРїРЅС‹Рµ СЃРµСЂРІРµСЂС‹:")
+            print("⚠️ Недоступные серверы:")
             for server in down:
                 name = server.get("name", server.get("ip", ""))
-                method = server.get("check_method", "РЅРµРёР·РІРµСЃС‚РЅРѕ")
+                method = server.get("check_method", "неизвестно")
                 print(f" - {name} ({server.get('ip', '')}): {method}")
     elif args.check == "resources":
         results = payload.get("results", [])
         stats = payload.get("stats", {})
         print(
-            "рџ“Љ Р РµСЃСѓСЂСЃС‹: "
-            f"{stats.get('success', 0)}/{stats.get('total', 0)} СѓСЃРїРµС€РЅРѕ, "
-            f"{stats.get('failed', 0)} РѕС€РёР±РѕРє"
+            "📊 Ресурсы: "
+            f"{stats.get('success', 0)}/{stats.get('total', 0)} успешно, "
+            f"{stats.get('failed', 0)} ошибок"
         )
         for item in results:
             server = item.get("server", {})
@@ -125,10 +125,10 @@ def run_cli_checks(args: argparse.Namespace) -> tuple[bool, int]:
                     f"Disk {resources.get('disk', '?')}%"
                 )
             else:
-                print(f" - {name}: СЂРµСЃСѓСЂСЃС‹ РЅРµРґРѕСЃС‚СѓРїРЅС‹")
+                print(f" - {name}: ресурсы недоступны")
     elif args.check == "targeted_checks":
         message = payload.get("message", "")
-        print("рџЋЇ Р¦РµР»РµРІР°СЏ РїСЂРѕРІРµСЂРєР°:")
+        print("🎯 Целевая проверка:")
         print(message)
 
     return True, 0 if success else 1
@@ -136,28 +136,28 @@ def run_cli_checks(args: argparse.Namespace) -> tuple[bool, int]:
 
 def main(args: argparse.Namespace):
     # ------------------------------------------------------------------
-    # 1. Р—Р°РіСЂСѓР·РєР° РєРѕРЅС„РёРіСѓСЂР°С†РёРё
+    # 1. Загрузка конфигурации
     # ------------------------------------------------------------------
     try:
         from config.db_settings import TELEGRAM_TOKEN, DEBUG_MODE, CHAT_IDS, SILENT_START, SILENT_END, TAMTAM_TOKEN, TAMTAM_CHAT_IDS
     except ImportError as e:
-        print(f"вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ db_settings: {e}")
+        print(f"❌ Не удалось загрузить db_settings: {e}")
         sys.exit(1)
 
     log_level = "DEBUG" if DEBUG_MODE else "INFO"
     logger = setup_logging("main", level=log_level)
-    logger.info("рџљЂ Р—Р°РїСѓСЃРє СЃРёСЃС‚РµРјС‹ РјРѕРЅРёС‚РѕСЂРёРЅРіР°")
+    logger.info("🚀 Запуск системы мониторинга")
 
     bot_token = TELEGRAM_TOKEN
     if not bot_token or len(bot_token) < 10:
         if args.dry_run:
             bot_token = "000000:TESTTOKEN"
-            logger.warning("вљ пёЏ Telegram С‚РѕРєРµРЅ РѕС‚СЃСѓС‚СЃС‚РІСѓРµС‚, РёСЃРїРѕР»СЊР·СѓРµРј С‚РµСЃС‚РѕРІСѓСЋ Р·Р°РіР»СѓС€РєСѓ (dry-run)")
+            logger.warning("⚠️ Telegram токен отсутствует, используем тестовую заглушку (dry-run)")
         else:
-            print("вќЊ Telegram С‚РѕРєРµРЅ РѕС‚СЃСѓС‚СЃС‚РІСѓРµС‚ РёР»Рё РЅРµРєРѕСЂСЂРµРєС‚РµРЅ")
+            print("❌ Telegram токен отсутствует или некорректен")
             sys.exit(1)
 
-    # РџСЂРёРјРµРЅСЏРµРј РЅР°СЃС‚СЂРѕР№РєРё Р°Р»РµСЂС‚РѕРІ Р·Р°СЂР°РЅРµРµ
+    # Применяем настройки алертов заранее
     if not args.dry_run:
         try:
             from lib.alerts import configure_alerts
@@ -167,12 +167,12 @@ def main(args: argparse.Namespace):
                 silent_end=SILENT_END,
             )
         except Exception as e:
-            logger.warning(f"вљ пёЏ РќРµ СѓРґР°Р»РѕСЃСЊ РїСЂРёРјРµРЅРёС‚СЊ РЅР°СЃС‚СЂРѕР№РєРё Р°Р»РµСЂС‚РѕРІ: {e}")
+            logger.warning(f"⚠️ Не удалось применить настройки алертов: {e}")
     else:
-        logger.info("рџ§Є Dry-run: РЅР°СЃС‚СЂРѕР№РєР° Р°Р»РµСЂС‚РѕРІ РїСЂРѕРїСѓС‰РµРЅР°")
+        logger.info("🧪 Dry-run: настройка алертов пропущена")
 
     # ------------------------------------------------------------------
-    # 3. РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ Telegram-Р±РѕС‚Р°
+    # 3. Инициализация Telegram-бота
     # ------------------------------------------------------------------
     from telegram.ext import (
         Updater,
@@ -185,9 +185,9 @@ def main(args: argparse.Namespace):
 
         init_telegram_bot(updater.bot, CHAT_IDS)
     except Exception as e:
-        logger.warning(f"вљ пёЏ РќРµ СѓРґР°Р»РѕСЃСЊ РёРЅРёС†РёР°Р»РёР·РёСЂРѕРІР°С‚СЊ Р°Р»РµСЂС‚С‹: {e}")
+        logger.warning(f"⚠️ Не удалось инициализировать алерты: {e}")
 
-    logger.info("вњ… Telegram Р±РѕС‚ РёРЅРёС†РёР°Р»РёР·РёСЂРѕРІР°РЅ")
+    logger.info("✅ Telegram бот инициализирован")
 
 
     tamtam_service = None
@@ -201,14 +201,14 @@ def main(args: argparse.Namespace):
             )
             tamtam_service.start()
             init_tamtam_sender(tamtam_service.broadcast)
-            logger.info("вњ… TamTam Р±РѕС‚ РёРЅРёС†РёР°Р»РёР·РёСЂРѕРІР°РЅ")
+            logger.info("✅ TamTam бот инициализирован")
         except Exception as e:
-            logger.warning(f"вљ пёЏ РќРµ СѓРґР°Р»РѕСЃСЊ РёРЅРёС†РёР°Р»РёР·РёСЂРѕРІР°С‚СЊ TamTam Р±РѕС‚: {e}")
+            logger.warning(f"⚠️ Не удалось инициализировать TamTam бот: {e}")
     else:
-        logger.info("в„№пёЏ TamTam С‚РѕРєРµРЅ РЅРµ Р·Р°РґР°РЅ, РёРЅС‚РµРіСЂР°С†РёСЏ РІС‹РєР»СЋС‡РµРЅР°")
+        logger.info("ℹ️ TamTam токен не задан, интеграция выключена")
 
     # ------------------------------------------------------------------
-    # 4. РљРѕРјР°РЅРґС‹ Р±РѕС‚Р°
+    # 4. Команды бота
     # ------------------------------------------------------------------
     from bot.handlers import (
         get_callback_handlers,
@@ -219,28 +219,28 @@ def main(args: argparse.Namespace):
     for handler in get_command_handlers():
         dispatcher.add_handler(handler)
 
-    logger.info("вњ… РљРѕРјР°РЅРґС‹ Р·Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°РЅС‹")
+    logger.info("✅ Команды зарегистрированы")
 
     # ------------------------------------------------------------------
-    # 5. Callback router (Р•Р”РРќРђРЇ С‚РѕС‡РєР°)
+    # 5. Callback router (ЕДИНАЯ точка)
     # ------------------------------------------------------------------
     for handler in get_callback_handlers():
         dispatcher.add_handler(handler)
-    logger.info("вњ… Callback router РїРѕРґРєР»СЋС‡С‘РЅ")
+    logger.info("✅ Callback router подключён")
 
     # ------------------------------------------------------------------
-    # 6. РћР±СЂР°Р±РѕС‚С‡РёРє С‚РµРєСЃС‚РѕРІРѕРіРѕ РІРІРѕРґР° (РЅР°СЃС‚СЂРѕР№РєРё)
+    # 6. Обработчик текстового ввода (настройки)
     # ------------------------------------------------------------------
     message_handlers = get_message_handlers()
     if message_handlers:
         for handler in message_handlers:
             dispatcher.add_handler(handler)
-        logger.info("вњ… РћР±СЂР°Р±РѕС‚С‡РёРє РІРІРѕРґР° РЅР°СЃС‚СЂРѕРµРє РїРѕРґРєР»СЋС‡С‘РЅ")
+        logger.info("✅ Обработчик ввода настроек подключён")
     else:
-        logger.info("в„№пёЏ РћР±СЂР°Р±РѕС‚С‡РёРє РІРІРѕРґР° РЅР°СЃС‚СЂРѕРµРє РЅРµРґРѕСЃС‚СѓРїРµРЅ")
+        logger.info("ℹ️ Обработчик ввода настроек недоступен")
 
     # ------------------------------------------------------------------
-    # 7. Р Р°СЃС€РёСЂРµРЅРёСЏ
+    # 7. Расширения
     # ------------------------------------------------------------------
     if not args.dry_run:
         try:
@@ -249,7 +249,7 @@ def main(args: argparse.Namespace):
             if extension_manager.is_extension_enabled('backup_monitor'):
                 from extensions.backup_monitor.bot_handler import setup_backup_handlers
                 setup_backup_handlers(dispatcher)
-                logger.info("вњ… Р Р°СЃС€РёСЂРµРЅРёРµ backup_monitor РїРѕРґРєР»СЋС‡РµРЅРѕ")
+                logger.info("✅ Расширение backup_monitor подключено")
 
             if extension_manager.is_extension_enabled('web_interface'):
                 from extensions.web_interface import start_web_server
@@ -257,20 +257,20 @@ def main(args: argparse.Namespace):
                     target=start_web_server,
                     daemon=True
                 ).start()
-                logger.info("вњ… Р’РµР±-РёРЅС‚РµСЂС„РµР№СЃ Р·Р°РїСѓС‰РµРЅ")
+                logger.info("✅ Веб-интерфейс запущен")
 
             if extension_manager.is_extension_enabled('supplier_stock_files'):
                 from extensions.supplier_stock_files import start_supplier_stock_scheduler
                 start_supplier_stock_scheduler()
-                logger.info("вњ… РџР»Р°РЅРёСЂРѕРІС‰РёРє РѕСЃС‚Р°С‚РєРѕРІ РїРѕСЃС‚Р°РІС‰РёРєРѕРІ Р·Р°РїСѓС‰РµРЅ")
+                logger.info("✅ Планировщик остатков поставщиков запущен")
 
         except Exception as e:
-            logger.warning(f"вљ пёЏ РћС€РёР±РєР° РёРЅРёС†РёР°Р»РёР·Р°С†РёРё СЂР°СЃС€РёСЂРµРЅРёР№: {e}")
+            logger.warning(f"⚠️ Ошибка инициализации расширений: {e}")
     else:
-        logger.info("рџ§Є Dry-run: Р·Р°РіСЂСѓР·РєР° СЂР°СЃС€РёСЂРµРЅРёР№ РїСЂРѕРїСѓС‰РµРЅР°")
+        logger.info("🧪 Dry-run: загрузка расширений пропущена")
 
     # ------------------------------------------------------------------
-    # 8. РћСЃРЅРѕРІРЅРѕР№ РјРѕРЅРёС‚РѕСЂРёРЅРі
+    # 8. Основной мониторинг
     # ------------------------------------------------------------------
     if not args.dry_run:
         try:
@@ -279,37 +279,37 @@ def main(args: argparse.Namespace):
                 target=monitor.start,
                 daemon=True
             ).start()
-            logger.info("вњ… РћСЃРЅРѕРІРЅРѕР№ РјРѕРЅРёС‚РѕСЂРёРЅРі Р·Р°РїСѓС‰РµРЅ")
+            logger.info("✅ Основной мониторинг запущен")
         except Exception as e:
-            logger.error(f"вќЊ РћС€РёР±РєР° Р·Р°РїСѓСЃРєР° РјРѕРЅРёС‚РѕСЂРёРЅРіР°: {e}")
+            logger.error(f"❌ Ошибка запуска мониторинга: {e}")
     else:
-        logger.info("рџ§Є Dry-run: Р·Р°РїСѓСЃРє РѕСЃРЅРѕРІРЅРѕРіРѕ РјРѕРЅРёС‚РѕСЂРёРЅРіР° РїСЂРѕРїСѓС‰РµРЅ")
+        logger.info("🧪 Dry-run: запуск основного мониторинга пропущен")
 
     # ------------------------------------------------------------------
-    # 9. РЎС‚Р°СЂС‚РѕРІРѕРµ СѓРІРµРґРѕРјР»РµРЅРёРµ
+    # 9. Стартовое уведомление
     # ------------------------------------------------------------------
     if not args.dry_run:
         try:
             from lib.alerts import send_alert
             send_alert(
-                "рџџў *РњРѕРЅРёС‚РѕСЂРёРЅРі СЃРµСЂРІРµСЂРѕРІ Р·Р°РїСѓС‰РµРЅ*\n\n"
-                "РЎРёСЃС‚РµРјР° СѓСЃРїРµС€РЅРѕ РёРЅРёС†РёР°Р»РёР·РёСЂРѕРІР°РЅР°",
+                "🟢 *Мониторинг серверов запущен*\n\n"
+                "Система успешно инициализирована",
                 force=True
             )
         except Exception as e:
-            logger.warning(f"вљ пёЏ РќРµ СѓРґР°Р»РѕСЃСЊ РѕС‚РїСЂР°РІРёС‚СЊ СЃС‚Р°СЂС‚РѕРІРѕРµ СЃРѕРѕР±С‰РµРЅРёРµ: {e}")
+            logger.warning(f"⚠️ Не удалось отправить стартовое сообщение: {e}")
     else:
-        logger.info("рџ§Є Dry-run: СЃС‚Р°СЂС‚РѕРІРѕРµ СѓРІРµРґРѕРјР»РµРЅРёРµ РЅРµ РѕС‚РїСЂР°РІР»СЏР»РѕСЃСЊ")
+        logger.info("🧪 Dry-run: стартовое уведомление не отправлялось")
 
     # ------------------------------------------------------------------
-    # 10. Р—Р°РїСѓСЃРє
+    # 10. Запуск
     # ------------------------------------------------------------------
     if args.dry_run:
-        logger.info("рџ§Є Dry-run Р·Р°РІРµСЂС€С‘РЅ: РѕРїСЂРѕСЃ Telegram РЅРµ Р·Р°РїСѓСЃРєР°Р»СЃСЏ")
+        logger.info("🧪 Dry-run завершён: опрос Telegram не запускался")
         return
     
     updater.start_polling()
-    logger.info("вњ… Р‘РѕС‚ Р·Р°РїСѓС‰РµРЅ Рё РіРѕС‚РѕРІ Рє СЂР°Р±РѕС‚Рµ")
+    logger.info("✅ Бот запущен и готов к работе")
     updater.idle()
 
 

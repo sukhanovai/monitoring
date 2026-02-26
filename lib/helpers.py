@@ -4,23 +4,23 @@ Server Monitoring System v8.6.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Auxiliary utilities
-РЎРёСЃС‚РµРјР° РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЃРµСЂРІРµСЂРѕРІ
-Р’РµСЂСЃРёСЏ: 8.6.0
-РђРІС‚РѕСЂ: РђР»РµРєСЃР°РЅРґСЂ РЎСѓС…Р°РЅРѕРІ (c)
-Р›РёС†РµРЅР·РёСЏ: MIT
-Р’СЃРїРѕРјРѕРіР°С‚РµР»СЊРЅС‹Рµ СѓС‚РёР»РёС‚С‹
+Система мониторинга серверов
+Версия: 8.6.0
+Автор: Александр Суханов (c)
+Лицензия: MIT
+Вспомогательные утилиты
 """
 
 import warnings
 
 def progress_bar(percentage, width=20):
-    """РЈРЅРёРІРµСЂСЃР°Р»СЊРЅС‹Р№ РїСЂРѕРіСЂРµСЃСЃ-Р±Р°СЂ"""
+    """Универсальный прогресс-бар"""
     filled = int(round(width * percentage / 100))
-    bar = f"[{'в–€' * filled}{'в–‘' * (width - filled)}] {percentage:.1f}%"
+    bar = f"[{'█' * filled}{'░' * (width - filled)}] {percentage:.1f}%"
     return bar
 
 def format_duration(seconds):
-    """Р¤РѕСЂРјР°С‚РёСЂРѕРІР°РЅРёРµ РґР»РёС‚РµР»СЊРЅРѕСЃС‚Рё РІ С‡РёС‚Р°РµРјС‹Р№ РІРёРґ"""
+    """Форматирование длительности в читаемый вид"""
     hours = seconds // 3600
     minutes = (seconds % 3600) // 60
     seconds = seconds % 60
@@ -33,9 +33,9 @@ def format_duration(seconds):
         return f"{seconds}s"
 
 def is_proxmox_server(ip):
-    """РџСЂРѕРІРµСЂСЏРµС‚, СЏРІР»СЏРµС‚СЃСЏ Р»Рё СЃРµСЂРІРµСЂ Proxmox (СѓСЃС‚Р°СЂРµРІС€Р°СЏ РѕР±РµСЂС‚РєР°)."""
+    """Проверяет, является ли сервер Proxmox (устаревшая обертка)."""
     warnings.warn(
-        "lib.helpers.is_proxmox_server СѓСЃС‚Р°СЂРµР»Р°; РёСЃРїРѕР»СЊР·СѓР№С‚Рµ lib.utils.is_proxmox_server.",
+        "lib.helpers.is_proxmox_server устарела; используйте lib.utils.is_proxmox_server.",
         DeprecationWarning,
         stacklevel=2,
     )

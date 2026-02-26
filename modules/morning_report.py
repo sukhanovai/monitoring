@@ -4,11 +4,11 @@ Server Monitoring System v8.6.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Morning Report Module
-РЎРёСЃС‚РµРјР° РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЃРµСЂРІРµСЂРѕРІ
-Р’РµСЂСЃРёСЏ: 8.6.0
-РђРІС‚РѕСЂ: РђР»РµРєСЃР°РЅРґСЂ РЎСѓС…Р°РЅРѕРІ (c)
-Р›РёС†РµРЅР·РёСЏ: MIT
-РњРѕРґСѓР»СЊ СѓС‚СЂРµРЅРЅРµРіРѕ РѕС‚С‡РµС‚Р°
+Система мониторинга серверов
+Версия: 8.6.0
+Автор: Александр Суханов (c)
+Лицензия: MIT
+Модуль утреннего отчета
 """
 
 import threading
@@ -19,7 +19,7 @@ from config.db_settings import DATA_COLLECTION_TIME
 from lib.logging import debug_log
 
 class MorningReport:
-    """РљР»Р°СЃСЃ СѓРїСЂР°РІР»РµРЅРёСЏ СѓС‚СЂРµРЅРЅРёРјРё РѕС‚С‡РµС‚Р°РјРё"""
+    """Класс управления утренними отчетами"""
     
     def __init__(self):
         self.morning_data = {}
@@ -27,7 +27,7 @@ class MorningReport:
         self.last_data_collection = None
         
     def collect_morning_data(self, manual_call=False):
-        """РЎР±РѕСЂ РґР°РЅРЅС‹С… РґР»СЏ СѓС‚СЂРµРЅРЅРµРіРѕ РѕС‚С‡РµС‚Р°"""
+        """Сбор данных для утреннего отчета"""
         try:
             from modules.availability import availability_monitor
             current_status = availability_monitor.get_current_status()
@@ -38,16 +38,16 @@ class MorningReport:
                 "manual_call": manual_call
             }
             
-            debug_log(f"вњ… Р”Р°РЅРЅС‹Рµ РґР»СЏ РѕС‚С‡РµС‚Р° СЃРѕР±СЂР°РЅС‹: {len(current_status['ok'])} РґРѕСЃС‚СѓРїРЅРѕ, {len(current_status['failed'])} РЅРµРґРѕСЃС‚СѓРїРЅРѕ")
+            debug_log(f"✅ Данные для отчета собраны: {len(current_status['ok'])} доступно, {len(current_status['failed'])} недоступно")
             return True
         except Exception as e:
-            debug_log(f"вќЊ РћС€РёР±РєР° СЃР±РѕСЂР° РґР°РЅРЅС‹С… РґР»СЏ РѕС‚С‡РµС‚Р°: {e}")
+            debug_log(f"❌ Ошибка сбора данных для отчета: {e}")
             return False
     
     def generate_report_message(self):
-        """Р“РµРЅРµСЂР°С†РёСЏ СЃРѕРѕР±С‰РµРЅРёСЏ РѕС‚С‡РµС‚Р°"""
+        """Генерация сообщения отчета"""
         if not self.morning_data or "status" not in self.morning_data:
-            return "вќЊ РќРµС‚ РґР°РЅРЅС‹С… РґР»СЏ РѕС‚С‡РµС‚Р°"
+            return "❌ Нет данных для отчета"
             
         status = self.morning_data["status"]
         collection_time = self.morning_data.get("collection_time", datetime.now())
@@ -57,27 +57,27 @@ class MorningReport:
         up_count = len(status["ok"])
         down_count = len(status["failed"])
         
-        # РћРїСЂРµРґРµР»СЏРµРј С‚РёРї РѕС‚С‡РµС‚Р°
-        report_type = "Р СѓС‡РЅРѕР№ РѕС‚С‡С‘С‚ РјРѕРЅРёС‚РѕСЂРёРЅРіР°" if is_manual else "РЈС‚СЂРµРЅРЅРёР№ РѕС‚С‡С‘С‚ РјРѕРЅРёС‚РѕСЂРёРЅРіР°"
+        # Определяем тип отчета
+        report_type = "Ручной отчёт мониторинга" if is_manual else "Утренний отчёт мониторинга"
         try:
             from config.settings import APP_VERSION
         except Exception:
             APP_VERSION = None
 
-        message = f"рџ“Љ *{report_type}*\n\n"
+        message = f"📊 *{report_type}*\n\n"
         if APP_VERSION:
-            message += f"рџ”– *Р’РµСЂСЃРёСЏ:* {APP_VERSION}\n"
-        message += "рџ–Ґ *Р”РѕСЃС‚СѓРїРЅРѕСЃС‚СЊ СЃРµСЂРІРµСЂРѕРІ*\n"
+            message += f"🔖 *Версия:* {APP_VERSION}\n"
+        message += "🖥 *Доступность серверов*\n"
         message += (
-            f"вЂў Р’СЃРµРіРѕ: {total_servers} "
-            f"(рџџў {up_count} / рџ”ґ {down_count})\n"
+            f"• Всего: {total_servers} "
+            f"(🟢 {up_count} / 🔴 {down_count})\n"
         )
 
         from telegram.utils.helpers import escape_markdown
 
         if down_count > 0:
-            message += f"\nрџ”ґ *РџСЂРѕР±Р»РµРјРЅС‹Рµ СЃРµСЂРІРµСЂС‹ ({down_count}):*\n"
-            # Р“СЂСѓРїРїРёСЂСѓРµРј РїРѕ С‚РёРїСѓ
+            message += f"\n🔴 *Проблемные серверы ({down_count}):*\n"
+            # Группируем по типу
             by_type = {}
             for server in status["failed"]:
                 if server["type"] not in by_type:
@@ -90,9 +90,9 @@ class MorningReport:
                 for s in servers_list:
                     safe_name = escape_markdown(str(s.get('name', '')), version=1)
                     safe_ip = escape_markdown(str(s.get('ip', '')), version=1)
-                    message += f"вЂў {safe_name} ({safe_ip})\n"
+                    message += f"• {safe_name} ({safe_ip})\n"
 
-        # Р”РѕР±Р°РІР»СЏРµРј РёРЅС„РѕСЂРјР°С†РёСЋ Рѕ Р±СЌРєР°РїР°С…
+        # Добавляем информацию о бэкапах
         try:
             from extensions.extension_manager import extension_manager
             show_proxmox = extension_manager.is_extension_enabled('backup_monitor')
@@ -113,49 +113,49 @@ class MorningReport:
                     include_mail=show_mail,
                     unavailable_hosts=unavailable_hosts,
                 )
-                backup_header_icon = "рџ”ґ" if backup_has_issues else "рџџў"
+                backup_header_icon = "🔴" if backup_has_issues else "🟢"
                 message += (
-                    f"\n{backup_header_icon} *РЎС‚Р°С‚СѓСЃ Р±СЌРєР°РїРѕРІ "
-                    f"({'Р·Р° РїРѕСЃР»РµРґРЅРёРµ 24С‡' if is_manual else 'Р·Р° РїРѕСЃР»РµРґРЅРёРµ 16С‡'})*\n"
+                    f"\n{backup_header_icon} *Статус бэкапов "
+                    f"({'за последние 24ч' if is_manual else 'за последние 16ч'})*\n"
                 )
                 message += backup_summary
         except Exception as e:
-            debug_log(f"вљ пёЏ РћС€РёР±РєР° РїРѕР»СѓС‡РµРЅРёСЏ РґР°РЅРЅС‹С… Рѕ Р±СЌРєР°РїР°С…: {e}")
-            message += "\nрџ’ѕ *РЎС‚Р°С‚СѓСЃ Р±СЌРєР°РїРѕРІ:* РґР°РЅРЅС‹Рµ РЅРµРґРѕСЃС‚СѓРїРЅС‹\n"
+            debug_log(f"⚠️ Ошибка получения данных о бэкапах: {e}")
+            message += "\n💾 *Статус бэкапов:* данные недоступны\n"
 
-        # Р”РѕР±Р°РІР»СЏРµРј РёРЅС„РѕСЂРјР°С†РёСЋ Рѕ Р·Р°РіСЂСѓР·РєРµ РѕСЃС‚Р°С‚РєРѕРІ 1РЎ
+        # Добавляем информацию о загрузке остатков 1С
         try:
             from extensions.extension_manager import extension_manager
             if extension_manager.is_extension_enabled('stock_load_monitor'):
                 from extensions.backup_monitor.backup_utils import get_stock_load_summary
 
                 stock_summary = get_stock_load_summary(24 if is_manual else 16)
-                message += "\nрџ“¦ *Р—Р°РіСЂСѓР·РєР° РѕСЃС‚Р°С‚РєРѕРІ 1РЎ*\n"
+                message += "\n📦 *Загрузка остатков 1С*\n"
                 message += stock_summary
         except Exception as e:
-            debug_log(f"вљ пёЏ РћС€РёР±РєР° РїРѕР»СѓС‡РµРЅРёСЏ РґР°РЅРЅС‹С… Рѕ Р·Р°РіСЂСѓР·РєРµ РѕСЃС‚Р°С‚РєРѕРІ: {e}")
-            message += "\nрџ“¦ *Р—Р°РіСЂСѓР·РєР° РѕСЃС‚Р°С‚РєРѕРІ 1РЎ:* РґР°РЅРЅС‹Рµ РЅРµРґРѕСЃС‚СѓРїРЅС‹\n"
+            debug_log(f"⚠️ Ошибка получения данных о загрузке остатков: {e}")
+            message += "\n📦 *Загрузка остатков 1С:* данные недоступны\n"
 
-        # Р”РѕР±Р°РІР»СЏРµРј РёРЅС„РѕСЂРјР°С†РёСЋ Рѕ ZFS
+        # Добавляем информацию о ZFS
         try:
             from extensions.extension_manager import extension_manager
             if extension_manager.is_extension_enabled('zfs_monitor'):
                 zfs_summary, zfs_has_issues = self.get_zfs_summary_for_report()
-                zfs_header_icon = "рџ”ґ" if zfs_has_issues else "рџџў"
-                message += f"\n{zfs_header_icon} *РЎС‚Р°С‚СѓСЃС‹ ZFS (РїРѕСЃР»РµРґРЅРёРµ)*\n"
+                zfs_header_icon = "🔴" if zfs_has_issues else "🟢"
+                message += f"\n{zfs_header_icon} *Статусы ZFS (последние)*\n"
                 message += zfs_summary
         except Exception as e:
-            debug_log(f"вљ пёЏ РћС€РёР±РєР° РїРѕР»СѓС‡РµРЅРёСЏ РґР°РЅРЅС‹С… Рѕ ZFS: {e}")
-            message += "\nрџ§Љ *РЎС‚Р°С‚СѓСЃС‹ ZFS:* РґР°РЅРЅС‹Рµ РЅРµРґРѕСЃС‚СѓРїРЅС‹\n"
+            debug_log(f"⚠️ Ошибка получения данных о ZFS: {e}")
+            message += "\n🧊 *Статусы ZFS:* данные недоступны\n"
             
-        message += f"\nвЏ° *РћС‚С‡С‘С‚ СЃС„РѕСЂРјРёСЂРѕРІР°РЅ:* {collection_time.strftime('%H:%M:%S')}"
+        message += f"\n⏰ *Отчёт сформирован:* {collection_time.strftime('%H:%M:%S')}"
         return message
 
     def force_report(self):
-        """Р¤РѕСЂРјРёСЂСѓРµС‚ РѕС‚С‡РµС‚ РґР»СЏ СЂСѓС‡РЅРѕРіРѕ Р·Р°РїСЂРѕСЃР° Рё РІРѕР·РІСЂР°С‰Р°РµС‚ С‚РµРєСЃС‚"""
+        """Формирует отчет для ручного запроса и возвращает текст"""
         data_collected = self.collect_morning_data(manual_call=True)
         if not data_collected:
-            return "вќЊ РћС€РёР±РєР° СЃР±РѕСЂР° РґР°РЅРЅС‹С… РґР»СЏ РѕС‚С‡РµС‚Р°"
+            return "❌ Ошибка сбора данных для отчета"
 
         return self.generate_report_message()
     
@@ -167,9 +167,9 @@ class MorningReport:
         include_mail=False,
         unavailable_hosts=None,
     ):
-        """РџРѕР»СѓС‡Р°РµС‚ СЃРІРѕРґРєСѓ РїРѕ Р±СЌРєР°РїР°Рј"""
+        """Получает сводку по бэкапам"""
         try:
-            # РРјРїРѕСЂС‚ С„СѓРЅРєС†РёР№ Р±СЌРєР°РїРѕРІ
+            # Импорт функций бэкапов
             from extensions.backup_monitor.backup_utils import get_backup_summary
             return get_backup_summary(
                 period_hours,
@@ -179,18 +179,18 @@ class MorningReport:
                 unavailable_hosts=unavailable_hosts,
             )
         except Exception as e:
-            debug_log(f"вќЊ РћС€РёР±РєР° РїРѕР»СѓС‡РµРЅРёСЏ СЃРІРѕРґРєРё РїРѕ Р±СЌРєР°РїР°Рј: {e}")
-            return "вќЊ Р”Р°РЅРЅС‹Рµ Рѕ Р±СЌРєР°РїР°С… РЅРµРґРѕСЃС‚СѓРїРЅС‹", True
+            debug_log(f"❌ Ошибка получения сводки по бэкапам: {e}")
+            return "❌ Данные о бэкапах недоступны", True
 
     def get_zfs_summary_for_report(self):
-        """РџРѕР»СѓС‡Р°РµС‚ СЃРІРѕРґРєСѓ РїРѕ ZFS"""
+        """Получает сводку по ZFS"""
         try:
             from config.db_settings import BACKUP_DATABASE_CONFIG
             from core.config_manager import config_manager as settings_manager
 
             db_path = BACKUP_DATABASE_CONFIG.get("backups_db")
             if not db_path:
-                return "вќЊ Р‘Р°Р·Р° Р±СЌРєР°РїРѕРІ РЅРµ РЅР°СЃС‚СЂРѕРµРЅР°\n", True
+                return "❌ База бэкапов не настроена\n", True
 
             zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
             if not isinstance(zfs_servers, dict):
@@ -223,7 +223,7 @@ class MorningReport:
                 rows = cursor.fetchall()
             except Exception as exc:
                 if "no such table: zfs_pool_status" in str(exc):
-                    return "вќЊ РўР°Р±Р»РёС†Р° ZFS РµС‰С‘ РЅРµ СЃРѕР·РґР°РЅР°.\n", True
+                    return "❌ Таблица ZFS ещё не создана.\n", True
                 raise
             finally:
                 conn.close()
@@ -312,12 +312,12 @@ class MorningReport:
                 servers_problem = len(stale_servers)
                 servers_ok = servers_total - servers_problem
                 summary = (
-                    f"вЂў РЎРµСЂРІРµСЂРѕРІ: {servers_total} (рџџў {servers_ok} / рџ”ґ {servers_problem})\n"
-                    "вЂў РџСѓР»РѕРІ: 0 (рџџў 0 / рџ”ґ 0)\n"
+                    f"• Серверов: {servers_total} (🟢 {servers_ok} / 🔴 {servers_problem})\n"
+                    "• Пулов: 0 (🟢 0 / 🔴 0)\n"
                 )
                 return summary, True
             if not rows:
-                return "вЂў Р”Р°РЅРЅС‹С… РЅРµС‚\n", False
+                return "• Данных нет\n", False
 
             total_pools = len(rows)
             ok_pools = sum(
@@ -344,60 +344,60 @@ class MorningReport:
             servers_ok = servers_count - servers_problem
 
             summary = (
-                f"вЂў РЎРµСЂРІРµСЂРѕРІ: {servers_count} (рџџў {servers_ok} / рџ”ґ {servers_problem})\n"
-                f"вЂў РџСѓР»РѕРІ: {total_pools} (рџџў {ok_pools} / рџ”ґ {bad_pools})\n"
+                f"• Серверов: {servers_count} (🟢 {servers_ok} / 🔴 {servers_problem})\n"
+                f"• Пулов: {total_pools} (🟢 {ok_pools} / 🔴 {bad_pools})\n"
             )
 
             has_issues = servers_problem > 0 or bad_pools > 0 or bool(stale_servers)
             return summary, has_issues
         except Exception as e:
-            debug_log(f"вќЊ РћС€РёР±РєР° РїРѕР»СѓС‡РµРЅРёСЏ СЃРІРѕРґРєРё ZFS: {e}")
-            return "вќЊ Р”Р°РЅРЅС‹Рµ ZFS РЅРµРґРѕСЃС‚СѓРїРЅС‹\n", True
+            debug_log(f"❌ Ошибка получения сводки ZFS: {e}")
+            return "❌ Данные ZFS недоступны\n", True
     
     def send_report(self, manual_call=False):
-        """РћС‚РїСЂР°РІРєР° РѕС‚С‡РµС‚Р°"""
+        """Отправка отчета"""
         try:
-            # РЎРѕР±РёСЂР°РµРј РґР°РЅРЅС‹Рµ
+            # Собираем данные
             self.collect_morning_data(manual_call)
             
-            # Р“РµРЅРµСЂРёСЂСѓРµРј СЃРѕРѕР±С‰РµРЅРёРµ
+            # Генерируем сообщение
             message = self.generate_report_message()
             
-            # РћС‚РїСЂР°РІР»СЏРµРј С‡РµСЂРµР· РѕР±СЂР°Р±РѕС‚С‡РёРє
+            # Отправляем через обработчик
             from bot.handlers.commands import send_alert
             send_alert(message, force=True)
             
-            debug_log(f"вњ… РћС‚С‡РµС‚ РѕС‚РїСЂР°РІР»РµРЅ ({'СЂСѓС‡РЅРѕР№' if manual_call else 'Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРёР№'})")
+            debug_log(f"✅ Отчет отправлен ({'ручной' if manual_call else 'автоматический'})")
             return True
         except Exception as e:
-            debug_log(f"вќЊ РћС€РёР±РєР° РѕС‚РїСЂР°РІРєРё РѕС‚С‡РµС‚Р°: {e}")
+            debug_log(f"❌ Ошибка отправки отчета: {e}")
             return False
     
     def start_scheduler(self):
-        """Р—Р°РїСѓСЃРє РїР»Р°РЅРёСЂРѕРІС‰РёРєР° РѕС‚С‡РµС‚РѕРІ"""
-        debug_log("вЏ° Р—Р°РїСѓСЃРє РїР»Р°РЅРёСЂРѕРІС‰РёРєР° СѓС‚СЂРµРЅРЅРёС… РѕС‚С‡РµС‚РѕРІ")
+        """Запуск планировщика отчетов"""
+        debug_log("⏰ Запуск планировщика утренних отчетов")
         
         while True:
             current_time = datetime.now()
             current_time_time = current_time.time()
             
-            # РџСЂРѕРІРµСЂСЏРµРј РІСЂРµРјСЏ СЃР±РѕСЂР° РґР°РЅРЅС‹С…
+            # Проверяем время сбора данных
             if (current_time_time.hour == DATA_COLLECTION_TIME.hour and
                 current_time_time.minute == DATA_COLLECTION_TIME.minute):
                 
-                # РџСЂРѕРІРµСЂСЏРµРј, С‡С‚Рѕ СЃРµРіРѕРґРЅСЏ РµС‰Рµ РЅРµ РѕС‚РїСЂР°РІР»СЏР»Рё РѕС‚С‡РµС‚
+                # Проверяем, что сегодня еще не отправляли отчет
                 today = current_time.date()
                 if self.last_report_date != today:
-                    debug_log(f"рџ“Љ РђРІС‚РѕРјР°С‚РёС‡РµСЃРєРёР№ СЃР±РѕСЂ РґР°РЅРЅС‹С… РґР»СЏ СѓС‚СЂРµРЅРЅРµРіРѕ РѕС‚С‡РµС‚Р°")
+                    debug_log(f"📊 Автоматический сбор данных для утреннего отчета")
                     self.send_report(manual_call=False)
                     self.last_report_date = today
                     
-                    # Р—Р°РґРµСЂР¶РєР° С‡С‚РѕР±С‹ РЅРµ Р·Р°РїСѓСЃРєР°С‚СЊ РїРѕРІС‚РѕСЂРЅРѕ РІ С‚Сѓ Р¶Рµ РјРёРЅСѓС‚Сѓ
+                    # Задержка чтобы не запускать повторно в ту же минуту
                     time.sleep(65)
                 else:
-                    debug_log(f"вЏ­пёЏ РћС‚С‡РµС‚ СѓР¶Рµ РѕС‚РїСЂР°РІР»РµРЅ СЃРµРіРѕРґРЅСЏ {self.last_report_date}")
+                    debug_log(f"⏭️ Отчет уже отправлен сегодня {self.last_report_date}")
             
-            time.sleep(60)  # РџСЂРѕРІРµСЂСЏРµРј РєР°Р¶РґСѓСЋ РјРёРЅСѓС‚Сѓ
+            time.sleep(60)  # Проверяем каждую минуту
 
-# Р“Р»РѕР±Р°Р»СЊРЅС‹Р№ СЌРєР·РµРјРїР»СЏСЂ РѕС‚С‡РµС‚Р°
+# Глобальный экземпляр отчета
 morning_report = MorningReport()

@@ -4,11 +4,11 @@ Server Monitoring System v8.6.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Supplier stock files downloader
-РЎРёСЃС‚РµРјР° РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЃРµСЂРІРµСЂРѕРІ
-Р’РµСЂСЃРёСЏ: 8.6.0
-РђРІС‚РѕСЂ: РђР»РµРєСЃР°РЅРґСЂ РЎСѓС…Р°РЅРѕРІ (c)
-Р›РёС†РµРЅР·РёСЏ: MIT
-РџРѕР»СѓС‡РµРЅРёРµ С„Р°Р№Р»РѕРІ РѕСЃС‚Р°С‚РєРѕРІ РїРѕСЃС‚Р°РІС‰РёРєРѕРІ
+Система мониторинга серверов
+Версия: 8.6.0
+Автор: Александр Суханов (c)
+Лицензия: MIT
+Получение файлов остатков поставщиков
 """
 
 from __future__ import annotations
@@ -102,9 +102,9 @@ DEFAULT_IEK_JSON_SETTINGS: Dict[str, Any] = {
     ],
     "prefix": "IEK\\",
     "outputs": {
-        "orig": "РћСЃС‚Р°С‚РєРё РР­Рљ.xlsx",
-        "msk": "РњРЎРљ/РћСЃС‚Р°С‚РєРё РњРЎРљ.xls",
-        "nsk": "Р Р¦/РћСЃС‚Р°С‚РєРё Р Р¦.xls",
+        "orig": "Остатки ИЭК.xlsx",
+        "msk": "МСК/Остатки МСК.xls",
+        "nsk": "РЦ/Остатки РЦ.xls",
         "orc": "iek.csv",
     },
 }
@@ -121,7 +121,7 @@ _last_run_markers: set[str] = set()
 
 
 def parse_supplier_stock_schedule_times(schedule_time: Any) -> list[str]:
-    """Р Р°Р·РѕР±СЂР°С‚СЊ СЃС‚СЂРѕРєСѓ СЂР°СЃРїРёСЃР°РЅРёСЏ РЅР° СЃРїРёСЃРѕРє РІСЂРµРјРµРЅРЅС‹С… С‚РѕС‡РµРє HH:MM."""
+    """Разобрать строку расписания на список временных точек HH:MM."""
     raw_value = str(schedule_time or "").strip()
     if not raw_value:
         return []
@@ -228,9 +228,9 @@ def _normalize_requires_processing(value: Any) -> bool:
         return bool(value)
     if isinstance(value, str):
         lowered = value.strip().lower()
-        if lowered in ("false", "0", "no", "РЅРµС‚", "off"):
+        if lowered in ("false", "0", "no", "нет", "off"):
             return False
-        if lowered in ("true", "1", "yes", "РґР°", "on"):
+        if lowered in ("true", "1", "yes", "да", "on"):
             return True
     return bool(value)
 
@@ -481,10 +481,10 @@ def _run_pre_request(
     timeout: int,
 ) -> Dict[str, Any]:
     if not isinstance(pre_request, dict):
-        return {"success": False, "error": "РќРµРєРѕСЂСЂРµРєС‚РЅС‹Рµ РґР°РЅРЅС‹Рµ pre_request"}
+        return {"success": False, "error": "Некорректные данные pre_request"}
     url = _render_template(str(pre_request.get("url", "")), now, render_context)
     if not url:
-        return {"success": False, "error": "pre_request: URL РЅРµ Р·Р°РґР°РЅ"}
+        return {"success": False, "error": "pre_request: URL не задан"}
     method = str(pre_request.get("method", "POST")).upper()
     headers = dict(pre_request.get("headers") or {})
     data_value = pre_request.get("data")
@@ -518,7 +518,7 @@ def _run_pre_request(
             return {"success": False, "error": f"pre_request: {exc}"}
         except Exception as exc:
             return {"success": False, "error": f"pre_request: {exc}"}
-    return {"success": False, "error": "pre_request: СЃР»РёС€РєРѕРј РјРЅРѕРіРѕ РїРµСЂРµРЅР°РїСЂР°РІР»РµРЅРёР№"}
+    return {"success": False, "error": "pre_request: слишком много перенаправлений"}
 
 
 def _discover_url(
@@ -529,12 +529,12 @@ def _discover_url(
     timeout: int,
 ) -> Dict[str, Any]:
     if not isinstance(discover, dict):
-        return {"success": False, "error": "РќРµРєРѕСЂСЂРµРєС‚РЅС‹Рµ РґР°РЅРЅС‹Рµ discover"}
+        return {"success": False, "error": "Некорректные данные discover"}
     source_url = _render_template(str(discover.get("url", "")), now, render_context)
     pattern = _render_template(str(discover.get("pattern", "")), now, render_context)
     prefix = _render_template(str(discover.get("prefix", "")), now, render_context)
     if not source_url or not pattern:
-        return {"success": False, "error": "discover: URL РёР»Рё С€Р°Р±Р»РѕРЅ РЅРµ Р·Р°РґР°РЅ"}
+        return {"success": False, "error": "discover: URL или шаблон не задан"}
     try:
         request = Request(source_url)
         with opener.open(request, timeout=timeout) as response:
@@ -544,7 +544,7 @@ def _discover_url(
 
     match = re.search(pattern, page_content)
     if not match:
-        return {"success": False, "error": "discover: СЃСЃС‹Р»РєР° РЅРµ РЅР°Р№РґРµРЅР°"}
+        return {"success": False, "error": "discover: ссылка не найдена"}
     discovered = match.group(0)
     if prefix:
         discovered = prefix + discovered
@@ -561,7 +561,7 @@ def _run_shell_command(
 
     command = _render_template(str(source.get("command", "")), now, render_context)
     if not command:
-        return {"success": False, "error": "РљРѕРјР°РЅРґР° РЅРµ Р·Р°РґР°РЅР°"}
+        return {"success": False, "error": "Команда не задана"}
 
     result = subprocess.run(command, shell=True, capture_output=True, text=True)
     output_name = _render_template(str(source.get("output_name", "")), now)
@@ -671,12 +671,12 @@ def get_supplier_stock_reports_total() -> int:
 def _map_stage_status(value: str | None) -> Dict[str, str]:
     status = (value or "").lower()
     if status in ("success", "ok", "done"):
-        return {"status": "success", "icon": "рџџў"}
+        return {"status": "success", "icon": "🟢"}
     if status in ("error", "failed", "fail"):
-        return {"status": "error", "icon": "рџ”ґ"}
+        return {"status": "error", "icon": "🔴"}
     if status in ("skipped", "skip", "warning"):
-        return {"status": "warning", "icon": "рџџЎ"}
-    return {"status": "unknown", "icon": "вљЄпёЏ"}
+        return {"status": "warning", "icon": "🟡"}
+    return {"status": "unknown", "icon": "⚪️"}
 
 
 def _extract_processing_status(processing: Dict[str, Any] | None) -> str | None:
@@ -830,13 +830,13 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
             formatted = message % args if args else message
             _monitor_logger.info(formatted)
 
-    _log("рџ“¦ РћСЃС‚Р°С‚РєРё РїРѕСЃС‚Р°РІС‰РёРєРѕРІ: РёСЃС‚РѕС‡РЅРёРєРѕРІ Рє РѕР±СЂР°Р±РѕС‚РєРµ %s", len(sources))
+    _log("📦 Остатки поставщиков: источников к обработке %s", len(sources))
 
     for source in sources:
         source_id = source.get("id") or source.get("name") or "unknown"
         name = source.get("name") or source_id
         if not source.get("enabled", True):
-            _log("рџ“¦ РћСЃС‚Р°С‚РєРё РїРѕСЃС‚Р°РІС‰РёРєРѕРІ: %s РїСЂРѕРїСѓС‰РµРЅ (РІС‹РєР»СЋС‡РµРЅ)", source_id)
+            _log("📦 Остатки поставщиков: %s пропущен (выключен)", source_id)
             results.append({"source_id": source_id, "source_name": name, "status": "skipped"})
             continue
 
@@ -853,10 +853,10 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
             output_name = source.get("output_name")
             rendered_url = _render_template(str(source.get("url", "")), now, render_context)
             if not rendered_url:
-                entry.update({"status": "error", "error": "URL РЅРµ Р·Р°РґР°РЅ"})
+                entry.update({"status": "error", "error": "URL не задан"})
                 append_supplier_stock_report(entry)
                 results.append(entry)
-                _log("рџ“¦ РћСЃС‚Р°С‚РєРё РїРѕСЃС‚Р°РІС‰РёРєРѕРІ: %s -> error (URL РЅРµ Р·Р°РґР°РЅ)", entry["source_id"])
+                _log("📦 Остатки поставщиков: %s -> error (URL не задан)", entry["source_id"])
                 continue
             if output_name:
                 output_name = _render_template(str(output_name), now, render_context)
@@ -866,7 +866,7 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
             original_path = output_path
 
             entry.update({"url": rendered_url, "output_name": output_name})
-            _log("рџ“¦ РћСЃС‚Р°С‚РєРё РїРѕСЃС‚Р°РІС‰РёРєРѕРІ: %s -> СЃС‚Р°СЂС‚ (%s)", entry["source_id"], rendered_url)
+            _log("📦 Остатки поставщиков: %s -> старт (%s)", entry["source_id"], rendered_url)
 
             if entry["method"] == "shell":
                 result = _run_shell_command(source, now, temp_dir, render_context)
@@ -883,7 +883,7 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
                         entry["path"] = str(unpacked_path)
                         entry["unpacked_path"] = str(unpacked_path)
                         output_path = unpacked_path
-                        _log("рџ“¦ РћСЃС‚Р°С‚РєРё РїРѕСЃС‚Р°РІС‰РёРєРѕРІ: %s СЂР°СЃРїР°РєРѕРІР°РЅ РІ %s", entry["source_id"], unpacked_path)
+                        _log("📦 Остатки поставщиков: %s распакован в %s", entry["source_id"], unpacked_path)
                 if source.get("processing_mode") == "iek_json":
                     processing_result = _process_iek_json_file(
                         output_path,
@@ -916,12 +916,12 @@ def run_supplier_stock_fetch() -> Dict[str, Any]:
         results.append(entry)
         if entry.get("status") == "error" and entry.get("error"):
             _log(
-                "рџ“¦ РћСЃС‚Р°С‚РєРё РїРѕСЃС‚Р°РІС‰РёРєРѕРІ: %s -> error (%s)",
+                "📦 Остатки поставщиков: %s -> error (%s)",
                 entry["source_id"],
                 entry["error"],
             )
         else:
-            _log("рџ“¦ РћСЃС‚Р°С‚РєРё РїРѕСЃС‚Р°РІС‰РёРєРѕРІ: %s -> %s", entry["source_id"], entry["status"])
+            _log("📦 Остатки поставщиков: %s -> %s", entry["source_id"], entry["status"])
 
     success_count = sum(1 for item in results if item.get("status") == "success")
     cleanup_supplier_stock_archives(config, now)
@@ -967,12 +967,12 @@ def start_supplier_stock_scheduler() -> None:
         _scheduler_started = True
 
     def _loop() -> None:
-        _log_processing("вЏ° Р—Р°РїСѓСЃРє РїР»Р°РЅРёСЂРѕРІС‰РёРєР° Р·Р°РіСЂСѓР·РєРё РѕСЃС‚Р°С‚РєРѕРІ РїРѕСЃС‚Р°РІС‰РёРєРѕРІ")
+        _log_processing("⏰ Запуск планировщика загрузки остатков поставщиков")
         while True:
             now = datetime.now()
             schedule = get_supplier_stock_config().get("download", {}).get("schedule", {})
             if _should_run_schedule(schedule, now):
-                _log_processing("рџ“¦ РџР»Р°РЅРѕРІР°СЏ Р·Р°РіСЂСѓР·РєР° РѕСЃС‚Р°С‚РєРѕРІ РїРѕСЃС‚Р°РІС‰РёРєРѕРІ")
+                _log_processing("📦 Плановая загрузка остатков поставщиков")
                 run_supplier_stock_fetch()
             threading.Event().wait(30)
 
@@ -1065,7 +1065,7 @@ def cleanup_supplier_stock_archives(
 
     if removed or errors:
         _log_processing(
-            "рџ—‘пёЏ РћС‡РёСЃС‚РєР° Р°СЂС…РёРІР° РѕСЃС‚Р°С‚РєРѕРІ: СѓРґР°Р»РµРЅРѕ %s С„Р°Р№Р»РѕРІ, РѕС€РёР±РѕРє %s",
+            "🗑️ Очистка архива остатков: удалено %s файлов, ошибок %s",
             removed,
             errors,
         )
@@ -1087,7 +1087,7 @@ def _process_supplier_stock_file(
     rules = processing.get("rules", [])
     if not rules:
         _log_processing(
-            "рџ§© РћСЃС‚Р°С‚РєРё РїРѕСЃС‚Р°РІС‰РёРєРѕРІ: РїСЂР°РІРёР»Р° РѕР±СЂР°Р±РѕС‚РєРё РЅРµ РЅР°СЃС‚СЂРѕРµРЅС‹ РґР»СЏ %s, РІС‹РїРѕР»РЅСЏРµРј РІС‹РіСЂСѓР·РєСѓ РѕСЂРёРіРёРЅР°Р»Р°",
+            "🧩 Остатки поставщиков: правила обработки не настроены для %s, выполняем выгрузку оригинала",
             file_path.name,
         )
         transfer_result = _transfer_processed_outputs(
@@ -1110,10 +1110,10 @@ def _process_supplier_stock_file(
         }
 
     _log_processing(
-        "рџ§© РћСЃС‚Р°С‚РєРё РїРѕСЃС‚Р°РІС‰РёРєРѕРІ: РїСЂРѕРІРµСЂРєР° РїСЂР°РІРёР» РѕР±СЂР°Р±РѕС‚РєРё РґР»СЏ %s (РёСЃС‚РѕС‡РЅРёРє=%s, С‚РёРї=%s)",
+        "🧩 Остатки поставщиков: проверка правил обработки для %s (источник=%s, тип=%s)",
         file_path.name,
-        source_id or "РЅРµ СѓРєР°Р·Р°РЅ",
-        source_kind or "РЅРµ СѓРєР°Р·Р°РЅ",
+        source_id or "не указан",
+        source_kind or "не указан",
     )
 
     matched_rules = []
@@ -1142,23 +1142,23 @@ def _process_supplier_stock_file(
         rule_label = rule.get("id") or rule.get("name") or "rule"
         matched_rules.append(rule_label)
         _log_processing(
-            "рџ§© РћСЃС‚Р°С‚РєРё РїРѕСЃС‚Р°РІС‰РёРєРѕРІ: Р·Р°РїСѓСЃРє РїСЂР°РІРёР»Р° РѕР±СЂР°Р±РѕС‚РєРё %s РґР»СЏ %s",
+            "🧩 Остатки поставщиков: запуск правила обработки %s для %s",
             rule_label,
             file_path.name,
         )
         try:
             result = _run_processing_rule(file_path, rule, processing, now, input_index, source_name)
             _log_processing(
-                "рџ§© РћСЃС‚Р°С‚РєРё РїРѕСЃС‚Р°РІС‰РёРєРѕРІ: СЂРµР·СѓР»СЊС‚Р°С‚ РїСЂР°РІРёР»Р° %s РґР»СЏ %s -> %s",
+                "🧩 Остатки поставщиков: результат правила %s для %s -> %s",
                 rule_label,
                 file_path.name,
                 result.get("status"),
             )
             results.append(result)
         except Exception as exc:
-            _logger.error("вљ пёЏ РћС€РёР±РєР° РѕР±СЂР°Р±РѕС‚РєРё %s: %s", file_path, exc)
+            _logger.error("⚠️ Ошибка обработки %s: %s", file_path, exc)
             _log_processing(
-                "рџ§© РћСЃС‚Р°С‚РєРё РїРѕСЃС‚Р°РІС‰РёРєРѕРІ: РѕС€РёР±РєР° РїСЂР°РІРёР»Р° %s РґР»СЏ %s -> %s",
+                "🧩 Остатки поставщиков: ошибка правила %s для %s -> %s",
                 rule_label,
                 file_path.name,
                 exc,
@@ -1167,7 +1167,7 @@ def _process_supplier_stock_file(
 
     if not matched_rules:
         _log_processing(
-            "рџ§© РћСЃС‚Р°С‚РєРё РїРѕСЃС‚Р°РІС‰РёРєРѕРІ: РїРѕРґС…РѕРґСЏС‰РёРµ РїСЂР°РІРёР»Р° РѕР±СЂР°Р±РѕС‚РєРё РЅРµ РЅР°Р№РґРµРЅС‹ РґР»СЏ %s",
+            "🧩 Остатки поставщиков: подходящие правила обработки не найдены для %s",
             file_path.name,
         )
         transfer_result = _transfer_processed_outputs(
@@ -1220,7 +1220,7 @@ def _process_iek_json_file(
     iek_settings = _normalize_iek_json_settings((source or {}).get("iek_json"))
     store_map = iek_settings.get("stores", {})
     if not store_map:
-        return {"status": "error", "error": "iek_json: stores РЅРµ Р·Р°РґР°РЅС‹"}
+        return {"status": "error", "error": "iek_json: stores не заданы"}
 
     try:
         payload = json.loads(file_path.read_text(encoding="utf-8", errors="ignore"))
@@ -1229,7 +1229,7 @@ def _process_iek_json_file(
 
     items = payload.get("shopItems", [])
     if not isinstance(items, list):
-        return {"status": "error", "error": "iek_json: shopItems РЅРµ РЅР°Р№РґРµРЅ"}
+        return {"status": "error", "error": "iek_json: shopItems не найден"}
 
     def _get_residue(row: dict, key: str) -> int:
         store_id = store_map.get(key)
@@ -1375,24 +1375,24 @@ def _transfer_processed_outputs(
     outputs, orc_outputs = _collect_processing_outputs(results)
     if not outputs and not original_path:
         _log_processing(
-            "рџ§© Р’С‹РіСЂСѓР·РєР° РѕСЃС‚Р°С‚РєРѕРІ РїСЂРѕРїСѓС‰РµРЅР°: РЅРµС‚ С„Р°Р№Р»РѕРІ РґР»СЏ РїРµСЂРµРґР°С‡Рё (РёСЃС‚РѕС‡РЅРёРє=%s, С‚РёРї=%s)",
-            source_id or "РЅРµ СѓРєР°Р·Р°РЅ",
-            source_kind or "РЅРµ СѓРєР°Р·Р°РЅ",
+            "🧩 Выгрузка остатков пропущена: нет файлов для передачи (источник=%s, тип=%s)",
+            source_id or "не указан",
+            source_kind or "не указан",
         )
         return {"status": "skipped", "reason": "no_outputs"}
     targets, upload_subdir = _resolve_transfer_targets(config, source_id, source_kind)
     if not targets and not orc_outputs:
         _log_processing(
-            "рџ§© Р’С‹РіСЂСѓР·РєР° РѕСЃС‚Р°С‚РєРѕРІ РїСЂРѕРїСѓС‰РµРЅР°: РЅРµ Р·Р°РґР°РЅС‹ СЂРµСЃСѓСЂСЃС‹ РІС‹РіСЂСѓР·РєРё Рё РЅРµС‚ РћР Рљ С„Р°Р№Р»РѕРІ",
+            "🧩 Выгрузка остатков пропущена: не заданы ресурсы выгрузки и нет ОРК файлов",
         )
         return {"status": "skipped", "reason": "no_targets"}
     _log_processing(
-        "рџ§© РЎС‚Р°СЂС‚ РІС‹РіСЂСѓР·РєРё РѕСЃС‚Р°С‚РєРѕРІ: РІС‹С…РѕРґРЅС‹С…=%s, РћР Рљ=%s, РѕСЂРёРіРёРЅР°Р»=%s, СЂРµСЃСѓСЂСЃРѕРІ=%s, РїРѕРґРєР°С‚Р°Р»РѕРі=%s",
+        "🧩 Старт выгрузки остатков: выходных=%s, ОРК=%s, оригинал=%s, ресурсов=%s, подкаталог=%s",
         len(outputs),
         len(orc_outputs),
-        original_path.name if original_path else "РЅРµС‚",
+        original_path.name if original_path else "нет",
         len(targets),
-        upload_subdir or "РЅРµ Р·Р°РґР°РЅ",
+        upload_subdir or "не задан",
     )
     smbclient_path = _resolve_smbclient_path(config)
     transfer_entries = []
@@ -1537,7 +1537,7 @@ def _upload_file_via_smbclient(
         return {"target": target_name, "status": "error", "error": "smbclient_not_found"}
     parsed = _split_unc_path(unc_path)
     if not parsed:
-        _log_processing("рџ§© РќРµРєРѕСЂСЂРµРєС‚РЅС‹Р№ UNC РїСѓС‚СЊ %s РґР»СЏ РІС‹РіСЂСѓР·РєРё %s", unc_path, file_path.name)
+        _log_processing("🧩 Некорректный UNC путь %s для выгрузки %s", unc_path, file_path.name)
         return {"target": target_name, "status": "error", "error": "invalid_unc_path"}
     server, share, base_subdir = parsed
     cleaned_subdir = _normalize_subdir(upload_subdir)
@@ -1563,7 +1563,7 @@ def _upload_file_via_smbclient(
     try:
         result = subprocess.run(args, capture_output=True, text=True, check=False)
     except Exception as exc:
-        _log_processing("рџ§© РћС€РёР±РєР° Р·Р°РїСѓСЃРєР° smbclient РґР»СЏ %s: %s", file_path.name, exc)
+        _log_processing("🧩 Ошибка запуска smbclient для %s: %s", file_path.name, exc)
         return {"target": target_name, "status": "error", "error": str(exc)}
     finally:
         if auth_file:
@@ -1588,7 +1588,7 @@ def _upload_file_via_smbclient(
             smbclient_error = "; ".join(error_lines)
     if result.returncode != 0 or smbclient_error:
         _log_processing(
-            "рџ§© РћС€РёР±РєР° РІС‹РіСЂСѓР·РєРё %s С‡РµСЂРµР· smbclient РІ //%s/%s: %s",
+            "🧩 Ошибка выгрузки %s через smbclient в //%s/%s: %s",
             file_path.name,
             server,
             share,
@@ -1600,7 +1600,7 @@ def _upload_file_via_smbclient(
             "error": smbclient_error or output_text or "unknown_error",
         }
     _log_processing(
-        "рџ§© Р’С‹РіСЂСѓР¶РµРЅ С„Р°Р№Р» %s С‡РµСЂРµР· smbclient РІ //%s/%s/%s",
+        "🧩 Выгружен файл %s через smbclient в //%s/%s/%s",
         file_path.name,
         server,
         share,
@@ -1620,14 +1620,14 @@ def _copy_file_to_target_dir(
         target_dir.mkdir(parents=True, exist_ok=True)
         target_file = target_dir / file_path.name
         shutil.copy2(file_path, target_file)
-        _log_processing("рџ§© Р’С‹РіСЂСѓР¶РµРЅ С„Р°Р№Р» %s РІ %s", file_path.name, target_dir)
+        _log_processing("🧩 Выгружен файл %s в %s", file_path.name, target_dir)
         return {
             "target": str(target_dir),
             "status": "success",
         }
     except Exception as exc:
         _log_processing(
-            "рџ§© РћС€РёР±РєР° РїРµСЂРµРЅРѕСЃР° С„Р°Р№Р»Р° %s РІ %s: %s",
+            "🧩 Ошибка переноса файла %s в %s: %s",
             file_path.name,
             target_dir,
             exc,
@@ -1732,7 +1732,7 @@ def _transfer_files_to_targets(
                     target_results.append(_copy_file_to_target_dir(file_path, target_dir))
                     continue
                 _log_processing(
-                    "рџ§© РџСЂРѕРїСѓСЃРє РІС‹РіСЂСѓР·РєРё %s: РЅРµ РЅР°Р№РґРµРЅ smbclient РґР»СЏ СЂРµСЃСѓСЂСЃР° %s",
+                    "🧩 Пропуск выгрузки %s: не найден smbclient для ресурса %s",
                     file_path.name,
                     target_name,
                 )
@@ -1747,7 +1747,7 @@ def _transfer_files_to_targets(
             target_dir = _compose_target_dir(unc_path, combined_subdir)
             if not target_dir:
                 _log_processing(
-                    "рџ§© РџСЂРѕРїСѓСЃРє РІС‹РіСЂСѓР·РєРё %s: РЅРµ СѓРґР°Р»РѕСЃСЊ РѕРїСЂРµРґРµР»РёС‚СЊ UNC РїСѓС‚СЊ РґР»СЏ СЂРµСЃСѓСЂСЃР° %s",
+                    "🧩 Пропуск выгрузки %s: не удалось определить UNC путь для ресурса %s",
                     file_path.name,
                     target_name,
                 )
@@ -1855,9 +1855,9 @@ def _parse_bool_config(value: Any, default: bool) -> bool:
         return value
     if isinstance(value, str):
         normalized = value.strip().lower()
-        if normalized in {"1", "true", "yes", "y", "on", "РґР°"}:
+        if normalized in {"1", "true", "yes", "y", "on", "да"}:
             return True
-        if normalized in {"0", "false", "no", "n", "off", "РЅРµС‚"}:
+        if normalized in {"0", "false", "no", "n", "off", "нет"}:
             return False
     return bool(value)
 
@@ -1872,11 +1872,11 @@ def _upload_file_to_ftp(ftp: ftplib.FTP, orc_path: Path, remote_name: str | None
 
 def _upload_orc_outputs_to_ftp(orc_outputs: list[Path], ftp_config: Dict[str, Any]) -> Dict[str, Any]:
     if not orc_outputs:
-        _log_processing("рџ§© FTP РћР Рљ: РІС‹РіСЂСѓР·РєР° РїСЂРѕРїСѓС‰РµРЅР° (РЅРµС‚ С„Р°Р№Р»РѕРІ)")
+        _log_processing("🧩 FTP ОРК: выгрузка пропущена (нет файлов)")
         return {"status": "skipped", "reason": "no_orc_files", "items": []}
     host_raw = str(ftp_config.get("host") or "").strip()
     if not host_raw:
-        _log_processing("рџ§© FTP РћР Рљ: РІС‹РіСЂСѓР·РєР° РїСЂРѕРїСѓС‰РµРЅР° (С…РѕСЃС‚ РЅРµ Р·Р°РґР°РЅ)")
+        _log_processing("🧩 FTP ОРК: выгрузка пропущена (хост не задан)")
         return {"status": "skipped", "reason": "no_host", "items": []}
     host, port, base_dir = _parse_ftp_host(host_raw)
     login = str(ftp_config.get("login") or "").strip() or None
@@ -1895,7 +1895,7 @@ def _upload_orc_outputs_to_ftp(orc_outputs: list[Path], ftp_config: Dict[str, An
                 try:
                     ftp.cwd(base_dir)
                 except Exception as exc:
-                    _log_processing("рџ§© РћС€РёР±РєР° РїРµСЂРµС…РѕРґР° РІ РєР°С‚Р°Р»РѕРі FTP РћР Рљ %s: %s", base_dir, exc)
+                    _log_processing("🧩 Ошибка перехода в каталог FTP ОРК %s: %s", base_dir, exc)
                     return {"status": "error", "error": str(exc), "items": results}
             for orc_path in orc_outputs:
                 if not orc_path.exists():
@@ -1904,12 +1904,12 @@ def _upload_orc_outputs_to_ftp(orc_outputs: list[Path], ftp_config: Dict[str, An
                 remote_name = "iek.csv" if orc_path.name == "iek_4ork.csv" else orc_path.name
                 try:
                     _upload_file_to_ftp(ftp, orc_path, remote_name)
-                    _log_processing("рџ§© Р’С‹РіСЂСѓР¶РµРЅ РћР Рљ С„Р°Р№Р» %s РЅР° FTP %s", remote_name, host)
+                    _log_processing("🧩 Выгружен ОРК файл %s на FTP %s", remote_name, host)
                     results.append({"file": str(orc_path), "status": "success", "remote_name": remote_name})
                 except Exception as exc:
                     if passive and _is_passive_mode_denied_error(exc):
                         _log_processing(
-                            "рџ§© РџР°СЃСЃРёРІРЅС‹Р№ СЂРµР¶РёРј FTP Р·Р°РїСЂРµС‰РµРЅ, РїРѕРІС‚РѕСЂСЏРµРј РІ Р°РєС‚РёРІРЅРѕРј СЂРµР¶РёРјРµ РґР»СЏ %s",
+                            "🧩 Пассивный режим FTP запрещен, повторяем в активном режиме для %s",
                             remote_name,
                         )
                         passive = False
@@ -1917,19 +1917,19 @@ def _upload_orc_outputs_to_ftp(orc_outputs: list[Path], ftp_config: Dict[str, An
                         try:
                             _upload_file_to_ftp(ftp, orc_path, remote_name)
                             _log_processing(
-                                "рџ§© Р’С‹РіСЂСѓР¶РµРЅ РћР Рљ С„Р°Р№Р» %s РЅР° FTP %s (Р°РєС‚РёРІРЅС‹Р№ СЂРµР¶РёРј)",
+                                "🧩 Выгружен ОРК файл %s на FTP %s (активный режим)",
                                 remote_name,
                                 host,
                             )
                             results.append({"file": str(orc_path), "status": "success", "remote_name": remote_name})
                         except Exception as retry_exc:
-                            _log_processing("рџ§© РћС€РёР±РєР° РІС‹РіСЂСѓР·РєРё РћР Рљ %s РїРѕ FTP: %s", remote_name, retry_exc)
+                            _log_processing("🧩 Ошибка выгрузки ОРК %s по FTP: %s", remote_name, retry_exc)
                             results.append({"file": str(orc_path), "status": "error", "error": str(retry_exc)})
                     else:
-                        _log_processing("рџ§© РћС€РёР±РєР° РІС‹РіСЂСѓР·РєРё РћР Рљ %s РїРѕ FTP: %s", remote_name, exc)
+                        _log_processing("🧩 Ошибка выгрузки ОРК %s по FTP: %s", remote_name, exc)
                         results.append({"file": str(orc_path), "status": "error", "error": str(exc)})
     except Exception as exc:
-        _log_processing("рџ§© РћС€РёР±РєР° РїРѕРґРєР»СЋС‡РµРЅРёСЏ Рє FTP РћР Рљ: %s", exc)
+        _log_processing("🧩 Ошибка подключения к FTP ОРК: %s", exc)
         return {"status": "error", "error": str(exc), "items": results}
     return {"status": "success", "items": results}
 
@@ -1973,7 +1973,7 @@ def _cleanup_output_files(
             output_path.unlink()
         except Exception as exc:
             _log_processing(
-                "рџ§© РќРµ СѓРґР°Р»РѕСЃСЊ СѓРґР°Р»РёС‚СЊ РёСЃС…РѕРґРЅС‹Р№ С„Р°Р№Р» %s РїРѕСЃР»Рµ РІС‹РіСЂСѓР·РєРё: %s",
+                "🧩 Не удалось удалить исходный файл %s после выгрузки: %s",
                 output_path.name,
                 exc,
             )
@@ -2009,7 +2009,7 @@ def _resolve_transfer_targets(
                 [
                     {
                         "id": "individual",
-                        "name": "РРЅРґРёРІРёРґСѓР°Р»СЊРЅС‹Р№ РєР°С‚Р°Р»РѕРі",
+                        "name": "Индивидуальный каталог",
                         "unc_path": individual_path,
                         "login": individual.get("login"),
                         "password": individual.get("password"),
@@ -2048,7 +2048,7 @@ def _compose_target_dir(base_path: str, subdir: str) -> Path | None:
     if _is_unc_path(base_path):
         if os.name != "nt":
             _log_processing(
-                "рџ§© UNC РїСѓС‚СЊ %s Р·Р°РґР°РЅ, РЅРѕ С‚РµРєСѓС‰Р°СЏ РћРЎ РЅРµ Windows. Р’С‹РіСЂСѓР·РєР° РїСЂРѕРїСѓС‰РµРЅР°.",
+                "🧩 UNC путь %s задан, но текущая ОС не Windows. Выгрузка пропущена.",
                 base_path,
             )
             return None
@@ -2163,7 +2163,7 @@ def _run_processing_rule(
     source_name: str | None = None,
 ) -> Dict[str, Any]:
     if not _normalize_requires_processing(rule.get("requires_processing", True)):
-        _logger.info("рџ§© РћР±СЂР°Р±РѕС‚РєР° РЅРµ С‚СЂРµР±СѓРµС‚СЃСЏ РґР»СЏ %s (%s)", file_path, rule.get("name") or rule.get("id"))
+        _logger.info("🧩 Обработка не требуется для %s (%s)", file_path, rule.get("name") or rule.get("id"))
         return {"status": "skipped", "reason": "processing_disabled", "rule_id": rule.get("id")}
 
     table = _read_supplier_table(file_path)
@@ -2198,7 +2198,7 @@ def _read_supplier_table(file_path: Path) -> list[list[str]]:
         return _read_xlsx_table(file_path)
     if suffix in ("xls",):
         return _read_xls_table(file_path)
-    raise ValueError(f"РќРµРёР·РІРµСЃС‚РЅС‹Р№ С„РѕСЂРјР°С‚ С„Р°Р№Р»Р°: {file_path.suffix}")
+    raise ValueError(f"Неизвестный формат файла: {file_path.suffix}")
 
 
 def _read_csv_table(file_path: Path) -> list[list[str]]:
@@ -2227,7 +2227,7 @@ def _read_xlsx_table(file_path: Path) -> list[list[str]]:
     try:
         import openpyxl
     except ImportError as exc:
-        raise ImportError("openpyxl РЅРµ СѓСЃС‚Р°РЅРѕРІР»РµРЅ РґР»СЏ РѕР±СЂР°Р±РѕС‚РєРё xlsx") from exc
+        raise ImportError("openpyxl не установлен для обработки xlsx") from exc
     workbook = openpyxl.load_workbook(file_path, data_only=True)
     sheet = workbook.active
     rows: list[list[str]] = []
@@ -2242,19 +2242,19 @@ def _read_xls_table(file_path: Path) -> list[list[str]]:
     except ImportError as exc:
         if _looks_like_xlsx(file_path):
             _logger.warning(
-                "вљ пёЏ Р¤Р°Р№Р» %s РёРјРµРµС‚ СЂР°СЃС€РёСЂРµРЅРёРµ .xls, РЅРѕ РїРѕС…РѕР¶ РЅР° xlsx. РСЃРїРѕР»СЊР·СѓРµРј openpyxl.",
+                "⚠️ Файл %s имеет расширение .xls, но похож на xlsx. Используем openpyxl.",
                 file_path.name,
             )
             return _read_xlsx_table(file_path)
         raise ImportError(
-            "xlrd РЅРµ СѓСЃС‚Р°РЅРѕРІР»РµРЅ РґР»СЏ РѕР±СЂР°Р±РѕС‚РєРё xls. РЈСЃС‚Р°РЅРѕРІРёС‚Рµ РїР°РєРµС‚ xlrd РёР»Рё СЃРѕС…СЂР°РЅРёС‚Рµ С„Р°Р№Р» РІ С„РѕСЂРјР°С‚Рµ xlsx."
+            "xlrd не установлен для обработки xls. Установите пакет xlrd или сохраните файл в формате xlsx."
         ) from exc
     try:
         workbook = xlrd.open_workbook(file_path)
     except xlrd.biffh.XLRDError:
         if _looks_like_xlsx(file_path):
             _logger.warning(
-                "вљ пёЏ Р¤Р°Р№Р» %s РёРјРµРµС‚ СЂР°СЃС€РёСЂРµРЅРёРµ .xls, РЅРѕ РїРѕС…РѕР¶ РЅР° xlsx. РСЃРїРѕР»СЊР·СѓРµРј openpyxl.",
+                "⚠️ Файл %s имеет расширение .xls, но похож на xlsx. Используем openpyxl.",
                 file_path.name,
             )
             return _read_xlsx_table(file_path)
@@ -2674,17 +2674,17 @@ def _write_output_file(path: Path, fmt: str, headers: list[str], rows: list[list
             return path
         xlsx_path = path.with_suffix(".xlsx")
         if _write_xlsx(xlsx_path, headers, rows):
-            _logger.warning("вљ пёЏ Р—Р°РїРёСЃСЊ xls РЅРµРґРѕСЃС‚СѓРїРЅР°, СЃРѕС…СЂР°РЅРµРЅРѕ РєР°Рє %s", xlsx_path.name)
+            _logger.warning("⚠️ Запись xls недоступна, сохранено как %s", xlsx_path.name)
             return xlsx_path
         return _write_fallback_csv(path, headers, rows, fmt)
-    raise ValueError(f"РќРµРёР·РІРµСЃС‚РЅС‹Р№ С„РѕСЂРјР°С‚ РІС‹С…РѕРґРЅРѕРіРѕ С„Р°Р№Р»Р°: {fmt}")
+    raise ValueError(f"Неизвестный формат выходного файла: {fmt}")
 
 
 def _write_xlsx(path: Path, headers: list[str], rows: list[list[str]]) -> bool:
     try:
         import openpyxl
     except ImportError as exc:
-        _logger.warning("openpyxl РЅРµ СѓСЃС‚Р°РЅРѕРІР»РµРЅ РґР»СЏ Р·Р°РїРёСЃРё xlsx (%s)", exc)
+        _logger.warning("openpyxl не установлен для записи xlsx (%s)", exc)
         return False
     workbook = openpyxl.Workbook()
     sheet = workbook.active
@@ -2699,7 +2699,7 @@ def _write_xls(path: Path, headers: list[str], rows: list[list[str]]) -> bool:
     try:
         import xlwt
     except ImportError as exc:
-        _logger.warning("xlwt РЅРµ СѓСЃС‚Р°РЅРѕРІР»РµРЅ РґР»СЏ Р·Р°РїРёСЃРё xls (%s)", exc)
+        _logger.warning("xlwt не установлен для записи xls (%s)", exc)
         return False
     workbook = xlwt.Workbook()
     sheet = workbook.add_sheet("Sheet1")
@@ -2714,7 +2714,7 @@ def _write_xls(path: Path, headers: list[str], rows: list[list[str]]) -> bool:
 
 def _write_fallback_csv(path: Path, headers: list[str], rows: list[list[str]], fmt: str) -> Path:
     fallback_path = path.with_suffix(".csv")
-    _logger.warning("вљ пёЏ Р—Р°РїРёСЃСЊ %s РЅРµРґРѕСЃС‚СѓРїРЅР°, СЃРѕС…СЂР°РЅРµРЅРѕ РєР°Рє %s", fmt, fallback_path.name)
+    _logger.warning("⚠️ Запись %s недоступна, сохранено как %s", fmt, fallback_path.name)
     return _write_output_file(fallback_path, "csv", headers, rows)
 
 

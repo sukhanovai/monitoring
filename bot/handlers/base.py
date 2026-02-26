@@ -4,11 +4,11 @@ Server Monitoring System v8.6.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Basic functions: access, universal responses, general checks
-РЎРёСЃС‚РµРјР° РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЃРµСЂРІРµСЂРѕРІ
-Р’РµСЂСЃРёСЏ: 8.6.0
-РђРІС‚РѕСЂ: РђР»РµРєСЃР°РЅРґСЂ РЎСѓС…Р°РЅРѕРІ (c)
-Р›РёС†РµРЅР·РёСЏ: MIT
-Р‘Р°Р·РѕРІС‹Рµ С„СѓРЅРєС†РёРё: РґРѕСЃС‚СѓРї, СѓРЅРёРІРµСЂСЃР°Р»СЊРЅС‹Рµ РѕС‚РІРµС‚С‹, РѕР±С‰РёРµ РїСЂРѕРІРµСЂРєРё
+Система мониторинга серверов
+Версия: 8.6.0
+Автор: Александр Суханов (c)
+Лицензия: MIT
+Базовые функции: доступ, универсальные ответы, общие проверки
 """
 
 from config.settings import CHAT_IDS as DEFAULT_CHAT_IDS
@@ -17,9 +17,9 @@ from lib.logging import debug_log
 
 def check_access(update):
     """
-    РџСЂРѕРІРµСЂРєР° РґРѕСЃС‚СѓРїР°:
-    1. РЎРЅР°С‡Р°Р»Р° Р±РµСЂС‘Рј CHAT_IDS РёР· Р‘Р”
-    2. Р•СЃР»Рё РІ Р‘Р” РїСѓСЃС‚Рѕ вЂ” РёСЃРїРѕР»СЊР·СѓРµРј settings.py
+    Проверка доступа:
+    1. Сначала берём CHAT_IDS из БД
+    2. Если в БД пусто — используем settings.py
     """
     chat_id = str(update.effective_chat.id)
 
@@ -33,9 +33,9 @@ def check_access(update):
 
 def deny_access(update):
     if update.message:
-        update.message.reply_text("в›” РЈ РІР°СЃ РЅРµС‚ РїСЂР°РІ РґР»СЏ РёСЃРїРѕР»СЊР·РѕРІР°РЅРёСЏ СЌС‚РѕРіРѕ Р±РѕС‚Р°")
+        update.message.reply_text("⛔ У вас нет прав для использования этого бота")
     elif update.callback_query:
-        update.callback_query.answer("в›” РќРµС‚ РїСЂР°РІ", show_alert=True)
+        update.callback_query.answer("⛔ Нет прав", show_alert=True)
 
 
 def safe_reply(update, text, **kwargs):
