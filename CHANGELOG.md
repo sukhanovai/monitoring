@@ -6,7 +6,7 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.8.0] - 2026-02-26
+## [8.8.1] - 2026-02-26
 
 ### Added / Добавлено
 - EN: Android scheduled morning report delivery via background worker with push notification and sound.
@@ -23,8 +23,8 @@ The project follows Semantic Versioning (SemVer).
 - RU: Темная тема установлена по умолчанию в Android-приложении.
 - EN: Morning report notifications are now scheduled using configured report time.
 - RU: Планирование уведомлений утреннего отчета теперь использует настроенное время отчета.
-- EN: Project version bumped from `8.7.0` to `8.8.0`.
-- RU: Версия проекта повышена с `8.7.0` до `8.8.0`.
+- EN: Project version bumped from `8.7.0` to `8.8.1`.
+- RU: Версия проекта повышена с `8.7.0` до `8.8.1`.
 
 ## [8.7.0] - 2026-02-26
 
