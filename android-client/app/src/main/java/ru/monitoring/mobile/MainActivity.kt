@@ -145,6 +145,12 @@ private fun MonitoringApp(
 ) {
     var isManagementExpanded by rememberSaveable { mutableStateOf(false) }
     var isSettingsExpanded by rememberSaveable { mutableStateOf(false) }
+    var isAuthExpanded by rememberSaveable { mutableStateOf(false) }
+    var isSshAuthExpanded by rememberSaveable { mutableStateOf(false) }
+    var isWindowsAuthExpanded by rememberSaveable { mutableStateOf(false) }
+    var showWindowsAll by rememberSaveable { mutableStateOf(false) }
+    var showWindowsByType by rememberSaveable { mutableStateOf(false) }
+    var showWindowsTypeStats by rememberSaveable { mutableStateOf(false) }
 
     val canSaveMonitoring = state.checkIntervalInput.isNotBlank() ||
         state.timeoutInput.isNotBlank() ||
@@ -164,6 +170,9 @@ private fun MonitoringApp(
         state.windowsPasswordInput.isNotBlank()
 
     val hiddenTransformation = PasswordVisualTransformation()
+    val windowsByType = state.windowsCredentials.groupBy { it.serverType ?: "default" }
+    val windowsTotal = state.windowsCredentials.size
+    val windowsTypes = windowsByType.keys.size
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("Monitoring Android") }) }
@@ -345,110 +354,119 @@ private fun MonitoringApp(
                             Text("Сохранить time")
                         }
 
-                        Text("Auth-параметры", fontWeight = FontWeight.Bold)
-                        Text("SSH аутентификация", fontWeight = FontWeight.Bold)
-                        OutlinedTextField(
-                            value = state.authModeInput,
-                            onValueChange = onAuthModeChanged,
-                            label = { Text("auth_mode") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        OutlinedTextField(
-                            value = state.sshUsernameInput,
-                            onValueChange = onSshUsernameChanged,
-                            label = { Text("ssh_username") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        OutlinedTextField(
-                            value = state.sshKeyPathInput,
-                            onValueChange = onSshKeyPathChanged,
-                            label = { Text("ssh_key_path") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        OutlinedTextField(
-                            value = state.sshPortInput,
-                            onValueChange = onSshPortChanged,
-                            label = { Text("ssh_port") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        OutlinedTextField(
-                            value = state.sshPasswordInput,
-                            onValueChange = onSshPasswordChanged,
-                            label = { Text("ssh_password") },
-                            modifier = Modifier.fillMaxWidth(),
-                            visualTransformation = if (state.isSshPasswordVisible) VisualTransformation.None else hiddenTransformation,
-                            trailingIcon = {
-                                TextButton(onClick = onToggleSshPasswordVisibility) {
-                                    Text(if (state.isSshPasswordVisible) "Скрыть" else "Показать")
-                                }
+                        Text("🔐 Настройки аутентификации", fontWeight = FontWeight.Bold)
+                        Button(onClick = { isAuthExpanded = !isAuthExpanded }, modifier = Modifier.fillMaxWidth()) {
+                            Text("🔐 Аутентификация")
+                        }
+                        if (isAuthExpanded) {
+                            Text("SSH аутентификация:", fontWeight = FontWeight.Bold)
+                            Text("• Пользователь: ${state.sshUsernameInput.ifBlank { "root" }}")
+                            Text("• Путь к ключу: ${state.sshKeyPathInput.ifBlank { "/root/.ssh/id_rsa" }}")
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text("Windows аутентификация:", fontWeight = FontWeight.Bold)
+                            Text("• Учетных записей: $windowsTotal")
+                            Text("• Типов серверов: $windowsTypes")
+
+                            Button(onClick = { isSshAuthExpanded = !isSshAuthExpanded }, modifier = Modifier.fillMaxWidth()) {
+                                Text("👤 SSH аутентификация")
                             }
-                        )
-                        Text("Windows аутентификация", fontWeight = FontWeight.Bold)
-                        if (state.windowsCredentials.isNotEmpty()) {
-                            state.windowsCredentials.forEach { cred ->
-                                ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                                    Column(modifier = Modifier.padding(10.dp)) {
-                                        Text("${cred.serverType ?: "default"} | ${cred.username ?: "-"} | prio=${cred.priority ?: 0}")
-                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            Button(onClick = { onRemoveWindowsCredential(cred.id) }) { Text("Удалить") }
+                            if (isSshAuthExpanded) {
+                                OutlinedTextField(
+                                    value = state.sshUsernameInput,
+                                    onValueChange = onSshUsernameChanged,
+                                    label = { Text("SSH пользователь") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                OutlinedTextField(
+                                    value = state.sshKeyPathInput,
+                                    onValueChange = onSshKeyPathChanged,
+                                    label = { Text("Путь к SSH ключу") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Button(onClick = onSaveAuth, enabled = canSaveAuth) { Text("Сохранить SSH") }
+                            }
+
+                            Button(onClick = { isWindowsAuthExpanded = !isWindowsAuthExpanded }, modifier = Modifier.fillMaxWidth()) {
+                                Text("🖥 Windows аутентификация")
+                            }
+                            if (isWindowsAuthExpanded) {
+                                Button(onClick = { showWindowsAll = !showWindowsAll }, modifier = Modifier.fillMaxWidth()) {
+                                    Text("👥 Просмотр всех учетных записей")
+                                }
+                                if (showWindowsAll) {
+                                    state.windowsCredentials.forEach { cred ->
+                                        ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                                            Column(modifier = Modifier.padding(10.dp)) {
+                                                Text("🟢 ${cred.serverType ?: "default"} (приоритет: ${cred.priority ?: 0})")
+                                                Text("Пользователь: ${cred.username ?: "-"}")
+                                                Text("ID: ${cred.id ?: "-"}")
+                                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                    Button(onClick = { onRemoveWindowsCredential(cred.id) }) { Text("Удалить") }
+                                                }
+                                            }
                                         }
                                     }
                                 }
-                            }
-                        }
-                        OutlinedTextField(
-                            value = state.windowsCredUsernameInput,
-                            onValueChange = onWindowsCredUsernameChanged,
-                            label = { Text("windows_cred_username") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        OutlinedTextField(
-                            value = state.windowsCredPasswordInput,
-                            onValueChange = onWindowsCredPasswordChanged,
-                            label = { Text("windows_cred_password") },
-                            modifier = Modifier.fillMaxWidth(),
-                            visualTransformation = if (state.isWindowsPasswordVisible) VisualTransformation.None else hiddenTransformation,
-                            trailingIcon = {
-                                TextButton(onClick = onToggleWindowsPasswordVisibility) {
-                                    Text(if (state.isWindowsPasswordVisible) "Скрыть" else "Показать")
+
+                                Text("➕ Добавить учетную запись", fontWeight = FontWeight.Bold)
+                                OutlinedTextField(
+                                    value = state.windowsCredUsernameInput,
+                                    onValueChange = onWindowsCredUsernameChanged,
+                                    label = { Text("Пользователь") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                OutlinedTextField(
+                                    value = state.windowsCredPasswordInput,
+                                    onValueChange = onWindowsCredPasswordChanged,
+                                    label = { Text("Пароль") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    visualTransformation = if (state.isWindowsPasswordVisible) VisualTransformation.None else hiddenTransformation,
+                                    trailingIcon = {
+                                        TextButton(onClick = onToggleWindowsPasswordVisibility) {
+                                            Text(if (state.isWindowsPasswordVisible) "Скрыть" else "Показать")
+                                        }
+                                    }
+                                )
+                                OutlinedTextField(
+                                    value = state.windowsCredServerTypeInput,
+                                    onValueChange = onWindowsCredServerTypeChanged,
+                                    label = { Text("Тип серверов") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                OutlinedTextField(
+                                    value = state.windowsCredPriorityInput,
+                                    onValueChange = onWindowsCredPriorityChanged,
+                                    label = { Text("Приоритет") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Button(onClick = onAddWindowsCredential) { Text("Добавить учетную запись") }
+
+                                Button(onClick = { showWindowsByType = !showWindowsByType }, modifier = Modifier.fillMaxWidth()) {
+                                    Text("📊 Учетные данные по типам")
+                                }
+                                if (showWindowsByType) {
+                                    windowsByType.forEach { (serverType, creds) ->
+                                        Text("$serverType (${creds.size} учетных записей):", fontWeight = FontWeight.Bold)
+                                        creds.take(3).forEach { cred ->
+                                            Text("• ${cred.username ?: "-"} (приоритет: ${cred.priority ?: 0})")
+                                        }
+                                        if (creds.size > 3) {
+                                            Text("... и еще ${creds.size - 3}")
+                                        }
+                                    }
+                                }
+
+                                Button(onClick = { showWindowsTypeStats = !showWindowsTypeStats }, modifier = Modifier.fillMaxWidth()) {
+                                    Text("⚙️ Управление типами серверов")
+                                }
+                                if (showWindowsTypeStats) {
+                                    Text("Существующие типы:", fontWeight = FontWeight.Bold)
+                                    windowsByType.keys.sorted().forEach { type ->
+                                        val total = windowsByType[type]?.size ?: 0
+                                        Text("• $type: $total/$total активных учетных записей")
+                                    }
                                 }
                             }
-                        )
-                        OutlinedTextField(
-                            value = state.windowsCredServerTypeInput,
-                            onValueChange = onWindowsCredServerTypeChanged,
-                            label = { Text("windows_cred_server_type") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        OutlinedTextField(
-                            value = state.windowsCredPriorityInput,
-                            onValueChange = onWindowsCredPriorityChanged,
-                            label = { Text("windows_cred_priority") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = onAddWindowsCredential) { Text("Добавить Windows-учетку") }
-                        }
-                        OutlinedTextField(
-                            value = state.windowsUsernameInput,
-                            onValueChange = onWindowsUsernameChanged,
-                            label = { Text("windows_username (legacy)") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        OutlinedTextField(
-                            value = state.windowsPasswordInput,
-                            onValueChange = onWindowsPasswordChanged,
-                            label = { Text("windows_password (legacy)") },
-                            modifier = Modifier.fillMaxWidth(),
-                            visualTransformation = if (state.isWindowsPasswordVisible) VisualTransformation.None else hiddenTransformation,
-                            trailingIcon = {
-                                TextButton(onClick = onToggleWindowsPasswordVisibility) {
-                                    Text(if (state.isWindowsPasswordVisible) "Скрыть" else "Показать")
-                                }
-                            }
-                        )
-                        Button(onClick = onSaveAuth, enabled = canSaveAuth) {
-                            Text("Сохранить auth")
                         }
                     }
                 }
