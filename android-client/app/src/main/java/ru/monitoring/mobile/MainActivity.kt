@@ -265,10 +265,10 @@ private fun MonitoringApp(
 
                 ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("РЎС‚Р°С‚СѓСЃ", fontWeight = FontWeight.Bold)
+                        Text("Статус", fontWeight = FontWeight.Bold)
                         Text(state.summaryText)
-                        Text("Р’РµСЂСЃРёСЏ Р±РѕС‚Р°: ${state.botVersion}")
-                        Text("Р’РµСЂСЃРёСЏ Android: ${state.androidAppVersion}")
+                        Text("Версия бота: ${state.botVersion}")
+                        Text("Версия Android: ${state.androidAppVersion}")
                         if (state.message.isNotBlank()) {
                             Text(state.message)
                         }
@@ -280,16 +280,16 @@ private fun MonitoringApp(
                 if (state.morningReportText.isNotBlank()) {
                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("РЈС‚СЂРµРЅРЅРёР№ РѕС‚С‡РµС‚", fontWeight = FontWeight.Bold)
+                            Text("Утренний отчет", fontWeight = FontWeight.Bold)
                             Text(state.morningReportText)
                             if (state.morningReportReceivedAt.isNotBlank()) {
-                                Text("РџРѕР»СѓС‡РµРЅ: ${state.morningReportReceivedAt}")
+                                Text("Получен: ${state.morningReportReceivedAt}")
                             }
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 if (state.morningReportUnread) {
-                                    Button(onClick = onMarkMorningReportRead) { Text("РџСЂРѕС‡РёС‚Р°РЅРѕ") }
+                                    Button(onClick = onMarkMorningReportRead) { Text("Прочитано") }
                                 }
-                                Button(onClick = onClearMorningReport) { Text("Р—Р°РєСЂС‹С‚СЊ") }
+                                Button(onClick = onClearMorningReport) { Text("Закрыть") }
                             }
                         }
                     }
@@ -299,10 +299,10 @@ private fun MonitoringApp(
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = { onAction("send_morning_report") }, modifier = Modifier.fillMaxWidth()) {
-                        Text("рџЊ… РћС‚С‡С‘С‚")
+                        Text("🌅 Отчёт")
                     }
                     Button(onClick = onRefresh, modifier = Modifier.fillMaxWidth()) {
-                        Text("рџ–Ґ Р”РѕСЃС‚СѓРїРЅРѕСЃС‚СЊ РІСЃРµС… СЃРµСЂРІРµСЂРѕРІ")
+                        Text("🖥 Доступность всех серверов")
                     }
                     Button(onClick = { showServerAvailabilityMenu = !showServerAvailabilityMenu }, modifier = Modifier.fillMaxWidth()) {
                         Text("🔍 Доступность сервера")
@@ -317,51 +317,51 @@ private fun MonitoringApp(
                             }
                         }
                     }
-                    Button(onClick = { onShowMenuStub("Р РµСЃСѓСЂСЃС‹ СЃРµСЂРІРµСЂР°") }, modifier = Modifier.fillMaxWidth()) {
-                        Text("рџ“Љ Р РµСЃСѓСЂСЃС‹ СЃРµСЂРІРµСЂР°")
+                    Button(onClick = { onShowMenuStub("Ресурсы сервера") }, modifier = Modifier.fillMaxWidth()) {
+                        Text("📊 Ресурсы сервера")
                     }
-                    Button(onClick = { onShowMenuStub("Р Р°СЃС€РёСЂРµРЅРёСЏ") }, modifier = Modifier.fillMaxWidth()) {
-                        Text("рџ› пёЏ Р Р°СЃС€РёСЂРµРЅРёСЏ")
+                    Button(onClick = { onShowMenuStub("Расширения") }, modifier = Modifier.fillMaxWidth()) {
+                        Text("🛠️ Расширения")
                     }
                     Button(onClick = { isManagementExpanded = !isManagementExpanded }, modifier = Modifier.fillMaxWidth()) {
-                        Text("рџЋ›пёЏ РЈРїСЂР°РІР»РµРЅРёРµ")
+                        Text("🎛️ Управление")
                     }
                     if (isManagementExpanded) {
-                        Text("РЈРїСЂР°РІР»РµРЅРёРµ РјРѕРЅРёС‚РѕСЂРёРЅРіРѕРј", fontWeight = FontWeight.Bold)
-                        Text("РЎС‚Р°С‚СѓСЃ: ${state.monitoringStatusText}")
+                        Text("Управление мониторингом", fontWeight = FontWeight.Bold)
+                        Text("Статус: ${state.monitoringStatusText}")
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = { onAction("pause_monitoring") }) { Text("РџР°СѓР·Р°") }
-                            Button(onClick = { onAction("resume_monitoring") }) { Text("РЎС‚Р°СЂС‚") }
+                            Button(onClick = { onAction("pause_monitoring") }) { Text("Пауза") }
+                            Button(onClick = { onAction("resume_monitoring") }) { Text("Старт") }
                         }
-                        Text("РЈРїСЂР°РІР»РµРЅРёРµ С‚РёС…РёРј СЂРµР¶РёРјРѕРј", fontWeight = FontWeight.Bold)
-                        Text("РЎС‚Р°С‚СѓСЃ: ${state.silentStatusText}")
+                        Text("Управление тихим режимом", fontWeight = FontWeight.Bold)
+                        Text("Статус: ${state.silentStatusText}")
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = { onAction("force_quiet") }) { Text("РўРёС…РёР№") }
-                            Button(onClick = { onAction("force_loud") }) { Text("Р“СЂРѕРјРєРёР№") }
+                            Button(onClick = { onAction("force_quiet") }) { Text("Тихий") }
+                            Button(onClick = { onAction("force_loud") }) { Text("Громкий") }
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = { onAction("auto_mode") }) { Text("РђРІС‚Рѕ") }
+                            Button(onClick = { onAction("auto_mode") }) { Text("Авто") }
                         }
                     }
                     Button(onClick = { isSettingsExpanded = !isSettingsExpanded }, modifier = Modifier.fillMaxWidth()) {
-                        Text("вљ™пёЏ РќР°СЃС‚СЂРѕР№РєРё")
+                        Text("⚙️ Настройки")
                     }
                     if (isSettingsExpanded) {
-                        Text("Р Р°Р·РґРµР»С‹ РЅР°СЃС‚СЂРѕРµРє", fontWeight = FontWeight.Bold)
+                        Text("Разделы настроек", fontWeight = FontWeight.Bold)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(onClick = { settingsSection = "bff" }) { Text("BFF") }
-                            Button(onClick = { settingsSection = "monitoring" }) { Text("РњРѕРЅРёС‚РѕСЂРёРЅРі") }
-                            Button(onClick = { settingsSection = "bot" }) { Text("Р‘РѕС‚") }
+                            Button(onClick = { settingsSection = "monitoring" }) { Text("Мониторинг") }
+                            Button(onClick = { settingsSection = "bot" }) { Text("Бот") }
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = { settingsSection = "time" }) { Text("Р’СЂРµРјСЏ") }
-                            Button(onClick = { settingsSection = "auth" }) { Text("РђСѓС‚РµРЅС‚РёС„РёРєР°С†РёСЏ") }
-                            Button(onClick = { settingsSection = "servers" }) { Text("РЎРµСЂРІРµСЂС‹") }
-                            Button(onClick = { settingsSection = "appearance" }) { Text("РўРµРјР°") }
+                            Button(onClick = { settingsSection = "time" }) { Text("Время") }
+                            Button(onClick = { settingsSection = "auth" }) { Text("Аутентификация") }
+                            Button(onClick = { settingsSection = "servers" }) { Text("Серверы") }
+                            Button(onClick = { settingsSection = "appearance" }) { Text("Тема") }
                         }
 
                         if (settingsSection == "bff") {
-                            Text("РџРѕРґРєР»СЋС‡РµРЅРёРµ Рє BFF", fontWeight = FontWeight.Bold)
+                            Text("Подключение к BFF", fontWeight = FontWeight.Bold)
                         OutlinedTextField(
                             value = state.baseUrlInput,
                             onValueChange = onBaseUrlChanged,
@@ -369,27 +369,27 @@ private fun MonitoringApp(
                             label = { Text("Base URL API") }
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = onSaveBaseUrl) { Text("РЎРѕС…СЂР°РЅРёС‚СЊ URL") }
+                            Button(onClick = onSaveBaseUrl) { Text("Сохранить URL") }
                         }
                         OutlinedTextField(
                             value = state.token,
                             onValueChange = onTokenChanged,
                             modifier = Modifier.fillMaxWidth(),
-                            label = { Text("Bearer С‚РѕРєРµРЅ") },
+                            label = { Text("Bearer токен") },
                             visualTransformation = if (state.isApiTokenVisible) VisualTransformation.None else hiddenTransformation,
                             trailingIcon = {
                                 TextButton(onClick = onToggleApiTokenVisibility) {
-                                    Text(if (state.isApiTokenVisible) "РЎРєСЂС‹С‚СЊ" else "РџРѕРєР°Р·Р°С‚СЊ")
+                                    Text(if (state.isApiTokenVisible) "Скрыть" else "Показать")
                                 }
                             }
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = { onSaveToken(state.token) }) { Text("РЎРѕС…СЂР°РЅРёС‚СЊ С‚РѕРєРµРЅ") }
+                            Button(onClick = { onSaveToken(state.token) }) { Text("Сохранить токен") }
                         }
                         }
 
                         if (settingsSection == "monitoring") {
-                        Text("РќР°СЃС‚СЂРѕР№РєРё РјРѕРЅРёС‚РѕСЂРёРЅРіР°", fontWeight = FontWeight.Bold)
+                        Text("Настройки мониторинга", fontWeight = FontWeight.Bold)
                         OutlinedTextField(
                             value = state.checkIntervalInput,
                             onValueChange = onCheckIntervalChanged,
@@ -409,12 +409,12 @@ private fun MonitoringApp(
                             modifier = Modifier.fillMaxWidth()
                         )
                         Button(onClick = onSaveMonitoring, enabled = canSaveMonitoring) {
-                            Text("РЎРѕС…СЂР°РЅРёС‚СЊ monitoring")
+                            Text("Сохранить monitoring")
                         }
                         }
 
                         if (settingsSection == "bot") {
-                        Text("РќР°СЃС‚СЂРѕР№РєРё Р±РѕС‚Р°", fontWeight = FontWeight.Bold)
+                        Text("Настройки бота", fontWeight = FontWeight.Bold)
                         OutlinedTextField(
                             value = state.telegramTokenInput,
                             onValueChange = onTelegramTokenChanged,
@@ -423,7 +423,7 @@ private fun MonitoringApp(
                             visualTransformation = if (state.isTelegramTokenVisible) VisualTransformation.None else hiddenTransformation,
                             trailingIcon = {
                                 TextButton(onClick = onToggleTelegramTokenVisibility) {
-                                    Text(if (state.isTelegramTokenVisible) "РЎРєСЂС‹С‚СЊ" else "РџРѕРєР°Р·Р°С‚СЊ")
+                                    Text(if (state.isTelegramTokenVisible) "Скрыть" else "Показать")
                                 }
                             }
                         )
@@ -434,30 +434,30 @@ private fun MonitoringApp(
                             modifier = Modifier.fillMaxWidth()
                         )
                         if (state.telegramChatIds.isNotEmpty()) {
-                            Text("Р§Р°С‚С‹ Telegram (${state.telegramChatIds.size})", fontWeight = FontWeight.Bold)
+                            Text("Чаты Telegram (${state.telegramChatIds.size})", fontWeight = FontWeight.Bold)
                             state.telegramChatIds.forEach { chatId ->
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Text(chatId, modifier = Modifier.weight(1f))
-                                    Button(onClick = { onRemoveTelegramChatId(chatId) }) { Text("РЈРґР°Р»РёС‚СЊ") }
+                                    Button(onClick = { onRemoveTelegramChatId(chatId) }) { Text("Удалить") }
                                 }
                             }
                         }
                         OutlinedTextField(
                             value = state.newTelegramChatIdInput,
                             onValueChange = onNewTelegramChatIdChanged,
-                            label = { Text("РќРѕРІС‹Р№ chat_id") },
+                            label = { Text("Новый chat_id") },
                             modifier = Modifier.fillMaxWidth()
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = onAddTelegramChatId) { Text("Р”РѕР±Р°РІРёС‚СЊ chat_id") }
+                            Button(onClick = onAddTelegramChatId) { Text("Добавить chat_id") }
                         }
                         Button(onClick = onSaveBot, enabled = canSaveBot) {
-                            Text("РЎРѕС…СЂР°РЅРёС‚СЊ bot")
+                            Text("Сохранить bot")
                         }
                         }
 
                         if (settingsSection == "time") {
-                        Text("Р’СЂРµРјРµРЅРЅС‹Рµ РЅР°СЃС‚СЂРѕР№РєРё", fontWeight = FontWeight.Bold)
+                        Text("Временные настройки", fontWeight = FontWeight.Bold)
                         OutlinedTextField(
                             value = state.quietStartInput,
                             onValueChange = onQuietStartChanged,
@@ -477,12 +477,12 @@ private fun MonitoringApp(
                             modifier = Modifier.fillMaxWidth()
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = { onMorningNotificationsEnabledChanged(true) }) { Text("РЈРІРµРґРѕРјР»РµРЅРёСЏ Р’РљР›") }
-                            Button(onClick = { onMorningNotificationsEnabledChanged(false) }) { Text("РЈРІРµРґРѕРјР»РµРЅРёСЏ Р’Р«РљР›") }
+                            Button(onClick = { onMorningNotificationsEnabledChanged(true) }) { Text("Уведомления ВКЛ") }
+                            Button(onClick = { onMorningNotificationsEnabledChanged(false) }) { Text("Уведомления ВЫКЛ") }
                         }
-                        Text("РЎС‚Р°С‚СѓСЃ СѓРІРµРґРѕРјР»РµРЅРёР№: ${if (state.morningReportNotificationsEnabled) "РІРєР»СЋС‡РµРЅС‹" else "РІС‹РєР»СЋС‡РµРЅС‹"}")
+                        Text("Статус уведомлений: ${if (state.morningReportNotificationsEnabled) "включены" else "выключены"}")
                         Button(onClick = onSaveTime, enabled = canSaveTime) {
-                            Text("РЎРѕС…СЂР°РЅРёС‚СЊ time")
+                            Text("Сохранить time")
                         }
                         }
 
@@ -496,145 +496,145 @@ private fun MonitoringApp(
                         }
 
                         if (settingsSection == "auth") {
-                        Text("рџ”ђ РќР°СЃС‚СЂРѕР№РєРё Р°СѓС‚РµРЅС‚РёС„РёРєР°С†РёРё", fontWeight = FontWeight.Bold)
-                            Text("SSH Р°СѓС‚РµРЅС‚РёС„РёРєР°С†РёСЏ:", fontWeight = FontWeight.Bold)
-                            Text("вЂў РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ: ${state.sshUsernameInput.ifBlank { "root" }}")
-                            Text("вЂў РџСѓС‚СЊ Рє РєР»СЋС‡Сѓ: ${state.sshKeyPathInput.ifBlank { "/root/.ssh/id_rsa" }}")
+                        Text("🔐 Настройки аутентификации", fontWeight = FontWeight.Bold)
+                            Text("SSH аутентификация:", fontWeight = FontWeight.Bold)
+                            Text("• Пользователь: ${state.sshUsernameInput.ifBlank { "root" }}")
+                            Text("• Путь к ключу: ${state.sshKeyPathInput.ifBlank { "/root/.ssh/id_rsa" }}")
                             Spacer(modifier = Modifier.height(4.dp))
-                            Text("Windows Р°СѓС‚РµРЅС‚РёС„РёРєР°С†РёСЏ:", fontWeight = FontWeight.Bold)
-                            Text("вЂў РЈС‡РµС‚РЅС‹С… Р·Р°РїРёСЃРµР№: $windowsTotal")
-                            Text("вЂў РўРёРїРѕРІ СЃРµСЂРІРµСЂРѕРІ: $windowsTypes")
+                            Text("Windows аутентификация:", fontWeight = FontWeight.Bold)
+                            Text("• Учетных записей: $windowsTotal")
+                            Text("• Типов серверов: $windowsTypes")
 
                             Button(onClick = { isSshAuthExpanded = !isSshAuthExpanded }, modifier = Modifier.fillMaxWidth()) {
-                                Text("рџ‘¤ SSH Р°СѓС‚РµРЅС‚РёС„РёРєР°С†РёСЏ")
+                                Text("👤 SSH аутентификация")
                             }
                             if (isSshAuthExpanded) {
                                 OutlinedTextField(
                                     value = state.sshUsernameInput,
                                     onValueChange = onSshUsernameChanged,
-                                    label = { Text("SSH РїРѕР»СЊР·РѕРІР°С‚РµР»СЊ") },
+                                    label = { Text("SSH пользователь") },
                                     modifier = Modifier.fillMaxWidth()
                                 )
                                 OutlinedTextField(
                                     value = state.sshKeyPathInput,
                                     onValueChange = onSshKeyPathChanged,
-                                    label = { Text("РџСѓС‚СЊ Рє SSH РєР»СЋС‡Сѓ") },
+                                    label = { Text("Путь к SSH ключу") },
                                     modifier = Modifier.fillMaxWidth()
                                 )
-                                Button(onClick = onSaveAuth, enabled = canSaveAuth) { Text("РЎРѕС…СЂР°РЅРёС‚СЊ SSH") }
+                                Button(onClick = onSaveAuth, enabled = canSaveAuth) { Text("Сохранить SSH") }
                             }
 
                             Button(onClick = { isWindowsAuthExpanded = !isWindowsAuthExpanded }, modifier = Modifier.fillMaxWidth()) {
-                                Text("рџ–Ґ Windows Р°СѓС‚РµРЅС‚РёС„РёРєР°С†РёСЏ")
+                                Text("🖥 Windows аутентификация")
                             }
                             if (isWindowsAuthExpanded) {
                                 Button(onClick = { showWindowsAll = !showWindowsAll }, modifier = Modifier.fillMaxWidth()) {
-                                    Text("рџ‘Ґ РџСЂРѕСЃРјРѕС‚СЂ РІСЃРµС… СѓС‡РµС‚РЅС‹С… Р·Р°РїРёСЃРµР№")
+                                    Text("👥 Просмотр всех учетных записей")
                                 }
                                 if (showWindowsAll) {
                                     state.windowsCredentials.forEach { cred ->
                                         ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                                             Column(modifier = Modifier.padding(10.dp)) {
-                                                Text("рџџў ${cred.serverType ?: "default"} (РїСЂРёРѕСЂРёС‚РµС‚: ${cred.priority ?: 0})")
-                                                Text("РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ: ${cred.username ?: "-"}")
+                                                Text("🟢 ${cred.serverType ?: "default"} (приоритет: ${cred.priority ?: 0})")
+                                                Text("Пользователь: ${cred.username ?: "-"}")
                                                 Text("ID: ${cred.id ?: "-"}")
                                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                                    Button(onClick = { onRemoveWindowsCredential(cred.id) }) { Text("РЈРґР°Р»РёС‚СЊ") }
+                                                    Button(onClick = { onRemoveWindowsCredential(cred.id) }) { Text("Удалить") }
                                                 }
                                             }
                                         }
                                     }
                                 }
 
-                                Text("вћ• Р”РѕР±Р°РІРёС‚СЊ СѓС‡РµС‚РЅСѓСЋ Р·Р°РїРёСЃСЊ", fontWeight = FontWeight.Bold)
+                                Text("➕ Добавить учетную запись", fontWeight = FontWeight.Bold)
                                 OutlinedTextField(
                                     value = state.windowsCredUsernameInput,
                                     onValueChange = onWindowsCredUsernameChanged,
-                                    label = { Text("РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ") },
+                                    label = { Text("Пользователь") },
                                     modifier = Modifier.fillMaxWidth()
                                 )
                                 OutlinedTextField(
                                     value = state.windowsCredPasswordInput,
                                     onValueChange = onWindowsCredPasswordChanged,
-                                    label = { Text("РџР°СЂРѕР»СЊ") },
+                                    label = { Text("Пароль") },
                                     modifier = Modifier.fillMaxWidth(),
                                     visualTransformation = if (state.isWindowsPasswordVisible) VisualTransformation.None else hiddenTransformation,
                                     trailingIcon = {
                                         TextButton(onClick = onToggleWindowsPasswordVisibility) {
-                                            Text(if (state.isWindowsPasswordVisible) "РЎРєСЂС‹С‚СЊ" else "РџРѕРєР°Р·Р°С‚СЊ")
+                                            Text(if (state.isWindowsPasswordVisible) "Скрыть" else "Показать")
                                         }
                                     }
                                 )
                                 OutlinedTextField(
                                     value = state.windowsCredServerTypeInput,
                                     onValueChange = onWindowsCredServerTypeChanged,
-                                    label = { Text("РўРёРї СЃРµСЂРІРµСЂРѕРІ") },
+                                    label = { Text("Тип серверов") },
                                     modifier = Modifier.fillMaxWidth()
                                 )
                                 OutlinedTextField(
                                     value = state.windowsCredPriorityInput,
                                     onValueChange = onWindowsCredPriorityChanged,
-                                    label = { Text("РџСЂРёРѕСЂРёС‚РµС‚") },
+                                    label = { Text("Приоритет") },
                                     modifier = Modifier.fillMaxWidth()
                                 )
-                                Button(onClick = onAddWindowsCredential) { Text("Р”РѕР±Р°РІРёС‚СЊ СѓС‡РµС‚РЅСѓСЋ Р·Р°РїРёСЃСЊ") }
+                                Button(onClick = onAddWindowsCredential) { Text("Добавить учетную запись") }
 
                                 Button(onClick = { showWindowsByType = !showWindowsByType }, modifier = Modifier.fillMaxWidth()) {
-                                    Text("рџ“Љ РЈС‡РµС‚РЅС‹Рµ РґР°РЅРЅС‹Рµ РїРѕ С‚РёРїР°Рј")
+                                    Text("📊 Учетные данные по типам")
                                 }
                                 if (showWindowsByType) {
                                     windowsByType.forEach { (serverType, creds) ->
-                                        Text("$serverType (${creds.size} СѓС‡РµС‚РЅС‹С… Р·Р°РїРёСЃРµР№):", fontWeight = FontWeight.Bold)
+                                        Text("$serverType (${creds.size} учетных записей):", fontWeight = FontWeight.Bold)
                                         creds.take(3).forEach { cred ->
-                                            Text("вЂў ${cred.username ?: "-"} (РїСЂРёРѕСЂРёС‚РµС‚: ${cred.priority ?: 0})")
+                                            Text("• ${cred.username ?: "-"} (приоритет: ${cred.priority ?: 0})")
                                         }
                                         if (creds.size > 3) {
-                                            Text("... Рё РµС‰Рµ ${creds.size - 3}")
+                                            Text("... и еще ${creds.size - 3}")
                                         }
                                     }
                                 }
 
                                 Button(onClick = { showWindowsTypeStats = !showWindowsTypeStats }, modifier = Modifier.fillMaxWidth()) {
-                                    Text("вљ™пёЏ РЈРїСЂР°РІР»РµРЅРёРµ С‚РёРїР°РјРё СЃРµСЂРІРµСЂРѕРІ")
+                                    Text("⚙️ Управление типами серверов")
                                 }
                                 if (showWindowsTypeStats) {
-                                    Text("РЎСѓС‰РµСЃС‚РІСѓСЋС‰РёРµ С‚РёРїС‹:", fontWeight = FontWeight.Bold)
+                                    Text("Существующие типы:", fontWeight = FontWeight.Bold)
                                     if (state.windowsTypes.isNotEmpty()) {
                                         state.windowsTypes.forEach { type ->
-                                            Text("вЂў ${type.name}: ${type.active}/${type.total} Р°РєС‚РёРІРЅС‹С… СѓС‡РµС‚РЅС‹С… Р·Р°РїРёСЃРµР№")
+                                            Text("• ${type.name}: ${type.active}/${type.total} активных учетных записей")
                                         }
                                     } else {
                                         windowsByType.keys.sorted().forEach { type ->
                                             val total = windowsByType[type]?.size ?: 0
-                                            Text("вЂў $type: $total/$total Р°РєС‚РёРІРЅС‹С… СѓС‡РµС‚РЅС‹С… Р·Р°РїРёСЃРµР№")
+                                            Text("• $type: $total/$total активных учетных записей")
                                         }
                                     }
 
-                                    Text("РЎРѕР·РґР°С‚СЊ РЅРѕРІС‹Р№ С‚РёРї", fontWeight = FontWeight.Bold)
+                                    Text("Создать новый тип", fontWeight = FontWeight.Bold)
                                     OutlinedTextField(
                                         value = state.createWindowsTypeInput,
                                         onValueChange = onCreateWindowsTypeInputChanged,
-                                        label = { Text("РРјСЏ РЅРѕРІРѕРіРѕ С‚РёРїР°") },
+                                        label = { Text("Имя нового типа") },
                                         modifier = Modifier.fillMaxWidth()
                                     )
-                                    Button(onClick = onCreateWindowsType) { Text("РЎРѕР·РґР°С‚СЊ С‚РёРї") }
+                                    Button(onClick = onCreateWindowsType) { Text("Создать тип") }
 
-                                    Text("РџРµСЂРµРёРјРµРЅРѕРІР°С‚СЊ С‚РёРї", fontWeight = FontWeight.Bold)
+                                    Text("Переименовать тип", fontWeight = FontWeight.Bold)
                                     OutlinedTextField(
                                         value = state.renameOldTypeInput,
                                         onValueChange = onRenameOldTypeInputChanged,
-                                        label = { Text("РЎС‚Р°СЂРѕРµ РёРјСЏ С‚РёРїР°") },
+                                        label = { Text("Старое имя типа") },
                                         modifier = Modifier.fillMaxWidth()
                                     )
                                     OutlinedTextField(
                                         value = state.renameNewTypeInput,
                                         onValueChange = onRenameNewTypeInputChanged,
-                                        label = { Text("РќРѕРІРѕРµ РёРјСЏ С‚РёРїР°") },
+                                        label = { Text("Новое имя типа") },
                                         modifier = Modifier.fillMaxWidth()
                                     )
-                                    Button(onClick = onRenameWindowsType) { Text("РџРµСЂРµРёРјРµРЅРѕРІР°С‚СЊ") }
+                                    Button(onClick = onRenameWindowsType) { Text("Переименовать") }
 
-                                    Text("РћР±СЉРµРґРёРЅРёС‚СЊ С‚РёРїС‹", fontWeight = FontWeight.Bold)
+                                    Text("Объединить типы", fontWeight = FontWeight.Bold)
                                     OutlinedTextField(
                                         value = state.mergeSourceTypeInput,
                                         onValueChange = onMergeSourceTypeInputChanged,
@@ -647,66 +647,66 @@ private fun MonitoringApp(
                                         label = { Text("Target type") },
                                         modifier = Modifier.fillMaxWidth()
                                     )
-                                    Button(onClick = onMergeWindowsTypes) { Text("РћР±СЉРµРґРёРЅРёС‚СЊ") }
+                                    Button(onClick = onMergeWindowsTypes) { Text("Объединить") }
 
-                                    Text("РЈРґР°Р»РёС‚СЊ С‚РёРї", fontWeight = FontWeight.Bold)
+                                    Text("Удалить тип", fontWeight = FontWeight.Bold)
                                     OutlinedTextField(
                                         value = state.deleteTypeInput,
                                         onValueChange = onDeleteTypeInputChanged,
-                                        label = { Text("РЈРґР°Р»СЏРµРјС‹Р№ С‚РёРї") },
+                                        label = { Text("Удаляемый тип") },
                                         modifier = Modifier.fillMaxWidth()
                                     )
                                     OutlinedTextField(
                                         value = state.deleteTargetTypeInput,
                                         onValueChange = onDeleteTargetTypeInputChanged,
-                                        label = { Text("РџРµСЂРµРЅРµСЃС‚Рё РІ С‚РёРї (target)") },
+                                        label = { Text("Перенести в тип (target)") },
                                         modifier = Modifier.fillMaxWidth()
                                     )
-                                    Button(onClick = onDeleteWindowsType) { Text("РЈРґР°Р»РёС‚СЊ С‚РёРї") }
+                                    Button(onClick = onDeleteWindowsType) { Text("Удалить тип") }
                                 }
                             }
                         }
 
                         if (settingsSection == "servers") {
-                            Text("рџ–ҐпёЏ РЎРµСЂРІРµСЂС‹", fontWeight = FontWeight.Bold)
-                            Text("Р’СЃРµРіРѕ: ${state.managedServers.size}")
-                            Text("РђРєС‚РёРІРЅС‹С…: ${state.managedServers.count { it.enabled == true }}")
+                            Text("🖥️ Серверы", fontWeight = FontWeight.Bold)
+                            Text("Всего: ${state.managedServers.size}")
+                            Text("Активных: ${state.managedServers.count { it.enabled == true }}")
 
                             Text(
-                                if (state.serverEditIp.isBlank()) "Р”РѕР±Р°РІРёС‚СЊ СЃРµСЂРІРµСЂ" else "Р РµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ СЃРµСЂРІРµСЂР° ${state.serverEditIp}",
+                                if (state.serverEditIp.isBlank()) "Добавить сервер" else "Редактирование сервера ${state.serverEditIp}",
                                 fontWeight = FontWeight.Bold
                             )
                             OutlinedTextField(
                                 value = state.serverIpInput,
                                 onValueChange = onServerIpChanged,
-                                label = { Text("IP СЃРµСЂРІРµСЂР°") },
+                                label = { Text("IP сервера") },
                                 modifier = Modifier.fillMaxWidth(),
                                 enabled = state.serverEditIp.isBlank()
                             )
                             OutlinedTextField(
                                 value = state.serverNameInput,
                                 onValueChange = onServerNameChanged,
-                                label = { Text("РРјСЏ СЃРµСЂРІРµСЂР°") },
+                                label = { Text("Имя сервера") },
                                 modifier = Modifier.fillMaxWidth()
                             )
                             OutlinedTextField(
                                 value = state.serverTypeInput,
                                 onValueChange = onServerTypeChanged,
-                                label = { Text("РўРёРї (rdp/ssh/ping)") },
+                                label = { Text("Тип (rdp/ssh/ping)") },
                                 modifier = Modifier.fillMaxWidth()
                             )
                             OutlinedTextField(
                                 value = state.serverTimeoutInput,
                                 onValueChange = onServerTimeoutChanged,
-                                label = { Text("Timeout (СЃРµРє)") },
+                                label = { Text("Timeout (сек)") },
                                 modifier = Modifier.fillMaxWidth()
                             )
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Button(onClick = onSaveServer) {
-                                    Text(if (state.serverEditIp.isBlank()) "Р”РѕР±Р°РІРёС‚СЊ СЃРµСЂРІРµСЂ" else "РЎРѕС…СЂР°РЅРёС‚СЊ РёР·РјРµРЅРµРЅРёСЏ")
+                                    Text(if (state.serverEditIp.isBlank()) "Добавить сервер" else "Сохранить изменения")
                                 }
                                 if (state.serverEditIp.isNotBlank()) {
-                                    Button(onClick = onCancelServerEdit) { Text("РћС‚РјРµРЅР°") }
+                                    Button(onClick = onCancelServerEdit) { Text("Отмена") }
                                 }
                             }
 
@@ -714,14 +714,14 @@ private fun MonitoringApp(
                                 ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                                     Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                         Text("${server.name} (${server.ip})", fontWeight = FontWeight.Bold)
-                                        Text("РўРёРї: ${server.type}, timeout: ${server.timeout ?: 30} СЃРµРє")
-                                        Text("РњРѕРЅРёС‚РѕСЂРёРЅРі: ${if (server.enabled == true) "РІРєР»СЋС‡РµРЅ" else "РІС‹РєР»СЋС‡РµРЅ"}")
+                                        Text("Тип: ${server.type}, timeout: ${server.timeout ?: 30} сек")
+                                        Text("Мониторинг: ${if (server.enabled == true) "включен" else "выключен"}")
                                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                             Button(onClick = { onToggleServerMonitoring(server.ip, server.enabled != true) }) {
-                                                Text(if (server.enabled == true) "Р’С‹РєР»СЋС‡РёС‚СЊ" else "Р’РєР»СЋС‡РёС‚СЊ")
+                                                Text(if (server.enabled == true) "Выключить" else "Включить")
                                             }
-                                            Button(onClick = { onEditServer(server) }) { Text("Р РµРґР°РєС‚РёСЂРѕРІР°С‚СЊ") }
-                                            Button(onClick = { onDeleteServer(server.ip) }) { Text("РЈРґР°Р»РёС‚СЊ") }
+                                            Button(onClick = { onEditServer(server) }) { Text("Редактировать") }
+                                            Button(onClick = { onDeleteServer(server.ip) }) { Text("Удалить") }
                                         }
                                     }
                                 }

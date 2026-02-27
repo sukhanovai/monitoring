@@ -45,7 +45,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val botVersion = "8.11.1"
+    private val botVersion = "8.11.2"
     private val androidAppVersion = BuildConfig.VERSION_NAME
 
     private fun currentApi() = ApiFactory.createApi(
@@ -100,7 +100,7 @@ class MainViewModel(
         val normalizedToken = normalizeToken(token)
         if (normalizedToken.isBlank()) {
             preferences.apiToken = ""
-            state = state.copy(token = "", message = "РўРѕРєРµРЅ РѕС‡РёС‰РµРЅ")
+            state = state.copy(token = "", message = "Токен очищен")
             return
         }
 
@@ -124,7 +124,7 @@ class MainViewModel(
             state = state.copy(
                 isLoading = false,
                 token = finalToken,
-                message = if (exchangedToken.isNotBlank()) "РўРѕРєРµРЅ РІС‹РґР°РЅ СЃРµСЂРІРµСЂРѕРј Рё СЃРѕС…СЂР°РЅРµРЅ" else "РўРѕРєРµРЅ СЃРѕС…СЂР°РЅРµРЅ"
+                message = if (exchangedToken.isNotBlank()) "Токен выдан сервером и сохранен" else "Токен сохранен"
             )
 
             if (finalToken.isNotBlank()) {
@@ -137,7 +137,7 @@ class MainViewModel(
     fun saveBaseUrl() {
         val normalized = normalizeBaseUrlInput(state.baseUrlInput)
         preferences.apiBaseUrl = normalized
-        state = state.copy(baseUrlInput = normalized, message = "URL API СЃРѕС…СЂР°РЅС‘РЅ")
+        state = state.copy(baseUrlInput = normalized, message = "URL API сохранён")
 
         if (state.token.isNotBlank()) {
             refreshSettingsFromServer(showErrors = false)
@@ -181,7 +181,7 @@ class MainViewModel(
     fun setThemeMode(value: String) {
         val normalized = if (value.lowercase() == "light") "light" else "dark"
         preferences.themeMode = normalized
-        state = state.copy(themeMode = normalized, message = "РўРµРјР°: ${if (normalized == "dark") "С‚РµРјРЅР°СЏ" else "СЃРІРµС‚Р»Р°СЏ"}")
+        state = state.copy(themeMode = normalized, message = "Тема: ${if (normalized == "dark") "темная" else "светлая"}")
     }
     fun setMorningReportNotificationsEnabled(value: Boolean) {
         preferences.morningReportNotificationsEnabled = value
@@ -212,16 +212,16 @@ class MainViewModel(
     fun toggleWindowsPasswordVisibility() { state = state.copy(isWindowsPasswordVisible = !state.isWindowsPasswordVisible) }
 
     private fun formatNetworkError(error: Throwable): String = when (error) {
-        is SocketTimeoutException -> "РўР°Р№РјР°СѓС‚ Р·Р°РїСЂРѕСЃР°. РџСЂРѕРІРµСЂСЊ РёРЅС‚РµСЂРЅРµС‚ РЅР° СѓСЃС‚СЂРѕР№СЃС‚РІРµ Рё РґРѕСЃС‚СѓРїРЅРѕСЃС‚СЊ СЃРµСЂРІРµСЂР°"
-        is UnknownHostException -> "DNS РЅРµ СЂРµР·РѕР»РІРёС‚ С…РѕСЃС‚. РџСЂРѕРІРµСЂСЊ Base URL Рё СЃРµС‚СЊ"
-        is ConnectException -> "РќРµС‚ СЃРѕРµРґРёРЅРµРЅРёСЏ СЃ API. РџСЂРѕРІРµСЂСЊ Base URL, РїРѕСЂС‚ Рё С„Р°РµСЂРІРѕР»"
-        is SSLException -> "РћС€РёР±РєР° TLS/СЃРµСЂС‚РёС„РёРєР°С‚Р°. РџСЂРѕРІРµСЂСЊ СЃРµСЂС‚РёС„РёРєР°С‚ Рё РґР°С‚Сѓ/РІСЂРµРјСЏ СѓСЃС‚СЂРѕР№СЃС‚РІР°"
+        is SocketTimeoutException -> "Таймаут запроса. Проверь интернет на устройстве и доступность сервера"
+        is UnknownHostException -> "DNS не резолвит хост. Проверь Base URL и сеть"
+        is ConnectException -> "Нет соединения с API. Проверь Base URL, порт и фаервол"
+        is SSLException -> "Ошибка TLS/сертификата. Проверь сертификат и дату/время устройства"
         is HttpException -> when (error.code()) {
-            401 -> "HTTP 401: С‚РѕРєРµРЅ РЅРµРґРµР№СЃС‚РІРёС‚РµР»РµРЅ РёР»Рё РЅРµС‚ РґРѕСЃС‚СѓРїР°"
-            403 -> "HTTP 403: Сѓ С‚РѕРєРµРЅР° РЅРµС‚ РїСЂР°РІ"
+            401 -> "HTTP 401: токен недействителен или нет доступа"
+            403 -> "HTTP 403: у токена нет прав"
             else -> "HTTP ${error.code()}: ${error.message()}"
         }
-        else -> error.message ?: "РћС€РёР±РєР° СЃРµС‚Рё"
+        else -> error.message ?: "Ошибка сети"
     }
 
     private fun mapItemsToServers(items: List<AvailabilityItem>): List<ServerAvailability> =
@@ -267,10 +267,10 @@ class MainViewModel(
 
     private fun parseOptionalInt(value: String, fieldName: String): Int? {
         if (value.isBlank()) return null
-        return value.toIntOrNull() ?: throw IllegalArgumentException("РџРѕР»Рµ $fieldName РґРѕР»Р¶РЅРѕ Р±С‹С‚СЊ С‡РёСЃР»РѕРј")
+        return value.toIntOrNull() ?: throw IllegalArgumentException("Поле $fieldName должно быть числом")
     }
 
-    // РЎРѕРІРјРµСЃС‚РёРјРѕСЃС‚СЊ СЃРѕ СЃС‚Р°СЂС‹РјРё СЃСЃС‹Р»РєР°РјРё РїРѕСЃР»Рµ С‡Р°СЃС‚РёС‡РЅС‹С… merge/cherry-pick.
+    // Совместимость со старыми ссылками после частичных merge/cherry-pick.
     private fun hasUnsavedConnectionSettings(): Boolean = false
 
     fun refreshSettingsFromServer(showErrors: Boolean = false) {
@@ -313,7 +313,7 @@ class MainViewModel(
             val hasAny = monitoring != null || bot != null || time != null || auth != null || control != null || winTypes != null || winCreds != null || servers != null
             if (!hasAny) {
                 state = if (showErrors) {
-                    state.copy(isLoading = false, message = "РќРµ СѓРґР°Р»РѕСЃСЊ РїРѕРґС‚СЏРЅСѓС‚СЊ РЅР°СЃС‚СЂРѕР№РєРё")
+                    state.copy(isLoading = false, message = "Не удалось подтянуть настройки")
                 } else {
                     state.copy(isLoading = false)
                 }
@@ -352,14 +352,14 @@ class MainViewModel(
                 windowsTypes = winTypes?.types ?: state.windowsTypes,
                 managedServers = servers?.items ?: state.managedServers,
                 monitoringStatusText = when {
-                    control?.monitoringActive == true -> "рџџў РђРєС‚РёРІРµРЅ"
-                    control?.monitoringActive == false -> "рџ”ґ РџСЂРёРѕСЃС‚Р°РЅРѕРІР»РµРЅ"
+                    control?.monitoringActive == true -> "🟢 Активен"
+                    control?.monitoringActive == false -> "🔴 Приостановлен"
                     else -> state.monitoringStatusText
                 },
                 silentStatusText = when (control?.silentMode) {
-                    "force_quiet" -> "рџ”‡ РџСЂРёРЅСѓРґРёС‚РµР»СЊРЅРѕ С‚РёС…РёР№"
-                    "force_loud" -> "рџ”Љ РџСЂРёРЅСѓРґРёС‚РµР»СЊРЅРѕ РіСЂРѕРјРєРёР№"
-                    "auto" -> if (control.silentActive == true) "рџ”‡ РђРІС‚Рѕ (СЃРµР№С‡Р°СЃ С‚РёС…РёР№)" else "рџ”Љ РђРІС‚Рѕ (СЃРµР№С‡Р°СЃ РіСЂРѕРјРєРёР№)"
+                    "force_quiet" -> "🔇 Принудительно тихий"
+                    "force_loud" -> "🔊 Принудительно громкий"
+                    "auto" -> if (control.silentActive == true) "🔇 Авто (сейчас тихий)" else "🔊 Авто (сейчас громкий)"
                     else -> state.silentStatusText
                 }
             )
@@ -374,20 +374,20 @@ class MainViewModel(
                 .onSuccess { response ->
                     val servers = if (response.servers.isNotEmpty()) response.servers else mapItemsToServers(response.items)
                     if (servers.isEmpty()) {
-                        state = state.copy(isLoading = false, message = "API РѕС‚РІРµС‚РёР», РЅРѕ СЃРїРёСЃРѕРє СЃРµСЂРІРµСЂРѕРІ РїСѓСЃС‚")
+                        state = state.copy(isLoading = false, message = "API ответил, но список серверов пуст")
                         return@onSuccess
                     }
                     state = state.copy(
                         isLoading = false,
                         servers = servers,
                         summaryText = buildSummaryText(servers),
-                        message = "Р”Р°РЅРЅС‹Рµ РѕР±РЅРѕРІР»РµРЅС‹"
+                        message = "Данные обновлены"
                     )
                 }
                 .onFailure { error ->
                     val userMessage = when ((error as? HttpException)?.code()) {
-                        401 -> "HTTP 401: РЅРµС‚ РґРѕСЃС‚СѓРїР° Рє СЃС‚Р°С‚СѓСЃСѓ СЃРµСЂРІРµСЂРѕРІ. РџСЂРѕРІРµСЂСЊ Base URL Рё С‚РѕРєРµРЅ РІ РќР°СЃС‚СЂРѕР№РєР°С…"
-                        403 -> "HTTP 403: РЅРµС‚ РїСЂР°РІ РЅР° РїРѕР»СѓС‡РµРЅРёРµ СЃС‚Р°С‚СѓСЃР° СЃРµСЂРІРµСЂРѕРІ"
+                        401 -> "HTTP 401: нет доступа к статусу серверов. Проверь Base URL и токен в Настройках"
+                        403 -> "HTTP 403: нет прав на получение статуса серверов"
                         else -> formatNetworkError(error)
                     }
                     state = state.copy(isLoading = false, message = userMessage)
@@ -442,12 +442,12 @@ class MainViewModel(
         }
     }
 fun showMenuStub(section: String) {
-        state = state.copy(message = "Р Р°Р·РґРµР» '$section' РµС‰С‘ РІ СЂР°Р·СЂР°Р±РѕС‚РєРµ РґР»СЏ Android-РјРµРЅСЋ")
+        state = state.copy(message = "Раздел '$section' ещё в разработке для Android-меню")
     }
 
     fun sendAction(action: String) {
         if (hasUnsavedConnectionSettings()) {
-            state = state.copy(message = "РЎРЅР°С‡Р°Р»Р° СЃРѕС…СЂР°РЅРё Base URL Рё С‚РѕРєРµРЅ РІ РќР°СЃС‚СЂРѕР№РєР°С…")
+            state = state.copy(message = "Сначала сохрани Base URL и токен в Настройках")
             return
         }
 
@@ -455,7 +455,7 @@ fun showMenuStub(section: String) {
             state = state.copy(isLoading = true)
             runCatching { currentApi().runControlAction(ControlActionRequest(action)) }
                 .onSuccess { response ->
-                    val actionMessage = response.message ?: response.result ?: "РљРѕРјР°РЅРґР° РѕС‚РїСЂР°РІР»РµРЅР°"
+                    val actionMessage = response.message ?: response.result ?: "Команда отправлена"
                     if (action == "send_morning_report") {
                         saveMorningReport(actionMessage)
                     }
@@ -464,8 +464,8 @@ fun showMenuStub(section: String) {
                 }
                 .onFailure { error ->
                     val userMessage = when ((error as? HttpException)?.code()) {
-                        401 -> "HTTP 401: РЅРµС‚ РґРѕСЃС‚СѓРїР° Рє РєРѕРјР°РЅРґР°Рј СѓРїСЂР°РІР»РµРЅРёСЏ. РџСЂРѕРІРµСЂСЊ Base URL Рё С‚РѕРєРµРЅ РІ РќР°СЃС‚СЂРѕР№РєР°С…"
-                        403 -> "HTTP 403: РЅРµС‚ РїСЂР°РІ РЅР° РєРѕРјР°РЅРґС‹ СѓРїСЂР°РІР»РµРЅРёСЏ"
+                        401 -> "HTTP 401: нет доступа к командам управления. Проверь Base URL и токен в Настройках"
+                        403 -> "HTTP 403: нет прав на команды управления"
                         else -> formatNetworkError(error)
                     }
                     state = state.copy(isLoading = false, message = userMessage)
@@ -476,7 +476,7 @@ fun showMenuStub(section: String) {
     fun addTelegramChatId() {
         val chatId = state.newTelegramChatIdInput.trim()
         if (chatId.isBlank()) {
-            state = state.copy(message = "Р’РІРµРґРё chat_id РґР»СЏ РґРѕР±Р°РІР»РµРЅРёСЏ")
+            state = state.copy(message = "Введи chat_id для добавления")
             return
         }
 
@@ -490,7 +490,7 @@ fun showMenuStub(section: String) {
                         telegramChatIds = ids,
                         telegramChatIdInput = response.settings?.telegramChatId ?: state.telegramChatIdInput,
                         newTelegramChatIdInput = "",
-                        message = "Chat ID РґРѕР±Р°РІР»РµРЅ"
+                        message = "Chat ID добавлен"
                     )
                 }
                 .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
@@ -510,7 +510,7 @@ fun showMenuStub(section: String) {
                         isLoading = false,
                         telegramChatIds = ids,
                         telegramChatIdInput = response.settings?.telegramChatId ?: state.telegramChatIdInput,
-                        message = "Chat ID СѓРґР°Р»РµРЅ"
+                        message = "Chat ID удален"
                     )
                 }
                 .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
@@ -524,7 +524,7 @@ fun showMenuStub(section: String) {
         val priority = state.windowsCredPriorityInput.toIntOrNull() ?: 0
 
         if (username.isBlank() || password.isBlank()) {
-            state = state.copy(message = "Р”Р»СЏ Windows-СѓС‡РµС‚РєРё РЅСѓР¶РЅС‹ username Рё password")
+            state = state.copy(message = "Для Windows-учетки нужны username и password")
             return
         }
 
@@ -549,7 +549,7 @@ fun showMenuStub(section: String) {
                         windowsCredPasswordInput = "",
                         windowsCredServerTypeInput = "",
                         windowsCredPriorityInput = "0",
-                        message = "Windows-СѓС‡РµС‚РєР° РґРѕР±Р°РІР»РµРЅР°"
+                        message = "Windows-учетка добавлена"
                     )
                 }
                 .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
@@ -566,7 +566,7 @@ fun showMenuStub(section: String) {
                         isLoading = false,
                         windowsCredentials = response.items,
                         windowsServerTypes = response.serverTypes,
-                        message = "Windows-СѓС‡РµС‚РєР° СѓРґР°Р»РµРЅР°"
+                        message = "Windows-учетка удалена"
                     )
                 }
                 .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
@@ -576,7 +576,7 @@ fun showMenuStub(section: String) {
     fun createWindowsType() {
         val typeName = state.createWindowsTypeInput.trim()
         if (typeName.isBlank()) {
-            state = state.copy(message = "Р’РІРµРґРёС‚Рµ РёРјСЏ РЅРѕРІРѕРіРѕ С‚РёРїР°")
+            state = state.copy(message = "Введите имя нового типа")
             return
         }
         viewModelScope.launch {
@@ -588,7 +588,7 @@ fun showMenuStub(section: String) {
                         windowsTypes = response.types,
                         windowsServerTypes = response.types.map { it.name },
                         createWindowsTypeInput = "",
-                        message = "РўРёРї СЃРѕР·РґР°РЅ"
+                        message = "Тип создан"
                     )
                     refreshSettingsFromServer(showErrors = false)
                 }
@@ -600,7 +600,7 @@ fun showMenuStub(section: String) {
         val oldType = state.renameOldTypeInput.trim()
         val newType = state.renameNewTypeInput.trim()
         if (oldType.isBlank() || newType.isBlank()) {
-            state = state.copy(message = "Р—Р°РїРѕР»РЅРё СЃС‚Р°СЂРѕРµ Рё РЅРѕРІРѕРµ РёРјСЏ С‚РёРїР°")
+            state = state.copy(message = "Заполни старое и новое имя типа")
             return
         }
         viewModelScope.launch {
@@ -613,7 +613,7 @@ fun showMenuStub(section: String) {
                         windowsServerTypes = response.types.map { it.name },
                         renameOldTypeInput = "",
                         renameNewTypeInput = "",
-                        message = "РўРёРї РїРµСЂРµРёРјРµРЅРѕРІР°РЅ"
+                        message = "Тип переименован"
                     )
                     refreshSettingsFromServer(showErrors = false)
                 }
@@ -625,7 +625,7 @@ fun showMenuStub(section: String) {
         val source = state.mergeSourceTypeInput.trim()
         val target = state.mergeTargetTypeInput.trim()
         if (source.isBlank() || target.isBlank() || source == target) {
-            state = state.copy(message = "РЈРєР°Р¶Рё source/target С‚РёРїС‹ (Рё РѕРЅРё РґРѕР»Р¶РЅС‹ РѕС‚Р»РёС‡Р°С‚СЊСЃСЏ)")
+            state = state.copy(message = "Укажи source/target типы (и они должны отличаться)")
             return
         }
         viewModelScope.launch {
@@ -638,7 +638,7 @@ fun showMenuStub(section: String) {
                         windowsServerTypes = response.types.map { it.name },
                         mergeSourceTypeInput = "",
                         mergeTargetTypeInput = "",
-                        message = "РўРёРїС‹ РѕР±СЉРµРґРёРЅРµРЅС‹"
+                        message = "Типы объединены"
                     )
                     refreshSettingsFromServer(showErrors = false)
                 }
@@ -650,7 +650,7 @@ fun showMenuStub(section: String) {
         val typeName = state.deleteTypeInput.trim()
         val target = state.deleteTargetTypeInput.trim().ifBlank { "default" }
         if (typeName.isBlank()) {
-            state = state.copy(message = "РЈРєР°Р¶Рё С‚РёРї РґР»СЏ СѓРґР°Р»РµРЅРёСЏ")
+            state = state.copy(message = "Укажи тип для удаления")
             return
         }
         viewModelScope.launch {
@@ -662,7 +662,7 @@ fun showMenuStub(section: String) {
                         windowsTypes = response.types,
                         windowsServerTypes = response.types.map { it.name },
                         deleteTypeInput = "",
-                        message = "РўРёРї СѓРґР°Р»РµРЅ"
+                        message = "Тип удален"
                     )
                     refreshSettingsFromServer(showErrors = false)
                 }
@@ -677,7 +677,7 @@ fun showMenuStub(section: String) {
             serverNameInput = server.name,
             serverTypeInput = server.type,
             serverTimeoutInput = (server.timeout ?: 30).toString(),
-            message = "Р РµР¶РёРј СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёСЏ: ${server.ip}"
+            message = "Режим редактирования: ${server.ip}"
         )
     }
 
@@ -688,7 +688,7 @@ fun showMenuStub(section: String) {
             serverNameInput = "",
             serverTypeInput = "",
             serverTimeoutInput = "30",
-            message = "Р РµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ СЃРµСЂРІРµСЂР° РѕС‚РјРµРЅРµРЅРѕ"
+            message = "Редактирование сервера отменено"
         )
     }
 
@@ -707,19 +707,19 @@ fun showMenuStub(section: String) {
         val isEdit = state.serverEditIp.isNotBlank()
 
         if (!isEdit && ip.isBlank()) {
-            state = state.copy(message = "Р’РІРµРґРёС‚Рµ IP СЃРµСЂРІРµСЂР°")
+            state = state.copy(message = "Введите IP сервера")
             return
         }
         if (name.isBlank()) {
-            state = state.copy(message = "Р’РІРµРґРёС‚Рµ РёРјСЏ СЃРµСЂРІРµСЂР°")
+            state = state.copy(message = "Введите имя сервера")
             return
         }
         if (type == null) {
-            state = state.copy(message = "РўРёРї СЃРµСЂРІРµСЂР°: rdp / ssh / ping")
+            state = state.copy(message = "Тип сервера: rdp / ssh / ping")
             return
         }
         if (timeout < 1) {
-            state = state.copy(message = "timeout РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ >= 1")
+            state = state.copy(message = "timeout должен быть >= 1")
             return
         }
 
@@ -760,7 +760,7 @@ fun showMenuStub(section: String) {
                         serverNameInput = "",
                         serverTypeInput = "",
                         serverTimeoutInput = "30",
-                        message = if (isEdit) "РЎРµСЂРІРµСЂ РѕР±РЅРѕРІР»РµРЅ" else "РЎРµСЂРІРµСЂ РґРѕР±Р°РІР»РµРЅ"
+                        message = if (isEdit) "Сервер обновлен" else "Сервер добавлен"
                     )
                 }
                 .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
@@ -777,7 +777,7 @@ fun showMenuStub(section: String) {
                     state = state.copy(
                         isLoading = false,
                         managedServers = response.items,
-                        message = "РЎРµСЂРІРµСЂ СѓРґР°Р»РµРЅ"
+                        message = "Сервер удален"
                     )
                 }
                 .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
@@ -794,7 +794,7 @@ fun showMenuStub(section: String) {
                     state = state.copy(
                         isLoading = false,
                         managedServers = response.items,
-                        message = if (enabled) "РњРѕРЅРёС‚РѕСЂРёРЅРі РІРєР»СЋС‡РµРЅ" else "РњРѕРЅРёС‚РѕСЂРёРЅРі РїСЂРёРѕСЃС‚Р°РЅРѕРІР»РµРЅ"
+                        message = if (enabled) "Мониторинг включен" else "Мониторинг приостановлен"
                     )
                 }
                 .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
@@ -806,7 +806,7 @@ fun showMenuStub(section: String) {
         val timeout = state.timeoutInput
         val maxDowntime = state.maxDowntimeInput
         if (!hasAnyValue(checkInterval, timeout, maxDowntime)) {
-            state = state.copy(message = "Р—Р°РїРѕР»РЅРё С…РѕС‚СЏ Р±С‹ РѕРґРЅРѕ РїРѕР»Рµ monitoring")
+            state = state.copy(message = "Заполни хотя бы одно поле monitoring")
             return
         }
 
@@ -817,7 +817,7 @@ fun showMenuStub(section: String) {
                 maxDowntimeSec = parseOptionalInt(maxDowntime, "max_downtime_sec")
             )
         }.getOrElse {
-            state = state.copy(message = it.message ?: "РћС€РёР±РєР° РІ РїРѕР»СЏС… monitoring")
+            state = state.copy(message = it.message ?: "Ошибка в полях monitoring")
             return
         }
 
@@ -825,7 +825,7 @@ fun showMenuStub(section: String) {
             state = state.copy(isLoading = true)
             runCatching { currentApi().updateMonitoringSettings(request) }
                 .onSuccess {
-                    state = state.copy(isLoading = false, message = "РќР°СЃС‚СЂРѕР№РєРё РјРѕРЅРёС‚РѕСЂРёРЅРіР° РѕР±РЅРѕРІР»РµРЅС‹")
+                    state = state.copy(isLoading = false, message = "Настройки мониторинга обновлены")
                     refreshSettingsFromServer(showErrors = false)
                 }
                 .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
@@ -836,7 +836,7 @@ fun showMenuStub(section: String) {
         val telegramToken = state.telegramTokenInput
         val telegramChatId = state.telegramChatIdInput
         if (!hasAnyValue(telegramToken, telegramChatId) && state.telegramChatIds.isEmpty()) {
-            state = state.copy(message = "Р—Р°РїРѕР»РЅРё С…РѕС‚СЏ Р±С‹ РѕРґРЅРѕ РїРѕР»Рµ bot")
+            state = state.copy(message = "Заполни хотя бы одно поле bot")
             return
         }
 
@@ -850,7 +850,7 @@ fun showMenuStub(section: String) {
             state = state.copy(isLoading = true)
             runCatching { currentApi().updateBotSettings(request) }
                 .onSuccess {
-                    state = state.copy(isLoading = false, message = "РќР°СЃС‚СЂРѕР№РєРё Р±РѕС‚Р° РѕР±РЅРѕРІР»РµРЅС‹")
+                    state = state.copy(isLoading = false, message = "Настройки бота обновлены")
                     refreshSettingsFromServer(showErrors = false)
                 }
                 .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
@@ -862,7 +862,7 @@ fun showMenuStub(section: String) {
         val quietEnd = state.quietEndInput
         val metricsCollectionTime = state.metricsTimeInput
         if (!hasAnyValue(quietStart, quietEnd, metricsCollectionTime)) {
-            state = state.copy(message = "Р—Р°РїРѕР»РЅРё С…РѕС‚СЏ Р±С‹ РѕРґРЅРѕ РїРѕР»Рµ time")
+            state = state.copy(message = "Заполни хотя бы одно поле time")
             return
         }
 
@@ -876,7 +876,7 @@ fun showMenuStub(section: String) {
             state = state.copy(isLoading = true)
             runCatching { currentApi().updateTimeSettings(request) }
                 .onSuccess {
-                    state = state.copy(isLoading = false, message = "Р’СЂРµРјРµРЅРЅС‹Рµ РЅР°СЃС‚СЂРѕР№РєРё РѕР±РЅРѕРІР»РµРЅС‹")
+                    state = state.copy(isLoading = false, message = "Временные настройки обновлены")
                     refreshSettingsFromServer(showErrors = false)
                     rescheduleMorningReportWorker()
                 }
@@ -894,7 +894,7 @@ fun showMenuStub(section: String) {
         val windowsPassword = state.windowsPasswordInput
 
         if (!hasAnyValue(authMode, sshUsername, sshKeyPath, sshPort, windowsUsername, sshPassword, windowsPassword)) {
-            state = state.copy(message = "Р—Р°РїРѕР»РЅРё С…РѕС‚СЏ Р±С‹ РѕРґРЅРѕ РїРѕР»Рµ auth")
+            state = state.copy(message = "Заполни хотя бы одно поле auth")
             return
         }
 
@@ -909,7 +909,7 @@ fun showMenuStub(section: String) {
                 windowsPassword = windowsPassword.ifBlank { null }
             )
         }.getOrElse {
-            state = state.copy(message = it.message ?: "РћС€РёР±РєР° РІ РїРѕР»СЏС… auth")
+            state = state.copy(message = it.message ?: "Ошибка в полях auth")
             return
         }
 
@@ -917,7 +917,7 @@ fun showMenuStub(section: String) {
             state = state.copy(isLoading = true)
             runCatching { currentApi().updateAuthSettings(request) }
                 .onSuccess {
-                    state = state.copy(isLoading = false, message = "Auth-РЅР°СЃС‚СЂРѕР№РєРё РѕР±РЅРѕРІР»РµРЅС‹")
+                    state = state.copy(isLoading = false, message = "Auth-настройки обновлены")
                     refreshSettingsFromServer(showErrors = false)
                 }
                 .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
@@ -1006,6 +1006,6 @@ data class MainUiState(
     val morningReportUnread: Boolean = false,
     val botVersion: String = "",
     val androidAppVersion: String = "",
-    val monitoringStatusText: String = "РќРµРёР·РІРµСЃС‚РЅРѕ",
-    val silentStatusText: String = "РќРµРёР·РІРµСЃС‚РЅРѕ"
+    val monitoringStatusText: String = "Неизвестно",
+    val silentStatusText: String = "Неизвестно"
 )
