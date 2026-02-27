@@ -6,15 +6,21 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.12.4] - 2026-02-27
+## [8.12.5] - 2026-02-27
 
 ### Fixed / Исправлено
-- EN: Fixed Android server availability feedback placement: the current request result is now shown directly above the button that initiated it.
-- RU: Исправлено отображение результата проверки доступности сервера в Android: сообщение текущего запроса теперь показывается прямо над кнопкой, которая его вызвала.
+- EN: Fixed targeted server availability in Android by switching the button action to a dedicated single-server API request (`GET /v1/monitoring/availability/{server_id}`), aligned with Telegram bot behavior.
+- RU: Исправлена точечная проверка доступности сервера в Android: по кнопке теперь идёт отдельный запрос для одного сервера (`GET /v1/monitoring/availability/{server_id}`), как в Telegram-боте.
+- EN: Fixed Android server availability feedback placement: the current request result is now shown inside the server button group, directly above the server button that initiated it.
+- RU: Исправлено размещение результата проверки в Android: сообщение текущего запроса теперь выводится внутри группы серверов, прямо над кнопкой запрошенного сервера.
+
+### Added / Добавлено
+- EN: Added BFF endpoint `GET /v1/monitoring/availability/{server_id}` (and `/api/v1/...`) with token auth, server lookup, and direct status check.
+- RU: Добавлен BFF endpoint `GET /v1/monitoring/availability/{server_id}` (и `/api/v1/...`) с token-auth, поиском сервера и прямой проверкой статуса.
 
 ### Changed / Изменено
-- EN: Project version bumped to `8.12.4`; Android `versionCode` bumped to `7`.
-- RU: Версия проекта повышена до `8.12.4`; Android `versionCode` увеличен до `7`.
+- EN: Project version bumped to `8.12.5`; Android `versionCode` bumped to `8`.
+- RU: Версия проекта повышена до `8.12.5`; Android `versionCode` увеличен до `8`.
 
 ## [8.12.3] - 2026-02-27
 

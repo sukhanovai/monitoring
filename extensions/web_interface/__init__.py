@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.12.4
+Server Monitoring System v8.12.5
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.12.4
+Версия: 8.12.5
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -15,6 +15,7 @@ from flask import Flask, jsonify, render_template_string, request
 from config.db_settings import WEB_PORT, WEB_HOST
 from config.settings import STATS_FILE
 from extensions.extension_manager import extension_manager
+from extensions.server_checks import initialize_servers, check_server_availability
 from extensions.supplier_stock_files import (
     SUPPLIER_STOCK_EXTENSION_ID,
     build_supplier_stock_source_stats,
@@ -1651,6 +1652,24 @@ def _build_availability_payload(scope='all'):
     }
 
 
+def _resolve_server_for_targeted_check(server_id):
+    """Ищет сервер по ip/имени/id из конфигурации."""
+    server_id_normalized = str(server_id or '').strip().lower()
+    if not server_id_normalized:
+        return None
+
+    servers = initialize_servers()
+    for server in servers:
+        candidates = {
+            str(server.get('ip') or '').strip().lower(),
+            str(server.get('name') or '').strip().lower(),
+            str(server.get('id') or '').strip().lower(),
+        }
+        if server_id_normalized in candidates:
+            return server
+    return None
+
+
 @app.route('/v1/monitoring/availability', methods=['GET'])
 @app.route('/api/v1/monitoring/availability', methods=['GET'])
 def mobile_availability():
@@ -1684,6 +1703,77 @@ def mobile_availability():
         request_id,
         duration_ms,
         payload.get('total', 0),
+    )
+    response = jsonify(payload)
+    response.headers['X-Request-ID'] = request_id
+    return response
+
+
+@app.route('/v1/monitoring/availability/<path:server_id>', methods=['GET'])
+@app.route('/api/v1/monitoring/availability/<path:server_id>', methods=['GET'])
+def mobile_availability_single(server_id):
+    """Точечная проверка доступности одного сервера для Android-клиента."""
+    started_at = time.time()
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+
+    ok, token_data = _validate_mobile_token(request.headers.get("Authorization"))
+    if not ok:
+        response = jsonify({
+            "error": "unauthorized",
+            "message": "Bearer token required",
+            "reason": token_data,
+            "request_id": request_id,
+        })
+        response.headers['X-Request-ID'] = request_id
+        return response, 401
+
+    server = _resolve_server_for_targeted_check(server_id)
+    if not server:
+        response = jsonify({
+            "error": "server_not_found",
+            "message": f'Сервер "{server_id}" не найден',
+            "request_id": request_id,
+        })
+        response.headers['X-Request-ID'] = request_id
+        return response, 404
+
+    is_up = check_server_availability(server)
+    status = 'up' if is_up else 'down'
+    now_iso = datetime.now().isoformat()
+    payload = {
+        "request_id": request_id,
+        "generated_at": now_iso,
+        "server": {
+            "server_id": server.get('ip') or server.get('name') or server_id,
+            "name": server.get('name') or server_id,
+            "ip": server.get('ip'),
+            "status": status,
+            "checked_at": now_iso,
+        },
+        "servers": [{
+            "id": server.get('ip') or server_id,
+            "name": server.get('name') or server_id,
+            "status": status,
+            "last_checked_at": now_iso,
+        }],
+        "items": [{
+            "server_id": server.get('ip') or server_id,
+            "status": status,
+            "checked_at": now_iso,
+        }],
+        "summary": {
+            "up": 1 if status == 'up' else 0,
+            "down": 1 if status == 'down' else 0,
+            "unknown": 0,
+        },
+    }
+    duration_ms = int((time.time() - started_at) * 1000)
+    app.logger.info(
+        "GET /v1/monitoring/availability/<server_id> request_id=%s status=200 duration_ms=%s server=%s server_status=%s",
+        request_id,
+        duration_ms,
+        server.get('ip') or server_id,
+        status,
     )
     response = jsonify(payload)
     response.headers['X-Request-ID'] = request_id

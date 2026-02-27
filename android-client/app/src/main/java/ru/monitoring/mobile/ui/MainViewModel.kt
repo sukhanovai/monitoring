@@ -44,7 +44,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.12.4"
+    private val projectVersion = "8.12.5"
 
     private fun currentApi() = ApiFactory.createApi(
         tokenProvider = { normalizeToken(state.token.ifBlank { preferences.apiToken }) },
@@ -433,19 +433,14 @@ class MainViewModel(
             .orEmpty()
         if (query.isBlank()) return
 
-        val lookupTokens = buildLookupTokens(server)
+        val serverTarget = server.ip.ifBlank { server.name }
 
         viewModelScope.launch {
-            state = state.copy(isLoading = true)
-            runCatching { currentApi().getAvailability() }
+            state = state.copy(isLoading = true, availabilityServerMessageTarget = serverTarget)
+            runCatching { currentApi().getAvailabilitySingle(serverTarget) }
                 .onSuccess { response ->
                     val allServers = if (response.servers.isNotEmpty()) response.servers else mapItemsToServers(response.items)
-                    val selected = allServers.firstOrNull { item ->
-                        val itemTokens = listOf(item.id, item.name)
-                            .map { it.trim().lowercase() }
-                            .toSet()
-                        itemTokens.any { it in lookupTokens }
-                    } ?: filterServersByQuery(allServers, query).firstOrNull()
+                    val selected = allServers.firstOrNull()
 
                     if (selected == null) {
                         state = state.copy(
@@ -453,26 +448,40 @@ class MainViewModel(
                             servers = emptyList(),
                             summaryText = "UP: 0, DOWN: 0, UNKNOWN: 0",
                             message = "Сервер \"$query\" не найден в ответе API",
-                            messageSource = "server_availability"
+                            messageSource = "server_availability",
+                            availabilityServerMessageTarget = serverTarget
                         )
                         return@onSuccess
                     }
+
                     val statusLabel = selected.status.ifBlank { "UNKNOWN" }
+                    val statusEmoji = when (statusLabel.lowercase()) {
+                        "up" -> "✅"
+                        "down" -> "❌"
+                        else -> "❔"
+                    }
                     state = state.copy(
                         isLoading = false,
                         servers = listOf(selected),
                         summaryText = "${server.name} (${server.ip}): $statusLabel",
-                        message = "Показан статус для: ${server.name}",
-                        messageSource = "server_availability"
+                        message = "$statusEmoji ${server.name} (${server.ip}): $statusLabel",
+                        messageSource = "server_availability",
+                        availabilityServerMessageTarget = serverTarget
                     )
                 }
                 .onFailure { error ->
                     val userMessage = when ((error as? HttpException)?.code()) {
                         401 -> "HTTP 401: нет доступа к статусу серверов. Проверь Base URL и токен в Настройках"
                         403 -> "HTTP 403: нет прав на получение статуса серверов"
+                        404 -> "Сервер \"$query\" не найден"
                         else -> formatNetworkError(error)
                     }
-                    state = state.copy(isLoading = false, message = userMessage, messageSource = "server_availability")
+                    state = state.copy(
+                        isLoading = false,
+                        message = userMessage,
+                        messageSource = "server_availability",
+                        availabilityServerMessageTarget = serverTarget
+                    )
                 }
         }
     }
@@ -1007,6 +1016,7 @@ data class MainUiState(
     val servers: List<ServerAvailability> = emptyList(),
     val message: String = "",
     val messageSource: String = "global",
+    val availabilityServerMessageTarget: String = "",
     val checkIntervalInput: String = "",
     val timeoutInput: String = "",
     val maxDowntimeInput: String = "",

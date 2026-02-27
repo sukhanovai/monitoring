@@ -18,6 +18,9 @@ interface MonitoringApi {
     @GET("v1/monitoring/availability?scope=all")
     suspend fun getAvailability(): AvailabilityResponse
 
+    @GET("v1/monitoring/availability/{serverId}")
+    suspend fun getAvailabilitySingle(@Path("serverId") serverId: String): AvailabilityResponse
+
     @POST("v1/control/actions")
     suspend fun runControlAction(@Body request: ControlActionRequest): ControlActionResult
 
