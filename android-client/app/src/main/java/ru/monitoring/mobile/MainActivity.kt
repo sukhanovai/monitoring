@@ -312,11 +312,16 @@ private fun MonitoringApp(
                     Button(onClick = { showServerAvailabilityMenu = !showServerAvailabilityMenu }, modifier = Modifier.fillMaxWidth()) {
                         Text("🔍 Доступность сервера")
                     }
-                    if (state.message.isNotBlank() && state.messageSource == "server_availability") {
-                        Text(state.message)
-                    }
                     if (showServerAvailabilityMenu) {
                         state.managedServers.forEach { server ->
+                            val serverTarget = if (server.ip.isNotBlank()) server.ip else server.name
+                            if (
+                                state.message.isNotBlank() &&
+                                state.messageSource == "server_availability" &&
+                                state.availabilityServerMessageTarget == serverTarget
+                            ) {
+                                Text(state.message)
+                            }
                             Button(
                                 onClick = { onCheckServerAvailability(server) },
                                 modifier = Modifier.fillMaxWidth()
