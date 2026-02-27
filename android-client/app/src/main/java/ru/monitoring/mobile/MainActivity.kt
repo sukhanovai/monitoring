@@ -268,7 +268,7 @@ private fun MonitoringApp(
                         Text("Статус", fontWeight = FontWeight.Bold)
                         Text(state.summaryText)
                         Text("Версия проекта: ${state.projectVersion}")
-                        if (state.message.isNotBlank()) {
+                        if (state.message.isNotBlank() && state.messageSource == "global") {
                             Text(state.message)
                         }
                     }
@@ -300,11 +300,20 @@ private fun MonitoringApp(
                     Button(onClick = { onAction("send_morning_report") }, modifier = Modifier.fillMaxWidth()) {
                         Text("🌅 Отчёт")
                     }
+                    if (state.message.isNotBlank() && state.messageSource == "morning_report") {
+                        Text(state.message)
+                    }
                     Button(onClick = onRefresh, modifier = Modifier.fillMaxWidth()) {
                         Text("🖥 Доступность всех серверов")
                     }
+                    if (state.message.isNotBlank() && state.messageSource == "all_servers") {
+                        Text(state.message)
+                    }
                     Button(onClick = { showServerAvailabilityMenu = !showServerAvailabilityMenu }, modifier = Modifier.fillMaxWidth()) {
                         Text("🔍 Доступность сервера")
+                    }
+                    if (state.message.isNotBlank() && state.messageSource == "server_availability") {
+                        Text(state.message)
                     }
                     if (showServerAvailabilityMenu) {
                         state.managedServers.forEach { server ->
