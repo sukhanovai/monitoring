@@ -44,7 +44,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.12.2"
+    private val projectVersion = "8.12.4"
 
     private fun currentApi() = ApiFactory.createApi(
         tokenProvider = { normalizeToken(state.token.ifBlank { preferences.apiToken }) },
@@ -371,14 +371,19 @@ class MainViewModel(
                 .onSuccess { response ->
                     val servers = if (response.servers.isNotEmpty()) response.servers else mapItemsToServers(response.items)
                     if (servers.isEmpty()) {
-                        state = state.copy(isLoading = false, message = "API ответил, но список серверов пуст")
+                        state = state.copy(
+                            isLoading = false,
+                            message = "API ответил, но список серверов пуст",
+                            messageSource = "all_servers"
+                        )
                         return@onSuccess
                     }
                     state = state.copy(
                         isLoading = false,
                         servers = servers,
                         summaryText = buildSummaryText(servers),
-                        message = "Данные обновлены"
+                        message = "Данные обновлены",
+                        messageSource = "all_servers"
                     )
                 }
                 .onFailure { error ->
@@ -387,7 +392,7 @@ class MainViewModel(
                         403 -> "HTTP 403: нет прав на получение статуса серверов"
                         else -> formatNetworkError(error)
                     }
-                    state = state.copy(isLoading = false, message = userMessage)
+                    state = state.copy(isLoading = false, message = userMessage, messageSource = "all_servers")
                 }
         }
     }
@@ -447,7 +452,8 @@ class MainViewModel(
                             isLoading = false,
                             servers = emptyList(),
                             summaryText = "UP: 0, DOWN: 0, UNKNOWN: 0",
-                            message = "Сервер \"$query\" не найден в ответе API"
+                            message = "Сервер \"$query\" не найден в ответе API",
+                            messageSource = "server_availability"
                         )
                         return@onSuccess
                     }
@@ -456,7 +462,8 @@ class MainViewModel(
                         isLoading = false,
                         servers = listOf(selected),
                         summaryText = "${server.name} (${server.ip}): $statusLabel",
-                        message = "Показан статус для: ${server.name}"
+                        message = "Показан статус для: ${server.name}",
+                        messageSource = "server_availability"
                     )
                 }
                 .onFailure { error ->
@@ -465,11 +472,12 @@ class MainViewModel(
                         403 -> "HTTP 403: нет прав на получение статуса серверов"
                         else -> formatNetworkError(error)
                     }
-                    state = state.copy(isLoading = false, message = userMessage)
+                    state = state.copy(isLoading = false, message = userMessage, messageSource = "server_availability")
                 }
         }
     }
-fun showMenuStub(section: String) {
+
+    fun showMenuStub(section: String) {
         state = state.copy(message = "Раздел '$section' ещё в разработке для Android-меню")
     }
 
@@ -487,7 +495,11 @@ fun showMenuStub(section: String) {
                     if (action == "send_morning_report") {
                         saveMorningReport(actionMessage)
                     }
-                    state = state.copy(isLoading = false, message = actionMessage)
+                    state = state.copy(
+                        isLoading = false,
+                        message = actionMessage,
+                        messageSource = if (action == "send_morning_report") "morning_report" else "global"
+                    )
                     refreshSettingsFromServer(showErrors = false)
                 }
                 .onFailure { error ->
@@ -496,7 +508,11 @@ fun showMenuStub(section: String) {
                         403 -> "HTTP 403: нет прав на команды управления"
                         else -> formatNetworkError(error)
                     }
-                    state = state.copy(isLoading = false, message = userMessage)
+                    state = state.copy(
+                        isLoading = false,
+                        message = userMessage,
+                        messageSource = if (action == "send_morning_report") "morning_report" else "global"
+                    )
                 }
         }
     }
@@ -990,6 +1006,7 @@ data class MainUiState(
     val summaryText: String = "Статус не запрошен",
     val servers: List<ServerAvailability> = emptyList(),
     val message: String = "",
+    val messageSource: String = "global",
     val checkIntervalInput: String = "",
     val timeoutInput: String = "",
     val maxDowntimeInput: String = "",

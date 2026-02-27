@@ -6,7 +6,17 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.12.2] - 2026-02-27
+## [8.12.4] - 2026-02-27
+
+### Fixed / Исправлено
+- EN: Fixed Android server availability feedback placement: the current request result is now shown directly above the button that initiated it.
+- RU: Исправлено отображение результата проверки доступности сервера в Android: сообщение текущего запроса теперь показывается прямо над кнопкой, которая его вызвала.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.12.4`; Android `versionCode` bumped to `7`.
+- RU: Версия проекта повышена до `8.12.4`; Android `versionCode` увеличен до `7`.
+
+## [8.12.3] - 2026-02-27
 
 ### Fixed / Исправлено
 - EN: Removed duplicate Android-version output from bot and Android app screens; now project version is shown once.
@@ -15,8 +25,8 @@ The project follows Semantic Versioning (SemVer).
 - RU: Исправлена проверка доступности выбранного сервера в Android-подменю: улучшено сопоставление серверов (IP/имя, варианты со скобками и кавычками).
 
 ### Changed / Изменено
-- EN: Project version bumped to `8.12.2`; Android `versionCode` bumped to `6`.
-- RU: Версия проекта повышена до `8.12.2`; Android `versionCode` увеличен до `6`.
+- EN: Project version bumped to `8.12.3`; Android `versionCode` bumped to `6`.
+- RU: Версия проекта повышена до `8.12.3`; Android `versionCode` увеличен до `6`.
 
 ## [8.11.2] - 2026-02-28
 
