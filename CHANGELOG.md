@@ -6,19 +6,17 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.12.0] - 2026-02-28
+## [8.12.2] - 2026-02-27
 
 ### Fixed / Исправлено
-- EN: Restored clean UTF-8 encoding in `CHANGELOG.md` (Russian text is readable again across entries).
-- RU: Восстановлена корректная UTF-8 кодировка в `CHANGELOG.md` (русский текст снова читаемый во всех записях).
+- EN: Removed duplicate Android-version output from bot and Android app screens; now project version is shown once.
+- RU: Убрано дублирующее отображение Android-версии в боте и Android-приложении; теперь показывается одна версия проекта.
+- EN: Fixed targeted server availability in Android submenu by improving server matching (IP/name with bracketed and quoted formats).
+- RU: Исправлена проверка доступности выбранного сервера в Android-подменю: улучшено сопоставление серверов (IP/имя, варианты со скобками и кавычками).
 
 ### Changed / Изменено
-- EN: Android app top bar title changed from `Monitoring Android` to `Monitoring`.
-- RU: Заголовок в верхней панели Android-приложения изменен с `Monitoring Android` на `Monitoring`.
-- EN: Replaced Android app launcher icon with a clearer monitoring-themed icon.
-- RU: Заменена иконка запуска Android-приложения на более понятную и тематичную.
-- EN: Unified bot and Android app version to `8.12.0`; Android `versionCode` bumped to `5`.
-- RU: Синхронизированы версии бота и Android-приложения до `8.12.0`; Android `versionCode` увеличен до `5`.
+- EN: Project version bumped to `8.12.2`; Android `versionCode` bumped to `6`.
+- RU: Версия проекта повышена до `8.12.2`; Android `versionCode` увеличен до `6`.
 
 ## [8.11.2] - 2026-02-28
 

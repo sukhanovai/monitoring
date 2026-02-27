@@ -1,11 +1,11 @@
 """
 /core/monitor_core.py
-Server Monitoring System v8.12.0
+Server Monitoring System v8.12.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core system
 Система мониторинга серверов
-Версия: 8.12.0
+Версия: 8.12.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Ядро системы
@@ -1630,8 +1630,6 @@ def start_monitoring():
     start_message = "🟢 *Мониторинг серверов запущен*\n\n"
     if getattr(config, "APP_VERSION", None):
         start_message += f"🔖 *Версия:* {config.APP_VERSION}\n"
-    if getattr(config, "ANDROID_APP_VERSION", None):
-        start_message += f"📱 *Android:* {config.ANDROID_APP_VERSION}\n"
     start_message += (
         f"• Серверов в мониторинге: {len(servers)}\n"
         f"• Проверка ресурсов: каждые {config.RESOURCE_CHECK_INTERVAL // 60} минут\n"

@@ -1,11 +1,11 @@
 """
 /core/monitor.py
-Server Monitoring System v8.12.0
+Server Monitoring System v8.12.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core monitoring module
 Система мониторинга серверов
-Версия: 8.12.0
+Версия: 8.12.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль мониторинга
@@ -25,7 +25,6 @@ from config import (
     DATA_COLLECTION_TIME,
     SILENT_START,
     SILENT_END,
-    ANDROID_APP_VERSION,
 )
 from modules.resources import resources_checker
 from modules.morning_report import morning_report
@@ -364,8 +363,6 @@ class Monitor:
         start_message = "🟢 *Мониторинг серверов запущен*\n\n"
         if APP_VERSION:
             start_message += f"🔖 *Версия:* {APP_VERSION}\n"
-        if ANDROID_APP_VERSION:
-            start_message += f"📱 *Android:* {ANDROID_APP_VERSION}\n"
         start_message += (
             f"• Серверов в мониторинге: {len(self.servers)}\n"
             f"• Проверка доступности: каждые {CHECK_INTERVAL} сек\n"
