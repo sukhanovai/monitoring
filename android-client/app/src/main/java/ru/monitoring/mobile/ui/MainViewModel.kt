@@ -45,7 +45,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val botVersion = "8.11.0"
+    private val botVersion = "8.11.1"
     private val androidAppVersion = BuildConfig.VERSION_NAME
 
     private fun currentApi() = ApiFactory.createApi(

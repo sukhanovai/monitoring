@@ -6,6 +6,20 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.11.1] - 2026-02-28
+
+### Fixed / Исправлено
+- EN: Restored export of ANDROID_APP_VERSION and APP_VERSION from config package to prevent startup ImportError in core.monitor.
+- RU: Восстановлен экспорт ANDROID_APP_VERSION и APP_VERSION из пакета config, чтобы убрать ImportError при старте в core.monitor.
+- EN: Enabled Android BuildConfig generation explicitly in app Gradle config to fix Unresolved reference: BuildConfig in MainViewModel.
+- RU: Явно включена генерация Android BuildConfig в Gradle-конфиге приложения для устранения Unresolved reference: BuildConfig в MainViewModel.
+
+### Changed / Изменено
+- EN: Unified bot and Android release version to 8.11.1 for GitHub release consistency.
+- RU: Синхронизированы версии бота и Android-приложения до 8.11.1 для единообразной фиксации релизов на GitHub.
+- EN: Android `versionCode` bumped to 4.
+- RU: Для Android увеличен `versionCode` до 4.
+
 ## [8.11.0] - 2026-02-27
 
 ### Added / ���������

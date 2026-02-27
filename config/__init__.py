@@ -1,11 +1,11 @@
 """
 /config/__init__.py
-Server Monitoring System v8.11.0
+Server Monitoring System v8.11.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Configuration package
 Система мониторинга серверов
-Версия: 8.11.0
+Версия: 8.11.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Пакет конфигурации
@@ -19,6 +19,7 @@ from .settings import (
     MAILDIR_BASE, MAILDIR_NEW, MAILDIR_CUR,
     PROC_UPTIME_FILE,    
     TELEGRAM_TOKEN as SETTINGS_TOKEN,
+    APP_VERSION, ANDROID_APP_VERSION,
     CHAT_IDS as SETTINGS_CHAT_IDS,
     CHECK_INTERVAL, MAX_FAIL_TIME,
     SILENT_START, SILENT_END, DATA_COLLECTION_TIME,
@@ -76,6 +77,7 @@ __all__ = [
         
     # Основные настройки (с приоритетом БД)
     'TELEGRAM_TOKEN', 'CHAT_IDS', 'DEBUG_MODE',
+    'APP_VERSION', 'ANDROID_APP_VERSION',
     
     # Интервалы проверок
     'CHECK_INTERVAL', 'MAX_FAIL_TIME',
