@@ -249,7 +249,7 @@ private fun MonitoringApp(
     val windowsTypes = windowsByType.keys.size
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Monitoring Android") }) }
+        topBar = { TopAppBar(title = { Text("Monitoring") }) }
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
