@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.8.1
+Server Monitoring System v8.9.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.8.1
+Версия: 8.9.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -8923,7 +8923,7 @@ def add_server_handler(update, context):
     message = (
         "➕ *Добавление сервера*\n\n"
         "Введите IP-адрес сервера:\n\n"
-        "_Пример: 192.168.8.100_"
+        "_Пример: 192.168.9.000_"
     )
     
     query.edit_message_text(

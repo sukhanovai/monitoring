@@ -11,10 +11,10 @@ The project follows Semantic Versioning (SemVer).
 ### Changed / Изменено
 - EN: Removed TamTam bot integration from runtime, alert routing, and bot settings flows.
 - RU: Удалена интеграция TamTam-бота из рантайма, маршрутизации алертов и сценариев настроек бота.
-- EN: Project version bumped from `8.8.1` to `8.9.0`.
-- RU: Версия проекта повышена с `8.8.1` до `8.9.0`.
+- EN: Project version bumped from `8.9.0` to `8.9.0`.
+- RU: Версия проекта повышена с `8.9.0` до `8.9.0`.
 
-## [8.8.1] - 2026-02-26
+## [8.9.0] - 2026-02-26
 
 ### Added / Добавлено
 - EN: Android scheduled morning report delivery via background worker with push notification and sound.
@@ -31,8 +31,8 @@ The project follows Semantic Versioning (SemVer).
 - RU: Темная тема установлена по умолчанию в Android-приложении.
 - EN: Morning report notifications are now scheduled using configured report time.
 - RU: Планирование уведомлений утреннего отчета теперь использует настроенное время отчета.
-- EN: Project version bumped from `8.7.0` to `8.8.1`.
-- RU: Версия проекта повышена с `8.7.0` до `8.8.1`.
+- EN: Project version bumped from `8.7.0` to `8.9.0`.
+- RU: Версия проекта повышена с `8.7.0` до `8.9.0`.
 
 ## [8.7.0] - 2026-02-26
 
