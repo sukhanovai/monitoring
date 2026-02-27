@@ -6,6 +6,14 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.9.0] - 2026-02-27
+
+### Changed / Изменено
+- EN: Removed TamTam bot integration from runtime, alert routing, and bot settings flows.
+- RU: Удалена интеграция TamTam-бота из рантайма, маршрутизации алертов и сценариев настроек бота.
+- EN: Project version bumped from `8.8.1` to `8.9.0`.
+- RU: Версия проекта повышена с `8.8.1` до `8.9.0`.
+
 ## [8.8.1] - 2026-02-26
 
 ### Added / Добавлено

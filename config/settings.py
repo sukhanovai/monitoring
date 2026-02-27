@@ -22,7 +22,7 @@ from lib.utils import is_proxmox_server
 DEBUG_MODE = False
 
 # Версия приложения
-APP_VERSION = "8.8.1"
+APP_VERSION = "8.9.0"
 
 # === БАЗОВЫЕ ПУТИ ===
 _DEFAULT_BASE = Path(__file__).resolve().parents[1]
@@ -59,8 +59,6 @@ PROC_UPTIME_FILE = Path("/proc/uptime")
 # === БАЗОВЫЕ НАСТРОЙКИ ===
 TELEGRAM_TOKEN = ""
 CHAT_IDS: List[str] = []
-TAMTAM_TOKEN = ""
-TAMTAM_CHAT_IDS: List[str] = []
 
 # === ИНТЕРВАЛЫ ПРОВЕРОК ===
 CHECK_INTERVAL = 60  # секунды

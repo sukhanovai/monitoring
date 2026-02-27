@@ -22,7 +22,6 @@ _logger = setup_logging("alerts")
 # Глобальные переменные
 _telegram_bot = None
 _chat_ids = []
-_tamtam_sender = None
 _silent_override: Optional[bool] = None
 _alert_history: List[Dict[str, Any]] = []
 _max_history_size = 1000
@@ -89,13 +88,6 @@ def init_telegram_bot(bot_instance, chat_ids: List[str]) -> None:
     _chat_ids = chat_ids
     debug_log(f"Telegram бот инициализирован для {len(chat_ids)} чатов")
 
-
-
-def init_tamtam_sender(sender) -> None:
-    """Инициализация отправщика TamTam для алертов."""
-    global _tamtam_sender
-    _tamtam_sender = sender
-    debug_log("TamTam отправщик алертов инициализирован")
 
 
 def set_silent_override(enabled: Optional[bool]) -> None:
@@ -238,17 +230,6 @@ def send_alert(
             sent = True
         else:
             errors.append("Telegram: ошибка отправки")
-
-    # TamTam
-    if _tamtam_sender:
-        try:
-            tamtam_sent = bool(_tamtam_sender(full_message))
-            if tamtam_sent:
-                sent = True
-            else:
-                errors.append("TamTam: ошибка отправки")
-        except Exception as e:
-            errors.append(f"TamTam: {e}")
 
     # Записываем в историю
     _record_alert({

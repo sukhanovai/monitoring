@@ -314,8 +314,6 @@ def callback_router(update, context):
     elif data.startswith(('settings_', 'set_', 'manage_', 'ssh_', 'windows_', 'server_type_')) or data in {
         'add_chat',
         'remove_chat',
-        'add_tamtam_chat',
-        'remove_tamtam_chat',
     }:
         # settings_handlers сам разбирает все эти ветки
         settings_callback_handler(update, context)
