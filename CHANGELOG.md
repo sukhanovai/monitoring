@@ -6,15 +6,33 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.10.0] - 2026-02-27
+
+### Added / Добавлено
+- EN: Android now stores morning report text locally and shows it in-app after push delivery.
+- RU: В Android утренний отчет теперь сохраняется локально и отображается в приложении после push-уведомления.
+- EN: Added morning report actions in Android UI: `Read` and `Close`.
+- RU: В Android добавлены действия для утреннего отчета: `Прочитано` и `Закрыть`.
+- EN: Added server availability lookup in Android by server ID/name.
+- RU: В Android добавлена проверка доступности конкретного сервера по ID/имени.
+
+### Changed / Изменено
+- EN: Tapping a morning report push notification now opens Android app and the saved report.
+- RU: Нажатие на push с утренним отчетом теперь открывает Android-приложение и сохраненный отчет.
+- EN: Theme switching in Android is now visible as a quick toggle on the main screen.
+- RU: Переключение темы в Android стало доступно через быстрый переключатель на главном экране.
+- EN: Project version bumped from `8.9.0` to `8.10.0`.
+- RU: Версия проекта повышена с `8.9.0` до `8.10.0`.
+
 ## [8.9.0] - 2026-02-27
 
 ### Changed / Изменено
 - EN: Removed TamTam bot integration from runtime, alert routing, and bot settings flows.
 - RU: Удалена интеграция TamTam-бота из рантайма, маршрутизации алертов и сценариев настроек бота.
-- EN: Project version bumped from `8.9.0` to `8.9.0`.
-- RU: Версия проекта повышена с `8.9.0` до `8.9.0`.
+- EN: Project version bumped from `8.8.0` to `8.9.0`.
+- RU: Версия проекта повышена с `8.8.0` до `8.9.0`.
 
-## [8.9.0] - 2026-02-26
+## [8.8.0] - 2026-02-26
 
 ### Added / Добавлено
 - EN: Android scheduled morning report delivery via background worker with push notification and sound.
@@ -31,8 +49,8 @@ The project follows Semantic Versioning (SemVer).
 - RU: Темная тема установлена по умолчанию в Android-приложении.
 - EN: Morning report notifications are now scheduled using configured report time.
 - RU: Планирование уведомлений утреннего отчета теперь использует настроенное время отчета.
-- EN: Project version bumped from `8.7.0` to `8.9.0`.
-- RU: Версия проекта повышена с `8.7.0` до `8.9.0`.
+- EN: Project version bumped from `8.7.0` to `8.8.0`.
+- RU: Версия проекта повышена с `8.7.0` до `8.8.0`.
 
 ## [8.7.0] - 2026-02-26
 

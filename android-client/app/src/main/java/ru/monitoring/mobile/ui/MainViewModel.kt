@@ -10,6 +10,8 @@ import androidx.lifecycle.viewModelScope
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import javax.net.ssl.SSLException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -77,7 +79,10 @@ class MainViewModel(
             token = token,
             baseUrlInput = preferences.apiBaseUrl,
             themeMode = preferences.themeMode,
-            morningReportNotificationsEnabled = preferences.morningReportNotificationsEnabled
+            morningReportNotificationsEnabled = preferences.morningReportNotificationsEnabled,
+            morningReportText = preferences.morningReportText,
+            morningReportReceivedAt = preferences.morningReportReceivedAt,
+            morningReportUnread = preferences.morningReportUnread
         )
 
         if (token.isNotBlank()) {
@@ -168,6 +173,7 @@ class MainViewModel(
     fun setServerNameInput(value: String) { state = state.copy(serverNameInput = value) }
     fun setServerTypeInput(value: String) { state = state.copy(serverTypeInput = value) }
     fun setServerTimeoutInput(value: String) { state = state.copy(serverTimeoutInput = value) }
+    fun setServerAvailabilityQueryInput(value: String) { state = state.copy(serverAvailabilityQueryInput = value) }
     fun setThemeMode(value: String) {
         val normalized = if (value.lowercase() == "light") "light" else "dark"
         preferences.themeMode = normalized
@@ -177,6 +183,23 @@ class MainViewModel(
         preferences.morningReportNotificationsEnabled = value
         state = state.copy(morningReportNotificationsEnabled = value)
         rescheduleMorningReportWorker()
+    }
+
+    fun markMorningReportRead() {
+        if (state.morningReportText.isBlank()) return
+        preferences.morningReportUnread = false
+        state = state.copy(morningReportUnread = false)
+    }
+
+    fun clearMorningReport() {
+        preferences.morningReportText = ""
+        preferences.morningReportReceivedAt = ""
+        preferences.morningReportUnread = false
+        state = state.copy(
+            morningReportText = "",
+            morningReportReceivedAt = "",
+            morningReportUnread = false
+        )
     }
 
     fun toggleApiTokenVisibility() { state = state.copy(isApiTokenVisible = !state.isApiTokenVisible) }
@@ -212,6 +235,28 @@ class MainViewModel(
         val down = servers.count { it.status.equals("DOWN", ignoreCase = true) }
         val unknown = (servers.size - up - down).coerceAtLeast(0)
         return "UP: $up, DOWN: $down, UNKNOWN: $unknown"
+    }
+
+    private fun saveMorningReport(reportText: String) {
+        val normalized = reportText.trim()
+        if (normalized.isBlank()) return
+        val receivedAt = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+        preferences.morningReportText = normalized
+        preferences.morningReportReceivedAt = receivedAt
+        preferences.morningReportUnread = true
+        state = state.copy(
+            morningReportText = normalized,
+            morningReportReceivedAt = receivedAt,
+            morningReportUnread = true
+        )
+    }
+
+    private fun filterServersByQuery(servers: List<ServerAvailability>, query: String): List<ServerAvailability> {
+        val normalizedQuery = query.trim().lowercase()
+        if (normalizedQuery.isBlank()) return servers
+        return servers.filter { server ->
+            server.id.lowercase().contains(normalizedQuery) || server.name.lowercase().contains(normalizedQuery)
+        }
     }
 
     private fun hasAnyValue(vararg values: String): Boolean = values.any { it.isNotBlank() }
@@ -346,6 +391,46 @@ class MainViewModel(
         }
     }
 
+    fun refreshServerAvailability() {
+        val query = state.serverAvailabilityQueryInput.trim()
+        if (query.isBlank()) {
+            state = state.copy(message = "Введите сервер (ID или имя)")
+            return
+        }
+
+        viewModelScope.launch {
+            state = state.copy(isLoading = true)
+            runCatching { currentApi().getAvailability() }
+                .onSuccess { response ->
+                    val allServers = if (response.servers.isNotEmpty()) response.servers else mapItemsToServers(response.items)
+                    val filtered = filterServersByQuery(allServers, query)
+                    if (filtered.isEmpty()) {
+                        state = state.copy(
+                            isLoading = false,
+                            servers = emptyList(),
+                            summaryText = "UP: 0, DOWN: 0, UNKNOWN: 0",
+                            message = "Сервер \"$query\" не найден в ответе API"
+                        )
+                        return@onSuccess
+                    }
+                    state = state.copy(
+                        isLoading = false,
+                        servers = filtered,
+                        summaryText = buildSummaryText(filtered),
+                        message = "Показан статус для: $query"
+                    )
+                }
+                .onFailure { error ->
+                    val userMessage = when ((error as? HttpException)?.code()) {
+                        401 -> "HTTP 401: нет доступа к статусу серверов. Проверь Base URL и токен в Настройках"
+                        403 -> "HTTP 403: нет прав на получение статуса серверов"
+                        else -> formatNetworkError(error)
+                    }
+                    state = state.copy(isLoading = false, message = userMessage)
+                }
+        }
+    }
+
     fun showMenuStub(section: String) {
         state = state.copy(message = "Раздел '$section' ещё в разработке для Android-меню")
     }
@@ -360,7 +445,11 @@ class MainViewModel(
             state = state.copy(isLoading = true)
             runCatching { currentApi().runControlAction(ControlActionRequest(action)) }
                 .onSuccess { response ->
-                    state = state.copy(isLoading = false, message = response.message ?: response.result ?: "Команда отправлена")
+                    val actionMessage = response.message ?: response.result ?: "Команда отправлена"
+                    if (action == "send_morning_report") {
+                        saveMorningReport(actionMessage)
+                    }
+                    state = state.copy(isLoading = false, message = actionMessage)
                     refreshSettingsFromServer(showErrors = false)
                 }
                 .onFailure { error ->
@@ -900,8 +989,12 @@ data class MainUiState(
     val serverNameInput: String = "",
     val serverTypeInput: String = "",
     val serverTimeoutInput: String = "30",
+    val serverAvailabilityQueryInput: String = "",
     val themeMode: String = "dark",
     val morningReportNotificationsEnabled: Boolean = true,
+    val morningReportText: String = "",
+    val morningReportReceivedAt: String = "",
+    val morningReportUnread: Boolean = false,
     val monitoringStatusText: String = "Неизвестно",
     val silentStatusText: String = "Неизвестно"
 )

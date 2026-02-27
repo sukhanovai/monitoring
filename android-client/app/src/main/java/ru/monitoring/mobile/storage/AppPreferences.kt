@@ -30,6 +30,24 @@ class AppPreferences(context: Context) {
             prefs.edit().putBoolean(KEY_MORNING_REPORT_NOTIFICATIONS_ENABLED, value).apply()
         }
 
+    var morningReportText: String
+        get() = prefs.getString(KEY_MORNING_REPORT_TEXT, "") ?: ""
+        set(value) {
+            prefs.edit().putString(KEY_MORNING_REPORT_TEXT, value).apply()
+        }
+
+    var morningReportReceivedAt: String
+        get() = prefs.getString(KEY_MORNING_REPORT_RECEIVED_AT, "") ?: ""
+        set(value) {
+            prefs.edit().putString(KEY_MORNING_REPORT_RECEIVED_AT, value).apply()
+        }
+
+    var morningReportUnread: Boolean
+        get() = prefs.getBoolean(KEY_MORNING_REPORT_UNREAD, false)
+        set(value) {
+            prefs.edit().putBoolean(KEY_MORNING_REPORT_UNREAD, value).apply()
+        }
+
     val deviceId: String
         get() {
             val existing = prefs.getString(KEY_DEVICE_ID, null)?.trim().orEmpty()
@@ -45,6 +63,9 @@ class AppPreferences(context: Context) {
         private const val KEY_DEVICE_ID = "device_id"
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_MORNING_REPORT_NOTIFICATIONS_ENABLED = "morning_report_notifications_enabled"
+        private const val KEY_MORNING_REPORT_TEXT = "morning_report_text"
+        private const val KEY_MORNING_REPORT_RECEIVED_AT = "morning_report_received_at"
+        private const val KEY_MORNING_REPORT_UNREAD = "morning_report_unread"
         private const val DEFAULT_API_BASE_URL = "https://api.202020.ru:8443/"
         private const val DEFAULT_THEME_MODE = "dark"
     }

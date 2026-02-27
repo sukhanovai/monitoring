@@ -3,7 +3,9 @@ package ru.monitoring.mobile.notifications
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
@@ -19,7 +21,9 @@ import androidx.work.WorkerParameters
 import java.time.Duration
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
+import ru.monitoring.mobile.MainActivity
 import ru.monitoring.mobile.api.ApiFactory
 import ru.monitoring.mobile.api.ControlActionRequest
 import ru.monitoring.mobile.storage.AppPreferences
@@ -43,6 +47,11 @@ class MorningReportWorker(
             val reportText = response.message?.trim()
                 ?.takeIf { it.isNotBlank() }
                 ?: response.result?.trim().orEmpty().ifBlank { "Утренний отчет сформирован." }
+
+            val receivedAt = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+            prefs.morningReportText = reportText
+            prefs.morningReportReceivedAt = receivedAt
+            prefs.morningReportUnread = true
 
             ensureNotificationChannel(applicationContext)
             showNotification(applicationContext, reportText)
@@ -74,6 +83,19 @@ class MorningReportWorker(
         }
         if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return
 
+        val openIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(EXTRA_OPEN_MORNING_REPORT, true)
+        }
+        val pendingFlags = PendingIntent.FLAG_UPDATE_CURRENT or
+            (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0)
+        val contentIntent = PendingIntent.getActivity(
+            context,
+            NOTIFICATION_ID,
+            openIntent,
+            pendingFlags
+        )
+
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("Утренний отчет")
@@ -81,6 +103,7 @@ class MorningReportWorker(
             .setStyle(NotificationCompat.BigTextStyle().bigText(reportText))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
+            .setContentIntent(contentIntent)
             .build()
 
         NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
@@ -90,6 +113,7 @@ class MorningReportWorker(
         private const val CHANNEL_ID = "morning_report_channel"
         private const val NOTIFICATION_ID = 202020
         private const val UNIQUE_WORK_NAME = "morning_report_daily_work"
+        const val EXTRA_OPEN_MORNING_REPORT = "open_morning_report"
 
         fun schedule(context: Context, timeRaw: String, enabled: Boolean) {
             val workManager = WorkManager.getInstance(context)

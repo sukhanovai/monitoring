@@ -40,6 +40,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.monitoring.mobile.api.ManagedServer
+import ru.monitoring.mobile.notifications.MorningReportWorker
 import ru.monitoring.mobile.storage.AppPreferences
 import ru.monitoring.mobile.ui.MainUiState
 import ru.monitoring.mobile.ui.MonitoringTheme
@@ -54,9 +55,13 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val vm: MainViewModel = viewModel(factory = MainViewModel.Factory(applicationContext, preferences))
+            val openMorningReport = intent?.getBooleanExtra(MorningReportWorker.EXTRA_OPEN_MORNING_REPORT, false) == true
             MonitoringTheme(darkTheme = vm.state.themeMode != "light") {
                 LaunchedEffect(Unit) {
                     vm.loadInitialState()
+                    if (openMorningReport) {
+                        vm.markMorningReportRead()
+                    }
                 }
 
                 MonitoringApp(
@@ -115,13 +120,17 @@ class MainActivity : ComponentActivity() {
                     onServerNameChanged = vm::setServerNameInput,
                     onServerTypeChanged = vm::setServerTypeInput,
                     onServerTimeoutChanged = vm::setServerTimeoutInput,
+                    onServerAvailabilityQueryChanged = vm::setServerAvailabilityQueryInput,
                     onSaveServer = vm::saveServer,
+                    onRefreshServerAvailability = vm::refreshServerAvailability,
                     onEditServer = vm::startServerEdit,
                     onCancelServerEdit = vm::cancelServerEdit,
                     onDeleteServer = vm::deleteServer,
                     onToggleServerMonitoring = vm::toggleServerMonitoring,
                     onThemeModeChanged = vm::setThemeMode,
-                    onMorningNotificationsEnabledChanged = vm::setMorningReportNotificationsEnabled
+                    onMorningNotificationsEnabledChanged = vm::setMorningReportNotificationsEnabled,
+                    onMarkMorningReportRead = vm::markMorningReportRead,
+                    onClearMorningReport = vm::clearMorningReport
                 )
             }
         }
@@ -197,13 +206,17 @@ private fun MonitoringApp(
     onServerNameChanged: (String) -> Unit,
     onServerTypeChanged: (String) -> Unit,
     onServerTimeoutChanged: (String) -> Unit,
+    onServerAvailabilityQueryChanged: (String) -> Unit,
     onSaveServer: () -> Unit,
+    onRefreshServerAvailability: () -> Unit,
     onEditServer: (ManagedServer) -> Unit,
     onCancelServerEdit: () -> Unit,
     onDeleteServer: (String) -> Unit,
     onToggleServerMonitoring: (String, Boolean) -> Unit,
     onThemeModeChanged: (String) -> Unit,
-    onMorningNotificationsEnabledChanged: (Boolean) -> Unit
+    onMorningNotificationsEnabledChanged: (Boolean) -> Unit,
+    onMarkMorningReportRead: () -> Unit,
+    onClearMorningReport: () -> Unit
 ) {
     var isManagementExpanded by rememberSaveable { mutableStateOf(false) }
     var isSettingsExpanded by rememberSaveable { mutableStateOf(false) }
@@ -263,6 +276,26 @@ private fun MonitoringApp(
             }
 
             item {
+                if (state.morningReportText.isNotBlank()) {
+                    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("Утренний отчет", fontWeight = FontWeight.Bold)
+                            Text(state.morningReportText)
+                            if (state.morningReportReceivedAt.isNotBlank()) {
+                                Text("Получен: ${state.morningReportReceivedAt}")
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                if (state.morningReportUnread) {
+                                    Button(onClick = onMarkMorningReportRead) { Text("Прочитано") }
+                                }
+                                Button(onClick = onClearMorningReport) { Text("Закрыть") }
+                            }
+                        }
+                    }
+                }
+            }
+
+            item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = { onAction("send_morning_report") }, modifier = Modifier.fillMaxWidth()) {
                         Text("🌅 Отчёт")
@@ -270,8 +303,20 @@ private fun MonitoringApp(
                     Button(onClick = onRefresh, modifier = Modifier.fillMaxWidth()) {
                         Text("🖥 Доступность всех серверов")
                     }
-                    Button(onClick = { onShowMenuStub("Доступность сервера") }, modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = state.serverAvailabilityQueryInput,
+                        onValueChange = onServerAvailabilityQueryChanged,
+                        label = { Text("Сервер (ID или имя)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Button(onClick = onRefreshServerAvailability, modifier = Modifier.fillMaxWidth()) {
                         Text("🔍 Доступность сервера")
+                    }
+                    Button(
+                        onClick = { onThemeModeChanged(if (state.themeMode == "light") "dark" else "light") },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(if (state.themeMode == "light") "🌙 Темная тема" else "☀️ Светлая тема")
                     }
                     Button(onClick = { onShowMenuStub("Ресурсы сервера") }, modifier = Modifier.fillMaxWidth()) {
                         Text("📊 Ресурсы сервера")
