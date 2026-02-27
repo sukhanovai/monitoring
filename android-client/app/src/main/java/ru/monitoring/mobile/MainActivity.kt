@@ -267,8 +267,7 @@ private fun MonitoringApp(
                     Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text("Статус", fontWeight = FontWeight.Bold)
                         Text(state.summaryText)
-                        Text("Версия бота: ${state.botVersion}")
-                        Text("Версия Android: ${state.androidAppVersion}")
+                        Text("Версия проекта: ${state.projectVersion}")
                         if (state.message.isNotBlank()) {
                             Text(state.message)
                         }

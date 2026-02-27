@@ -17,7 +17,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import retrofit2.HttpException
-import ru.monitoring.mobile.BuildConfig
 import ru.monitoring.mobile.api.ApiFactory
 import ru.monitoring.mobile.api.AddWindowsCredentialRequest
 import ru.monitoring.mobile.api.AddServerRequest
@@ -45,8 +44,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val botVersion = "8.12.0"
-    private val androidAppVersion = BuildConfig.VERSION_NAME
+    private val projectVersion = "8.12.2"
 
     private fun currentApi() = ApiFactory.createApi(
         tokenProvider = { normalizeToken(state.token.ifBlank { preferences.apiToken }) },
@@ -86,8 +84,7 @@ class MainViewModel(
             morningReportText = preferences.morningReportText,
             morningReportReceivedAt = preferences.morningReportReceivedAt,
             morningReportUnread = preferences.morningReportUnread,
-            botVersion = botVersion,
-            androidAppVersion = androidAppVersion
+            projectVersion = projectVersion
         )
 
         if (token.isNotBlank()) {
@@ -395,6 +392,35 @@ class MainViewModel(
         }
     }
 
+    private fun buildLookupTokens(server: ManagedServer): Set<String> {
+        fun normalize(value: String): String = value.trim().lowercase()
+
+        val tokens = mutableSetOf<String>()
+        listOf(server.ip, server.name).forEach { raw ->
+            val value = normalize(raw)
+            if (value.isNotBlank()) tokens += value
+
+            val ipFromBrackets = Regex("\\(([^)]+)\\)").find(value)?.groupValues?.getOrNull(1)?.trim()
+            if (!ipFromBrackets.isNullOrBlank()) tokens += ipFromBrackets
+
+            val cleaned = value
+                .replace("\"", "")
+                .replace("'", "")
+                .replace("`", "")
+                .replace("(", " ")
+                .replace(")", " ")
+                .trim()
+            if (cleaned.isNotBlank()) {
+                tokens += cleaned
+                cleaned.split(" ")
+                    .map { it.trim() }
+                    .filter { it.isNotBlank() }
+                    .forEach { tokens += it }
+            }
+        }
+        return tokens
+    }
+
     fun refreshServerAvailability(server: ManagedServer) {
         val query = listOf(server.ip, server.name)
             .map { it.trim() }
@@ -402,16 +428,18 @@ class MainViewModel(
             .orEmpty()
         if (query.isBlank()) return
 
+        val lookupTokens = buildLookupTokens(server)
+
         viewModelScope.launch {
             state = state.copy(isLoading = true)
             runCatching { currentApi().getAvailability() }
                 .onSuccess { response ->
                     val allServers = if (response.servers.isNotEmpty()) response.servers else mapItemsToServers(response.items)
                     val selected = allServers.firstOrNull { item ->
-                        item.id.equals(server.ip, ignoreCase = true) ||
-                            item.name.equals(server.ip, ignoreCase = true) ||
-                            item.id.equals(server.name, ignoreCase = true) ||
-                            item.name.equals(server.name, ignoreCase = true)
+                        val itemTokens = listOf(item.id, item.name)
+                            .map { it.trim().lowercase() }
+                            .toSet()
+                        itemTokens.any { it in lookupTokens }
                     } ?: filterServersByQuery(allServers, query).firstOrNull()
 
                     if (selected == null) {
@@ -1004,8 +1032,7 @@ data class MainUiState(
     val morningReportText: String = "",
     val morningReportReceivedAt: String = "",
     val morningReportUnread: Boolean = false,
-    val botVersion: String = "",
-    val androidAppVersion: String = "",
+    val projectVersion: String = "",
     val monitoringStatusText: String = "Неизвестно",
     val silentStatusText: String = "Неизвестно"
 )
