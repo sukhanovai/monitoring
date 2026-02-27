@@ -1,11 +1,11 @@
 """
 /bot/menu/handlers.py
-Server Monitoring System v8.10.0
+Server Monitoring System v8.11.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Bot menu handlers
 Система мониторинга серверов
-Версия: 8.10.0
+Версия: 8.11.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики меню бота
@@ -39,6 +39,8 @@ def show_main_menu(update, context):
     text = "🤖 *Серверный мониторинг*\n"
     if getattr(config, "APP_VERSION", None):
         text += f"🔖 *Версия:* {config.APP_VERSION}\n"
+    if getattr(config, "ANDROID_APP_VERSION", None):
+        text += f"📱 *Android:* {config.ANDROID_APP_VERSION}\n"
     text += "\n✅ Система активна"
 
     if update.message:
@@ -194,6 +196,8 @@ def start_command(update, context):
     welcome_text = "🤖 *Серверный мониторинг*\n"
     if getattr(config, "APP_VERSION", None):
         welcome_text += f"🔖 *Версия:* {config.APP_VERSION}\n"
+    if getattr(config, "ANDROID_APP_VERSION", None):
+        welcome_text += f"📱 *Android:* {config.ANDROID_APP_VERSION}\n"
     welcome_text += "\n✅ Система работает\n\n"
     
     # Информация о отладке
@@ -228,6 +232,8 @@ def show_about_bot(update, context):
     about_text = "ℹ️ *О боте*\n\n"
     if getattr(config, "APP_VERSION", None):
         about_text += f"🔖 *Версия:* {config.APP_VERSION}\n"
+    if getattr(config, "ANDROID_APP_VERSION", None):
+        about_text += f"📱 *Android:* {config.ANDROID_APP_VERSION}\n"
     about_text += (
         "👤 *Разработчик:* Александр Суханов\n"
         "✉️ *Связь:* aleksandr.i.sukhanov@gmail.com\n"
