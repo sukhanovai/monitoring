@@ -21,6 +21,7 @@ import androidx.work.WorkerParameters
 import java.util.concurrent.TimeUnit
 import ru.monitoring.mobile.MainActivity
 import ru.monitoring.mobile.api.ApiFactory
+import ru.monitoring.mobile.api.ManagedServer
 import ru.monitoring.mobile.storage.AppPreferences
 
 class ServerDownAlertWorker(
@@ -38,11 +39,20 @@ class ServerDownAlertWorker(
                 tokenProvider = { prefs.apiToken },
                 baseUrlProvider = { prefs.apiBaseUrl }
             )
+            val managedServers = runCatching { api.getServersSettings().items }.getOrDefault(emptyList())
             val response = api.getAvailability()
             val allServers = if (response.servers.isNotEmpty()) response.servers else response.items.mapIndexed { index, item ->
+                val resolvedName = resolveServerName(
+                    serverId = item.serverId,
+                    serverName = item.serverName,
+                    name = item.name,
+                    ip = item.ip,
+                    managedServers = managedServers,
+                    fallback = "server-${index + 1}"
+                )
                 ru.monitoring.mobile.api.ServerAvailability(
                     id = item.serverId?.ifBlank { null } ?: "server-${index + 1}",
-                    name = item.serverId?.ifBlank { null } ?: "server-${index + 1}",
+                    name = resolvedName,
                     status = item.status ?: "UNKNOWN",
                     lastCheckedAt = item.checkedAt
                 )
@@ -65,6 +75,33 @@ class ServerDownAlertWorker(
 
             Result.success()
         }.getOrElse { Result.retry() }
+    }
+
+    private fun resolveServerName(
+        serverId: String?,
+        serverName: String?,
+        name: String?,
+        ip: String?,
+        managedServers: List<ManagedServer>,
+        fallback: String
+    ): String {
+        val managedByIp = managedServers.associateBy { it.ip.trim().lowercase() }
+        val managedByName = managedServers.associateBy { it.name.trim().lowercase() }
+
+        val candidates = listOf(ip, serverId, serverName, name)
+            .map { it?.trim().orEmpty() }
+            .filter { it.isNotBlank() }
+
+        val fromManaged = candidates.firstNotNullOfOrNull { token ->
+            val lookup = token.lowercase()
+            managedByIp[lookup]?.name ?: managedByName[lookup]?.name
+        }
+
+        return fromManaged
+            ?: serverName?.trim().orEmpty().ifBlank { name?.trim().orEmpty() }
+                .ifBlank { serverId?.trim().orEmpty() }
+                .ifBlank { ip?.trim().orEmpty() }
+                .ifBlank { fallback }
     }
 
 
@@ -103,6 +140,7 @@ class ServerDownAlertWorker(
 
         val openIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(EXTRA_DOWN_SERVER_NAMES, downServers.toTypedArray())
         }
         val pendingFlags = PendingIntent.FLAG_UPDATE_CURRENT or
             (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0)
@@ -130,6 +168,7 @@ class ServerDownAlertWorker(
         private const val CHANNEL_ID = "server_down_alerts_channel"
         private const val NOTIFICATION_ID = 202021
         private const val UNIQUE_WORK_NAME = "server_down_alerts_work"
+        const val EXTRA_DOWN_SERVER_NAMES = "extra_down_server_names"
 
         fun schedule(context: Context, enabled: Boolean) {
             val workManager = WorkManager.getInstance(context)

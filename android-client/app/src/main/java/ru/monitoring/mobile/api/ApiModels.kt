@@ -27,6 +27,9 @@ data class ServerAvailability(
 
 data class AvailabilityItem(
     @Json(name = "server_id") val serverId: String? = null,
+    @Json(name = "server_name") val serverName: String? = null,
+    val name: String? = null,
+    val ip: String? = null,
     val status: String? = null,
     @Json(name = "checked_at") val checkedAt: String? = null,
     @Json(name = "error_message") val errorMessage: String? = null

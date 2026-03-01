@@ -45,7 +45,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.15.0"
+    private val projectVersion = "8.16.0"
 
     private fun currentApi() = ApiFactory.createApi(
         tokenProvider = { normalizeToken(state.token.ifBlank { preferences.apiToken }) },
@@ -222,15 +222,41 @@ class MainViewModel(
         else -> error.message ?: "Ошибка сети"
     }
 
-    private fun mapItemsToServers(items: List<AvailabilityItem>): List<ServerAvailability> =
-        items.mapIndexed { index, item ->
+    private fun mapItemsToServers(items: List<AvailabilityItem>): List<ServerAvailability> {
+        val managedByIp = state.managedServers.associateBy { it.ip.trim().lowercase() }
+        val managedByName = state.managedServers.associateBy { it.name.trim().lowercase() }
+
+        return items.mapIndexed { index, item ->
+            val normalizedId = item.serverId?.trim().orEmpty()
+            val normalizedIp = item.ip?.trim().orEmpty()
+            val normalizedServerName = item.serverName?.trim().orEmpty()
+            val normalizedName = item.name?.trim().orEmpty()
+
+            val resolvedManaged = listOf(normalizedIp, normalizedId, normalizedServerName, normalizedName)
+                .firstNotNullOfOrNull { token ->
+                    val lookup = token.lowercase()
+                    managedByIp[lookup] ?: managedByName[lookup]
+                }
+
+            val fallbackId = listOf(normalizedId, normalizedIp, normalizedServerName, normalizedName)
+                .firstOrNull { it.isNotBlank() }
+                ?: "server-${index + 1}"
+            val fallbackName = listOf(
+                resolvedManaged?.name.orEmpty(),
+                normalizedServerName,
+                normalizedName,
+                normalizedId,
+                normalizedIp
+            ).firstOrNull { it.isNotBlank() } ?: fallbackId
+
             ServerAvailability(
-                id = item.serverId?.ifBlank { null } ?: "server-${index + 1}",
-                name = item.serverId?.ifBlank { null } ?: "server-${index + 1}",
+                id = fallbackId,
+                name = fallbackName,
                 status = item.status ?: "UNKNOWN",
                 lastCheckedAt = item.checkedAt
             )
         }
+    }
 
     private fun isDownStatus(statusRaw: String): Boolean {
         val normalized = statusRaw.trim().lowercase()
@@ -374,6 +400,18 @@ class MainViewModel(
     fun refreshData() {
         refreshSettingsFromServer(showErrors = true)
         refreshAvailability()
+    }
+
+    fun applyServerDownNotification(downServers: List<String>) {
+        val normalized = downServers.map { it.trim() }.filter { it.isNotBlank() }.distinct()
+        if (normalized.isEmpty()) return
+
+        val text = normalized.joinToString(", ")
+        state = state.copy(
+            summaryText = "Недоступен: $text",
+            message = "Из уведомления: $text",
+            messageSource = "global"
+        )
     }
 
     fun refreshAvailability() {

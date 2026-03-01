@@ -41,26 +41,33 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.monitoring.mobile.api.ManagedServer
 import ru.monitoring.mobile.notifications.MorningReportWorker
+import ru.monitoring.mobile.notifications.ServerDownAlertWorker
 import ru.monitoring.mobile.storage.AppPreferences
 import ru.monitoring.mobile.ui.MainUiState
 import ru.monitoring.mobile.ui.MonitoringTheme
 import ru.monitoring.mobile.ui.MainViewModel
 
 class MainActivity : ComponentActivity() {
+    private var downServersFromNotification by mutableStateOf<List<String>>(emptyList())
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         ensureNotificationPermission()
         val preferences = AppPreferences(applicationContext)
+        downServersFromNotification = extractDownServersFromIntent()
 
         enableEdgeToEdge()
         setContent {
             val vm: MainViewModel = viewModel(factory = MainViewModel.Factory(applicationContext, preferences))
             val openMorningReport = intent?.getBooleanExtra(MorningReportWorker.EXTRA_OPEN_MORNING_REPORT, false) == true
             MonitoringTheme(darkTheme = vm.state.themeMode != "light") {
-                LaunchedEffect(Unit) {
+                LaunchedEffect(openMorningReport, downServersFromNotification) {
                     vm.loadInitialState()
                     if (openMorningReport) {
                         vm.markMorningReportRead()
+                    }
+                    if (downServersFromNotification.isNotEmpty()) {
+                        vm.applyServerDownNotification(downServersFromNotification)
                     }
                 }
 
@@ -72,6 +79,7 @@ class MainActivity : ComponentActivity() {
                     onSaveBaseUrl = vm::saveBaseUrl,
                     onRefreshData = vm::refreshData,
                     onRefresh = vm::refreshAvailability,
+                    onCloseApp = { moveTaskToBack(true) },
                     onToggleApiTokenVisibility = vm::toggleApiTokenVisibility,
                     onToggleTelegramTokenVisibility = vm::toggleTelegramTokenVisibility,
                     onShowMenuStub = vm::showMenuStub,
@@ -136,6 +144,19 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        downServersFromNotification = extractDownServersFromIntent()
+    }
+
+    private fun extractDownServersFromIntent(): List<String> =
+        intent?.getStringArrayExtra(ServerDownAlertWorker.EXTRA_DOWN_SERVER_NAMES)
+            ?.toList()
+            ?.map { it.trim() }
+            ?.filter { it.isNotBlank() }
+            ?: emptyList()
+
     private fun ensureNotificationPermission() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
         val granted = ContextCompat.checkSelfPermission(
@@ -158,6 +179,7 @@ private fun MonitoringApp(
     onSaveBaseUrl: () -> Unit,
     onRefreshData: () -> Unit,
     onRefresh: () -> Unit,
+    onCloseApp: () -> Unit,
     onToggleApiTokenVisibility: () -> Unit,
     onToggleTelegramTokenVisibility: () -> Unit,
     onShowMenuStub: (String) -> Unit,
@@ -299,6 +321,9 @@ private fun MonitoringApp(
 
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = onRefreshData, modifier = Modifier.fillMaxWidth()) {
+                        Text("🔄 Обновить данные")
+                    }
                     Button(onClick = { onAction("send_morning_report") }, modifier = Modifier.fillMaxWidth()) {
                         Text("🌅 Отчёт")
                     }
@@ -308,8 +333,8 @@ private fun MonitoringApp(
                     Button(onClick = onRefresh, modifier = Modifier.fillMaxWidth()) {
                         Text("🖥 Доступность всех серверов")
                     }
-                    Button(onClick = onRefreshData, modifier = Modifier.fillMaxWidth()) {
-                        Text("🔄 Обновить данные")
+                    Button(onClick = onCloseApp, modifier = Modifier.fillMaxWidth()) {
+                        Text("❎ Закрыть")
                     }
                     if (state.message.isNotBlank() && state.messageSource == "all_servers") {
                         Text(state.message)
