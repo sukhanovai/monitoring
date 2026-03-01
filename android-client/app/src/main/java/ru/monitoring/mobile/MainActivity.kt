@@ -502,9 +502,13 @@ private fun MonitoringApp(
                         if (settingsSection == "appearance") {
                             Text("Оформление", fontWeight = FontWeight.Bold)
                             Text("Текущая тема: ${if (state.themeMode == "light") "светлая" else "темная"}")
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Button(onClick = { onThemeModeChanged("dark") }) { Text("Темная") }
-                                Button(onClick = { onThemeModeChanged("light") }) { Text("Светлая") }
+                            Button(
+                                onClick = {
+                                    onThemeModeChanged(if (state.themeMode == "light") "dark" else "light")
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(if (state.themeMode == "light") "Переключить на темную" else "Переключить на светлую")
                             }
                         }
 

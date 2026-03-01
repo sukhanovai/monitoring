@@ -6,7 +6,23 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.12.5] - 2026-02-27
+## [8.13.1] - 2026-03-01
+
+### Fixed / Исправлено
+- EN: Fixed missing Android push alerts for server outages by adding a periodic background check and notification delivery when server status changes to `DOWN`.
+- RU: Исправлено отсутствие push-оповещений в Android при недоступности серверов: добавлена периодическая фоновая проверка и отправка уведомления при переходе сервера в `DOWN`.
+- EN: Fixed theme switching visibility in Android appearance settings by replacing two side-by-side buttons with a single full-width toggle action.
+- RU: Исправлена доступность переключения темы в Android-настройках: вместо двух кнопок в одну строку сделана одна полноширинная кнопка-переключатель.
+
+### Added / Добавлено
+- EN: Added Android worker `ServerDownAlertWorker` with a dedicated notification channel for DOWN-server alerts.
+- RU: Добавлен Android worker `ServerDownAlertWorker` и отдельный канал уведомлений для алертов о DOWN-серверах.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.13.1`; Android `versionCode` bumped to `9`.
+- RU: Версия проекта повышена до `8.13.1`; Android `versionCode` увеличен до `9`.
+
+## [8.13.0] - 2026-02-27
 
 ### Fixed / Исправлено
 - EN: Fixed targeted server availability in Android by switching the button action to a dedicated single-server API request (`GET /v1/monitoring/availability/{server_id}`), aligned with Telegram bot behavior.
@@ -19,8 +35,8 @@ The project follows Semantic Versioning (SemVer).
 - RU: Добавлен BFF endpoint `GET /v1/monitoring/availability/{server_id}` (и `/api/v1/...`) с token-auth, поиском сервера и прямой проверкой статуса.
 
 ### Changed / Изменено
-- EN: Project version bumped to `8.12.5`; Android `versionCode` bumped to `8`.
-- RU: Версия проекта повышена до `8.12.5`; Android `versionCode` увеличен до `8`.
+- EN: Project version bumped to `8.13.0`; Android `versionCode` bumped to `8`.
+- RU: Версия проекта повышена до `8.13.0`; Android `versionCode` увеличен до `8`.
 
 ## [8.12.3] - 2026-02-27
 

@@ -48,6 +48,12 @@ class AppPreferences(context: Context) {
             prefs.edit().putBoolean(KEY_MORNING_REPORT_UNREAD, value).apply()
         }
 
+    var lastDownServersFingerprint: String
+        get() = prefs.getString(KEY_LAST_DOWN_SERVERS_FINGERPRINT, "") ?: ""
+        set(value) {
+            prefs.edit().putString(KEY_LAST_DOWN_SERVERS_FINGERPRINT, value).apply()
+        }
+
     val deviceId: String
         get() {
             val existing = prefs.getString(KEY_DEVICE_ID, null)?.trim().orEmpty()
@@ -66,6 +72,7 @@ class AppPreferences(context: Context) {
         private const val KEY_MORNING_REPORT_TEXT = "morning_report_text"
         private const val KEY_MORNING_REPORT_RECEIVED_AT = "morning_report_received_at"
         private const val KEY_MORNING_REPORT_UNREAD = "morning_report_unread"
+        private const val KEY_LAST_DOWN_SERVERS_FINGERPRINT = "last_down_servers_fingerprint"
         private const val DEFAULT_API_BASE_URL = "https://api.202020.ru:8443/"
         private const val DEFAULT_THEME_MODE = "dark"
     }
