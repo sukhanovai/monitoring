@@ -49,7 +49,7 @@ class ServerDownAlertWorker(
             }
 
             val downServerNames = allServers
-                .filter { it.status.equals("DOWN", ignoreCase = true) }
+                .filter { isDownStatus(it.status) }
                 .map { it.name.ifBlank { it.id } }
                 .sorted()
 
@@ -65,6 +65,12 @@ class ServerDownAlertWorker(
 
             Result.success()
         }.getOrElse { Result.retry() }
+    }
+
+
+    private fun isDownStatus(statusRaw: String): Boolean {
+        val normalized = statusRaw.trim().lowercase()
+        return normalized in setOf("down", "unreachable", "offline", "error", "critical")
     }
 
     private fun ensureNotificationChannel(context: Context) {

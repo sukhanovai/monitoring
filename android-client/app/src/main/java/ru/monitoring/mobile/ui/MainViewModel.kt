@@ -45,7 +45,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.13.1"
+    private val projectVersion = "8.15.0"
 
     private fun currentApi() = ApiFactory.createApi(
         tokenProvider = { normalizeToken(state.token.ifBlank { preferences.apiToken }) },
@@ -232,9 +232,14 @@ class MainViewModel(
             )
         }
 
+    private fun isDownStatus(statusRaw: String): Boolean {
+        val normalized = statusRaw.trim().lowercase()
+        return normalized in setOf("down", "unreachable", "offline", "error", "critical")
+    }
+
     private fun buildSummaryText(servers: List<ServerAvailability>): String {
         val up = servers.count { it.status.equals("UP", ignoreCase = true) }
-        val down = servers.count { it.status.equals("DOWN", ignoreCase = true) }
+        val down = servers.count { isDownStatus(it.status) }
         val unknown = (servers.size - up - down).coerceAtLeast(0)
         return "UP: $up, DOWN: $down, UNKNOWN: $unknown"
     }
@@ -363,6 +368,12 @@ class MainViewModel(
             )
             rescheduleBackgroundWorkers()
         }
+    }
+
+
+    fun refreshData() {
+        refreshSettingsFromServer(showErrors = true)
+        refreshAvailability()
     }
 
     fun refreshAvailability() {

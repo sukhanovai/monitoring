@@ -70,6 +70,7 @@ class MainActivity : ComponentActivity() {
                     onBaseUrlChanged = vm::setBaseUrlInput,
                     onSaveToken = vm::saveToken,
                     onSaveBaseUrl = vm::saveBaseUrl,
+                    onRefreshData = vm::refreshData,
                     onRefresh = vm::refreshAvailability,
                     onToggleApiTokenVisibility = vm::toggleApiTokenVisibility,
                     onToggleTelegramTokenVisibility = vm::toggleTelegramTokenVisibility,
@@ -155,6 +156,7 @@ private fun MonitoringApp(
     onBaseUrlChanged: (String) -> Unit,
     onSaveToken: (String) -> Unit,
     onSaveBaseUrl: () -> Unit,
+    onRefreshData: () -> Unit,
     onRefresh: () -> Unit,
     onToggleApiTokenVisibility: () -> Unit,
     onToggleTelegramTokenVisibility: () -> Unit,
@@ -306,6 +308,9 @@ private fun MonitoringApp(
                     Button(onClick = onRefresh, modifier = Modifier.fillMaxWidth()) {
                         Text("🖥 Доступность всех серверов")
                     }
+                    Button(onClick = onRefreshData, modifier = Modifier.fillMaxWidth()) {
+                        Text("🔄 Обновить данные")
+                    }
                     if (state.message.isNotBlank() && state.messageSource == "all_servers") {
                         Text(state.message)
                     }
@@ -371,6 +376,10 @@ private fun MonitoringApp(
                             Button(onClick = { settingsSection = "auth" }) { Text("Аутентификация") }
                             Button(onClick = { settingsSection = "servers" }) { Text("Серверы") }
                             Button(onClick = { settingsSection = "appearance" }) { Text("Тема") }
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = { onThemeModeChanged("light") }) { Text("☀️ Светлая") }
+                            Button(onClick = { onThemeModeChanged("dark") }) { Text("🌙 Тёмная") }
                         }
 
                         if (settingsSection == "bff") {
