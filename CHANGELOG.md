@@ -6,6 +6,24 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.16.0] - 2026-03-01
+
+### Fixed / Исправлено
+- EN: Fixed Android outage notifications so server names are resolved correctly (including fallback payloads) and not shown as generic IDs.
+- RU: Исправлены Android-уведомления о недоступности: имена серверов теперь корректно резолвятся (включая fallback-формат ответа) и не показываются как абстрактные ID.
+- EN: Fixed Android notification deep-link handling: after tapping outage notification, down server names are now shown in app status.
+- RU: Исправлена обработка deep-link из Android-уведомления: после тапа по уведомлению имена недоступных серверов теперь отображаются в статусе приложения.
+
+### Added / Добавлено
+- EN: Added a "Close" button to Android main menu; it moves app task to background and returns user to home screen.
+- RU: Добавлена кнопка «Закрыть» в главное меню Android; она сворачивает приложение в фон и возвращает пользователя на рабочий стол.
+
+### Changed / Изменено
+- EN: Moved Android main menu action "Refresh data" to the first position for faster access.
+- RU: Кнопка «Обновить данные» в главном меню Android перенесена на первое место для быстрого доступа.
+- EN: Project version bumped to `8.16.0`; Android `versionCode` bumped to `11`.
+- RU: Версия проекта повышена до `8.16.0`; Android `versionCode` увеличен до `11`.
+
 ## [8.15.0] - 2026-03-01
 
 ### Fixed / Исправлено
