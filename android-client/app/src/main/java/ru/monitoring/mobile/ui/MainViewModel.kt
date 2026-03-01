@@ -38,13 +38,14 @@ import ru.monitoring.mobile.api.UpdateServerRequest
 import ru.monitoring.mobile.api.WindowsCredential
 import ru.monitoring.mobile.api.WindowsTypeItem
 import ru.monitoring.mobile.notifications.MorningReportWorker
+import ru.monitoring.mobile.notifications.ServerDownAlertWorker
 import ru.monitoring.mobile.storage.AppPreferences
 
 class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.12.5"
+    private val projectVersion = "8.13.1"
 
     private fun currentApi() = ApiFactory.createApi(
         tokenProvider = { normalizeToken(state.token.ifBlank { preferences.apiToken }) },
@@ -90,7 +91,7 @@ class MainViewModel(
         if (token.isNotBlank()) {
             refreshSettingsFromServer(showErrors = false)
         }
-        rescheduleMorningReportWorker()
+        rescheduleBackgroundWorkers()
     }
 
     fun saveToken(token: String) {
@@ -127,7 +128,7 @@ class MainViewModel(
             if (finalToken.isNotBlank()) {
                 refreshSettingsFromServer(showErrors = false)
             }
-            rescheduleMorningReportWorker()
+            rescheduleBackgroundWorkers()
         }
     }
 
@@ -139,7 +140,7 @@ class MainViewModel(
         if (state.token.isNotBlank()) {
             refreshSettingsFromServer(showErrors = false)
         }
-        rescheduleMorningReportWorker()
+        rescheduleBackgroundWorkers()
     }
 
     fun setTokenInput(value: String) { state = state.copy(token = value) }
@@ -183,7 +184,7 @@ class MainViewModel(
     fun setMorningReportNotificationsEnabled(value: Boolean) {
         preferences.morningReportNotificationsEnabled = value
         state = state.copy(morningReportNotificationsEnabled = value)
-        rescheduleMorningReportWorker()
+        rescheduleBackgroundWorkers()
     }
 
     fun markMorningReportRead() {
@@ -360,7 +361,7 @@ class MainViewModel(
                     else -> state.silentStatusText
                 }
             )
-            rescheduleMorningReportWorker()
+            rescheduleBackgroundWorkers()
         }
     }
 
@@ -931,7 +932,7 @@ class MainViewModel(
                 .onSuccess {
                     state = state.copy(isLoading = false, message = "Временные настройки обновлены")
                     refreshSettingsFromServer(showErrors = false)
-                    rescheduleMorningReportWorker()
+                    rescheduleBackgroundWorkers()
                 }
                 .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
         }
@@ -977,12 +978,18 @@ class MainViewModel(
         }
     }
 
-    private fun rescheduleMorningReportWorker() {
+    private fun rescheduleBackgroundWorkers() {
+        val notificationsEnabled = state.morningReportNotificationsEnabled && state.token.isNotBlank()
         val scheduleTime = state.metricsTimeInput.ifBlank { "08:30" }
+
         MorningReportWorker.schedule(
             context = appContext,
             timeRaw = scheduleTime,
-            enabled = state.morningReportNotificationsEnabled && state.token.isNotBlank()
+            enabled = notificationsEnabled
+        )
+        ServerDownAlertWorker.schedule(
+            context = appContext,
+            enabled = notificationsEnabled
         )
     }
 
