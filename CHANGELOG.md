@@ -6,7 +6,21 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.16.0] - 2026-03-01
+## [8.18.0] - 2026-03-03
+
+### Added / Добавлено
+- EN: Added Android support for "Server resources" action parity with Telegram bot: users can open server list and fetch CPU/RAM/Disk metrics for a selected server.
+- RU: Добавлена поддержка кнопки «Ресурсы сервера» в Android по паритету с Telegram-ботом: можно открыть список серверов и получить CPU/RAM/Disk для выбранного сервера.
+- EN: Added BFF endpoint `GET /v1/monitoring/resources/{server_id}` (and `/api/v1/...`) for targeted resource checks used by Android.
+- RU: Добавлен BFF endpoint `GET /v1/monitoring/resources/{server_id}` (и `/api/v1/...`) для точечной проверки ресурсов, которую использует Android.
+
+### Changed / Изменено
+- EN: Moved Android main-menu "Close" button to the very bottom of the main action list.
+- RU: Кнопка «Закрыть» в главном меню Android перенесена в самый низ списка действий.
+- EN: Project version bumped to `8.18.0`; Android `versionCode` bumped to `12`.
+- RU: Версия проекта повышена до `8.18.0`; Android `versionCode` увеличен до `12`.
+
+## [8.17.0] - 2026-03-01
 
 ### Fixed / Исправлено
 - EN: Fixed Android outage notifications so server names are resolved correctly (including fallback payloads) and not shown as generic IDs.
@@ -21,8 +35,8 @@ The project follows Semantic Versioning (SemVer).
 ### Changed / Изменено
 - EN: Moved Android main menu action "Refresh data" to the first position for faster access.
 - RU: Кнопка «Обновить данные» в главном меню Android перенесена на первое место для быстрого доступа.
-- EN: Project version bumped to `8.16.0`; Android `versionCode` bumped to `11`.
-- RU: Версия проекта повышена до `8.16.0`; Android `versionCode` увеличен до `11`.
+- EN: Project version bumped to `8.17.0`; Android `versionCode` bumped to `11`.
+- RU: Версия проекта повышена до `8.17.0`; Android `versionCode` увеличен до `11`.
 
 ## [8.15.0] - 2026-03-01
 
