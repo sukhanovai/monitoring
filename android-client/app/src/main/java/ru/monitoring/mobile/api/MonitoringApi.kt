@@ -103,6 +103,20 @@ interface MonitoringApi {
     @GET("v1/settings/servers")
     suspend fun getServersSettings(): ServersSettingsResponse
 
+    @GET("v1/settings/extensions")
+    suspend fun getExtensionsSettings(): ExtensionsSettingsResponse
+
+    @PATCH("v1/settings/extensions/{extensionId}")
+    suspend fun updateExtensionSettings(
+        @Path("extensionId") extensionId: String,
+        @Body request: ExtensionUpdateRequest
+    ): ExtensionUpdateResponse
+
+    @POST("v1/settings/extensions/actions")
+    suspend fun runExtensionsAction(
+        @Body request: ExtensionsActionRequest
+    ): ExtensionsActionResponse
+
     @POST("v1/settings/servers")
     suspend fun addServer(@Body request: AddServerRequest): ServersSettingsResponse
 

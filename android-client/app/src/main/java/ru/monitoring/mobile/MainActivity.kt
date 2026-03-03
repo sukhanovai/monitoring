@@ -39,6 +39,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import ru.monitoring.mobile.api.ExtensionItem
 import ru.monitoring.mobile.api.ManagedServer
 import ru.monitoring.mobile.notifications.MorningReportWorker
 import ru.monitoring.mobile.notifications.ServerDownAlertWorker
@@ -82,7 +83,9 @@ class MainActivity : ComponentActivity() {
                     onCloseApp = { moveTaskToBack(true) },
                     onToggleApiTokenVisibility = vm::toggleApiTokenVisibility,
                     onToggleTelegramTokenVisibility = vm::toggleTelegramTokenVisibility,
-                    onShowMenuStub = vm::showMenuStub,
+                    onToggleExtension = vm::toggleExtension,
+                    onEnableAllExtensions = vm::enableAllExtensions,
+                    onDisableAllExtensions = vm::disableAllExtensions,
                     onAction = vm::sendAction,
                     onCheckIntervalChanged = vm::setCheckIntervalInput,
                     onTimeoutChanged = vm::setTimeoutInput,
@@ -183,7 +186,9 @@ private fun MonitoringApp(
     onCloseApp: () -> Unit,
     onToggleApiTokenVisibility: () -> Unit,
     onToggleTelegramTokenVisibility: () -> Unit,
-    onShowMenuStub: (String) -> Unit,
+    onToggleExtension: (String, Boolean) -> Unit,
+    onEnableAllExtensions: () -> Unit,
+    onDisableAllExtensions: () -> Unit,
     onAction: (String) -> Unit,
     onCheckIntervalChanged: (String) -> Unit,
     onTimeoutChanged: (String) -> Unit,
@@ -251,6 +256,7 @@ private fun MonitoringApp(
     var showWindowsTypeStats by rememberSaveable { mutableStateOf(false) }
     var showServerAvailabilityMenu by rememberSaveable { mutableStateOf(false) }
     var showServerResourcesMenu by rememberSaveable { mutableStateOf(false) }
+    var showExtensionsMenu by rememberSaveable { mutableStateOf(false) }
     var settingsSection by rememberSaveable { mutableStateOf("bff") }
 
     val canSaveMonitoring = state.checkIntervalInput.isNotBlank() ||
@@ -381,8 +387,18 @@ private fun MonitoringApp(
                             }
                         }
                     }
-                    Button(onClick = { onShowMenuStub("Расширения") }, modifier = Modifier.fillMaxWidth()) {
+                    Button(onClick = { showExtensionsMenu = !showExtensionsMenu }, modifier = Modifier.fillMaxWidth()) {
                         Text("🛠️ Расширения")
+                    }
+                    if (showExtensionsMenu) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = onEnableAllExtensions) { Text("📊 Включить все") }
+                            Button(onClick = onDisableAllExtensions) { Text("📋 Отключить все") }
+                        }
+                        ExtensionsSection(
+                            items = state.extensions,
+                            onToggleExtension = onToggleExtension
+                        )
                     }
                     Button(onClick = { isManagementExpanded = !isManagementExpanded }, modifier = Modifier.fillMaxWidth()) {
                         Text("🎛️ Управление")
@@ -803,6 +819,34 @@ private fun MonitoringApp(
                 }
             }
 
+        }
+    }
+}
+
+
+@Composable
+private fun ExtensionsSection(
+    items: List<ExtensionItem>,
+    onToggleExtension: (String, Boolean) -> Unit
+) {
+    if (items.isEmpty()) {
+        Text("Список расширений пуст")
+        return
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        items.forEach { item ->
+            ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(item.name, fontWeight = FontWeight.Bold)
+                    if (item.description.isNotBlank()) {
+                        Text(item.description)
+                    }
+                    Text("Статус: ${if (item.enabled) "Включено" else "Отключено"}")
+                    Button(onClick = { onToggleExtension(item.id, !item.enabled) }) {
+                        Text(if (item.enabled) "🔴 Выключить" else "🟢 Включить")
+                    }
+                }
+            }
         }
     }
 }
