@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.16.0
+Server Monitoring System v8.18.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.16.0
+Версия: 8.18.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1777,6 +1777,86 @@ def mobile_availability_single(server_id):
     )
     response = jsonify(payload)
     response.headers['X-Request-ID'] = request_id
+    return response
+
+
+@app.route('/v1/monitoring/resources/<path:server_id>', methods=['GET'])
+@app.route('/api/v1/monitoring/resources/<path:server_id>', methods=['GET'])
+def mobile_resources_single(server_id):
+    """Точечная проверка ресурсов одного сервера для Android-клиента."""
+    started_at = time.time()
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+
+    ok, token_data = _validate_mobile_token(request.headers.get("Authorization"))
+    if not ok:
+        response = jsonify({
+            "error": "unauthorized",
+            "message": "Bearer token required",
+            "reason": token_data,
+            "request_id": request_id,
+        })
+        response.headers['X-Request-ID'] = request_id
+        return response, 401
+
+    server = _resolve_server_for_targeted_check(server_id)
+    if not server:
+        response = jsonify({
+            "error": {
+                "code": "NOT_FOUND",
+                "message": f"Server '{server_id}' not found",
+                "request_id": request_id,
+            }
+        })
+        response.headers['X-Request-ID'] = request_id
+        return response, 404
+
+    if not extension_manager.is_extension_enabled('resource_monitor'):
+        response = jsonify({
+            "error": {
+                "code": "RESOURCE_MONITOR_DISABLED",
+                "message": "Resource monitor extension is disabled",
+                "request_id": request_id,
+            }
+        })
+        response.headers['X-Request-ID'] = request_id
+        return response, 409
+
+    from modules.targeted_checks import targeted_checks
+    success, _, message = targeted_checks.check_single_server_resources(server_id)
+    if not success:
+        response = jsonify({
+            "error": {
+                "code": "RESOURCE_CHECK_FAILED",
+                "message": message,
+                "request_id": request_id,
+            }
+        })
+        response.headers['X-Request-ID'] = request_id
+        return response, 502
+
+    resources = None
+    try:
+        from core.monitor_core import server_status
+        resources = server_status.get(server['ip'], {}).get('resources')
+    except Exception:
+        resources = None
+
+    payload = {
+        "request_id": request_id,
+        "server_id": server_id,
+        "server_name": server.get('name'),
+        "server_ip": server.get('ip'),
+        "resources": resources,
+        "message": message,
+    }
+    response = jsonify(payload)
+    response.headers['X-Request-ID'] = request_id
+    app.logger.info(
+        "GET /v1/monitoring/resources/<server_id> request_id=%s status=200 duration_ms=%s server=%s",
+        request_id,
+        int((time.time() - started_at) * 1000),
+        server.get('ip'),
+    )
     return response
 
 

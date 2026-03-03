@@ -45,7 +45,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.16.0"
+    private val projectVersion = "8.18.0"
 
     private fun currentApi() = ApiFactory.createApi(
         tokenProvider = { normalizeToken(state.token.ifBlank { preferences.apiToken }) },
@@ -530,6 +530,60 @@ class MainViewModel(
                         isLoading = false,
                         message = userMessage,
                         messageSource = "server_availability",
+                        availabilityServerMessageTarget = serverTarget
+                    )
+                }
+        }
+    }
+
+    fun refreshServerResources(server: ManagedServer) {
+        val serverTarget = server.ip.ifBlank { server.name }.trim()
+        if (serverTarget.isBlank()) return
+
+        viewModelScope.launch {
+            state = state.copy(isLoading = true, availabilityServerMessageTarget = serverTarget)
+            runCatching { currentApi().getServerResources(serverTarget) }
+                .onSuccess { response ->
+                    val resources = response.resources
+                    val cpuText = resources?.cpu?.let { "$it%" } ?: "N/A"
+                    val ramText = resources?.ram?.let { "$it%" } ?: "N/A"
+                    val diskText = resources?.disk?.let { "$it%" } ?: "N/A"
+                    val methodText = resources?.accessMethod ?: "неизвестно"
+                    val checkedAtText = resources?.timestamp ?: "N/A"
+                    val targetName = response.serverName ?: server.name
+                    val targetIp = response.serverIp ?: server.ip
+
+                    val messageText = buildString {
+                        append("📊 Ресурсы ")
+                        append(targetName)
+                        if (targetIp.isNotBlank()) append(" (").append(targetIp).append(")")
+                        append("\n")
+                        append("CPU: ").append(cpuText).append("\n")
+                        append("RAM: ").append(ramText).append("\n")
+                        append("Disk: ").append(diskText).append("\n")
+                        append("Метод: ").append(methodText).append("\n")
+                        append("Проверка: ").append(checkedAtText)
+                    }
+
+                    state = state.copy(
+                        isLoading = false,
+                        message = response.message?.takeIf { it.isNotBlank() } ?: messageText,
+                        messageSource = "server_resources",
+                        availabilityServerMessageTarget = serverTarget
+                    )
+                }
+                .onFailure { error ->
+                    val userMessage = when ((error as? HttpException)?.code()) {
+                        401 -> "HTTP 401: нет доступа к ресурсам серверов. Проверь Base URL и токен в Настройках"
+                        403 -> "HTTP 403: нет прав на просмотр ресурсов серверов"
+                        404 -> "Сервер \"$serverTarget\" не найден"
+                        409 -> "Мониторинг ресурсов отключён на сервере"
+                        else -> formatNetworkError(error)
+                    }
+                    state = state.copy(
+                        isLoading = false,
+                        message = userMessage,
+                        messageSource = "server_resources",
                         availabilityServerMessageTarget = serverTarget
                     )
                 }

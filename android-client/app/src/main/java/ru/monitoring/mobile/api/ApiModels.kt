@@ -43,6 +43,23 @@ data class AvailabilityResponse(
     val summary: Summary = Summary()
 )
 
+data class ResourceSnapshot(
+    val cpu: Int? = null,
+    val ram: Int? = null,
+    val disk: Int? = null,
+    @Json(name = "access_method") val accessMethod: String? = null,
+    val timestamp: String? = null
+)
+
+data class ServerResourcesResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    @Json(name = "server_id") val serverId: String? = null,
+    @Json(name = "server_name") val serverName: String? = null,
+    @Json(name = "server_ip") val serverIp: String? = null,
+    val resources: ResourceSnapshot? = null,
+    val message: String? = null
+)
+
 data class Summary(
     val up: Int = 0,
     val down: Int = 0,

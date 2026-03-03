@@ -131,6 +131,7 @@ class MainActivity : ComponentActivity() {
                     onServerTimeoutChanged = vm::setServerTimeoutInput,
                     onSaveServer = vm::saveServer,
                     onCheckServerAvailability = vm::refreshServerAvailability,
+                    onCheckServerResources = vm::refreshServerResources,
                     onEditServer = vm::startServerEdit,
                     onCancelServerEdit = vm::cancelServerEdit,
                     onDeleteServer = vm::deleteServer,
@@ -231,6 +232,7 @@ private fun MonitoringApp(
     onServerTimeoutChanged: (String) -> Unit,
     onSaveServer: () -> Unit,
     onCheckServerAvailability: (ManagedServer) -> Unit,
+    onCheckServerResources: (ManagedServer) -> Unit,
     onEditServer: (ManagedServer) -> Unit,
     onCancelServerEdit: () -> Unit,
     onDeleteServer: (String) -> Unit,
@@ -248,6 +250,7 @@ private fun MonitoringApp(
     var showWindowsByType by rememberSaveable { mutableStateOf(false) }
     var showWindowsTypeStats by rememberSaveable { mutableStateOf(false) }
     var showServerAvailabilityMenu by rememberSaveable { mutableStateOf(false) }
+    var showServerResourcesMenu by rememberSaveable { mutableStateOf(false) }
     var settingsSection by rememberSaveable { mutableStateOf("bff") }
 
     val canSaveMonitoring = state.checkIntervalInput.isNotBlank() ||
@@ -333,9 +336,6 @@ private fun MonitoringApp(
                     Button(onClick = onRefresh, modifier = Modifier.fillMaxWidth()) {
                         Text("🖥 Доступность всех серверов")
                     }
-                    Button(onClick = onCloseApp, modifier = Modifier.fillMaxWidth()) {
-                        Text("❎ Закрыть")
-                    }
                     if (state.message.isNotBlank() && state.messageSource == "all_servers") {
                         Text(state.message)
                     }
@@ -360,8 +360,26 @@ private fun MonitoringApp(
                             }
                         }
                     }
-                    Button(onClick = { onShowMenuStub("Ресурсы сервера") }, modifier = Modifier.fillMaxWidth()) {
+                    Button(onClick = { showServerResourcesMenu = !showServerResourcesMenu }, modifier = Modifier.fillMaxWidth()) {
                         Text("📊 Ресурсы сервера")
+                    }
+                    if (showServerResourcesMenu) {
+                        state.managedServers.forEach { server ->
+                            val serverTarget = if (server.ip.isNotBlank()) server.ip else server.name
+                            if (
+                                state.message.isNotBlank() &&
+                                state.messageSource == "server_resources" &&
+                                state.availabilityServerMessageTarget == serverTarget
+                            ) {
+                                Text(state.message)
+                            }
+                            Button(
+                                onClick = { onCheckServerResources(server) },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("${server.name} (${server.ip})")
+                            }
+                        }
                     }
                     Button(onClick = { onShowMenuStub("Расширения") }, modifier = Modifier.fillMaxWidth()) {
                         Text("🛠️ Расширения")
@@ -778,6 +796,9 @@ private fun MonitoringApp(
                                 }
                             }
                         }
+                    }
+                    Button(onClick = onCloseApp, modifier = Modifier.fillMaxWidth()) {
+                        Text("❎ Закрыть")
                     }
                 }
             }
