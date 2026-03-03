@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.18.0
+Server Monitoring System v8.20.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.18.0
+Версия: 8.20.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -2027,6 +2027,151 @@ def _hour_to_hhmm(value, fallback):
     except (TypeError, ValueError):
         pass
     return fallback
+
+
+@app.route('/v1/settings/extensions', methods=['GET'])
+def v1_get_settings_extensions():
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    if not is_ok:
+        return jsonify({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid or expired token",
+                "request_id": request_id,
+            }
+        }), 401
+
+    status_map = extension_manager.get_extensions_status()
+    items = []
+    enabled_count = 0
+
+    for ext_id, status_info in status_map.items():
+        enabled = bool(status_info.get('enabled'))
+        if enabled:
+            enabled_count += 1
+        info = status_info.get('info') or {}
+        items.append({
+            "id": ext_id,
+            "name": info.get('name', ext_id),
+            "description": info.get('description', ''),
+            "enabled": enabled,
+        })
+
+    return jsonify({
+        "request_id": request_id,
+        "items": items,
+        "summary": {
+            "total": len(items),
+            "enabled": enabled_count,
+            "disabled": len(items) - enabled_count,
+        }
+    }), 200
+
+
+@app.route('/v1/settings/extensions/<extension_id>', methods=['PATCH'])
+def v1_patch_settings_extension(extension_id):
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    if not is_ok:
+        return jsonify({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid or expired token",
+                "request_id": request_id,
+            }
+        }), 401
+
+    payload = request.get_json(silent=True) or {}
+    enabled = payload.get('enabled')
+    if enabled is None:
+        return jsonify({
+            "error": {
+                "code": "VALIDATION_FAILED",
+                "message": "Field 'enabled' is required",
+                "request_id": request_id,
+            }
+        }), 400
+
+    if extension_id not in extension_manager.get_extensions_status():
+        return jsonify({
+            "error": {
+                "code": "NOT_FOUND",
+                "message": f"Extension '{extension_id}' not found",
+                "request_id": request_id,
+            }
+        }), 404
+
+    success, message = (
+        extension_manager.enable_extension(extension_id)
+        if bool(enabled)
+        else extension_manager.disable_extension(extension_id)
+    )
+
+    if not success:
+        return jsonify({
+            "error": {
+                "code": "UPDATE_FAILED",
+                "message": message,
+                "request_id": request_id,
+            }
+        }), 500
+
+    return jsonify({
+        "request_id": request_id,
+        "extension_id": extension_id,
+        "enabled": bool(enabled),
+        "message": message,
+    }), 200
+
+
+@app.route('/v1/settings/extensions/actions', methods=['POST'])
+def v1_extensions_actions():
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    if not is_ok:
+        return jsonify({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid or expired token",
+                "request_id": request_id,
+            }
+        }), 401
+
+    payload = request.get_json(silent=True) or {}
+    action = str(payload.get('action') or '').strip().lower()
+
+    if action == 'enable_all':
+        changed = 0
+        for ext_id in extension_manager.get_extensions_status():
+            success, _ = extension_manager.enable_extension(ext_id)
+            if success:
+                changed += 1
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "message": f"✅ Включено {changed} расширений",
+        }), 200
+
+    if action == 'disable_all':
+        changed = 0
+        for ext_id in extension_manager.get_extensions_status():
+            success, _ = extension_manager.disable_extension(ext_id)
+            if success:
+                changed += 1
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "message": f"✅ Отключено {changed} расширений",
+        }), 200
+
+    return jsonify({
+        "error": {
+            "code": "INVALID_ACTION",
+            "message": "Supported actions: enable_all, disable_all",
+            "request_id": request_id,
+        }
+    }), 400
 
 
 @app.route('/v1/settings/monitoring', methods=['GET'])

@@ -25,6 +25,9 @@ import ru.monitoring.mobile.api.AvailabilityItem
 import ru.monitoring.mobile.api.BotChatRequest
 import ru.monitoring.mobile.api.CreateWindowsTypeRequest
 import ru.monitoring.mobile.api.ControlActionRequest
+import ru.monitoring.mobile.api.ExtensionItem
+import ru.monitoring.mobile.api.ExtensionUpdateRequest
+import ru.monitoring.mobile.api.ExtensionsActionRequest
 import ru.monitoring.mobile.api.MergeWindowsTypesRequest
 import ru.monitoring.mobile.api.ManagedServer
 import ru.monitoring.mobile.api.RenameWindowsTypeRequest
@@ -45,7 +48,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.18.0"
+    private val projectVersion = "8.20.0"
 
     private fun currentApi() = ApiFactory.createApi(
         tokenProvider = { normalizeToken(state.token.ifBlank { preferences.apiToken }) },
@@ -317,7 +320,8 @@ class MainViewModel(
                 val winTypes = runCatching { currentApi().getWindowsTypes() }.getOrNull()
                 val winCreds = runCatching { currentApi().getWindowsCredentials() }.getOrNull()
                 val servers = runCatching { currentApi().getServersSettings() }.getOrNull()
-                listOf(monitoring, bot, time, auth, control, winTypes, winCreds, servers)
+                val extensions = runCatching { currentApi().getExtensionsSettings() }.getOrNull()
+                listOf(monitoring, bot, time, auth, control, winTypes, winCreds, servers, extensions)
             }
 
             val monitoring = result[0] as? ru.monitoring.mobile.api.SettingsMonitoringResponse
@@ -328,6 +332,7 @@ class MainViewModel(
             val winTypes = result[5] as? ru.monitoring.mobile.api.WindowsTypesResponse
             val winCreds = result[6] as? ru.monitoring.mobile.api.WindowsCredentialsResponse
             val servers = result[7] as? ru.monitoring.mobile.api.ServersSettingsResponse
+            val extensions = result[8] as? ru.monitoring.mobile.api.ExtensionsSettingsResponse
 
             val monitoringData = monitoring?.settings
             val botData = bot?.settings
@@ -339,7 +344,7 @@ class MainViewModel(
                 else -> state.telegramChatIds
             }
 
-            val hasAny = monitoring != null || bot != null || time != null || auth != null || control != null || winTypes != null || winCreds != null || servers != null
+            val hasAny = monitoring != null || bot != null || time != null || auth != null || control != null || winTypes != null || winCreds != null || servers != null || extensions != null
             if (!hasAny) {
                 state = if (showErrors) {
                     state.copy(isLoading = false, message = "Не удалось подтянуть настройки")
@@ -380,6 +385,7 @@ class MainViewModel(
                 },
                 windowsTypes = winTypes?.types ?: state.windowsTypes,
                 managedServers = servers?.items ?: state.managedServers,
+                extensions = extensions?.items ?: state.extensions,
                 monitoringStatusText = when {
                     control?.monitoringActive == true -> "🟢 Активен"
                     control?.monitoringActive == false -> "🔴 Приостановлен"
@@ -590,8 +596,51 @@ class MainViewModel(
         }
     }
 
-    fun showMenuStub(section: String) {
-        state = state.copy(message = "Раздел '$section' ещё в разработке для Android-меню")
+    fun toggleExtension(id: String, enabled: Boolean) {
+        val extensionId = id.trim()
+        if (extensionId.isBlank()) return
+
+        viewModelScope.launch {
+            state = state.copy(isLoading = true)
+            runCatching { currentApi().updateExtensionSettings(extensionId, ExtensionUpdateRequest(enabled)) }
+                .onSuccess { response ->
+                    refreshExtensionsSettings(response.message ?: if (enabled) "Расширение включено" else "Расширение отключено")
+                }
+                .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
+        }
+    }
+
+    fun enableAllExtensions() {
+        runExtensionsAction("enable_all", "Все расширения включены")
+    }
+
+    fun disableAllExtensions() {
+        runExtensionsAction("disable_all", "Все расширения отключены")
+    }
+
+    private fun runExtensionsAction(action: String, fallbackMessage: String) {
+        viewModelScope.launch {
+            state = state.copy(isLoading = true)
+            runCatching { currentApi().runExtensionsAction(ExtensionsActionRequest(action)) }
+                .onSuccess { response ->
+                    refreshExtensionsSettings(response.message ?: fallbackMessage)
+                }
+                .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
+        }
+    }
+
+    private fun refreshExtensionsSettings(successMessage: String? = null) {
+        viewModelScope.launch {
+            runCatching { currentApi().getExtensionsSettings() }
+                .onSuccess { response ->
+                    state = state.copy(
+                        isLoading = false,
+                        extensions = response.items,
+                        message = successMessage ?: "Список расширений обновлён"
+                    )
+                }
+                .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
+        }
     }
 
     fun sendAction(action: String) {
@@ -1159,6 +1208,7 @@ data class MainUiState(
     val deleteTypeInput: String = "",
     val deleteTargetTypeInput: String = "default",
     val managedServers: List<ManagedServer> = emptyList(),
+    val extensions: List<ExtensionItem> = emptyList(),
     val serverEditIp: String = "",
     val serverIpInput: String = "",
     val serverNameInput: String = "",

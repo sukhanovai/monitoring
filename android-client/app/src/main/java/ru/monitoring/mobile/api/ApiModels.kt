@@ -292,3 +292,43 @@ data class UpdateServerRequest(
 data class ToggleServerEnabledRequest(
     val enabled: Boolean
 )
+
+data class ExtensionItem(
+    val id: String,
+    val name: String,
+    val description: String,
+    val enabled: Boolean
+)
+
+data class ExtensionsSummary(
+    val total: Int = 0,
+    val enabled: Int = 0,
+    val disabled: Int = 0
+)
+
+data class ExtensionsSettingsResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val items: List<ExtensionItem> = emptyList(),
+    val summary: ExtensionsSummary = ExtensionsSummary()
+)
+
+data class ExtensionUpdateRequest(
+    val enabled: Boolean
+)
+
+data class ExtensionUpdateResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    @Json(name = "extension_id") val extensionId: String? = null,
+    val enabled: Boolean? = null,
+    val message: String? = null
+)
+
+data class ExtensionsActionRequest(
+    val action: String
+)
+
+data class ExtensionsActionResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val action: String? = null,
+    val message: String? = null
+)
