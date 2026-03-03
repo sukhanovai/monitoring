@@ -48,6 +48,22 @@ import ru.monitoring.mobile.ui.MainUiState
 import ru.monitoring.mobile.ui.MonitoringTheme
 import ru.monitoring.mobile.ui.MainViewModel
 
+private data class MainMenuExtensionButton(
+    val extensionId: String,
+    val label: String,
+    val action: String
+)
+
+private val MAIN_MENU_EXTENSION_BUTTONS = listOf(
+    MainMenuExtensionButton("resource_monitor", "📊 Ресурсы сервера", "check_resources"),
+    MainMenuExtensionButton("backup_monitor", "💾 Бэкапы Proxmox", "backup_hosts"),
+    MainMenuExtensionButton("database_backup_monitor", "🗃️ Бэкапы БД", "backup_databases"),
+    MainMenuExtensionButton("mail_backup_monitor", "📬 Бэкапы почты", "backup_mail"),
+    MainMenuExtensionButton("stock_load_monitor", "📦 Остатки 1С", "backup_stock_loads"),
+    MainMenuExtensionButton("supplier_stock_files", "📦 Результаты остатков поставщиков", "supplier_stock_reports"),
+    MainMenuExtensionButton("zfs_monitor", "🧊 ZFS", "zfs_menu")
+)
+
 class MainActivity : ComponentActivity() {
     private var downServersFromNotification by mutableStateOf<List<String>>(emptyList())
 
@@ -280,6 +296,9 @@ private fun MonitoringApp(
     val windowsByType = state.windowsCredentials.groupBy { it.serverType ?: "default" }
     val windowsTotal = state.windowsCredentials.size
     val windowsTypes = windowsByType.keys.size
+    val enabledExtensions = state.extensions.filter { it.enabled }.map { it.id }.toSet()
+    val extensionButtons = MAIN_MENU_EXTENSION_BUTTONS.filter { it.extensionId in enabledExtensions }
+    val isResourceMonitorEnabled = "resource_monitor" in enabledExtensions
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("Monitoring") }) }
@@ -366,10 +385,21 @@ private fun MonitoringApp(
                             }
                         }
                     }
-                    Button(onClick = { showServerResourcesMenu = !showServerResourcesMenu }, modifier = Modifier.fillMaxWidth()) {
-                        Text("📊 Ресурсы сервера")
+                    extensionButtons.forEach { extensionButton ->
+                        Button(
+                            onClick = {
+                                if (extensionButton.action == "check_resources") {
+                                    showServerResourcesMenu = !showServerResourcesMenu
+                                } else {
+                                    onAction(extensionButton.action)
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(extensionButton.label)
+                        }
                     }
-                    if (showServerResourcesMenu) {
+                    if (isResourceMonitorEnabled && showServerResourcesMenu) {
                         state.managedServers.forEach { server ->
                             val serverTarget = if (server.ip.isNotBlank()) server.ip else server.name
                             if (
