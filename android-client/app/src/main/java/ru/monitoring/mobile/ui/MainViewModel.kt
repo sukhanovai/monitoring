@@ -48,7 +48,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.20.0"
+    private val projectVersion = "8.21.0"
 
     private fun currentApi() = ApiFactory.createApi(
         tokenProvider = { normalizeToken(state.token.ifBlank { preferences.apiToken }) },

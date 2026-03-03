@@ -6,19 +6,18 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.20.0] - 2026-03-03
+## [8.21.0] - 2026-03-03
 
 ### Added / Добавлено
-- EN: Added Android extensions section with Telegram-bot parity: list all extensions with status and allow per-extension enable/disable.
-- RU: Добавлен раздел «Расширения» в Android по паритету с Telegram-ботом: отображается список всех расширений со статусом и доступно включение/выключение каждого.
-- EN: Added Android bulk actions for extensions: “Enable all” and “Disable all”.
-- RU: Добавлены массовые действия для расширений в Android: «Включить все» и «Отключить все».
-- EN: Added BFF API endpoints for mobile extensions management: `GET /v1/settings/extensions`, `PATCH /v1/settings/extensions/{extension_id}`, `POST /v1/settings/extensions/actions`.
-- RU: Добавлены BFF API endpoint’ы для управления расширениями с мобильного клиента: `GET /v1/settings/extensions`, `PATCH /v1/settings/extensions/{extension_id}`, `POST /v1/settings/extensions/actions`.
+- EN: Added dynamic extension action buttons to the Android main menu for enabled extensions (Telegram bot parity): Proxmox backups, DB backups, mail backups, 1C stock, supplier stock reports, and ZFS.
+- RU: В главное меню Android добавлены динамические кнопки действий включённых расширений (паритет с Telegram-ботом): бэкапы Proxmox, бэкапы БД, бэкапы почты, остатки 1С, отчёты остатков поставщиков и ZFS.
 
 ### Changed / Изменено
-- EN: Project version bumped to `8.20.0`; Android `versionCode` bumped to `14`.
-- RU: Версия проекта повышена до `8.20.0`; Android `versionCode` увеличен до `14`.
+- EN: Android now hides extension-specific main-menu buttons when the corresponding extension is disabled; the server resources section is shown only when `resource_monitor` is enabled.
+- RU: Android теперь скрывает кнопки расширений в главном меню, если соответствующее расширение выключено; раздел ресурсов сервера показывается только при включённом `resource_monitor`.
+- EN: Project version bumped to `8.21.0`; Android `versionCode` bumped to `15`.
+- RU: Версия проекта повышена до `8.21.0`; Android `versionCode` увеличен до `15`.
+
 ## [8.17.0] - 2026-03-01
 
 ### Fixed / Исправлено
