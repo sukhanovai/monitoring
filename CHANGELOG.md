@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.21.1] - 2026-03-11
+
+### Fixed / Исправлено
+- EN: Fixed recovery alert handling in monitoring: restored servers no longer trigger `NameError` (`downtime_start`), so recovery notifications are sent correctly.
+- RU: Исправлена обработка алерта при восстановлении в мониторинге: при возврате сервера больше не возникает `NameError` (`downtime_start`), уведомления о восстановлении отправляются корректно.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.21.1`; Android `versionCode` bumped to `16`.
+- RU: Версия проекта повышена до `8.21.1`; Android `versionCode` увеличен до `16`.
+
 ## [8.21.0] - 2026-03-03
 
 ### Added / Добавлено
