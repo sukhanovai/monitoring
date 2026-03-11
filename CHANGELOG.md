@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.22.5] - 2026-03-11
+
+### Fixed / Исправлено
+- EN: Fixed Android build failure in `MainViewModel.sendAction` for extension actions: removed access to non-existent `response.result` in `ExtensionsActionResponse` to resolve Kotlin `Unresolved reference: result`.
+- RU: Исправлена ошибка сборки Android в `MainViewModel.sendAction` для действий расширений: убрано обращение к несуществующему `response.result` в `ExtensionsActionResponse`, что устраняет Kotlin-ошибку `Unresolved reference: result`.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.22.5`; Android `versionCode` bumped to `22`.
+- RU: Версия проекта повышена до `8.22.5`; Android `versionCode` увеличен до `22`.
+
 ## [8.22.4] - 2026-03-11
 
 ### Fixed / Исправлено
