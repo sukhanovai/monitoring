@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.22.4] - 2026-03-11
+
+### Fixed / Исправлено
+- EN: Fixed Android "ZFS" main-menu action: it now uses extensions actions API (`/v1/settings/extensions/actions`) like Telegram bot flow, instead of control actions API.
+- RU: Исправлена кнопка «ZFS» в главном меню Android: теперь она использует API действий расширений (`/v1/settings/extensions/actions`) как в Telegram-боте, а не API команд управления.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.22.4`; Android `versionCode` bumped to `21`.
+- RU: Версия проекта повышена до `8.22.4`; Android `versionCode` увеличен до `21`.
+
 ## [8.22.3] - 2026-03-11
 
 ### Fixed / Исправлено
