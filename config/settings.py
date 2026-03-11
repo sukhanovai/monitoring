@@ -1,11 +1,11 @@
 """
 /config/settings.py
-Server Monitoring System v8.23.0
+Server Monitoring System v8.23.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Application settings - default values
 Система мониторинга серверов
-Версия: 8.23.0
+Версия: 8.23.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Настройки приложения - значения по умолчанию
@@ -22,8 +22,8 @@ from lib.utils import is_proxmox_server
 DEBUG_MODE = False
 
 # Версия приложения
-APP_VERSION = "8.23.0"
-ANDROID_APP_VERSION = "8.23.0"
+APP_VERSION = "8.23.1"
+ANDROID_APP_VERSION = "8.23.1"
 
 # === БАЗОВЫЕ ПУТИ ===
 _DEFAULT_BASE = Path(__file__).resolve().parents[1]

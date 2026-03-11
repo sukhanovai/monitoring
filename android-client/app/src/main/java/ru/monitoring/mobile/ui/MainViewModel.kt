@@ -49,7 +49,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.23.0"
+    private val projectVersion = "8.23.1"
     private val extensionMainMenuActions = setOf(
         "backup_hosts",
         "backup_databases",
@@ -632,13 +632,13 @@ class MainViewModel(
             state = state.copy(isLoading = true)
             runCatching {
                     if (action == "backup_proxmox" || action.startsWith("backup_host_")) {
-                        currentApi().runControlAction(ControlActionRequest(action))
+                        currentApi().runControlAction(ControlActionRequest(action)).message
                     } else {
-                        currentApi().runExtensionsAction(ExtensionsActionRequest(action))
+                        currentApi().runExtensionsAction(ExtensionsActionRequest(action)).message
                     }
                 }
-                .onSuccess { response ->
-                    refreshExtensionsSettings(response.message ?: fallbackMessage)
+                .onSuccess { message ->
+                    refreshExtensionsSettings(message ?: fallbackMessage)
                 }
                 .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
         }
