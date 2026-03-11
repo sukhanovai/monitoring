@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.22.1
+Server Monitoring System v8.22.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.22.1
+Версия: 8.22.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1498,6 +1498,93 @@ def _execute_mobile_control_action(action: str):
     Executes explicit control actions for Android API.
     Returns tuple: (ok: bool, message: str, result: str)
     """
+    menu_actions = {
+        "backup_hosts",
+        "backup_databases",
+        "backup_mail",
+        "backup_stock_loads",
+        "supplier_stock_reports",
+        "zfs_menu",
+    }
+
+    if action in menu_actions:
+        try:
+            from extensions.backup_monitor.bot_handler import BackupMonitorBot
+            backup_bot = BackupMonitorBot()
+        except Exception as exc:
+            return False, f"Не удалось открыть раздел {action}: {exc}", "failed"
+
+        if action == "backup_hosts":
+            hosts = backup_bot.get_all_hosts()
+            if not hosts:
+                return True, "💾 Бэкапы Proxmox\n\nДанные по хостам пока отсутствуют.", "accepted"
+            problem_hosts = 0
+            for host in hosts:
+                if backup_bot.get_host_display_status(host) != "success":
+                    problem_hosts += 1
+            ok_hosts = len(hosts) - problem_hosts
+            return True, (
+                "💾 Бэкапы Proxmox\n\n"
+                f"Всего хостов: {len(hosts)}\n"
+                f"✅ Без проблем: {ok_hosts}\n"
+                f"🚨 Проблемных: {problem_hosts}"
+            ), "accepted"
+
+        if action == "backup_databases":
+            stats = backup_bot.get_database_backups_stats_fixed(24)
+            if not stats:
+                return True, "🗃️ Бэкапы БД\n\nДанные по базам пока отсутствуют.", "accepted"
+            unique_dbs = {(row[0], row[1]) for row in stats if len(row) >= 2}
+            problem_dbs = sum(1 for backup_type, db_name in unique_dbs if backup_bot.get_database_display_status(backup_type, db_name) != "success")
+            ok_dbs = len(unique_dbs) - problem_dbs
+            return True, (
+                "🗃️ Бэкапы БД\n\n"
+                f"Баз в отчёте: {len(unique_dbs)}\n"
+                f"✅ Без проблем: {ok_dbs}\n"
+                f"🚨 Проблемных: {problem_dbs}"
+            ), "accepted"
+
+        if action == "backup_mail":
+            mail_backups = backup_bot.get_mail_backups(hours=72, limit=20)
+            if not mail_backups:
+                return True, "📬 Бэкапы почты\n\nДанные по почтовым бэкапам пока отсутствуют.", "accepted"
+            problem_backups = sum(1 for row in mail_backups if str(row[0]).lower() != "success")
+            ok_backups = len(mail_backups) - problem_backups
+            return True, (
+                "📬 Бэкапы почты\n\n"
+                f"Записей: {len(mail_backups)}\n"
+                f"✅ Успешных: {ok_backups}\n"
+                f"🚨 С ошибками: {problem_backups}"
+            ), "accepted"
+
+        if action == "zfs_menu":
+            try:
+                from config.db_settings_backup_monitor import BACKUP_DATABASE_CONFIG
+                import sqlite3
+                conn = sqlite3.connect(BACKUP_DATABASE_CONFIG['backups_db'])
+                cursor = conn.cursor()
+                cursor.execute('SELECT server_name, status, checked_at FROM zfs_status ORDER BY checked_at DESC LIMIT 50')
+                rows = cursor.fetchall()
+                conn.close()
+            except Exception:
+                rows = []
+            if not rows:
+                return True, "🧊 ZFS\n\nДанные ZFS пока отсутствуют.", "accepted"
+            latest_by_server = {}
+            for server_name, status, checked_at in rows:
+                if server_name not in latest_by_server:
+                    latest_by_server[server_name] = (status, checked_at)
+            problem_servers = sum(1 for status, _ in latest_by_server.values() if str(status).lower() != "online")
+            ok_servers = len(latest_by_server) - problem_servers
+            return True, (
+                "🧊 ZFS\n\n"
+                f"Серверов в отчёте: {len(latest_by_server)}\n"
+                f"✅ ONLINE: {ok_servers}\n"
+                f"🚨 Проблемных: {problem_servers}"
+            ), "accepted"
+
+        return True, "Команда принята", "accepted"
+
     try:
         import core.monitor_core as monitor_core
     except Exception as e:

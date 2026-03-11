@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.22.2] - 2026-03-11
+
+### Fixed / Исправлено
+- EN: Fixed HTTP 400 on Android main-menu buttons "Proxmox backups", "DB backups", "Mail backups", and "ZFS": these actions are now executed via control API and return a status summary instead of failing validation.
+- RU: Исправлены HTTP 400 для кнопок Android «Бэкапы Proxmox», «Бэкапы БД», «Бэкапы почты» и «ZFS»: теперь действия обрабатываются через control API и возвращают сводку статуса вместо ошибки валидации.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.22.2`; Android `versionCode` bumped to `19`.
+- RU: Версия проекта повышена до `8.22.2`; Android `versionCode` увеличен до `19`.
+
 ## [8.22.1] - 2026-03-11
 
 ### Fixed / Исправлено
