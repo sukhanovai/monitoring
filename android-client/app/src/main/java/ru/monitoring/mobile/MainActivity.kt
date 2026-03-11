@@ -398,22 +398,22 @@ private fun MonitoringApp(
                         ) {
                             Text(extensionButton.label)
                         }
-                    }
-                    if (isResourceMonitorEnabled && showServerResourcesMenu) {
-                        state.managedServers.forEach { server ->
-                            val serverTarget = if (server.ip.isNotBlank()) server.ip else server.name
-                            if (
-                                state.message.isNotBlank() &&
-                                state.messageSource == "server_resources" &&
-                                state.availabilityServerMessageTarget == serverTarget
-                            ) {
-                                Text(state.message)
-                            }
-                            Button(
-                                onClick = { onCheckServerResources(server) },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text("${server.name} (${server.ip})")
+                        if (extensionButton.action == "check_resources" && isResourceMonitorEnabled && showServerResourcesMenu) {
+                            state.managedServers.forEach { server ->
+                                val serverTarget = if (server.ip.isNotBlank()) server.ip else server.name
+                                if (
+                                    state.message.isNotBlank() &&
+                                    state.messageSource == "server_resources" &&
+                                    state.availabilityServerMessageTarget == serverTarget
+                                ) {
+                                    Text(state.message)
+                                }
+                                Button(
+                                    onClick = { onCheckServerResources(server) },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("${server.name} (${server.ip})")
+                                }
                             }
                         }
                     }

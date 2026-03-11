@@ -6,6 +6,18 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.22.1] - 2026-03-11
+
+### Fixed / Исправлено
+- EN: Android main menu now expands the server list right after the "Server resources" button, inserting the list between it and the next menu action.
+- RU: В Android-главном меню список серверов теперь раскрывается сразу после кнопки «Ресурсы сервера» и вставляется между ней и следующей кнопкой.
+- EN: Fixed HTTP 400 for Android main-menu actions "Proxmox backups", "DB backups", "Mail backups", and "ZFS" by routing these actions through extensions API instead of control API.
+- RU: Исправлены HTTP 400 для Android-кнопок «Бэкапы Proxmox», «Бэкапы БД», «Бэкапы почты» и «ZFS»: теперь они отправляются через API расширений, а не через API управления.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.22.1`; Android `versionCode` bumped to `18`.
+- RU: Версия проекта повышена до `8.22.1`; Android `versionCode` увеличен до `18`.
+
 ## [8.21.1] - 2026-03-11
 
 ### Fixed / Исправлено

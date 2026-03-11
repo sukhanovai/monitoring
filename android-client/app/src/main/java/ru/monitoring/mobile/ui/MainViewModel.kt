@@ -48,7 +48,15 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.21.1"
+    private val projectVersion = "8.22.1"
+    private val extensionMainMenuActions = setOf(
+        "backup_hosts",
+        "backup_databases",
+        "backup_mail",
+        "backup_stock_loads",
+        "supplier_stock_reports",
+        "zfs_menu"
+    )
 
     private fun currentApi() = ApiFactory.createApi(
         tokenProvider = { normalizeToken(state.token.ifBlank { preferences.apiToken }) },
@@ -646,6 +654,34 @@ class MainViewModel(
     fun sendAction(action: String) {
         if (hasUnsavedConnectionSettings()) {
             state = state.copy(message = "Сначала сохрани Base URL и токен в Настройках")
+            return
+        }
+
+        if (action in extensionMainMenuActions) {
+            viewModelScope.launch {
+                state = state.copy(isLoading = true)
+                runCatching { currentApi().runExtensionsAction(ExtensionsActionRequest(action)) }
+                    .onSuccess { response ->
+                        state = state.copy(
+                            isLoading = false,
+                            message = response.message ?: "Команда отправлена",
+                            messageSource = "global"
+                        )
+                        refreshSettingsFromServer(showErrors = false)
+                    }
+                    .onFailure { error ->
+                        val userMessage = when ((error as? HttpException)?.code()) {
+                            401 -> "HTTP 401: нет доступа к расширениям. Проверь Base URL и токен в Настройках"
+                            403 -> "HTTP 403: нет прав на команды расширений"
+                            else -> formatNetworkError(error)
+                        }
+                        state = state.copy(
+                            isLoading = false,
+                            message = userMessage,
+                            messageSource = "global"
+                        )
+                    }
+            }
             return
         }
 
