@@ -6,15 +6,17 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.22.5] - 2026-03-11
+## [8.23.0] - 2026-03-11
 
 ### Fixed / Исправлено
-- EN: Fixed Android build failure in `MainViewModel.sendAction` for extension actions: removed access to non-existent `response.result` in `ExtensionsActionResponse` to resolve Kotlin `Unresolved reference: result`.
-- RU: Исправлена ошибка сборки Android в `MainViewModel.sendAction` для действий расширений: убрано обращение к несуществующему `response.result` в `ExtensionsActionResponse`, что устраняет Kotlin-ошибку `Unresolved reference: result`.
+- EN: Fixed Android action "Proxmox backups": now it returns Telegram-like Proxmox summary plus a server selection menu and supports opening host details from that menu.
+- RU: Исправлена Android-кнопка «Бэкапы Proxmox»: теперь возвращается сводка как в Telegram и меню выбора сервера с переходом к деталям по хосту.
 
 ### Changed / Изменено
-- EN: Project version bumped to `8.22.5`; Android `versionCode` bumped to `22`.
-- RU: Версия проекта повышена до `8.22.5`; Android `versionCode` увеличен до `22`.
+- EN: Added mobile API payload field `menu_options` for control actions to transfer server menu options to Android UI.
+- RU: В мобильный API ответов control actions добавлено поле `menu_options` для передачи пунктов меню серверов в Android UI.
+- EN: Project version bumped to `8.23.0`; Android `versionCode` bumped to `23`.
+- RU: Версия проекта повышена до `8.23.0`; Android `versionCode` увеличен до `23`.
 
 ## [8.22.4] - 2026-03-11
 

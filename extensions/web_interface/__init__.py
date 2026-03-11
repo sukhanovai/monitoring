@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.22.5
+Server Monitoring System v8.23.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.22.5
+Версия: 8.23.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1496,10 +1496,11 @@ def _map_mobile_action_to_legacy(action: str) -> str | None:
 def _execute_mobile_control_action(action: str):
     """
     Executes explicit control actions for Android API.
-    Returns tuple: (ok: bool, message: str, result: str)
+    Returns tuple: (ok: bool, message: str, result: str, menu_options: list[dict] | None)
     """
     menu_actions = {
         "backup_hosts",
+        "backup_proxmox",
         "backup_databases",
         "backup_mail",
         "backup_stock_loads",
@@ -1522,34 +1523,66 @@ def _execute_mobile_control_action(action: str):
         if extension_requirement is not None:
             extension_id, disabled_message = extension_requirement
             if not extension_manager.is_extension_enabled(extension_id):
-                return False, disabled_message, "failed"
+                return False, disabled_message, "failed", None
 
         try:
             from extensions.backup_monitor.bot_handler import BackupMonitorBot
             backup_bot = BackupMonitorBot()
         except Exception as exc:
-            return False, f"Не удалось открыть раздел {action}: {exc}", "failed"
+            return False, f"Не удалось открыть раздел {action}: {exc}", "failed", None
+
+        if action == "backup_proxmox":
+            action = "backup_hosts"
 
         if action == "backup_hosts":
             hosts = backup_bot.get_all_hosts()
             if not hosts:
-                return True, "💾 Бэкапы Proxmox\n\nДанные по хостам пока отсутствуют.", "accepted"
+                return True, "💾 Бэкапы Proxmox\n\nДанные по хостам пока отсутствуют.", "accepted", None
             problem_hosts = 0
             for host in hosts:
                 if backup_bot.get_host_display_status(host) != "success":
                     problem_hosts += 1
             ok_hosts = len(hosts) - problem_hosts
+            menu_options = [
+                {
+                    "label": f"🖥️ {host}",
+                    "action": f"backup_host_{host}",
+                }
+                for host in hosts
+            ]
             return True, (
                 "💾 Бэкапы Proxmox\n\n"
                 f"Всего хостов: {len(hosts)}\n"
                 f"✅ Без проблем: {ok_hosts}\n"
                 f"🚨 Проблемных: {problem_hosts}"
-            ), "accepted"
+            ), "accepted", menu_options
+
+        if action.startswith("backup_host_"):
+            host_name = action.replace("backup_host_", "", 1).strip()
+            if not host_name:
+                return False, "Не указан хост Proxmox", "failed", None
+            host_backups = backup_bot.get_host_status(host_name)
+            if not host_backups:
+                return True, f"🖥️ {host_name}\n\nДанные по хосту отсутствуют.", "accepted", None
+
+            lines = [f"🖥️ {host_name}", "", "Последние 5 бэкапов:"]
+            for row in host_backups:
+                status = str(row[0]).lower() if len(row) > 0 else "unknown"
+                duration = row[1] if len(row) > 1 else "-"
+                total_size = row[2] if len(row) > 2 else "-"
+                error_message = row[3] if len(row) > 3 else ""
+                received_at = row[4] if len(row) > 4 else "-"
+                icon = "✅" if status == "success" else "🚨"
+                line = f"{icon} {received_at} • {status} • {duration}с • {total_size}"
+                if error_message:
+                    line += f"\n   ↳ {error_message}"
+                lines.append(line)
+            return True, "\n".join(lines), "accepted", None
 
         if action == "backup_databases":
             stats = backup_bot.get_database_backups_stats_fixed(24)
             if not stats:
-                return True, "🗃️ Бэкапы БД\n\nДанные по базам пока отсутствуют.", "accepted"
+                return True, "🗃️ Бэкапы БД\n\nДанные по базам пока отсутствуют.", "accepted", None
             unique_dbs = {(row[0], row[1]) for row in stats if len(row) >= 2}
             problem_dbs = sum(1 for backup_type, db_name in unique_dbs if backup_bot.get_database_display_status(backup_type, db_name) != "success")
             ok_dbs = len(unique_dbs) - problem_dbs
@@ -1558,12 +1591,12 @@ def _execute_mobile_control_action(action: str):
                 f"Баз в отчёте: {len(unique_dbs)}\n"
                 f"✅ Без проблем: {ok_dbs}\n"
                 f"🚨 Проблемных: {problem_dbs}"
-            ), "accepted"
+            ), "accepted", None
 
         if action == "backup_mail":
             mail_backups = backup_bot.get_mail_backups(hours=72, limit=20)
             if not mail_backups:
-                return True, "📬 Бэкапы почты\n\nДанные по почтовым бэкапам пока отсутствуют.", "accepted"
+                return True, "📬 Бэкапы почты\n\nДанные по почтовым бэкапам пока отсутствуют.", "accepted", None
             problem_backups = sum(1 for row in mail_backups if str(row[0]).lower() != "success")
             ok_backups = len(mail_backups) - problem_backups
             return True, (
@@ -1571,7 +1604,7 @@ def _execute_mobile_control_action(action: str):
                 f"Записей: {len(mail_backups)}\n"
                 f"✅ Успешных: {ok_backups}\n"
                 f"🚨 С ошибками: {problem_backups}"
-            ), "accepted"
+            ), "accepted", None
 
         if action == "zfs_menu":
             try:
@@ -1590,7 +1623,7 @@ def _execute_mobile_control_action(action: str):
 
                 db_path = BACKUP_DATABASE_CONFIG.get('backups_db')
                 if not db_path:
-                    return True, "🧊 ZFS\n\nБаза бэкапов не настроена.", "accepted"
+                    return True, "🧊 ZFS\n\nБаза бэкапов не настроена.", "accepted", None
 
                 conn = sqlite3.connect(str(db_path))
                 cursor = conn.cursor()
@@ -1613,7 +1646,7 @@ def _execute_mobile_control_action(action: str):
                 conn.close()
             except Exception as exc:
                 if "no such table: zfs_pool_status" in str(exc):
-                    return True, "🧊 ZFS\n\nТаблица ZFS ещё не создана.", "accepted"
+                    return True, "🧊 ZFS\n\nТаблица ZFS ещё не создана.", "accepted", None
                 rows = []
 
             if allowed_servers:
@@ -1622,7 +1655,7 @@ def _execute_mobile_control_action(action: str):
                 rows = []
 
             if not rows:
-                return True, "🧊 ZFS\n\nДанные ZFS пока отсутствуют.", "accepted"
+                return True, "🧊 ZFS\n\nДанные ZFS пока отсутствуют.", "accepted", None
 
             problem_pools = sum(1 for _, _, pool_state, _ in rows if str(pool_state).lower() not in {"online", "healthy"})
             ok_pools = len(rows) - problem_pools
@@ -1631,41 +1664,41 @@ def _execute_mobile_control_action(action: str):
                 f"Пулов в отчёте: {len(rows)}\n"
                 f"✅ ONLINE/HEALTHY: {ok_pools}\n"
                 f"🚨 Проблемных: {problem_pools}"
-            ), "accepted"
+             ), "accepted", None
 
-        return True, "Команда принята", "accepted"
+        return True, "Команда принята", "accepted", None
 
     try:
         import core.monitor_core as monitor_core
     except Exception as e:
-        return False, f"monitor core unavailable: {e}", "failed"
+        return False, f"monitor core unavailable: {e}", "failed", None
 
     if action == "pause_monitoring":
         monitor_core.monitoring_active = False
-        return True, "Мониторинг приостановлен", "applied"
+        return True, "Мониторинг приостановлен", "applied", None
 
     if action == "resume_monitoring":
         monitor_core.monitoring_active = True
-        return True, "Мониторинг возобновлен", "applied"
+        return True, "Мониторинг возобновлен", "applied", None
 
     if action == "send_morning_report":
         from modules.morning_report import morning_report
         report_text = morning_report.force_report()
-        return True, report_text, "accepted"
+        return True, report_text, "accepted", None
 
     if action == "force_quiet":
         monitor_core.set_silent_override(True)
-        return True, "Принудительно включен тихий режим", "applied"
+        return True, "Принудительно включен тихий режим", "applied", None
 
     if action == "force_loud":
         monitor_core.set_silent_override(False)
-        return True, "Принудительно включен громкий режим", "applied"
+        return True, "Принудительно включен громкий режим", "applied", None
 
     if action == "auto_mode":
         monitor_core.set_silent_override(None)
-        return True, "Включен автоматический режим quiet/loud", "applied"
+        return True, "Включен автоматический режим quiet/loud", "applied", None
 
-    return False, f"Unsupported action: {action}", "failed"
+    return False, f"Unsupported action: {action}", "failed", None
 
 
 @app.route('/v1/auth/token', methods=['POST'])
@@ -2060,13 +2093,14 @@ def v1_control_actions():
             }
         }), 400
 
-    ok, message, result = _execute_mobile_control_action(action)
+    ok, message, result, menu_options = _execute_mobile_control_action(action)
     if ok:
         return jsonify({
             "request_id": request_id,
             "action": action,
             "result": result,
             "message": message,
+            "menu_options": menu_options,
         }), 200
 
     # Backward compatibility fallback for legacy action path.
