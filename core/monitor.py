@@ -1,11 +1,11 @@
 """
 /core/monitor.py
-Server Monitoring System v8.21.0
+Server Monitoring System v8.21.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core monitoring module
 Система мониторинга серверов
-Версия: 8.21.0
+Версия: 8.21.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль мониторинга
@@ -151,7 +151,7 @@ class Monitor:
             current_time: Текущее время
         """
         if status.get("alert_sent"):
-            last_up = status.get("last_up")
+            downtime_start = status.get("downtime_start")
             downtime = 0
             if downtime_start:
                 downtime = (current_time - downtime_start).total_seconds()
