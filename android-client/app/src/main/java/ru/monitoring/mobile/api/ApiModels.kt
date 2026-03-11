@@ -87,13 +87,19 @@ data class AuthTokenExchangeResponse(
     @Json(name = "auth_type") val authType: String? = null
 )
 
+data class MenuOption(
+    val label: String? = null,
+    val action: String? = null
+)
+
 data class ControlActionResult(
     @Json(name = "request_id") val requestId: String? = null,
     val action: String? = null,
     val result: String? = null,
     val accepted: Boolean? = null,
     val message: String? = null,
-    @Json(name = "queued_job_id") val queuedJobId: String? = null
+    @Json(name = "queued_job_id") val queuedJobId: String? = null,
+    @Json(name = "menu_options") val menuOptions: List<MenuOption>? = null
 )
 
 data class ControlStatusResponse(

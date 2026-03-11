@@ -29,6 +29,7 @@ import ru.monitoring.mobile.api.ExtensionItem
 import ru.monitoring.mobile.api.ExtensionUpdateRequest
 import ru.monitoring.mobile.api.ExtensionsActionRequest
 import ru.monitoring.mobile.api.MergeWindowsTypesRequest
+import ru.monitoring.mobile.api.MenuOption
 import ru.monitoring.mobile.api.ManagedServer
 import ru.monitoring.mobile.api.RenameWindowsTypeRequest
 import ru.monitoring.mobile.api.ServerAvailability
@@ -48,7 +49,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.22.5"
+    private val projectVersion = "8.23.0"
     private val extensionMainMenuActions = setOf(
         "backup_hosts",
         "backup_databases",
@@ -629,7 +630,13 @@ class MainViewModel(
     private fun runExtensionsAction(action: String, fallbackMessage: String) {
         viewModelScope.launch {
             state = state.copy(isLoading = true)
-            runCatching { currentApi().runExtensionsAction(ExtensionsActionRequest(action)) }
+            runCatching {
+                    if (action == "backup_proxmox" || action.startsWith("backup_host_")) {
+                        currentApi().runControlAction(ControlActionRequest(action))
+                    } else {
+                        currentApi().runExtensionsAction(ExtensionsActionRequest(action))
+                    }
+                }
                 .onSuccess { response ->
                     refreshExtensionsSettings(response.message ?: fallbackMessage)
                 }
@@ -657,30 +664,57 @@ class MainViewModel(
             return
         }
 
-        if (action in extensionMainMenuActions) {
+        if (action in extensionMainMenuActions || action == "backup_proxmox" || action.startsWith("backup_host_")) {
             viewModelScope.launch {
                 state = state.copy(isLoading = true)
-                runCatching { currentApi().runExtensionsAction(ExtensionsActionRequest(action)) }
-                    .onSuccess { response ->
-                        state = state.copy(
-                            isLoading = false,
-                            message = response.message ?: "Команда отправлена",
-                            messageSource = "global"
-                        )
-                        refreshSettingsFromServer(showErrors = false)
-                    }
-                    .onFailure { error ->
-                        val userMessage = when ((error as? HttpException)?.code()) {
-                            401 -> "HTTP 401: нет доступа к расширениям. Проверь Base URL и токен в Настройках"
-                            403 -> "HTTP 403: нет прав на команды расширений"
-                            else -> formatNetworkError(error)
+                if (action == "backup_proxmox" || action.startsWith("backup_host_")) {
+                    runCatching { currentApi().runControlAction(ControlActionRequest(action)) }
+                        .onSuccess { response ->
+                            state = state.copy(
+                                isLoading = false,
+                                message = response.message ?: "Команда отправлена",
+                                messageSource = "global",
+                                extensionMenuOptions = response.menuOptions.orEmpty()
+                            )
                         }
-                        state = state.copy(
-                            isLoading = false,
-                            message = userMessage,
-                            messageSource = "global"
-                        )
-                    }
+                        .onFailure { error ->
+                            val userMessage = when ((error as? HttpException)?.code()) {
+                                401 -> "HTTP 401: нет доступа к расширениям. Проверь Base URL и токен в Настройках"
+                                403 -> "HTTP 403: нет прав на команды расширений"
+                                else -> formatNetworkError(error)
+                            }
+                            state = state.copy(
+                                isLoading = false,
+                                message = userMessage,
+                                messageSource = "global",
+                                extensionMenuOptions = emptyList()
+                            )
+                        }
+                } else {
+                    runCatching { currentApi().runExtensionsAction(ExtensionsActionRequest(action)) }
+                        .onSuccess { response ->
+                            state = state.copy(
+                                isLoading = false,
+                                message = response.message ?: "Команда отправлена",
+                                messageSource = "global",
+                                extensionMenuOptions = emptyList()
+                            )
+                            refreshSettingsFromServer(showErrors = false)
+                        }
+                        .onFailure { error ->
+                            val userMessage = when ((error as? HttpException)?.code()) {
+                                401 -> "HTTP 401: нет доступа к расширениям. Проверь Base URL и токен в Настройках"
+                                403 -> "HTTP 403: нет прав на команды расширений"
+                                else -> formatNetworkError(error)
+                            }
+                            state = state.copy(
+                                isLoading = false,
+                                message = userMessage,
+                                messageSource = "global",
+                                extensionMenuOptions = emptyList()
+                            )
+                        }
+                }
             }
             return
         }
@@ -696,7 +730,8 @@ class MainViewModel(
                     state = state.copy(
                         isLoading = false,
                         message = actionMessage,
-                        messageSource = if (action == "send_morning_report") "morning_report" else "global"
+                        messageSource = if (action == "send_morning_report") "morning_report" else "global",
+                        extensionMenuOptions = emptyList()
                     )
                     refreshSettingsFromServer(showErrors = false)
                 }
@@ -709,7 +744,8 @@ class MainViewModel(
                     state = state.copy(
                         isLoading = false,
                         message = userMessage,
-                        messageSource = if (action == "send_morning_report") "morning_report" else "global"
+                        messageSource = if (action == "send_morning_report") "morning_report" else "global",
+                        extensionMenuOptions = emptyList()
                     )
                 }
         }
@@ -1208,6 +1244,7 @@ data class MainUiState(
     val isWindowsPasswordVisible: Boolean = false,
     val isLoading: Boolean = false,
     val summaryText: String = "Статус не запрошен",
+    val extensionMenuOptions: List<MenuOption> = emptyList(),
     val servers: List<ServerAvailability> = emptyList(),
     val message: String = "",
     val messageSource: String = "global",

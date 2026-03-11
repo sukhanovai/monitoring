@@ -56,7 +56,7 @@ private data class MainMenuExtensionButton(
 
 private val MAIN_MENU_EXTENSION_BUTTONS = listOf(
     MainMenuExtensionButton("resource_monitor", "📊 Ресурсы сервера", "check_resources"),
-    MainMenuExtensionButton("backup_monitor", "💾 Бэкапы Proxmox", "backup_hosts"),
+    MainMenuExtensionButton("backup_monitor", "💾 Бэкапы Proxmox", "backup_proxmox"),
     MainMenuExtensionButton("database_backup_monitor", "🗃️ Бэкапы БД", "backup_databases"),
     MainMenuExtensionButton("mail_backup_monitor", "📬 Бэкапы почты", "backup_mail"),
     MainMenuExtensionButton("stock_load_monitor", "📦 Остатки 1С", "backup_stock_loads"),
@@ -322,6 +322,22 @@ private fun MonitoringApp(
                         Text("Версия проекта: ${state.projectVersion}")
                         if (state.message.isNotBlank() && state.messageSource == "global") {
                             Text(state.message)
+                        }
+                        if (state.extensionMenuOptions.isNotEmpty() && state.messageSource == "global") {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("Выбор сервера", fontWeight = FontWeight.Bold)
+                            state.extensionMenuOptions.forEach { item ->
+                                val optionLabel = item.label?.trim().orEmpty()
+                                val optionAction = item.action?.trim().orEmpty()
+                                if (optionLabel.isNotBlank() && optionAction.isNotBlank()) {
+                                    Button(
+                                        onClick = { onAction(optionAction) },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text(optionLabel)
+                                    }
+                                }
+                            }
                         }
                     }
                 }
