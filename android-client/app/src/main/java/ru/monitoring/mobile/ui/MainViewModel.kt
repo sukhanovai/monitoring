@@ -48,7 +48,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.22.3"
+    private val projectVersion = "8.22.4"
     private val extensionMainMenuActions = setOf(
         "backup_hosts",
         "backup_databases",
@@ -660,11 +660,11 @@ class MainViewModel(
         if (action in extensionMainMenuActions) {
             viewModelScope.launch {
                 state = state.copy(isLoading = true)
-                runCatching { currentApi().runControlAction(ControlActionRequest(action)) }
+                runCatching { currentApi().runExtensionsAction(ExtensionsActionRequest(action)) }
                     .onSuccess { response ->
                         state = state.copy(
                             isLoading = false,
-                            message = response.message ?: "Команда отправлена",
+                            message = response.message ?: response.result ?: "Команда отправлена",
                             messageSource = "global"
                         )
                         refreshSettingsFromServer(showErrors = false)
