@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.22.2
+Server Monitoring System v8.22.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.22.2
+Версия: 8.22.3
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1508,6 +1508,22 @@ def _execute_mobile_control_action(action: str):
     }
 
     if action in menu_actions:
+        from extensions.extension_manager import extension_manager
+
+        extension_requirements = {
+            "backup_hosts": ("backup_monitor", "💾 Мониторинг бэкапов Proxmox отключён"),
+            "backup_databases": ("database_backup_monitor", "🗃️ Мониторинг бэкапов БД отключён"),
+            "backup_mail": ("mail_backup_monitor", "📬 Мониторинг бэкапов почты отключён"),
+            "backup_stock_loads": ("stock_load_monitor", "📦 Мониторинг остатков 1С отключён"),
+            "zfs_menu": ("zfs_monitor", "🧊 Мониторинг ZFS отключён"),
+        }
+
+        extension_requirement = extension_requirements.get(action)
+        if extension_requirement is not None:
+            extension_id, disabled_message = extension_requirement
+            if not extension_manager.is_extension_enabled(extension_id):
+                return False, disabled_message, "failed"
+
         try:
             from extensions.backup_monitor.bot_handler import BackupMonitorBot
             backup_bot = BackupMonitorBot()
@@ -1559,28 +1575,62 @@ def _execute_mobile_control_action(action: str):
 
         if action == "zfs_menu":
             try:
-                from config.db_settings_backup_monitor import BACKUP_DATABASE_CONFIG
+                from extensions.backup_monitor.db_settings_backup_monitor import BACKUP_DATABASE_CONFIG
+                from config.settings import settings_manager
                 import sqlite3
-                conn = sqlite3.connect(BACKUP_DATABASE_CONFIG['backups_db'])
+
+                zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
+                if not isinstance(zfs_servers, dict):
+                    zfs_servers = {}
+                allowed_servers = {
+                    name
+                    for name, server_value in zfs_servers.items()
+                    if not isinstance(server_value, dict) or server_value.get('enabled', True)
+                }
+
+                db_path = BACKUP_DATABASE_CONFIG.get('backups_db')
+                if not db_path:
+                    return True, "🧊 ZFS\n\nБаза бэкапов не настроена.", "accepted"
+
+                conn = sqlite3.connect(str(db_path))
                 cursor = conn.cursor()
-                cursor.execute('SELECT server_name, status, checked_at FROM zfs_status ORDER BY checked_at DESC LIMIT 50')
+                cursor.execute(
+                    """
+                    SELECT s.server_name, s.pool_name, s.pool_state, s.received_at
+                    FROM zfs_pool_status s
+                    JOIN (
+                        SELECT server_name, pool_name, MAX(received_at) AS last_seen
+                        FROM zfs_pool_status
+                        GROUP BY server_name, pool_name
+                    ) latest
+                    ON s.server_name = latest.server_name
+                    AND s.pool_name = latest.pool_name
+                    AND s.received_at = latest.last_seen
+                    ORDER BY s.server_name, s.pool_name
+                    """
+                )
                 rows = cursor.fetchall()
                 conn.close()
-            except Exception:
+            except Exception as exc:
+                if "no such table: zfs_pool_status" in str(exc):
+                    return True, "🧊 ZFS\n\nТаблица ZFS ещё не создана.", "accepted"
                 rows = []
+
+            if allowed_servers:
+                rows = [row for row in rows if row[0] in allowed_servers]
+            else:
+                rows = []
+
             if not rows:
                 return True, "🧊 ZFS\n\nДанные ZFS пока отсутствуют.", "accepted"
-            latest_by_server = {}
-            for server_name, status, checked_at in rows:
-                if server_name not in latest_by_server:
-                    latest_by_server[server_name] = (status, checked_at)
-            problem_servers = sum(1 for status, _ in latest_by_server.values() if str(status).lower() != "online")
-            ok_servers = len(latest_by_server) - problem_servers
+
+            problem_pools = sum(1 for _, _, pool_state, _ in rows if str(pool_state).lower() not in {"online", "healthy"})
+            ok_pools = len(rows) - problem_pools
             return True, (
                 "🧊 ZFS\n\n"
-                f"Серверов в отчёте: {len(latest_by_server)}\n"
-                f"✅ ONLINE: {ok_servers}\n"
-                f"🚨 Проблемных: {problem_servers}"
+                f"Пулов в отчёте: {len(rows)}\n"
+                f"✅ ONLINE/HEALTHY: {ok_pools}\n"
+                f"🚨 Проблемных: {problem_pools}"
             ), "accepted"
 
         return True, "Команда принята", "accepted"
