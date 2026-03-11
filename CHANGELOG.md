@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.23.1] - 2026-03-11
+
+### Fixed / Исправлено
+- EN: Fixed Android compilation error in `MainViewModel`: the mixed API call branch for extension actions now normalizes successful responses to a message string, removing `Unresolved reference: message`.
+- RU: Исправлена ошибка компиляции Android в `MainViewModel`: смешанная ветка API-вызовов для действий расширений теперь нормализует успешные ответы в строку сообщения, что убирает `Unresolved reference: message`.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.23.1`; Android `versionCode` bumped to `24`.
+- RU: Версия проекта повышена до `8.23.1`; Android `versionCode` увеличен до `24`.
+
 ## [8.23.0] - 2026-03-11
 
 ### Fixed / Исправлено
