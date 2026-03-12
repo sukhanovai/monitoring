@@ -49,9 +49,9 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.27.0"
+    private val projectVersion = "8.28.0"
     private val mailBackupHistoryRegex = Regex(
-        pattern = """^[✅✔]\s*([^—-]+?)\s*[—-]\s*(.+?)\s*\(([^()]+)\)\s*$"""
+        pattern = """^([✅✔❌⚠️])\s*(.+?)\s*[—-]\s*(.+?)\s*\(([^()]+)\)\s*$"""
     )
     private val extensionMainMenuActions = setOf(
         "backup_hosts",
@@ -845,14 +845,24 @@ class MainViewModel(
         val lines = message.lines().map { it.trim() }.filter { it.isNotBlank() }
         if (lines.isEmpty()) return null
 
-        val title = lines.firstOrNull { it.contains("бэкап", ignoreCase = true) && it.contains("почт", ignoreCase = true) }
-            ?: lines.first()
-        val items = lines.drop(1).mapNotNull { line ->
+        val normalizedLines = lines.map { line ->
+            line
+                .replace("*", "")
+                .replace("\\_", "_")
+                .replace("\\-", "-")
+                .replace("\\(", "(")
+                .replace("\\)", ")")
+        }
+        val title = normalizedLines.firstOrNull {
+            it.contains("бэкап", ignoreCase = true) && it.contains("почт", ignoreCase = true)
+        } ?: normalizedLines.first()
+        val items = normalizedLines.drop(1).mapNotNull { line ->
             val match = mailBackupHistoryRegex.matchEntire(line) ?: return@mapNotNull null
             MailBackupHistoryItem(
-                size = match.groupValues[1].trim(),
-                path = match.groupValues[2].trim(),
-                relativeTime = match.groupValues[3].trim()
+                statusIcon = match.groupValues[1].trim(),
+                size = match.groupValues[2].trim(),
+                path = match.groupValues[3].trim(),
+                relativeTime = match.groupValues[4].trim()
             )
         }
 
@@ -1416,6 +1426,7 @@ data class MainUiState(
 )
 
 data class MailBackupHistoryItem(
+    val statusIcon: String,
     val size: String,
     val path: String,
     val relativeTime: String

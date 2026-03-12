@@ -489,7 +489,15 @@ private fun MonitoringApp(
                                         fontWeight = FontWeight.Bold
                                     )
                                     state.mailBackupHistoryItems.forEach { backup ->
-                                        Text("✅ ${backup.size} — ${backup.path} (${backup.relativeTime})")
+                                        val statusColor = when (backup.statusIcon) {
+                                            "✅", "✔" -> MaterialTheme.colorScheme.primary
+                                            "⚠️" -> MaterialTheme.colorScheme.tertiary
+                                            else -> MaterialTheme.colorScheme.error
+                                        }
+                                        Text(
+                                            text = "${backup.statusIcon} ${backup.size} — ${backup.path} (${backup.relativeTime})",
+                                            color = statusColor
+                                        )
                                     }
                                 }
                             }

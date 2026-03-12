@@ -6,17 +6,18 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.27.0] - 2026-03-12
+## [8.28.0] - 2026-03-12
 
-### Fixed / Исправлено
-- EN: Fixed Android mail backup action routing: submenu actions with `backup_mail*` are now treated as valid control actions, so mailbox selection correctly returns and shows backup history in the app.
-- RU: Исправлена маршрутизация действий бэкапов почты в Android: подпункты с `backup_mail*` теперь обрабатываются как валидные control actions, поэтому выбор ящика корректно возвращает и показывает историю бэкапов в приложении.
+### Added / Добавлено
+- EN: Added Telegram-like mail backup history rendering in Android: mailbox actions now parse and display recent entries with status icons (✅/⚠️/❌), size, path and relative time.
+- RU: В Android добавлен вывод истории бэкапов почты как в Telegram: действия выбора ящика теперь парсят и показывают последние записи со статусами (✅/⚠️/❌), размером, путём и относительным временем.
 
 ### Changed / Изменено
-- EN: Updated Android launcher icon (`ic_launcher_foreground`) to a cleaner server/backup visual closer to the planned style.
-- RU: Обновлена иконка Android (`ic_launcher_foreground`) на более чистый вариант в стиле серверов и бэкапов, ближе к запланированному образцу.
-- EN: Project version bumped to `8.27.0`; Android `versionCode` bumped to `34`.
-- RU: Версия проекта повышена до `8.27.0`; Android `versionCode` увеличен до `34`.
+- EN: Updated Android launcher icon (`ic_launcher_foreground`) to a server/shield/sync visual closer to the provided backup reference style.
+- RU: Обновлена иконка Android (`ic_launcher_foreground`) на вариант с сервером/щитом/синхронизацией, ближе к предоставленному референсу бэкапов.
+- EN: Project version bumped to `8.28.0`; Android `versionCode` bumped to `35`.
+- RU: Версия проекта повышена до `8.28.0`; Android `versionCode` увеличен до `35`.
+
 ## [8.25.0] - 2026-03-12
 
 ### Fixed / Исправлено
