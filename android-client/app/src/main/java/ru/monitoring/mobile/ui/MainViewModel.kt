@@ -49,7 +49,10 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.25.0"
+    private val projectVersion = "8.26.0"
+    private val mailBackupHistoryRegex = Regex(
+        pattern = """^[✅✔]\s*([^—-]+?)\s*[—-]\s*(.+?)\s*\(([^()]+)\)\s*$"""
+    )
     private val extensionMainMenuActions = setOf(
         "backup_hosts",
         "backup_databases",
@@ -639,6 +642,8 @@ class MainViewModel(
             state = state.copy(
                 extensionMenuOptions = emptyList(),
                 extensionMenuAction = "",
+                mailBackupHistoryTitle = "",
+                mailBackupHistoryItems = emptyList(),
                 message = "Меню бэкапов почты скрыто",
                 messageSource = "global"
             )
@@ -712,12 +717,19 @@ class MainViewModel(
                 if (action in extensionControlActions || action.startsWith("backup_host_")) {
                     runCatching { currentApi().runControlAction(ControlActionRequest(action)) }
                         .onSuccess { response ->
+                            val mailHistory = if (action.startsWith("backup_mail")) {
+                                parseMailBackupHistory(response.message.orEmpty())
+                            } else {
+                                null
+                            }
                             state = state.copy(
                                 isLoading = false,
                                 message = response.message ?: "Команда отправлена",
                                 messageSource = "global",
                                 extensionMenuOptions = response.menuOptions.orEmpty(),
-                                extensionMenuAction = if (response.menuOptions.isNullOrEmpty()) "" else action
+                                extensionMenuAction = if (response.menuOptions.isNullOrEmpty()) "" else action,
+                                mailBackupHistoryTitle = mailHistory?.title.orEmpty(),
+                                mailBackupHistoryItems = mailHistory?.items.orEmpty()
                             )
                         }
                         .onFailure { error ->
@@ -731,7 +743,9 @@ class MainViewModel(
                                 message = userMessage,
                                 messageSource = "global",
                                 extensionMenuOptions = emptyList(),
-                                extensionMenuAction = ""
+                                extensionMenuAction = "",
+                                mailBackupHistoryTitle = "",
+                                mailBackupHistoryItems = emptyList()
                             )
                         }
                 } else {
@@ -742,7 +756,9 @@ class MainViewModel(
                                 message = response.message ?: "Команда отправлена",
                                 messageSource = "global",
                                 extensionMenuOptions = emptyList(),
-                                extensionMenuAction = ""
+                                extensionMenuAction = "",
+                                mailBackupHistoryTitle = "",
+                                mailBackupHistoryItems = emptyList()
                             )
                             refreshSettingsFromServer(showErrors = false)
                         }
@@ -757,7 +773,9 @@ class MainViewModel(
                                 message = userMessage,
                                 messageSource = "global",
                                 extensionMenuOptions = emptyList(),
-                                extensionMenuAction = ""
+                                extensionMenuAction = "",
+                                mailBackupHistoryTitle = "",
+                                mailBackupHistoryItems = emptyList()
                             )
                         }
                 }
@@ -784,7 +802,9 @@ class MainViewModel(
                         message = actionMessage,
                         messageSource = if (action == "send_morning_report") "morning_report" else "global",
                         extensionMenuOptions = emptyList(),
-                                extensionMenuAction = ""
+                        extensionMenuAction = "",
+                        mailBackupHistoryTitle = "",
+                        mailBackupHistoryItems = emptyList()
                     )
                     refreshSettingsFromServer(showErrors = false)
                 }
@@ -799,10 +819,31 @@ class MainViewModel(
                         message = userMessage,
                         messageSource = if (action == "send_morning_report") "morning_report" else "global",
                         extensionMenuOptions = emptyList(),
-                                extensionMenuAction = ""
+                        extensionMenuAction = "",
+                        mailBackupHistoryTitle = "",
+                        mailBackupHistoryItems = emptyList()
                     )
                 }
         }
+    }
+
+    private fun parseMailBackupHistory(message: String): MailBackupHistory? {
+        if (message.isBlank()) return null
+        val lines = message.lines().map { it.trim() }.filter { it.isNotBlank() }
+        if (lines.isEmpty()) return null
+
+        val title = lines.firstOrNull { it.contains("бэкап", ignoreCase = true) && it.contains("почт", ignoreCase = true) }
+            ?: lines.first()
+        val items = lines.drop(1).mapNotNull { line ->
+            val match = mailBackupHistoryRegex.matchEntire(line) ?: return@mapNotNull null
+            MailBackupHistoryItem(
+                size = match.groupValues[1].trim(),
+                path = match.groupValues[2].trim(),
+                relativeTime = match.groupValues[3].trim()
+            )
+        }
+
+        return if (items.isNotEmpty()) MailBackupHistory(title = title, items = items) else null
     }
 
     private suspend fun runMorningReportControlAction() =
@@ -1307,6 +1348,8 @@ data class MainUiState(
     val summaryText: String = "Статус не запрошен",
     val extensionMenuOptions: List<MenuOption> = emptyList(),
     val extensionMenuAction: String = "",
+    val mailBackupHistoryTitle: String = "",
+    val mailBackupHistoryItems: List<MailBackupHistoryItem> = emptyList(),
     val servers: List<ServerAvailability> = emptyList(),
     val message: String = "",
     val messageSource: String = "global",
@@ -1357,4 +1400,15 @@ data class MainUiState(
     val projectVersion: String = "",
     val monitoringStatusText: String = "Неизвестно",
     val silentStatusText: String = "Неизвестно"
+)
+
+data class MailBackupHistoryItem(
+    val size: String,
+    val path: String,
+    val relativeTime: String
+)
+
+private data class MailBackupHistory(
+    val title: String,
+    val items: List<MailBackupHistoryItem>
 )
