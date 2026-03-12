@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.29.0] - 2026-03-12
+
+### Changed / Изменено
+- EN: Reworked Android mail backup history block to look closer to Telegram style: compact rows with status icon, backup path, and muted relative time in parentheses.
+- RU: Переработан блок истории бэкапов почты в Android под стиль Telegram: компактные строки со статус-иконкой, путём бэкапа и приглушённым временем в скобках.
+- EN: Simplified Android launcher icon to a minimal memorable monogram-style mark for better recognition on the home screen.
+- RU: Упрощена иконка Android-приложения до лаконичного запоминающегося знака в стиле монограммы для лучшей узнаваемости на домашнем экране.
+- EN: Project version bumped to `8.29.0`; Android `versionCode` bumped to `36`.
+- RU: Версия проекта повышена до `8.29.0`; Android `versionCode` увеличен до `36`.
+
 ## [8.28.0] - 2026-03-12
 
 ### Added / Добавлено
