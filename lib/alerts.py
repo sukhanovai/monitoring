@@ -1,17 +1,18 @@
 """
 /lib/alerts.py
-Server Monitoring System v8.23.4
+Server Monitoring System v8.24.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Unified alert system
 Система мониторинга серверов
-Версия: 8.23.4
+Версия: 8.24.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единая система оповещений
 """
 
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Optional, Dict, Any
 from datetime import datetime, time as dt_time
 from lib.logging import debug_log, error_log, setup_logging
@@ -259,35 +260,46 @@ def _send_telegram_alert(message: str, alert_type: str) -> bool:
         error_log("Telegram бот не инициализирован")
         return False
     
-    success_count = 0
     total_chats = len(_chat_ids)
-    
-    for i, chat_id in enumerate(_chat_ids):
-        try:
-            # Для критических алертов добавляем дополнительное форматирование
-            if alert_type == "critical":
-                formatted_message = f"*{message}*"
-            else:
-                formatted_message = message
-            
-            _telegram_bot.send_message(
-                chat_id=chat_id,
-                text=formatted_message,
-                parse_mode='Markdown' if alert_type == "critical" else None
-            )
-            success_count += 1
-            
-            # Небольшая задержка между отправками чтобы не превысить лимиты
-            if i < total_chats - 1:
-                time.sleep(0.1)
-                
-        except Exception as e:
-            error_log(f"Ошибка отправки в чат {chat_id}: {e}")
-    
+
+    # Для критических алертов добавляем дополнительное форматирование
+    if alert_type == "critical":
+        formatted_message = f"*{message}*"
+        parse_mode = 'Markdown'
+    else:
+        formatted_message = message
+        parse_mode = None
+
+    def _send_to_chat(chat_id: str) -> bool:
+        for attempt in range(1, _config.max_retries + 1):
+            try:
+                _telegram_bot.send_message(
+                    chat_id=chat_id,
+                    text=formatted_message,
+                    parse_mode=parse_mode
+                )
+                return True
+            except Exception as e:
+                if attempt >= _config.max_retries:
+                    error_log(f"Ошибка отправки в чат {chat_id}: {e}")
+                    return False
+                time.sleep(_config.retry_delay)
+        return False
+
+    success_count = 0
+    max_workers = min(8, total_chats) if total_chats > 0 else 1
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_map = {executor.submit(_send_to_chat, chat_id): chat_id for chat_id in _chat_ids}
+        for future in as_completed(future_map):
+            if future.result():
+                success_count += 1
+
     success_rate = success_count / total_chats if total_chats > 0 else 0
     debug_log(f"Telegram алерт отправлен: {success_count}/{total_chats} успешно ({success_rate:.0%})")
-    
-    return success_count > 0
+
+    # Для мониторинга считаем успехом только доставку во все чаты
+    return success_count == total_chats and total_chats > 0
 
 def _is_cooldown_active(message: str, check_period: int = None) -> bool:
     """
