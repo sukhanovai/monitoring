@@ -49,7 +49,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.26.0"
+    private val projectVersion = "8.27.0"
     private val mailBackupHistoryRegex = Regex(
         pattern = """^[✅✔]\s*([^—-]+?)\s*[—-]\s*(.+?)\s*\(([^()]+)\)\s*$"""
     )
@@ -678,7 +678,11 @@ class MainViewModel(
         viewModelScope.launch {
             state = state.copy(isLoading = true)
             runCatching {
-                    if (action in extensionControlActions || action.startsWith("backup_host_")) {
+                    if (
+                    action in extensionControlActions ||
+                    action.startsWith("backup_host_") ||
+                    action.startsWith("backup_mail")
+                ) {
                         currentApi().runControlAction(ControlActionRequest(action)).message
                     } else {
                         currentApi().runExtensionsAction(ExtensionsActionRequest(action)).message
@@ -711,10 +715,19 @@ class MainViewModel(
             return
         }
 
-        if (action in extensionMainMenuActions || action == "backup_proxmox" || action.startsWith("backup_host_")) {
+        if (
+            action in extensionMainMenuActions ||
+            action == "backup_proxmox" ||
+            action.startsWith("backup_host_") ||
+            action.startsWith("backup_mail")
+        ) {
             viewModelScope.launch {
                 state = state.copy(isLoading = true)
-                if (action in extensionControlActions || action.startsWith("backup_host_")) {
+                if (
+                    action in extensionControlActions ||
+                    action.startsWith("backup_host_") ||
+                    action.startsWith("backup_mail")
+                ) {
                     runCatching { currentApi().runControlAction(ControlActionRequest(action)) }
                         .onSuccess { response ->
                             val mailHistory = if (action.startsWith("backup_mail")) {
