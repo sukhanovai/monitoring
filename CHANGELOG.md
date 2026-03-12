@@ -6,6 +6,18 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.26.0] - 2026-03-12
+
+### Added / Добавлено
+- EN: Added backup history in Android mail backup flow: after selecting a mailbox, the app now renders recent successful backups as a dedicated list (size, path, relative time), matching the Telegram-style output.
+- RU: В Android-добавлен вывод истории бэкапов почты: после выбора ящика приложение показывает последние успешные бэкапы отдельным списком (размер, путь, относительное время), по образцу Telegram-вывода.
+
+### Changed / Изменено
+- EN: Updated Android launcher icon to a new server/backup-themed visual style.
+- RU: Обновлена иконка Android-приложения в новом стиле с акцентом на серверы и бэкапы.
+- EN: Project version bumped to `8.26.0`; Android `versionCode` bumped to `33`.
+- RU: Версия проекта повышена до `8.26.0`; Android `versionCode` увеличен до `33`.
+
 ## [8.25.0] - 2026-03-12
 
 ### Fixed / Исправлено

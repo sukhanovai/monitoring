@@ -471,6 +471,29 @@ private fun MonitoringApp(
                                 }
                             }
                         }
+                        if (
+                            extensionButton.action == "backup_mail" &&
+                            state.mailBackupHistoryItems.isNotEmpty()
+                        ) {
+                            ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                                Column(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        text = if (state.mailBackupHistoryTitle.isNotBlank()) {
+                                            state.mailBackupHistoryTitle
+                                        } else {
+                                            "📬 Бэкапы почтового сервера"
+                                        },
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    state.mailBackupHistoryItems.forEach { backup ->
+                                        Text("✅ ${backup.size} — ${backup.path} (${backup.relativeTime})")
+                                    }
+                                }
+                            }
+                        }
                     }
                     Button(onClick = { showExtensionsMenu = !showExtensionsMenu }, modifier = Modifier.fillMaxWidth()) {
                         Text("🛠️ Расширения")
