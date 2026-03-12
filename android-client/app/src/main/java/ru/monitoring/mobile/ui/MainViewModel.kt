@@ -49,7 +49,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.23.1"
+    private val projectVersion = "8.23.2"
     private val extensionMainMenuActions = setOf(
         "backup_hosts",
         "backup_databases",
@@ -58,6 +58,7 @@ class MainViewModel(
         "supplier_stock_reports",
         "zfs_menu"
     )
+    private val morningReportActions = listOf("send_morning_report", "morning_report")
 
     private fun currentApi() = ApiFactory.createApi(
         tokenProvider = { normalizeToken(state.token.ifBlank { preferences.apiToken }) },
@@ -721,7 +722,13 @@ class MainViewModel(
 
         viewModelScope.launch {
             state = state.copy(isLoading = true)
-            runCatching { currentApi().runControlAction(ControlActionRequest(action)) }
+            runCatching {
+                if (action == "send_morning_report") {
+                    runMorningReportControlAction()
+                } else {
+                    currentApi().runControlAction(ControlActionRequest(action))
+                }
+            }
                 .onSuccess { response ->
                     val actionMessage = response.message ?: response.result ?: "Команда отправлена"
                     if (action == "send_morning_report") {
@@ -750,6 +757,13 @@ class MainViewModel(
                 }
         }
     }
+
+    private suspend fun runMorningReportControlAction() =
+        runCatching {
+            currentApi().runControlAction(ControlActionRequest(morningReportActions.first()))
+        }.recoverCatching {
+            currentApi().runControlAction(ControlActionRequest(morningReportActions.last()))
+        }.getOrThrow()
 
     fun addTelegramChatId() {
         val chatId = state.newTelegramChatIdInput.trim()
