@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.29.0
+Server Monitoring System v8.30.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.29.0
+Версия: 8.30.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1649,12 +1649,26 @@ def _execute_mobile_control_action(action: str):
                 return True, "📬 Бэкапы почты\n\nДанные по почтовым бэкапам пока отсутствуют.", "accepted", None
             problem_backups = sum(1 for row in mail_backups if str(row[0]).lower() != "success")
             ok_backups = len(mail_backups) - problem_backups
-            return True, (
-                "📬 Бэкапы почты\n\n"
-                f"Записей: {len(mail_backups)}\n"
-                f"✅ Успешных: {ok_backups}\n"
-                f"🚨 С ошибками: {problem_backups}"
-            ), "accepted", None
+            lines = [
+                "📬 Бэкапы почтового сервера (за 72ч)",
+                "",
+            ]
+            for status, size, path, received_at in mail_backups:
+                status_icon = "✅" if str(status).lower() == "success" else "🚨"
+                time_ago = backup_bot.format_time_ago(received_at)
+                size_text = str(size).strip() if str(size).strip() else "—"
+                path_text = str(path).strip() if str(path).strip() else "—"
+                lines.append(f"{status_icon} {size_text} — {path_text} ({time_ago})")
+
+            lines.extend(
+                [
+                    "",
+                    f"Итого записей: {len(mail_backups)}",
+                    f"✅ Успешных: {ok_backups}",
+                    f"🚨 С ошибками: {problem_backups}",
+                ]
+            )
+            return True, "\n".join(lines), "accepted", None
 
         if action == "zfs_menu":
             try:
