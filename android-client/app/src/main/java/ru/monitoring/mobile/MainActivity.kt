@@ -154,6 +154,7 @@ class MainActivity : ComponentActivity() {
                     onCheckServerAvailability = vm::refreshServerAvailability,
                     onCheckServerResources = vm::refreshServerResources,
                     onToggleProxmoxBackupMenu = vm::toggleProxmoxBackupMenu,
+                    onToggleDatabaseBackupMenu = vm::toggleDatabaseBackupMenu,
                     onEditServer = vm::startServerEdit,
                     onCancelServerEdit = vm::cancelServerEdit,
                     onDeleteServer = vm::deleteServer,
@@ -258,6 +259,7 @@ private fun MonitoringApp(
     onCheckServerAvailability: (ManagedServer) -> Unit,
     onCheckServerResources: (ManagedServer) -> Unit,
     onToggleProxmoxBackupMenu: () -> Unit,
+    onToggleDatabaseBackupMenu: () -> Unit,
     onEditServer: (ManagedServer) -> Unit,
     onCancelServerEdit: () -> Unit,
     onDeleteServer: (String) -> Unit,
@@ -399,6 +401,7 @@ private fun MonitoringApp(
                                 when (extensionButton.action) {
                                     "check_resources" -> showServerResourcesMenu = !showServerResourcesMenu
                                     "backup_proxmox" -> onToggleProxmoxBackupMenu()
+                                    "backup_databases" -> onToggleDatabaseBackupMenu()
                                     else -> onAction(extensionButton.action)
                                 }
                             },
@@ -428,8 +431,13 @@ private fun MonitoringApp(
                                 }
                             }
                         }
-                        if (extensionButton.action == "backup_proxmox" && state.extensionMenuOptions.isNotEmpty()) {
-                            Text("Выбор сервера", fontWeight = FontWeight.Bold)
+                        if (
+                            state.extensionMenuOptions.isNotEmpty() &&
+                            ((extensionButton.action == "backup_proxmox" && state.extensionMenuAction == "backup_proxmox") ||
+                                (extensionButton.action == "backup_databases" && state.extensionMenuAction == "backup_databases"))
+                        ) {
+                            val menuTitle = if (extensionButton.action == "backup_databases") "Выбор базы" else "Выбор сервера"
+                            Text(menuTitle, fontWeight = FontWeight.Bold)
                             state.extensionMenuOptions.forEach { item ->
                                 val optionLabel = item.label?.trim().orEmpty()
                                 val optionAction = item.action?.trim().orEmpty()
