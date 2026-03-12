@@ -17,7 +17,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -35,10 +37,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.monitoring.mobile.api.ExtensionItem
@@ -478,7 +485,7 @@ private fun MonitoringApp(
                             ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                                 Column(
                                     modifier = Modifier.padding(12.dp),
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     Text(
                                         text = if (state.mailBackupHistoryTitle.isNotBlank()) {
@@ -488,16 +495,44 @@ private fun MonitoringApp(
                                         },
                                         fontWeight = FontWeight.Bold
                                     )
-                                    state.mailBackupHistoryItems.forEach { backup ->
-                                        val statusColor = when (backup.statusIcon) {
-                                            "✅", "✔" -> MaterialTheme.colorScheme.primary
-                                            "⚠️" -> MaterialTheme.colorScheme.tertiary
-                                            else -> MaterialTheme.colorScheme.error
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+                                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        state.mailBackupHistoryItems.forEach { backup ->
+                                            val statusColor = when (backup.statusIcon) {
+                                                "✅", "✔" -> Color(0xFF42D37D)
+                                                "⚠️" -> Color(0xFFF5C451)
+                                                else -> MaterialTheme.colorScheme.error
+                                            }
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                            ) {
+                                                Text(
+                                                    text = backup.statusIcon,
+                                                    color = statusColor,
+                                                    fontWeight = FontWeight.SemiBold
+                                                )
+                                                Text(
+                                                    text = "${backup.size} — ${backup.path}",
+                                                    color = MaterialTheme.colorScheme.onSurface,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis,
+                                                    modifier = Modifier.weight(1f)
+                                                )
+                                                Text(
+                                                    text = "(${backup.relativeTime})",
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    fontSize = 12.sp
+                                                )
+                                            }
                                         }
-                                        Text(
-                                            text = "${backup.statusIcon} ${backup.size} — ${backup.path} (${backup.relativeTime})",
-                                            color = statusColor
-                                        )
                                     }
                                 }
                             }
