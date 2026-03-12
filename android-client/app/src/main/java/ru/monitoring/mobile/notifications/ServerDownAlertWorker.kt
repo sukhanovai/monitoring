@@ -13,9 +13,9 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
-import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
-import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import java.util.concurrent.TimeUnit
@@ -29,12 +29,16 @@ class ServerDownAlertWorker(
     params: WorkerParameters
 ) : CoroutineWorker(appContext, params) {
 
-    override suspend fun doWork(): Result {
-        val prefs = AppPreferences(applicationContext)
-        val token = prefs.apiToken.trim()
-        if (token.isBlank()) return Result.success()
+    private val prefs = AppPreferences(appContext)
 
-        return runCatching {
+    override suspend fun doWork(): Result {
+        val token = prefs.apiToken.trim()
+        if (token.isBlank()) {
+            scheduleNext(applicationContext, enabled = false)
+            return Result.success()
+        }
+
+        val result = runCatching {
             val api = ApiFactory.createApi(
                 tokenProvider = { prefs.apiToken },
                 baseUrlProvider = { prefs.apiBaseUrl }
@@ -65,16 +69,30 @@ class ServerDownAlertWorker(
 
             val currentFingerprint = downServerNames.joinToString("|")
             val previousFingerprint = prefs.lastDownServersFingerprint
+            val previousDownServers = previousFingerprint
+                .split("|")
+                .map { it.trim() }
+                .filter { it.isNotBlank() }
+                .toSet()
             prefs.lastDownServersFingerprint = currentFingerprint
 
             val hasNewDownServers = downServerNames.isNotEmpty() && currentFingerprint != previousFingerprint
             if (hasNewDownServers) {
                 ensureNotificationChannel(applicationContext)
-                showNotification(applicationContext, downServerNames)
+                showDownNotification(applicationContext, downServerNames)
+            }
+
+            val recoveredServers = previousDownServers - downServerNames.toSet()
+            if (recoveredServers.isNotEmpty()) {
+                ensureNotificationChannel(applicationContext)
+                showRecoveryNotification(applicationContext, recoveredServers.sorted())
             }
 
             Result.success()
         }.getOrElse { Result.retry() }
+
+        scheduleNext(applicationContext, enabled = true)
+        return result
     }
 
     private fun resolveServerName(
@@ -124,7 +142,7 @@ class ServerDownAlertWorker(
         manager.createNotificationChannel(channel)
     }
 
-    private fun showNotification(context: Context, downServers: List<String>) {
+    private fun showDownNotification(context: Context, downServers: List<String>) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val granted = ContextCompat.checkSelfPermission(
                 context,
@@ -164,13 +182,64 @@ class ServerDownAlertWorker(
         NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
     }
 
+    private fun showRecoveryNotification(context: Context, recoveredServers: List<String>) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val granted = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!granted) return
+        }
+        if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return
+
+        val recoveredCount = recoveredServers.size
+        val title = if (recoveredCount == 1) "Сервер восстановлен" else "Серверы восстановлены"
+        val body = recoveredServers.joinToString(", ").ifBlank { "Сервер снова доступен" }
+
+        val openIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val pendingFlags = PendingIntent.FLAG_UPDATE_CURRENT or
+            (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0)
+        val contentIntent = PendingIntent.getActivity(
+            context,
+            RECOVERY_NOTIFICATION_ID,
+            openIntent,
+            pendingFlags
+        )
+
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setContentIntent(contentIntent)
+            .build()
+
+        NotificationManagerCompat.from(context).notify(RECOVERY_NOTIFICATION_ID, notification)
+    }
+
     companion object {
         private const val CHANNEL_ID = "server_down_alerts_channel"
         private const val NOTIFICATION_ID = 202021
+        private const val RECOVERY_NOTIFICATION_ID = 202022
         private const val UNIQUE_WORK_NAME = "server_down_alerts_work"
+        private const val CHECK_INTERVAL_MINUTES = 1L
         const val EXTRA_DOWN_SERVER_NAMES = "extra_down_server_names"
 
         fun schedule(context: Context, enabled: Boolean) {
+            val workManager = WorkManager.getInstance(context)
+            if (!enabled) {
+                workManager.cancelUniqueWork(UNIQUE_WORK_NAME)
+                return
+            }
+
+            scheduleNext(context, enabled = true)
+        }
+
+        private fun scheduleNext(context: Context, enabled: Boolean) {
             val workManager = WorkManager.getInstance(context)
             if (!enabled) {
                 workManager.cancelUniqueWork(UNIQUE_WORK_NAME)
@@ -181,13 +250,14 @@ class ServerDownAlertWorker(
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .build()
 
-            val request = PeriodicWorkRequestBuilder<ServerDownAlertWorker>(15, TimeUnit.MINUTES)
+            val request = OneTimeWorkRequestBuilder<ServerDownAlertWorker>()
+                .setInitialDelay(CHECK_INTERVAL_MINUTES, TimeUnit.MINUTES)
                 .setConstraints(constraints)
                 .build()
 
-            workManager.enqueueUniquePeriodicWork(
+            workManager.enqueueUniqueWork(
                 UNIQUE_WORK_NAME,
-                ExistingPeriodicWorkPolicy.UPDATE,
+                ExistingWorkPolicy.REPLACE,
                 request
             )
         }

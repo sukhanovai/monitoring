@@ -5,6 +5,19 @@ All notable changes to this project are documented in this file.
 
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
+
+## [8.24.0] - 2026-03-12
+
+### Fixed / Исправлено
+- EN: Improved Telegram alert fan-out for availability incidents: messages are now sent to all configured chats in parallel with retries, reducing inter-chat skew and preventing late delivery to part of chats.
+- RU: Улучшена рассылка Telegram-алертов при инцидентах доступности: сообщения теперь отправляются во все настроенные чаты параллельно с повторными попытками, что снижает рассинхрон и убирает позднюю доставку в часть чатов.
+- EN: Improved Android DOWN-alert polling cadence: background check moved from 15-minute periodic schedule to chained one-time checks (~1 minute) so unavailability/recovery signals arrive much closer to real time.
+- RU: Улучшена частота проверки DOWN-алертов в Android: фоновая проверка переведена с периодических 15 минут на цепочку одноразовых запусков (~1 минута), чтобы события недоступности/восстановления приходили заметно ближе к реальному времени.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.24.0`; Android `versionCode` bumped to `27`.
+- RU: Версия проекта повышена до `8.24.0`; Android `versionCode` увеличен до `27`.
+
 ## [8.23.4] - 2026-03-12
 
 ### Fixed / Исправлено

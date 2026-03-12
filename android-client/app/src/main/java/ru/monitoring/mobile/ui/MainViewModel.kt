@@ -49,7 +49,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.23.4"
+    private val projectVersion = "8.24.0"
     private val extensionMainMenuActions = setOf(
         "backup_hosts",
         "backup_databases",
