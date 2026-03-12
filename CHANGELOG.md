@@ -5,16 +5,19 @@ All notable changes to this project are documented in this file.
 
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
-## [8.23.2] - 2026-03-12
+## [8.23.4] - 2026-03-12
 
 ### Fixed / Исправлено
-- EN: Fixed Android morning/manual report action compatibility: when `send_morning_report` is rejected by older backend action mapping, the app now automatically retries with legacy action `morning_report`.
-- RU: Исправлена совместимость утреннего/ручного отчёта в Android: если `send_morning_report` отклоняется из-за старого маппинга действий на бэкенде, приложение автоматически повторяет запрос с legacy-действием `morning_report`.
+- EN: Fixed Android menu layout for "Proxmox backups": server choice buttons are now rendered inline in the main action list right below "💾 Бэкапы Proxmox" and push following menu items down instead of appearing in the top status card.
+- RU: Исправлен layout меню Android для «Бэкапы Proxmox»: кнопки выбора сервера теперь рендерятся прямо в основном списке действий сразу под «💾 Бэкапы Proxmox» и раздвигают пункты ниже, а не появляются в верхней карточке статуса.
+- EN: Fixed Android Proxmox server selection flow: tapping a server choice button now triggers the corresponding `backup_host_*` action and shows host backup details like in the Telegram bot flow.
+- RU: Исправлен сценарий выбора сервера Proxmox в Android: нажатие кнопки сервера теперь запускает соответствующее действие `backup_host_*` и показывает детали бэкапов хоста как в Telegram-боте.
 
 ### Changed / Изменено
-- EN: Project version bumped to `8.23.2`; Android `versionCode` bumped to `25`.
-- RU: Версия проекта повышена до `8.23.2`; Android `versionCode` увеличен до `25`.
-
+- EN: Added accent styling for expandable submenu buttons (server availability/resources and dynamic Proxmox host list) to visually distinguish buttons that appear when a menu section expands.
+- RU: Добавлена акцентная стилизация для кнопок раскрывающихся подменю (доступность/ресурсы серверов и динамический список хостов Proxmox), чтобы визуально выделить кнопки, которые появляются при расширении меню.
+- EN: Project version bumped to `8.23.4`; Android `versionCode` bumped to `26`.
+- RU: Версия проекта повышена до `8.23.4`; Android `versionCode` увеличен до `26`.
 ## [8.23.1] - 2026-03-11
 
 ### Fixed / Исправлено

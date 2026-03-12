@@ -19,9 +19,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -323,22 +325,6 @@ private fun MonitoringApp(
                         if (state.message.isNotBlank() && state.messageSource == "global") {
                             Text(state.message)
                         }
-                        if (state.extensionMenuOptions.isNotEmpty() && state.messageSource == "global") {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text("Выбор сервера", fontWeight = FontWeight.Bold)
-                            state.extensionMenuOptions.forEach { item ->
-                                val optionLabel = item.label?.trim().orEmpty()
-                                val optionAction = item.action?.trim().orEmpty()
-                                if (optionLabel.isNotBlank() && optionAction.isNotBlank()) {
-                                    Button(
-                                        onClick = { onAction(optionAction) },
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Text(optionLabel)
-                                    }
-                                }
-                            }
-                        }
                     }
                 }
             }
@@ -395,7 +381,11 @@ private fun MonitoringApp(
                             }
                             Button(
                                 onClick = { onCheckServerAvailability(server) },
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
                             ) {
                                 Text("${server.name} (${server.ip})")
                             }
@@ -426,9 +416,32 @@ private fun MonitoringApp(
                                 }
                                 Button(
                                     onClick = { onCheckServerResources(server) },
-                                    modifier = Modifier.fillMaxWidth()
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                                    )
                                 ) {
                                     Text("${server.name} (${server.ip})")
+                                }
+                            }
+                        }
+                        if (extensionButton.action == "backup_proxmox" && state.extensionMenuOptions.isNotEmpty()) {
+                            Text("Выбор сервера", fontWeight = FontWeight.Bold)
+                            state.extensionMenuOptions.forEach { item ->
+                                val optionLabel = item.label?.trim().orEmpty()
+                                val optionAction = item.action?.trim().orEmpty()
+                                if (optionLabel.isNotBlank() && optionAction.isNotBlank()) {
+                                    Button(
+                                        onClick = { onAction(optionAction) },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                                        )
+                                    ) {
+                                        Text(optionLabel)
+                                    }
                                 }
                             }
                         }
