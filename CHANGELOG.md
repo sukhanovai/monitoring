@@ -5,6 +5,15 @@ All notable changes to this project are documented in this file.
 
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
+## [8.23.2] - 2026-03-12
+
+### Fixed / Исправлено
+- EN: Fixed Android morning/manual report action compatibility: when `send_morning_report` is rejected by older backend action mapping, the app now automatically retries with legacy action `morning_report`.
+- RU: Исправлена совместимость утреннего/ручного отчёта в Android: если `send_morning_report` отклоняется из-за старого маппинга действий на бэкенде, приложение автоматически повторяет запрос с legacy-действием `morning_report`.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.23.2`; Android `versionCode` bumped to `25`.
+- RU: Версия проекта повышена до `8.23.2`; Android `versionCode` увеличен до `25`.
 
 ## [8.23.1] - 2026-03-11
 
