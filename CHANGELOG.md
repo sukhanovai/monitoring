@@ -6,7 +6,19 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.24.0] - 2026-03-12
+## [8.24.2] - 2026-03-12
+
+### Fixed / Исправлено
+- EN: Fixed Android "💾 Proxmox backups" toggle behavior: repeated tap now collapses/expands the server list instead of staying expanded forever.
+- RU: Исправлено поведение переключателя Android «💾 Бэкапы Proxmox»: повторное нажатие теперь сворачивает/разворачивает список серверов, а не оставляет его постоянно раскрытым.
+- EN: Fixed Android Proxmox server-choice buttons: fallback parsing now supports `action`, `callback_data`, and `callbackData`, so selecting a server reliably opens backup details like in Telegram bot flow.
+- RU: Исправлены кнопки выбора сервера Proxmox в Android: добавлен fallback-разбор полей `action`, `callback_data` и `callbackData`, поэтому выбор сервера стабильно открывает детали бэкапов как в Telegram-боте.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.24.2`; Android `versionCode` bumped to `28`.
+- RU: Версия проекта повышена до `8.24.2`; Android `versionCode` увеличен до `28`.
+
+## [8.24.1] - 2026-03-12
 
 ### Fixed / Исправлено
 - EN: Improved Telegram alert fan-out for availability incidents: messages are now sent to all configured chats in parallel with retries, reducing inter-chat skew and preventing late delivery to part of chats.
@@ -15,8 +27,8 @@ The project follows Semantic Versioning (SemVer).
 - RU: Улучшена частота проверки DOWN-алертов в Android: фоновая проверка переведена с периодических 15 минут на цепочку одноразовых запусков (~1 минута), чтобы события недоступности/восстановления приходили заметно ближе к реальному времени.
 
 ### Changed / Изменено
-- EN: Project version bumped to `8.24.0`; Android `versionCode` bumped to `27`.
-- RU: Версия проекта повышена до `8.24.0`; Android `versionCode` увеличен до `27`.
+- EN: Project version bumped to `8.24.1`; Android `versionCode` bumped to `27`.
+- RU: Версия проекта повышена до `8.24.1`; Android `versionCode` увеличен до `27`.
 
 ## [8.23.4] - 2026-03-12
 

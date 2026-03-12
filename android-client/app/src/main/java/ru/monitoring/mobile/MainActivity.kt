@@ -153,6 +153,7 @@ class MainActivity : ComponentActivity() {
                     onSaveServer = vm::saveServer,
                     onCheckServerAvailability = vm::refreshServerAvailability,
                     onCheckServerResources = vm::refreshServerResources,
+                    onToggleProxmoxBackupMenu = vm::toggleProxmoxBackupMenu,
                     onEditServer = vm::startServerEdit,
                     onCancelServerEdit = vm::cancelServerEdit,
                     onDeleteServer = vm::deleteServer,
@@ -256,6 +257,7 @@ private fun MonitoringApp(
     onSaveServer: () -> Unit,
     onCheckServerAvailability: (ManagedServer) -> Unit,
     onCheckServerResources: (ManagedServer) -> Unit,
+    onToggleProxmoxBackupMenu: () -> Unit,
     onEditServer: (ManagedServer) -> Unit,
     onCancelServerEdit: () -> Unit,
     onDeleteServer: (String) -> Unit,
@@ -394,10 +396,10 @@ private fun MonitoringApp(
                     extensionButtons.forEach { extensionButton ->
                         Button(
                             onClick = {
-                                if (extensionButton.action == "check_resources") {
-                                    showServerResourcesMenu = !showServerResourcesMenu
-                                } else {
-                                    onAction(extensionButton.action)
+                                when (extensionButton.action) {
+                                    "check_resources" -> showServerResourcesMenu = !showServerResourcesMenu
+                                    "backup_proxmox" -> onToggleProxmoxBackupMenu()
+                                    else -> onAction(extensionButton.action)
                                 }
                             },
                             modifier = Modifier.fillMaxWidth()
@@ -431,9 +433,17 @@ private fun MonitoringApp(
                             state.extensionMenuOptions.forEach { item ->
                                 val optionLabel = item.label?.trim().orEmpty()
                                 val optionAction = item.action?.trim().orEmpty()
-                                if (optionLabel.isNotBlank() && optionAction.isNotBlank()) {
+                                val callbackAction = item.callbackData?.trim().orEmpty()
+                                val callbackActionCamel = item.callbackDataCamel?.trim().orEmpty()
+                                val targetAction = when {
+                                    optionAction.isNotBlank() -> optionAction
+                                    callbackAction.isNotBlank() -> callbackAction
+                                    callbackActionCamel.isNotBlank() -> callbackActionCamel
+                                    else -> ""
+                                }
+                                if (optionLabel.isNotBlank() && targetAction.isNotBlank()) {
                                     Button(
-                                        onClick = { onAction(optionAction) },
+                                        onClick = { onAction(targetAction) },
                                         modifier = Modifier.fillMaxWidth(),
                                         colors = ButtonDefaults.buttonColors(
                                             containerColor = MaterialTheme.colorScheme.tertiaryContainer,
