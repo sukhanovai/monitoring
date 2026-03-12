@@ -49,7 +49,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.24.2"
+    private val projectVersion = "8.24.3"
     private val extensionMainMenuActions = setOf(
         "backup_hosts",
         "backup_databases",
@@ -58,6 +58,7 @@ class MainViewModel(
         "supplier_stock_reports",
         "zfs_menu"
     )
+    private val extensionControlActions = extensionMainMenuActions + "backup_proxmox"
     private val morningReportActions = listOf("send_morning_report", "morning_report")
 
     private fun currentApi() = ApiFactory.createApi(
@@ -645,7 +646,7 @@ class MainViewModel(
         viewModelScope.launch {
             state = state.copy(isLoading = true)
             runCatching {
-                    if (action == "backup_proxmox" || action.startsWith("backup_host_")) {
+                    if (action in extensionControlActions || action.startsWith("backup_host_")) {
                         currentApi().runControlAction(ControlActionRequest(action)).message
                     } else {
                         currentApi().runExtensionsAction(ExtensionsActionRequest(action)).message
@@ -681,7 +682,7 @@ class MainViewModel(
         if (action in extensionMainMenuActions || action == "backup_proxmox" || action.startsWith("backup_host_")) {
             viewModelScope.launch {
                 state = state.copy(isLoading = true)
-                if (action == "backup_proxmox" || action.startsWith("backup_host_")) {
+                if (action in extensionControlActions || action.startsWith("backup_host_")) {
                     runCatching { currentApi().runControlAction(ControlActionRequest(action)) }
                         .onSuccess { response ->
                             state = state.copy(

@@ -6,17 +6,15 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.24.2] - 2026-03-12
+## [8.24.3] - 2026-03-12
 
 ### Fixed / Исправлено
-- EN: Fixed Android "💾 Proxmox backups" toggle behavior: repeated tap now collapses/expands the server list instead of staying expanded forever.
-- RU: Исправлено поведение переключателя Android «💾 Бэкапы Proxmox»: повторное нажатие теперь сворачивает/разворачивает список серверов, а не оставляет его постоянно раскрытым.
-- EN: Fixed Android Proxmox server-choice buttons: fallback parsing now supports `action`, `callback_data`, and `callbackData`, so selecting a server reliably opens backup details like in Telegram bot flow.
-- RU: Исправлены кнопки выбора сервера Proxmox в Android: добавлен fallback-разбор полей `action`, `callback_data` и `callbackData`, поэтому выбор сервера стабильно открывает детали бэкапов как в Telegram-боте.
+- EN: Fixed Android Proxmox backup flow: server selection actions (`backup_hosts`, `backup_host_*`) now always go through control actions API, so tapping a server reliably opens backup details as in the Telegram bot.
+- RU: Исправлен сценарий Proxmox-бэкапов в Android: действия выбора сервера (`backup_hosts`, `backup_host_*`) теперь всегда идут через API команд управления, поэтому нажатие по серверу стабильно открывает детали бэкапов как в Telegram-боте.
 
 ### Changed / Изменено
-- EN: Project version bumped to `8.24.2`; Android `versionCode` bumped to `28`.
-- RU: Версия проекта повышена до `8.24.2`; Android `versionCode` увеличен до `28`.
+- EN: Project version bumped to `8.24.3`; Android `versionCode` bumped to `29`.
+- RU: Версия проекта повышена до `8.24.3`; Android `versionCode` увеличен до `29`.
 
 ## [8.24.1] - 2026-03-12
 
