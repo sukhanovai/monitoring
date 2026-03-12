@@ -49,7 +49,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.24.0"
+    private val projectVersion = "8.24.2"
     private val extensionMainMenuActions = setOf(
         "backup_hosts",
         "backup_databases",
@@ -604,6 +604,19 @@ class MainViewModel(
                     )
                 }
         }
+    }
+
+
+    fun toggleProxmoxBackupMenu() {
+        if (state.extensionMenuOptions.isNotEmpty()) {
+            state = state.copy(
+                extensionMenuOptions = emptyList(),
+                message = "Список серверов Proxmox скрыт",
+                messageSource = "global"
+            )
+            return
+        }
+        sendAction("backup_proxmox")
     }
 
     fun toggleExtension(id: String, enabled: Boolean) {
