@@ -6,6 +6,18 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.24.5] - 2026-03-12
+
+### Fixed / Исправлено
+- EN: Extended Android backup menu behavior for "Database backups" to match the Proxmox flow: tapping "🗃️ Бэкапы БД" now toggles a dynamic submenu and keeps database-choice buttons bound to the database backup context.
+- RU: Расширено поведение Android-меню бэкапов для «Бэкапы БД» по аналогии с Proxmox: нажатие «🗃️ Бэкапы БД» теперь переключает динамическое подменю, а кнопки выбора баз привязаны к контексту бэкапов БД.
+- EN: Extended mobile control API backup actions: `backup_databases` now returns database menu options, and `db_detail_*` actions are handled directly with detailed backup status output.
+- RU: Расширены backup-действия mobile control API: `backup_databases` теперь возвращает пункты меню баз, а действия `db_detail_*` обрабатываются напрямую с выводом детального статуса бэкапов.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.24.5`; Android `versionCode` bumped to `31`.
+- RU: Версия проекта повышена до `8.24.5`; Android `versionCode` увеличен до `31`.
+
 ## [8.24.4] - 2026-03-12
 
 ### Fixed / Исправлено

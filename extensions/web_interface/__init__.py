@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.24.4
+Server Monitoring System v8.24.5
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.24.4
+Версия: 8.24.5
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1508,7 +1508,7 @@ def _execute_mobile_control_action(action: str):
         "zfs_menu",
     }
 
-    if action in menu_actions or action.startswith("backup_host_"):
+    if action in menu_actions or action.startswith("backup_host_") or action.startswith("db_detail_"):
         from extensions.extension_manager import extension_manager
 
         extension_requirements = {
@@ -1520,6 +1520,8 @@ def _execute_mobile_control_action(action: str):
         }
 
         extension_requirement = extension_requirements.get(action)
+        if extension_requirement is None and action.startswith("db_detail_"):
+            extension_requirement = ("database_backup_monitor", "🗃️ Мониторинг бэкапов БД отключён")
         if extension_requirement is not None:
             extension_id, disabled_message = extension_requirement
             if not extension_manager.is_extension_enabled(extension_id):
@@ -1583,15 +1585,63 @@ def _execute_mobile_control_action(action: str):
             stats = backup_bot.get_database_backups_stats_fixed(24)
             if not stats:
                 return True, "🗃️ Бэкапы БД\n\nДанные по базам пока отсутствуют.", "accepted", None
-            unique_dbs = {(row[0], row[1]) for row in stats if len(row) >= 2}
+            unique_dbs = sorted(
+                {
+                    (str(row[0]), str(row[1]))
+                    for row in stats
+                    if len(row) >= 2 and row[0] and row[1]
+                },
+                key=lambda item: (item[0], item[1])
+            )
             problem_dbs = sum(1 for backup_type, db_name in unique_dbs if backup_bot.get_database_display_status(backup_type, db_name) != "success")
             ok_dbs = len(unique_dbs) - problem_dbs
+            menu_options = [
+                {
+                    "label": f"🗃️ {db_name} ({backup_type})",
+                    "action": f"db_detail_{backup_type}__{db_name}",
+                }
+                for backup_type, db_name in unique_dbs
+            ]
             return True, (
                 "🗃️ Бэкапы БД\n\n"
                 f"Баз в отчёте: {len(unique_dbs)}\n"
                 f"✅ Без проблем: {ok_dbs}\n"
                 f"🚨 Проблемных: {problem_dbs}"
-            ), "accepted", None
+            ), "accepted", menu_options
+
+        if action.startswith("db_detail_"):
+            payload = action.replace("db_detail_", "", 1)
+            if "__" not in payload:
+                return False, "Неверный формат действия базы данных", "failed", None
+            backup_type, db_name = payload.split("__", 1)
+            backup_type = backup_type.strip()
+            db_name = db_name.strip()
+            if not backup_type or not db_name:
+                return False, "Не указан тип или имя базы", "failed", None
+
+            details = backup_bot.get_database_details(backup_type, db_name)
+            if not details:
+                return True, f"🗃️ {db_name} ({backup_type})\n\nДанные по базе отсутствуют.", "accepted", None
+
+            status = backup_bot.get_database_display_status(backup_type, db_name)
+            status_icon = "✅" if status == "success" else "🚨"
+            lines = [
+                f"🗃️ {db_name} ({backup_type})",
+                "",
+                f"Текущий статус: {status_icon} {status}",
+                "",
+                "Последние 10 бэкапов:",
+            ]
+            for row in details:
+                backup_status = str(row[0]).lower() if len(row) > 0 else "unknown"
+                task_type = row[1] if len(row) > 1 else "-"
+                error_count = row[2] if len(row) > 2 else 0
+                received_at = row[4] if len(row) > 4 else "-"
+                icon = "✅" if backup_status == "success" else "🚨"
+                error_text = f" • errors: {error_count}" if error_count not in (None, "", 0, "0") else ""
+                lines.append(f"{icon} {received_at} • {backup_status} • {task_type}{error_text}")
+
+            return True, "\n".join(lines), "accepted", None
 
         if action == "backup_mail":
             mail_backups = backup_bot.get_mail_backups(hours=72, limit=20)

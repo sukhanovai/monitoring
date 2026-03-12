@@ -49,7 +49,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.24.4"
+    private val projectVersion = "8.24.5"
     private val extensionMainMenuActions = setOf(
         "backup_hosts",
         "backup_databases",
@@ -609,15 +609,29 @@ class MainViewModel(
 
 
     fun toggleProxmoxBackupMenu() {
-        if (state.extensionMenuOptions.isNotEmpty()) {
+        if (state.extensionMenuAction == "backup_proxmox" && state.extensionMenuOptions.isNotEmpty()) {
             state = state.copy(
                 extensionMenuOptions = emptyList(),
+                extensionMenuAction = "",
                 message = "Список серверов Proxmox скрыт",
                 messageSource = "global"
             )
             return
         }
         sendAction("backup_proxmox")
+    }
+
+    fun toggleDatabaseBackupMenu() {
+        if (state.extensionMenuAction == "backup_databases" && state.extensionMenuOptions.isNotEmpty()) {
+            state = state.copy(
+                extensionMenuOptions = emptyList(),
+                extensionMenuAction = "",
+                message = "Меню бэкапов БД скрыто",
+                messageSource = "global"
+            )
+            return
+        }
+        sendAction("backup_databases")
     }
 
     fun toggleExtension(id: String, enabled: Boolean) {
@@ -689,7 +703,8 @@ class MainViewModel(
                                 isLoading = false,
                                 message = response.message ?: "Команда отправлена",
                                 messageSource = "global",
-                                extensionMenuOptions = response.menuOptions.orEmpty()
+                                extensionMenuOptions = response.menuOptions.orEmpty(),
+                                extensionMenuAction = if (response.menuOptions.isNullOrEmpty()) "" else action
                             )
                         }
                         .onFailure { error ->
@@ -702,7 +717,8 @@ class MainViewModel(
                                 isLoading = false,
                                 message = userMessage,
                                 messageSource = "global",
-                                extensionMenuOptions = emptyList()
+                                extensionMenuOptions = emptyList(),
+                                extensionMenuAction = ""
                             )
                         }
                 } else {
@@ -712,7 +728,8 @@ class MainViewModel(
                                 isLoading = false,
                                 message = response.message ?: "Команда отправлена",
                                 messageSource = "global",
-                                extensionMenuOptions = emptyList()
+                                extensionMenuOptions = emptyList(),
+                                extensionMenuAction = ""
                             )
                             refreshSettingsFromServer(showErrors = false)
                         }
@@ -726,7 +743,8 @@ class MainViewModel(
                                 isLoading = false,
                                 message = userMessage,
                                 messageSource = "global",
-                                extensionMenuOptions = emptyList()
+                                extensionMenuOptions = emptyList(),
+                                extensionMenuAction = ""
                             )
                         }
                 }
@@ -752,7 +770,8 @@ class MainViewModel(
                         isLoading = false,
                         message = actionMessage,
                         messageSource = if (action == "send_morning_report") "morning_report" else "global",
-                        extensionMenuOptions = emptyList()
+                        extensionMenuOptions = emptyList(),
+                                extensionMenuAction = ""
                     )
                     refreshSettingsFromServer(showErrors = false)
                 }
@@ -766,7 +785,8 @@ class MainViewModel(
                         isLoading = false,
                         message = userMessage,
                         messageSource = if (action == "send_morning_report") "morning_report" else "global",
-                        extensionMenuOptions = emptyList()
+                        extensionMenuOptions = emptyList(),
+                                extensionMenuAction = ""
                     )
                 }
         }
@@ -1273,6 +1293,7 @@ data class MainUiState(
     val isLoading: Boolean = false,
     val summaryText: String = "Статус не запрошен",
     val extensionMenuOptions: List<MenuOption> = emptyList(),
+    val extensionMenuAction: String = "",
     val servers: List<ServerAvailability> = emptyList(),
     val message: String = "",
     val messageSource: String = "global",
