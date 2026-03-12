@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_utils.py
-Server Monitoring System v8.24.5
+Server Monitoring System v8.25.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Utilities for working with backups
 Система мониторинга серверов
-Версия: 8.24.5
+Версия: 8.25.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Утилиты для работы с бэкапами

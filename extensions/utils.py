@@ -1,11 +1,11 @@
 """
 /extensions/utils.py
-Server Monitoring System v8.24.5
+Server Monitoring System v8.25.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Temporary shim module for compatibility.
 Система мониторинга серверов
-Версия: 8.24.5
+Версия: 8.25.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Временный shim-модуль для совместимости.

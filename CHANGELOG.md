@@ -6,17 +6,17 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.24.5] - 2026-03-12
+## [8.25.0] - 2026-03-12
 
 ### Fixed / Исправлено
-- EN: Extended Android backup menu behavior for "Database backups" to match the Proxmox flow: tapping "🗃️ Бэкапы БД" now toggles a dynamic submenu and keeps database-choice buttons bound to the database backup context.
-- RU: Расширено поведение Android-меню бэкапов для «Бэкапы БД» по аналогии с Proxmox: нажатие «🗃️ Бэкапы БД» теперь переключает динамическое подменю, а кнопки выбора баз привязаны к контексту бэкапов БД.
-- EN: Extended mobile control API backup actions: `backup_databases` now returns database menu options, and `db_detail_*` actions are handled directly with detailed backup status output.
-- RU: Расширены backup-действия mobile control API: `backup_databases` теперь возвращает пункты меню баз, а действия `db_detail_*` обрабатываются напрямую с выводом детального статуса бэкапов.
+- EN: Added Android submenu toggle behavior for "📬 Mail backups" by analogy with Proxmox and databases: tap now expands/collapses dynamic options and keeps the backup context for selected mailbox actions.
+- RU: Добавлено Android-поведение переключения подменю для «📬 Бэкапы почты» по аналогии с Proxmox и БД: нажатие теперь раскрывает/скрывает динамические пункты и сохраняет контекст бэкапов почты для действий выбора ящика.
+- EN: Unified Android dynamic backup menus: Proxmox, database, and mail backup sections now work through the same expandable flow from the main menu buttons.
+- RU: Унифицированы динамические меню бэкапов в Android: разделы Proxmox, БД и почты теперь работают через единый раскрывающийся сценарий от кнопок главного меню.
 
 ### Changed / Изменено
-- EN: Project version bumped to `8.24.5`; Android `versionCode` bumped to `31`.
-- RU: Версия проекта повышена до `8.24.5`; Android `versionCode` увеличен до `31`.
+- EN: Project version bumped to `8.25.0`; Android `versionCode` bumped to `32`.
+- RU: Версия проекта повышена до `8.25.0`; Android `versionCode` увеличен до `32`.
 
 ## [8.24.4] - 2026-03-12
 

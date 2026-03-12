@@ -49,7 +49,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.24.5"
+    private val projectVersion = "8.25.0"
     private val extensionMainMenuActions = setOf(
         "backup_hosts",
         "backup_databases",
@@ -632,6 +632,19 @@ class MainViewModel(
             return
         }
         sendAction("backup_databases")
+    }
+
+    fun toggleMailBackupMenu() {
+        if (state.extensionMenuAction == "backup_mail" && state.extensionMenuOptions.isNotEmpty()) {
+            state = state.copy(
+                extensionMenuOptions = emptyList(),
+                extensionMenuAction = "",
+                message = "Меню бэкапов почты скрыто",
+                messageSource = "global"
+            )
+            return
+        }
+        sendAction("backup_mail")
     }
 
     fun toggleExtension(id: String, enabled: Boolean) {
