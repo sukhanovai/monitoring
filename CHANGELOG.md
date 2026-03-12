@@ -6,15 +6,15 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.24.3] - 2026-03-12
+## [8.24.4] - 2026-03-12
 
 ### Fixed / Исправлено
-- EN: Fixed Android Proxmox backup flow: server selection actions (`backup_hosts`, `backup_host_*`) now always go through control actions API, so tapping a server reliably opens backup details as in the Telegram bot.
-- RU: Исправлен сценарий Proxmox-бэкапов в Android: действия выбора сервера (`backup_hosts`, `backup_host_*`) теперь всегда идут через API команд управления, поэтому нажатие по серверу стабильно открывает детали бэкапов как в Telegram-боте.
+- EN: Fixed Proxmox host selection in mobile control API: `backup_host_*` actions are now processed as valid backup menu actions, so Android server-choice buttons return host backup details instead of `400 INVALID_ACTION`.
+- RU: Исправлен выбор Proxmox-хоста в mobile control API: действия `backup_host_*` теперь обрабатываются как валидные backup-команды меню, поэтому кнопки выбора сервера в Android возвращают детали бэкапов хоста вместо `400 INVALID_ACTION`.
 
 ### Changed / Изменено
-- EN: Project version bumped to `8.24.3`; Android `versionCode` bumped to `29`.
-- RU: Версия проекта повышена до `8.24.3`; Android `versionCode` увеличен до `29`.
+- EN: Project version bumped to `8.24.4`; Android `versionCode` bumped to `30`.
+- RU: Версия проекта повышена до `8.24.4`; Android `versionCode` увеличен до `30`.
 
 ## [8.24.1] - 2026-03-12
 
