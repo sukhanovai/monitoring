@@ -1,11 +1,11 @@
 """
 /extensions/supplier_stock_files.py
-Server Monitoring System v8.30.6
+Server Monitoring System v8.30.7
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Supplier stock files downloader
 Система мониторинга серверов
-Версия: 8.30.6
+Версия: 8.30.7
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Получение файлов остатков поставщиков
@@ -14,6 +14,7 @@ Supplier stock files downloader
 from __future__ import annotations
 
 import base64
+import http.client
 import csv
 import ftplib
 import json
@@ -449,16 +450,61 @@ def _download_http(
     if read_chunk_size <= 0:
         read_chunk_size = 1024 * 1024
 
+    source_id = source.get("id") or source.get("name") or "unknown"
+    try:
+        response_length = response.headers.get("Content-Length")
+    except Exception:
+        response_length = None
+    _monitor_logger.info(
+        "📦 Остатки поставщиков HTTP ответ (%s): status=%s, content_length=%s, chunk_size=%s, url=%s",
+        source_id,
+        getattr(response, "status", "unknown"),
+        response_length,
+        read_chunk_size,
+        url,
+    )
+
     try:
         _ensure_parent(output_path)
+        response_headers = {}
+        try:
+            response_headers = dict(response.getheaders())
+        except Exception:
+            response_headers = {}
+
         with response:
             data_chunks: list[bytes] = []
+            bytes_read = 0
+            chunk_count = 0
             while True:
-                chunk = response.read(read_chunk_size)
+                try:
+                    chunk = response.read(read_chunk_size)
+                except http.client.IncompleteRead as exc:
+                    partial_size = len(exc.partial or b"")
+                    bytes_read += partial_size
+                    if partial_size:
+                        data_chunks.append(exc.partial)
+                    content_length = response_headers.get("Content-Length")
+                    error_text = (
+                        f"IncompleteRead: bytes_read={bytes_read}, partial={partial_size}, "
+                        f"expected_more={exc.expected}, content_length={content_length}, "
+                        f"chunk_count={chunk_count}"
+                    )
+                    _monitor_logger.error(
+                        "📦 Остатки поставщиков HTTP read error (%s): %s",
+                        source.get("id") or source.get("name") or "unknown",
+                        error_text,
+                    )
+                    return {"success": False, "error": error_text}
+
                 if not chunk:
                     break
                 data_chunks.append(chunk)
+                bytes_read += len(chunk)
+                chunk_count += 1
+
             data = b"".join(data_chunks)
+
         include_headers = bool(source.get("include_headers"))
         append_mode = bool(source.get("append"))
         if include_headers:
@@ -471,6 +517,13 @@ def _download_http(
         write_mode = "ab" if append_mode else "wb"
         with output_path.open(write_mode) as file:
             file.write(data)
+        _monitor_logger.info(
+            "📦 Остатки поставщиков HTTP download ok (%s): bytes=%s, chunks=%s, output=%s",
+            source_id,
+            len(data),
+            chunk_count if 'chunk_count' in locals() else 0,
+            output_path,
+        )
         return {
             "success": True,
             "bytes": output_path.stat().st_size,

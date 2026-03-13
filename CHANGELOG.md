@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.30.7] - 2026-03-13
+
+### Fixed / Исправлено
+- EN: Extended supplier stock download diagnostics for HTTP sources: added response metadata logging (`status`, `Content-Length`, `chunk_size`, `url`) and detailed `IncompleteRead` context (`bytes_read`, `partial`, `expected_more`, `chunk_count`) to speed up root-cause analysis of intermittent truncation.
+- RU: Расширена диагностика загрузки остатков поставщиков по HTTP: добавлено логирование метаданных ответа (`status`, `Content-Length`, `chunk_size`, `url`) и подробного контекста `IncompleteRead` (`bytes_read`, `partial`, `expected_more`, `chunk_count`) для ускорения поиска причины периодических обрывов.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.30.7`; Android `versionCode` bumped to `43`.
+- RU: Версия проекта повышена до `8.30.7`; Android `versionCode` увеличен до `43`.
+
 ## [8.30.6] - 2026-03-13
 
 ### Fixed / Исправлено
