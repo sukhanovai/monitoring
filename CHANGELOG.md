@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.30.6] - 2026-03-13
+
+### Fixed / Исправлено
+- EN: Fixed supplier stock HTTP download stability for large files: response body is now read in chunks instead of a single large read, reducing `IncompleteRead(...)` failures on unstable/proxied connections.
+- RU: Исправлена стабильность HTTP-загрузки остатков поставщиков для больших файлов: тело ответа теперь читается чанками вместо одного большого чтения, что снижает количество сбоев `IncompleteRead(...)` на нестабильных/проксированных соединениях.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.30.6`; Android `versionCode` bumped to `42`.
+- RU: Версия проекта повышена до `8.30.6`; Android `versionCode` увеличен до `42`.
+
 ## [8.30.5] - 2026-03-13
 
 ### Fixed / Исправлено
