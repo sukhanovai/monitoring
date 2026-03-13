@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.30.2
+Server Monitoring System v8.30.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.30.2
+Версия: 8.30.3
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1505,6 +1505,7 @@ def _execute_mobile_control_action(action: str):
         "backup_mail",
         "backup_stock_loads",
         "supplier_stock_reports",
+        "zfs",
         "zfs_menu",
     }
 
@@ -1516,6 +1517,7 @@ def _execute_mobile_control_action(action: str):
             "backup_databases": ("database_backup_monitor", "🗃️ Мониторинг бэкапов БД отключён"),
             "backup_mail": ("mail_backup_monitor", "📬 Мониторинг бэкапов почты отключён"),
             "backup_stock_loads": ("stock_load_monitor", "📦 Мониторинг остатков 1С отключён"),
+            "zfs": ("zfs_monitor", "🧊 Мониторинг ZFS отключён"),
             "zfs_menu": ("zfs_monitor", "🧊 Мониторинг ZFS отключён"),
         }
 
@@ -1535,6 +1537,9 @@ def _execute_mobile_control_action(action: str):
 
         if action == "backup_proxmox":
             action = "backup_hosts"
+
+        if action == "zfs":
+            action = "zfs_menu"
 
         if action == "backup_hosts":
             hosts = backup_bot.get_all_hosts()
@@ -1671,7 +1676,7 @@ def _execute_mobile_control_action(action: str):
             return True, "\n".join(lines), "accepted", None
 
         if action == "zfs_menu":
-            from config.settings import settings_manager
+            from core.config_manager import config_manager as settings_manager
 
             zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
             if not isinstance(zfs_servers, dict):
