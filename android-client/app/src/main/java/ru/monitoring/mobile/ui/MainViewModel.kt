@@ -49,7 +49,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.30.3"
+    private val projectVersion = "8.30.4"
     private val mailBackupHistoryRegex = Regex(
         pattern = """^([✅✔❌⚠️🚨])\s*(.+?)\s*[—-]\s*(.+?)\s*\(([^()]+)\)\s*$"""
     )
@@ -61,7 +61,7 @@ class MainViewModel(
         "supplier_stock_reports",
         "zfs_menu"
     )
-    private val extensionControlActions = extensionMainMenuActions + "backup_proxmox"
+    private val extensionControlActions = setOf("backup_proxmox")
     private val morningReportActions = listOf("send_morning_report", "morning_report")
 
     private fun currentApi() = ApiFactory.createApi(
