@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.30.0
+Server Monitoring System v8.30.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.30.0
+Версия: 8.30.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1671,64 +1671,25 @@ def _execute_mobile_control_action(action: str):
             return True, "\n".join(lines), "accepted", None
 
         if action == "zfs_menu":
-            try:
-                from extensions.backup_monitor.db_settings_backup_monitor import BACKUP_DATABASE_CONFIG
-                from config.settings import settings_manager
-                import sqlite3
+            from config.settings import settings_manager
 
-                zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
-                if not isinstance(zfs_servers, dict):
-                    zfs_servers = {}
-                allowed_servers = {
-                    name
-                    for name, server_value in zfs_servers.items()
-                    if not isinstance(server_value, dict) or server_value.get('enabled', True)
-                }
+            zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
+            if not isinstance(zfs_servers, dict):
+                zfs_servers = {}
 
-                db_path = BACKUP_DATABASE_CONFIG.get('backups_db')
-                if not db_path:
-                    return True, "🧊 ZFS\n\nБаза бэкапов не настроена.", "accepted", None
-
-                conn = sqlite3.connect(str(db_path))
-                cursor = conn.cursor()
-                cursor.execute(
-                    """
-                    SELECT s.server_name, s.pool_name, s.pool_state, s.received_at
-                    FROM zfs_pool_status s
-                    JOIN (
-                        SELECT server_name, pool_name, MAX(received_at) AS last_seen
-                        FROM zfs_pool_status
-                        GROUP BY server_name, pool_name
-                    ) latest
-                    ON s.server_name = latest.server_name
-                    AND s.pool_name = latest.pool_name
-                    AND s.received_at = latest.last_seen
-                    ORDER BY s.server_name, s.pool_name
-                    """
-                )
-                rows = cursor.fetchall()
-                conn.close()
-            except Exception as exc:
-                if "no such table: zfs_pool_status" in str(exc):
-                    return True, "🧊 ZFS\n\nТаблица ZFS ещё не создана.", "accepted", None
-                rows = []
-
-            if allowed_servers:
-                rows = [row for row in rows if row[0] in allowed_servers]
+            lines = ["📋 ZFS серверы", ""]
+            if not zfs_servers:
+                lines.append("❌ Серверы не настроены.")
             else:
-                rows = []
+                for server_name in sorted(zfs_servers.keys()):
+                    server_value = zfs_servers.get(server_name, {})
+                    enabled = True
+                    if isinstance(server_value, dict):
+                        enabled = bool(server_value.get('enabled', True))
+                    status_icon = "🟢" if enabled else "🔴"
+                    lines.append(f"{status_icon} {server_name}")
 
-            if not rows:
-                return True, "🧊 ZFS\n\nДанные ZFS пока отсутствуют.", "accepted", None
-
-            problem_pools = sum(1 for _, _, pool_state, _ in rows if str(pool_state).lower() not in {"online", "healthy"})
-            ok_pools = len(rows) - problem_pools
-            return True, (
-                "🧊 ZFS\n\n"
-                f"Пулов в отчёте: {len(rows)}\n"
-                f"✅ ONLINE/HEALTHY: {ok_pools}\n"
-                f"🚨 Проблемных: {problem_pools}"
-             ), "accepted", None
+            return True, "\n".join(lines), "accepted", None
 
         return True, "Команда принята", "accepted", None
 
