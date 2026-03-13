@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.30.4] - 2026-03-13
+
+### Fixed / Исправлено
+- EN: Improved Android `🧊 ZFS` button output by routing `zfs_menu` through extensions actions API, so the response matches Telegram bot detail level with per-server pool statuses.
+- RU: Улучшен вывод кнопки `🧊 ZFS` в Android: `zfs_menu` теперь отправляется через API действий расширений, поэтому ответ соответствует уровню детализации Telegram-бота с пулами по каждому серверу.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.30.4`; Android `versionCode` bumped to `40`.
+- RU: Версия проекта повышена до `8.30.4`; Android `versionCode` увеличен до `40`.
+
 ## [8.30.3] - 2026-03-13
 
 ### Fixed / Исправлено
