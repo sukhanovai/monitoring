@@ -49,7 +49,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.30.9"
+    private val projectVersion = "8.31.0"
     private val mailBackupHistoryRegex = Regex(
         pattern = """^([✅✔❌⚠️🚨])\s*(.+?)\s*[—-]\s*(.+?)\s*\(([^()]+)\)\s*$"""
     )
@@ -111,8 +111,51 @@ class MainViewModel(
 
         if (token.isNotBlank()) {
             refreshSettingsFromServer(showErrors = false)
+            checkMobileVersion()
         }
         rescheduleBackgroundWorkers()
+    }
+
+    fun checkMobileVersion() {
+        val token = normalizeToken(state.token.ifBlank { preferences.apiToken })
+        if (token.isBlank()) return
+
+        viewModelScope.launch {
+            runCatching {
+                currentApi().getMobileVersionInfo(projectVersion)
+            }.onSuccess { response ->
+                val minVersion = response.minSupportedVersion.orEmpty()
+                val latestVersion = response.latestVersion.orEmpty()
+                val updateUrl = response.apkDownloadUrl.orEmpty()
+                val updateRequiredByApi = response.updateRequired == true
+                val updateRequiredBySemver = isVersionOlder(projectVersion, minVersion)
+                val needUpdate = updateRequiredByApi || updateRequiredBySemver
+
+                state = state.copy(
+                    minSupportedVersion = minVersion,
+                    latestVersion = latestVersion,
+                    apkDownloadUrl = updateUrl,
+                    isUpdateRequired = needUpdate,
+                    updateMessage = if (needUpdate) {
+                        "Требуется обновление приложения до версии $latestVersion"
+                    } else {
+                        ""
+                    }
+                )
+            }
+        }
+    }
+
+    private fun isVersionOlder(current: String, required: String): Boolean {
+        fun parse(value: String): List<Int>? {
+            val parts = value.trim().split('.')
+            if (parts.size != 3) return null
+            return parts.map { it.toIntOrNull() ?: return null }
+        }
+
+        val c = parse(current) ?: return false
+        val r = parse(required) ?: return false
+        return c[0] < r[0] || (c[0] == r[0] && (c[1] < r[1] || (c[1] == r[1] && c[2] < r[2])))
     }
 
     fun saveToken(token: String) {
@@ -148,6 +191,7 @@ class MainViewModel(
 
             if (finalToken.isNotBlank()) {
                 refreshSettingsFromServer(showErrors = false)
+                checkMobileVersion()
             }
             rescheduleBackgroundWorkers()
         }
@@ -1425,6 +1469,11 @@ data class MainUiState(
     val morningReportReceivedAt: String = "",
     val morningReportUnread: Boolean = false,
     val projectVersion: String = "",
+    val isUpdateRequired: Boolean = false,
+    val minSupportedVersion: String = "",
+    val latestVersion: String = "",
+    val apkDownloadUrl: String = "",
+    val updateMessage: String = "",
     val monitoringStatusText: String = "Неизвестно",
     val silentStatusText: String = "Неизвестно"
 )

@@ -6,17 +6,21 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.30.9] - 2026-03-13
+## [8.31.0] - 2026-03-13
 
 ### Fixed / Исправлено
 - EN: Expanded Android `🧊 ZFS` response to match Telegram detail level: now it returns per-server/per-pool latest states with timestamps from `zfs_pool_status` instead of showing only configured server names.
 - RU: Расширен ответ Android по кнопке `🧊 ZFS` до уровня Telegram: теперь возвращаются последние статусы по каждому серверу и пулу с временем из `zfs_pool_status`, а не только список настроенных серверов.
 - EN: Added explicit mobile-side handling for missing ZFS data sources (`backups_db` not configured, missing `zfs_pool_status` table, empty dataset) with clear user-facing messages.
 - RU: Добавлена явная обработка отсутствующих источников ZFS-данных на mobile API (`backups_db` не настроена, нет таблицы `zfs_pool_status`, пустой набор данных) с понятными сообщениями пользователю.
+- EN: Added startup Android version gate: app calls `GET /v1/mobile/version?current_version=...`, blocks main functionality on mismatch, and shows a forced update CTA with APK link.
+- RU: Добавлен version-gate для Android при старте: приложение вызывает `GET /v1/mobile/version?current_version=...`, блокирует основной функционал при расхождении версий и показывает обязательное обновление с ссылкой на APK.
+- EN: Added BFF endpoint `GET /v1/mobile/version` (and `/api/v1/mobile/version`) with token auth and SemVer-aware update requirement calculation.
+- RU: Добавлен BFF endpoint `GET /v1/mobile/version` (и `/api/v1/mobile/version`) с token-auth и расчётом необходимости обновления по SemVer.
 
 ### Changed / Изменено
-- EN: Project version bumped to `8.30.9`; Android `versionCode` bumped to `45`.
-- RU: Версия проекта повышена до `8.30.9`; Android `versionCode` увеличен до `45`.
+- EN: Project version bumped to `8.31.0`; Android `versionCode` bumped to `46`.
+- RU: Версия проекта повышена до `8.31.0`; Android `versionCode` увеличен до `46`.
 
 ## [8.30.7] - 2026-03-13
 
