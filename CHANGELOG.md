@@ -6,15 +6,17 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.30.8] - 2026-03-13
+## [8.30.9] - 2026-03-13
 
 ### Fixed / Исправлено
-- EN: Fixed Android `🧊 ZFS` button routing: ZFS actions are now sent to `/v1/control/actions` (control API), eliminating `400 INVALID_ACTION` from `/v1/settings/extensions/actions`.
-- RU: Исправлена маршрутизация кнопки `🧊 ZFS` в Android: действия ZFS теперь отправляются в `/v1/control/actions` (control API), что убирает `400 INVALID_ACTION` от `/v1/settings/extensions/actions`.
+- EN: Expanded Android `🧊 ZFS` response to match Telegram detail level: now it returns per-server/per-pool latest states with timestamps from `zfs_pool_status` instead of showing only configured server names.
+- RU: Расширен ответ Android по кнопке `🧊 ZFS` до уровня Telegram: теперь возвращаются последние статусы по каждому серверу и пулу с временем из `zfs_pool_status`, а не только список настроенных серверов.
+- EN: Added explicit mobile-side handling for missing ZFS data sources (`backups_db` not configured, missing `zfs_pool_status` table, empty dataset) with clear user-facing messages.
+- RU: Добавлена явная обработка отсутствующих источников ZFS-данных на mobile API (`backups_db` не настроена, нет таблицы `zfs_pool_status`, пустой набор данных) с понятными сообщениями пользователю.
 
 ### Changed / Изменено
-- EN: Project version bumped to `8.30.8`; Android `versionCode` bumped to `44`.
-- RU: Версия проекта повышена до `8.30.8`; Android `versionCode` увеличен до `44`.
+- EN: Project version bumped to `8.30.9`; Android `versionCode` bumped to `45`.
+- RU: Версия проекта повышена до `8.30.9`; Android `versionCode` увеличен до `45`.
 
 ## [8.30.7] - 2026-03-13
 
