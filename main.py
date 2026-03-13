@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
 /main.py
-Server Monitoring System v8.30.9
+Server Monitoring System v8.31.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Main launch module
 Система мониторинга серверов
-Версия: 8.30.9
+Версия: 8.31.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль запуска

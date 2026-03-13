@@ -1,7 +1,9 @@
 package ru.monitoring.mobile
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -170,7 +172,14 @@ class MainActivity : ComponentActivity() {
                     onThemeModeChanged = vm::setThemeMode,
                     onMorningNotificationsEnabledChanged = vm::setMorningReportNotificationsEnabled,
                     onMarkMorningReportRead = vm::markMorningReportRead,
-                    onClearMorningReport = vm::clearMorningReport
+                    onClearMorningReport = vm::clearMorningReport,
+                    onOpenUpdateUrl = { url ->
+                        if (url.isNotBlank()) {
+                            runCatching {
+                                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                            }
+                        }
+                    }
                 )
             }
         }
@@ -276,7 +285,8 @@ private fun MonitoringApp(
     onThemeModeChanged: (String) -> Unit,
     onMorningNotificationsEnabledChanged: (Boolean) -> Unit,
     onMarkMorningReportRead: () -> Unit,
-    onClearMorningReport: () -> Unit
+    onClearMorningReport: () -> Unit,
+    onOpenUpdateUrl: (String) -> Unit
 ) {
     var isManagementExpanded by rememberSaveable { mutableStateOf(false) }
     var isSettingsExpanded by rememberSaveable { mutableStateOf(false) }
@@ -325,6 +335,32 @@ private fun MonitoringApp(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            if (state.isUpdateRequired) {
+                item {
+                    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("⚠ Требуется обновление", fontWeight = FontWeight.Bold)
+                            Text(state.updateMessage.ifBlank { "Нужно обновить приложение для продолжения работы" })
+                            if (state.minSupportedVersion.isNotBlank()) {
+                                Text("Минимальная версия: ${state.minSupportedVersion}")
+                            }
+                            if (state.latestVersion.isNotBlank()) {
+                                Text("Актуальная версия: ${state.latestVersion}")
+                            }
+                            Button(
+                                onClick = { onOpenUpdateUrl(state.apkDownloadUrl) },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = state.apkDownloadUrl.isNotBlank(),
+                            ) {
+                                Text("Обновить приложение")
+                            }
+                            Text("Пока не обновишься — функционал заблокирован.")
+                        }
+                    }
+                }
+                return@LazyColumn
+            }
+
             item {
                 if (state.isLoading) {
                     CircularProgressIndicator()
