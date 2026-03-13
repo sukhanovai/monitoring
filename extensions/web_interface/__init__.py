@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.30.9
+Server Monitoring System v8.31.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.30.9
+Версия: 8.31.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -2146,6 +2146,62 @@ def mobile_status():
     return response
 
 
+
+
+@app.route('/v1/mobile/version', methods=['GET'])
+@app.route('/api/v1/mobile/version', methods=['GET'])
+def v1_mobile_version():
+    """Возвращает требования к минимальной версии Android-клиента."""
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+
+    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    if not is_ok:
+        return jsonify({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid or expired token",
+                "request_id": request_id,
+            }
+        }), 401
+
+    from config.settings import (
+        ANDROID_MIN_SUPPORTED_VERSION,
+        ANDROID_LATEST_VERSION,
+        ANDROID_APK_DOWNLOAD_URL,
+        ANDROID_FORCED_UPDATE_ENABLED,
+    )
+
+    def _parse_semver(raw_value):
+        value = str(raw_value or '').strip()
+        parts = value.split('.')
+        if len(parts) != 3:
+            return None
+        try:
+            return tuple(int(part) for part in parts)
+        except ValueError:
+            return None
+
+    current_version = (request.args.get('current_version') or '').strip()
+    current_semver = _parse_semver(current_version)
+    min_semver = _parse_semver(ANDROID_MIN_SUPPORTED_VERSION)
+
+    update_required = False
+    if ANDROID_FORCED_UPDATE_ENABLED and str(ANDROID_APK_DOWNLOAD_URL or '').strip():
+        if min_semver and current_semver:
+            update_required = current_semver < min_semver
+        elif current_version:
+            update_required = True
+
+    return jsonify({
+        "request_id": request_id,
+        "platform": "android",
+        "min_supported_version": str(ANDROID_MIN_SUPPORTED_VERSION),
+        "latest_version": str(ANDROID_LATEST_VERSION),
+        "apk_download_url": str(ANDROID_APK_DOWNLOAD_URL),
+        "forced_update_enabled": bool(ANDROID_FORCED_UPDATE_ENABLED),
+        "current_version": current_version,
+        "update_required": update_required,
+    }), 200
 @app.route('/v1/control/actions', methods=['POST'])
 def v1_control_actions():
     request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())

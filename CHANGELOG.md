@@ -6,17 +6,17 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.30.9] - 2026-03-13
+## [8.31.4] - 2026-03-13
 
-### Fixed / Исправлено
-- EN: Expanded Android `🧊 ZFS` response to match Telegram detail level: now it returns per-server/per-pool latest states with timestamps from `zfs_pool_status` instead of showing only configured server names.
-- RU: Расширен ответ Android по кнопке `🧊 ZFS` до уровня Telegram: теперь возвращаются последние статусы по каждому серверу и пулу с временем из `zfs_pool_status`, а не только список настроенных серверов.
-- EN: Added explicit mobile-side handling for missing ZFS data sources (`backups_db` not configured, missing `zfs_pool_status` table, empty dataset) with clear user-facing messages.
-- RU: Добавлена явная обработка отсутствующих источников ZFS-данных на mobile API (`backups_db` не настроена, нет таблицы `zfs_pool_status`, пустой набор данных) с понятными сообщениями пользователю.
+### Added / Добавлено
+- EN: Added PowerShell release automation script `scripts/publish_android_prerelease.ps1` to build Android release APK and publish/update GitHub prerelease from `devel` (`android-v<version>`), including SHA256 artifact.
+- RU: Добавлен PowerShell-скрипт автоматизации релиза `scripts/publish_android_prerelease.ps1`: собирает Android release APK и публикует/обновляет GitHub prerelease из `devel` (`android-v<version>`) вместе с SHA256.
 
 ### Changed / Изменено
-- EN: Project version bumped to `8.30.9`; Android `versionCode` bumped to `45`.
-- RU: Версия проекта повышена до `8.30.9`; Android `versionCode` увеличен до `45`.
+- EN: Extended Android docs with step-by-step usage of the new prerelease script from Android Studio terminal and required environment checks (`JAVA_HOME`, `gh auth`).
+- RU: Расширена Android-документация пошаговым использованием нового prerelease-скрипта из терминала Android Studio и обязательными проверками окружения (`JAVA_HOME`, `gh auth`).
+- EN: Project version bumped to `8.31.4`; Android `versionCode` bumped to `50`.
+- RU: Версия проекта повышена до `8.31.4`; Android `versionCode` увеличен до `50`.
 
 ## [8.30.7] - 2026-03-13
 

@@ -87,6 +87,19 @@ data class AuthTokenExchangeResponse(
     @Json(name = "auth_type") val authType: String? = null
 )
 
+
+
+data class MobileVersionResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val platform: String? = null,
+    @Json(name = "min_supported_version") val minSupportedVersion: String? = null,
+    @Json(name = "latest_version") val latestVersion: String? = null,
+    @Json(name = "apk_download_url") val apkDownloadUrl: String? = null,
+    @Json(name = "forced_update_enabled") val forcedUpdateEnabled: Boolean? = null,
+    @Json(name = "current_version") val currentVersion: String? = null,
+    @Json(name = "update_required") val updateRequired: Boolean? = null,
+)
+
 data class MenuOption(
     val label: String? = null,
     val action: String? = null,

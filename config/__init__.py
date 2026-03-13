@@ -1,11 +1,11 @@
 """
 /config/__init__.py
-Server Monitoring System v8.30.9
+Server Monitoring System v8.31.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Configuration package
 Система мониторинга серверов
-Версия: 8.30.9
+Версия: 8.31.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Пакет конфигурации
@@ -20,6 +20,9 @@ from .settings import (
     PROC_UPTIME_FILE,    
     TELEGRAM_TOKEN as SETTINGS_TOKEN,
     APP_VERSION, ANDROID_APP_VERSION,
+    ANDROID_MIN_SUPPORTED_VERSION, ANDROID_LATEST_VERSION,
+    ANDROID_GITHUB_REPOSITORY, ANDROID_APK_ASSET_NAME, ANDROID_APK_DOWNLOAD_URL,
+    ANDROID_FORCED_UPDATE_ENABLED,
     CHAT_IDS as SETTINGS_CHAT_IDS,
     CHECK_INTERVAL, MAX_FAIL_TIME,
     SILENT_START, SILENT_END, DATA_COLLECTION_TIME,
@@ -78,6 +81,9 @@ __all__ = [
     # Основные настройки (с приоритетом БД)
     'TELEGRAM_TOKEN', 'CHAT_IDS', 'DEBUG_MODE',
     'APP_VERSION', 'ANDROID_APP_VERSION',
+    'ANDROID_MIN_SUPPORTED_VERSION', 'ANDROID_LATEST_VERSION',
+    'ANDROID_GITHUB_REPOSITORY', 'ANDROID_APK_ASSET_NAME', 'ANDROID_APK_DOWNLOAD_URL',
+    'ANDROID_FORCED_UPDATE_ENABLED',
     
     # Интервалы проверок
     'CHECK_INTERVAL', 'MAX_FAIL_TIME',

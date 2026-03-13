@@ -1,11 +1,11 @@
 """
 /config/settings.py
-Server Monitoring System v8.30.9
+Server Monitoring System v8.31.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Application settings - default values
 Система мониторинга серверов
-Версия: 8.30.9
+Версия: 8.31.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Настройки приложения - значения по умолчанию
@@ -22,8 +22,23 @@ from lib.utils import is_proxmox_server
 DEBUG_MODE = False
 
 # Версия приложения
-APP_VERSION = "8.30.9"
-ANDROID_APP_VERSION = "8.30.9"
+APP_VERSION = "8.31.4"
+ANDROID_APP_VERSION = "8.31.4"
+ANDROID_MIN_SUPPORTED_VERSION = "8.31.4"
+ANDROID_LATEST_VERSION = "8.31.4"
+ANDROID_GITHUB_REPOSITORY = os.environ.get("ANDROID_GITHUB_REPOSITORY", "")
+ANDROID_APK_ASSET_NAME = os.environ.get("ANDROID_APK_ASSET_NAME", "monitoring-android.apk")
+ANDROID_APK_DOWNLOAD_URL = os.environ.get(
+    "ANDROID_APK_DOWNLOAD_URL",
+    (
+        f"https://github.com/{ANDROID_GITHUB_REPOSITORY}/releases/latest/download/{ANDROID_APK_ASSET_NAME}"
+        if ANDROID_GITHUB_REPOSITORY
+        else ""
+    ),
+)
+ANDROID_FORCED_UPDATE_ENABLED = os.environ.get("ANDROID_FORCED_UPDATE_ENABLED", "1").strip().lower() in {
+    "1", "true", "yes", "on"
+}
 
 # === БАЗОВЫЕ ПУТИ ===
 _DEFAULT_BASE = Path(__file__).resolve().parents[1]

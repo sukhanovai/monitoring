@@ -683,6 +683,91 @@ android-client/
 
 ---
 
+## 7.1. Ошибка `JAVA_HOME is not set` в PowerShell/Android Studio Terminal (Windows)
+
+Если в терминале видишь:
+
+```text
+ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH.
+```
+
+это значит, что Gradle не видит JDK. Без этого сборка будет тупо падать, как бы ты ни крутил `assembleRelease`.
+
+### Вариант A (рекомендуется): использовать JDK из Android Studio
+
+Обычно JDK лежит примерно тут:
+
+```text
+C:\Program Files\Android\Android Studio\jbr
+```
+
+Проверь, что путь существует:
+
+```powershell
+Test-Path "C:\Program Files\Android\Android Studio\jbr"
+```
+
+Если `True`, задай переменную для текущей сессии PowerShell:
+
+```powershell
+$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
+$env:Path = "$env:JAVA_HOME\bin;$env:Path"
+```
+
+Проверь:
+
+```powershell
+java -version
+$env:JAVA_HOME
+```
+
+После этого снова запускай:
+
+```powershell
+.\gradlew assembleRelease
+```
+
+### Вариант B: задать `JAVA_HOME` навсегда (системно)
+
+Открой PowerShell **от администратора** и выполни:
+
+```powershell
+setx JAVA_HOME "C:\Program Files\Android\Android Studio\jbr" /M
+```
+
+Дальше полностью перезапусти терминал/Android Studio, и проверь:
+
+```powershell
+[Environment]::GetEnvironmentVariable("JAVA_HOME", "Machine")
+java -version
+```
+
+### Если JDK стоит не в `jbr`
+
+Найди реальный путь к `java.exe`:
+
+```powershell
+Get-ChildItem "C:\Program Files" -Recurse -Filter java.exe -ErrorAction SilentlyContinue | Select-Object -First 5 FullName
+```
+
+И используй каталог уровнем выше `bin`, например:
+
+```text
+C:\Program Files\Java\jdk-17
+```
+
+### Мини-проверка перед сборкой
+
+```powershell
+$env:JAVA_HOME
+java -version
+.\gradlew -version
+```
+
+Если все три команды ок — можно нормально собирать APK и не ебать себе мозг повторными падениями Gradle.
+
+---
+
 ## 8. Команды для сборки (через терминал)
 
 Если открываешь проект впервые, проще собрать из Android Studio кнопкой **Run**.
@@ -699,6 +784,216 @@ APK обычно будет в:
 ```text
 android-client/app/build/outputs/apk/debug/app-debug.apk
 ```
+
+---
+
+
+## 8.0. Автоматическая публикация APK pre-release из Android Studio Terminal
+
+Чтобы не дрочить руками каждый релиз, добавлен скрипт:
+
+```text
+scripts/publish_android_prerelease.ps1
+```
+
+Он делает всё сам:
+
+1. Проверяет `JAVA_HOME`, `git`, `gh`.
+2. Проверяет ветку (по умолчанию `devel`).
+3. Читает `APP_VERSION` из `config/settings.py`.
+4. Собирает `assembleRelease`.
+5. Создаёт/обновляет GitHub pre-release с тегом `android-v<version>`.
+6. Загружает APK + `.sha256`.
+
+### Быстрый запуск (из терминала Android Studio на Windows)
+
+```powershell
+# из корня репозитория
+powershell -ExecutionPolicy Bypass -File .\scripts\publish_android_prerelease.ps1 -TargetBranch devel -GitHubRepo my-org/monitoring
+```
+
+Если репозиторий уже известен через `origin` или env `ANDROID_GITHUB_REPOSITORY`, параметр `-GitHubRepo` можно не передавать.
+
+### Полезные опции
+
+```powershell
+# если сборку уже сделал отдельно
+powershell -ExecutionPolicy Bypass -File .\scripts\publish_android_prerelease.ps1 -SkipBuild
+
+# если запускаешь не из devel (не рекомендуется)
+powershell -ExecutionPolicy Bypass -File .\scripts\publish_android_prerelease.ps1 -SkipBranchCheck
+
+# задать своё имя APK-ассета
+powershell -ExecutionPolicy Bypass -File .\scripts\publish_android_prerelease.ps1 -ApkAssetName monitoring-android.apk
+```
+
+### Что нужно перед первым запуском
+
+```powershell
+# 1) авторизация gh
+gh auth login
+
+# 2) проверить JAVA_HOME
+$env:JAVA_HOME
+java -version
+```
+
+Если `JAVA_HOME` пустой — смотри раздел `7.1` ниже, там пошаговый фикс.
+
+---
+
+## 8.1. Где и как размещать APK как GitHub Release Asset (подробно)
+
+Ниже нормальная схема, чтобы не было ебаного болота с бинарями в git-истории.
+
+### Зачем именно Release Asset, а не коммит APK в репо
+
+1. APK — тяжёлый бинарь, быстро раздувает `.git`.
+2. История репозитория начинает пухнуть и тормозить clone/fetch.
+3. В Release Asset удобно хранить «официальный» файл релиза + можно дать прямую ссылку.
+
+### Что нужно подготовить заранее
+
+- Репозиторий на GitHub (`owner/repo`).
+- Тег релиза (например, `v8.31.4`).
+- Собранный APK (например, `android-client/app/build/outputs/apk/release/app-release.apk`).
+- Права на создание релизов в репозитории.
+
+### Вариант A: через GitHub UI (без CLI)
+
+1. Зайди в репозиторий на GitHub.
+2. Открой **Releases** -> **Draft a new release**.
+3. В поле **Choose a tag** создай/выбери тег, например `v8.31.4`.
+4. Заполни название релиза (например, `Monitoring Android 8.31.4`).
+5. В блоке **Attach binaries** перетащи APK.
+6. Переименуй asset в понятное имя, например `monitoring-android.apk`.
+7. Нажми **Publish release**.
+
+После публикации у тебя появляется URL вида:
+
+```text
+https://github.com/<owner>/<repo>/releases/download/v8.31.4/monitoring-android.apk
+```
+
+И универсальная ссылка на latest:
+
+```text
+https://github.com/<owner>/<repo>/releases/latest/download/monitoring-android.apk
+```
+
+### Вариант B: через GitHub CLI (`gh`) — быстрее и без лишних кликов
+
+```bash
+# 1) Собрать release APK
+cd android-client
+./gradlew assembleRelease
+
+# 2) (Опционально) Переименовать в стабильное имя
+cp app/build/outputs/apk/release/app-release.apk /tmp/monitoring-android.apk
+
+# 3) Создать checksum
+sha256sum /tmp/monitoring-android.apk > /tmp/monitoring-android.apk.sha256
+
+# 4) Создать релиз и загрузить файлы
+cd ..
+gh release create v8.31.4 \
+  /tmp/monitoring-android.apk \
+  /tmp/monitoring-android.apk.sha256 \
+  --title "Monitoring Android 8.31.4" \
+  --notes "Android release 8.31.4"
+```
+
+Если релиз уже есть:
+
+```bash
+gh release upload v8.31.4 /tmp/monitoring-android.apk --clobber
+gh release upload v8.31.4 /tmp/monitoring-android.apk.sha256 --clobber
+```
+
+### Как связать это с backend, чтобы forced update работал
+
+В проекте уже есть конфиг:
+
+- `ANDROID_GITHUB_REPOSITORY` (пример: `my-org/monitoring`)
+- `ANDROID_APK_ASSET_NAME` (по умолчанию `monitoring-android.apk`)
+- `ANDROID_APK_DOWNLOAD_URL` (если задан, имеет приоритет)
+
+Рекомендуемая схема:
+
+1. Задать `ANDROID_GITHUB_REPOSITORY=my-org/monitoring`.
+2. Оставить `ANDROID_APK_ASSET_NAME=monitoring-android.apk`.
+3. Не задавать `ANDROID_APK_DOWNLOAD_URL` вручную (тогда ссылка соберётся автоматически на `releases/latest/download/...`).
+
+Пример env:
+
+```bash
+export ANDROID_GITHUB_REPOSITORY="my-org/monitoring"
+export ANDROID_APK_ASSET_NAME="monitoring-android.apk"
+# export ANDROID_APK_DOWNLOAD_URL="https://..."   # только если нужна кастомная ссылка
+```
+
+### Как держать APK-релизы только в `develop`, а `main` оставить со старым релизом
+
+Да, это можно сделать без ебаного хаоса в релизах.
+
+#### Рабочая схема
+
+1. Для Android публикуй **только pre-release** из ветки `develop` (теги вида `android-v8.31.4`).
+2. Для ветки `main` оставляй классические релизы старого проекта (без Android).
+3. Backend в `develop`-окружении настраивай на Android APK URL.
+4. Backend в `main`-окружении держи Android forced-update выключенным.
+
+#### Что настраивать в окружениях
+
+**Develop (где есть Android):**
+
+```bash
+export ANDROID_GITHUB_REPOSITORY="my-org/monitoring"
+export ANDROID_APK_ASSET_NAME="monitoring-android.apk"
+export ANDROID_FORCED_UPDATE_ENABLED="1"
+```
+
+**Main (где Android не участвует):**
+
+```bash
+export ANDROID_FORCED_UPDATE_ENABLED="0"
+# при желании можно дополнительно очистить URL
+export ANDROID_APK_DOWNLOAD_URL=""
+```
+
+При `ANDROID_FORCED_UPDATE_ENABLED=0` backend вернёт `update_required=false`, даже если пришла старая версия клиента.
+
+#### Релизы на GitHub
+
+- Для `develop` используй `gh release create ... --prerelease`.
+- Для `main` — обычные stable release без APK.
+
+Пример для `develop`:
+
+```bash
+gh release create android-v8.31.4   /tmp/monitoring-android.apk   --title "Android develop 8.31.4"   --notes "Android prerelease from develop"   --prerelease
+```
+
+Это даёт чистое разделение: Android-движ только в develop-канале, а main не засран мобильными артефактами.
+
+### Про контроль целостности APK
+
+Чтобы не ловить ебучие «битые загрузки»:
+
+1. Публикуй рядом файл `monitoring-android.apk.sha256`.
+2. Перед раздачей/установкой проверяй:
+
+```bash
+sha256sum -c monitoring-android.apk.sha256
+```
+
+### Мини-пайплайн релиза (коротко)
+
+1. Бамп версии (`APP_VERSION`, `ANDROID_APP_VERSION`, `versionName`, `versionCode`).
+2. Сборка `assembleRelease`.
+3. Публикация APK как Release Asset.
+4. Проверка, что `GET /v1/mobile/version` возвращает актуальный `apk_download_url`.
+5. Smoke-тест на устройстве: старая версия должна увидеть forced update.
 
 ---
 
