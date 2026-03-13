@@ -15,8 +15,8 @@ android {
         applicationId = "ru.monitoring.mobile"
         minSdk = 26
         targetSdk = 34
-        versionCode = 37
-        versionName = "8.30.0"
+        versionCode = 38
+        versionName = "8.30.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

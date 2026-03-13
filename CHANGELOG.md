@@ -6,15 +6,17 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.30.0] - 2026-03-12
+## [8.30.2] - 2026-03-13
+
+### Fixed / Исправлено
+- EN: Fixed Android `🧊 ZFS` action so it responds in Telegram-like style with a configured ZFS servers summary and enabled/disabled markers.
+- RU: Исправлена кнопка `🧊 ZFS` в Android: теперь она отвечает в стиле Telegram и показывает сводку настроенных ZFS-серверов с маркерами включено/выключено.
 
 ### Changed / Изменено
-- EN: Reworked mail backups response in Android control API to Telegram-like history list: each entry now includes status icon, backup path, and relative time in parentheses, plus totals below.
-- RU: Переработан ответ по бэкапам почты в Android control API под Telegram-формат: теперь отдаётся история с иконкой статуса, путём бэкапа и относительным временем в скобках, а ниже сводка по записям.
-- EN: Simplified Android launcher icon to a concise and memorable mail+clock mark for better recognition.
-- RU: Упрощена иконка Android-приложения до лаконичного и запоминающегося знака «почта+часы».
-- EN: Project version bumped to `8.30.0`; Android `versionCode` bumped to `37`.
-- RU: Версия проекта повышена до `8.30.0`; Android `versionCode` увеличен до `37`.
+- EN: Replaced Android launcher foreground icon with a new server+clock+trend composition adapted for adaptive launcher masks.
+- RU: Заменена foreground-иконка Android на новую композицию «сервер+часы+тренд», адаптированную под adaptive-иконки лаунчера.
+- EN: Project version bumped to `8.30.2`; Android `versionCode` bumped to `38`.
+- RU: Версия проекта повышена до `8.30.2`; Android `versionCode` увеличен до `38`.
 
 ## [8.29.0] - 2026-03-12
 
