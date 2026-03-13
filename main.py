@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
 /main.py
-Server Monitoring System v8.30.4
+Server Monitoring System v8.30.5
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Main launch module
 Система мониторинга серверов
-Версия: 8.30.4
+Версия: 8.30.5
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль запуска
@@ -180,6 +180,27 @@ def main(args: argparse.Namespace):
 
     updater = Updater(token=bot_token, use_context=True)
     dispatcher = updater.dispatcher
+
+    def telegram_error_handler(update, context):
+        """Глобальный обработчик ошибок Telegram для стабильного polling."""
+        error = getattr(context, "error", None)
+        if error is None:
+            logger.error("❌ Неизвестная ошибка Telegram без контекста")
+            return
+
+        try:
+            from telegram.error import NetworkError, TimedOut
+            network_errors = (NetworkError, TimedOut, TimeoutError)
+        except Exception:
+            network_errors = (TimeoutError,)
+
+        if isinstance(error, network_errors):
+            logger.warning(f"⚠️ Сетевая ошибка Telegram API: {error}")
+            return
+
+        logger.exception("❌ Необработанная ошибка Telegram", exc_info=error)
+
+    dispatcher.add_error_handler(telegram_error_handler)
     try:
         from lib.alerts import init_telegram_bot
 
@@ -291,7 +312,7 @@ def main(args: argparse.Namespace):
         logger.info("🧪 Dry-run завершён: опрос Telegram не запускался")
         return
     
-    updater.start_polling()
+    updater.start_polling(timeout=20, read_latency=2.0)
     logger.info("✅ Бот запущен и готов к работе")
     updater.idle()
 
