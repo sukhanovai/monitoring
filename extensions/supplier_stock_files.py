@@ -1,11 +1,11 @@
 """
 /extensions/supplier_stock_files.py
-Server Monitoring System v8.30.5
+Server Monitoring System v8.30.6
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Supplier stock files downloader
 Система мониторинга серверов
-Версия: 8.30.5
+Версия: 8.30.6
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Получение файлов остатков поставщиков
@@ -445,10 +445,20 @@ def _download_http(
     except Exception as exc:
         return {"success": False, "error": str(exc)}
 
+    read_chunk_size = int(source.get("read_chunk_size", 1024 * 1024))
+    if read_chunk_size <= 0:
+        read_chunk_size = 1024 * 1024
+
     try:
         _ensure_parent(output_path)
         with response:
-            data = response.read()
+            data_chunks: list[bytes] = []
+            while True:
+                chunk = response.read(read_chunk_size)
+                if not chunk:
+                    break
+                data_chunks.append(chunk)
+            data = b"".join(data_chunks)
         include_headers = bool(source.get("include_headers"))
         append_mode = bool(source.get("append"))
         if include_headers:
