@@ -221,6 +221,8 @@ AVAILABLE_EXTENSIONS = {
 - `-NoRebase` — выполнить обычный `git pull` без rebase;
 - `-KeepStash` — не делать `stash pop` автоматически.
 
+Техническая деталь: Android-версия (`versionCode`/`versionName`) вынесена в `android-client/gradle.properties`, чтобы снизить шанс конфликтов в `android-client/app/build.gradle.kts` при обычном `git pull`.
+
 ## 🌐 Веб‑интерфейс
 
 Если включено расширение `web_interface`, панель будет доступна по адресу:

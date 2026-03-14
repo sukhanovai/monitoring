@@ -13,8 +13,8 @@ android {
         applicationId = "ru.monitoring.mobile"
         minSdk = 26
         targetSdk = 34
-        versionCode = 60
-        versionName = "8.32.13"
+        versionCode = providers.gradleProperty("ANDROID_VERSION_CODE").get().toInt()
+        versionName = providers.gradleProperty("ANDROID_VERSION_NAME").get()
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

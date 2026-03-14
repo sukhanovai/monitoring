@@ -6,6 +6,14 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.14] - 2026-03-15
+
+### Changed / Изменено
+- EN: Moved Android app version source to `android-client/gradle.properties` (`ANDROID_VERSION_CODE`, `ANDROID_VERSION_NAME`) and switched `app/build.gradle.kts` to read these values, reducing routine merge conflicts in `app/build.gradle.kts` during `git pull`.
+- RU: Источник Android-версий перенесён в `android-client/gradle.properties` (`ANDROID_VERSION_CODE`, `ANDROID_VERSION_NAME`), а `app/build.gradle.kts` теперь читает эти значения, что снижает количество типовых merge-конфликтов в `app/build.gradle.kts` при `git pull`.
+- EN: Project version bumped to `8.32.14`; Android `versionCode` bumped to `61`.
+- RU: Версия проекта повышена до `8.32.14`; Android `versionCode` увеличен до `61`.
+
 ## [8.32.13] - 2026-03-15
 
 ### Fixed / Исправлено
