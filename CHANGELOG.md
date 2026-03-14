@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.16] - 2026-03-15
+
+### Added / Добавлено
+- EN: Added explicit manual Android Studio recovery commands for the common `git pull` block (`Please commit your changes or stash them before you merge`) when local edits are in `android-client/build.gradle.kts` and `android-client/gradle.properties`.
+- RU: Добавлены явные ручные команды восстановления для Android Studio при типовой блокировке `git pull` (`Please commit your changes or stash them before you merge`), когда локальные правки находятся в `android-client/build.gradle.kts` и `android-client/gradle.properties`.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.16`; Android `versionCode` bumped to `63`.
+- RU: Версия проекта повышена до `8.32.16`; Android `versionCode` увеличен до `63`.
+
 ## [8.32.15] - 2026-03-15
 
 ### Fixed / Исправлено
