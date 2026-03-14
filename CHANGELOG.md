@@ -6,6 +6,18 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.15] - 2026-03-15
+
+### Fixed / Исправлено
+- EN: Extended `scripts/git_safe_pull.ps1` with `-OnlyAndroidClientConfig` mode to stash only `android-client/build.gradle.kts` and `android-client/gradle.properties`, then pull and restore — directly addressing recurring Android Studio terminal pull blocks on those files.
+- RU: Расширен `scripts/git_safe_pull.ps1` режимом `-OnlyAndroidClientConfig`: stash только `android-client/build.gradle.kts` и `android-client/gradle.properties`, затем pull и восстановление — это напрямую закрывает повторяющийся блок `git pull` в терминале Android Studio по этим файлам.
+- EN: Added explicit README command for manual recovery in Android Studio terminal.
+- RU: Добавлена явная команда в README для ручного восстановления в терминале Android Studio.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.15`; Android `versionCode` bumped to `62`.
+- RU: Версия проекта повышена до `8.32.15`; Android `versionCode` увеличен до `62`.
+
 ## [8.32.14] - 2026-03-15
 
 ### Changed / Изменено

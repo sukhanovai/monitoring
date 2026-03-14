@@ -2,7 +2,8 @@ param(
     [string]$Remote = "origin",
     [string]$Branch = "develop",
     [switch]$NoRebase,
-    [switch]$KeepStash
+    [switch]$KeepStash,
+    [switch]$OnlyAndroidClientConfig
 )
 
 $ErrorActionPreference = "Stop"
@@ -16,18 +17,39 @@ function Require-Command {
 
 Require-Command git
 
+function Has-ChangesInPath {
+    param([string[]]$Paths)
+
+    $status = git status --porcelain -- $Paths
+    return [bool]$status
+}
+
 $stashCreated = $false
 $stashName = "auto-stash-before-pull-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
 
 try {
-    $dirty = git status --porcelain
-    if ($dirty) {
-        Write-Host "[1/4] Working tree is dirty. Creating temporary stash..."
-        git stash push -u -m $stashName | Out-Null
-        $stashCreated = $true
+    if ($OnlyAndroidClientConfig) {
+        $paths = @("android-client/build.gradle.kts", "android-client/gradle.properties")
+        $targetDirty = Has-ChangesInPath -Paths $paths
+        if ($targetDirty) {
+            Write-Host "[1/4] Android config files are dirty. Creating targeted stash..."
+            git stash push -m $stashName -- $paths | Out-Null
+            $stashCreated = $true
+        }
+        else {
+            Write-Host "[1/4] Target Android config files are clean."
+        }
     }
     else {
-        Write-Host "[1/4] Working tree is clean."
+        $dirty = git status --porcelain
+        if ($dirty) {
+            Write-Host "[1/4] Working tree is dirty. Creating temporary stash..."
+            git stash push -u -m $stashName | Out-Null
+            $stashCreated = $true
+        }
+        else {
+            Write-Host "[1/4] Working tree is clean."
+        }
     }
 
     Write-Host "[2/4] Pulling $Remote/$Branch..."
