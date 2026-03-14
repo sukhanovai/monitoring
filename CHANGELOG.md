@@ -6,6 +6,18 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.11] - 2026-03-14
+
+### Fixed / Исправлено
+- EN: Added preflight Git working-tree check to `scripts/publish_android_prerelease.ps1` so users get explicit guidance before running into `git pull` merge protection errors (`Please commit your changes or stash them before you merge`).
+- RU: Добавлена preflight-проверка чистоты Git working tree в `scripts/publish_android_prerelease.ps1`, чтобы заранее получать понятную подсказку и не упираться в ошибки `git pull` вида `Please commit your changes or stash them before you merge`.
+- EN: Added `-AllowDirty` escape hatch for advanced cases when user intentionally wants to run publish flow with local modifications.
+- RU: Добавлен флаг `-AllowDirty` для продвинутого сценария, когда публикацию нужно запустить осознанно с локальными изменениями.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.11`; Android `versionCode` bumped to `58`.
+- RU: Версия проекта повышена до `8.32.11`; Android `versionCode` увеличен до `58`.
+
 ## [8.32.10] - 2026-03-14
 
 ### Fixed / Исправлено

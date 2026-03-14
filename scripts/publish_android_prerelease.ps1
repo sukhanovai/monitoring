@@ -1,6 +1,7 @@
 param(
     [string]$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")),
-    [switch]$SkipBuild
+    [switch]$SkipBuild,
+    [switch]$AllowDirty
 )
 
 $ErrorActionPreference = "Stop"
@@ -9,6 +10,14 @@ function Require-Command {
     param([string]$Name)
     if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
         throw "Command '$Name' was not found. Install it and retry."
+    }
+}
+
+
+function Ensure-CleanWorkingTree {
+    $dirty = (git status --porcelain)
+    if ($dirty) {
+        throw "Working tree is not clean. Commit or stash changes before running script. Tip: git stash push -u -m prerelease-temp"
     }
 }
 
@@ -212,6 +221,13 @@ try {
     $branch = (git rev-parse --abbrev-ref HEAD).Trim()
     if ($branch -ne "develop") {
         throw "This script must be run from 'develop'. Current branch: '$branch'."
+    }
+
+    if (-not $AllowDirty) {
+        Ensure-CleanWorkingTree
+    }
+    else {
+        Write-Host "[2/7] Dirty working tree allowed by -AllowDirty"
     }
 
     Write-Host "[2/7] Reading project version from config/settings.py..."
