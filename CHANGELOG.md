@@ -6,6 +6,18 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.9] - 2026-03-14
+
+### Fixed / Исправлено
+- EN: Updated `scripts/publish_android_prerelease.ps1` to work without `gh`: if `gh` is unavailable, script now falls back to GitHub REST API using `GH_TOKEN`/`GITHUB_TOKEN` (create/edit prerelease and upload APK asset).
+- RU: Обновлён `scripts/publish_android_prerelease.ps1`: теперь при отсутствии `gh` скрипт использует fallback через GitHub REST API с `GH_TOKEN`/`GITHUB_TOKEN` (создание/обновление prerelease и загрузка APK-артефакта).
+- EN: Improved preflight messaging so missing `gh` no longer hard-fails immediately; script reports the API fallback path.
+- RU: Улучшены preflight-сообщения: отсутствие `gh` больше не валит скрипт сразу, теперь явно показывается сценарий fallback через API.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.9`; Android `versionCode` bumped to `56`.
+- RU: Версия проекта повышена до `8.32.9`; Android `versionCode` увеличен до `56`.
+
 ## [8.32.8] - 2026-03-14
 
 ### Fixed / Исправлено

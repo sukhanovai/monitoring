@@ -192,7 +192,8 @@ AVAILABLE_EXTENSIONS = {
 - загружает APK в релиз, не затрагивая стабильный релиз в `main`.
 
 Требования:
-- установлен `gh` (GitHub CLI) и выполнен `gh auth login`;
+- либо установлен `gh` (GitHub CLI) и выполнен `gh auth login`;
+- либо задан `GH_TOKEN`/`GITHUB_TOKEN` (fallback через GitHub API без `gh`);
 - права на создание релизов в репозитории.
 
 ## 🌐 Веб‑интерфейс
