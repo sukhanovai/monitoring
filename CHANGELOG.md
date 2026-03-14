@@ -6,6 +6,18 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.0] - 2026-03-14
+
+### Added / Добавлено
+- EN: Added PowerShell script `scripts/publish_android_prerelease.ps1` to build Android release APK and publish it as a GitHub prerelease from `develop` (`v<version>-develop`) without changing stable release flow in `main`.
+- RU: Добавлен PowerShell-скрипт `scripts/publish_android_prerelease.ps1`, который собирает Android release APK и публикует его как GitHub prerelease из `develop` (`v<версия>-develop`) без изменения стабильного релизного потока в `main`.
+- EN: Documented one-command prerelease publishing flow from Android Studio terminal in `README.md`.
+- RU: Задокументирован запуск публикации prerelease одной командой из терминала Android Studio в `README.md`.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.0`; Android `versionCode` bumped to `47`.
+- RU: Версия проекта повышена до `8.32.0`; Android `versionCode` увеличен до `47`.
+
 ## [8.31.0] - 2026-03-13
 
 ### Fixed / Исправлено
