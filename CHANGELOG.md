@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.6] - 2026-03-14
+
+### Fixed / Исправлено
+- EN: Fixed Android build failure `:app:compileDebugKotlin` caused by JVM target mismatch (`javac=17`, `kotlin=21`): pinned Kotlin/JVM to 17 via `kotlinOptions { jvmTarget = "17" }` and `kotlin { jvmToolchain(17) }`.
+- RU: Исправлен сбой Android-сборки `:app:compileDebugKotlin` из-за несовпадения JVM target (`javac=17`, `kotlin=21`): Kotlin/JVM зафиксирован на 17 через `kotlinOptions { jvmTarget = "17" }` и `kotlin { jvmToolchain(17) }`.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.6`; Android `versionCode` bumped to `53`.
+- RU: Версия проекта повышена до `8.32.6`; Android `versionCode` увеличен до `53`.
+
 ## [8.32.5] - 2026-03-14
 
 ### Fixed / Исправлено
