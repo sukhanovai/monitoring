@@ -177,6 +177,30 @@ AVAILABLE_EXTENSIONS = {
 
 Подробная пошаговая инструкция для запуска и доработки: `docs/android_mobile_app.md`.
 
+### Публикация APK как prerelease только для `develop`
+
+Из терминала Android Studio (PowerShell) можно запустить один скрипт:
+
+```powershell
+./scripts/publish_android_prerelease.ps1
+```
+
+Что делает скрипт:
+- проверяет, что текущая ветка — `develop`;
+- собирает `release` APK через Gradle;
+- автоматически выбирает APK из `app/build/outputs/apk/release` (`app-release.apk`, `app-release-unsigned.apk` или последний `*.apk`);
+- публикует/обновляет GitHub prerelease с тегом `v<версия>-develop`;
+- загружает APK в релиз, не затрагивая стабильный релиз в `main`.
+
+Требования:
+- либо установлен `gh` (GitHub CLI) и выполнен `gh auth login`;
+- либо задан `GH_TOKEN`/`GITHUB_TOKEN` (fallback через GitHub API без `gh`);
+- права на создание релизов в репозитории.
+
+Важно:
+- скрипт требует чистое рабочее дерево Git (иначе попросит сделать commit/stash);
+- при необходимости можно форсировать запуск с локальными изменениями: `./scripts/publish_android_prerelease.ps1 -AllowDirty`.
+
 ## 🌐 Веб‑интерфейс
 
 Если включено расширение `web_interface`, панель будет доступна по адресу:

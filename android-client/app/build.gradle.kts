@@ -1,11 +1,8 @@
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.plugin.compose")
+    id("org.jetbrains.kotlin.android")
 }
 
-if (extensions.findByName("kotlin") == null) {
-    apply(plugin = "org.jetbrains.kotlin.android")
-}
 
 android {
     namespace = "ru.monitoring.mobile"
@@ -15,8 +12,8 @@ android {
         applicationId = "ru.monitoring.mobile"
         minSdk = 26
         targetSdk = 34
-        versionCode = 46
-        versionName = "8.31.0"
+        versionCode = 58
+        versionName = "8.32.11"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -39,6 +36,10 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
     buildFeatures {
         compose = true
         buildConfig = true
@@ -54,6 +55,7 @@ android {
         }
     }
 }
+
 
 dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2024.06.00")
