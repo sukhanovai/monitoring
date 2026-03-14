@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.4] - 2026-03-14
+
+### Fixed / Исправлено
+- EN: Removed the overreaching conflict-resolution helper script and its README section to avoid misleading workflow expectations; kept focus on the `develop` Android prerelease publishing flow.
+- RU: Удалён избыточный helper-скрипт разруливания конфликтов и соответствующий раздел в README, чтобы не вводить в заблуждение по workflow; фокус оставлен на публикации Android prerelease из `develop`.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.4`; Android `versionCode` bumped to `51`.
+- RU: Версия проекта повышена до `8.32.4`; Android `versionCode` увеличен до `51`.
+
 ## [8.32.3] - 2026-03-14
 
 ### Added / Добавлено
