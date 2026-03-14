@@ -220,11 +220,18 @@ AVAILABLE_EXTENSIONS = {
 Опции:
 - `-NoRebase` — выполнить обычный `git pull` без rebase;
 - `-KeepStash` — не делать `stash pop` автоматически;
-- `-OnlyAndroidClientConfig` — stash только `android-client/build.gradle.kts` и `android-client/gradle.properties` (полезно для типового конфликта pull из Android Studio).
+- `-OnlyAndroidClientConfig` — stash только `android-client/build.gradle.kts`, `android-client/gradle.properties` и `android-client/gradle/wrapper/gradle-wrapper.properties` (полезно для типового конфликта pull из Android Studio).
 
 Быстрый ручной запуск для твоего кейса:
 ```powershell
 ./scripts/git_safe_pull.ps1 -OnlyAndroidClientConfig
+```
+
+Если хочешь сделать то же самое вручную без helper-скрипта (прямо по ошибке из Android Studio, где конфликтуют `android-client/build.gradle.kts`, `android-client/gradle.properties` и иногда `android-client/gradle/wrapper/gradle-wrapper.properties`):
+```powershell
+git stash push -m "tmp-android-config" -- android-client/build.gradle.kts android-client/gradle.properties android-client/gradle/wrapper/gradle-wrapper.properties
+git pull --rebase origin develop
+git stash pop
 ```
 
 Техническая деталь: Android-версия (`versionCode`/`versionName`) вынесена в `android-client/gradle.properties`, чтобы снизить шанс конфликтов в `android-client/app/build.gradle.kts` при обычном `git pull`.
