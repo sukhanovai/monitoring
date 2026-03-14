@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.17] - 2026-03-15
+
+### Fixed / Исправлено
+- EN: Expanded Android Studio safe-pull guidance and targeted stash scope to also include `android-client/gradle/wrapper/gradle-wrapper.properties`, because this file can be locally modified together with Android Gradle config and still block or complicate post-pull restoration.
+- RU: Расширены рекомендации и целевой stash для safe-pull в Android Studio: теперь дополнительно учитывается `android-client/gradle/wrapper/gradle-wrapper.properties`, так как этот файл часто меняется вместе с Android Gradle-конфигом и мешает корректному восстановлению после pull.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.17`; Android `versionCode` bumped to `64`.
+- RU: Версия проекта повышена до `8.32.17`; Android `versionCode` увеличен до `64`.
+
 ## [8.32.16] - 2026-03-15
 
 ### Added / Добавлено

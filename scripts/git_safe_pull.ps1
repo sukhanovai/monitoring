@@ -29,10 +29,10 @@ $stashName = "auto-stash-before-pull-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
 
 try {
     if ($OnlyAndroidClientConfig) {
-        $paths = @("android-client/build.gradle.kts", "android-client/gradle.properties")
+        $paths = @("android-client/build.gradle.kts", "android-client/gradle.properties", "android-client/gradle/wrapper/gradle-wrapper.properties")
         $targetDirty = Has-ChangesInPath -Paths $paths
         if ($targetDirty) {
-            Write-Host "[1/4] Android config files are dirty. Creating targeted stash..."
+            Write-Host "[1/4] Android config files (including Gradle wrapper properties) are dirty. Creating targeted stash..."
             git stash push -m $stashName -- $paths | Out-Null
             $stashCreated = $true
         }
