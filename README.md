@@ -201,6 +201,23 @@ AVAILABLE_EXTENSIONS = {
 - скрипт требует чистое рабочее дерево Git (иначе попросит сделать commit/stash);
 - при необходимости можно форсировать запуск с локальными изменениями: `./scripts/publish_android_prerelease.ps1 -AllowDirty`.
 
+### Безопасный `git pull` при локальных изменениях
+
+Если `git pull` падает с ошибкой `Please commit your changes or stash them before you merge`, можно использовать helper-скрипт:
+
+```powershell
+./scripts/git_safe_pull.ps1
+```
+
+Скрипт делает:
+- авто-stash локальных изменений (если они есть);
+- `git pull --rebase origin develop`;
+- автоматический возврат stashed-изменений (`stash pop`).
+
+Опции:
+- `-NoRebase` — выполнить обычный `git pull` без rebase;
+- `-KeepStash` — не делать `stash pop` автоматически.
+
 ## 🌐 Веб‑интерфейс
 
 Если включено расширение `web_interface`, панель будет доступна по адресу:

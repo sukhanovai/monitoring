@@ -6,6 +6,18 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.12] - 2026-03-14
+
+### Added / Добавлено
+- EN: Added helper script `scripts/git_safe_pull.ps1` for safe pulls with local changes: auto-stash, pull (`--rebase` by default), and optional stash restore.
+- RU: Добавлен helper-скрипт `scripts/git_safe_pull.ps1` для безопасного pull при локальных изменениях: авто-stash, pull (`--rebase` по умолчанию) и опциональное восстановление stash.
+
+### Changed / Изменено
+- EN: Updated README with practical instructions for resolving `git pull` blocking errors caused by local modifications.
+- RU: Обновлён README с практической инструкцией по обходу блокирующей ошибки `git pull` из-за локальных изменений.
+- EN: Project version bumped to `8.32.12`; Android `versionCode` bumped to `59`.
+- RU: Версия проекта повышена до `8.32.12`; Android `versionCode` увеличен до `59`.
+
 ## [8.32.11] - 2026-03-14
 
 ### Fixed / Исправлено
