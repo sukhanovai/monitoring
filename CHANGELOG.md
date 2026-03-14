@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.5] - 2026-03-14
+
+### Fixed / Исправлено
+- EN: Reduced PR conflict surface by reverting non-essential repository-wide version-header changes and keeping only target files for Android prerelease workflow and Gradle plugin compatibility fix.
+- RU: Снижен объём конфликтов в PR: отменены несущественные массовые правки version-header по репозиторию, оставлены только целевые файлы для Android prerelease workflow и фикса совместимости Gradle-плагинов.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.5`; Android `versionCode` bumped to `52`.
+- RU: Версия проекта повышена до `8.32.5`; Android `versionCode` увеличен до `52`.
+
 ## [8.32.4] - 2026-03-14
 
 ### Fixed / Исправлено
