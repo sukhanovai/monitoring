@@ -8,11 +8,11 @@ $ErrorActionPreference = "Stop"
 function Require-Command {
     param([string]$Name)
     if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
-        throw "Не найдена команда '$Name'. Установи её и попробуй снова."
+        throw "Command '$Name' was not found. Install it and retry."
     }
 }
 
-Write-Host "[1/7] Проверка зависимостей..."
+Write-Host "[1/7] Checking required commands..."
 Require-Command git
 Require-Command gh
 
@@ -20,19 +20,19 @@ Push-Location $RepoRoot
 try {
     $branch = (git rev-parse --abbrev-ref HEAD).Trim()
     if ($branch -ne "develop") {
-        throw "Скрипт должен запускаться только из ветки 'develop'. Сейчас: '$branch'."
+        throw "This script must be run from 'develop'. Current branch: '$branch'."
     }
 
-    Write-Host "[2/7] Получение версии проекта из config/settings.py..."
+    Write-Host "[2/7] Reading project version from config/settings.py..."
     $settingsPath = Join-Path $RepoRoot "config/settings.py"
     if (-not (Test-Path $settingsPath)) {
-        throw "Не найден файл $settingsPath"
+        throw "File not found: $settingsPath"
     }
 
     $settingsContent = Get-Content -Path $settingsPath -Raw
     $versionMatch = [regex]::Match($settingsContent, 'APP_VERSION\s*=\s*"(?<version>\d+\.\d+\.\d+)"')
     if (-not $versionMatch.Success) {
-        throw "Не удалось определить APP_VERSION в config/settings.py"
+        throw "APP_VERSION was not found in config/settings.py"
     }
 
     $projectVersion = $versionMatch.Groups["version"].Value
@@ -41,11 +41,11 @@ try {
 
     $androidDir = Join-Path $RepoRoot "android-client"
     if (-not (Test-Path $androidDir)) {
-        throw "Не найден каталог android-client"
+        throw "Directory not found: $androidDir"
     }
 
     if (-not $SkipBuild) {
-        Write-Host "[3/7] Сборка release APK..."
+        Write-Host "[3/7] Building release APK..."
         Push-Location $androidDir
         try {
             if (Test-Path (Join-Path $androidDir "gradlew.bat")) {
@@ -55,7 +55,7 @@ try {
                 & ./gradlew :app:assembleRelease
             }
             else {
-                throw "Не найден gradlew/gradlew.bat в android-client"
+                throw "gradlew/gradlew.bat was not found in android-client"
             }
         }
         finally {
@@ -63,13 +63,13 @@ try {
         }
     }
     else {
-        Write-Host "[3/7] Сборка пропущена флагом -SkipBuild"
+        Write-Host "[3/7] Build skipped by -SkipBuild flag"
     }
 
-    Write-Host "[4/7] Поиск готового APK..."
+    Write-Host "[4/7] Checking APK output..."
     $apkSource = Join-Path $androidDir "app/build/outputs/apk/release/app-release.apk"
     if (-not (Test-Path $apkSource)) {
-        throw "APK не найден: $apkSource"
+        throw "APK not found: $apkSource"
     }
 
     $artifactDir = Join-Path $RepoRoot "artifacts"
@@ -79,7 +79,7 @@ try {
     $apkTarget = Join-Path $artifactDir $apkName
     Copy-Item -Path $apkSource -Destination $apkTarget -Force
 
-    Write-Host "[5/7] Проверка релиза $releaseTag в GitHub..."
+    Write-Host "[5/7] Checking GitHub release $releaseTag..."
     $releaseExists = $true
     gh release view $releaseTag | Out-Null 2>$null
     if ($LASTEXITCODE -ne 0) {
@@ -91,22 +91,22 @@ EN: Android prerelease for develop branch.
 EN: Built from branch develop, version $projectVersion.
 EN: Stable release in main remains unchanged.
 
-RU: Android пререлиз для ветки develop.
-RU: Собрано из ветки develop, версия $projectVersion.
-RU: Стабильный релиз в main не изменяется.
+RU: Android prerelease for develop branch.
+RU: Built from branch develop, version $projectVersion.
+RU: Stable release in main remains unchanged.
 "@
 
     if (-not $releaseExists) {
-        Write-Host "[6/7] Создание нового prerelease $releaseTag..."
+        Write-Host "[6/7] Creating prerelease $releaseTag..."
         gh release create $releaseTag $apkTarget --title $releaseTitle --target develop --prerelease --notes $notes
     }
     else {
-        Write-Host "[6/7] Обновление существующего prerelease $releaseTag..."
+        Write-Host "[6/7] Updating prerelease $releaseTag..."
         gh release edit $releaseTag --title $releaseTitle --target develop --prerelease --notes $notes
         gh release upload $releaseTag $apkTarget --clobber
     }
 
-    Write-Host "[7/7] Готово. Пререлиз опубликован: $releaseTag"
+    Write-Host "[7/7] Done. Prerelease published: $releaseTag"
     Write-Host "APK: $apkTarget"
 }
 finally {

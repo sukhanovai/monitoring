@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.8] - 2026-03-14
+
+### Fixed / Исправлено
+- EN: Fixed Windows PowerShell parsing errors in `scripts/publish_android_prerelease.ps1` caused by non-ASCII/encoding-sensitive text; script messages were rewritten in ASCII-safe form to avoid mojibake/parser failures.
+- RU: Исправлены ошибки парсинга в Windows PowerShell в `scripts/publish_android_prerelease.ps1`, вызванные не-ASCII/кодировочными строками; сообщения переписаны в ASCII-безопасном виде для исключения кракозябр и сбоев парсера.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.8`; Android `versionCode` bumped to `55`.
+- RU: Версия проекта повышена до `8.32.8`; Android `versionCode` увеличен до `55`.
+
 ## [8.32.7] - 2026-03-14
 
 ### Fixed / Исправлено
