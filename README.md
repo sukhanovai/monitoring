@@ -197,6 +197,9 @@ AVAILABLE_EXTENSIONS = {
 - либо задан `GH_TOKEN`/`GITHUB_TOKEN` (fallback через GitHub API без `gh`);
 - права на создание релизов в репозитории.
 
+Примечание по сборке Android Studio:
+- для Kotlin 2.x и включённого Compose в модуле подключён `org.jetbrains.kotlin.plugin.compose`; если после pull IDE ругается на Compose compiler plugin — обновите Gradle Sync и пересоберите проект.
+
 Важно:
 - скрипт требует чистое рабочее дерево Git (иначе попросит сделать commit/stash);
 - при необходимости можно форсировать запуск с локальными изменениями: `./scripts/publish_android_prerelease.ps1 -AllowDirty`.

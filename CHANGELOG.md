@@ -6,6 +6,18 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.13] - 2026-03-15
+
+### Fixed / Исправлено
+- EN: Fixed Android Studio build failure for Compose on Kotlin 2.x (`Starting in Kotlin 2.0, the Compose Compiler Gradle plugin is required`) by enabling `org.jetbrains.kotlin.plugin.compose` in the app module and declaring it in the root Gradle plugins block.
+- RU: Исправлен сбой сборки Android Studio для Compose на Kotlin 2.x (`Starting in Kotlin 2.0, the Compose Compiler Gradle plugin is required`): подключён `org.jetbrains.kotlin.plugin.compose` в app-модуле и объявлен в корневом блоке Gradle-плагинов.
+- EN: Upgraded Kotlin Android/plugin versions to `2.0.21` and removed obsolete `composeOptions.kotlinCompilerExtensionVersion` config for Kotlin 2 compose plugin flow.
+- RU: Обновлены версии Kotlin Android/plugin до `2.0.21` и убрана устаревшая конфигурация `composeOptions.kotlinCompilerExtensionVersion` для потока compose-плагина в Kotlin 2.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.13`; Android `versionCode` bumped to `60`.
+- RU: Версия проекта повышена до `8.32.13`; Android `versionCode` увеличен до `60`.
+
 ## [8.32.12] - 2026-03-14
 
 ### Added / Добавлено
