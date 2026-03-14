@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.3] - 2026-03-14
+
+### Added / Добавлено
+- EN: Added helper script `scripts/resolve_merge_conflicts.ps1` to reproduce GitHub CLI conflict-resolution flow for PR branches: fetch base branch, merge, auto-resolve known version-conflict files by keeping branch changes, and stop on unresolved files.
+- RU: Добавлен вспомогательный скрипт `scripts/resolve_merge_conflicts.ps1` для CLI-разруливания конфликтов PR-ветки по сценарию GitHub: fetch базовой ветки, merge, авторазрешение известных конфликтных версионных файлов с сохранением изменений ветки и остановка при остаточных конфликтах.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.3`; Android `versionCode` bumped to `50`.
+- RU: Версия проекта повышена до `8.32.3`; Android `versionCode` увеличен до `50`.
+
 ## [8.32.2] - 2026-03-14
 
 ### Fixed / Исправлено
