@@ -227,6 +227,13 @@ AVAILABLE_EXTENSIONS = {
 ./scripts/git_safe_pull.ps1 -OnlyAndroidClientConfig
 ```
 
+Если хочешь сделать то же самое вручную без helper-скрипта (прямо по ошибке из Android Studio, где конфликтуют `android-client/build.gradle.kts` и `android-client/gradle.properties`):
+```powershell
+git stash push -m "tmp-android-config" -- android-client/build.gradle.kts android-client/gradle.properties
+git pull --rebase origin develop
+git stash pop
+```
+
 Техническая деталь: Android-версия (`versionCode`/`versionName`) вынесена в `android-client/gradle.properties`, чтобы снизить шанс конфликтов в `android-client/app/build.gradle.kts` при обычном `git pull`.
 
 ## 🌐 Веб‑интерфейс
