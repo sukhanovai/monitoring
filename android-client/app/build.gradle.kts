@@ -1,11 +1,8 @@
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.plugin.compose")
+    id("org.jetbrains.kotlin.android")
 }
 
-if (extensions.findByName("kotlin") == null) {
-    apply(plugin = "org.jetbrains.kotlin.android")
-}
 
 android {
     namespace = "ru.monitoring.mobile"
@@ -15,8 +12,8 @@ android {
         applicationId = "ru.monitoring.mobile"
         minSdk = 26
         targetSdk = 34
-        versionCode = 46
-        versionName = "8.31.0"
+        versionCode = 48
+        versionName = "8.32.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
