@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.2] - 2026-03-14
+
+### Fixed / Исправлено
+- EN: Reconciled branch state with the latest code line for conflict-prone versioned files (core/config/bot/android module descriptors) while keeping the Android Gradle plugin fix (`org.jetbrains.kotlin.android`) intact.
+- RU: Согласовано состояние ветки с актуальной линией кода для конфликтных файлов с версиями (core/config/bot/android-дескрипторы) с сохранением фикса Android Gradle-плагина (`org.jetbrains.kotlin.android`).
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.2`; Android `versionCode` bumped to `49`.
+- RU: Версия проекта повышена до `8.32.2`; Android `versionCode` увеличен до `49`.
+
 ## [8.32.1] - 2026-03-14
 
 ### Fixed / Исправлено
