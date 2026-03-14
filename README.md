@@ -177,6 +177,58 @@ AVAILABLE_EXTENSIONS = {
 
 Подробная пошаговая инструкция для запуска и доработки: `docs/android_mobile_app.md`.
 
+### Публикация APK как prerelease только для `develop`
+
+Из терминала Android Studio (PowerShell) можно запустить один скрипт:
+
+```powershell
+./scripts/publish_android_prerelease.ps1
+```
+
+Что делает скрипт:
+- проверяет, что текущая ветка — `develop`;
+- собирает `release` APK через Gradle;
+- автоматически выбирает APK из `app/build/outputs/apk/release` (`app-release.apk`, `app-release-unsigned.apk` или последний `*.apk`);
+- публикует/обновляет GitHub prerelease с тегом `v<версия>-develop`;
+- загружает APK в релиз, не затрагивая стабильный релиз в `main`.
+
+Требования:
+- либо установлен `gh` (GitHub CLI) и выполнен `gh auth login`;
+- либо задан `GH_TOKEN`/`GITHUB_TOKEN` (fallback через GitHub API без `gh`);
+- права на создание релизов в репозитории.
+
+Примечание по сборке Android Studio:
+- для Kotlin 2.x и включённого Compose в модуле подключён `org.jetbrains.kotlin.plugin.compose`; если после pull IDE ругается на Compose compiler plugin — обновите Gradle Sync и пересоберите проект.
+
+Важно:
+- скрипт требует чистое рабочее дерево Git (иначе попросит сделать commit/stash);
+- при необходимости можно форсировать запуск с локальными изменениями: `./scripts/publish_android_prerelease.ps1 -AllowDirty`.
+
+### Безопасный `git pull` при локальных изменениях
+
+Если `git pull` падает с ошибкой `Please commit your changes or stash them before you merge`, можно использовать helper-скрипт:
+
+```powershell
+./scripts/git_safe_pull.ps1
+```
+
+Скрипт делает:
+- авто-stash локальных изменений (если они есть);
+- `git pull --rebase origin develop`;
+- автоматический возврат stashed-изменений (`stash pop`).
+
+Опции:
+- `-NoRebase` — выполнить обычный `git pull` без rebase;
+- `-KeepStash` — не делать `stash pop` автоматически;
+- `-OnlyAndroidClientConfig` — stash только `android-client/build.gradle.kts` и `android-client/gradle.properties` (полезно для типового конфликта pull из Android Studio).
+
+Быстрый ручной запуск для твоего кейса:
+```powershell
+./scripts/git_safe_pull.ps1 -OnlyAndroidClientConfig
+```
+
+Техническая деталь: Android-версия (`versionCode`/`versionName`) вынесена в `android-client/gradle.properties`, чтобы снизить шанс конфликтов в `android-client/app/build.gradle.kts` при обычном `git pull`.
+
 ## 🌐 Веб‑интерфейс
 
 Если включено расширение `web_interface`, панель будет доступна по адресу:
