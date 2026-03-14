@@ -81,6 +81,37 @@ function Invoke-GitHubApi {
     return Invoke-RestMethod -Method $Method -Uri $Url -Headers $headers
 }
 
+
+function Resolve-ApkSource {
+    param([string]$AndroidDir)
+
+    $releaseDir = Join-Path $AndroidDir "app/build/outputs/apk/release"
+    if (-not (Test-Path $releaseDir)) {
+        throw "APK release directory not found: $releaseDir"
+    }
+
+    $preferred = @(
+        Join-Path $releaseDir "app-release.apk",
+        Join-Path $releaseDir "app-release-unsigned.apk"
+    )
+
+    foreach ($candidate in $preferred) {
+        if (Test-Path $candidate) {
+            return $candidate
+        }
+    }
+
+    $latestApk = Get-ChildItem -Path $releaseDir -Filter "*.apk" -File |
+        Sort-Object LastWriteTime -Descending |
+        Select-Object -First 1
+
+    if ($latestApk) {
+        return $latestApk.FullName
+    }
+
+    throw "APK file was not found in: $releaseDir"
+}
+
 function Publish-WithGh {
     param(
         [string]$ReleaseTag,
@@ -227,10 +258,8 @@ try {
     }
 
     Write-Host "[4/7] Checking APK output..."
-    $apkSource = Join-Path $androidDir "app/build/outputs/apk/release/app-release.apk"
-    if (-not (Test-Path $apkSource)) {
-        throw "APK not found: $apkSource"
-    }
+    $apkSource = Resolve-ApkSource -AndroidDir $androidDir
+    Write-Host "[4/7] Using APK: $apkSource"
 
     $artifactDir = Join-Path $RepoRoot "artifacts"
     New-Item -ItemType Directory -Path $artifactDir -Force | Out-Null

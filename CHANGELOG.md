@@ -6,6 +6,18 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.10] - 2026-03-14
+
+### Fixed / Исправлено
+- EN: Fixed APK discovery in `scripts/publish_android_prerelease.ps1`: script no longer hardcodes `app-release.apk` and now supports `app-release.apk`, `app-release-unsigned.apk`, or latest `*.apk` from release output directory.
+- RU: Исправлен поиск APK в `scripts/publish_android_prerelease.ps1`: убран жёсткий хардкод `app-release.apk`, теперь поддерживаются `app-release.apk`, `app-release-unsigned.apk` или последний `*.apk` в каталоге release-вывода.
+- EN: Added explicit log line with selected APK path to simplify troubleshooting in Android Studio terminal.
+- RU: Добавлен явный лог с выбранным путём APK для упрощения диагностики в терминале Android Studio.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.10`; Android `versionCode` bumped to `57`.
+- RU: Версия проекта повышена до `8.32.10`; Android `versionCode` увеличен до `57`.
+
 ## [8.32.9] - 2026-03-14
 
 ### Fixed / Исправлено

@@ -188,6 +188,7 @@ AVAILABLE_EXTENSIONS = {
 Что делает скрипт:
 - проверяет, что текущая ветка — `develop`;
 - собирает `release` APK через Gradle;
+- автоматически выбирает APK из `app/build/outputs/apk/release` (`app-release.apk`, `app-release-unsigned.apk` или последний `*.apk`);
 - публикует/обновляет GitHub prerelease с тегом `v<версия>-develop`;
 - загружает APK в релиз, не затрагивая стабильный релиз в `main`.
 
