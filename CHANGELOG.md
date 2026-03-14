@@ -6,6 +6,160 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.13] - 2026-03-15
+
+### Fixed / Исправлено
+- EN: Fixed Android Studio build failure for Compose on Kotlin 2.x (`Starting in Kotlin 2.0, the Compose Compiler Gradle plugin is required`) by enabling `org.jetbrains.kotlin.plugin.compose` in the app module and declaring it in the root Gradle plugins block.
+- RU: Исправлен сбой сборки Android Studio для Compose на Kotlin 2.x (`Starting in Kotlin 2.0, the Compose Compiler Gradle plugin is required`): подключён `org.jetbrains.kotlin.plugin.compose` в app-модуле и объявлен в корневом блоке Gradle-плагинов.
+- EN: Upgraded Kotlin Android/plugin versions to `2.0.21` and removed obsolete `composeOptions.kotlinCompilerExtensionVersion` config for Kotlin 2 compose plugin flow.
+- RU: Обновлены версии Kotlin Android/plugin до `2.0.21` и убрана устаревшая конфигурация `composeOptions.kotlinCompilerExtensionVersion` для потока compose-плагина в Kotlin 2.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.13`; Android `versionCode` bumped to `60`.
+- RU: Версия проекта повышена до `8.32.13`; Android `versionCode` увеличен до `60`.
+
+## [8.32.12] - 2026-03-14
+
+### Added / Добавлено
+- EN: Added helper script `scripts/git_safe_pull.ps1` for safe pulls with local changes: auto-stash, pull (`--rebase` by default), and optional stash restore.
+- RU: Добавлен helper-скрипт `scripts/git_safe_pull.ps1` для безопасного pull при локальных изменениях: авто-stash, pull (`--rebase` по умолчанию) и опциональное восстановление stash.
+
+### Changed / Изменено
+- EN: Updated README with practical instructions for resolving `git pull` blocking errors caused by local modifications.
+- RU: Обновлён README с практической инструкцией по обходу блокирующей ошибки `git pull` из-за локальных изменений.
+- EN: Project version bumped to `8.32.12`; Android `versionCode` bumped to `59`.
+- RU: Версия проекта повышена до `8.32.12`; Android `versionCode` увеличен до `59`.
+
+## [8.32.11] - 2026-03-14
+
+### Fixed / Исправлено
+- EN: Added preflight Git working-tree check to `scripts/publish_android_prerelease.ps1` so users get explicit guidance before running into `git pull` merge protection errors (`Please commit your changes or stash them before you merge`).
+- RU: Добавлена preflight-проверка чистоты Git working tree в `scripts/publish_android_prerelease.ps1`, чтобы заранее получать понятную подсказку и не упираться в ошибки `git pull` вида `Please commit your changes or stash them before you merge`.
+- EN: Added `-AllowDirty` escape hatch for advanced cases when user intentionally wants to run publish flow with local modifications.
+- RU: Добавлен флаг `-AllowDirty` для продвинутого сценария, когда публикацию нужно запустить осознанно с локальными изменениями.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.11`; Android `versionCode` bumped to `58`.
+- RU: Версия проекта повышена до `8.32.11`; Android `versionCode` увеличен до `58`.
+
+## [8.32.10] - 2026-03-14
+
+### Fixed / Исправлено
+- EN: Fixed APK discovery in `scripts/publish_android_prerelease.ps1`: script no longer hardcodes `app-release.apk` and now supports `app-release.apk`, `app-release-unsigned.apk`, or latest `*.apk` from release output directory.
+- RU: Исправлен поиск APK в `scripts/publish_android_prerelease.ps1`: убран жёсткий хардкод `app-release.apk`, теперь поддерживаются `app-release.apk`, `app-release-unsigned.apk` или последний `*.apk` в каталоге release-вывода.
+- EN: Added explicit log line with selected APK path to simplify troubleshooting in Android Studio terminal.
+- RU: Добавлен явный лог с выбранным путём APK для упрощения диагностики в терминале Android Studio.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.10`; Android `versionCode` bumped to `57`.
+- RU: Версия проекта повышена до `8.32.10`; Android `versionCode` увеличен до `57`.
+
+## [8.32.9] - 2026-03-14
+
+### Fixed / Исправлено
+- EN: Updated `scripts/publish_android_prerelease.ps1` to work without `gh`: if `gh` is unavailable, script now falls back to GitHub REST API using `GH_TOKEN`/`GITHUB_TOKEN` (create/edit prerelease and upload APK asset).
+- RU: Обновлён `scripts/publish_android_prerelease.ps1`: теперь при отсутствии `gh` скрипт использует fallback через GitHub REST API с `GH_TOKEN`/`GITHUB_TOKEN` (создание/обновление prerelease и загрузка APK-артефакта).
+- EN: Improved preflight messaging so missing `gh` no longer hard-fails immediately; script reports the API fallback path.
+- RU: Улучшены preflight-сообщения: отсутствие `gh` больше не валит скрипт сразу, теперь явно показывается сценарий fallback через API.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.9`; Android `versionCode` bumped to `56`.
+- RU: Версия проекта повышена до `8.32.9`; Android `versionCode` увеличен до `56`.
+
+## [8.32.8] - 2026-03-14
+
+### Fixed / Исправлено
+- EN: Fixed Windows PowerShell parsing errors in `scripts/publish_android_prerelease.ps1` caused by non-ASCII/encoding-sensitive text; script messages were rewritten in ASCII-safe form to avoid mojibake/parser failures.
+- RU: Исправлены ошибки парсинга в Windows PowerShell в `scripts/publish_android_prerelease.ps1`, вызванные не-ASCII/кодировочными строками; сообщения переписаны в ASCII-безопасном виде для исключения кракозябр и сбоев парсера.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.8`; Android `versionCode` bumped to `55`.
+- RU: Версия проекта повышена до `8.32.8`; Android `versionCode` увеличен до `55`.
+
+## [8.32.7] - 2026-03-14
+
+### Fixed / Исправлено
+- EN: Fixed Android Studio build error `Undefined Toolchain Download Repositories` / `Could not create task ':app:compileDebugAndroidTestJavaWithJavac'` by removing explicit Kotlin toolchain provisioning (`kotlin { jvmToolchain(17) }`) that forced missing local toolchain resolution.
+- RU: Исправлена ошибка сборки Android Studio `Undefined Toolchain Download Repositories` / `Could not create task ':app:compileDebugAndroidTestJavaWithJavac'`: убран явный Kotlin toolchain (`kotlin { jvmToolchain(17) }`), который принудительно требовал недоступный локальный toolchain.
+- EN: Kept `kotlinOptions { jvmTarget = "17" }` to preserve Java/Kotlin bytecode compatibility with project Java 17 settings.
+- RU: Сохранён `kotlinOptions { jvmTarget = "17" }` для совместимости Java/Kotlin bytecode с настройками Java 17 в проекте.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.7`; Android `versionCode` bumped to `54`.
+- RU: Версия проекта повышена до `8.32.7`; Android `versionCode` увеличен до `54`.
+
+## [8.32.6] - 2026-03-14
+
+### Fixed / Исправлено
+- EN: Fixed Android build failure `:app:compileDebugKotlin` caused by JVM target mismatch (`javac=17`, `kotlin=21`): pinned Kotlin/JVM to 17 via `kotlinOptions { jvmTarget = "17" }` and `kotlin { jvmToolchain(17) }`.
+- RU: Исправлен сбой Android-сборки `:app:compileDebugKotlin` из-за несовпадения JVM target (`javac=17`, `kotlin=21`): Kotlin/JVM зафиксирован на 17 через `kotlinOptions { jvmTarget = "17" }` и `kotlin { jvmToolchain(17) }`.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.6`; Android `versionCode` bumped to `53`.
+- RU: Версия проекта повышена до `8.32.6`; Android `versionCode` увеличен до `53`.
+
+## [8.32.5] - 2026-03-14
+
+### Fixed / Исправлено
+- EN: Reduced PR conflict surface by reverting non-essential repository-wide version-header changes and keeping only target files for Android prerelease workflow and Gradle plugin compatibility fix.
+- RU: Снижен объём конфликтов в PR: отменены несущественные массовые правки version-header по репозиторию, оставлены только целевые файлы для Android prerelease workflow и фикса совместимости Gradle-плагинов.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.5`; Android `versionCode` bumped to `52`.
+- RU: Версия проекта повышена до `8.32.5`; Android `versionCode` увеличен до `52`.
+
+## [8.32.4] - 2026-03-14
+
+### Fixed / Исправлено
+- EN: Removed the overreaching conflict-resolution helper script and its README section to avoid misleading workflow expectations; kept focus on the `develop` Android prerelease publishing flow.
+- RU: Удалён избыточный helper-скрипт разруливания конфликтов и соответствующий раздел в README, чтобы не вводить в заблуждение по workflow; фокус оставлен на публикации Android prerelease из `develop`.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.4`; Android `versionCode` bumped to `51`.
+- RU: Версия проекта повышена до `8.32.4`; Android `versionCode` увеличен до `51`.
+
+## [8.32.3] - 2026-03-14
+
+### Added / Добавлено
+- EN: Added helper script `scripts/resolve_merge_conflicts.ps1` to reproduce GitHub CLI conflict-resolution flow for PR branches: fetch base branch, merge, auto-resolve known version-conflict files by keeping branch changes, and stop on unresolved files.
+- RU: Добавлен вспомогательный скрипт `scripts/resolve_merge_conflicts.ps1` для CLI-разруливания конфликтов PR-ветки по сценарию GitHub: fetch базовой ветки, merge, авторазрешение известных конфликтных версионных файлов с сохранением изменений ветки и остановка при остаточных конфликтах.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.3`; Android `versionCode` bumped to `50`.
+- RU: Версия проекта повышена до `8.32.3`; Android `versionCode` увеличен до `50`.
+
+## [8.32.2] - 2026-03-14
+
+### Fixed / Исправлено
+- EN: Reconciled branch state with the latest code line for conflict-prone versioned files (core/config/bot/android module descriptors) while keeping the Android Gradle plugin fix (`org.jetbrains.kotlin.android`) intact.
+- RU: Согласовано состояние ветки с актуальной линией кода для конфликтных файлов с версиями (core/config/bot/android-дескрипторы) с сохранением фикса Android Gradle-плагина (`org.jetbrains.kotlin.android`).
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.2`; Android `versionCode` bumped to `49`.
+- RU: Версия проекта повышена до `8.32.2`; Android `versionCode` увеличен до `49`.
+
+## [8.32.1] - 2026-03-14
+
+### Fixed / Исправлено
+- EN: Fixed Android Gradle plugin configuration: removed unresolved `org.jetbrains.kotlin.plugin.compose` (not available for Kotlin `1.9.24`) and switched module plugins to standard `org.jetbrains.kotlin.android`, restoring project sync/build in Android Studio.
+- RU: Исправлена конфигурация Android Gradle-плагинов: удалён недоступный `org.jetbrains.kotlin.plugin.compose` (для Kotlin `1.9.24`) и модуль переведён на стандартный `org.jetbrains.kotlin.android`, из-за чего снова работает sync/build в Android Studio.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.1`; Android `versionCode` bumped to `48`.
+- RU: Версия проекта повышена до `8.32.1`; Android `versionCode` увеличен до `48`.
+
+## [8.32.0] - 2026-03-14
+
+### Added / Добавлено
+- EN: Added PowerShell script `scripts/publish_android_prerelease.ps1` to build Android release APK and publish it as a GitHub prerelease from `develop` (`v<version>-develop`) without changing stable release flow in `main`.
+- RU: Добавлен PowerShell-скрипт `scripts/publish_android_prerelease.ps1`, который собирает Android release APK и публикует его как GitHub prerelease из `develop` (`v<версия>-develop`) без изменения стабильного релизного потока в `main`.
+- EN: Documented one-command prerelease publishing flow from Android Studio terminal in `README.md`.
+- RU: Задокументирован запуск публикации prerelease одной командой из терминала Android Studio в `README.md`.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.0`; Android `versionCode` bumped to `47`.
+- RU: Версия проекта повышена до `8.32.0`; Android `versionCode` увеличен до `47`.
+
 ## [8.31.0] - 2026-03-13
 
 ### Fixed / Исправлено
