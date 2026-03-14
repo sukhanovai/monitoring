@@ -6,6 +6,18 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.7] - 2026-03-14
+
+### Fixed / Исправлено
+- EN: Fixed Android Studio build error `Undefined Toolchain Download Repositories` / `Could not create task ':app:compileDebugAndroidTestJavaWithJavac'` by removing explicit Kotlin toolchain provisioning (`kotlin { jvmToolchain(17) }`) that forced missing local toolchain resolution.
+- RU: Исправлена ошибка сборки Android Studio `Undefined Toolchain Download Repositories` / `Could not create task ':app:compileDebugAndroidTestJavaWithJavac'`: убран явный Kotlin toolchain (`kotlin { jvmToolchain(17) }`), который принудительно требовал недоступный локальный toolchain.
+- EN: Kept `kotlinOptions { jvmTarget = "17" }` to preserve Java/Kotlin bytecode compatibility with project Java 17 settings.
+- RU: Сохранён `kotlinOptions { jvmTarget = "17" }` для совместимости Java/Kotlin bytecode с настройками Java 17 в проекте.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.7`; Android `versionCode` bumped to `54`.
+- RU: Версия проекта повышена до `8.32.7`; Android `versionCode` увеличен до `54`.
+
 ## [8.32.6] - 2026-03-14
 
 ### Fixed / Исправлено

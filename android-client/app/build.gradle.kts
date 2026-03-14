@@ -12,8 +12,8 @@ android {
         applicationId = "ru.monitoring.mobile"
         minSdk = 26
         targetSdk = 34
-        versionCode = 53
-        versionName = "8.32.6"
+        versionCode = 54
+        versionName = "8.32.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -56,11 +56,6 @@ android {
     }
 }
 
-
-
-kotlin {
-    jvmToolchain(17)
-}
 
 dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2024.06.00")
