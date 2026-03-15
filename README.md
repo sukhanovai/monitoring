@@ -207,6 +207,18 @@ AVAILABLE_EXTENSIONS = {
 
 ### Безопасный `git pull` при локальных изменениях
 
+Если PR в GitHub пишет `This branch has conflicts that must be resolved`, можно прогнать авто-разруливание конфликтов по "шумным" version-файлам (берётся версия из `develop`):
+
+```powershell
+./scripts/resolve_pr_conflicts.ps1
+```
+
+Скрипт:
+- делает `git fetch origin develop`;
+- запускает `git merge origin/develop`;
+- для набора частоконфликтных version-файлов автоматически берёт сторону `develop` (`--theirs`);
+- оставляет ручное разрешение только для действительно содержательных конфликтов.
+
 Если `git pull` падает с ошибкой `Please commit your changes or stash them before you merge`, используйте helper-скрипт:
 
 ```powershell

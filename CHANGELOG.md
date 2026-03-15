@@ -6,15 +6,17 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.32.28] - 2026-03-15
+## [8.32.29] - 2026-03-15
 
-### Fixed / Исправлено
-- EN: Reduced merge-conflict fallout for active branches by re-synchronizing all versioned headers and runtime constants to one release value across the repository.
-- RU: Снижен эффект merge-конфликтов в активных ветках: заново синхронизированы все version-заголовки и runtime-константы на единое релизное значение по всему репозиторию.
+### Added / Добавлено
+- EN: Added `scripts/resolve_pr_conflicts.ps1` to unblock GitHub PRs with many version-header conflicts: the script merges `origin/develop` and auto-resolves predefined volatile version files by taking `develop` side.
+- RU: Добавлен `scripts/resolve_pr_conflicts.ps1` для разблокировки GitHub PR с массовыми конфликтами по version-заголовкам: скрипт делает merge `origin/develop` и автоматически разрешает заранее заданные конфликтные version-файлы в пользу `develop`.
 
 ### Changed / Изменено
-- EN: Project version bumped to `8.32.28`; Android `versionCode` bumped to `75`.
-- RU: Версия проекта повышена до `8.32.28`; Android `versionCode` увеличен до `75`.
+- EN: README updated with explicit command for conflict-resolution flow in GitHub PRs.
+- RU: README обновлён явной командой для сценария разрешения конфликтов в GitHub PR.
+- EN: Project version bumped to `8.32.29`; Android `versionCode` bumped to `76`.
+- RU: Версия проекта повышена до `8.32.29`; Android `versionCode` увеличен до `76`.
 
 ## [8.32.22] - 2026-03-15
 
