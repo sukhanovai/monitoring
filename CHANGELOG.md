@@ -6,6 +6,32 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.19] - 2026-03-15
+
+### Added / Добавлено
+- EN: Added a straightforward overwrite mode to `scripts/git_safe_pull.ps1`: `-OnlyAndroidClientConfig -ResetAndroidClientConfigToRemote` fetches `$Remote/$Branch`, replaces local Android config files with remote versions, and then runs pull — intended for cases when local Android Gradle config can be safely discarded.
+- RU: Добавлен простой режим принудительной замены в `scripts/git_safe_pull.ps1`: `-OnlyAndroidClientConfig -ResetAndroidClientConfigToRemote` подтягивает `$Remote/$Branch`, заменяет локальные Android-конфиги версиями из удалённой ветки и выполняет pull — для кейсов, когда локальные правки в Android Gradle-конфигах можно безопасно отбросить.
+
+### Changed / Изменено
+- EN: Updated README with a one-command "discard local Android config and take GitHub version" flow and matching manual commands.
+- RU: Обновлён README: добавлен сценарий "одной командой отбросить локальный Android-конфиг и взять версию из GitHub" и соответствующие ручные команды.
+- EN: Project version bumped to `8.32.19`; Android `versionCode` bumped to `66`.
+- RU: Версия проекта повышена до `8.32.19`; Android `versionCode` увеличен до `66`.
+
+## [8.32.18] - 2026-03-15
+
+### Fixed / Исправлено
+- EN: Reworked `scripts/git_safe_pull.ps1` for `-OnlyAndroidClientConfig`: replaced `stash pop` flow with temporary backup/restore of target Android config files (`build.gradle.kts`, `gradle.properties`, `gradle-wrapper.properties`) to avoid post-pull merge conflicts in common Android Studio workflows.
+- RU: Переработан `scripts/git_safe_pull.ps1` для `-OnlyAndroidClientConfig`: вместо схемы `stash pop` используется временный backup/restore целевых Android-конфигов (`build.gradle.kts`, `gradle.properties`, `gradle-wrapper.properties`), чтобы избежать merge-конфликтов после pull в типовом потоке Android Studio.
+- EN: Added guardrail for `-OnlyAndroidClientConfig` mode: if there are local changes outside target Android config files, script now stops early with explicit action hint.
+- RU: Добавлен guardrail для режима `-OnlyAndroidClientConfig`: если есть локальные изменения вне целевых Android-конфигов, скрипт останавливается заранее и даёт явную подсказку по дальнейшим действиям.
+
+### Changed / Изменено
+- EN: Updated README with conflict-resistant manual backup/restore commands as alternative to stash-based recovery in Android Studio terminal.
+- RU: Обновлён README: добавлены более устойчивые к конфликтам ручные команды backup/restore как альтернатива stash-сценарию в терминале Android Studio.
+- EN: Project version bumped to `8.32.18`; Android `versionCode` bumped to `65`.
+- RU: Версия проекта повышена до `8.32.18`; Android `versionCode` увеличен до `65`.
+
 ## [8.32.17] - 2026-03-15
 
 ### Fixed / Исправлено
