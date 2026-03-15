@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.25] - 2026-03-16
+
+### Fixed / Исправлено
+- EN: Fixed Android Studio sync/build failure `Cannot add extension with name 'kotlin'` by downgrading Gradle wrapper from `9.1.0` to `8.7`, which is compatible with the configured Android Gradle Plugin `8.5.2` and Kotlin plugins.
+- RU: Исправлен сбой синхронизации/сборки в Android Studio `Cannot add extension with name 'kotlin'`: Gradle wrapper понижен с `9.1.0` до `8.7`, совместимого с используемыми Android Gradle Plugin `8.5.2` и Kotlin-плагинами.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.25`; Android `versionCode` bumped to `72`.
+- RU: Версия проекта повышена до `8.32.25`; Android `versionCode` увеличен до `72`.
+
 ## [8.32.24] - 2026-03-15
 
 ### Added / Добавлено
