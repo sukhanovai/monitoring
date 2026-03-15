@@ -225,7 +225,13 @@ AVAILABLE_EXTENSIONS = {
 - `-OnlyAndroidClientConfig` — временно сохраняет и восстанавливает только `android-client/build.gradle.kts`, `android-client/gradle.properties` и `android-client/gradle/wrapper/gradle-wrapper.properties` (без `stash pop` merge для этих файлов).
 - `-ResetAndroidClientConfigToRemote` — в режиме `-OnlyAndroidClientConfig` перед pull отбрасывает локальные изменения в этих файлах до состояния текущей ветки (`HEAD`) и затем подтягивает актуальную версию из remote через `git pull` (локальные изменения будут отброшены). Также умеет обработать состояние `unmerged` для этих же файлов (после неудачного `stash pop`) и снять блокировку перед pull.
 
-Быстрый ручной запуск для твоего кейса:
+Если Android Studio/терминал показывает ошибку вида:
+```text
+error: Your local changes to the following files would be overwritten by merge:
+        android-client/gradle/wrapper/gradle-wrapper.properties
+Please commit your changes or stash them before you merge.
+```
+это означает, что локально изменён Android-конфиг. Самый быстрый безопасный вариант — helper-скрипт:
 ```powershell
 ./scripts/git_safe_pull.ps1 -OnlyAndroidClientConfig
 ```

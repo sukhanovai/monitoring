@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.26] - 2026-03-15
+
+### Added / Добавлено
+- EN: Added a dedicated README troubleshooting snippet for Android Studio `git pull` failures caused by local changes in `android-client/gradle/wrapper/gradle-wrapper.properties`, with a direct `git_safe_pull.ps1` command example.
+- RU: Добавлен отдельный troubleshooting-фрагмент в README для ошибок `git pull` в Android Studio из-за локальных изменений в `android-client/gradle/wrapper/gradle-wrapper.properties`, с прямым примером команды `git_safe_pull.ps1`.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.26`; Android `versionCode` bumped to `73`.
+- RU: Версия проекта повышена до `8.32.26`; Android `versionCode` увеличен до `73`.
+
 ## [8.32.25] - 2026-03-16
 
 ### Fixed / Исправлено
