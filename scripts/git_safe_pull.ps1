@@ -3,7 +3,8 @@ param(
     [string]$Branch = "develop",
     [switch]$NoRebase,
     [switch]$KeepStash,
-    [switch]$OnlyAndroidClientConfig
+    [switch]$OnlyAndroidClientConfig,
+    [switch]$ResetAndroidClientConfigToRemote
 )
 
 $ErrorActionPreference = "Stop"
@@ -17,24 +18,73 @@ function Require-Command {
 
 Require-Command git
 
-function Has-ChangesInPath {
-    param([string[]]$Paths)
-
-    $status = git status --porcelain -- $Paths
-    return [bool]$status
-}
-
 $stashCreated = $false
 $stashName = "auto-stash-before-pull-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
 
+$targetBackupDir = $null
+$targetBackupCreated = $false
+$targetDirtyPaths = @()
+
+$androidConfigPaths = @(
+    "android-client/build.gradle.kts",
+    "android-client/gradle.properties",
+    "android-client/gradle/wrapper/gradle-wrapper.properties"
+)
+
 try {
     if ($OnlyAndroidClientConfig) {
-        $paths = @("android-client/build.gradle.kts", "android-client/gradle.properties")
-        $targetDirty = Has-ChangesInPath -Paths $paths
-        if ($targetDirty) {
-            Write-Host "[1/4] Android config files are dirty. Creating targeted stash..."
-            git stash push -m $stashName -- $paths | Out-Null
-            $stashCreated = $true
+        $otherDirty = git status --porcelain -- . ":(exclude)android-client/build.gradle.kts" ":(exclude)android-client/gradle.properties" ":(exclude)android-client/gradle/wrapper/gradle-wrapper.properties"
+        if ($otherDirty) {
+            throw "OnlyAndroidClientConfig mode supports changes only in target Android config files. Commit/stash other files first."
+        }
+
+        if ($ResetAndroidClientConfigToRemote) {
+            $unmerged = git diff --name-only --diff-filter=U
+            if ($unmerged) {
+                foreach ($path in $unmerged) {
+                    if ($androidConfigPaths -notcontains $path) {
+                        throw "Found unresolved conflicts outside Android config files: $path"
+                    }
+                }
+
+                Write-Host "[1/4] Unmerged Android config files detected. Resetting merge state before pull..."
+                git reset --merge
+            }
+
+            Write-Host "[1/4] Fetching $Remote/$Branch and replacing target Android config files with remote version..."
+            git fetch $Remote $Branch
+            $remoteRef = "$Remote/$Branch"
+            git checkout $remoteRef -- $androidConfigPaths
+            git restore --staged -- $androidConfigPaths
+        }
+
+        foreach ($path in $androidConfigPaths) {
+            $pathDirty = git status --porcelain -- $path
+            if ($pathDirty) {
+                $targetDirtyPaths += $path
+            }
+        }
+
+        if ($targetDirtyPaths.Count -gt 0 -and -not $ResetAndroidClientConfigToRemote) {
+            Write-Host "[1/4] Target Android config files are dirty. Backing them up and cleaning working tree for pull..."
+            $targetBackupDir = Join-Path ([System.IO.Path]::GetTempPath()) ("git-safe-pull-" + (Get-Date -Format "yyyyMMdd-HHmmss"))
+            New-Item -Path $targetBackupDir -ItemType Directory | Out-Null
+
+            foreach ($path in $targetDirtyPaths) {
+                $sourcePath = Join-Path (Get-Location) $path
+                if (Test-Path $sourcePath) {
+                    $backupPath = Join-Path $targetBackupDir $path
+                    $backupParent = Split-Path -Path $backupPath -Parent
+                    New-Item -Path $backupParent -ItemType Directory -Force | Out-Null
+                    Copy-Item -Path $sourcePath -Destination $backupPath -Force
+                }
+            }
+
+            git restore --staged --worktree -- $targetDirtyPaths
+            $targetBackupCreated = $true
+        }
+        elseif ($ResetAndroidClientConfigToRemote) {
+            Write-Host "[1/4] Target Android config files were reset to remote version."
         }
         else {
             Write-Host "[1/4] Target Android config files are clean."
@@ -60,7 +110,19 @@ try {
         git pull --rebase $Remote $Branch
     }
 
-    if ($stashCreated -and -not $KeepStash) {
+    if ($OnlyAndroidClientConfig -and $targetBackupCreated) {
+        Write-Host "[3/4] Restoring local Android config files from backup (without stash pop merge)..."
+        foreach ($path in $targetDirtyPaths) {
+            $backupPath = Join-Path $targetBackupDir $path
+            $destPath = Join-Path (Get-Location) $path
+            if (Test-Path $backupPath) {
+                $destParent = Split-Path -Path $destPath -Parent
+                New-Item -Path $destParent -ItemType Directory -Force | Out-Null
+                Copy-Item -Path $backupPath -Destination $destPath -Force
+            }
+        }
+    }
+    elseif ($stashCreated -and -not $KeepStash) {
         Write-Host "[3/4] Restoring stashed changes..."
         git stash pop
     }
@@ -68,7 +130,7 @@ try {
         Write-Host "[3/4] Stash kept as requested (-KeepStash): $stashName"
     }
     else {
-        Write-Host "[3/4] No stash to restore."
+        Write-Host "[3/4] No stash/backup to restore."
     }
 
     Write-Host "[4/4] Done."
@@ -78,5 +140,13 @@ catch {
     if ($stashCreated) {
         Write-Host "A temporary stash may still exist. Check with: git stash list"
     }
+    if ($targetBackupCreated) {
+        Write-Host "Temporary backup folder: $targetBackupDir"
+    }
     throw
+}
+finally {
+    if ($targetBackupCreated -and $targetBackupDir -and (Test-Path $targetBackupDir)) {
+        Remove-Item -Path $targetBackupDir -Recurse -Force -ErrorAction SilentlyContinue
+    }
 }
