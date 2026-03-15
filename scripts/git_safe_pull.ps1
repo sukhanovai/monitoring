@@ -4,7 +4,9 @@ param(
     [switch]$NoRebase,
     [switch]$KeepStash,
     [switch]$OnlyAndroidClientConfig,
-    [switch]$ResetAndroidClientConfigToRemote
+    [switch]$ResetAndroidClientConfigToRemote,
+    [switch]$AutoDetectAndroidClientConfigOnly,
+    [switch]$HardResetToRemote
 )
 
 $ErrorActionPreference = "Stop"
@@ -14,6 +16,28 @@ function Require-Command {
     if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
         throw "Command '$Name' was not found. Install it and retry."
     }
+}
+
+function Get-DirtyPaths {
+    $trackedChanges = git diff --name-only HEAD
+    $untrackedChanges = git ls-files --others --exclude-standard
+
+    $allChanges = @()
+    if ($trackedChanges) {
+        $allChanges += $trackedChanges
+    }
+    if ($untrackedChanges) {
+        $allChanges += $untrackedChanges
+    }
+
+    if (-not $allChanges) {
+        return @()
+    }
+
+    return $allChanges |
+        ForEach-Object { $_.Trim() } |
+        Where-Object { $_ } |
+        Sort-Object -Unique
 }
 
 Require-Command git
@@ -32,6 +56,65 @@ $androidConfigPaths = @(
 )
 
 try {
+    if ($HardResetToRemote -and ($OnlyAndroidClientConfig -or $ResetAndroidClientConfigToRemote -or $AutoDetectAndroidClientConfigOnly -or $KeepStash)) {
+        throw "-HardResetToRemote cannot be combined with safe-pull stash/Android-config options."
+    }
+
+    if ($HardResetToRemote) {
+        Write-Host "[1/4] Hard reset mode enabled. All local changes will be discarded..."
+        git fetch $Remote $Branch
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to fetch $Remote/$Branch"
+        }
+
+        git reset --hard "$Remote/$Branch"
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to hard reset to $Remote/$Branch"
+        }
+
+        git clean -fd
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to clean untracked files"
+        }
+
+        Write-Host "[2/4] Repository reset to $Remote/$Branch."
+        Write-Host "[3/4] No stash/backup restore required in hard reset mode."
+        Write-Host "[4/4] Done."
+        return
+    }
+
+    if ($ResetAndroidClientConfigToRemote -and -not $OnlyAndroidClientConfig) {
+        throw "-ResetAndroidClientConfigToRemote can be used only with -OnlyAndroidClientConfig."
+    }
+
+    if ($AutoDetectAndroidClientConfigOnly -and $OnlyAndroidClientConfig) {
+        throw "Use either -AutoDetectAndroidClientConfigOnly or -OnlyAndroidClientConfig, not both."
+    }
+
+    if ($AutoDetectAndroidClientConfigOnly) {
+        $dirtyPaths = Get-DirtyPaths
+        if ($dirtyPaths.Count -gt 0) {
+            $onlyAndroidConfigDirty = $true
+            foreach ($path in $dirtyPaths) {
+                if ($androidConfigPaths -notcontains $path) {
+                    $onlyAndroidConfigDirty = $false
+                    break
+                }
+            }
+
+            if ($onlyAndroidConfigDirty) {
+                Write-Host "[1/4] Auto-detected changes only in Android config files. Switching to -OnlyAndroidClientConfig mode."
+                $OnlyAndroidClientConfig = $true
+            }
+            else {
+                Write-Host "[1/4] Auto-detect found changes outside Android config files. Using regular stash mode."
+            }
+        }
+        else {
+            Write-Host "[1/4] Working tree is clean."
+        }
+    }
+
     if ($OnlyAndroidClientConfig) {
         $otherDirty = git status --porcelain -- . ":(exclude)android-client/build.gradle.kts" ":(exclude)android-client/gradle.properties" ":(exclude)android-client/gradle/wrapper/gradle-wrapper.properties"
         if ($otherDirty) {

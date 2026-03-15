@@ -201,29 +201,40 @@ AVAILABLE_EXTENSIONS = {
 - для Kotlin 2.x и включённого Compose в модуле подключён `org.jetbrains.kotlin.plugin.compose`; если после pull IDE ругается на Compose compiler plugin — обновите Gradle Sync и пересоберите проект.
 
 Важно:
-- скрипт требует чистое рабочее дерево Git (иначе попросит сделать commit/stash);
-- при необходимости можно форсировать запуск с локальными изменениями: `./scripts/publish_android_prerelease.ps1 -AllowDirty`.
+- по умолчанию скрипт требует чистое рабочее дерево Git (иначе попросит сделать commit/stash);
+- если нужно автоматически спрятать локальные изменения на время релиза и вернуть их обратно, используйте: `./scripts/publish_android_prerelease.ps1 -AutoStashDirty`;
+- при необходимости можно форсировать запуск с локальными изменениями без stash: `./scripts/publish_android_prerelease.ps1 -AllowDirty`.
 
 ### Безопасный `git pull` при локальных изменениях
 
-Если `git pull` падает с ошибкой `Please commit your changes or stash them before you merge`, можно использовать helper-скрипт:
+Если `git pull` падает с ошибкой `Please commit your changes or stash them before you merge`, используйте helper-скрипт:
 
 ```powershell
-./scripts/git_safe_pull.ps1
+./scripts/git_safe_pull.ps1 -AutoDetectAndroidClientConfigOnly
 ```
 
-Скрипт делает:
-- авто-сохранение локальных изменений (если они есть);
-- `git pull --rebase origin develop`;
-- автоматический возврат изменений.
+Если этого файла локально ещё нет, сначала подтяни актуальный `develop` из GitHub (или забери файл `scripts/git_safe_pull.ps1` из PR), а потом запускай команду.
 
-Для режима `-OnlyAndroidClientConfig` используется не `stash pop`, а временный backup/restore целевых файлов, что помогает избежать конфликтов после pull.
+Это особенно полезно для типового кейса из Android Studio, когда локально изменён только `android-client/gradle.properties` (или другие целевые Android-конфиги).
+
+Скрипт делает:
+- авто-детект: если изменены только Android-конфиги (`build.gradle.kts`, `gradle.properties`, `gradle-wrapper.properties`) — использует безопасный backup/restore без `stash pop`;
+- если есть изменения и в других файлах — использует обычный временный stash;
+- выполняет `git pull --rebase origin develop`;
+- возвращает локальные изменения после pull.
+
+Если нужно принудительно отбросить локальные изменения только в Android-конфигах и взять удалённую версию, используйте:
+
+```powershell
+./scripts/git_safe_pull.ps1 -OnlyAndroidClientConfig -ResetAndroidClientConfigToRemote
+```
 
 Опции:
 - `-NoRebase` — выполнить обычный `git pull` без rebase;
 - `-KeepStash` — не делать `stash pop` автоматически;
 - `-OnlyAndroidClientConfig` — временно сохраняет и восстанавливает только `android-client/build.gradle.kts`, `android-client/gradle.properties` и `android-client/gradle/wrapper/gradle-wrapper.properties` (без `stash pop` merge для этих файлов).
 - `-ResetAndroidClientConfigToRemote` — в режиме `-OnlyAndroidClientConfig` перед pull отбрасывает локальные изменения в этих файлах до состояния текущей ветки (`HEAD`) и затем подтягивает актуальную версию из remote через `git pull` (локальные изменения будут отброшены). Также умеет обработать состояние `unmerged` для этих же файлов (после неудачного `stash pop`) и снять блокировку перед pull.
+- `-HardResetToRemote` — полностью отбрасывает все локальные изменения и untracked-файлы (`git fetch`, `git reset --hard <remote>/<branch>`, `git clean -fd`), чтобы быстро получить ровно состояние GitHub-ветки.
 
 Быстрый ручной запуск для твоего кейса:
 ```powershell
@@ -234,6 +245,11 @@ AVAILABLE_EXTENSIONS = {
 Если хочешь просто **забить на локальные правки** Android-конфигов и взять версию из GitHub (самый простой путь):
 ```powershell
 ./scripts/git_safe_pull.ps1 -OnlyAndroidClientConfig -ResetAndroidClientConfigToRemote
+```
+
+Если вообще похуй на любые локальные изменения в репозитории и нужно просто привести проект к состоянию GitHub `develop` одной командой:
+```powershell
+./scripts/git_safe_pull.ps1 -HardResetToRemote
 ```
 
 Если хочешь сделать полный reset этих файлов вручную без helper-скрипта (отбрасываем локальные правки и затем тянем GitHub-версию через pull):

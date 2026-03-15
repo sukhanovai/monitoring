@@ -6,15 +6,17 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.32.23] - 2026-03-15
+## [8.32.27] - 2026-03-15
 
-### Fixed / Исправлено
-- EN: Finalized version synchronization after prerelease script fix: all source headers and runtime version declarations now consistently use `8.32.23`.
-- RU: Доведена синхронизация версий после фикса prerelease-скрипта: все заголовки исходников и runtime-объявления версии теперь консистентно используют `8.32.23`.
+### Added / Добавлено
+- EN: Added `-HardResetToRemote` mode to `scripts/git_safe_pull.ps1` for the fastest Android Studio recovery when local state can be fully discarded. The mode performs `git fetch`, `git reset --hard <remote>/<branch>`, and `git clean -fd`.
+- RU: Добавлен режим `-HardResetToRemote` в `scripts/git_safe_pull.ps1` для самого быстрого восстановления в Android Studio, когда локальное состояние можно полностью отбросить. Режим выполняет `git fetch`, `git reset --hard <remote>/<branch>` и `git clean -fd`.
 
 ### Changed / Изменено
-- EN: Project version bumped to `8.32.23`; Android `versionCode` bumped to `70`.
-- RU: Версия проекта повышена до `8.32.23`; Android `versionCode` увеличен до `70`.
+- EN: Updated README with explicit one-command flow for "ignore all local changes and pull GitHub develop".
+- RU: README обновлён явным сценарием "одной командой отбросить все локальные изменения и подтянуть GitHub develop".
+- EN: Project version bumped to `8.32.27`; Android `versionCode` bumped to `74`.
+- RU: Версия проекта повышена до `8.32.27`; Android `versionCode` увеличен до `74`.
 
 ## [8.32.22] - 2026-03-15
 
