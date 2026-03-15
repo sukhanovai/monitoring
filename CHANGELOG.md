@@ -6,6 +6,14 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.27] - 2026-03-15
+
+### Changed / Изменено
+- EN: Improved `scripts/git_safe_pull.ps1` diagnostics for Android Studio `git pull` conflicts caused by local Android Gradle config changes, including explicit hint commands for safe restore or forced reset-to-remote flow.
+- RU: Улучшена диагностика в `scripts/git_safe_pull.ps1` для конфликтов `git pull` в Android Studio из-за локальных изменений Android Gradle-конфигов: добавлены явные команды-подсказки для безопасного восстановления или принудительного reset к remote-версии.
+- EN: Project version bumped to `8.32.27`; Android `versionCode` bumped to `74`.
+- RU: Версия проекта повышена до `8.32.27`; Android `versionCode` увеличен до `74`.
+
 ## [8.32.26] - 2026-03-15
 
 ### Added / Добавлено
