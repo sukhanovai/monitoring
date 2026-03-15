@@ -205,6 +205,20 @@ AVAILABLE_EXTENSIONS = {
 - если нужно автоматически спрятать локальные изменения на время релиза и вернуть их обратно, используйте: `./scripts/publish_android_prerelease.ps1 -AutoStashDirty`;
 - при необходимости можно форсировать запуск с локальными изменениями без stash: `./scripts/publish_android_prerelease.ps1 -AllowDirty`.
 
+### Как полностью откатить ветку к `origin/develop` и начать заново
+
+Если ветка заехала в конфликтный ад, можно одним скриптом:
+- сохранить backup patch текущих изменений;
+- сбросить ветку к `origin/develop`;
+- очистить untracked файлы.
+
+```powershell
+./scripts/recover_local_branch.ps1
+```
+
+После этого ветка будет как `origin/develop`, а backup patch сохранится в `artifacts/`.
+Если нужно вернуть кусок старых правок — накатывай patch через `git am`.
+
 ### Как перенести изменения из Codex в локальный репозиторий
 
 Если в окружении Codex не настроен `origin`/push в GitHub, изменения всё равно можно перенести через patch.

@@ -6,17 +6,17 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.32.30] - 2026-03-15
+## [8.32.31] - 2026-03-15
 
 ### Added / Добавлено
-- EN: Added `scripts/export_codex_changes.ps1` to export Codex commits into `.patch` files when direct push to GitHub is unavailable in the execution environment.
-- RU: Добавлен `scripts/export_codex_changes.ps1` для экспорта коммитов Codex в `.patch`-файлы, когда в окружении недоступен прямой push в GitHub.
+- EN: Added `scripts/recover_local_branch.ps1` for local branch recovery: optional backup patch creation, hard reset to `origin/develop`, and cleanup of untracked files.
+- RU: Добавлен `scripts/recover_local_branch.ps1` для восстановления локальной ветки: опциональное создание backup patch, hard reset к `origin/develop` и очистка untracked-файлов.
 
 ### Changed / Изменено
-- EN: README updated with a practical "export patch -> apply with git am -> push locally" workflow.
-- RU: README обновлён практическим сценарием "экспорт patch -> применение через git am -> локальный push".
-- EN: Project version bumped to `8.32.30`; Android `versionCode` bumped to `77`.
-- RU: Версия проекта повышена до `8.32.30`; Android `versionCode` увеличен до `77`.
+- EN: README updated with explicit "reset branch and start over" console flow for conflict-heavy branches.
+- RU: README обновлён явным консольным сценарием "сбросить ветку и начать заново" для конфликтных веток.
+- EN: Project version bumped to `8.32.31`; Android `versionCode` bumped to `78`.
+- RU: Версия проекта повышена до `8.32.31`; Android `versionCode` увеличен до `78`.
 
 ## [8.32.22] - 2026-03-15
 
