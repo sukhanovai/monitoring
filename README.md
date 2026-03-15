@@ -205,6 +205,29 @@ AVAILABLE_EXTENSIONS = {
 - если нужно автоматически спрятать локальные изменения на время релиза и вернуть их обратно, используйте: `./scripts/publish_android_prerelease.ps1 -AutoStashDirty`;
 - при необходимости можно форсировать запуск с локальными изменениями без stash: `./scripts/publish_android_prerelease.ps1 -AllowDirty`.
 
+### Как перенести изменения из Codex в локальный репозиторий
+
+Если в окружении Codex не настроен `origin`/push в GitHub, изменения всё равно можно перенести через patch.
+
+Экспорт последнего коммита в patch:
+
+```powershell
+./scripts/export_codex_changes.ps1 -LastCommits 1
+```
+
+Экспорт диапазона коммитов:
+
+```powershell
+./scripts/export_codex_changes.ps1 -FromRef HEAD~3 -ToRef HEAD
+```
+
+Дальше на твоей локальной машине (в реальном репозитории с настроенным origin):
+
+```bash
+git am < /path/to/codex-changes-YYYYMMDD-HHMMSS.patch
+git push origin <your-branch>
+```
+
 ### Безопасный `git pull` при локальных изменениях
 
 Если PR в GitHub пишет `This branch has conflicts that must be resolved`, можно прогнать авто-разруливание конфликтов по "шумным" version-файлам (берётся версия из `develop`):

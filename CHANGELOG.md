@@ -6,17 +6,17 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.32.29] - 2026-03-15
+## [8.32.30] - 2026-03-15
 
 ### Added / Добавлено
-- EN: Added `scripts/resolve_pr_conflicts.ps1` to unblock GitHub PRs with many version-header conflicts: the script merges `origin/develop` and auto-resolves predefined volatile version files by taking `develop` side.
-- RU: Добавлен `scripts/resolve_pr_conflicts.ps1` для разблокировки GitHub PR с массовыми конфликтами по version-заголовкам: скрипт делает merge `origin/develop` и автоматически разрешает заранее заданные конфликтные version-файлы в пользу `develop`.
+- EN: Added `scripts/export_codex_changes.ps1` to export Codex commits into `.patch` files when direct push to GitHub is unavailable in the execution environment.
+- RU: Добавлен `scripts/export_codex_changes.ps1` для экспорта коммитов Codex в `.patch`-файлы, когда в окружении недоступен прямой push в GitHub.
 
 ### Changed / Изменено
-- EN: README updated with explicit command for conflict-resolution flow in GitHub PRs.
-- RU: README обновлён явной командой для сценария разрешения конфликтов в GitHub PR.
-- EN: Project version bumped to `8.32.29`; Android `versionCode` bumped to `76`.
-- RU: Версия проекта повышена до `8.32.29`; Android `versionCode` увеличен до `76`.
+- EN: README updated with a practical "export patch -> apply with git am -> push locally" workflow.
+- RU: README обновлён практическим сценарием "экспорт patch -> применение через git am -> локальный push".
+- EN: Project version bumped to `8.32.30`; Android `versionCode` bumped to `77`.
+- RU: Версия проекта повышена до `8.32.30`; Android `versionCode` увеличен до `77`.
 
 ## [8.32.22] - 2026-03-15
 
