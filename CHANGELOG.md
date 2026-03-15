@@ -6,6 +6,20 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.21] - 2026-03-15
+
+### Fixed / Исправлено
+- EN: Fixed `scripts/git_safe_pull.ps1` reset behavior that could leave local changes in index/worktree before `git pull --rebase` (`cannot pull with rebase: Your index contains uncommitted changes`). Reset mode now discards target Android config changes to `HEAD` first and only then runs pull.
+- RU: Исправлено поведение reset-режима в `scripts/git_safe_pull.ps1`, из-за которого перед `git pull --rebase` могли оставаться локальные изменения в index/worktree (`cannot pull with rebase: Your index contains uncommitted changes`). Теперь режим сначала сбрасывает целевые Android-конфиги к `HEAD`, и только потом выполняет pull.
+- EN: Kept explicit `unmerged` recovery for target Android config files before pull, so failed `stash pop` states are still auto-unblocked in reset mode.
+- RU: Сохранена явная обработка `unmerged` для целевых Android-конфигов перед pull, поэтому конфликтные состояния после неудачного `stash pop` по-прежнему автоматически разблокируются в reset-режиме.
+
+### Changed / Изменено
+- EN: Updated README reset instructions to use `git restore --staged --worktree` before pull (instead of checkouting files from `origin/develop` pre-pull).
+- RU: Обновлены reset-инструкции в README: теперь используется `git restore --staged --worktree` перед pull (вместо предварительного `checkout` файлов из `origin/develop`).
+- EN: Project version bumped to `8.32.21`; Android `versionCode` bumped to `68`.
+- RU: Версия проекта повышена до `8.32.21`; Android `versionCode` увеличен до `68`.
+
 ## [8.32.20] - 2026-03-15
 
 ### Fixed / Исправлено

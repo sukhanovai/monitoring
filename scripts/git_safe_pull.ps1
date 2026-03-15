@@ -51,11 +51,8 @@ try {
                 git reset --merge
             }
 
-            Write-Host "[1/4] Fetching $Remote/$Branch and replacing target Android config files with remote version..."
-            git fetch $Remote $Branch
-            $remoteRef = "$Remote/$Branch"
-            git checkout $remoteRef -- $androidConfigPaths
-            git restore --staged -- $androidConfigPaths
+            Write-Host "[1/4] Discarding local changes in target Android config files before pull..."
+            git restore --staged --worktree -- $androidConfigPaths
         }
 
         foreach ($path in $androidConfigPaths) {
@@ -84,7 +81,7 @@ try {
             $targetBackupCreated = $true
         }
         elseif ($ResetAndroidClientConfigToRemote) {
-            Write-Host "[1/4] Target Android config files were reset to remote version."
+            Write-Host "[1/4] Target Android config files were reset to local HEAD (remote version will be applied by pull)."
         }
         else {
             Write-Host "[1/4] Target Android config files are clean."

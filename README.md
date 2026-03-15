@@ -223,7 +223,7 @@ AVAILABLE_EXTENSIONS = {
 - `-NoRebase` — выполнить обычный `git pull` без rebase;
 - `-KeepStash` — не делать `stash pop` автоматически;
 - `-OnlyAndroidClientConfig` — временно сохраняет и восстанавливает только `android-client/build.gradle.kts`, `android-client/gradle.properties` и `android-client/gradle/wrapper/gradle-wrapper.properties` (без `stash pop` merge для этих файлов).
-- `-ResetAndroidClientConfigToRemote` — в режиме `-OnlyAndroidClientConfig` полностью заменяет эти файлы версиями из `$Remote/$Branch` перед pull (локальные изменения в них будут отброшены). Также умеет обработать состояние `unmerged` для этих же файлов (после неудачного `stash pop`) и снять блокировку перед pull.
+- `-ResetAndroidClientConfigToRemote` — в режиме `-OnlyAndroidClientConfig` перед pull отбрасывает локальные изменения в этих файлах до состояния текущей ветки (`HEAD`) и затем подтягивает актуальную версию из remote через `git pull` (локальные изменения будут отброшены). Также умеет обработать состояние `unmerged` для этих же файлов (после неудачного `stash pop`) и снять блокировку перед pull.
 
 Быстрый ручной запуск для твоего кейса:
 ```powershell
@@ -236,10 +236,9 @@ AVAILABLE_EXTENSIONS = {
 ./scripts/git_safe_pull.ps1 -OnlyAndroidClientConfig -ResetAndroidClientConfigToRemote
 ```
 
-Если хочешь сделать полный reset этих файлов вручную без helper-скрипта (берём версии из GitHub и локальные правки отбрасываем):
+Если хочешь сделать полный reset этих файлов вручную без helper-скрипта (отбрасываем локальные правки и затем тянем GitHub-версию через pull):
 ```powershell
-git fetch origin develop
-git checkout origin/develop -- android-client/build.gradle.kts android-client/gradle.properties android-client/gradle/wrapper/gradle-wrapper.properties
+git restore --staged --worktree -- android-client/build.gradle.kts android-client/gradle.properties android-client/gradle/wrapper/gradle-wrapper.properties
 git pull --rebase origin develop
 ```
 
