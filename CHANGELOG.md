@@ -6,6 +6,80 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.21] - 2026-03-15
+
+### Fixed / Исправлено
+- EN: Fixed `scripts/git_safe_pull.ps1` reset behavior that could leave local changes in index/worktree before `git pull --rebase` (`cannot pull with rebase: Your index contains uncommitted changes`). Reset mode now discards target Android config changes to `HEAD` first and only then runs pull.
+- RU: Исправлено поведение reset-режима в `scripts/git_safe_pull.ps1`, из-за которого перед `git pull --rebase` могли оставаться локальные изменения в index/worktree (`cannot pull with rebase: Your index contains uncommitted changes`). Теперь режим сначала сбрасывает целевые Android-конфиги к `HEAD`, и только потом выполняет pull.
+- EN: Kept explicit `unmerged` recovery for target Android config files before pull, so failed `stash pop` states are still auto-unblocked in reset mode.
+- RU: Сохранена явная обработка `unmerged` для целевых Android-конфигов перед pull, поэтому конфликтные состояния после неудачного `stash pop` по-прежнему автоматически разблокируются в reset-режиме.
+
+### Changed / Изменено
+- EN: Updated README reset instructions to use `git restore --staged --worktree` before pull (instead of checkouting files from `origin/develop` pre-pull).
+- RU: Обновлены reset-инструкции в README: теперь используется `git restore --staged --worktree` перед pull (вместо предварительного `checkout` файлов из `origin/develop`).
+- EN: Project version bumped to `8.32.21`; Android `versionCode` bumped to `68`.
+- RU: Версия проекта повышена до `8.32.21`; Android `versionCode` увеличен до `68`.
+
+## [8.32.20] - 2026-03-15
+
+### Fixed / Исправлено
+- EN: Improved `scripts/git_safe_pull.ps1` reset flow for Android config files: `-OnlyAndroidClientConfig -ResetAndroidClientConfigToRemote` now detects unresolved conflicts (`unmerged`) in target files, safely clears merge-conflict index state, and then replaces files from `$Remote/$Branch` before pull.
+- RU: Улучшен reset-сценарий `scripts/git_safe_pull.ps1` для Android-конфигов: `-OnlyAndroidClientConfig -ResetAndroidClientConfigToRemote` теперь обнаруживает неразрешённые конфликты (`unmerged`) в целевых файлах, безопасно очищает конфликтное состояние индекса и затем заменяет файлы версиями из `$Remote/$Branch` перед pull.
+- EN: Added explicit guard for unresolved conflicts outside target Android config files — script now stops with a clear message instead of trying partial recovery.
+- RU: Добавлена явная защита для неразрешённых конфликтов вне целевых Android-конфигов — скрипт останавливается с понятным сообщением и не пытается делать частичное восстановление.
+
+### Changed / Изменено
+- EN: README updated to clarify that reset mode can unblock `git pull` after a failed `stash pop` conflict scenario in Android Studio.
+- RU: README обновлён: уточнено, что reset-режим помогает разблокировать `git pull` после конфликтного `stash pop` в Android Studio.
+- EN: Project version bumped to `8.32.20`; Android `versionCode` bumped to `67`.
+- RU: Версия проекта повышена до `8.32.20`; Android `versionCode` увеличен до `67`.
+
+## [8.32.19] - 2026-03-15
+
+### Added / Добавлено
+- EN: Added a straightforward overwrite mode to `scripts/git_safe_pull.ps1`: `-OnlyAndroidClientConfig -ResetAndroidClientConfigToRemote` fetches `$Remote/$Branch`, replaces local Android config files with remote versions, and then runs pull — intended for cases when local Android Gradle config can be safely discarded.
+- RU: Добавлен простой режим принудительной замены в `scripts/git_safe_pull.ps1`: `-OnlyAndroidClientConfig -ResetAndroidClientConfigToRemote` подтягивает `$Remote/$Branch`, заменяет локальные Android-конфиги версиями из удалённой ветки и выполняет pull — для кейсов, когда локальные правки в Android Gradle-конфигах можно безопасно отбросить.
+
+### Changed / Изменено
+- EN: Updated README with a one-command "discard local Android config and take GitHub version" flow and matching manual commands.
+- RU: Обновлён README: добавлен сценарий "одной командой отбросить локальный Android-конфиг и взять версию из GitHub" и соответствующие ручные команды.
+- EN: Project version bumped to `8.32.19`; Android `versionCode` bumped to `66`.
+- RU: Версия проекта повышена до `8.32.19`; Android `versionCode` увеличен до `66`.
+
+## [8.32.18] - 2026-03-15
+
+### Fixed / Исправлено
+- EN: Reworked `scripts/git_safe_pull.ps1` for `-OnlyAndroidClientConfig`: replaced `stash pop` flow with temporary backup/restore of target Android config files (`build.gradle.kts`, `gradle.properties`, `gradle-wrapper.properties`) to avoid post-pull merge conflicts in common Android Studio workflows.
+- RU: Переработан `scripts/git_safe_pull.ps1` для `-OnlyAndroidClientConfig`: вместо схемы `stash pop` используется временный backup/restore целевых Android-конфигов (`build.gradle.kts`, `gradle.properties`, `gradle-wrapper.properties`), чтобы избежать merge-конфликтов после pull в типовом потоке Android Studio.
+- EN: Added guardrail for `-OnlyAndroidClientConfig` mode: if there are local changes outside target Android config files, script now stops early with explicit action hint.
+- RU: Добавлен guardrail для режима `-OnlyAndroidClientConfig`: если есть локальные изменения вне целевых Android-конфигов, скрипт останавливается заранее и даёт явную подсказку по дальнейшим действиям.
+
+### Changed / Изменено
+- EN: Updated README with conflict-resistant manual backup/restore commands as alternative to stash-based recovery in Android Studio terminal.
+- RU: Обновлён README: добавлены более устойчивые к конфликтам ручные команды backup/restore как альтернатива stash-сценарию в терминале Android Studio.
+- EN: Project version bumped to `8.32.18`; Android `versionCode` bumped to `65`.
+- RU: Версия проекта повышена до `8.32.18`; Android `versionCode` увеличен до `65`.
+
+## [8.32.17] - 2026-03-15
+
+### Fixed / Исправлено
+- EN: Expanded Android Studio safe-pull guidance and targeted stash scope to also include `android-client/gradle/wrapper/gradle-wrapper.properties`, because this file can be locally modified together with Android Gradle config and still block or complicate post-pull restoration.
+- RU: Расширены рекомендации и целевой stash для safe-pull в Android Studio: теперь дополнительно учитывается `android-client/gradle/wrapper/gradle-wrapper.properties`, так как этот файл часто меняется вместе с Android Gradle-конфигом и мешает корректному восстановлению после pull.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.17`; Android `versionCode` bumped to `64`.
+- RU: Версия проекта повышена до `8.32.17`; Android `versionCode` увеличен до `64`.
+
+## [8.32.16] - 2026-03-15
+
+### Added / Добавлено
+- EN: Added explicit manual Android Studio recovery commands for the common `git pull` block (`Please commit your changes or stash them before you merge`) when local edits are in `android-client/build.gradle.kts` and `android-client/gradle.properties`.
+- RU: Добавлены явные ручные команды восстановления для Android Studio при типовой блокировке `git pull` (`Please commit your changes or stash them before you merge`), когда локальные правки находятся в `android-client/build.gradle.kts` и `android-client/gradle.properties`.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.16`; Android `versionCode` bumped to `63`.
+- RU: Версия проекта повышена до `8.32.16`; Android `versionCode` увеличен до `63`.
+
 ## [8.32.15] - 2026-03-15
 
 ### Fixed / Исправлено

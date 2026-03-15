@@ -213,18 +213,33 @@ AVAILABLE_EXTENSIONS = {
 ```
 
 Скрипт делает:
-- авто-stash локальных изменений (если они есть);
+- авто-сохранение локальных изменений (если они есть);
 - `git pull --rebase origin develop`;
-- автоматический возврат stashed-изменений (`stash pop`).
+- автоматический возврат изменений.
+
+Для режима `-OnlyAndroidClientConfig` используется не `stash pop`, а временный backup/restore целевых файлов, что помогает избежать конфликтов после pull.
 
 Опции:
 - `-NoRebase` — выполнить обычный `git pull` без rebase;
 - `-KeepStash` — не делать `stash pop` автоматически;
-- `-OnlyAndroidClientConfig` — stash только `android-client/build.gradle.kts` и `android-client/gradle.properties` (полезно для типового конфликта pull из Android Studio).
+- `-OnlyAndroidClientConfig` — временно сохраняет и восстанавливает только `android-client/build.gradle.kts`, `android-client/gradle.properties` и `android-client/gradle/wrapper/gradle-wrapper.properties` (без `stash pop` merge для этих файлов).
+- `-ResetAndroidClientConfigToRemote` — в режиме `-OnlyAndroidClientConfig` перед pull отбрасывает локальные изменения в этих файлах до состояния текущей ветки (`HEAD`) и затем подтягивает актуальную версию из remote через `git pull` (локальные изменения будут отброшены). Также умеет обработать состояние `unmerged` для этих же файлов (после неудачного `stash pop`) и снять блокировку перед pull.
 
 Быстрый ручной запуск для твоего кейса:
 ```powershell
 ./scripts/git_safe_pull.ps1 -OnlyAndroidClientConfig
+```
+
+
+Если хочешь просто **забить на локальные правки** Android-конфигов и взять версию из GitHub (самый простой путь):
+```powershell
+./scripts/git_safe_pull.ps1 -OnlyAndroidClientConfig -ResetAndroidClientConfigToRemote
+```
+
+Если хочешь сделать полный reset этих файлов вручную без helper-скрипта (отбрасываем локальные правки и затем тянем GitHub-версию через pull):
+```powershell
+git restore --staged --worktree -- android-client/build.gradle.kts android-client/gradle.properties android-client/gradle/wrapper/gradle-wrapper.properties
+git pull --rebase origin develop
 ```
 
 Техническая деталь: Android-версия (`versionCode`/`versionName`) вынесена в `android-client/gradle.properties`, чтобы снизить шанс конфликтов в `android-client/app/build.gradle.kts` при обычном `git pull`.
