@@ -18,13 +18,6 @@ function Require-Command {
 
 Require-Command git
 
-function Has-ChangesInPath {
-    param([string[]]$Paths)
-
-    $status = git status --porcelain -- $Paths
-    return [bool]$status
-}
-
 $stashCreated = $false
 $stashName = "auto-stash-before-pull-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
 
@@ -46,10 +39,23 @@ try {
         }
 
         if ($ResetAndroidClientConfigToRemote) {
+            $unmerged = git diff --name-only --diff-filter=U
+            if ($unmerged) {
+                foreach ($path in $unmerged) {
+                    if ($androidConfigPaths -notcontains $path) {
+                        throw "Found unresolved conflicts outside Android config files: $path"
+                    }
+                }
+
+                Write-Host "[1/4] Unmerged Android config files detected. Resetting merge state before pull..."
+                git reset --merge
+            }
+
             Write-Host "[1/4] Fetching $Remote/$Branch and replacing target Android config files with remote version..."
             git fetch $Remote $Branch
             $remoteRef = "$Remote/$Branch"
             git checkout $remoteRef -- $androidConfigPaths
+            git restore --staged -- $androidConfigPaths
         }
 
         foreach ($path in $androidConfigPaths) {

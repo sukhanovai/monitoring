@@ -6,6 +6,20 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.20] - 2026-03-15
+
+### Fixed / Исправлено
+- EN: Improved `scripts/git_safe_pull.ps1` reset flow for Android config files: `-OnlyAndroidClientConfig -ResetAndroidClientConfigToRemote` now detects unresolved conflicts (`unmerged`) in target files, safely clears merge-conflict index state, and then replaces files from `$Remote/$Branch` before pull.
+- RU: Улучшен reset-сценарий `scripts/git_safe_pull.ps1` для Android-конфигов: `-OnlyAndroidClientConfig -ResetAndroidClientConfigToRemote` теперь обнаруживает неразрешённые конфликты (`unmerged`) в целевых файлах, безопасно очищает конфликтное состояние индекса и затем заменяет файлы версиями из `$Remote/$Branch` перед pull.
+- EN: Added explicit guard for unresolved conflicts outside target Android config files — script now stops with a clear message instead of trying partial recovery.
+- RU: Добавлена явная защита для неразрешённых конфликтов вне целевых Android-конфигов — скрипт останавливается с понятным сообщением и не пытается делать частичное восстановление.
+
+### Changed / Изменено
+- EN: README updated to clarify that reset mode can unblock `git pull` after a failed `stash pop` conflict scenario in Android Studio.
+- RU: README обновлён: уточнено, что reset-режим помогает разблокировать `git pull` после конфликтного `stash pop` в Android Studio.
+- EN: Project version bumped to `8.32.20`; Android `versionCode` bumped to `67`.
+- RU: Версия проекта повышена до `8.32.20`; Android `versionCode` увеличен до `67`.
+
 ## [8.32.19] - 2026-03-15
 
 ### Added / Добавлено

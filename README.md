@@ -223,7 +223,7 @@ AVAILABLE_EXTENSIONS = {
 - `-NoRebase` — выполнить обычный `git pull` без rebase;
 - `-KeepStash` — не делать `stash pop` автоматически;
 - `-OnlyAndroidClientConfig` — временно сохраняет и восстанавливает только `android-client/build.gradle.kts`, `android-client/gradle.properties` и `android-client/gradle/wrapper/gradle-wrapper.properties` (без `stash pop` merge для этих файлов).
-- `-ResetAndroidClientConfigToRemote` — в режиме `-OnlyAndroidClientConfig` полностью заменяет эти файлы версиями из `$Remote/$Branch` перед pull (локальные изменения в них будут отброшены).
+- `-ResetAndroidClientConfigToRemote` — в режиме `-OnlyAndroidClientConfig` полностью заменяет эти файлы версиями из `$Remote/$Branch` перед pull (локальные изменения в них будут отброшены). Также умеет обработать состояние `unmerged` для этих же файлов (после неудачного `stash pop`) и снять блокировку перед pull.
 
 Быстрый ручной запуск для твоего кейса:
 ```powershell
