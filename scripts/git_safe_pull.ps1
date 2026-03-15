@@ -53,6 +53,7 @@ try {
 
             Write-Host "[1/4] Discarding local changes in target Android config files before pull..."
             git restore --staged --worktree -- $androidConfigPaths
+            Write-Host "      Tip: This mode is intended for Android Studio pull errors like 'Your local changes ... gradle-wrapper.properties'."
         }
 
         foreach ($path in $androidConfigPaths) {
@@ -134,6 +135,12 @@ try {
 }
 catch {
     Write-Host "Error: $($_.Exception.Message)"
+    if ($_.Exception.Message -like "*would be overwritten by merge*") {
+        Write-Host "Hint: For Android config-only conflicts run:"
+        Write-Host "  ./scripts/git_safe_pull.ps1 -OnlyAndroidClientConfig"
+        Write-Host "Or discard local Android config changes and take remote:"
+        Write-Host "  ./scripts/git_safe_pull.ps1 -OnlyAndroidClientConfig -ResetAndroidClientConfigToRemote"
+    }
     if ($stashCreated) {
         Write-Host "A temporary stash may still exist. Check with: git stash list"
     }
