@@ -1,7 +1,8 @@
 param(
     [string]$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")),
     [switch]$SkipBuild,
-    [switch]$AllowDirty
+    [switch]$AllowDirty,
+    [switch]$AutoStashDirty
 )
 
 $ErrorActionPreference = "Stop"
@@ -19,6 +20,21 @@ function Ensure-CleanWorkingTree {
     if ($dirty) {
         throw "Working tree is not clean. Commit or stash changes before running script. Tip: git stash push -u -m prerelease-temp"
     }
+}
+
+function Push-TempStash {
+    param([string]$Message)
+
+    $stashOutput = git stash push -u -m $Message
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to create temporary stash before prerelease publish."
+    }
+
+    if ($stashOutput -match "No local changes to save") {
+        return $null
+    }
+
+    return "stash@{0}"
 }
 
 function Get-CommandExists {
@@ -217,13 +233,28 @@ else {
 }
 
 Push-Location $RepoRoot
+$tempStashRef = $null
 try {
     $branch = (git rev-parse --abbrev-ref HEAD).Trim()
     if ($branch -ne "develop") {
         throw "This script must be run from 'develop'. Current branch: '$branch'."
     }
 
-    if (-not $AllowDirty) {
+    if ($AllowDirty -and $AutoStashDirty) {
+        throw "-AllowDirty and -AutoStashDirty cannot be used together. Choose one mode."
+    }
+
+    if ($AutoStashDirty) {
+        $dirty = (git status --porcelain)
+        if ($dirty) {
+            Write-Host "[2/7] Dirty working tree detected. Creating temporary stash..."
+            $tempStashRef = Push-TempStash -Message "prerelease-temp"
+        }
+        else {
+            Write-Host "[2/7] Working tree already clean. Temporary stash is not required."
+        }
+    }
+    elseif (-not $AllowDirty) {
         Ensure-CleanWorkingTree
     }
     else {
@@ -306,5 +337,13 @@ RU: Stable release in main remains unchanged.
     Write-Host "APK: $apkTarget"
 }
 finally {
+    if ($tempStashRef) {
+        Write-Host "[7/7] Restoring temporary stash $tempStashRef..."
+        git stash pop $tempStashRef | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "[7/7] Warning: failed to auto-restore temporary stash $tempStashRef. Restore it manually with: git stash list"
+        }
+    }
+
     Pop-Location
 }
