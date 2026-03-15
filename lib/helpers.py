@@ -1,11 +1,11 @@
 """
 /lib/helpers.py
-Server Monitoring System v8.32.0
+Server Monitoring System v8.32.23
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Auxiliary utilities
 Система мониторинга серверов
-Версия: 8.32.0
+Версия: 8.32.23
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Вспомогательные утилиты
