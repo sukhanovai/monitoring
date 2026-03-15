@@ -6,6 +6,26 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.23] - 2026-03-15
+
+### Fixed / Исправлено
+- EN: Finalized version synchronization after prerelease script fix: all source headers and runtime version declarations now consistently use `8.32.23`.
+- RU: Доведена синхронизация версий после фикса prerelease-скрипта: все заголовки исходников и runtime-объявления версии теперь консистентно используют `8.32.23`.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.23`; Android `versionCode` bumped to `70`.
+- RU: Версия проекта повышена до `8.32.23`; Android `versionCode` увеличен до `70`.
+
+## [8.32.22] - 2026-03-15
+
+### Fixed / Исправлено
+- EN: Fixed `scripts/publish_android_prerelease.ps1` APK path selection for PowerShell: wrapped `Join-Path` calls in parentheses inside array initialization to prevent passing `System.Object[]` as `ChildPath` and failing on step `[4/7] Checking APK output...`.
+- RU: Исправлен выбор пути к APK в `scripts/publish_android_prerelease.ps1` для PowerShell: вызовы `Join-Path` обёрнуты в скобки при инициализации массива, чтобы не передавался `System.Object[]` в `ChildPath` и не падал шаг `[4/7] Checking APK output...`.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.22`; Android `versionCode` bumped to `69`.
+- RU: Версия проекта повышена до `8.32.22`; Android `versionCode` увеличен до `69`.
+
 ## [8.32.21] - 2026-03-15
 
 ### Fixed / Исправлено

@@ -100,8 +100,8 @@ function Resolve-ApkSource {
     }
 
     $preferred = @(
-        Join-Path $releaseDir "app-release.apk",
-        Join-Path $releaseDir "app-release-unsigned.apk"
+        (Join-Path $releaseDir "app-release.apk")
+        (Join-Path $releaseDir "app-release-unsigned.apk")
     )
 
     foreach ($candidate in $preferred) {
