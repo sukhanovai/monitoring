@@ -6,6 +6,20 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.58] - 2026-03-16
+
+### Fixed / Исправлено
+- EN: Fixed Android prerelease build/publish flow in `scripts/publish_android_prerelease.ps1`: the script now selects only installable signed APK artifacts and stops with explicit guidance when only unsigned APK is present.
+- RU: Исправлен flow сборки/публикации Android prerelease в `scripts/publish_android_prerelease.ps1`: скрипт теперь выбирает только устанавливаемые подписанные APK и завершает работу с явной подсказкой, если найден только unsigned APK.
+- EN: Fixed recurring `git pull` conflicts after prerelease publish by making README/docs link rewrite opt-in (`-UpdateDocsLinks`) instead of default behavior.
+- RU: Исправлены регулярные конфликты при `git pull` после публикации prerelease: переписывание ссылки в README/docs теперь выполняется только по флагу `-UpdateDocsLinks`, а не по умолчанию.
+- EN: Fixed release APK installability in Android builds by enabling debug-keystore signing for `release` type in `android-client/app/build.gradle.kts` for prerelease distribution.
+- RU: Исправлена устанавливаемость release APK в Android-сборке: для `release`-типа включено подписание debug-keystore в `android-client/app/build.gradle.kts` для prerelease-дистрибуции.
+
+### Changed / Изменено
+- EN: Completed repository-wide version bump to `8.32.58`; Android metadata updated to `ANDROID_VERSION_NAME=8.32.58`, `ANDROID_VERSION_CODE=103`.
+- RU: Выполнен полный бамп версии по репозиторию до `8.32.58`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.32.58`, `ANDROID_VERSION_CODE=103`.
+
 ## [8.32.57] - 2026-03-16
 
 ### Fixed / Исправлено
