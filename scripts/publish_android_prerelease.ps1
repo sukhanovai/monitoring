@@ -19,7 +19,23 @@ function Require-Command {
 function Ensure-CleanWorkingTree {
     $dirty = (git status --porcelain)
     if ($dirty) {
-        throw "Working tree is not clean. Commit or stash changes before running script. Quick fix: rerun with -AutoStashDirty for temporary auto-stash. Manual option: git stash push -u -m prerelease-temp. Advanced mode: pass -AllowDirty if you understand the risks."
+        $dirtyPreview = ($dirty | Select-Object -First 15) -join "`n"
+        throw @"
+Working tree is not clean. Commit or stash changes before running script.
+
+Quick fix:
+  ./scripts/publish_android_prerelease.ps1 -AutoStashDirty
+
+Manual stash:
+  git stash push -u -m prerelease-temp
+  ./scripts/publish_android_prerelease.ps1
+
+Advanced mode (unsafe, use only if you really know what you are doing):
+  ./scripts/publish_android_prerelease.ps1 -AllowDirty
+
+Dirty files preview (first 15):
+$dirtyPreview
+"@
     }
 }
 
