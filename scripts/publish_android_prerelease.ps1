@@ -62,6 +62,23 @@ function Get-GitHubRepo {
 function Get-GitHubToken {
     if ($env:GH_TOKEN) { return $env:GH_TOKEN }
     if ($env:GITHUB_TOKEN) { return $env:GITHUB_TOKEN }
+
+    $tokenFiles = @(
+        (Join-Path $RepoRoot ".github_token"),
+        (Join-Path $RepoRoot ".github-token"),
+        (Join-Path $HOME ".github_token"),
+        (Join-Path $HOME ".github-token")
+    )
+
+    foreach ($tokenFile in $tokenFiles) {
+        if (Test-Path $tokenFile) {
+            $token = (Get-Content -Path $tokenFile -Raw).Trim()
+            if ($token) {
+                return $token
+            }
+        }
+    }
+
     return $null
 }
 
@@ -76,7 +93,19 @@ function Invoke-GitHubApi {
 
     $token = Get-GitHubToken
     if (-not $token) {
-        throw "GitHub token was not found. Set GH_TOKEN or GITHUB_TOKEN environment variable."
+        throw @"
+GitHub token was not found.
+Set GH_TOKEN or GITHUB_TOKEN environment variable,
+or save token into one of files:
+- $RepoRoot/.github_token
+- $RepoRoot/.github-token
+- $HOME/.github_token
+- $HOME/.github-token
+
+PowerShell examples:
+`$env:GH_TOKEN = "ghp_xxx"                        # current session
+setx GH_TOKEN "ghp_xxx"                          # persist for next sessions
+"@ 
     }
 
     $headers = @{
