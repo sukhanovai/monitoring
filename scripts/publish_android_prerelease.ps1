@@ -155,6 +155,33 @@ setx GH_TOKEN "ghp_xxx"                          # persist for next sessions
     return Invoke-RestMethod -Method $Method -Uri $Url -Headers $headers
 }
 
+function Ensure-GitHubAuthReady {
+    param([bool]$GhAvailable)
+
+    if ($GhAvailable) {
+        return
+    }
+
+    $token = Get-GitHubToken
+    if (-not $token) {
+        $pathsHint = ($script:GitHubTokenSearchPaths | ForEach-Object { "- $_" }) -join "`n"
+        throw @"
+GitHub token was not found.
+gh CLI is not available, so GitHub API fallback requires a token before build/publish starts.
+
+Set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT environment variable,
+or pass -GitHubToken parameter,
+or save token into one of files:
+$pathsHint
+
+PowerShell examples:
+`$env:GH_TOKEN = "ghp_xxx"                        # current session
+setx GH_TOKEN "ghp_xxx"                          # persist for next sessions
+./scripts/publish_android_prerelease.ps1 -GitHubToken "ghp_xxx"
+"@
+    }
+}
+
 
 function Resolve-ApkSource {
     param([string]$AndroidDir)
@@ -280,6 +307,8 @@ if ($ghAvailable) {
 else {
     Write-Host "[1/7] gh CLI not found. Will use GitHub API fallback (requires GH_TOKEN or GITHUB_TOKEN)."
 }
+
+Ensure-GitHubAuthReady -GhAvailable $ghAvailable
 
 Push-Location $RepoRoot
 $tempStashRef = $null
