@@ -49,7 +49,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.32.54"
+    private val projectVersion = "8.32.55"
     private val mailBackupHistoryRegex = Regex(
         pattern = """^([✅✔❌⚠️🚨])\s*(.+?)\s*[—-]\s*(.+?)\s*\(([^()]+)\)\s*$"""
     )
