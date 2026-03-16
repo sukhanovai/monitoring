@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.37] - 2026-03-16
+
+### Changed / Изменено
+- EN: Extended `scripts/publish_android_prerelease.ps1` GitHub token lookup with `.env` support (repository and home directory): script now recognizes `GH_TOKEN`, `GITHUB_TOKEN`, and `GITHUB_PAT` from `.env`, which helps in Android Studio terminals where token is stored in env files but not exported into current process environment.
+- RU: Расширен поиск GitHub-токена в `scripts/publish_android_prerelease.ps1` поддержкой `.env` (в репозитории и домашней директории): скрипт теперь распознаёт `GH_TOKEN`, `GITHUB_TOKEN` и `GITHUB_PAT` из `.env`, что помогает в терминале Android Studio, когда токен хранится в env-файле, но не экспортирован в текущее окружение процесса.
+- EN: Improved missing-token diagnostics to also show `.env` lookup locations checked by the script.
+- RU: Улучшена диагностика отсутствия токена: теперь дополнительно выводятся пути поиска `.env`, которые проверил скрипт.
+- EN: Project version bumped to `8.32.37`; Android `versionCode` bumped to `84`.
+- RU: Версия проекта повышена до `8.32.37`; Android `versionCode` увеличен до `84`.
+
 ## [8.32.36] - 2026-03-16
 
 ### Fixed / Исправлено

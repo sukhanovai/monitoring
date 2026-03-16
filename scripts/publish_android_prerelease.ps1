@@ -62,6 +62,7 @@ function Get-GitHubRepo {
 
 function Get-GitHubToken {
     $script:GitHubTokenSearchPaths = @()
+    $script:GitHubTokenEnvSearchPaths = @()
 
     if ($GitHubToken) { return $GitHubToken.Trim() }
     if ($env:GH_TOKEN) { return $env:GH_TOKEN.Trim() }
@@ -82,19 +83,42 @@ function Get-GitHubToken {
         (Join-Path $RepoRoot ".github-token")
     )
 
+    $envFiles = @(
+        (Join-Path $RepoRoot ".env")
+    )
+
     foreach ($homeDir in $homeCandidates) {
         $tokenFiles += (Join-Path $homeDir ".github_token")
         $tokenFiles += (Join-Path $homeDir ".github-token")
+        $envFiles += (Join-Path $homeDir ".env")
     }
 
     $tokenFiles = $tokenFiles | Select-Object -Unique
+    $envFiles = $envFiles | Select-Object -Unique
     $script:GitHubTokenSearchPaths = $tokenFiles
+    $script:GitHubTokenEnvSearchPaths = $envFiles
 
     foreach ($tokenFile in $tokenFiles) {
         if (Test-Path $tokenFile) {
             $token = (Get-Content -Path $tokenFile -Raw).Trim()
             if ($token) {
                 return $token
+            }
+        }
+    }
+
+    foreach ($envFile in $envFiles) {
+        if (-not (Test-Path $envFile)) {
+            continue
+        }
+
+        $envContent = Get-Content -Path $envFile
+        foreach ($line in $envContent) {
+            if ($line -match '^\s*(?:export\s+)?(GH_TOKEN|GITHUB_TOKEN|GITHUB_PAT)\s*=\s*(?<value>.+?)\s*$') {
+                $value = $Matches.value.Trim().Trim('"').Trim("'")
+                if ($value) {
+                    return $value
+                }
             }
         }
     }
@@ -114,12 +138,15 @@ function Invoke-GitHubApi {
     $token = Get-GitHubToken
     if (-not $token) {
         $pathsHint = ($script:GitHubTokenSearchPaths | ForEach-Object { "- $_" }) -join "`n"
+        $envPathsHint = ($script:GitHubTokenEnvSearchPaths | ForEach-Object { "- $_" }) -join "`n"
         throw @"
 GitHub token was not found.
 Set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT environment variable,
 or pass -GitHubToken parameter,
 or save token into one of files:
 $pathsHint
+or add one of GH_TOKEN/GITHUB_TOKEN/GITHUB_PAT into .env file:
+$envPathsHint
 
 PowerShell examples:
 `$env:GH_TOKEN = "ghp_xxx"                        # current session
@@ -165,6 +192,7 @@ function Ensure-GitHubAuthReady {
     $token = Get-GitHubToken
     if (-not $token) {
         $pathsHint = ($script:GitHubTokenSearchPaths | ForEach-Object { "- $_" }) -join "`n"
+        $envPathsHint = ($script:GitHubTokenEnvSearchPaths | ForEach-Object { "- $_" }) -join "`n"
         throw @"
 GitHub token was not found.
 gh CLI is not available, so GitHub API fallback requires a token before build/publish starts.
@@ -173,6 +201,8 @@ Set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT environment variable,
 or pass -GitHubToken parameter,
 or save token into one of files:
 $pathsHint
+or add one of GH_TOKEN/GITHUB_TOKEN/GITHUB_PAT into .env file:
+$envPathsHint
 
 PowerShell examples:
 `$env:GH_TOKEN = "ghp_xxx"                        # current session
