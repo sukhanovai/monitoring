@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.51] - 2026-03-16
+
+### Fixed / Исправлено
+- EN: Improved dirty working tree error hint in `scripts/publish_android_prerelease.ps1`: message now explicitly suggests `-AutoStashDirty` for temporary auto-stash, plus `-AllowDirty` for advanced workflows.
+- RU: Улучшена подсказка при грязном рабочем дереве в `scripts/publish_android_prerelease.ps1`: сообщение теперь явно предлагает `-AutoStashDirty` для временного авто-stash, а также `-AllowDirty` для продвинутых сценариев.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.51`; Android `versionCode` bumped to `96`.
+- RU: Версия проекта повышена до `8.32.51`; Android `versionCode` увеличен до `96`.
+
 ## [8.32.50] - 2026-03-16
 
 ### Changed / Изменено
