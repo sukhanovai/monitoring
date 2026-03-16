@@ -541,7 +541,22 @@ function Update-PrereleaseApkLinks {
         [string]$ApkName
     )
 
-    $repo = Get-GitHubRepo
+    $defaultOwner = "sukhanovai"
+    $defaultRepo = "monitoring"
+
+    try {
+        $repo = Get-GitHubRepo
+    }
+    catch {
+        Write-Host "[4/7] Warning: failed to resolve origin repo. Fallback to $defaultOwner/$defaultRepo"
+        $repo = @{ Owner = $defaultOwner; Repo = $defaultRepo }
+    }
+
+    if (-not $repo.Owner -or -not $repo.Repo) {
+        Write-Host "[4/7] Warning: empty owner/repo from git remote. Fallback to $defaultOwner/$defaultRepo"
+        $repo = @{ Owner = $defaultOwner; Repo = $defaultRepo }
+    }
+
     $downloadUrl = "https://github.com/$($repo.Owner)/$($repo.Repo)/releases/download/$ReleaseTag/$ApkName"
 
     $filesToUpdate = @(
@@ -667,9 +682,9 @@ EN: Android prerelease for develop branch.
 EN: Built from branch develop, version $projectVersion.
 EN: Stable release in main remains unchanged.
 
-RU: Android prerelease for develop branch.
-RU: Built from branch develop, version $projectVersion.
-RU: Stable release in main remains unchanged.
+RU: Пререлиз Android для ветки develop.
+RU: Собрано из ветки develop, версия $projectVersion.
+RU: Стабильный релиз в main не изменяется.
 "@
 
     if ($ghAvailable) {

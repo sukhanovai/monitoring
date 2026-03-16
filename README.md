@@ -193,7 +193,7 @@ AVAILABLE_EXTENSIONS = {
 - загружает APK в релиз, не затрагивая стабильный релиз в `main`.
 
 Актуальная ссылка на APK prerelease (обновляется скриптом автоматически):
-<!-- ANDROID_PRERELEASE_APK_LINK_START -->https://github.com/<org>/<repo>/releases/download/v8.32.56-develop/monitoring-android-8.32.56-develop.apk<!-- ANDROID_PRERELEASE_APK_LINK_END -->
+<!-- ANDROID_PRERELEASE_APK_LINK_START -->https://github.com/sukhanovai/monitoring/releases/download/v8.32.57-develop/monitoring-android-8.32.57-develop.apk<!-- ANDROID_PRERELEASE_APK_LINK_END -->
 
 Требования:
 - либо установлен `gh` (GitHub CLI) и выполнен `gh auth login`;
