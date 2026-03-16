@@ -38,6 +38,53 @@ function Push-TempStash {
     return "stash@{0}"
 }
 
+function Get-GhCommand {
+    $ghCommand = Get-Command gh -ErrorAction SilentlyContinue
+    if ($ghCommand) {
+        return $ghCommand.Source
+    }
+
+    $windowsHome = $null
+    if ($env:HOMEDRIVE -and $env:HOMEPATH) {
+        $windowsHome = Join-Path $env:HOMEDRIVE $env:HOMEPATH
+    }
+
+    $commonCandidates = @(
+        "C:/Program Files/GitHub CLI/gh.exe",
+        "C:/Program Files (x86)/GitHub CLI/gh.exe"
+    )
+
+    $homeCandidates = @($env:LOCALAPPDATA, $env:USERPROFILE, $HOME, $windowsHome) |
+        Where-Object { $_ } |
+        Select-Object -Unique
+
+    foreach ($homeDir in $homeCandidates) {
+        $commonCandidates += (Join-Path $homeDir "scoop/shims/gh.exe")
+        $commonCandidates += (Join-Path $homeDir "AppData/Local/Microsoft/WinGet/Links/gh.exe")
+    }
+
+    foreach ($candidate in ($commonCandidates | Select-Object -Unique)) {
+        if ($candidate -and (Test-Path $candidate)) {
+            return $candidate
+        }
+    }
+
+    return $null
+}
+
+function Invoke-Gh {
+    param(
+        [Parameter(ValueFromRemainingArguments = $true)]
+        [string[]]$Args
+    )
+
+    if (-not $script:GhCommandPath) {
+        throw "gh command path is not initialized."
+    }
+
+    & $script:GhCommandPath @Args
+}
+
 function Get-CommandExists {
     param([string]$Name)
     return [bool](Get-Command $Name -ErrorAction SilentlyContinue)
@@ -256,19 +303,19 @@ function Publish-WithGh {
     )
 
     $releaseExists = $true
-    gh release view $ReleaseTag | Out-Null 2>$null
+    Invoke-Gh release view $ReleaseTag | Out-Null 2>$null
     if ($LASTEXITCODE -ne 0) {
         $releaseExists = $false
     }
 
     if (-not $releaseExists) {
         Write-Host "[6/7] Creating prerelease $ReleaseTag via gh..."
-        gh release create $ReleaseTag $ApkTarget --title $ReleaseTitle --target develop --prerelease --notes $Notes
+        Invoke-Gh release create $ReleaseTag $ApkTarget --title $ReleaseTitle --target develop --prerelease --notes $Notes
     }
     else {
         Write-Host "[6/7] Updating prerelease $ReleaseTag via gh..."
-        gh release edit $ReleaseTag --title $ReleaseTitle --target develop --prerelease --notes $Notes
-        gh release upload $ReleaseTag $ApkTarget --clobber
+        Invoke-Gh release edit $ReleaseTag --title $ReleaseTitle --target develop --prerelease --notes $Notes
+        Invoke-Gh release upload $ReleaseTag $ApkTarget --clobber
     }
 }
 
@@ -335,12 +382,13 @@ function Publish-WithApi {
 try {
     Write-Host "[1/7] Checking required commands..."
     Require-Command git
-    $ghAvailable = Get-CommandExists gh
+    $script:GhCommandPath = Get-GhCommand
+    $ghAvailable = [bool]$script:GhCommandPath
     if ($ghAvailable) {
-        Write-Host "[1/7] Found gh CLI."
+        Write-Host "[1/7] Found gh CLI at: $script:GhCommandPath"
     }
     else {
-        Write-Host "[1/7] gh CLI not found. Will use GitHub API fallback (requires GH_TOKEN or GITHUB_TOKEN)."
+        Write-Host "[1/7] gh CLI not found in PATH/common Windows locations. Will use GitHub API fallback (requires GH_TOKEN or GITHUB_TOKEN)."
     }
 
     Ensure-GitHubAuthReady -GhAvailable $ghAvailable

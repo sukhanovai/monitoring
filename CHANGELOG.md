@@ -6,17 +6,17 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.32.41] - 2026-03-16
+## [8.32.42] - 2026-03-16
 
 ### Fixed / Исправлено
-- EN: Expanded GitHub token parsing in `scripts/publish_android_prerelease.ps1` to support PowerShell-style `.env` entries (for example, `$env:GH_TOKEN = "..."`) and `:` as a separator, reducing token-detection failures in Android Studio terminal setups.
-- RU: Расширен парсинг GitHub-токена в `scripts/publish_android_prerelease.ps1`: добавлена поддержка PowerShell-формата строк в `.env` (например, `$env:GH_TOKEN = "..."`) и разделителя `:`, что снижает число сбоев определения токена в терминале Android Studio.
-- EN: Improved `.env` token value cleanup by stripping inline `//` comments in addition to existing comment formats.
-- RU: Улучшена очистка значения токена из `.env`: теперь дополнительно удаляются inline-комментарии формата `//` помимо уже поддерживаемых вариантов.
+- EN: Improved `scripts/publish_android_prerelease.ps1` gh CLI detection for Android Studio PowerShell terminals on Windows: the script now searches common installation paths (`Program Files`, Scoop shims, WinGet links) when `gh` is missing from `PATH`.
+- RU: Улучшено определение gh CLI в `scripts/publish_android_prerelease.ps1` для PowerShell-терминала Android Studio на Windows: скрипт теперь ищет `gh` в типовых путях установки (`Program Files`, shims Scoop, ссылки WinGet), если команда отсутствует в `PATH`.
+- EN: Added a dedicated `Invoke-Gh` wrapper to run release commands through the detected executable path, preventing false "gh not found" failures in IDE terminals.
+- RU: Добавлен отдельный враппер `Invoke-Gh` для запуска release-команд через найденный путь к исполняемому файлу, что устраняет ложные падения "gh not found" в терминалах IDE.
 
 ### Changed / Изменено
-- EN: Project version bumped to `8.32.41`; Android `versionCode` bumped to `87`.
-- RU: Версия проекта повышена до `8.32.41`; Android `versionCode` увеличен до `87`.
+- EN: Project version bumped to `8.32.42`; Android `versionCode` bumped to `88`.
+- RU: Версия проекта повышена до `8.32.42`; Android `versionCode` увеличен до `88`.
 
 ## [8.32.40] - 2026-03-16
 
