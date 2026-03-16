@@ -6,19 +6,17 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.32.46] - 2026-03-16
+## [8.32.48] - 2026-03-16
 
 ### Fixed / Исправлено
-- EN: Improved `scripts/publish_android_prerelease.ps1` token detection for Android Studio PowerShell on Windows: script now also checks persisted User/Machine environment variables (`setx` values) via .NET environment scopes, even when they are not visible in current process environment.
-- RU: Улучшено определение токена в `scripts/publish_android_prerelease.ps1` для Windows PowerShell в Android Studio: скрипт теперь дополнительно проверяет сохранённые User/Machine переменные окружения (значения после `setx`) через .NET scopes, даже если они не видны в окружении текущего процесса.
-- EN: Extended gh CLI lookup with common per-user install path `%LOCALAPPDATA%/Programs/GitHub CLI/gh.exe`, reducing false fallback to API mode in IDE terminals.
-- RU: Расширен поиск gh CLI типовым пользовательским путём установки `%LOCALAPPDATA%/Programs/GitHub CLI/gh.exe`, что снижает ложные переключения на API fallback в терминалах IDE.
-- EN: Added explicit Android Studio hint in missing-token diagnostics: after `setx`, restart terminal/IDE or pass token via `-GitHubToken` / `$env:GH_TOKEN` in current session.
-- RU: В диагностику отсутствия токена добавлена явная подсказка для Android Studio: после `setx` перезапустить терминал/IDE или передать токен через `-GitHubToken` / `$env:GH_TOKEN` в текущей сессии.
+- EN: Improved `scripts/publish_android_prerelease.ps1` gh CLI detection for Android Studio/Windows terminals: added extra common install locations including `.../GitHub CLI/bin/gh.exe` and Scoop app path `scoop/apps/gh/current/bin/gh.exe`.
+- RU: Улучшено определение gh CLI в `scripts/publish_android_prerelease.ps1` для Android Studio/Windows-терминалов: добавлены дополнительные типовые пути установки, включая `.../GitHub CLI/bin/gh.exe` и путь Scoop `scoop/apps/gh/current/bin/gh.exe`.
+- EN: Added `where.exe gh` probe before fallback path scan to detect gh in PATH aliases/links that are visible to shell but not covered by static path list.
+- RU: Добавлена проверка `where.exe gh` перед сканированием fallback-путей, чтобы находить gh через PATH-алиасы/линки, которые видны оболочке, но не покрыты статическим списком путей.
 
 ### Changed / Изменено
-- EN: Project version bumped to `8.32.46`; Android `versionCode` bumped to `92`.
-- RU: Версия проекта повышена до `8.32.46`; Android `versionCode` увеличен до `92`.
+- EN: Project version bumped to `8.32.48`; Android `versionCode` bumped to `93`.
+- RU: Версия проекта повышена до `8.32.48`; Android `versionCode` увеличен до `93`.
 
 ## [8.32.45] - 2026-03-16
 
