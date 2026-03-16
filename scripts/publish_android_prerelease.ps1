@@ -2,7 +2,8 @@ param(
     [string]$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")),
     [switch]$SkipBuild,
     [switch]$AllowDirty,
-    [switch]$AutoStashDirty
+    [switch]$AutoStashDirty,
+    [string]$GitHubToken
 )
 
 $ErrorActionPreference = "Stop"
@@ -60,15 +61,31 @@ function Get-GitHubRepo {
 }
 
 function Get-GitHubToken {
-    if ($env:GH_TOKEN) { return $env:GH_TOKEN }
-    if ($env:GITHUB_TOKEN) { return $env:GITHUB_TOKEN }
+    if ($GitHubToken) { return $GitHubToken.Trim() }
+    if ($env:GH_TOKEN) { return $env:GH_TOKEN.Trim() }
+    if ($env:GITHUB_TOKEN) { return $env:GITHUB_TOKEN.Trim() }
+    if ($env:GITHUB_PAT) { return $env:GITHUB_PAT.Trim() }
+
+    $windowsHome = $null
+    if ($env:HOMEDRIVE -and $env:HOMEPATH) {
+    $windowsHome = Join-Path $env:HOMEDRIVE $env:HOMEPATH
+    }
+
+    $homeCandidates = @($HOME, $env:USERPROFILE, $windowsHome) |
+        Where-Object { $_ } |
+        Select-Object -Unique
 
     $tokenFiles = @(
         (Join-Path $RepoRoot ".github_token"),
-        (Join-Path $RepoRoot ".github-token"),
-        (Join-Path $HOME ".github_token"),
-        (Join-Path $HOME ".github-token")
+        (Join-Path $RepoRoot ".github-token")
     )
+
+    foreach ($homeDir in $homeCandidates) {
+        $tokenFiles += (Join-Path $homeDir ".github_token")
+        $tokenFiles += (Join-Path $homeDir ".github-token")
+    }
+
+    $tokenFiles = $tokenFiles | Select-Object -Unique
 
     foreach ($tokenFile in $tokenFiles) {
         if (Test-Path $tokenFile) {
@@ -95,16 +112,20 @@ function Invoke-GitHubApi {
     if (-not $token) {
         throw @"
 GitHub token was not found.
-Set GH_TOKEN or GITHUB_TOKEN environment variable,
+Set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT environment variable,
+or pass -GitHubToken parameter,
 or save token into one of files:
 - $RepoRoot/.github_token
 - $RepoRoot/.github-token
 - $HOME/.github_token
 - $HOME/.github-token
+- $env:USERPROFILE/.github_token
+- $env:USERPROFILE/.github-token
 
 PowerShell examples:
 `$env:GH_TOKEN = "ghp_xxx"                        # current session
 setx GH_TOKEN "ghp_xxx"                          # persist for next sessions
+./scripts/publish_android_prerelease.ps1 -GitHubToken "ghp_xxx"
 "@ 
     }
 
