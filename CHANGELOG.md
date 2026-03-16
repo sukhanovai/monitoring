@@ -6,6 +6,14 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.38] - 2026-03-16
+
+### Changed / Изменено
+- EN: Aligned project version references across source files and Android client metadata to prevent partial version bumps after script updates.
+- RU: Синхронизированы упоминания версии проекта во всех исходных файлах и метаданных Android-клиента, чтобы исключить частичный бамп версии после изменений скриптов.
+- EN: Project version bumped to `8.32.38`; Android `versionCode` bumped to `85`.
+- RU: Версия проекта повышена до `8.32.38`; Android `versionCode` увеличен до `85`.
+
 ## [8.32.37] - 2026-03-16
 
 ### Changed / Изменено
