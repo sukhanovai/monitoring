@@ -197,6 +197,25 @@ AVAILABLE_EXTENSIONS = {
 - либо задан `GH_TOKEN`/`GITHUB_TOKEN` (fallback через GitHub API без `gh`);
 - права на создание релизов в репозитории.
 
+### Автоматизация шагов после `git pull` в Android Studio (Windows)
+
+Чтобы заменить ручные действия в интерфейсе Android Studio (`Sync Project with Gradle Files` → `Clean Project` → `Assemble Project` → запуск `'app' [U] Shift+F10`), запустите:
+
+```powershell
+./scripts/android_post_pull_build_run.ps1
+```
+
+Что делает скрипт:
+- выполняет CLI-эквивалент Gradle Sync;
+- запускает `clean`;
+- собирает `assembleDebug`;
+- устанавливает debug APK на подключённый девайс/эмулятор;
+- запускает `ru.monitoring.mobile/.MainActivity` через `adb`.
+
+Полезные флаги:
+- `-SkipInstall` — только sync + clean + assemble без установки/запуска;
+- `-SkipRun` — собрать и установить, но не запускать Activity.
+
 Примечание по сборке Android Studio:
 - для Kotlin 2.x и включённого Compose в модуле подключён `org.jetbrains.kotlin.plugin.compose`; если после pull IDE ругается на Compose compiler plugin — обновите Gradle Sync и пересоберите проект.
 
