@@ -193,7 +193,7 @@ AVAILABLE_EXTENSIONS = {
 - загружает APK в релиз, не затрагивая стабильный релиз в `main`.
 
 Актуальная ссылка на APK prerelease (скрипт обновляет её только при запуске с флагом `-UpdateDocsLinks`):
-<!-- ANDROID_PRERELEASE_APK_LINK_START -->https://github.com/sukhanovai/monitoring/releases/download/v8.32.59-develop/monitoring-android-8.32.59-develop.apk<!-- ANDROID_PRERELEASE_APK_LINK_END -->
+<!-- ANDROID_PRERELEASE_APK_LINK_START -->https://github.com/sukhanovai/monitoring/releases/download/v8.32.60-develop/monitoring-android-8.32.60-develop.apk<!-- ANDROID_PRERELEASE_APK_LINK_END -->
 
 Требования:
 - либо установлен `gh` (GitHub CLI) и выполнен `gh auth login`;
@@ -270,6 +270,13 @@ git pull --rebase origin develop
 # Вариант 2: отбросить локальные правки и взять remote-версию
 git restore --staged --worktree -- README.md docs/android_mobile_app.md
 git pull --rebase origin develop
+```
+
+```powershell
+# Вариант 3: временно спрятать все локальные правки, подтянуть remote и вернуть правки обратно
+git stash push -u -m "wip-before-pull"
+git pull --rebase origin develop
+git stash pop
 ```
 
 ```powershell

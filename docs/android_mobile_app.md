@@ -709,7 +709,7 @@ android-client/app/build/outputs/apk/debug/app-debug.apk
 
 1. **В git-репозиторий не коммитить бинарник APK напрямую** (история раздувается).
 2. Публиковать APK как **GitHub Release Asset** (например, `monitoring-android.apk`).
-   - Актуальный prerelease APK: <!-- ANDROID_PRERELEASE_APK_LINK_START -->https://github.com/sukhanovai/monitoring/releases/download/v8.32.59-develop/monitoring-android-8.32.59-develop.apk<!-- ANDROID_PRERELEASE_APK_LINK_END -->
+   - Актуальный prerelease APK: <!-- ANDROID_PRERELEASE_APK_LINK_START -->https://github.com/sukhanovai/monitoring/releases/download/v8.32.60-develop/monitoring-android-8.32.60-develop.apk<!-- ANDROID_PRERELEASE_APK_LINK_END -->
 3. В backend держать ссылку `ANDROID_APK_DOWNLOAD_URL` на этот release asset.
 4. Android при старте ходит в `GET /v1/mobile/version` и, если нужно обновление, ведёт пользователя по этой ссылке.
 
@@ -723,6 +723,11 @@ git pull --rebase origin develop
 # Или отбросить локальные изменения
 git restore --staged --worktree -- README.md docs/android_mobile_app.md
 git pull --rebase origin develop
+
+# Или временно убрать локальные правки, подтянуть remote и вернуть правки
+git stash push -u -m "wip-before-pull"
+git pull --rebase origin develop
+git stash pop
 ```
 
 Если всё-таки нужен артефакт «внутри репо», лучше хранить его в отдельной папке `artifacts/` только для временных сборок и регулярно чистить историю.
