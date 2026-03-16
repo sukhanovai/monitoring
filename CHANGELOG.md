@@ -6,13 +6,23 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.32.38] - 2026-03-16
+## [8.32.40] - 2026-03-16
+
+### Fixed / Исправлено
+- EN: Improved GitHub token parsing in `scripts/publish_android_prerelease.ps1`: `.env` lines now also support `set`/`setx` prefixes and trim inline trailing comments, which reduces false negatives in Android Studio PowerShell workflows.
+- RU: Улучшен парсинг GitHub-токена в `scripts/publish_android_prerelease.ps1`: строки `.env` теперь дополнительно поддерживают префиксы `set`/`setx` и обрезают хвостовые inline-комментарии, что снижает ложные срабатывания в PowerShell-потоке Android Studio.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.40`; Android `versionCode` bumped to `86`.
+- RU: Версия проекта повышена до `8.32.40`; Android `versionCode` увеличен до `86`.
+
+## [8.32.39] - 2026-03-16
 
 ### Changed / Изменено
 - EN: Aligned project version references across source files and Android client metadata to prevent partial version bumps after script updates.
 - RU: Синхронизированы упоминания версии проекта во всех исходных файлах и метаданных Android-клиента, чтобы исключить частичный бамп версии после изменений скриптов.
-- EN: Project version bumped to `8.32.38`; Android `versionCode` bumped to `85`.
-- RU: Версия проекта повышена до `8.32.38`; Android `versionCode` увеличен до `85`.
+- EN: Project version bumped to `8.32.39`; Android `versionCode` bumped to `85`.
+- RU: Версия проекта повышена до `8.32.39`; Android `versionCode` увеличен до `85`.
 
 ## [8.32.37] - 2026-03-16
 
