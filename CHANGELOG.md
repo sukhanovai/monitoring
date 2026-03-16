@@ -6,15 +6,17 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.32.44] - 2026-03-16
+## [8.32.45] - 2026-03-16
 
 ### Fixed / Исправлено
+- EN: Improved parsing of token variables in `.env` for `scripts/publish_android_prerelease.ps1`: now supports PowerShell-style lines with whitespace separator (for example, `setx GH_TOKEN ghp_xxx`) so Android Studio terminals can pick up token hints more reliably.
+- RU: Улучшен парсинг переменных токена в `.env` для `scripts/publish_android_prerelease.ps1`: теперь поддерживаются строки PowerShell с пробелом-разделителем (например, `setx GH_TOKEN ghp_xxx`), чтобы в терминалах Android Studio надёжнее подхватывались подсказки с токеном.
 - EN: Completed version alignment across the repository after prerelease script updates: all hardcoded project version banners/usages are now synchronized to the current release value to prevent partial version drift in diagnostics, docs, and UI metadata.
 - RU: Завершена синхронизация версий по всему репозиторию после обновлений prerelease-скрипта: все захардкоженные баннеры/упоминания версии проекта приведены к текущему релизному значению, чтобы исключить частичный дрейф версий в диагностике, документации и метаданных UI.
 
 ### Changed / Изменено
-- EN: Project version bumped to `8.32.44`; Android `versionCode` bumped to `90`.
-- RU: Версия проекта повышена до `8.32.44`; Android `versionCode` увеличен до `90`.
+- EN: Project version bumped to `8.32.45`; Android `versionCode` bumped to `91`.
+- RU: Версия проекта повышена до `8.32.45`; Android `versionCode` увеличен до `91`.
 
 ## [8.32.43] - 2026-03-16
 
