@@ -6,6 +6,18 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.41] - 2026-03-16
+
+### Fixed / Исправлено
+- EN: Expanded GitHub token parsing in `scripts/publish_android_prerelease.ps1` to support PowerShell-style `.env` entries (for example, `$env:GH_TOKEN = "..."`) and `:` as a separator, reducing token-detection failures in Android Studio terminal setups.
+- RU: Расширен парсинг GitHub-токена в `scripts/publish_android_prerelease.ps1`: добавлена поддержка PowerShell-формата строк в `.env` (например, `$env:GH_TOKEN = "..."`) и разделителя `:`, что снижает число сбоев определения токена в терминале Android Studio.
+- EN: Improved `.env` token value cleanup by stripping inline `//` comments in addition to existing comment formats.
+- RU: Улучшена очистка значения токена из `.env`: теперь дополнительно удаляются inline-комментарии формата `//` помимо уже поддерживаемых вариантов.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.41`; Android `versionCode` bumped to `87`.
+- RU: Версия проекта повышена до `8.32.41`; Android `versionCode` увеличен до `87`.
+
 ## [8.32.40] - 2026-03-16
 
 ### Fixed / Исправлено
