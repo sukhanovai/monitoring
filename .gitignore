@@ -121,3 +121,7 @@ android-client/.gradle/
 android-client/local.properties
 android-client/**/build/
 *.apk
+
+# Local GitHub token for release scripts
+.github_token
+.github-token

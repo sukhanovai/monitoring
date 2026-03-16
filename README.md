@@ -192,10 +192,19 @@ AVAILABLE_EXTENSIONS = {
 - публикует/обновляет GitHub prerelease с тегом `v<версия>-develop`;
 - загружает APK в релиз, не затрагивая стабильный релиз в `main`.
 
+Актуальная ссылка на APK prerelease (обновляется скриптом автоматически):
+<!-- ANDROID_PRERELEASE_APK_LINK_START -->https://github.com/<org>/<repo>/releases/download/v8.32.56-develop/monitoring-android-8.32.56-develop.apk<!-- ANDROID_PRERELEASE_APK_LINK_END -->
+
 Требования:
 - либо установлен `gh` (GitHub CLI) и выполнен `gh auth login`;
-- либо задан `GH_TOKEN`/`GITHUB_TOKEN` (fallback через GitHub API без `gh`);
+- либо задан `GH_TOKEN`/`GITHUB_TOKEN`/`GITHUB_PAT`, либо токен сохранён в `$HOME/.monitoring/github_token` (fallback через GitHub API без `gh`);
 - права на создание релизов в репозитории.
+
+Пример безопасного сохранения токена (один раз):
+```powershell
+mkdir -Force $HOME/.monitoring | Out-Null
+"ghp_xxx" | Set-Content -NoNewline $HOME/.monitoring/github_token
+```
 
 ### Автоматизация шагов после `git pull` в Android Studio (Windows)
 

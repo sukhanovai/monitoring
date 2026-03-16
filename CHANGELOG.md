@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.56] - 2026-03-16
+
+### Changed / Изменено
+- EN: Updated Android prerelease workflow docs with an auto-managed APK download link marker; `scripts/publish_android_prerelease.ps1` now rewrites this link in `README.md` and `docs/android_mobile_app.md` on each publish run.
+- RU: Обновлена документация по Android prerelease: добавлен автообновляемый маркер ссылки на APK; `scripts/publish_android_prerelease.ps1` теперь переписывает эту ссылку в `README.md` и `docs/android_mobile_app.md` при каждом запуске публикации.
+- EN: Removed explicit `-GitHubToken` usage from script guidance and switched to secure token-file flow (`$HOME/.monitoring/github_token`) with env fallback.
+- RU: Убрано явное использование `-GitHubToken` в сценарии запуска; переход на безопасный файл токена (`$HOME/.monitoring/github_token`) с fallback через переменные окружения.
+- EN: Completed repository-wide version bump to `8.32.56`; Android metadata updated to `ANDROID_VERSION_NAME=8.32.56` and `ANDROID_VERSION_CODE=101`.
+- RU: Выполнен полный бамп версии по репозиторию до `8.32.56`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.32.56` и `ANDROID_VERSION_CODE=101`.
+
 ## [8.32.55] - 2026-03-16
 
 ### Changed / Изменено
