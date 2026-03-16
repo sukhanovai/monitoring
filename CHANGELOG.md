@@ -6,6 +6,18 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.57] - 2026-03-16
+
+### Fixed / Исправлено
+- EN: Fixed Android prerelease APK links in `README.md` and `docs/android_mobile_app.md`: replaced placeholder repository path with the actual `sukhanovai/monitoring` URL.
+- RU: Исправлены ссылки на Android prerelease APK в `README.md` и `docs/android_mobile_app.md`: вместо шаблонного пути репозитория теперь используется фактический `sukhanovai/monitoring`.
+- EN: Fixed prerelease release notes template in `scripts/publish_android_prerelease.ps1`: Russian section is now written in Russian.
+- RU: Исправлен шаблон описания prerelease в `scripts/publish_android_prerelease.ps1`: русский блок теперь действительно на русском языке.
+
+### Changed / Изменено
+- EN: Completed full repository-wide version bump to `8.32.57`; synchronized runtime/config/docs/script/android UI references and bumped Android metadata to `ANDROID_VERSION_NAME=8.32.57`, `ANDROID_VERSION_CODE=102`.
+- RU: Выполнен полный бамп версии по всему репозиторию до `8.32.57`; синхронизированы ссылки в runtime/config/docs/скриптах/Android UI, Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.32.57`, `ANDROID_VERSION_CODE=102`.
+
 ## [8.32.56] - 2026-03-16
 
 ### Changed / Изменено
