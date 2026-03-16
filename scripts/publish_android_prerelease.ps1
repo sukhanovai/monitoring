@@ -298,21 +298,22 @@ function Publish-WithApi {
     Invoke-GitHubApi -Method POST -Url $uploadUrl -Binary $bytes -ContentType "application/vnd.android.package-archive" | Out-Null
 }
 
-Write-Host "[1/7] Checking required commands..."
-Require-Command git
-$ghAvailable = Get-CommandExists gh
-if ($ghAvailable) {
-    Write-Host "[1/7] Found gh CLI."
-}
-else {
-    Write-Host "[1/7] gh CLI not found. Will use GitHub API fallback (requires GH_TOKEN or GITHUB_TOKEN)."
-}
-
-Ensure-GitHubAuthReady -GhAvailable $ghAvailable
-
-Push-Location $RepoRoot
-$tempStashRef = $null
 try {
+    Write-Host "[1/7] Checking required commands..."
+    Require-Command git
+    $ghAvailable = Get-CommandExists gh
+    if ($ghAvailable) {
+        Write-Host "[1/7] Found gh CLI."
+    }
+    else {
+        Write-Host "[1/7] gh CLI not found. Will use GitHub API fallback (requires GH_TOKEN or GITHUB_TOKEN)."
+    }
+
+    Ensure-GitHubAuthReady -GhAvailable $ghAvailable
+
+    Push-Location $RepoRoot
+    $tempStashRef = $null
+    try {
     $branch = (git rev-parse --abbrev-ref HEAD).Trim()
     if ($branch -ne "develop") {
         throw "This script must be run from 'develop'. Current branch: '$branch'."
@@ -413,15 +414,20 @@ RU: Stable release in main remains unchanged.
 
     Write-Host "[7/7] Done. Prerelease published: $releaseTag"
     Write-Host "APK: $apkTarget"
-}
-finally {
-    if ($tempStashRef) {
-        Write-Host "[7/7] Restoring temporary stash $tempStashRef..."
-        git stash pop $tempStashRef | Out-Null
-        if ($LASTEXITCODE -ne 0) {
-            Write-Host "[7/7] Warning: failed to auto-restore temporary stash $tempStashRef. Restore it manually with: git stash list"
-        }
     }
+    finally {
+        if ($tempStashRef) {
+            Write-Host "[7/7] Restoring temporary stash $tempStashRef..."
+            git stash pop $tempStashRef | Out-Null
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "[7/7] Warning: failed to auto-restore temporary stash $tempStashRef. Restore it manually with: git stash list"
+            }
+        }
 
-    Pop-Location
+        Pop-Location
+    }
+}
+catch {
+    [Console]::Error.WriteLine($_.Exception.Message)
+    exit 1
 }

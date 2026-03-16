@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.33] - 2026-03-16
+
+### Fixed / Исправлено
+- EN: Improved error handling in `scripts/publish_android_prerelease.ps1`: failures are now printed as a concise message without PowerShell stack trace noise, while preserving non-zero exit code.
+- RU: Улучшена обработка ошибок в `scripts/publish_android_prerelease.ps1`: при сбоях теперь выводится краткое сообщение без лишнего PowerShell stack trace, при этом сохраняется ненулевой код завершения.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.33`; Android `versionCode` bumped to `80`.
+- RU: Версия проекта повышена до `8.32.33`; Android `versionCode` увеличен до `80`.
+
 ## [8.32.32] - 2026-03-16
 
 ### Changed / Изменено
