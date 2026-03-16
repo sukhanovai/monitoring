@@ -709,9 +709,21 @@ android-client/app/build/outputs/apk/debug/app-debug.apk
 
 1. **В git-репозиторий не коммитить бинарник APK напрямую** (история раздувается).
 2. Публиковать APK как **GitHub Release Asset** (например, `monitoring-android.apk`).
-   - Актуальный prerelease APK: <!-- ANDROID_PRERELEASE_APK_LINK_START -->https://github.com/sukhanovai/monitoring/releases/download/v8.32.58-develop/monitoring-android-8.32.58-develop.apk<!-- ANDROID_PRERELEASE_APK_LINK_END -->
+   - Актуальный prerelease APK: <!-- ANDROID_PRERELEASE_APK_LINK_START -->https://github.com/sukhanovai/monitoring/releases/download/v8.32.59-develop/monitoring-android-8.32.59-develop.apk<!-- ANDROID_PRERELEASE_APK_LINK_END -->
 3. В backend держать ссылку `ANDROID_APK_DOWNLOAD_URL` на этот release asset.
 4. Android при старте ходит в `GET /v1/mobile/version` и, если нужно обновление, ведёт пользователя по этой ссылке.
+
+Если при `git pull` получаешь ошибку `would be overwritten by merge` для `README.md` или этого файла, значит у тебя локально незафиксированные правки документации. Быстрые варианты:
+```powershell
+# Сохранить изменения
+git add README.md docs/android_mobile_app.md
+git commit -m "Сохранить локальные правки документации"
+git pull --rebase origin develop
+
+# Или отбросить локальные изменения
+git restore --staged --worktree -- README.md docs/android_mobile_app.md
+git pull --rebase origin develop
+```
 
 Если всё-таки нужен артефакт «внутри репо», лучше хранить его в отдельной папке `artifacts/` только для временных сборок и регулярно чистить историю.
 

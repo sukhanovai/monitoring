@@ -193,7 +193,7 @@ AVAILABLE_EXTENSIONS = {
 - загружает APK в релиз, не затрагивая стабильный релиз в `main`.
 
 Актуальная ссылка на APK prerelease (скрипт обновляет её только при запуске с флагом `-UpdateDocsLinks`):
-<!-- ANDROID_PRERELEASE_APK_LINK_START -->https://github.com/sukhanovai/monitoring/releases/download/v8.32.58-develop/monitoring-android-8.32.58-develop.apk<!-- ANDROID_PRERELEASE_APK_LINK_END -->
+<!-- ANDROID_PRERELEASE_APK_LINK_START -->https://github.com/sukhanovai/monitoring/releases/download/v8.32.59-develop/monitoring-android-8.32.59-develop.apk<!-- ANDROID_PRERELEASE_APK_LINK_END -->
 
 Требования:
 - либо установлен `gh` (GitHub CLI) и выполнен `gh auth login`;
@@ -260,6 +260,18 @@ error: Your local changes to the following files would be overwritten by merge:
 Please commit your changes or stash them before you merge.
 ```
 это означает, что локально изменён Android-конфиг. Самый быстрый безопасный вариант — helper-скрипт:
+Если конфликт прилетает по `README.md` и/или `docs/android_mobile_app.md` (обычно после автоперезаписи prerelease-ссылки), сделай одно из двух:
+```powershell
+# Вариант 1: сохранить свои правки
+git add README.md docs/android_mobile_app.md
+git commit -m "Сохранить локальные правки документации"
+git pull --rebase origin develop
+
+# Вариант 2: отбросить локальные правки и взять remote-версию
+git restore --staged --worktree -- README.md docs/android_mobile_app.md
+git pull --rebase origin develop
+```
+
 ```powershell
 ./scripts/git_safe_pull.ps1 -OnlyAndroidClientConfig
 ```
