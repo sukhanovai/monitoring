@@ -2,7 +2,8 @@ param(
     [string]$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")),
     [switch]$SkipBuild,
     [switch]$AllowDirty,
-    [switch]$AutoStashDirty
+    [switch]$AutoStashDirty,
+    [switch]$UpdateDocsLinks
 )
 
 $ErrorActionPreference = "Stop"
@@ -407,7 +408,7 @@ function Resolve-ApkSource {
 
     $preferred = @(
         (Join-Path $releaseDir "app-release.apk")
-        (Join-Path $releaseDir "app-release-unsigned.apk")
+        (Join-Path $releaseDir "app-universal-release.apk")
     )
 
     foreach ($candidate in $preferred) {
@@ -416,12 +417,24 @@ function Resolve-ApkSource {
         }
     }
 
-    $latestApk = Get-ChildItem -Path $releaseDir -Filter "*.apk" -File |
-        Sort-Object LastWriteTime -Descending |
-        Select-Object -First 1
+    $releaseApks = Get-ChildItem -Path $releaseDir -Filter "*.apk" -File
 
-    if ($latestApk) {
-        return $latestApk.FullName
+    $signedCandidates = $releaseApks |
+        Where-Object { $_.Name -notmatch "unsigned" -and $_.Name -notmatch "-x86|-x86_64|-arm64-v8a|-armeabi-v7a|-universal-debug" } |
+        Sort-Object LastWriteTime -Descending
+
+    if ($signedCandidates) {
+        return $signedCandidates[0].FullName
+    }
+
+    $unsigned = $releaseApks | Where-Object { $_.Name -match "unsigned" }
+    if ($unsigned) {
+        throw @"
+Only unsigned APK was found in release outputs. Such file is not installable for prerelease distribution.
+Configure release signing (or use debug signing for prerelease) and rebuild.
+Found files:
+$($releaseApks.Name -join "`n")
+"@
     }
 
     throw "APK file was not found in: $releaseDir"
@@ -675,7 +688,26 @@ try {
     $apkTarget = Join-Path $artifactDir $apkName
     Copy-Item -Path $apkSource -Destination $apkTarget -Force
 
-    $downloadUrl = Update-PrereleaseApkLinks -RepoRoot $RepoRoot -ReleaseTag $releaseTag -ApkName $apkName
+    if ($UpdateDocsLinks) {
+        $downloadUrl = Update-PrereleaseApkLinks -RepoRoot $RepoRoot -ReleaseTag $releaseTag -ApkName $apkName
+    }
+    else {
+        $repoOwner = "sukhanovai"
+        $repoName = "monitoring"
+        try {
+            $repo = Get-GitHubRepo
+            if ($repo.Owner -and $repo.Repo) {
+                $repoOwner = $repo.Owner
+                $repoName = $repo.Repo
+            }
+        }
+        catch {
+            Write-Host "[4/7] Warning: failed to resolve origin repo. Fallback to $repoOwner/$repoName"
+        }
+
+        $downloadUrl = "https://github.com/$repoOwner/$repoName/releases/download/$releaseTag/$apkName"
+        Write-Host "[4/7] Docs link update skipped (default). Use -UpdateDocsLinks to rewrite README/docs."
+    }
 
     $notes = @"
 EN: Android prerelease for develop branch.

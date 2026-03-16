@@ -188,12 +188,12 @@ AVAILABLE_EXTENSIONS = {
 Что делает скрипт:
 - проверяет, что текущая ветка — `develop`;
 - собирает `release` APK через Gradle;
-- автоматически выбирает APK из `app/build/outputs/apk/release` (`app-release.apk`, `app-release-unsigned.apk` или последний `*.apk`);
+- автоматически выбирает подписанный APK из `app/build/outputs/apk/release` (приоритет: `app-release.apk`, `app-universal-release.apk`);
 - публикует/обновляет GitHub prerelease с тегом `v<версия>-develop`;
 - загружает APK в релиз, не затрагивая стабильный релиз в `main`.
 
-Актуальная ссылка на APK prerelease (обновляется скриптом автоматически):
-<!-- ANDROID_PRERELEASE_APK_LINK_START -->https://github.com/sukhanovai/monitoring/releases/download/v8.32.57-develop/monitoring-android-8.32.57-develop.apk<!-- ANDROID_PRERELEASE_APK_LINK_END -->
+Актуальная ссылка на APK prerelease (скрипт обновляет её только при запуске с флагом `-UpdateDocsLinks`):
+<!-- ANDROID_PRERELEASE_APK_LINK_START -->https://github.com/sukhanovai/monitoring/releases/download/v8.32.58-develop/monitoring-android-8.32.58-develop.apk<!-- ANDROID_PRERELEASE_APK_LINK_END -->
 
 Требования:
 - либо установлен `gh` (GitHub CLI) и выполнен `gh auth login`;
