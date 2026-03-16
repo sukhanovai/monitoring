@@ -114,8 +114,11 @@ function Get-GitHubToken {
 
         $envContent = Get-Content -Path $envFile
         foreach ($line in $envContent) {
-            if ($line -match '^\s*(?:export\s+)?(GH_TOKEN|GITHUB_TOKEN|GITHUB_PAT)\s*=\s*(?<value>.+?)\s*$') {
-                $value = $Matches.value.Trim().Trim('"').Trim("'")
+            if ($line -match '^\s*(?:export\s+|setx?\s+)?(GH_TOKEN|GITHUB_TOKEN|GITHUB_PAT)\s*=\s*(?<value>.+?)\s*$') {
+                $value = $Matches.value.Trim()
+                $value = ($value -replace '\s+#.*$', '').Trim()
+                $value = ($value -replace '\s+;.*$', '').Trim()
+                $value = $value.Trim('"').Trim("'")
                 if ($value) {
                     return $value
                 }
