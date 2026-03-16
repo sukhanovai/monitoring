@@ -280,7 +280,13 @@ $ghConfigPathsHint
 PowerShell examples:
 `$env:GH_TOKEN = "ghp_xxx"                        # current session
 setx GH_TOKEN "ghp_xxx"                          # persist for next sessions
+"ghp_xxx" | Set-Content -NoNewline .github_token # project-local token file
 ./scripts/publish_android_prerelease.ps1 -GitHubToken "ghp_xxx"
+
+How to create PAT quickly:
+1) Open https://github.com/settings/tokens (classic) or https://github.com/settings/personal-access-tokens/new
+2) Create token with required repo/release scopes
+3) Save it into `$RepoRoot/.github_token` (or one of paths above)
 
 Android Studio terminal tip:
 after `setx`, restart Android Studio terminal/IDE so process env is refreshed,
@@ -343,7 +349,13 @@ $ghConfigPathsHint
 PowerShell examples:
 `$env:GH_TOKEN = "ghp_xxx"                        # current session
 setx GH_TOKEN "ghp_xxx"                          # persist for next sessions
+"ghp_xxx" | Set-Content -NoNewline .github_token # project-local token file
 ./scripts/publish_android_prerelease.ps1 -GitHubToken "ghp_xxx"
+
+How to create PAT quickly:
+1) Open https://github.com/settings/tokens (classic) or https://github.com/settings/personal-access-tokens/new
+2) Create token with required repo/release scopes
+3) Save it into `$RepoRoot/.github_token` (or one of paths above)
 
 Android Studio terminal tip:
 after `setx`, restart Android Studio terminal/IDE so process env is refreshed,

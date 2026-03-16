@@ -6,6 +6,22 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.50] - 2026-03-16
+
+### Changed / Изменено
+- EN: Completed full version alignment across the repository after prerelease script updates: synchronized hardcoded project version banners/usages in source modules, docs, and Android app metadata to avoid partial version drift.
+- RU: Завершено полное выравнивание версии по репозиторию после обновлений prerelease-скрипта: синхронизированы захардкоженные баннеры/упоминания версии в модулях, документации и метаданных Android-приложения, чтобы исключить частичный дрейф версии.
+- EN: Project version bumped to `8.32.50`; Android `versionCode` bumped to `95`.
+- RU: Версия проекта повышена до `8.32.50`; Android `versionCode` увеличен до `95`.
+
+## [8.32.49] - 2026-03-16
+
+### Changed / Изменено
+- EN: Improved missing-token guidance in `scripts/publish_android_prerelease.ps1`: added explicit PAT creation links and a one-liner to save token into `.github_token`, so Android Studio users can configure GitHub API fallback faster when `gh` is unavailable.
+- RU: Улучшены подсказки при отсутствии токена в `scripts/publish_android_prerelease.ps1`: добавлены прямые ссылки на создание PAT и однострочник для сохранения токена в `.github_token`, чтобы в Android Studio быстрее настраивать fallback через GitHub API при отсутствии `gh`.
+- EN: Project version bumped to `8.32.49`; Android `versionCode` bumped to `94`.
+- RU: Версия проекта повышена до `8.32.49`; Android `versionCode` увеличен до `94`.
+
 ## [8.32.48] - 2026-03-16
 
 ### Fixed / Исправлено
