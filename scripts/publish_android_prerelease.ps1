@@ -110,6 +110,7 @@ function Get-GitHubRepo {
 function Get-GitHubToken {
     $script:GitHubTokenSearchPaths = @()
     $script:GitHubTokenEnvSearchPaths = @()
+    $script:GitHubTokenGhConfigSearchPaths = @()
 
     if ($GitHubToken) { return $GitHubToken.Trim() }
     if ($env:GH_TOKEN) { return $env:GH_TOKEN.Trim() }
@@ -134,16 +135,22 @@ function Get-GitHubToken {
         (Join-Path $RepoRoot ".env")
     )
 
+    $ghConfigFiles = @()
+
     foreach ($homeDir in $homeCandidates) {
         $tokenFiles += (Join-Path $homeDir ".github_token")
         $tokenFiles += (Join-Path $homeDir ".github-token")
         $envFiles += (Join-Path $homeDir ".env")
+        $ghConfigFiles += (Join-Path $homeDir ".config/gh/hosts.yml")
+        $ghConfigFiles += (Join-Path $homeDir "AppData/Roaming/GitHub CLI/hosts.yml")
     }
 
     $tokenFiles = $tokenFiles | Select-Object -Unique
     $envFiles = $envFiles | Select-Object -Unique
+    $ghConfigFiles = $ghConfigFiles | Select-Object -Unique
     $script:GitHubTokenSearchPaths = $tokenFiles
     $script:GitHubTokenEnvSearchPaths = $envFiles
+    $script:GitHubTokenGhConfigSearchPaths = $ghConfigFiles
 
     foreach ($tokenFile in $tokenFiles) {
         if (Test-Path $tokenFile) {
@@ -174,6 +181,32 @@ function Get-GitHubToken {
         }
     }
 
+    foreach ($ghConfigPath in $ghConfigFiles) {
+        if (-not (Test-Path $ghConfigPath)) {
+            continue
+        }
+
+        $hostsContent = Get-Content -Path $ghConfigPath
+        $insideGithub = $false
+        foreach ($line in $hostsContent) {
+            if ($line -match '^\s*github\.com\s*:\s*$') {
+                $insideGithub = $true
+                continue
+            }
+
+            if ($insideGithub -and $line -match '^\S') {
+                $insideGithub = $false
+            }
+
+            if ($insideGithub -and $line -match '^\s*oauth_token\s*:\s*(?<value>.+?)\s*$') {
+                $value = $Matches.value.Trim().Trim('"').Trim("'")
+                if ($value) {
+                    return $value
+                }
+            }
+        }
+    }
+
     return $null
 }
 
@@ -190,6 +223,7 @@ function Invoke-GitHubApi {
     if (-not $token) {
         $pathsHint = ($script:GitHubTokenSearchPaths | ForEach-Object { "- $_" }) -join "`n"
         $envPathsHint = ($script:GitHubTokenEnvSearchPaths | ForEach-Object { "- $_" }) -join "`n"
+        $ghConfigPathsHint = ($script:GitHubTokenGhConfigSearchPaths | ForEach-Object { "- $_" }) -join "`n"
         throw @"
 GitHub token was not found.
 Set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT environment variable,
@@ -198,6 +232,8 @@ or save token into one of files:
 $pathsHint
 or add one of GH_TOKEN/GITHUB_TOKEN/GITHUB_PAT into .env file:
 $envPathsHint
+or login via gh (`gh auth login`) so token can be read from hosts.yml:
+$ghConfigPathsHint
 
 PowerShell examples:
 `$env:GH_TOKEN = "ghp_xxx"                        # current session
@@ -244,6 +280,7 @@ function Ensure-GitHubAuthReady {
     if (-not $token) {
         $pathsHint = ($script:GitHubTokenSearchPaths | ForEach-Object { "- $_" }) -join "`n"
         $envPathsHint = ($script:GitHubTokenEnvSearchPaths | ForEach-Object { "- $_" }) -join "`n"
+        $ghConfigPathsHint = ($script:GitHubTokenGhConfigSearchPaths | ForEach-Object { "- $_" }) -join "`n"
         throw @"
 GitHub token was not found.
 gh CLI is not available, so GitHub API fallback requires a token before build/publish starts.
@@ -254,6 +291,8 @@ or save token into one of files:
 $pathsHint
 or add one of GH_TOKEN/GITHUB_TOKEN/GITHUB_PAT into .env file:
 $envPathsHint
+or login via gh (`gh auth login`) so token can be read from hosts.yml:
+$ghConfigPathsHint
 
 PowerShell examples:
 `$env:GH_TOKEN = "ghp_xxx"                        # current session

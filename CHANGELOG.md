@@ -6,6 +6,18 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.43] - 2026-03-16
+
+### Fixed / Исправлено
+- EN: Enhanced GitHub token discovery in `scripts/publish_android_prerelease.ps1` for Android Studio PowerShell flow when `gh` CLI is unavailable: script now also reads token from GitHub CLI auth config (`hosts.yml`) in standard Linux/macOS and Windows locations.
+- RU: Улучшен поиск GitHub-токена в `scripts/publish_android_prerelease.ps1` для сценария Android Studio PowerShell при отсутствии `gh` CLI: скрипт теперь дополнительно читает токен из конфигурации авторизации GitHub CLI (`hosts.yml`) в стандартных путях Linux/macOS и Windows.
+- EN: Improved missing-token diagnostics by listing checked `hosts.yml` locations, alongside env and token-file paths.
+- RU: Улучшена диагностика отсутствия токена: в сообщении теперь выводятся проверенные пути `hosts.yml` вместе с путями env и token-файлов.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.43`; Android `versionCode` bumped to `89`.
+- RU: Версия проекта повышена до `8.32.43`; Android `versionCode` увеличен до `89`.
+
 ## [8.32.42] - 2026-03-16
 
 ### Fixed / Исправлено
