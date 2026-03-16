@@ -6,6 +6,24 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.29] - 2026-03-16
+
+### Changed / Изменено
+- EN: Completed version synchronization across the repository: updated version mentions in core, modules, bot, extensions, libs, scripts, docs and Android client sources to keep a single actual project version.
+- RU: Выполнена полная синхронизация версии по репозиторию: обновлены упоминания версии в core, modules, bot, extensions, libs, scripts, docs и Android-исходниках, чтобы везде была единая актуальная версия проекта.
+- EN: Improved `scripts/publish_android_prerelease.ps1` token fallback from previous patch remains in place; release metadata now references the new version consistently.
+- RU: Улучшенный fallback токена в `scripts/publish_android_prerelease.ps1` из предыдущего патча сохранён; метаданные релиза теперь консистентно ссылаются на новую версию.
+- EN: Project version bumped to `8.32.29`; Android `versionCode` bumped to `76`.
+- RU: Версия проекта повышена до `8.32.29`; Android `versionCode` увеличен до `76`.
+
+## [8.32.28] - 2026-03-15
+
+### Changed / Изменено
+- EN: Improved `scripts/publish_android_prerelease.ps1` GitHub API fallback: script now also reads token from `.github_token`/`.github-token` files in repository or home directory, and error message contains explicit PowerShell setup examples for `GH_TOKEN`.
+- RU: Улучшен fallback через GitHub API в `scripts/publish_android_prerelease.ps1`: скрипт теперь читает токен не только из переменных окружения, но и из файлов `.github_token`/`.github-token` в репозитории или домашней директории, а текст ошибки дополнен явными PowerShell-примерами настройки `GH_TOKEN`.
+- EN: Project version bumped to `8.32.28`; Android `versionCode` bumped to `75`.
+- RU: Версия проекта повышена до `8.32.28`; Android `versionCode` увеличен до `75`.
+
 ## [8.32.27] - 2026-03-15
 
 ### Changed / Изменено
