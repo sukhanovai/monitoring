@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.36] - 2026-03-16
+
+### Fixed / Исправлено
+- EN: Improved `scripts/android_post_pull_build_run.ps1` ADB launch step: script now auto-detects `adb` not only from `PATH`, but also from common Android SDK locations (`ANDROID_SDK_ROOT`, `ANDROID_HOME`, `%LOCALAPPDATA%\Android\Sdk`, `%USERPROFILE%\AppData\Local\Android\Sdk`), which fixes launch failures in Android Studio terminal when Platform-Tools are installed but not exported to `PATH`.
+- RU: Улучшен шаг запуска через ADB в `scripts/android_post_pull_build_run.ps1`: скрипт теперь ищет `adb` не только в `PATH`, но и в типичных путях Android SDK (`ANDROID_SDK_ROOT`, `ANDROID_HOME`, `%LOCALAPPDATA%\Android\Sdk`, `%USERPROFILE%\AppData\Local\Android\Sdk`), что устраняет падение запуска в терминале Android Studio, когда Platform-Tools установлены, но не добавлены в `PATH`.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.36`; Android `versionCode` bumped to `83`.
+- RU: Версия проекта повышена до `8.32.36`; Android `versionCode` увеличен до `83`.
+
 ## [8.32.35] - 2026-03-16
 
 ### Added / Добавлено

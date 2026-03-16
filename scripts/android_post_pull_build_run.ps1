@@ -8,11 +8,37 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-function Require-Command {
-    param([string]$Name)
-    if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
-        throw "Command '$Name' was not found. Install it and retry."
+function Resolve-AdbPath {
+    $adbCommand = Get-Command adb -ErrorAction SilentlyContinue
+    if ($adbCommand) {
+        return $adbCommand.Source
     }
+
+    $candidates = @()
+    foreach ($sdkRoot in @($env:ANDROID_SDK_ROOT, $env:ANDROID_HOME)) {
+        if ($sdkRoot) {
+            $candidates += (Join-Path $sdkRoot "platform-tools\adb.exe")
+            $candidates += (Join-Path $sdkRoot "platform-tools\adb")
+        }
+    }
+
+    if ($env:LOCALAPPDATA) {
+        $candidates += (Join-Path $env:LOCALAPPDATA "Android\Sdk\platform-tools\adb.exe")
+        $candidates += (Join-Path $env:LOCALAPPDATA "Android\Sdk\platform-tools\adb")
+    }
+
+    if ($env:USERPROFILE) {
+        $candidates += (Join-Path $env:USERPROFILE "AppData\Local\Android\Sdk\platform-tools\adb.exe")
+        $candidates += (Join-Path $env:USERPROFILE "AppData\Local\Android\Sdk\platform-tools\adb")
+    }
+
+    foreach ($candidate in $candidates | Select-Object -Unique) {
+        if ($candidate -and (Test-Path $candidate)) {
+            return $candidate
+        }
+    }
+
+    throw "Command 'adb' was not found in PATH or common Android SDK locations. Install Android SDK Platform-Tools or set ANDROID_SDK_ROOT/ANDROID_HOME."
 }
 
 $androidDir = Join-Path $RepoRoot "android-client"
@@ -59,17 +85,17 @@ if ($SkipRun) {
 }
 
 if (-not $SkipInstall) {
-    Require-Command adb
+    $adbPath = Resolve-AdbPath
 
-    $adbState = & adb get-state 2>$null
+    $adbState = & $adbPath get-state 2>$null
     if ($LASTEXITCODE -ne 0 -or -not $adbState) {
         Write-Warning "No active adb device/emulator. APK installation finished, but app launch skipped."
-        Write-Host "Start an emulator or connect a device, then run: adb shell am start -n $AppId/$MainActivity"
+        Write-Host "Start an emulator or connect a device, then run: `"$adbPath`" shell am start -n $AppId/$MainActivity"
         exit 0
     }
 
     Write-Host "[5/5] Launch app (equivalent to 'app' [U] Shift+F10)..."
-    & adb shell am start -n "$AppId/$MainActivity"
+    & $adbPath shell am start -n "$AppId/$MainActivity"
     if ($LASTEXITCODE -ne 0) {
         throw "Failed to launch app via adb."
     }
