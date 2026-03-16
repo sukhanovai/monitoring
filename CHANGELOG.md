@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.34] - 2026-03-16
+
+### Added / Добавлено
+- EN: Added `scripts/android_post_pull_build_run.sh` for Android Studio terminal: runs Gradle sync-equivalent configuration, clean build, assemble, installs debug APK, and launches the app on a connected device/emulator.
+- RU: Добавлен `scripts/android_post_pull_build_run.sh` для терминала Android Studio: выполняет эквивалент sync Gradle, очистку проекта, сборку, установку debug APK и запуск приложения на подключённом устройстве/эмуляторе.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.34`; Android `versionCode` bumped to `81`.
+- RU: Версия проекта повышена до `8.32.34`; Android `versionCode` увеличен до `81`.
+
 ## [8.32.33] - 2026-03-16
 
 ### Fixed / Исправлено
