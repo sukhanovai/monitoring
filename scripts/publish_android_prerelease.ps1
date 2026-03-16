@@ -51,7 +51,9 @@ function Get-GhCommand {
 
     $commonCandidates = @(
         "C:/Program Files/GitHub CLI/gh.exe",
-        "C:/Program Files (x86)/GitHub CLI/gh.exe"
+        "C:/Program Files/GitHub CLI/bin/gh.exe",
+        "C:/Program Files (x86)/GitHub CLI/gh.exe",
+        "C:/Program Files (x86)/GitHub CLI/bin/gh.exe"
     )
 
     $homeCandidates = @($env:LOCALAPPDATA, $env:USERPROFILE, $HOME, $windowsHome) |
@@ -60,12 +62,26 @@ function Get-GhCommand {
 
     foreach ($homeDir in $homeCandidates) {
         $commonCandidates += (Join-Path $homeDir "scoop/shims/gh.exe")
+        $commonCandidates += (Join-Path $homeDir "scoop/apps/gh/current/bin/gh.exe")
         $commonCandidates += (Join-Path $homeDir "AppData/Local/Microsoft/WinGet/Links/gh.exe")
         $commonCandidates += (Join-Path $homeDir "AppData/Local/Programs/GitHub CLI/gh.exe")
+        $commonCandidates += (Join-Path $homeDir "AppData/Local/Programs/GitHub CLI/bin/gh.exe")
     }
 
     if ($env:LOCALAPPDATA) {
         $commonCandidates += (Join-Path $env:LOCALAPPDATA "Programs/GitHub CLI/gh.exe")
+    }
+
+    $whereGh = $null
+    try {
+        $whereGh = & where.exe gh 2>$null | Select-Object -First 1
+    }
+    catch {
+        $whereGh = $null
+    }
+
+    if ($whereGh -and (Test-Path $whereGh)) {
+        return $whereGh
     }
 
     foreach ($candidate in ($commonCandidates | Select-Object -Unique)) {
