@@ -2,8 +2,7 @@ param(
     [string]$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")),
     [switch]$SkipBuild,
     [switch]$AllowDirty,
-    [switch]$AutoStashDirty,
-    [string]$GitHubToken
+    [switch]$AutoStashDirty
 )
 
 $ErrorActionPreference = "Stop"
@@ -144,12 +143,28 @@ function Get-GitHubRepo {
     throw "Unsupported origin URL format: $origin"
 }
 
+
+function Get-DefaultSecureTokenFilePath {
+    $windowsHome = $null
+    if ($env:HOMEDRIVE -and $env:HOMEPATH) {
+        $windowsHome = Join-Path $env:HOMEDRIVE $env:HOMEPATH
+    }
+
+    $homeDir = $HOME
+    if (-not $homeDir) { $homeDir = $env:USERPROFILE }
+    if (-not $homeDir) { $homeDir = $windowsHome }
+    if (-not $homeDir) {
+        throw "Cannot resolve home directory for secure token file path."
+    }
+
+    return Join-Path $homeDir ".monitoring/github_token"
+}
+
 function Get-GitHubToken {
     $script:GitHubTokenSearchPaths = @()
     $script:GitHubTokenEnvSearchPaths = @()
     $script:GitHubTokenGhConfigSearchPaths = @()
 
-    if ($GitHubToken) { return $GitHubToken.Trim() }
     if ($env:GH_TOKEN) { return $env:GH_TOKEN.Trim() }
     if ($env:GITHUB_TOKEN) { return $env:GITHUB_TOKEN.Trim() }
     if ($env:GITHUB_PAT) { return $env:GITHUB_PAT.Trim() }
@@ -181,7 +196,10 @@ function Get-GitHubToken {
         Where-Object { $_ } |
         Select-Object -Unique
 
+    $secureTokenFile = Get-DefaultSecureTokenFilePath
+
     $tokenFiles = @(
+        $secureTokenFile,
         (Join-Path $RepoRoot ".github_token"),
         (Join-Path $RepoRoot ".github-token")
     )
@@ -285,7 +303,6 @@ function Invoke-GitHubApi {
         throw @"
 GitHub token was not found.
 Set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT environment variable,
-or pass -GitHubToken parameter,
 or save token into one of files:
 $pathsHint
 or add one of GH_TOKEN/GITHUB_TOKEN/GITHUB_PAT into .env file:
@@ -296,17 +313,17 @@ $ghConfigPathsHint
 PowerShell examples:
 `$env:GH_TOKEN = "ghp_xxx"                        # current session
 setx GH_TOKEN "ghp_xxx"                          # persist for next sessions
-"ghp_xxx" | Set-Content -NoNewline .github_token # project-local token file
-./scripts/publish_android_prerelease.ps1 -GitHubToken "ghp_xxx"
+"ghp_xxx" | Set-Content -NoNewline $HOME/.monitoring/github_token # secure user-local token file
+./scripts/publish_android_prerelease.ps1
 
 How to create PAT quickly:
 1) Open https://github.com/settings/tokens (classic) or https://github.com/settings/personal-access-tokens/new
 2) Create token with required repo/release scopes
-3) Save it into `$RepoRoot/.github_token` (or one of paths above)
+3) Save it into `$HOME/.monitoring/github_token` (or one of paths above)
 
 Android Studio terminal tip:
 after `setx`, restart Android Studio terminal/IDE so process env is refreshed,
-or run script with -GitHubToken / `$env:GH_TOKEN in current terminal session.
+or run script with `$env:GH_TOKEN in current terminal session.
 "@ 
     }
 
@@ -354,7 +371,6 @@ GitHub token was not found.
 gh CLI is not available, so GitHub API fallback requires a token before build/publish starts.
 
 Set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT environment variable,
-or pass -GitHubToken parameter,
 or save token into one of files:
 $pathsHint
 or add one of GH_TOKEN/GITHUB_TOKEN/GITHUB_PAT into .env file:
@@ -365,17 +381,17 @@ $ghConfigPathsHint
 PowerShell examples:
 `$env:GH_TOKEN = "ghp_xxx"                        # current session
 setx GH_TOKEN "ghp_xxx"                          # persist for next sessions
-"ghp_xxx" | Set-Content -NoNewline .github_token # project-local token file
-./scripts/publish_android_prerelease.ps1 -GitHubToken "ghp_xxx"
+"ghp_xxx" | Set-Content -NoNewline $HOME/.monitoring/github_token # secure user-local token file
+./scripts/publish_android_prerelease.ps1
 
 How to create PAT quickly:
 1) Open https://github.com/settings/tokens (classic) or https://github.com/settings/personal-access-tokens/new
 2) Create token with required repo/release scopes
-3) Save it into `$RepoRoot/.github_token` (or one of paths above)
+3) Save it into `$HOME/.monitoring/github_token` (or one of paths above)
 
 Android Studio terminal tip:
 after `setx`, restart Android Studio terminal/IDE so process env is refreshed,
-or run script with -GitHubToken / `$env:GH_TOKEN in current terminal session.
+or run script with `$env:GH_TOKEN in current terminal session.
 "@
     }
 }
@@ -496,6 +512,52 @@ function Publish-WithApi {
     Invoke-GitHubApi -Method POST -Url $uploadUrl -Binary $bytes -ContentType "application/vnd.android.package-archive" | Out-Null
 }
 
+function Update-PrereleaseApkLinkInFile {
+    param(
+        [string]$FilePath,
+        [string]$DownloadUrl
+    )
+
+    if (-not (Test-Path $FilePath)) {
+        return
+    }
+
+    $content = Get-Content -Path $FilePath -Raw
+    $updated = [regex]::Replace(
+        $content,
+        '(<!-- ANDROID_PRERELEASE_APK_LINK_START -->)(.*?)(<!-- ANDROID_PRERELEASE_APK_LINK_END -->)',
+        "`$1$DownloadUrl`$3"
+    )
+
+    if ($updated -ne $content) {
+        Set-Content -Path $FilePath -Value $updated -Encoding UTF8
+    }
+}
+
+function Update-PrereleaseApkLinks {
+    param(
+        [string]$RepoRoot,
+        [string]$ReleaseTag,
+        [string]$ApkName
+    )
+
+    $repo = Get-GitHubRepo
+    $downloadUrl = "https://github.com/$($repo.Owner)/$($repo.Repo)/releases/download/$ReleaseTag/$ApkName"
+
+    $filesToUpdate = @(
+        (Join-Path $RepoRoot "README.md"),
+        (Join-Path $RepoRoot "docs/android_mobile_app.md")
+    )
+
+    foreach ($path in $filesToUpdate) {
+        Update-PrereleaseApkLinkInFile -FilePath $path -DownloadUrl $downloadUrl
+    }
+
+    return $downloadUrl
+}
+
+
+
 try {
     Write-Host "[1/7] Checking required commands..."
     Require-Command git
@@ -598,6 +660,8 @@ try {
     $apkTarget = Join-Path $artifactDir $apkName
     Copy-Item -Path $apkSource -Destination $apkTarget -Force
 
+    $downloadUrl = Update-PrereleaseApkLinks -RepoRoot $RepoRoot -ReleaseTag $releaseTag -ApkName $apkName
+
     $notes = @"
 EN: Android prerelease for develop branch.
 EN: Built from branch develop, version $projectVersion.
@@ -618,6 +682,7 @@ RU: Stable release in main remains unchanged.
 
     Write-Host "[7/7] Done. Prerelease published: $releaseTag"
     Write-Host "APK: $apkTarget"
+    Write-Host "APK download URL: $downloadUrl"
     }
     finally {
         if ($tempStashRef) {
