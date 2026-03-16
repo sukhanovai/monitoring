@@ -505,7 +505,7 @@ try {
         Write-Host "[1/7] Found gh CLI at: $script:GhCommandPath"
     }
     else {
-        Write-Host "[1/7] gh CLI not found in PATH/common Windows locations. Will use GitHub API fallback (requires GH_TOKEN or GITHUB_TOKEN)."
+        Write-Host "[1/7] gh CLI not found in PATH/common Windows locations. Will use GitHub API fallback (requires GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT)."
     }
 
     Ensure-GitHubAuthReady -GhAvailable $ghAvailable
@@ -537,6 +537,11 @@ try {
     }
     else {
         Write-Host "[2/7] Dirty working tree allowed by -AllowDirty"
+    }
+
+    if (-not $ghAvailable) {
+        Write-Host "[2/7] Verifying GitHub token before build (API fallback)..."
+        Ensure-GitHubAuthReady -GhAvailable $false
     }
 
     Write-Host "[2/7] Reading project version from config/settings.py..."

@@ -6,6 +6,26 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.55] - 2026-03-16
+
+### Changed / Изменено
+- EN: Completed repository-wide version bump after follow-up review: synchronized all current `8.32.54` references to `8.32.55` in config banners, runtime settings, scripts, docs, and Android UI metadata.
+- RU: Завершён полный бамп версии по репозиторию после повторной проверки: все актуальные ссылки `8.32.54` синхронизированы на `8.32.55` в баннерах конфигов, runtime-настройках, скриптах, документации и метаданных Android UI.
+- EN: Android app version metadata updated to `ANDROID_VERSION_NAME=8.32.55` and `ANDROID_VERSION_CODE=100`.
+- RU: Метаданные версии Android-приложения обновлены до `ANDROID_VERSION_NAME=8.32.55` и `ANDROID_VERSION_CODE=100`.
+
+## [8.32.54] - 2026-03-16
+
+### Fixed / Исправлено
+- EN: Updated `scripts/publish_android_prerelease.ps1` fallback log message to explicitly list all supported token environment variables: `GH_TOKEN`, `GITHUB_TOKEN`, and `GITHUB_PAT`.
+- RU: Обновлено fallback-сообщение в `scripts/publish_android_prerelease.ps1`: теперь явно перечислены все поддерживаемые переменные токена — `GH_TOKEN`, `GITHUB_TOKEN` и `GITHUB_PAT`.
+- EN: Added an explicit token re-check right before version read/build stage when `gh` is unavailable, so API fallback prerequisites are validated as part of step `[2/7]` before expensive Android build work.
+- RU: Добавлена явная повторная проверка токена перед чтением версии/сборкой, когда `gh` недоступен, чтобы требования API fallback валидировались на шаге `[2/7]` до затратной Android-сборки.
+
+### Changed / Изменено
+- EN: Project version bumped to `8.32.54`; Android `versionCode` bumped to `99`.
+- RU: Версия проекта повышена до `8.32.54`; Android `versionCode` увеличен до `99`.
+
 ## [8.32.53] - 2026-03-16
 
 ### Fixed / Исправлено
