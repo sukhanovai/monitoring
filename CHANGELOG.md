@@ -6,15 +6,15 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.32.59] - 2026-03-16
+## [8.32.60] - 2026-03-16
 
 ### Fixed / Исправлено
-- EN: Added explicit `git pull` conflict resolution steps for `README.md` and `docs/android_mobile_app.md` to prevent merge interruptions when documentation was edited locally.
-- RU: Добавлены явные шаги по устранению конфликтов `git pull` для `README.md` и `docs/android_mobile_app.md`, чтобы не упираться в прерывание merge при локальных правках документации.
+- EN: Added a third safe recovery path for `git pull` conflicts in docs (`git stash push -u` → `git pull --rebase` → `git stash pop`) for local edits in `README.md` and `docs/android_mobile_app.md`.
+- RU: Добавлен третий безопасный сценарий при конфликте `git pull` в документации (`git stash push -u` → `git pull --rebase` → `git stash pop`) для локальных правок `README.md` и `docs/android_mobile_app.md`.
 
 ### Changed / Изменено
-- EN: Completed repository-wide version bump to `8.32.59`; Android metadata updated to `ANDROID_VERSION_NAME=8.32.59`, `ANDROID_VERSION_CODE=104`.
-- RU: Выполнен полный бамп версии по репозиторию до `8.32.59`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.32.59`, `ANDROID_VERSION_CODE=104`.
+- EN: Completed repository-wide version bump to `8.32.60`; Android metadata updated to `ANDROID_VERSION_NAME=8.32.60`, `ANDROID_VERSION_CODE=105`.
+- RU: Выполнен полный бамп версии по репозиторию до `8.32.60`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.32.60`, `ANDROID_VERSION_CODE=105`.
 
 ## [8.32.58] - 2026-03-16
 
