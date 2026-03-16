@@ -61,6 +61,8 @@ function Get-GitHubRepo {
 }
 
 function Get-GitHubToken {
+    $script:GitHubTokenSearchPaths = @()
+
     if ($GitHubToken) { return $GitHubToken.Trim() }
     if ($env:GH_TOKEN) { return $env:GH_TOKEN.Trim() }
     if ($env:GITHUB_TOKEN) { return $env:GITHUB_TOKEN.Trim() }
@@ -86,6 +88,7 @@ function Get-GitHubToken {
     }
 
     $tokenFiles = $tokenFiles | Select-Object -Unique
+    $script:GitHubTokenSearchPaths = $tokenFiles
 
     foreach ($tokenFile in $tokenFiles) {
         if (Test-Path $tokenFile) {
@@ -110,17 +113,13 @@ function Invoke-GitHubApi {
 
     $token = Get-GitHubToken
     if (-not $token) {
+        $pathsHint = ($script:GitHubTokenSearchPaths | ForEach-Object { "- $_" }) -join "`n"
         throw @"
 GitHub token was not found.
 Set GH_TOKEN, GITHUB_TOKEN, or GITHUB_PAT environment variable,
 or pass -GitHubToken parameter,
 or save token into one of files:
-- $RepoRoot/.github_token
-- $RepoRoot/.github-token
-- $HOME/.github_token
-- $HOME/.github-token
-- $env:USERPROFILE/.github_token
-- $env:USERPROFILE/.github-token
+$pathsHint
 
 PowerShell examples:
 `$env:GH_TOKEN = "ghp_xxx"                        # current session
