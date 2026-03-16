@@ -19,7 +19,7 @@ function Require-Command {
 function Ensure-CleanWorkingTree {
     $dirty = (git status --porcelain)
     if ($dirty) {
-        throw "Working tree is not clean. Commit or stash changes before running script. Tips: use -AutoStashDirty for temporary auto-stash, or run git stash push -u -m prerelease-temp manually, or pass -AllowDirty if you understand the risks."
+        throw "Working tree is not clean. Commit or stash changes before running script. Quick fix: rerun with -AutoStashDirty for temporary auto-stash. Manual option: git stash push -u -m prerelease-temp. Advanced mode: pass -AllowDirty if you understand the risks."
     }
 }
 
