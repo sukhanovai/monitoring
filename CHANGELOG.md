@@ -6,7 +6,7 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.32.31] - 2026-03-16
+## [8.32.32] - 2026-03-16
 
 ### Changed / Изменено
 - EN: Extended `scripts/publish_android_prerelease.ps1` token lookup: added `-GitHubToken` parameter, support for `GITHUB_PAT`, and additional Windows home directory probing (`USERPROFILE`, `HOMEDRIVE`/`HOMEPATH`) for `.github_token` / `.github-token` files.
@@ -15,8 +15,8 @@ The project follows Semantic Versioning (SemVer).
 - RU: Улучшена диагностика отсутствия токена: добавлен явный пример запуска с `-GitHubToken`.
 - EN: Missing-token diagnostics in `scripts/publish_android_prerelease.ps1` now print real, deduplicated token lookup paths detected for the current Windows environment instead of static placeholders.
 - RU: Диагностика отсутствия токена в `scripts/publish_android_prerelease.ps1` теперь выводит реальные уникальные пути поиска токена для текущего Windows-окружения вместо статичных шаблонов.
-- EN: Project version bumped to `8.32.31`; Android `versionCode` bumped to `78`.
-- RU: Версия проекта повышена до `8.32.31`; Android `versionCode` увеличен до `78`.
+- EN: Project version bumped to `8.32.32`; Android `versionCode` bumped to `79`.
+- RU: Версия проекта повышена до `8.32.32`; Android `versionCode` увеличен до `79`.
 
 ## [8.32.28] - 2026-03-15
 
