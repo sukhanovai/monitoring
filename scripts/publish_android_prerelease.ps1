@@ -61,6 +61,11 @@ function Get-GhCommand {
     foreach ($homeDir in $homeCandidates) {
         $commonCandidates += (Join-Path $homeDir "scoop/shims/gh.exe")
         $commonCandidates += (Join-Path $homeDir "AppData/Local/Microsoft/WinGet/Links/gh.exe")
+        $commonCandidates += (Join-Path $homeDir "AppData/Local/Programs/GitHub CLI/gh.exe")
+    }
+
+    if ($env:LOCALAPPDATA) {
+        $commonCandidates += (Join-Path $env:LOCALAPPDATA "Programs/GitHub CLI/gh.exe")
     }
 
     foreach ($candidate in ($commonCandidates | Select-Object -Unique)) {
@@ -116,6 +121,24 @@ function Get-GitHubToken {
     if ($env:GH_TOKEN) { return $env:GH_TOKEN.Trim() }
     if ($env:GITHUB_TOKEN) { return $env:GITHUB_TOKEN.Trim() }
     if ($env:GITHUB_PAT) { return $env:GITHUB_PAT.Trim() }
+
+    $persistedUserGhToken = [Environment]::GetEnvironmentVariable("GH_TOKEN", "User")
+    if ($persistedUserGhToken) { return $persistedUserGhToken.Trim() }
+
+    $persistedUserGithubToken = [Environment]::GetEnvironmentVariable("GITHUB_TOKEN", "User")
+    if ($persistedUserGithubToken) { return $persistedUserGithubToken.Trim() }
+
+    $persistedUserGithubPat = [Environment]::GetEnvironmentVariable("GITHUB_PAT", "User")
+    if ($persistedUserGithubPat) { return $persistedUserGithubPat.Trim() }
+
+    $persistedMachineGhToken = [Environment]::GetEnvironmentVariable("GH_TOKEN", "Machine")
+    if ($persistedMachineGhToken) { return $persistedMachineGhToken.Trim() }
+
+    $persistedMachineGithubToken = [Environment]::GetEnvironmentVariable("GITHUB_TOKEN", "Machine")
+    if ($persistedMachineGithubToken) { return $persistedMachineGithubToken.Trim() }
+
+    $persistedMachineGithubPat = [Environment]::GetEnvironmentVariable("GITHUB_PAT", "Machine")
+    if ($persistedMachineGithubPat) { return $persistedMachineGithubPat.Trim() }
 
     $windowsHome = $null
     if ($env:HOMEDRIVE -and $env:HOMEPATH) {
@@ -242,6 +265,10 @@ PowerShell examples:
 `$env:GH_TOKEN = "ghp_xxx"                        # current session
 setx GH_TOKEN "ghp_xxx"                          # persist for next sessions
 ./scripts/publish_android_prerelease.ps1 -GitHubToken "ghp_xxx"
+
+Android Studio terminal tip:
+after `setx`, restart Android Studio terminal/IDE so process env is refreshed,
+or run script with -GitHubToken / `$env:GH_TOKEN in current terminal session.
 "@ 
     }
 
@@ -301,6 +328,10 @@ PowerShell examples:
 `$env:GH_TOKEN = "ghp_xxx"                        # current session
 setx GH_TOKEN "ghp_xxx"                          # persist for next sessions
 ./scripts/publish_android_prerelease.ps1 -GitHubToken "ghp_xxx"
+
+Android Studio terminal tip:
+after `setx`, restart Android Studio terminal/IDE so process env is refreshed,
+or run script with -GitHubToken / `$env:GH_TOKEN in current terminal session.
 "@
     }
 }
