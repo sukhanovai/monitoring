@@ -515,11 +515,11 @@ function Try-CreateReleaseViaApi {
         return Invoke-GitHubApi -Method POST -Url "https://api.github.com/repos/$Owner/$Repo/releases" -Body $Body
     }
     catch {
-        if ($_.Exception.Message -notmatch "HTTP status: 400") {
+        if ($_.Exception.Message -notmatch "HTTP status: (400|422)") {
             throw
         }
 
-        Write-Host "[6/7] API create returned 400. Re-checking releases by tag before retry..."
+        Write-Host "[6/7] API create returned 400/422. Re-checking releases by tag before retry..."
         $existing = Find-ReleaseByTagViaApi -Owner $Owner -Repo $Repo -ReleaseTag $ReleaseTag
         if ($existing) {
             return $existing
@@ -608,7 +608,7 @@ function Publish-WithApi {
         }
 
         if (-not $release) {
-            Write-Host "[6/7] API create returned 400. Retrying without target_commitish..."
+            Write-Host "[6/7] API create returned 400/422. Retrying without target_commitish..."
             $body.Remove("target_commitish")
             $release = Try-CreateReleaseViaApi -Owner $owner -Repo $name -Body $body -ReleaseTag $ReleaseTag
             if ($release -and $release.__create_failed) {
@@ -620,12 +620,32 @@ function Publish-WithApi {
             }
 
             if (-not $release) {
+                Write-Host "[6/7] API create returned 400/422. Retrying with minimal payload (without target_commitish/body)..."
+                $minimalBody = @{
+                    tag_name   = $ReleaseTag
+                    name       = $ReleaseTitle
+                    draft      = $false
+                    prerelease = $true
+                }
+                $release = Try-CreateReleaseViaApi -Owner $owner -Repo $name -Body $minimalBody -ReleaseTag $ReleaseTag
+                if ($release -and $release.__create_failed) {
+                    $thirdCreateError = $release.__error
+                    $release = $null
+                }
+                else {
+                    $thirdCreateError = $null
+                }
+            }
+
+            if (-not $release) {
                 $errorPayload = @(
-                    "GitHub API create release failed with HTTP 400 for tag $ReleaseTag even after retry without target_commitish.",
+                    "GitHub API create release failed with HTTP 400/422 for tag $ReleaseTag after all retries.",
                     "First attempt details:",
                     $firstCreateError,
                     "Second attempt details:",
-                    $secondCreateError
+                    $secondCreateError,
+                    "Third attempt details:",
+                    $thirdCreateError
                 ) -join "`n"
                 throw $errorPayload
             }

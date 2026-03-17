@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
 /scripts/generate_mobile_default_token.py
-Server Monitoring System v8.32.68
+Server Monitoring System v8.32.69
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Generate bootstrap token for Android auth flow.
 Система мониторинга серверов
-Версия: 8.32.68
+Версия: 8.32.69
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Генерация bootstrap-токена для Android auth flow
