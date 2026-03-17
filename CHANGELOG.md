@@ -6,12 +6,19 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.32.61] - 2026-03-16
+## [8.32.63] - 2026-03-17
+
+### Fixed / Исправлено
+- EN: Updated `scripts/publish_android_prerelease.ps1` to prevent local conflict-prone doc edits after APK publish: `-UpdateDocsLinks` is now deprecated/ignored and README/docs are no longer rewritten by the script.
+- RU: Обновлён `scripts/publish_android_prerelease.ps1`, чтобы исключить конфликтные локальные правки после публикации APK: флаг `-UpdateDocsLinks` теперь deprecated/игнорируется, README/docs скриптом больше не переписываются.
+- EN: Added optional strict mode `-NoWorkingTreeSideEffects` in prerelease script to fail if publish flow leaves local modifications.
+- RU: Добавлен опциональный строгий режим `-NoWorkingTreeSideEffects` в скрипт prerelease, который завершает выполнение с ошибкой при любых локальных изменениях после публикации.
+- EN: Added recovery script `scripts/android_studio_pull_recover.ps1` for Android Studio pull issues (`git restore --source=HEAD --staged --worktree -- .` + `git pull --rebase origin develop`).
+- RU: Добавлен recovery-скрипт `scripts/android_studio_pull_recover.ps1` для проблем с pull в Android Studio (`git restore --source=HEAD --staged --worktree -- .` + `git pull --rebase origin develop`).
 
 ### Changed / Изменено
-- EN: Completed repository-wide patch version bump to `8.32.61`; synchronized runtime/config/docs/android references and updated Android metadata to `ANDROID_VERSION_NAME=8.32.61`, `ANDROID_VERSION_CODE=106`.
-- RU: Выполнен полный патч-бамп версии по репозиторию до `8.32.61`; синхронизированы ссылки в runtime/config/docs/android и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.32.61`, `ANDROID_VERSION_CODE=106`.
-
+- EN: Completed repository-wide patch version bump to `8.32.63`; synchronized runtime/config/docs/android references and updated Android metadata to `ANDROID_VERSION_NAME=8.32.63`, `ANDROID_VERSION_CODE=108`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.32.63`; синхронизированы ссылки в runtime/config/docs/android и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.32.63`, `ANDROID_VERSION_CODE=108`.
 ## [8.32.60] - 2026-03-16
 
 ### Fixed / Исправлено
