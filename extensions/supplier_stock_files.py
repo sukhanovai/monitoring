@@ -1,11 +1,11 @@
 """
 /extensions/supplier_stock_files.py
-Server Monitoring System v8.33.0
+Server Monitoring System v8.33.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Supplier stock files downloader
 Система мониторинга серверов
-Версия: 8.33.0
+Версия: 8.33.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Получение файлов остатков поставщиков
@@ -30,7 +30,7 @@ import threading
 import tempfile
 import zipfile
 from http import cookiejar
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path, PureWindowsPath
 from typing import Any, Dict, Iterable, List
 from fnmatch import fnmatch
@@ -670,11 +670,16 @@ def _parse_report_timestamp(entry: Dict[str, Any]) -> datetime | None:
     if not raw:
         return None
     if isinstance(raw, datetime):
-        return raw
-    try:
-        return datetime.fromisoformat(str(raw))
-    except ValueError:
-        return None
+        parsed = raw
+    else:
+        try:
+            parsed = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+        except ValueError:
+            return None
+
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
 
 
 def _filter_supplier_stock_reports(
@@ -689,10 +694,10 @@ def _filter_supplier_stock_reports(
     if source_kind:
         filtered = [entry for entry in filtered if str(entry.get("source_kind")) == str(source_kind)]
     if period_days and period_days > 0:
-        cutoff = datetime.now() - timedelta(days=period_days)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=period_days)
         filtered = [
             entry for entry in filtered
-            if (_parse_report_timestamp(entry) or datetime.min) >= cutoff
+            if (_parse_report_timestamp(entry) or datetime.min.replace(tzinfo=timezone.utc)) >= cutoff
         ]
     return filtered
 

@@ -6,6 +6,18 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.33.1] - 2026-03-17
+
+### Fixed / Исправлено
+- EN: Fixed a crash in supplier stock mobile actions caused by comparing offset-aware and offset-naive datetimes while filtering reports for the last day.
+- RU: Исправлено падение в mobile-действиях остатков поставщиков из-за сравнения offset-aware и offset-naive datetime при фильтрации отчётов за последние сутки.
+- EN: Normalized supplier stock report timestamps to UTC (including `Z` suffix handling) before period filtering, preventing `/v1/control/actions` failures for Android flow.
+- RU: Нормализованы timestamp'ы отчётов остатков поставщиков к UTC (включая обработку суффикса `Z`) перед фильтрацией по периоду, что устраняет падение `/v1/control/actions` в Android-сценарии.
+
+### Changed / Изменено
+- EN: Completed repository-wide patch version bump to `8.33.1`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.1`, `ANDROID_VERSION_CODE=121`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.1`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.1`, `ANDROID_VERSION_CODE=121`.
+
 ## [8.33.0] - 2026-03-17
 
 ### Fixed / Исправлено
