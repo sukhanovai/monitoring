@@ -50,7 +50,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.32.73"
+    private val projectVersion = "8.32.74"
     private val fallbackUpdateUrl = "https://github.com/sukhanovai/monitoring/releases/latest/download/monitoring-android.apk"
     private val mailBackupHistoryRegex = Regex(
         pattern = """^([✅✔❌⚠️🚨])\s*(.+?)\s*[—-]\s*(.+?)\s*\(([^()]+)\)\s*$"""
@@ -65,6 +65,7 @@ class MainViewModel(
     )
     private val extensionControlActions = setOf(
         "backup_proxmox",
+        "backup_stock_loads",
         "zfs_menu",
         "zfs"
     )
