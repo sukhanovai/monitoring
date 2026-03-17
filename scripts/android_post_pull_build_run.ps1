@@ -41,6 +41,28 @@ function Resolve-AdbPath {
     throw "Command 'adb' was not found in PATH or common Android SDK locations. Install Android SDK Platform-Tools or set ANDROID_SDK_ROOT/ANDROID_HOME."
 }
 
+function Resolve-TargetDevice {
+    param(
+        [string]$AdbPath
+    )
+
+    $devicesOutput = & $AdbPath devices
+    if ($LASTEXITCODE -ne 0) {
+        return $null
+    }
+
+    $deviceLine = $devicesOutput |
+        Select-Object -Skip 1 |
+        Where-Object { $_ -match "\tdevice$" } |
+        Select-Object -First 1
+
+    if (-not $deviceLine) {
+        return $null
+    }
+
+    return ($deviceLine -split "\t")[0]
+}
+
 $androidDir = Join-Path $RepoRoot "android-client"
 $gradlew = Join-Path $androidDir "gradlew.bat"
 
@@ -87,17 +109,29 @@ if ($SkipRun) {
 if (-not $SkipInstall) {
     $adbPath = Resolve-AdbPath
 
-    $adbState = & $adbPath get-state 2>$null
-    if ($LASTEXITCODE -ne 0 -or -not $adbState) {
+    $targetDevice = Resolve-TargetDevice -AdbPath $adbPath
+    if (-not $targetDevice) {
         Write-Warning "No active adb device/emulator. APK installation finished, but app launch skipped."
         Write-Host "Start an emulator or connect a device, then run: `"$adbPath`" shell am start -n $AppId/$MainActivity"
         exit 0
     }
 
+    Write-Host "Using adb target: $targetDevice"
+
+    $resolvedComponent = & $adbPath -s $targetDevice shell cmd package resolve-activity --brief $AppId 2>$null
+    $resolvedComponent = ($resolvedComponent | Where-Object { $_ -and $_ -match "/" } | Select-Object -Last 1)
+    if (-not $resolvedComponent) {
+        $resolvedComponent = "$AppId/$MainActivity"
+    }
+
     Write-Host "[5/5] Launch app (equivalent to 'app' [U] Shift+F10)..."
-    & $adbPath shell am start -n "$AppId/$MainActivity"
+    & $adbPath -s $targetDevice shell am start -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n $resolvedComponent
     if ($LASTEXITCODE -ne 0) {
-        throw "Failed to launch app via adb."
+        Write-Warning "Launcher activity start via am failed, trying monkey fallback..."
+        & $adbPath -s $targetDevice shell monkey -p $AppId -c android.intent.category.LAUNCHER 1
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to launch app via adb."
+        }
     }
 
     Write-Host "✅ Done: sync + clean + assemble + install + run"
