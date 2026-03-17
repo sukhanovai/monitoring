@@ -6,18 +6,17 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.33.1] - 2026-03-17
+## [8.33.2] - 2026-03-17
 
 ### Fixed / Исправлено
-- EN: Fixed a crash in supplier stock mobile actions caused by comparing offset-aware and offset-naive datetimes while filtering reports for the last day.
-- RU: Исправлено падение в mobile-действиях остатков поставщиков из-за сравнения offset-aware и offset-naive datetime при фильтрации отчётов за последние сутки.
-- EN: Normalized supplier stock report timestamps to UTC (including `Z` suffix handling) before period filtering, preventing `/v1/control/actions` failures for Android flow.
-- RU: Нормализованы timestamp'ы отчётов остатков поставщиков к UTC (включая обработку суффикса `Z`) перед фильтрацией по периоду, что устраняет падение `/v1/control/actions` в Android-сценарии.
+- EN: Fixed Android forced-update action: when API returns a broken GitHub URL or legacy missing asset path, the app now falls back to `https://github.com/sukhanovai/monitoring/releases/latest` instead of opening GitHub 404.
+- RU: Исправлено действие принудительного обновления в Android: если API возвращает битую GitHub-ссылку или legacy-путь к отсутствующему asset, приложение теперь использует fallback `https://github.com/sukhanovai/monitoring/releases/latest` вместо перехода на GitHub 404.
+- EN: Updated backend default `ANDROID_APK_DOWNLOAD_URL` to GitHub latest releases page, so default server configuration points users to a valid update location.
+- RU: Обновлён backend-default `ANDROID_APK_DOWNLOAD_URL` на страницу последних релизов GitHub, чтобы стандартная конфигурация сервера вела пользователя в валидное место обновления.
 
 ### Changed / Изменено
-- EN: Completed repository-wide patch version bump to `8.33.1`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.1`, `ANDROID_VERSION_CODE=121`.
-- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.1`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.1`, `ANDROID_VERSION_CODE=121`.
-
+- EN: Completed repository-wide patch version bump to `8.33.2`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.2`, `ANDROID_VERSION_CODE=122`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.2`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.2`, `ANDROID_VERSION_CODE=122`.
 ## [8.33.0] - 2026-03-17
 
 ### Fixed / Исправлено
