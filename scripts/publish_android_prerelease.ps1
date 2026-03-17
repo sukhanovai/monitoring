@@ -485,7 +485,7 @@ function Find-ReleaseByTagViaApi {
     )
 
     $page = 1
-    while ($page -le 10) {
+    while ($page -le 50) {
         $releasesPage = Invoke-GitHubApi -Method GET -Url "https://api.github.com/repos/$Owner/$Repo/releases?per_page=100&page=$page"
         if (-not $releasesPage -or $releasesPage.Count -eq 0) {
             break
@@ -501,6 +501,32 @@ function Find-ReleaseByTagViaApi {
     }
 
     return $null
+}
+
+function Try-CreateReleaseViaApi {
+    param(
+        [string]$Owner,
+        [string]$Repo,
+        [hashtable]$Body,
+        [string]$ReleaseTag
+    )
+
+    try {
+        return Invoke-GitHubApi -Method POST -Url "https://api.github.com/repos/$Owner/$Repo/releases" -Body $Body
+    }
+    catch {
+        if ($_.Exception.Message -notmatch "HTTP status: 400") {
+            throw
+        }
+
+        Write-Host "[6/7] API create returned 400. Re-checking releases by tag before retry..."
+        $existing = Find-ReleaseByTagViaApi -Owner $Owner -Repo $Repo -ReleaseTag $ReleaseTag
+        if ($existing) {
+            return $existing
+        }
+
+        return $null
+    }
 }
 
 function Publish-WithGh {
@@ -570,31 +596,14 @@ function Publish-WithApi {
             draft            = $false
             prerelease       = $true
         }
-        try {
-            $release = Invoke-GitHubApi -Method POST -Url "https://api.github.com/repos/$owner/$name/releases" -Body $body
-        }
-        catch {
-            if ($_.Exception.Message -match "HTTP status: 400") {
-                Write-Host "[6/7] API create returned 400. Retrying without target_commitish..."
-                $body.Remove("target_commitish")
-                try {
-                    $release = Invoke-GitHubApi -Method POST -Url "https://api.github.com/repos/$owner/$name/releases" -Body $body
-                }
-                catch {
-                    if ($_.Exception.Message -match "HTTP status: 400") {
-                        Write-Host "[6/7] API create still returned 400. Re-checking existing releases by tag before fail..."
-                        $release = Find-ReleaseByTagViaApi -Owner $owner -Repo $name -ReleaseTag $ReleaseTag
-                        if (-not $release) {
-                            throw
-                        }
-                    }
-                    else {
-                        throw
-                    }
-                }
-            }
-            else {
-                throw
+        $release = Try-CreateReleaseViaApi -Owner $owner -Repo $name -Body $body -ReleaseTag $ReleaseTag
+
+        if (-not $release) {
+            Write-Host "[6/7] API create returned 400. Retrying without target_commitish..."
+            $body.Remove("target_commitish")
+            $release = Try-CreateReleaseViaApi -Owner $owner -Repo $name -Body $body -ReleaseTag $ReleaseTag
+            if (-not $release) {
+                throw "GitHub API create release failed with HTTP 400 for tag $ReleaseTag even after retry without target_commitish."
             }
         }
     }
