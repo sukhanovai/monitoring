@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.32.74
+Server Monitoring System v8.33.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.32.74
+Версия: 8.33.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1518,6 +1518,7 @@ def _execute_mobile_control_action(action: str):
             "backup_databases": ("database_backup_monitor", "🗃️ Мониторинг бэкапов БД отключён"),
             "backup_mail": ("mail_backup_monitor", "📬 Мониторинг бэкапов почты отключён"),
             "backup_stock_loads": ("stock_load_monitor", "📦 Мониторинг остатков 1С отключён"),
+            "supplier_stock_reports": ("supplier_stock_files", "📦 Остатки поставщиков отключены"),
             "zfs": ("zfs_monitor", "🧊 Мониторинг ZFS отключён"),
             "zfs_menu": ("zfs_monitor", "🧊 Мониторинг ZFS отключён"),
         }
@@ -1675,6 +1676,92 @@ def _execute_mobile_control_action(action: str):
                 ]
             )
             return True, "\n".join(lines), "accepted", None
+
+
+        if action == "supplier_stock_reports" or action in {"supplier_stock_reports_download", "supplier_stock_reports_mail"}:
+            source_kind = "mail" if action.endswith("_mail") else "download"
+            reports = get_supplier_stock_reports(limit=None, period_days=1, source_kind=source_kind)
+            title = "полученные скачиванием" if source_kind == "download" else "полученные по почте"
+            lines = [
+                "📦 Остатки поставщиков — результаты",
+                "",
+                f"Группа: {title}",
+                "Период: последние 24 часа",
+                "",
+            ]
+            grouped = summarize_supplier_stock_reports(period_days=1).get(source_kind, [])
+            if not grouped:
+                lines.append("⚪️ За сутки данных нет.")
+                return True, "\n".join(lines), "accepted", [
+                    {"label": "⬇️ Скачивание", "action": "supplier_stock_reports_download"},
+                    {"label": "📧 Почта", "action": "supplier_stock_reports_mail"},
+                ]
+
+            lines.append("Кликни источник, чтобы открыть историю за сутки.")
+            menu_options = [
+                {"label": "⬇️ Скачивание", "action": "supplier_stock_reports_download"},
+                {"label": "📧 Почта", "action": "supplier_stock_reports_mail"},
+            ]
+            for item in grouped:
+                source_name = str(item.get("source_name") or item.get("source_id") or "неизвестный источник")
+                recv = item.get("receive", {})
+                proc = item.get("processing", {})
+                tran = item.get("transfer", {})
+                lines.extend([
+                    "",
+                    f"• {source_name}",
+                    f"  📥 Загрузка: {recv.get('icon', '⚪️')} {recv.get('label', 'нет данных')}",
+                    f"  🧩 Обработка: {proc.get('icon', '⚪️')} {proc.get('label', 'нет данных')}",
+                    f"  📤 Выгрузка: {tran.get('icon', '⚪️')} {tran.get('label', 'нет данных')}",
+                ])
+                source_id = str(item.get("source_id") or "").strip()
+                if source_id:
+                    menu_options.append({
+                        "label": f"📊 {source_name[:24]}",
+                        "action": f"supplier_stock_report_source_day|{source_kind}|{source_id}",
+                    })
+            return True, "\n".join(lines), "accepted", menu_options
+
+        if action.startswith("supplier_stock_report_source_day|"):
+            parts = action.split("|", 2)
+            if len(parts) != 3:
+                return False, "Неверный формат действия истории источника", "failed", None
+            source_kind = parts[1].strip() or "download"
+            source_id = parts[2].strip()
+            if not source_id:
+                return False, "Не указан источник", "failed", None
+            stats = build_supplier_stock_source_stats(source_id=source_id, source_kind=source_kind, period_days=1)
+            summary = stats.get("summary") or {}
+            entries = stats.get("entries") or []
+            lines = [
+                "📦 Остатки поставщиков — история источника",
+                "",
+                f"Источник: {source_id}",
+                f"Группа: {'полученные скачиванием' if source_kind == 'download' else 'полученные по почте'}",
+                "Период: последние 24 часа",
+                "",
+                f"Всего запусков: {summary.get('total', 0)}",
+                f"📥 Успех/ошибка: {summary.get('receive_success', 0)}/{summary.get('receive_error', 0)}",
+                f"🧩 Успех/ошибка: {summary.get('processing_success', 0)}/{summary.get('processing_error', 0)}",
+                f"📤 Успех/ошибка: {summary.get('transfer_success', 0)}/{summary.get('transfer_error', 0)}",
+            ]
+            if entries:
+                lines.extend(["", "Последние записи:"])
+                for entry in entries[:10]:
+                    receive = entry.get("receive") or {}
+                    processing = entry.get("processing") or {}
+                    transfer = entry.get("transfer") or {}
+                    timestamp = str(entry.get("timestamp") or "—")
+                    error = str(entry.get("error") or "").strip()
+                    lines.append(
+                        f"• {timestamp} | {receive.get('icon', '⚪️')} {receive.get('label', 'н/д')} | {processing.get('icon', '⚪️')} {processing.get('label', 'н/д')} | {transfer.get('icon', '⚪️')} {transfer.get('label', 'н/д')}"
+                    )
+                    if error:
+                        lines.append(f"  ↳ {error}")
+            return True, "\n".join(lines), "accepted", [
+                {"label": "↩️ Назад", "action": f"supplier_stock_reports_{source_kind}"},
+                {"label": "🔄 Обновить", "action": f"supplier_stock_report_source_day|{source_kind}|{source_id}"},
+            ]
 
         if action == "backup_stock_loads":
             hours = 24
