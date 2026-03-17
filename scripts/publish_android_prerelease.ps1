@@ -530,6 +530,26 @@ function Publish-WithApi {
     }
 
     if (-not $release) {
+        Write-Host "[5/7] Tag lookup returned 404. Checking all releases (incl. draft) via API..."
+        $page = 1
+        while (-not $release -and $page -le 10) {
+            $releasesPage = Invoke-GitHubApi -Method GET -Url "https://api.github.com/repos/$owner/$name/releases?per_page=100&page=$page"
+            if (-not $releasesPage -or $releasesPage.Count -eq 0) {
+                break
+            }
+
+            foreach ($candidate in $releasesPage) {
+                if ($candidate.tag_name -eq $ReleaseTag) {
+                    $release = $candidate
+                    break
+                }
+            }
+
+            $page++
+        }
+    }
+
+    if (-not $release) {
         Write-Host "[6/7] Creating prerelease $ReleaseTag via API..."
         $body = @{
             tag_name         = $ReleaseTag
