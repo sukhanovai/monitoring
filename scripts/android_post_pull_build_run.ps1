@@ -63,6 +63,33 @@ function Resolve-TargetDevice {
     return ($deviceLine -split "\t")[0]
 }
 
+function Ensure-DeviceReadyForLaunch {
+    param(
+        [string]$AdbPath,
+        [string]$DeviceId
+    )
+
+    Write-Host "Preparing device screen for visible app launch..."
+
+    & $AdbPath -s $DeviceId wait-for-device
+
+    $bootCompleted = & $AdbPath -s $DeviceId shell getprop sys.boot_completed
+    if ($bootCompleted -notmatch "1") {
+        Write-Host "Device is still booting; waiting up to 30 seconds..."
+        for ($i = 0; $i -lt 30; $i++) {
+            Start-Sleep -Seconds 1
+            $bootCompleted = & $AdbPath -s $DeviceId shell getprop sys.boot_completed
+            if ($bootCompleted -match "1") {
+                break
+            }
+        }
+    }
+
+    & $AdbPath -s $DeviceId shell input keyevent KEYCODE_WAKEUP | Out-Null
+    & $AdbPath -s $DeviceId shell wm dismiss-keyguard | Out-Null
+    & $AdbPath -s $DeviceId shell input keyevent KEYCODE_MENU | Out-Null
+}
+
 $androidDir = Join-Path $RepoRoot "android-client"
 $gradlew = Join-Path $androidDir "gradlew.bat"
 
@@ -117,6 +144,7 @@ if (-not $SkipInstall) {
     }
 
     Write-Host "Using adb target: $targetDevice"
+    Ensure-DeviceReadyForLaunch -AdbPath $adbPath -DeviceId $targetDevice
 
     $resolvedComponent = & $adbPath -s $targetDevice shell cmd package resolve-activity --brief $AppId 2>$null
     $resolvedComponent = ($resolvedComponent | Where-Object { $_ -and $_ -match "/" } | Select-Object -Last 1)
