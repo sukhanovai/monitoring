@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.70] - 2026-03-17
+
+### Fixed / Исправлено
+- EN: Fixed final app launch step in `scripts/android_post_pull_build_run.ps1`: the script now targets an explicit online adb device (`-s`), resolves launcher activity dynamically via `cmd package resolve-activity`, and falls back to `monkey` launch if direct `am start` fails, matching Android Studio "Run app" behavior more reliably after build/install.
+- RU: Исправлен финальный этап запуска приложения в `scripts/android_post_pull_build_run.ps1`: скрипт теперь явно выбирает активное adb-устройство (`-s`), динамически определяет launcher-activity через `cmd package resolve-activity` и использует fallback через `monkey`, если прямой `am start` не сработал, что надёжнее повторяет поведение Android Studio «Запустить app» после сборки/установки.
+
+### Changed / Изменено
+- EN: Completed repository-wide patch version bump to `8.32.70`; Android metadata updated to `ANDROID_VERSION_NAME=8.32.70`, `ANDROID_VERSION_CODE=115`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.32.70`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.32.70`, `ANDROID_VERSION_CODE=115`.
+
 ## [8.32.69] - 2026-03-17
 
 ### Fixed / Исправлено
