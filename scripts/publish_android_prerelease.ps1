@@ -525,7 +525,8 @@ function Try-CreateReleaseViaApi {
             return $existing
         }
 
-        return $null
+        $errorDetails = $_.Exception.Message
+        return @{ __create_failed = $true; __error = $errorDetails }
     }
 }
 
@@ -598,12 +599,35 @@ function Publish-WithApi {
         }
         $release = Try-CreateReleaseViaApi -Owner $owner -Repo $name -Body $body -ReleaseTag $ReleaseTag
 
+        if ($release -and $release.__create_failed) {
+            $firstCreateError = $release.__error
+            $release = $null
+        }
+        else {
+            $firstCreateError = $null
+        }
+
         if (-not $release) {
             Write-Host "[6/7] API create returned 400. Retrying without target_commitish..."
             $body.Remove("target_commitish")
             $release = Try-CreateReleaseViaApi -Owner $owner -Repo $name -Body $body -ReleaseTag $ReleaseTag
+            if ($release -and $release.__create_failed) {
+                $secondCreateError = $release.__error
+                $release = $null
+            }
+            else {
+                $secondCreateError = $null
+            }
+
             if (-not $release) {
-                throw "GitHub API create release failed with HTTP 400 for tag $ReleaseTag even after retry without target_commitish."
+                $errorPayload = @(
+                    "GitHub API create release failed with HTTP 400 for tag $ReleaseTag even after retry without target_commitish.",
+                    "First attempt details:",
+                    $firstCreateError,
+                    "Second attempt details:",
+                    $secondCreateError
+                ) -join "`n"
+                throw $errorPayload
             }
         }
     }
