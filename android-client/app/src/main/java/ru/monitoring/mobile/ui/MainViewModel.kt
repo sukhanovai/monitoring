@@ -50,7 +50,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.32.74"
+    private val projectVersion = "8.33.0"
     private val fallbackUpdateUrl = "https://github.com/sukhanovai/monitoring/releases/latest/download/monitoring-android.apk"
     private val mailBackupHistoryRegex = Regex(
         pattern = """^([✅✔❌⚠️🚨])\s*(.+?)\s*[—-]\s*(.+?)\s*\(([^()]+)\)\s*$"""
@@ -66,6 +66,7 @@ class MainViewModel(
     private val extensionControlActions = setOf(
         "backup_proxmox",
         "backup_stock_loads",
+        "supplier_stock_reports",
         "zfs_menu",
         "zfs"
     )
@@ -751,7 +752,9 @@ class MainViewModel(
                     if (
                     action in extensionControlActions ||
                     action.startsWith("backup_host_") ||
-                    action.startsWith("backup_mail")
+                    action.startsWith("backup_mail") ||
+                    action.startsWith("supplier_stock_reports_") ||
+                    action.startsWith("supplier_stock_report_source_day|")
                 ) {
                         currentApi().runControlAction(ControlActionRequest(action)).message
                     } else {
@@ -789,14 +792,18 @@ class MainViewModel(
             action in extensionMainMenuActions ||
             action == "backup_proxmox" ||
             action.startsWith("backup_host_") ||
-            action.startsWith("backup_mail")
+            action.startsWith("backup_mail") ||
+            action.startsWith("supplier_stock_reports_") ||
+            action.startsWith("supplier_stock_report_source_day|")
         ) {
             viewModelScope.launch {
                 state = state.copy(isLoading = true)
                 if (
                     action in extensionControlActions ||
                     action.startsWith("backup_host_") ||
-                    action.startsWith("backup_mail")
+                    action.startsWith("backup_mail") ||
+                    action.startsWith("supplier_stock_reports_") ||
+                    action.startsWith("supplier_stock_report_source_day|")
                 ) {
                     runCatching { currentApi().runControlAction(ControlActionRequest(action)) }
                         .onSuccess { response ->
