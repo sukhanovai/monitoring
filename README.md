@@ -187,13 +187,13 @@ AVAILABLE_EXTENSIONS = {
 
 Что делает скрипт:
 - проверяет, что текущая ветка — `develop`;
-- собирает `release` APK через Gradle;
-- автоматически выбирает подписанный APK из `app/build/outputs/apk/release` (приоритет: `app-release.apk`, `app-universal-release.apk`);
+- собирает APK через Gradle (по умолчанию `debug`, можно выбрать `release` через `-BuildType release`);
+- автоматически выбирает APK из `app/build/outputs/apk/<buildType>` (приоритет: `app-<buildType>.apk`, `app-universal-<buildType>.apk`);
 - публикует/обновляет GitHub prerelease с тегом `v<версия>-develop`;
 - загружает APK в релиз, не затрагивая стабильный релиз в `main`.
 
 Актуальная ссылка на APK prerelease (скрипт обновляет её только при запуске с флагом `-UpdateDocsLinks`):
-<!-- ANDROID_PRERELEASE_APK_LINK_START -->https://github.com/sukhanovai/monitoring/releases/download/v8.32.63-develop/monitoring-android-8.32.63-develop.apk<!-- ANDROID_PRERELEASE_APK_LINK_END -->
+<!-- ANDROID_PRERELEASE_APK_LINK_START -->https://github.com/sukhanovai/monitoring/releases/download/v8.32.64-develop/monitoring-android-8.32.64-develop-debug.apk<!-- ANDROID_PRERELEASE_APK_LINK_END -->
 
 Требования:
 - либо установлен `gh` (GitHub CLI) и выполнен `gh auth login`;
@@ -231,6 +231,7 @@ mkdir -Force $HOME/.monitoring | Out-Null
 Важно:
 - скрипт требует чистое рабочее дерево Git (иначе попросит сделать commit/stash);
 - при необходимости можно форсировать запуск с локальными изменениями: `./scripts/publish_android_prerelease.ps1 -AllowDirty`.
+- `-BuildType debug|release` — выбрать тип сборки для публикации (`debug` по умолчанию, чтобы APK совпадал с проверенным Android Studio flow).
 
 ### Безопасный `git pull` при локальных изменениях
 

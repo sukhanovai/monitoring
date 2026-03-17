@@ -1,5 +1,7 @@
 param(
     [string]$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")),
+    [ValidateSet("debug", "release")]
+    [string]$BuildType = "debug",
     [switch]$SkipBuild,
     [switch]$AllowDirty,
     [switch]$AutoStashDirty,
@@ -336,24 +338,54 @@ or run script with `$env:GH_TOKEN in current terminal session.
         "X-GitHub-Api-Version" = "2022-11-28"
     }
 
-    if ($Binary) {
-        $uploadHeaders = @{
-            Authorization = "Bearer $token"
-            Accept        = "application/vnd.github+json"
-            "User-Agent"  = "monitoring-prerelease-script"
-            "X-GitHub-Api-Version" = "2022-11-28"
-            "Content-Type" = $ContentType
+    try {
+        if ($Binary) {
+            $uploadHeaders = @{
+                Authorization = "Bearer $token"
+                Accept        = "application/vnd.github+json"
+                "User-Agent"  = "monitoring-prerelease-script"
+                "X-GitHub-Api-Version" = "2022-11-28"
+                "Content-Type" = $ContentType
+            }
+
+            return Invoke-RestMethod -Method $Method -Uri $Url -Headers $uploadHeaders -Body $Binary
         }
 
-        return Invoke-RestMethod -Method $Method -Uri $Url -Headers $uploadHeaders -Body $Binary
-    }
+        if ($Body -ne $null) {
+            $json = $Body | ConvertTo-Json -Depth 10
+            return Invoke-RestMethod -Method $Method -Uri $Url -Headers $headers -Body $json -ContentType "application/json"
+        }
 
-    if ($Body -ne $null) {
-        $json = $Body | ConvertTo-Json -Depth 10
-        return Invoke-RestMethod -Method $Method -Uri $Url -Headers $headers -Body $json -ContentType "application/json"
+        return Invoke-RestMethod -Method $Method -Uri $Url -Headers $headers
     }
+    catch {
+        $statusCode = $null
+        $responseBody = $null
+        if ($_.Exception.Response) {
+            try { $statusCode = [int]$_.Exception.Response.StatusCode } catch { $statusCode = $null }
+            try {
+                $stream = $_.Exception.Response.GetResponseStream()
+                if ($stream) {
+                    $reader = New-Object System.IO.StreamReader($stream)
+                    $responseBody = $reader.ReadToEnd()
+                    $reader.Dispose()
+                    $stream.Dispose()
+                }
+            }
+            catch {
+                $responseBody = $null
+            }
+        }
 
-    return Invoke-RestMethod -Method $Method -Uri $Url -Headers $headers
+        $details = "GitHub API request failed: $Method $Url"
+        if ($statusCode) {
+            $details += "`nHTTP status: $statusCode"
+        }
+        if ($responseBody) {
+            $details += "`nResponse body:`n$responseBody"
+        }
+        throw $details
+    }
 }
 
 function Ensure-GitHubAuthReady {
@@ -400,16 +432,20 @@ or run script with `$env:GH_TOKEN in current terminal session.
 
 
 function Resolve-ApkSource {
-    param([string]$AndroidDir)
+    param(
+        [string]$AndroidDir,
+        [ValidateSet("debug", "release")]
+        [string]$BuildType
+    )
 
-    $releaseDir = Join-Path $AndroidDir "app/build/outputs/apk/release"
-    if (-not (Test-Path $releaseDir)) {
-        throw "APK release directory not found: $releaseDir"
+    $apkDir = Join-Path $AndroidDir "app/build/outputs/apk/$BuildType"
+    if (-not (Test-Path $apkDir)) {
+        throw "APK $BuildType directory not found: $apkDir"
     }
 
     $preferred = @(
-        (Join-Path $releaseDir "app-release.apk")
-        (Join-Path $releaseDir "app-universal-release.apk")
+        (Join-Path $apkDir "app-$BuildType.apk")
+        (Join-Path $apkDir "app-universal-$BuildType.apk")
     )
 
     foreach ($candidate in $preferred) {
@@ -418,9 +454,9 @@ function Resolve-ApkSource {
         }
     }
 
-    $releaseApks = Get-ChildItem -Path $releaseDir -Filter "*.apk" -File
+    $candidateApks = Get-ChildItem -Path $apkDir -Filter "*.apk" -File
 
-    $signedCandidates = $releaseApks |
+    $signedCandidates = $candidateApks |
         Where-Object { $_.Name -notmatch "unsigned" -and $_.Name -notmatch "-x86|-x86_64|-arm64-v8a|-armeabi-v7a|-universal-debug" } |
         Sort-Object LastWriteTime -Descending
 
@@ -428,17 +464,17 @@ function Resolve-ApkSource {
         return $signedCandidates[0].FullName
     }
 
-    $unsigned = $releaseApks | Where-Object { $_.Name -match "unsigned" }
+    $unsigned = $candidateApks | Where-Object { $_.Name -match "unsigned" }
     if ($unsigned) {
         throw @"
-Only unsigned APK was found in release outputs. Such file is not installable for prerelease distribution.
-Configure release signing (or use debug signing for prerelease) and rebuild.
+Only unsigned APK was found in $BuildType outputs. Such file is not installable for prerelease distribution.
+Configure signing for selected build type and rebuild.
 Found files:
-$($releaseApks.Name -join "`n")
+$($candidateApks.Name -join "`n")
 "@
     }
 
-    throw "APK file was not found in: $releaseDir"
+    throw "APK file was not found in: $apkDir"
 }
 
 function Publish-WithGh {
@@ -485,7 +521,12 @@ function Publish-WithApi {
         $release = Invoke-GitHubApi -Method GET -Url "https://api.github.com/repos/$owner/$name/releases/tags/$ReleaseTag"
     }
     catch {
-        $release = $null
+        if ($_.Exception.Message -match "HTTP status: 404") {
+            $release = $null
+        }
+        else {
+            throw
+        }
     }
 
     if (-not $release) {
@@ -498,7 +539,19 @@ function Publish-WithApi {
             draft            = $false
             prerelease       = $true
         }
-        $release = Invoke-GitHubApi -Method POST -Url "https://api.github.com/repos/$owner/$name/releases" -Body $body
+        try {
+            $release = Invoke-GitHubApi -Method POST -Url "https://api.github.com/repos/$owner/$name/releases" -Body $body
+        }
+        catch {
+            if ($_.Exception.Message -match "HTTP status: 400") {
+                Write-Host "[6/7] API create returned 400. Retrying without target_commitish..."
+                $body.Remove("target_commitish")
+                $release = Invoke-GitHubApi -Method POST -Url "https://api.github.com/repos/$owner/$name/releases" -Body $body
+            }
+            else {
+                throw
+            }
+        }
     }
     else {
         Write-Host "[6/7] Updating prerelease $ReleaseTag via API..."
@@ -521,7 +574,8 @@ function Publish-WithApi {
     }
 
     $bytes = [System.IO.File]::ReadAllBytes($ApkTarget)
-    $uploadUrl = "https://uploads.github.com/repos/$owner/$name/releases/$($release.id)/assets?name=$ApkName"
+    $encodedApkName = [uri]::EscapeDataString($ApkName)
+    $uploadUrl = "https://uploads.github.com/repos/$owner/$name/releases/$($release.id)/assets?name=$encodedApkName"
     Write-Host "[6/7] Uploading APK asset via API..."
     Invoke-GitHubApi -Method POST -Url $uploadUrl -Binary $bytes -ContentType "application/vnd.android.package-archive" | Out-Null
 }
@@ -657,14 +711,15 @@ try {
     }
 
     if (-not $SkipBuild) {
-        Write-Host "[3/7] Building release APK..."
+        Write-Host "[3/7] Building $BuildType APK..."
         Push-Location $androidDir
         try {
+            $gradleTask = ":app:assemble$((Get-Culture).TextInfo.ToTitleCase($BuildType))"
             if (Test-Path (Join-Path $androidDir "gradlew.bat")) {
-                & .\gradlew.bat :app:assembleRelease
+                & .\gradlew.bat $gradleTask
             }
             elseif (Test-Path (Join-Path $androidDir "gradlew")) {
-                & ./gradlew :app:assembleRelease
+                & ./gradlew $gradleTask
             }
             else {
                 throw "gradlew/gradlew.bat was not found in android-client"
@@ -679,13 +734,13 @@ try {
     }
 
     Write-Host "[4/7] Checking APK output..."
-    $apkSource = Resolve-ApkSource -AndroidDir $androidDir
+    $apkSource = Resolve-ApkSource -AndroidDir $androidDir -BuildType $BuildType
     Write-Host "[4/7] Using APK: $apkSource"
 
     $artifactDir = Join-Path $RepoRoot "artifacts"
     New-Item -ItemType Directory -Path $artifactDir -Force | Out-Null
 
-    $apkName = "monitoring-android-$projectVersion-develop.apk"
+    $apkName = "monitoring-android-$projectVersion-develop-$BuildType.apk"
     $apkTarget = Join-Path $artifactDir $apkName
     Copy-Item -Path $apkSource -Destination $apkTarget -Force
 
@@ -714,11 +769,11 @@ try {
 
     $notes = @"
 EN: Android prerelease for develop branch.
-EN: Built from branch develop, version $projectVersion.
+EN: Built from branch develop, version $projectVersion, buildType $BuildType.
 EN: Stable release in main remains unchanged.
 
 RU: Пререлиз Android для ветки develop.
-RU: Собрано из ветки develop, версия $projectVersion.
+RU: Собрано из ветки develop, версия $projectVersion, buildType $BuildType.
 RU: Стабильный релиз в main не изменяется.
 "@
 
