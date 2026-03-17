@@ -50,8 +50,8 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.33.1"
-    private val fallbackUpdateUrl = "https://github.com/sukhanovai/monitoring/releases/latest/download/monitoring-android.apk"
+    private val projectVersion = "8.33.2"
+    private val fallbackUpdateUrl = "https://github.com/sukhanovai/monitoring/releases/latest"
     private val mailBackupHistoryRegex = Regex(
         pattern = """^([✅✔❌⚠️🚨])\s*(.+?)\s*[—-]\s*(.+?)\s*\(([^()]+)\)\s*$"""
     )
@@ -162,10 +162,12 @@ class MainViewModel(
             val host = uri.host?.lowercase().orEmpty()
             val path = uri.path.orEmpty()
             val hasValidScheme = scheme == "http" || scheme == "https"
+            val pointsToLegacyMissingAsset = host.contains("github.com") &&
+                path.endsWith("/releases/latest/download/monitoring-android.apk")
             val pointsToGithubPage = host.contains("github.com") &&
                 (path.contains("/tree/") || path.contains("/blob/") || path.contains("/issues/"))
 
-            if (!hasValidScheme || pointsToGithubPage) fallbackUpdateUrl else candidate
+            if (!hasValidScheme || pointsToGithubPage || pointsToLegacyMissingAsset) fallbackUpdateUrl else candidate
         }.getOrElse { fallbackUpdateUrl }
     }
 
