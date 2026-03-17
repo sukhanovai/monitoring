@@ -6,6 +6,18 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.73] - 2026-03-17
+
+### Fixed / Исправлено
+- EN: Improved forced-update card in Android client: now shows installed app version (`current_version` from API with fallback to local build version), so users can clearly compare it with min/latest requirements.
+- RU: Улучшена карточка принудительного обновления в Android-клиенте: теперь отображается установленная версия приложения (`current_version` из API с fallback на локальную версию сборки), чтобы пользователь явно видел расхождение с min/latest версиями.
+- EN: Fixed broken "Update app" navigation in Android client: invalid/empty/non-download GitHub links are now normalized to stable fallback URL `https://github.com/sukhanovai/monitoring/releases/latest/download/monitoring-android.apk`.
+- RU: Исправлен сломанный переход кнопки «Обновить приложение» в Android-клиенте: невалидные/пустые/страничные GitHub-ссылки теперь нормализуются в стабильный fallback URL `https://github.com/sukhanovai/monitoring/releases/latest/download/monitoring-android.apk`.
+
+### Changed / Изменено
+- EN: Completed repository-wide patch version bump to `8.32.73`; Android metadata updated to `ANDROID_VERSION_NAME=8.32.73`, `ANDROID_VERSION_CODE=118`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.32.73`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.32.73`, `ANDROID_VERSION_CODE=118`.
+
 ## [8.32.72] - 2026-03-17
 
 ### Fixed / Исправлено

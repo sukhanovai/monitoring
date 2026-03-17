@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import java.net.ConnectException
+import java.net.URI
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import java.time.LocalDateTime
@@ -49,7 +50,8 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.32.72"
+    private val projectVersion = "8.32.73"
+    private val fallbackUpdateUrl = "https://github.com/sukhanovai/monitoring/releases/latest/download/monitoring-android.apk"
     private val mailBackupHistoryRegex = Regex(
         pattern = """^([✅✔❌⚠️🚨])\s*(.+?)\s*[—-]\s*(.+?)\s*\(([^()]+)\)\s*$"""
     )
@@ -126,24 +128,43 @@ class MainViewModel(
             }.onSuccess { response ->
                 val minVersion = response.minSupportedVersion.orEmpty()
                 val latestVersion = response.latestVersion.orEmpty()
-                val updateUrl = response.apkDownloadUrl.orEmpty()
+                val installedVersion = response.currentVersion?.takeIf { it.isNotBlank() } ?: projectVersion
+                val updateUrl = resolveUpdateUrl(response.apkDownloadUrl.orEmpty())
                 val updateRequiredByApi = response.updateRequired == true
                 val updateRequiredBySemver = isVersionOlder(projectVersion, minVersion)
                 val needUpdate = updateRequiredByApi || updateRequiredBySemver
 
                 state = state.copy(
+                    installedVersion = installedVersion,
                     minSupportedVersion = minVersion,
                     latestVersion = latestVersion,
                     apkDownloadUrl = updateUrl,
                     isUpdateRequired = needUpdate,
                     updateMessage = if (needUpdate) {
-                        "Требуется обновление приложения до версии $latestVersion"
+                        "Требуется обновление приложения до версии ${latestVersion.ifBlank { minVersion }}"
                     } else {
                         ""
                     }
                 )
             }
         }
+    }
+
+    private fun resolveUpdateUrl(rawUrl: String): String {
+        val candidate = rawUrl.trim()
+        if (candidate.isBlank()) return fallbackUpdateUrl
+
+        return runCatching {
+            val uri = URI(candidate)
+            val scheme = uri.scheme?.lowercase().orEmpty()
+            val host = uri.host?.lowercase().orEmpty()
+            val path = uri.path.orEmpty()
+            val hasValidScheme = scheme == "http" || scheme == "https"
+            val pointsToGithubPage = host.contains("github.com") &&
+                (path.contains("/tree/") || path.contains("/blob/") || path.contains("/issues/"))
+
+            if (!hasValidScheme || pointsToGithubPage) fallbackUpdateUrl else candidate
+        }.getOrElse { fallbackUpdateUrl }
     }
 
     private fun isVersionOlder(current: String, required: String): Boolean {
@@ -1469,6 +1490,7 @@ data class MainUiState(
     val morningReportReceivedAt: String = "",
     val morningReportUnread: Boolean = false,
     val projectVersion: String = "",
+    val installedVersion: String = "",
     val isUpdateRequired: Boolean = false,
     val minSupportedVersion: String = "",
     val latestVersion: String = "",
