@@ -193,7 +193,7 @@ AVAILABLE_EXTENSIONS = {
 - загружает APK в релиз, не затрагивая стабильный релиз в `main`.
 
 Актуальная ссылка на APK prerelease (скрипт обновляет её только при запуске с флагом `-UpdateDocsLinks`):
-<!-- ANDROID_PRERELEASE_APK_LINK_START -->https://github.com/sukhanovai/monitoring/releases/download/v8.32.61-develop/monitoring-android-8.32.61-develop.apk<!-- ANDROID_PRERELEASE_APK_LINK_END -->
+<!-- ANDROID_PRERELEASE_APK_LINK_START -->https://github.com/sukhanovai/monitoring/releases/download/v8.32.63-develop/monitoring-android-8.32.63-develop.apk<!-- ANDROID_PRERELEASE_APK_LINK_END -->
 
 Требования:
 - либо установлен `gh` (GitHub CLI) и выполнен `gh auth login`;
@@ -296,6 +296,38 @@ git pull --rebase origin develop
 ```
 
 Техническая деталь: Android-версия (`versionCode`/`versionName`) вынесена в `android-client/gradle.properties`, чтобы снизить шанс конфликтов в `android-client/app/build.gradle.kts` при обычном `git pull`.
+
+Если `git pull` падает с ошибкой `Pulling is not possible because you have unmerged files`, это значит, что в рабочем дереве остались незавершённые конфликтные файлы. Быстрый безопасный сценарий:
+
+```powershell
+# 1) посмотреть конфликтующие файлы
+git status
+
+# 2) открыть каждый конфликт и убрать маркеры <<<<<<< ======= >>>>>>>
+
+# 3) отметить файлы как решённые
+git add <path-to-resolved-file>
+
+# 4) завершить merge/rebase
+git commit -m "Разрешить конфликт после pull"
+# либо, если шёл rebase:
+git rebase --continue
+
+# 5) повторить pull
+git pull --rebase origin develop
+```
+
+Если локальные конфликтные правки не нужны, можно откатить конфликтные файлы и подтянуть удалённую ветку заново:
+
+```powershell
+git restore --source=HEAD --staged --worktree -- .
+git pull --rebase origin develop
+```
+
+Или запустить готовый rescue-скрипт (PowerShell):
+```powershell
+./scripts/android_studio_pull_recover.ps1
+```
 
 ## 🌐 Веб‑интерфейс
 

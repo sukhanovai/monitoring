@@ -3,7 +3,8 @@ param(
     [switch]$SkipBuild,
     [switch]$AllowDirty,
     [switch]$AutoStashDirty,
-    [switch]$UpdateDocsLinks
+    [switch]$UpdateDocsLinks,
+    [switch]$NoWorkingTreeSideEffects
 )
 
 $ErrorActionPreference = "Stop"
@@ -688,25 +689,27 @@ try {
     $apkTarget = Join-Path $artifactDir $apkName
     Copy-Item -Path $apkSource -Destination $apkTarget -Force
 
+    $repoOwner = "sukhanovai"
+    $repoName = "monitoring"
+    try {
+        $repo = Get-GitHubRepo
+        if ($repo.Owner -and $repo.Repo) {
+            $repoOwner = $repo.Owner
+            $repoName = $repo.Repo
+        }
+    }
+    catch {
+        Write-Host "[4/7] Warning: failed to resolve origin repo. Fallback to $repoOwner/$repoName"
+    }
+
+    $downloadUrl = "https://github.com/$repoOwner/$repoName/releases/download/$releaseTag/$apkName"
+
     if ($UpdateDocsLinks) {
-        $downloadUrl = Update-PrereleaseApkLinks -RepoRoot $RepoRoot -ReleaseTag $releaseTag -ApkName $apkName
+        Write-Host "[4/7] Warning: -UpdateDocsLinks is deprecated and ignored to avoid local README/docs edits and pull conflicts."
+        Write-Host "[4/7] Docs were NOT modified. Copy URL manually if needed: $downloadUrl"
     }
     else {
-        $repoOwner = "sukhanovai"
-        $repoName = "monitoring"
-        try {
-            $repo = Get-GitHubRepo
-            if ($repo.Owner -and $repo.Repo) {
-                $repoOwner = $repo.Owner
-                $repoName = $repo.Repo
-            }
-        }
-        catch {
-            Write-Host "[4/7] Warning: failed to resolve origin repo. Fallback to $repoOwner/$repoName"
-        }
-
-        $downloadUrl = "https://github.com/$repoOwner/$repoName/releases/download/$releaseTag/$apkName"
-        Write-Host "[4/7] Docs link update skipped (default). Use -UpdateDocsLinks to rewrite README/docs."
+        Write-Host "[4/7] Docs link update skipped (default). README/docs are not edited by this script."
     }
 
     $notes = @"
@@ -725,6 +728,20 @@ RU: Стабильный релиз в main не изменяется.
     }
     else {
         Publish-WithApi -ReleaseTag $releaseTag -ReleaseTitle $releaseTitle -ApkTarget $apkTarget -ApkName $apkName -Notes $notes
+    }
+
+    if ($NoWorkingTreeSideEffects) {
+        $postDirty = (git status --porcelain)
+        if ($postDirty) {
+            throw @"
+Script finished publish, but local working tree has modifications.
+To avoid future pull conflicts, run recovery script:
+  ./scripts/android_studio_pull_recover.ps1
+
+Dirty files:
+$($postDirty -join "`n")
+"@
+        }
     }
 
     Write-Host "[7/7] Done. Prerelease published: $releaseTag"
