@@ -344,6 +344,7 @@ private fun MonitoringApp(
                             if (state.minSupportedVersion.isNotBlank()) {
                                 Text("Минимальная версия: ${state.minSupportedVersion}")
                             }
+                            Text("Установленная версия: ${state.installedVersion.ifBlank { state.projectVersion }}")
                             if (state.latestVersion.isNotBlank()) {
                                 Text("Актуальная версия: ${state.latestVersion}")
                             }
