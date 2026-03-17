@@ -6,21 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.32.64] - 2026-03-17
+## [8.32.65] - 2026-03-17
 
 ### Fixed / Исправлено
-- EN: Fixed GitHub API fallback in `scripts/publish_android_prerelease.ps1`: API errors now include HTTP status + response body, 404 on release lookup is handled explicitly, and release creation retries without `target_commitish` on 400 responses.
-- RU: Исправлен fallback через GitHub API в `scripts/publish_android_prerelease.ps1`: ошибки API теперь показывают HTTP-статус и тело ответа, 404 при поиске релиза обрабатывается явно, а создание релиза при 400 повторяется без `target_commitish`.
-- EN: Fixed prerelease APK installability flow by making `debug` build the default for publish script and adding explicit `-BuildType debug|release` switch.
-- RU: Исправлен flow installability prerelease APK: для скрипта публикации сборка `debug` сделана режимом по умолчанию, добавлен явный переключатель `-BuildType debug|release`.
+- EN: Fixed GitHub API prerelease publishing in `scripts/publish_android_prerelease.ps1` for cases when `/releases/tags/{tag}` returns 404 but a draft release with the same tag already exists; the script now additionally scans release pages (including drafts) and updates the existing release instead of failing with HTTP 400 on create.
+- RU: Исправлена публикация prerelease через GitHub API в `scripts/publish_android_prerelease.ps1` для случая, когда `/releases/tags/{tag}` возвращает 404, но draft-релиз с тем же тегом уже существует; скрипт теперь дополнительно сканирует страницы релизов (включая draft) и обновляет существующий релиз вместо падения с HTTP 400 при создании.
 
 ### Changed / Изменено
-- EN: Updated prerelease artifact naming to include build type suffix (`...-develop-debug.apk` / `...-develop-release.apk`) and URL-safe upload encoding for asset names.
-- RU: Обновлено именование prerelease-артефакта с суффиксом build type (`...-develop-debug.apk` / `...-develop-release.apk`) и добавлено URL-safe кодирование имени файла при загрузке ассета.
-- EN: Updated documentation for new prerelease behavior and links in `README.md` / `docs/android_mobile_app.md`.
-- RU: Обновлена документация под новое поведение prerelease и ссылки в `README.md` / `docs/android_mobile_app.md`.
-- EN: Completed repository-wide patch version bump to `8.32.64`; Android metadata updated to `ANDROID_VERSION_NAME=8.32.64`, `ANDROID_VERSION_CODE=109`.
-- RU: Выполнен полный патч-бамп версии по репозиторию до `8.32.64`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.32.64`, `ANDROID_VERSION_CODE=109`.
+- EN: Completed repository-wide patch version bump to `8.32.65`; Android metadata updated to `ANDROID_VERSION_NAME=8.32.65`, `ANDROID_VERSION_CODE=110`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.32.65`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.32.65`, `ANDROID_VERSION_CODE=110`.
+
 ## [8.32.60] - 2026-03-16
 
 ### Fixed / Исправлено
