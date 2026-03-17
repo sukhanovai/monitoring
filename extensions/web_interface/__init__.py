@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.32.73
+Server Monitoring System v8.32.74
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.32.73
+Версия: 8.32.74
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1675,6 +1675,43 @@ def _execute_mobile_control_action(action: str):
                 ]
             )
             return True, "\n".join(lines), "accepted", None
+
+        if action == "backup_stock_loads":
+            hours = 24
+            stock_loads = backup_bot.get_stock_loads(hours=hours)
+            if not stock_loads:
+                return True, (
+                    "📦 Загрузка остатков 1С\n\n"
+                    f"❌ Нет данных за последние {hours} часов."
+                ), "accepted", None
+
+            grouped = {}
+            for source_name, supplier, status, rows_count, error_sample, received_at in stock_loads:
+                source_key = str(source_name).strip() or "Основное предприятие"
+                grouped.setdefault(source_key, []).append(
+                    (supplier, status, rows_count, error_sample, received_at)
+                )
+
+            total_suppliers = sum(len(items) for items in grouped.values())
+            lines = [
+                f"📦 Загрузка остатков 1С (за {hours}ч)",
+                f"Всего поставщиков: {total_suppliers}",
+                "",
+            ]
+
+            for source_name, items in grouped.items():
+                lines.append(f"{source_name} ({len(items)})")
+                for supplier, status, rows_count, error_sample, received_at in items:
+                    normalized_status = str(status).lower()
+                    status_icon = "✅" if normalized_status == "success" else "⚠️" if normalized_status == "warning" else "🚨"
+                    supplier_text = str(supplier).strip() or "неизвестно"
+                    rows_text = f"{rows_count} строк" if rows_count else "строки: —"
+                    error_text = f" — {error_sample}" if error_sample else ""
+                    time_ago = backup_bot.format_time_ago(received_at)
+                    lines.append(f"{status_icon} {supplier_text} ({rows_text}){error_text} ({time_ago})")
+                lines.append("")
+
+            return True, "\n".join(lines).strip(), "accepted", None
 
         if action == "zfs_menu":
             from core.config_manager import config_manager as settings_manager

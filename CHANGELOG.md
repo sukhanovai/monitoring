@@ -6,6 +6,18 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.74] - 2026-03-17
+
+### Fixed / Исправлено
+- EN: Implemented Android action handling for the "📦 Остатки 1С" button via mobile control API: the server now returns the same stock-load summary semantics as Telegram (grouping by source, supplier statuses, row counters, and relative time).
+- RU: Реализована обработка Android-действия для кнопки «📦 Остатки 1С» через mobile control API: сервер теперь возвращает сводку загрузки остатков в той же семантике, что и в Telegram (группировка по источнику, статусы поставщиков, количество строк и относительное время).
+- EN: Added `backup_stock_loads` to Android extension control actions so the button is routed through `/v1/control/actions` and receives dynamic stock-load content instead of a generic acknowledgment.
+- RU: Добавлен `backup_stock_loads` в список extension control actions Android-клиента, чтобы кнопка шла через `/v1/control/actions` и получала динамический контент остатков вместо общего подтверждения.
+
+### Changed / Изменено
+- EN: Completed repository-wide patch version bump to `8.32.74`; Android metadata updated to `ANDROID_VERSION_NAME=8.32.74`, `ANDROID_VERSION_CODE=119`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.32.74`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.32.74`, `ANDROID_VERSION_CODE=119`.
+
 ## [8.32.73] - 2026-03-17
 
 ### Fixed / Исправлено
