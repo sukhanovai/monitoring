@@ -90,6 +90,28 @@ function Ensure-DeviceReadyForLaunch {
     & $AdbPath -s $DeviceId shell input keyevent KEYCODE_MENU | Out-Null
 }
 
+function Test-AppIsForeground {
+    param(
+        [string]$AdbPath,
+        [string]$DeviceId,
+        [string]$AppId,
+        [int]$TimeoutSeconds = 12
+    )
+
+    for ($i = 0; $i -lt $TimeoutSeconds; $i++) {
+        $windowDump = & $AdbPath -s $DeviceId shell dumpsys window windows
+        $activityDump = & $AdbPath -s $DeviceId shell dumpsys activity activities
+
+        if (($windowDump -match $AppId) -or ($activityDump -match $AppId)) {
+            return $true
+        }
+
+        Start-Sleep -Seconds 1
+    }
+
+    return $false
+}
+
 $androidDir = Join-Path $RepoRoot "android-client"
 $gradlew = Join-Path $androidDir "gradlew.bat"
 
@@ -153,12 +175,25 @@ if (-not $SkipInstall) {
     }
 
     Write-Host "[5/5] Launch app (equivalent to 'app' [U] Shift+F10)..."
-    & $adbPath -s $targetDevice shell am start -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n $resolvedComponent
-    if ($LASTEXITCODE -ne 0) {
-        Write-Warning "Launcher activity start via am failed, trying monkey fallback..."
+
+    $launched = $false
+
+    & $adbPath -s $targetDevice shell am force-stop $AppId | Out-Null
+    & $adbPath -s $targetDevice shell am start -W -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n $resolvedComponent
+    if ($LASTEXITCODE -eq 0) {
+        $launched = Test-AppIsForeground -AdbPath $adbPath -DeviceId $targetDevice -AppId $AppId
+    }
+
+    if (-not $launched) {
+        Write-Warning "Direct am start did not bring app to foreground; trying monkey fallback..."
         & $adbPath -s $targetDevice shell monkey -p $AppId -c android.intent.category.LAUNCHER 1
         if ($LASTEXITCODE -ne 0) {
             throw "Failed to launch app via adb."
+        }
+
+        $launched = Test-AppIsForeground -AdbPath $adbPath -DeviceId $targetDevice -AppId $AppId
+        if (-not $launched) {
+            throw "App launch command completed, but package '$AppId' did not become foreground on device '$targetDevice'."
         }
     }
 
