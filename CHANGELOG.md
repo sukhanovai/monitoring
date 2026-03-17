@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.32.68] - 2026-03-17
+
+### Fixed / Исправлено
+- EN: Improved GitHub API prerelease publish diagnostics in `scripts/publish_android_prerelease.ps1`: when release creation fails with HTTP 400 (including retry without `target_commitish`), the script now preserves and prints GitHub API response details from both attempts, making root-cause analysis actionable.
+- RU: Улучшена диагностика публикации prerelease через GitHub API в `scripts/publish_android_prerelease.ps1`: при падении создания релиза с HTTP 400 (включая повтор без `target_commitish`) скрипт теперь сохраняет и выводит детали ответа GitHub API по обеим попыткам, чтобы было проще разобрать первопричину.
+
+### Changed / Изменено
+- EN: Completed repository-wide patch version bump to `8.32.68`; Android metadata updated to `ANDROID_VERSION_NAME=8.32.68`, `ANDROID_VERSION_CODE=113`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.32.68`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.32.68`, `ANDROID_VERSION_CODE=113`.
+
 ## [8.32.67] - 2026-03-17
 
 ### Fixed / Исправлено
