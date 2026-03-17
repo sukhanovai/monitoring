@@ -477,6 +477,32 @@ $($candidateApks.Name -join "`n")
     throw "APK file was not found in: $apkDir"
 }
 
+function Find-ReleaseByTagViaApi {
+    param(
+        [string]$Owner,
+        [string]$Repo,
+        [string]$ReleaseTag
+    )
+
+    $page = 1
+    while ($page -le 10) {
+        $releasesPage = Invoke-GitHubApi -Method GET -Url "https://api.github.com/repos/$Owner/$Repo/releases?per_page=100&page=$page"
+        if (-not $releasesPage -or $releasesPage.Count -eq 0) {
+            break
+        }
+
+        foreach ($candidate in $releasesPage) {
+            if ($candidate.tag_name -eq $ReleaseTag) {
+                return $candidate
+            }
+        }
+
+        $page++
+    }
+
+    return $null
+}
+
 function Publish-WithGh {
     param(
         [string]$ReleaseTag,
@@ -531,22 +557,7 @@ function Publish-WithApi {
 
     if (-not $release) {
         Write-Host "[5/7] Tag lookup returned 404. Checking all releases (incl. draft) via API..."
-        $page = 1
-        while (-not $release -and $page -le 10) {
-            $releasesPage = Invoke-GitHubApi -Method GET -Url "https://api.github.com/repos/$owner/$name/releases?per_page=100&page=$page"
-            if (-not $releasesPage -or $releasesPage.Count -eq 0) {
-                break
-            }
-
-            foreach ($candidate in $releasesPage) {
-                if ($candidate.tag_name -eq $ReleaseTag) {
-                    $release = $candidate
-                    break
-                }
-            }
-
-            $page++
-        }
+        $release = Find-ReleaseByTagViaApi -Owner $owner -Repo $name -ReleaseTag $ReleaseTag
     }
 
     if (-not $release) {
@@ -566,7 +577,21 @@ function Publish-WithApi {
             if ($_.Exception.Message -match "HTTP status: 400") {
                 Write-Host "[6/7] API create returned 400. Retrying without target_commitish..."
                 $body.Remove("target_commitish")
-                $release = Invoke-GitHubApi -Method POST -Url "https://api.github.com/repos/$owner/$name/releases" -Body $body
+                try {
+                    $release = Invoke-GitHubApi -Method POST -Url "https://api.github.com/repos/$owner/$name/releases" -Body $body
+                }
+                catch {
+                    if ($_.Exception.Message -match "HTTP status: 400") {
+                        Write-Host "[6/7] API create still returned 400. Re-checking existing releases by tag before fail..."
+                        $release = Find-ReleaseByTagViaApi -Owner $owner -Repo $name -ReleaseTag $ReleaseTag
+                        if (-not $release) {
+                            throw
+                        }
+                    }
+                    else {
+                        throw
+                    }
+                }
             }
             else {
                 throw
