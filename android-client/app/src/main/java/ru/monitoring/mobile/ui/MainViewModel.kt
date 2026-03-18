@@ -50,7 +50,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.33.7"
+    private val projectVersion = "8.33.8"
     private val fallbackUpdateUrl = "https://github.com/sukhanovai/monitoring/releases/latest"
     private val mailBackupHistoryRegex = Regex(
         pattern = """^([✅✔❌⚠️🚨])\s*(.+?)\s*[—-]\s*(.+?)\s*\(([^()]+)\)\s*$"""
@@ -726,7 +726,14 @@ class MainViewModel(
     }
 
     fun openExtensionsSettingsMenu() {
-        runExtensionsSettingsAction("settings_extensions")
+        state = state.copy(
+            extensionSettingsMenuOptions = emptyList(),
+            extensionSettingsMenuAction = ""
+        )
+        refreshExtensionsSettings(
+            successMessage = "Настройки расширений загружены",
+            messageSource = "extensions_settings"
+        )
     }
 
     fun runExtensionsSettingsAction(action: String) {
@@ -805,14 +812,15 @@ class MainViewModel(
         }
     }
 
-    private fun refreshExtensionsSettings(successMessage: String? = null) {
+    private fun refreshExtensionsSettings(successMessage: String? = null, messageSource: String = "global") {
         viewModelScope.launch {
             runCatching { currentApi().getExtensionsSettings() }
                 .onSuccess { response ->
                     state = state.copy(
                         isLoading = false,
                         extensions = response.items,
-                        message = successMessage ?: "Список расширений обновлён"
+                        message = successMessage ?: "Список расширений обновлён",
+                        messageSource = messageSource
                     )
                 }
                 .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }

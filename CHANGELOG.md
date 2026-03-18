@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.33.8] - 2026-03-18
+
+### Fixed / Исправлено
+- EN: Fixed Android "⚙️ Open extensions settings" button in Settings → Extensions: it now reloads extension settings from `/v1/settings/extensions` instead of sending unsupported `settings_extensions` to `/v1/control/actions`, eliminating HTTP 400 and making the button functional.
+- RU: Исправлена кнопка Android «⚙️ Открыть настройки расширений» в Настройки → Расширения: теперь она перезагружает настройки расширений через `/v1/settings/extensions` вместо отправки неподдерживаемого `settings_extensions` в `/v1/control/actions`, из-за чего уходил HTTP 400 и кнопка не работала.
+
+### Changed / Изменено
+- EN: Completed repository-wide patch version bump to `8.33.8`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.8`, `ANDROID_VERSION_CODE=128`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.8`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.8`, `ANDROID_VERSION_CODE=128`.
+
 ## [8.33.7] - 2026-03-18
 
 ### Fixed / Исправлено
