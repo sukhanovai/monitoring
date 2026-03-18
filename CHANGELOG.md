@@ -15,6 +15,8 @@ The project follows Semantic Versioning (SemVer).
 ### Changed / Изменено
 - EN: Completed repository-wide patch version bump to `8.33.19`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.19`, `ANDROID_VERSION_CODE=139`.
 - RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.19`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.19`, `ANDROID_VERSION_CODE=139`.
+- EN: Synchronized leftover `8.33.18` references across runtime banners, config constants, scripts, and docs to eliminate partial version drift.
+- RU: Синхронизированы оставшиеся ссылки `8.33.18` в runtime-баннерах, константах конфигурации, скриптах и документации, чтобы убрать частичный рассинхрон версии.
 
 ## [8.33.18] - 2026-03-18
 
