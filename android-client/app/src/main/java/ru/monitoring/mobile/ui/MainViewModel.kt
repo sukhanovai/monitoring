@@ -50,7 +50,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.33.13"
+    private val projectVersion = "8.33.14"
     private val fallbackUpdateUrl = "https://github.com/sukhanovai/monitoring/releases/latest"
     private val mailBackupHistoryRegex = Regex(
         pattern = """^([✅✔❌⚠️🚨])\s*(.+?)\s*[—-]\s*(.+?)\s*\(([^()]+)\)\s*$"""
@@ -71,13 +71,13 @@ class MainViewModel(
         "zfs"
     )
     private val extensionActionToIdMatchers = listOf<Pair<(String) -> Boolean, String>>(
-        ({ action -> action == "check_resources" }, "resource_monitor"),
-        ({ action -> action == "backup_proxmox" || action.startsWith("backup_host_") }, "backup_monitor"),
-        ({ action -> action == "backup_databases" }, "database_backup_monitor"),
-        ({ action -> action.startsWith("backup_mail") }, "mail_backup_monitor"),
-        ({ action -> action == "backup_stock_loads" }, "stock_load_monitor"),
-        ({ action -> action == "supplier_stock_reports" || action.startsWith("supplier_stock_reports_") || action.startsWith("supplier_stock_report_source_day|") }, "supplier_stock_files"),
-        ({ action -> action == "zfs_menu" || action == "zfs" }, "zfs_monitor")
+        Pair({ action -> action == "check_resources" }, "resource_monitor"),
+        Pair({ action -> action == "backup_proxmox" || action.startsWith("backup_host_") }, "backup_monitor"),
+        Pair({ action -> action == "backup_databases" }, "database_backup_monitor"),
+        Pair({ action -> action.startsWith("backup_mail") }, "mail_backup_monitor"),
+        Pair({ action -> action == "backup_stock_loads" }, "stock_load_monitor"),
+        Pair({ action -> action == "supplier_stock_reports" || action.startsWith("supplier_stock_reports_") || action.startsWith("supplier_stock_report_source_day|") }, "supplier_stock_files"),
+        Pair({ action -> action == "zfs_menu" || action == "zfs" }, "zfs_monitor")
     )
     private val morningReportActions = listOf("send_morning_report", "morning_report")
 
