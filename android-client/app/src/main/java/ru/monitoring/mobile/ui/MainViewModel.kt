@@ -50,7 +50,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.33.6"
+    private val projectVersion = "8.33.7"
     private val fallbackUpdateUrl = "https://github.com/sukhanovai/monitoring/releases/latest"
     private val mailBackupHistoryRegex = Regex(
         pattern = """^([✅✔❌⚠️🚨])\s*(.+?)\s*[—-]\s*(.+?)\s*\(([^()]+)\)\s*$"""
@@ -723,6 +723,41 @@ class MainViewModel(
             return
         }
         sendAction("backup_mail")
+    }
+
+    fun openExtensionsSettingsMenu() {
+        runExtensionsSettingsAction("settings_extensions")
+    }
+
+    fun runExtensionsSettingsAction(action: String) {
+        val normalizedAction = action.trim()
+        if (normalizedAction.isBlank()) return
+
+        viewModelScope.launch {
+            state = state.copy(isLoading = true)
+            runCatching { currentApi().runControlAction(ControlActionRequest(normalizedAction)) }
+                .onSuccess { response ->
+                    state = state.copy(
+                        isLoading = false,
+                        message = response.message ?: response.result ?: "Команда отправлена",
+                        messageSource = "extensions_settings",
+                        extensionSettingsMenuOptions = response.menuOptions.orEmpty(),
+                        extensionSettingsMenuAction = normalizedAction
+                    )
+                }
+                .onFailure { error ->
+                    val userMessage = when ((error as? HttpException)?.code()) {
+                        401 -> "HTTP 401: нет доступа к настройкам расширений. Проверь Base URL и токен"
+                        403 -> "HTTP 403: нет прав на настройки расширений"
+                        else -> formatNetworkError(error)
+                    }
+                    state = state.copy(
+                        isLoading = false,
+                        message = userMessage,
+                        messageSource = "extensions_settings"
+                    )
+                }
+        }
     }
 
     fun toggleExtension(id: String, enabled: Boolean) {
@@ -1450,6 +1485,8 @@ data class MainUiState(
     val summaryText: String = "Статус не запрошен",
     val extensionMenuOptions: List<MenuOption> = emptyList(),
     val extensionMenuAction: String = "",
+    val extensionSettingsMenuOptions: List<MenuOption> = emptyList(),
+    val extensionSettingsMenuAction: String = "",
     val mailBackupHistoryTitle: String = "",
     val mailBackupHistoryItems: List<MailBackupHistoryItem> = emptyList(),
     val servers: List<ServerAvailability> = emptyList(),
