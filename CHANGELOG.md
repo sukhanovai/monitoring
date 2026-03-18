@@ -6,17 +6,17 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.33.15] - 2026-03-18
+## [8.33.16] - 2026-03-18
 
 ### Fixed / Исправлено
-- EN: Fixed Android Settings → Extensions → “Open extensions settings”: active extension settings buttons are now shown reliably even when extension IDs differ by dash/underscore style.
-- RU: Исправлен сценарий Android Настройки → Расширения → «Открыть настройки расширений»: кнопки настроек активных расширений теперь стабильно показываются даже при различии формата ID (`-`/`_`).
-- EN: Added support for backend-provided `extension_id` in extension settings menu options and prioritized it during filtering.
-- RU: Добавлена поддержка поля `extension_id` из backend в пунктах меню настроек расширений, с приоритетным использованием при фильтрации.
+- EN: Fixed Android Settings → Extensions → “Open extensions settings”: when backend does not return menu buttons, the app now builds a fallback list of settings buttons for enabled extensions.
+- RU: Исправлен сценарий Android Настройки → Расширения → «Открыть настройки расширений»: если backend не вернул кнопки меню, приложение теперь строит fallback-список кнопок настроек для включённых расширений.
+- EN: Added fallback mapping for active extension settings actions (`backup_hosts`, `backup_databases`, `backup_mail`, `backup_stock_loads`, `supplier_stock_reports`, `zfs_menu`, `check_resources`) to avoid empty state in UI.
+- RU: Добавлен fallback-мэппинг действий настроек активных расширений (`backup_hosts`, `backup_databases`, `backup_mail`, `backup_stock_loads`, `supplier_stock_reports`, `zfs_menu`, `check_resources`), чтобы избежать пустого состояния в UI.
 
 ### Changed / Изменено
-- EN: Completed repository-wide patch version bump to `8.33.15`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.15`, `ANDROID_VERSION_CODE=135`.
-- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.15`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.15`, `ANDROID_VERSION_CODE=135`.
+- EN: Completed repository-wide patch version bump to `8.33.16`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.16`, `ANDROID_VERSION_CODE=136`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.16`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.16`, `ANDROID_VERSION_CODE=136`.
 
 ## [8.33.13] - 2026-03-18
 
