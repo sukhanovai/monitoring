@@ -6,6 +6,18 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.33.10] - 2026-03-18
+
+### Fixed / Исправлено
+- EN: Restored extension toggles list in Android Settings → "Extensions": enable/disable controls are shown immediately after opening this section again.
+- RU: Возвращён список управления расширениями в Android (Настройки → «Расширения»): переключатели вкл/выкл снова отображаются сразу при входе в раздел.
+- EN: Fixed "⚙️ Open extensions settings" behavior: the button now opens only extension settings actions/menu and no longer hides extension toggle controls.
+- RU: Исправлено поведение «⚙️ Открыть настройки расширений»: кнопка теперь открывает именно меню настроек расширений и больше не скрывает блок управления включением/выключением расширений.
+
+### Changed / Изменено
+- EN: Completed repository-wide patch version bump to `8.33.10`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.10`, `ANDROID_VERSION_CODE=130`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.10`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.10`, `ANDROID_VERSION_CODE=130`.
+
 ## [8.33.9] - 2026-03-18
 
 ### Fixed / Исправлено

@@ -812,7 +812,6 @@ private fun MonitoringApp(
                                 Button(onClick = onDisableAllExtensions) { Text("📋 Отключить все") }
                             }
                             ExtensionsSection(items = state.extensions, onToggleExtension = onToggleExtension)
-                            }
                         }
 
                         if (settingsSection == "auth") {
