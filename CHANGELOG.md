@@ -6,6 +6,18 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.33.13] - 2026-03-18
+
+### Fixed / Исправлено
+- EN: Updated Android Settings → "Extensions": extension enable/disable list is now always visible in this section, independent of the extension-settings menu state.
+- RU: Обновлён раздел Android Настройки → «Расширения»: список включения/выключения расширений теперь всегда виден в этом разделе и не зависит от состояния меню настроек расширений.
+- EN: Fixed "⚙️ Open extensions settings" flow to load and show settings buttons for active extensions only.
+- RU: Исправлен сценарий «⚙️ Открыть настройки расширений»: теперь загружается и показывается список кнопок настроек только для активных расширений.
+
+### Changed / Изменено
+- EN: Completed repository-wide patch version bump to `8.33.13`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.13`, `ANDROID_VERSION_CODE=133`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.13`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.13`, `ANDROID_VERSION_CODE=133`.
+
 ## [8.33.12] - 2026-03-18
 
 ### Fixed / Исправлено

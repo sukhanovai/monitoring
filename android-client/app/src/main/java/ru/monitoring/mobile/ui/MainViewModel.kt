@@ -50,7 +50,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.33.12"
+    private val projectVersion = "8.33.13"
     private val fallbackUpdateUrl = "https://github.com/sukhanovai/monitoring/releases/latest"
     private val mailBackupHistoryRegex = Regex(
         pattern = """^([✅✔❌⚠️🚨])\s*(.+?)\s*[—-]\s*(.+?)\s*\(([^()]+)\)\s*$"""
@@ -69,6 +69,15 @@ class MainViewModel(
         "supplier_stock_reports",
         "zfs_menu",
         "zfs"
+    )
+    private val extensionActionToIdMatchers = listOf<Pair<(String) -> Boolean, String>>(
+        ({ action -> action == "check_resources" }, "resource_monitor"),
+        ({ action -> action == "backup_proxmox" || action.startsWith("backup_host_") }, "backup_monitor"),
+        ({ action -> action == "backup_databases" }, "database_backup_monitor"),
+        ({ action -> action.startsWith("backup_mail") }, "mail_backup_monitor"),
+        ({ action -> action == "backup_stock_loads" }, "stock_load_monitor"),
+        ({ action -> action == "supplier_stock_reports" || action.startsWith("supplier_stock_reports_") || action.startsWith("supplier_stock_report_source_day|") }, "supplier_stock_files"),
+        ({ action -> action == "zfs_menu" || action == "zfs" }, "zfs_monitor")
     )
     private val morningReportActions = listOf("send_morning_report", "morning_report")
 
@@ -726,14 +735,40 @@ class MainViewModel(
     }
 
     fun openExtensionsSettingsMenu() {
-        state = state.copy(
-            extensionSettingsMenuOptions = emptyList(),
-            extensionSettingsMenuAction = ""
-        )
-        refreshExtensionsSettings(
-            successMessage = "",
-            messageSource = "extensions_settings"
-        )
+        viewModelScope.launch {
+            state = state.copy(
+                isLoading = true,
+                extensionSettingsMenuOptions = emptyList(),
+                extensionSettingsMenuAction = ""
+            )
+
+            val extensionsResponse = runCatching { currentApi().getExtensionsSettings() }.getOrNull()
+            val menuResponse = runCatching {
+                currentApi().runControlAction(ControlActionRequest("open_extensions_settings"))
+            }.getOrNull()
+
+            if (extensionsResponse == null && menuResponse == null) {
+                state = state.copy(
+                    isLoading = false,
+                    message = "Не удалось загрузить настройки расширений",
+                    messageSource = "extensions_settings"
+                )
+                return@launch
+            }
+
+            val extensions = extensionsResponse?.items ?: state.extensions
+            state = state.copy(
+                isLoading = false,
+                extensions = extensions,
+                message = menuResponse?.message ?: "Список расширений обновлён",
+                messageSource = "extensions_settings",
+                extensionSettingsMenuOptions = filterMenuOptionsByEnabledExtensions(
+                    menuResponse?.menuOptions.orEmpty(),
+                    extensions
+                ),
+                extensionSettingsMenuAction = "open_extensions_settings"
+            )
+        }
     }
 
     fun runExtensionsSettingsAction(action: String) {
@@ -748,7 +783,10 @@ class MainViewModel(
                         isLoading = false,
                         message = response.message ?: response.result ?: "Команда отправлена",
                         messageSource = "extensions_settings",
-                        extensionSettingsMenuOptions = response.menuOptions.orEmpty(),
+                        extensionSettingsMenuOptions = filterMenuOptionsByEnabledExtensions(
+                            response.menuOptions.orEmpty(),
+                            state.extensions
+                        ),
                         extensionSettingsMenuAction = normalizedAction
                     )
                 }
@@ -766,6 +804,35 @@ class MainViewModel(
                 }
         }
     }
+
+    private fun filterMenuOptionsByEnabledExtensions(
+        options: List<MenuOption>,
+        extensions: List<ExtensionItem>
+    ): List<MenuOption> {
+        val enabledExtensionIds = extensions.asSequence()
+            .filter { it.enabled }
+            .map { it.id }
+            .toSet()
+        if (enabledExtensionIds.isEmpty()) return emptyList()
+
+        return options.filter { option ->
+            val optionAction = option.action?.trim().orEmpty()
+            val callbackAction = option.callbackData?.trim().orEmpty()
+            val callbackActionCamel = option.callbackDataCamel?.trim().orEmpty()
+            val targetAction = when {
+                optionAction.isNotBlank() -> optionAction
+                callbackAction.isNotBlank() -> callbackAction
+                callbackActionCamel.isNotBlank() -> callbackActionCamel
+                else -> ""
+            }
+            if (targetAction.isBlank()) return@filter false
+            val mappedExtensionId = mapActionToExtensionId(targetAction)
+            mappedExtensionId == null || mappedExtensionId in enabledExtensionIds
+        }
+    }
+
+    private fun mapActionToExtensionId(action: String): String? =
+        extensionActionToIdMatchers.firstOrNull { (matcher, _) -> matcher(action) }?.second
 
     fun toggleExtension(id: String, enabled: Boolean) {
         val extensionId = id.trim()
