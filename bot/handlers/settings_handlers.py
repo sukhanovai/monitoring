@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.0.0
+Server Monitoring System v8.0.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.0.0
+Версия: 8.0.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -817,7 +817,11 @@ def settings_callback_handler(update, context):
         elif data == 'settings_extensions':
             show_settings_extensions_menu(update, context)
         elif data == 'settings_extensions_manage':
-            show_extensions_settings_menu(update, context)
+            context.user_data['settings_extensions_manage_open'] = not context.user_data.get(
+                'settings_extensions_manage_open',
+                False
+            )
+            show_settings_extensions_menu(update, context)
         elif data == 'settings_ext_backup_proxmox':
             show_proxmox_backup_settings(update, context)
         elif data == 'settings_ext_backup_db':
@@ -1941,7 +1945,11 @@ def show_settings_extensions_menu(update, context):
     query = update.callback_query
     query.answer()
 
+    is_manage_open = context.user_data.get('settings_extensions_manage_open', False)
+
     message = "🧩 *Расширения*\n\nВыберите раздел:"
+    if is_manage_open:
+        message += "\n\n📊 *Статус расширений:*\n\n"
 
     keyboard = []
 
@@ -1962,6 +1970,34 @@ def show_settings_extensions_menu(update, context):
 
     if extension_manager.is_extension_enabled('resource_monitor'):
         keyboard.append([InlineKeyboardButton("💻 Ресурсы", callback_data='settings_resources')])
+
+    manage_button_text = "🙈 Скрыть настройки расширений" if is_manage_open else "🛠️ Открыть настройки расширений"
+    keyboard.append([InlineKeyboardButton(manage_button_text, callback_data='settings_extensions_manage')])
+
+    if is_manage_open:
+        extensions_status = extension_manager.get_extensions_status()
+        for ext_id, status_info in extensions_status.items():
+            enabled = status_info['enabled']
+            ext_info = status_info['info']
+
+            status_icon = "🟢" if enabled else "🔴"
+            toggle_text = "🔴 Выключить" if enabled else "🟢 Включить"
+
+            message += f"{status_icon} *{ext_info['name']}*\n"
+            message += f"   {ext_info['description']}\n"
+            message += f"   Статус: {'Включено' if enabled else 'Отключено'}\n\n"
+
+            keyboard.append([
+                InlineKeyboardButton(
+                    f"{toggle_text} {ext_info['name']}",
+                    callback_data=f'settings_ext_toggle_{ext_id}'
+                )
+            ])
+
+        keyboard.extend([
+            [InlineKeyboardButton("📊 Включить все", callback_data='settings_ext_enable_all')],
+            [InlineKeyboardButton("📋 Отключить все", callback_data='settings_ext_disable_all')],
+        ])
 
     keyboard.extend([
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
