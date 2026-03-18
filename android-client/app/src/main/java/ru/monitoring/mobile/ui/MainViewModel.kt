@@ -50,7 +50,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.33.18"
+    private val projectVersion = "8.33.20"
     private val fallbackUpdateUrl = "https://github.com/sukhanovai/monitoring/releases/latest"
     private val mailBackupHistoryRegex = Regex(
         pattern = """^([✅✔❌⚠️🚨])\s*(.+?)\s*[—-]\s*(.+?)\s*\(([^()]+)\)\s*$"""
@@ -70,6 +70,7 @@ class MainViewModel(
         "zfs_menu",
         "zfs"
     )
+    private val extensionSettingsControlActions = extensionControlActions + setOf("open_extensions_settings")
     private val extensionActionToIdMatchers = listOf<Pair<(String) -> Boolean, String>>(
         Pair({ action -> action == "check_resources" }, "resource_monitor"),
         Pair({ action -> action == "backup_proxmox" || action.startsWith("backup_host_") }, "backup_monitor"),
@@ -789,17 +790,44 @@ class MainViewModel(
 
         viewModelScope.launch {
             state = state.copy(isLoading = true)
-            runCatching { currentApi().runControlAction(ControlActionRequest(normalizedAction)) }
-                .onSuccess { response ->
-                    state = state.copy(
-                        isLoading = false,
-                        message = response.message ?: response.result ?: "Команда отправлена",
-                        messageSource = "extensions_settings",
-                        extensionSettingsMenuOptions = filterMenuOptionsByEnabledExtensions(
+            val actionCall = if (
+                normalizedAction in extensionSettingsControlActions ||
+                normalizedAction.startsWith("backup_host_") ||
+                normalizedAction.startsWith("backup_mail") ||
+                normalizedAction.startsWith("supplier_stock_reports_") ||
+                normalizedAction.startsWith("supplier_stock_report_source_day|")
+            ) {
+                runCatching {
+                    currentApi().runControlAction(ControlActionRequest(normalizedAction))
+                }.map { response ->
+                    Triple(
+                        response.message ?: response.result ?: "Команда отправлена",
+                        filterMenuOptionsByEnabledExtensions(
                             response.menuOptions.orEmpty(),
                             state.extensions
                         ).filterNot(::isMainMenuExtensionOption),
-                        extensionSettingsMenuAction = normalizedAction
+                        normalizedAction
+                    )
+                }
+            } else {
+                runCatching {
+                    currentApi().runExtensionsAction(ExtensionsActionRequest(normalizedAction))
+                }.map { response ->
+                    Triple(
+                        response.message ?: "Команда отправлена",
+                        state.extensionSettingsMenuOptions,
+                        state.extensionSettingsMenuAction
+                    )
+                }
+            }
+            actionCall
+                .onSuccess { response ->
+                    state = state.copy(
+                        isLoading = false,
+                        message = response.first,
+                        messageSource = "extensions_settings",
+                        extensionSettingsMenuOptions = response.second,
+                        extensionSettingsMenuAction = response.third
                     )
                 }
                 .onFailure { error ->
