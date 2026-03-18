@@ -212,9 +212,8 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-@OptIn(ExperimentalLayoutApi::class)
 private fun MonitoringApp(
     state: MainUiState,
     onTokenChanged: (String) -> Unit,
