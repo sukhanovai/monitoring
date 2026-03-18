@@ -6,15 +6,15 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.33.11] - 2026-03-18
+## [8.33.12] - 2026-03-18
 
 ### Fixed / Исправлено
-- EN: Fixed Android debug build failure in `MainActivity.kt` by restoring a missing closing brace in the Extensions settings block, which resolves Kotlin errors (`Unresolved reference 'ExtensionsSection'`, invalid local `private` function, and missing `}`).
-- RU: Исправлен сбой Android debug-сборки в `MainActivity.kt`: восстановлена пропущенная закрывающая скобка в блоке настроек расширений, из-за чего устранены Kotlin-ошибки (`Unresolved reference 'ExtensionsSection'`, некорректная локальная `private`-функция и отсутствие `}`).
+- EN: Fixed Android Extensions settings behavior: after tapping "⚙️ Open extensions settings", the section now actually expands and displays extension controls (enable/disable and bulk actions).
+- RU: Исправлено поведение настроек расширений в Android: после нажатия «⚙️ Открыть настройки расширений» раздел теперь действительно раскрывается и показывает управление расширениями (вкл/выкл и массовые действия).
 
 ### Changed / Изменено
-- EN: Completed repository-wide patch version bump to `8.33.11`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.11`, `ANDROID_VERSION_CODE=131`.
-- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.11`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.11`, `ANDROID_VERSION_CODE=131`.
+- EN: Completed repository-wide patch version bump to `8.33.12`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.12`, `ANDROID_VERSION_CODE=132`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.12`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.12`, `ANDROID_VERSION_CODE=132`.
 
 ## [8.33.10] - 2026-03-18
 

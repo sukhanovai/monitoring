@@ -785,34 +785,38 @@ private fun MonitoringApp(
                                 Text(state.message)
                             }
                             if (isExtensionsSettingsOpened) {
-                                state.extensionSettingsMenuOptions.forEach { item ->
-                                val optionLabel = item.label?.trim().orEmpty()
-                                val optionAction = item.action?.trim().orEmpty()
-                                val callbackAction = item.callbackData?.trim().orEmpty()
-                                val callbackActionCamel = item.callbackDataCamel?.trim().orEmpty()
-                                val targetAction = when {
-                                    optionAction.isNotBlank() -> optionAction
-                                    callbackAction.isNotBlank() -> callbackAction
-                                    callbackActionCamel.isNotBlank() -> callbackActionCamel
-                                    else -> ""
-                                }
-                                if (optionLabel.isNotBlank() && targetAction.isNotBlank()) {
-                                    Button(
-                                        onClick = { onExtensionsSettingsAction(targetAction) },
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Text(optionLabel)
+                                val hasMenuOptions = state.extensionSettingsMenuOptions.isNotEmpty()
+                                if (hasMenuOptions) {
+                                    state.extensionSettingsMenuOptions.forEach { item ->
+                                        val optionLabel = item.label?.trim().orEmpty()
+                                        val optionAction = item.action?.trim().orEmpty()
+                                        val callbackAction = item.callbackData?.trim().orEmpty()
+                                        val callbackActionCamel = item.callbackDataCamel?.trim().orEmpty()
+                                        val targetAction = when {
+                                            optionAction.isNotBlank() -> optionAction
+                                            callbackAction.isNotBlank() -> callbackAction
+                                            callbackActionCamel.isNotBlank() -> callbackActionCamel
+                                            else -> ""
+                                        }
+                                        if (optionLabel.isNotBlank() && targetAction.isNotBlank()) {
+                                            Button(
+                                                onClick = { onExtensionsSettingsAction(targetAction) },
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Text(optionLabel)
+                                            }
+                                        }
                                     }
+                                    Spacer(modifier = Modifier.height(8.dp))
                                 }
+
+                                Text("🛠️ Управление расширениями (вкл/выкл)", fontWeight = FontWeight.Bold)
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Button(onClick = onEnableAllExtensions) { Text("📊 Включить все") }
+                                    Button(onClick = onDisableAllExtensions) { Text("📋 Отключить все") }
+                                }
+                                ExtensionsSection(items = state.extensions, onToggleExtension = onToggleExtension)
                             }
-                            }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text("🛠️ Управление расширениями (вкл/выкл)", fontWeight = FontWeight.Bold)
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Button(onClick = onEnableAllExtensions) { Text("📊 Включить все") }
-                                Button(onClick = onDisableAllExtensions) { Text("📋 Отключить все") }
-                            }
-                            ExtensionsSection(items = state.extensions, onToggleExtension = onToggleExtension)
                         }
 
                         if (settingsSection == "auth") {
