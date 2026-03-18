@@ -805,6 +805,7 @@ private fun MonitoringApp(
                                     }
                                 }
                             }
+                            }
                             Spacer(modifier = Modifier.height(8.dp))
                             Text("🛠️ Управление расширениями (вкл/выкл)", fontWeight = FontWeight.Bold)
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
