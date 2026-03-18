@@ -50,7 +50,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.33.15"
+    private val projectVersion = "8.33.16"
     private val fallbackUpdateUrl = "https://github.com/sukhanovai/monitoring/releases/latest"
     private val mailBackupHistoryRegex = Regex(
         pattern = """^([✅✔❌⚠️🚨])\s*(.+?)\s*[—-]\s*(.+?)\s*\(([^()]+)\)\s*$"""
@@ -78,6 +78,15 @@ class MainViewModel(
         Pair({ action -> action == "backup_stock_loads" }, "stock_load_monitor"),
         Pair({ action -> action == "supplier_stock_reports" || action.startsWith("supplier_stock_reports_") || action.startsWith("supplier_stock_report_source_day|") }, "supplier_stock_files"),
         Pair({ action -> action == "zfs_menu" || action == "zfs" }, "zfs_monitor")
+    )
+    private val extensionSettingsFallbackActions = listOf(
+        Triple("backup_monitor", "💾 Бэкапы Proxmox", "backup_hosts"),
+        Triple("database_backup_monitor", "🗃️ Бэкапы БД", "backup_databases"),
+        Triple("mail_backup_monitor", "📬 Бэкапы почты", "backup_mail"),
+        Triple("stock_load_monitor", "📦 Остатки 1С", "backup_stock_loads"),
+        Triple("supplier_stock_files", "📦 Остатки поставщиков", "supplier_stock_reports"),
+        Triple("zfs_monitor", "🧊 ZFS", "zfs_menu"),
+        Triple("resource_monitor", "📊 Ресурсы сервера", "check_resources")
     )
     private val morningReportActions = listOf("send_morning_report", "morning_report")
 
@@ -757,15 +766,18 @@ class MainViewModel(
             }
 
             val extensions = extensionsResponse?.items ?: state.extensions
+            val filteredMenuOptions = filterMenuOptionsByEnabledExtensions(
+                menuResponse?.menuOptions.orEmpty(),
+                extensions
+            )
             state = state.copy(
                 isLoading = false,
                 extensions = extensions,
                 message = menuResponse?.message ?: "Список расширений обновлён",
                 messageSource = "extensions_settings",
-                extensionSettingsMenuOptions = filterMenuOptionsByEnabledExtensions(
-                    menuResponse?.menuOptions.orEmpty(),
-                    extensions
-                ),
+                extensionSettingsMenuOptions = filteredMenuOptions.ifEmpty {
+                    buildExtensionsSettingsFallbackOptions(extensions)
+                },
                 extensionSettingsMenuAction = "open_extensions_settings"
             )
         }
@@ -843,6 +855,26 @@ class MainViewModel(
 
     private fun mapActionToExtensionId(action: String): String? =
         extensionActionToIdMatchers.firstOrNull { (matcher, _) -> matcher(action) }?.second
+
+    private fun buildExtensionsSettingsFallbackOptions(extensions: List<ExtensionItem>): List<MenuOption> {
+        val enabledExtensionIds = extensions.asSequence()
+            .filter { it.enabled }
+            .map { normalizeExtensionId(it.id) }
+            .filter { it.isNotBlank() }
+            .toSet()
+        if (enabledExtensionIds.isEmpty()) return emptyList()
+
+        return extensionSettingsFallbackActions.asSequence()
+            .filter { (extensionId, _, _) -> normalizeExtensionId(extensionId) in enabledExtensionIds }
+            .map { (extensionId, label, action) ->
+                MenuOption(
+                    label = label,
+                    action = action,
+                    extensionId = extensionId
+                )
+            }
+            .toList()
+    }
 
     fun toggleExtension(id: String, enabled: Boolean) {
         val extensionId = id.trim()
