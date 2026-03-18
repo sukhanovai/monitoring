@@ -6,6 +6,18 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.33.3] - 2026-03-18
+
+### Fixed / Исправлено
+- EN: Fixed IEK JSON processing to build the `orig` output using warehouse keys from saved source settings (`iek_json.stores`) instead of hardcoded legacy warehouse columns.
+- RU: Исправлена обработка IEK JSON: `orig`-файл теперь строится по ключам складов из сохранённых настроек источника (`iek_json.stores`), а не по зашитому legacy-набору колонок.
+- EN: Fixed supplier stock totals behavior for custom IEK warehouse sets by reusing configured warehouse keys in row generation, so newly added warehouses are included in processing results.
+- RU: Исправлено поведение суммарных остатков для кастомных наборов складов IEK: при формировании строк используются настроенные ключи складов, поэтому новые склады попадают в результаты обработки.
+
+### Changed / Изменено
+- EN: Completed repository-wide patch version bump to `8.33.3`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.3`, `ANDROID_VERSION_CODE=123`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.3`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.3`, `ANDROID_VERSION_CODE=123`.
+
 ## [8.33.2] - 2026-03-17
 
 ### Fixed / Исправлено

@@ -1,11 +1,11 @@
 """
 /extensions/supplier_stock_files.py
-Server Monitoring System v8.33.2
+Server Monitoring System v8.33.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Supplier stock files downloader
 Система мониторинга серверов
-Версия: 8.33.2
+Версия: 8.33.3
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Получение файлов остатков поставщиков
@@ -1311,6 +1311,7 @@ def _process_iek_json_file(
     msk_rows: list[list[str]] = []
     nsk_rows: list[list[str]] = []
     orc_rows: list[list[str]] = []
+    store_keys = list(store_map.keys())
     msk_keys = list(iek_settings.get("msk_stores", []))
     nsk_key = iek_settings.get("nsk_store")
     orc_stores = list(iek_settings.get("orc_stores", []))
@@ -1323,18 +1324,9 @@ def _process_iek_json_file(
         sku = str(row.get("sku") or "").strip()
         if not sku:
             continue
-        sherbinka = _get_residue(row, "sherbinka")
-        chehov = _get_residue(row, "chehov")
-        novosibirsk = _get_residue(row, "novosibirsk")
-        yasnogorsky = _get_residue(row, "yasnogorsky")
-        dmd = _get_residue(row, "dmd")
         orig_rows.append([
             sku,
-            str(sherbinka),
-            str(chehov),
-            str(novosibirsk),
-            str(yasnogorsky),
-            str(dmd),
+            *[str(_get_residue(row, key)) for key in store_keys],
         ])
 
         msk_value = sum(_get_residue(row, key) for key in msk_keys)
@@ -1366,7 +1358,7 @@ def _process_iek_json_file(
         _write_output_file(
             output_path,
             output_path.suffix.lstrip(".").lower(),
-            ["Art", "sherbinka", "chehov", "novosibirsk", "yasnogorsky", "dmd"],
+            ["Art", *store_keys],
             orig_rows,
         )
         outputs.append({"output": str(output_path), "rows": len(orig_rows)})
