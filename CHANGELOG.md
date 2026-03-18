@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.33.6] - 2026-03-18
+
+### Fixed / Исправлено
+- EN: Fixed Android build failure in `:app:compileDebugKotlin` by merging duplicate `@OptIn` annotations in `MainActivity.kt` into a single non-repeated declaration.
+- RU: Исправлен сбой сборки Android в `:app:compileDebugKotlin`: дублирующиеся аннотации `@OptIn` в `MainActivity.kt` объединены в одно объявление без повторов.
+
+### Changed / Изменено
+- EN: Completed repository-wide patch version bump to `8.33.6`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.6`, `ANDROID_VERSION_CODE=126`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.6`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.6`, `ANDROID_VERSION_CODE=126`.
+
 ## [8.33.5] - 2026-03-18
 
 ### Fixed / Исправлено
