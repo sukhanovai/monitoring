@@ -50,7 +50,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.33.14"
+    private val projectVersion = "8.33.15"
     private val fallbackUpdateUrl = "https://github.com/sukhanovai/monitoring/releases/latest"
     private val mailBackupHistoryRegex = Regex(
         pattern = """^([✅✔❌⚠️🚨])\s*(.+?)\s*[—-]\s*(.+?)\s*\(([^()]+)\)\s*$"""
@@ -811,11 +811,13 @@ class MainViewModel(
     ): List<MenuOption> {
         val enabledExtensionIds = extensions.asSequence()
             .filter { it.enabled }
-            .map { it.id }
+            .map { normalizeExtensionId(it.id) }
+            .filter { it.isNotBlank() }
             .toSet()
         if (enabledExtensionIds.isEmpty()) return emptyList()
 
         return options.filter { option ->
+            val optionExtensionId = normalizeExtensionId(option.extensionId.orEmpty())
             val optionAction = option.action?.trim().orEmpty()
             val callbackAction = option.callbackData?.trim().orEmpty()
             val callbackActionCamel = option.callbackDataCamel?.trim().orEmpty()
@@ -825,11 +827,19 @@ class MainViewModel(
                 callbackActionCamel.isNotBlank() -> callbackActionCamel
                 else -> ""
             }
+            if (optionExtensionId.isNotBlank()) {
+                return@filter optionExtensionId in enabledExtensionIds
+            }
             if (targetAction.isBlank()) return@filter false
-            val mappedExtensionId = mapActionToExtensionId(targetAction)
+            val mappedExtensionId = mapActionToExtensionId(targetAction)?.let(::normalizeExtensionId)
             mappedExtensionId == null || mappedExtensionId in enabledExtensionIds
         }
     }
+
+    private fun normalizeExtensionId(id: String): String = id
+        .trim()
+        .lowercase()
+        .replace('-', '_')
 
     private fun mapActionToExtensionId(action: String): String? =
         extensionActionToIdMatchers.firstOrNull { (matcher, _) -> matcher(action) }?.second

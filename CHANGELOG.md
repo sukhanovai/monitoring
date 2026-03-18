@@ -6,17 +6,17 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.33.14] - 2026-03-18
+## [8.33.15] - 2026-03-18
 
 ### Fixed / Исправлено
-- EN: Fixed Kotlin compilation failure in `MainViewModel`: corrected extension action matcher list initialization to use explicit `Pair(...)` entries for lambda-to-id mappings.
-- RU: Исправлена ошибка компиляции Kotlin в `MainViewModel`: инициализация списка соответствий действий расширений переведена на явные `Pair(...)` для пар «лямбда → id».
-- EN: Aligned backend/app version constants (`APP_VERSION`, `ANDROID_APP_VERSION`) with the current release to avoid version drift across runtime and Android clients.
-- RU: Синхронизированы константы версий backend/app (`APP_VERSION`, `ANDROID_APP_VERSION`) с текущим релизом, чтобы убрать расхождение версий между runtime и Android-клиентом.
+- EN: Fixed Android Settings → Extensions → “Open extensions settings”: active extension settings buttons are now shown reliably even when extension IDs differ by dash/underscore style.
+- RU: Исправлен сценарий Android Настройки → Расширения → «Открыть настройки расширений»: кнопки настроек активных расширений теперь стабильно показываются даже при различии формата ID (`-`/`_`).
+- EN: Added support for backend-provided `extension_id` in extension settings menu options and prioritized it during filtering.
+- RU: Добавлена поддержка поля `extension_id` из backend в пунктах меню настроек расширений, с приоритетным использованием при фильтрации.
 
 ### Changed / Изменено
-- EN: Completed repository-wide patch version bump to `8.33.14`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.14`, `ANDROID_VERSION_CODE=134`.
-- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.14`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.14`, `ANDROID_VERSION_CODE=134`.
+- EN: Completed repository-wide patch version bump to `8.33.15`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.15`, `ANDROID_VERSION_CODE=135`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.15`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.15`, `ANDROID_VERSION_CODE=135`.
 
 ## [8.33.13] - 2026-03-18
 
