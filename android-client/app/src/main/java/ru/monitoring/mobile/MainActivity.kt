@@ -767,7 +767,16 @@ private fun MonitoringApp(
 
                         if (settingsSection == "extensions") {
                             Text("🧩 Настройки расширений", fontWeight = FontWeight.Bold)
-                            Text("Отдельный раздел настроек расширений, как в Telegram-боте.")
+                            Text("Включай/выключай расширения и открывай настройки активных расширений.")
+
+                            Text("🛠️ Управление расширениями (вкл/выкл)", fontWeight = FontWeight.Bold)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(onClick = onEnableAllExtensions) { Text("📊 Включить все") }
+                                Button(onClick = onDisableAllExtensions) { Text("📋 Отключить все") }
+                            }
+                            ExtensionsSection(items = state.extensions, onToggleExtension = onToggleExtension)
+                            Spacer(modifier = Modifier.height(8.dp))
+
                             Button(
                                 onClick = {
                                     if (isExtensionsSettingsOpened) {
@@ -781,41 +790,33 @@ private fun MonitoringApp(
                             ) {
                                 Text(if (isExtensionsSettingsOpened) "⚙️ Скрыть настройки расширений" else "⚙️ Открыть настройки расширений")
                             }
+                            if (isExtensionsSettingsOpened && state.extensionSettingsMenuOptions.isEmpty()) {
+                                Text("Нет доступных настроек для активных расширений.")
+                            }
                             if (state.message.isNotBlank() && state.messageSource == "extensions_settings") {
                                 Text(state.message)
                             }
                             if (isExtensionsSettingsOpened) {
-                                val hasMenuOptions = state.extensionSettingsMenuOptions.isNotEmpty()
-                                if (hasMenuOptions) {
-                                    state.extensionSettingsMenuOptions.forEach { item ->
-                                        val optionLabel = item.label?.trim().orEmpty()
-                                        val optionAction = item.action?.trim().orEmpty()
-                                        val callbackAction = item.callbackData?.trim().orEmpty()
-                                        val callbackActionCamel = item.callbackDataCamel?.trim().orEmpty()
-                                        val targetAction = when {
-                                            optionAction.isNotBlank() -> optionAction
-                                            callbackAction.isNotBlank() -> callbackAction
-                                            callbackActionCamel.isNotBlank() -> callbackActionCamel
-                                            else -> ""
-                                        }
-                                        if (optionLabel.isNotBlank() && targetAction.isNotBlank()) {
-                                            Button(
-                                                onClick = { onExtensionsSettingsAction(targetAction) },
-                                                modifier = Modifier.fillMaxWidth()
-                                            ) {
-                                                Text(optionLabel)
-                                            }
+                                state.extensionSettingsMenuOptions.forEach { item ->
+                                    val optionLabel = item.label?.trim().orEmpty()
+                                    val optionAction = item.action?.trim().orEmpty()
+                                    val callbackAction = item.callbackData?.trim().orEmpty()
+                                    val callbackActionCamel = item.callbackDataCamel?.trim().orEmpty()
+                                    val targetAction = when {
+                                        optionAction.isNotBlank() -> optionAction
+                                        callbackAction.isNotBlank() -> callbackAction
+                                        callbackActionCamel.isNotBlank() -> callbackActionCamel
+                                        else -> ""
+                                    }
+                                    if (optionLabel.isNotBlank() && targetAction.isNotBlank()) {
+                                        Button(
+                                            onClick = { onExtensionsSettingsAction(targetAction) },
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text(optionLabel)
                                         }
                                     }
-                                    Spacer(modifier = Modifier.height(8.dp))
                                 }
-
-                                Text("🛠️ Управление расширениями (вкл/выкл)", fontWeight = FontWeight.Bold)
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Button(onClick = onEnableAllExtensions) { Text("📊 Включить все") }
-                                    Button(onClick = onDisableAllExtensions) { Text("📋 Отключить все") }
-                                }
-                                ExtensionsSection(items = state.extensions, onToggleExtension = onToggleExtension)
                             }
                         }
 
