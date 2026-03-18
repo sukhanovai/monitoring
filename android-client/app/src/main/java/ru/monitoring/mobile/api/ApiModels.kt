@@ -103,7 +103,8 @@ data class MenuOption(
     val label: String? = null,
     val action: String? = null,
     @Json(name = "callback_data") val callbackData: String? = null,
-    @Json(name = "callbackData") val callbackDataCamel: String? = null
+    @Json(name = "callbackData") val callbackDataCamel: String? = null,
+    @Json(name = "extension_id") val extensionId: String? = null
 )
 
 data class ControlActionResult(
