@@ -6,17 +6,17 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.33.16] - 2026-03-18
+## [8.33.18] - 2026-03-18
 
 ### Fixed / Исправлено
-- EN: Fixed Android Settings → Extensions → “Open extensions settings”: when backend does not return menu buttons, the app now builds a fallback list of settings buttons for enabled extensions.
-- RU: Исправлен сценарий Android Настройки → Расширения → «Открыть настройки расширений»: если backend не вернул кнопки меню, приложение теперь строит fallback-список кнопок настроек для включённых расширений.
-- EN: Added fallback mapping for active extension settings actions (`backup_hosts`, `backup_databases`, `backup_mail`, `backup_stock_loads`, `supplier_stock_reports`, `zfs_menu`, `check_resources`) to avoid empty state in UI.
-- RU: Добавлен fallback-мэппинг действий настроек активных расширений (`backup_hosts`, `backup_databases`, `backup_mail`, `backup_stock_loads`, `supplier_stock_reports`, `zfs_menu`, `check_resources`), чтобы избежать пустого состояния в UI.
+- EN: Fixed Android Settings → Extensions → “Open extensions settings”: fallback buttons now open extension **settings** callbacks (`settings_*`) instead of duplicating extension actions from the main menu.
+- RU: Исправлен сценарий Android Настройки → Расширения → «Открыть настройки расширений»: fallback-кнопки теперь открывают именно callback-настройки расширений (`settings_*`), а не дублируют действия расширений из главного меню.
+- EN: In extension-settings flow, filtered out main-menu extension actions (`backup_hosts`, `backup_databases`, `backup_mail`, `backup_stock_loads`, `supplier_stock_reports`, `zfs_menu`, etc.) so this section contains only settings-related actions.
+- RU: В сценарии настроек расширений отфильтрованы действия расширений из главного меню (`backup_hosts`, `backup_databases`, `backup_mail`, `backup_stock_loads`, `supplier_stock_reports`, `zfs_menu` и др.), чтобы в этом блоке оставались только действия, относящиеся к настройкам.
 
 ### Changed / Изменено
-- EN: Completed repository-wide patch version bump to `8.33.16`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.16`, `ANDROID_VERSION_CODE=136`.
-- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.16`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.16`, `ANDROID_VERSION_CODE=136`.
+- EN: Completed repository-wide patch version bump to `8.33.18`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.18`, `ANDROID_VERSION_CODE=138`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.18`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.18`, `ANDROID_VERSION_CODE=138`.
 
 ## [8.33.13] - 2026-03-18
 

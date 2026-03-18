@@ -50,7 +50,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.33.16"
+    private val projectVersion = "8.33.18"
     private val fallbackUpdateUrl = "https://github.com/sukhanovai/monitoring/releases/latest"
     private val mailBackupHistoryRegex = Regex(
         pattern = """^([✅✔❌⚠️🚨])\s*(.+?)\s*[—-]\s*(.+?)\s*\(([^()]+)\)\s*$"""
@@ -80,13 +80,13 @@ class MainViewModel(
         Pair({ action -> action == "zfs_menu" || action == "zfs" }, "zfs_monitor")
     )
     private val extensionSettingsFallbackActions = listOf(
-        Triple("backup_monitor", "💾 Бэкапы Proxmox", "backup_hosts"),
-        Triple("database_backup_monitor", "🗃️ Бэкапы БД", "backup_databases"),
-        Triple("mail_backup_monitor", "📬 Бэкапы почты", "backup_mail"),
-        Triple("stock_load_monitor", "📦 Остатки 1С", "backup_stock_loads"),
-        Triple("supplier_stock_files", "📦 Остатки поставщиков", "supplier_stock_reports"),
-        Triple("zfs_monitor", "🧊 ZFS", "zfs_menu"),
-        Triple("resource_monitor", "📊 Ресурсы сервера", "check_resources")
+        Triple("backup_monitor", "💾 Бэкапы Proxmox", "settings_ext_backup_proxmox"),
+        Triple("database_backup_monitor", "🗃️ Бэкапы БД", "settings_ext_backup_db"),
+        Triple("mail_backup_monitor", "📬 Бэкапы почты", "settings_ext_backup_mail"),
+        Triple("stock_load_monitor", "📦 Загрузка остатков 1С", "settings_ext_stock_load"),
+        Triple("supplier_stock_files", "📦 Остатки поставщиков", "settings_ext_supplier_stock"),
+        Triple("zfs_monitor", "🧊 ZFS", "settings_zfs"),
+        Triple("resource_monitor", "💻 Ресурсы", "settings_resources")
     )
     private val morningReportActions = listOf("send_morning_report", "morning_report")
 
@@ -769,7 +769,7 @@ class MainViewModel(
             val filteredMenuOptions = filterMenuOptionsByEnabledExtensions(
                 menuResponse?.menuOptions.orEmpty(),
                 extensions
-            )
+            ).filterNot(::isMainMenuExtensionOption)
             state = state.copy(
                 isLoading = false,
                 extensions = extensions,
@@ -798,7 +798,7 @@ class MainViewModel(
                         extensionSettingsMenuOptions = filterMenuOptionsByEnabledExtensions(
                             response.menuOptions.orEmpty(),
                             state.extensions
-                        ),
+                        ).filterNot(::isMainMenuExtensionOption),
                         extensionSettingsMenuAction = normalizedAction
                     )
                 }
@@ -855,6 +855,26 @@ class MainViewModel(
 
     private fun mapActionToExtensionId(action: String): String? =
         extensionActionToIdMatchers.firstOrNull { (matcher, _) -> matcher(action) }?.second
+
+    private fun isMainMenuExtensionOption(option: MenuOption): Boolean {
+        val optionAction = option.action?.trim().orEmpty()
+        val callbackAction = option.callbackData?.trim().orEmpty()
+        val callbackActionCamel = option.callbackDataCamel?.trim().orEmpty()
+        val targetAction = when {
+            optionAction.isNotBlank() -> optionAction
+            callbackAction.isNotBlank() -> callbackAction
+            callbackActionCamel.isNotBlank() -> callbackActionCamel
+            else -> ""
+        }
+        if (targetAction.isBlank()) return false
+        return targetAction in extensionMainMenuActions ||
+            targetAction == "backup_proxmox" ||
+            targetAction == "zfs" ||
+            targetAction.startsWith("backup_host_") ||
+            targetAction.startsWith("backup_mail") ||
+            targetAction.startsWith("supplier_stock_reports_") ||
+            targetAction.startsWith("supplier_stock_report_source_day|")
+    }
 
     private fun buildExtensionsSettingsFallbackOptions(extensions: List<ExtensionItem>): List<MenuOption> {
         val enabledExtensionIds = extensions.asSequence()
