@@ -115,6 +115,8 @@ class MainActivity : ComponentActivity() {
                     onToggleExtension = vm::toggleExtension,
                     onEnableAllExtensions = vm::enableAllExtensions,
                     onDisableAllExtensions = vm::disableAllExtensions,
+                    onOpenExtensionsSettingsMenu = vm::openExtensionsSettingsMenu,
+                    onExtensionsSettingsAction = vm::runExtensionsSettingsAction,
                     onAction = vm::sendAction,
                     onCheckIntervalChanged = vm::setCheckIntervalInput,
                     onTimeoutChanged = vm::setTimeoutInput,
@@ -228,6 +230,8 @@ private fun MonitoringApp(
     onToggleExtension: (String, Boolean) -> Unit,
     onEnableAllExtensions: () -> Unit,
     onDisableAllExtensions: () -> Unit,
+    onOpenExtensionsSettingsMenu: () -> Unit,
+    onExtensionsSettingsAction: (String) -> Unit,
     onAction: (String) -> Unit,
     onCheckIntervalChanged: (String) -> Unit,
     onTimeoutChanged: (String) -> Unit,
@@ -775,71 +779,44 @@ private fun MonitoringApp(
                         }
 
                         if (settingsSection == "extensions") {
-                            Text("🛠️ Настройки и функции расширений", fontWeight = FontWeight.Bold)
-                            Text("Как в Telegram-боте: можно включать/выключать расширения и запускать их действия.")
+                            Text("🧩 Настройки расширений", fontWeight = FontWeight.Bold)
+                            Text("Отдельный раздел настроек расширений, как в Telegram-боте.")
+                            Button(
+                                onClick = onOpenExtensionsSettingsMenu,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("⚙️ Открыть настройки расширений")
+                            }
+                            if (state.message.isNotBlank() && state.messageSource == "extensions_settings") {
+                                Text(state.message)
+                            }
+                            state.extensionSettingsMenuOptions.forEach { item ->
+                                val optionLabel = item.label?.trim().orEmpty()
+                                val optionAction = item.action?.trim().orEmpty()
+                                val callbackAction = item.callbackData?.trim().orEmpty()
+                                val callbackActionCamel = item.callbackDataCamel?.trim().orEmpty()
+                                val targetAction = when {
+                                    optionAction.isNotBlank() -> optionAction
+                                    callbackAction.isNotBlank() -> callbackAction
+                                    callbackActionCamel.isNotBlank() -> callbackActionCamel
+                                    else -> ""
+                                }
+                                if (optionLabel.isNotBlank() && targetAction.isNotBlank()) {
+                                    Button(
+                                        onClick = { onExtensionsSettingsAction(targetAction) },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text(optionLabel)
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("🛠️ Управление расширениями (вкл/выкл)", fontWeight = FontWeight.Bold)
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Button(onClick = onEnableAllExtensions) { Text("📊 Включить все") }
                                 Button(onClick = onDisableAllExtensions) { Text("📋 Отключить все") }
                             }
-                            ExtensionsSection(
-                                items = state.extensions,
-                                onToggleExtension = onToggleExtension
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text("Действия расширений", fontWeight = FontWeight.Bold)
-                            extensionButtons.forEach { extensionButton ->
-                                Button(
-                                    onClick = {
-                                        when (extensionButton.action) {
-                                            "check_resources" -> showServerResourcesMenu = !showServerResourcesMenu
-                                            "backup_proxmox" -> onToggleProxmoxBackupMenu()
-                                            "backup_databases" -> onToggleDatabaseBackupMenu()
-                                            "backup_mail" -> onToggleMailBackupMenu()
-                                            else -> onAction(extensionButton.action)
-                                        }
-                                    },
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Text(extensionButton.label)
-                                }
-                                if (
-                                    state.extensionMenuOptions.isNotEmpty() &&
-                                    ((extensionButton.action == "backup_proxmox" && state.extensionMenuAction == "backup_proxmox") ||
-                                        (extensionButton.action == "backup_databases" && state.extensionMenuAction == "backup_databases") ||
-                                        (extensionButton.action == "backup_mail" && state.extensionMenuAction == "backup_mail"))
-                                ) {
-                                    val menuTitle = when (extensionButton.action) {
-                                        "backup_databases" -> "Выбор базы"
-                                        "backup_mail" -> "Выбор почтового ящика"
-                                        else -> "Выбор сервера"
-                                    }
-                                    Text(menuTitle, fontWeight = FontWeight.Bold)
-                                    state.extensionMenuOptions.forEach { item ->
-                                        val optionLabel = item.label?.trim().orEmpty()
-                                        val optionAction = item.action?.trim().orEmpty()
-                                        val callbackAction = item.callbackData?.trim().orEmpty()
-                                        val callbackActionCamel = item.callbackDataCamel?.trim().orEmpty()
-                                        val targetAction = when {
-                                            optionAction.isNotBlank() -> optionAction
-                                            callbackAction.isNotBlank() -> callbackAction
-                                            callbackActionCamel.isNotBlank() -> callbackActionCamel
-                                            else -> ""
-                                        }
-                                        if (optionLabel.isNotBlank() && targetAction.isNotBlank()) {
-                                            Button(
-                                                onClick = { onAction(targetAction) },
-                                                modifier = Modifier.fillMaxWidth(),
-                                                colors = ButtonDefaults.buttonColors(
-                                                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                                                )
-                                            ) {
-                                                Text(optionLabel)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                            ExtensionsSection(items = state.extensions, onToggleExtension = onToggleExtension)
                         }
 
                         if (settingsSection == "auth") {
