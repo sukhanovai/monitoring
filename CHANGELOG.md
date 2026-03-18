@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.33.4] - 2026-03-18
+
+### Fixed / Исправлено
+- EN: Added an "Extensions" section inside Android app settings to match Telegram-bot workflow: users can now manage extension toggles and run extension actions directly from settings.
+- RU: В настройки Android-приложения добавлен раздел «Расширения» для паритета с Telegram-ботом: теперь из настроек можно включать/выключать расширения и запускать их действия.
+
+### Changed / Изменено
+- EN: Completed repository-wide patch version bump to `8.33.4`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.4`, `ANDROID_VERSION_CODE=124`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.4`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.4`, `ANDROID_VERSION_CODE=124`.
+
 ## [8.33.3] - 2026-03-18
 
 ### Fixed / Исправлено
