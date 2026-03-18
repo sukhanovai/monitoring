@@ -13,6 +13,8 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -212,6 +214,7 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 private fun MonitoringApp(
     state: MainUiState,
     onTokenChanged: (String) -> Unit,
@@ -618,7 +621,10 @@ private fun MonitoringApp(
                             Button(onClick = { settingsSection = "monitoring" }) { Text("Мониторинг") }
                             Button(onClick = { settingsSection = "bot" }) { Text("Бот") }
                         }
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
                             Button(onClick = { settingsSection = "time" }) { Text("Время") }
                             Button(onClick = { settingsSection = "auth" }) { Text("Аутентификация") }
                             Button(onClick = { settingsSection = "servers" }) { Text("Серверы") }

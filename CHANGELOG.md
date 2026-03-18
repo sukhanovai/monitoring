@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.33.5] - 2026-03-18
+
+### Fixed / Исправлено
+- EN: Fixed Android settings navigation layout: section buttons now wrap to a new line on narrow screens, so the "Extensions" button is always visible and accessible.
+- RU: Исправлена вёрстка навигации разделов в настройках Android: кнопки теперь переносятся на новую строку на узких экранах, поэтому кнопка «Расширения» всегда видна и доступна.
+
+### Changed / Изменено
+- EN: Completed repository-wide patch version bump to `8.33.5`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.5`, `ANDROID_VERSION_CODE=125`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.5`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.5`, `ANDROID_VERSION_CODE=125`.
+
 ## [8.33.4] - 2026-03-18
 
 ### Fixed / Исправлено
