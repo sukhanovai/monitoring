@@ -6,15 +6,17 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.33.8] - 2026-03-18
+## [8.33.9] - 2026-03-18
 
 ### Fixed / Исправлено
-- EN: Fixed Android "⚙️ Open extensions settings" button in Settings → Extensions: it now reloads extension settings from `/v1/settings/extensions` instead of sending unsupported `settings_extensions` to `/v1/control/actions`, eliminating HTTP 400 and making the button functional.
-- RU: Исправлена кнопка Android «⚙️ Открыть настройки расширений» в Настройки → Расширения: теперь она перезагружает настройки расширений через `/v1/settings/extensions` вместо отправки неподдерживаемого `settings_extensions` в `/v1/control/actions`, из-за чего уходил HTTP 400 и кнопка не работала.
+- EN: Improved Android Extensions settings UX: the "⚙️ Open extensions settings" button now works as a real open/close toggle for the extensions settings block (Telegram-like behavior) instead of only showing a status text.
+- RU: Улучшен UX настроек расширений в Android: кнопка «⚙️ Открыть настройки расширений» теперь работает как реальный тумблер открытия/скрытия блока настроек расширений (поведение как в Telegram), а не только выводит статусный текст.
+- EN: Removed duplicate top-level "🛠️ Extensions" button from Android main menu to avoid duplicated navigation.
+- RU: Удалена дублирующая верхнеуровневая кнопка «🛠️ Расширения» из главного меню Android, чтобы убрать дубли навигации.
 
 ### Changed / Изменено
-- EN: Completed repository-wide patch version bump to `8.33.8`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.8`, `ANDROID_VERSION_CODE=128`.
-- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.8`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.8`, `ANDROID_VERSION_CODE=128`.
+- EN: Completed repository-wide patch version bump to `8.33.9`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.9`, `ANDROID_VERSION_CODE=129`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.9`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.9`, `ANDROID_VERSION_CODE=129`.
 
 ## [8.33.7] - 2026-03-18
 

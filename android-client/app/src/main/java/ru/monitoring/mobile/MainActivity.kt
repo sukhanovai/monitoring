@@ -296,6 +296,7 @@ private fun MonitoringApp(
 ) {
     var isManagementExpanded by rememberSaveable { mutableStateOf(false) }
     var isSettingsExpanded by rememberSaveable { mutableStateOf(false) }
+    var isExtensionsSettingsOpened by rememberSaveable { mutableStateOf(false) }
     var isSshAuthExpanded by rememberSaveable { mutableStateOf(false) }
     var isWindowsAuthExpanded by rememberSaveable { mutableStateOf(false) }
     var showWindowsAll by rememberSaveable { mutableStateOf(false) }
@@ -303,7 +304,6 @@ private fun MonitoringApp(
     var showWindowsTypeStats by rememberSaveable { mutableStateOf(false) }
     var showServerAvailabilityMenu by rememberSaveable { mutableStateOf(false) }
     var showServerResourcesMenu by rememberSaveable { mutableStateOf(false) }
-    var showExtensionsMenu by rememberSaveable { mutableStateOf(false) }
     var settingsSection by rememberSaveable { mutableStateOf("bff") }
 
     val canSaveMonitoring = state.checkIntervalInput.isNotBlank() ||
@@ -581,19 +581,6 @@ private fun MonitoringApp(
                             }
                         }
                     }
-                    Button(onClick = { showExtensionsMenu = !showExtensionsMenu }, modifier = Modifier.fillMaxWidth()) {
-                        Text("🛠️ Расширения")
-                    }
-                    if (showExtensionsMenu) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = onEnableAllExtensions) { Text("📊 Включить все") }
-                            Button(onClick = onDisableAllExtensions) { Text("📋 Отключить все") }
-                        }
-                        ExtensionsSection(
-                            items = state.extensions,
-                            onToggleExtension = onToggleExtension
-                        )
-                    }
                     Button(onClick = { isManagementExpanded = !isManagementExpanded }, modifier = Modifier.fillMaxWidth()) {
                         Text("🎛️ Управление")
                     }
@@ -782,15 +769,23 @@ private fun MonitoringApp(
                             Text("🧩 Настройки расширений", fontWeight = FontWeight.Bold)
                             Text("Отдельный раздел настроек расширений, как в Telegram-боте.")
                             Button(
-                                onClick = onOpenExtensionsSettingsMenu,
+                                onClick = {
+                                    if (isExtensionsSettingsOpened) {
+                                        isExtensionsSettingsOpened = false
+                                    } else {
+                                        isExtensionsSettingsOpened = true
+                                        onOpenExtensionsSettingsMenu()
+                                    }
+                                },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text("⚙️ Открыть настройки расширений")
+                                Text(if (isExtensionsSettingsOpened) "⚙️ Скрыть настройки расширений" else "⚙️ Открыть настройки расширений")
                             }
                             if (state.message.isNotBlank() && state.messageSource == "extensions_settings") {
                                 Text(state.message)
                             }
-                            state.extensionSettingsMenuOptions.forEach { item ->
+                            if (isExtensionsSettingsOpened) {
+                                state.extensionSettingsMenuOptions.forEach { item ->
                                 val optionLabel = item.label?.trim().orEmpty()
                                 val optionAction = item.action?.trim().orEmpty()
                                 val callbackAction = item.callbackData?.trim().orEmpty()
@@ -817,6 +812,7 @@ private fun MonitoringApp(
                                 Button(onClick = onDisableAllExtensions) { Text("📋 Отключить все") }
                             }
                             ExtensionsSection(items = state.extensions, onToggleExtension = onToggleExtension)
+                            }
                         }
 
                         if (settingsSection == "auth") {
