@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.33.23
+Server Monitoring System v8.33.24
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.33.23
+Версия: 8.33.24
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -2568,12 +2568,12 @@ def v1_extensions_actions():
     action = str(payload.get('action') or '').strip().lower()
 
     settings_menu_action_map = {
-        "settings_ext_backup_proxmox": "backup_proxmox",
-        "settings_ext_backup_db": "backup_databases",
-        "settings_ext_backup_mail": "backup_mail",
-        "settings_ext_stock_load": "backup_stock_loads",
-        "settings_ext_supplier_stock": "supplier_stock_reports",
-        "settings_zfs": "zfs_menu",
+        "settings_ext_backup_proxmox": "🖥️ Настройки расширения Proxmox открыты.",
+        "settings_ext_backup_db": "🗃️ Настройки расширения бэкапов БД открыты.",
+        "settings_ext_backup_mail": "📬 Настройки расширения бэкапов почты открыты.",
+        "settings_ext_stock_load": "📦 Настройки расширения загрузки остатков 1С открыты.",
+        "settings_ext_supplier_stock": "📦 Настройки расширения остатков поставщиков открыты.",
+        "settings_zfs": "🧊 Настройки расширения ZFS открыты.",
     }
 
     if action == 'enable_all':
@@ -2668,21 +2668,12 @@ def v1_extensions_actions():
 
     mapped_action = settings_menu_action_map.get(action)
     if mapped_action:
-        ok, message, result, menu_options = _execute_mobile_control_action(mapped_action)
-        if not ok:
-            return jsonify({
-                "error": {
-                    "code": "INVALID_ACTION",
-                    "message": message,
-                    "request_id": request_id,
-                }
-            }), 400
         return jsonify({
             "request_id": request_id,
             "action": action,
-            "result": result,
-            "message": message,
-            "menu_options": menu_options,
+            "result": "accepted",
+            "message": mapped_action,
+            "menu_options": [],
         }), 200
 
     if action == 'settings_resources':

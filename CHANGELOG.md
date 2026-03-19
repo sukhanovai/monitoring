@@ -6,17 +6,17 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.33.23] - 2026-03-19
+## [8.33.24] - 2026-03-19
 
 ### Fixed / Исправлено
-- EN: Fixed Telegram startup resilience: when `start_polling()` fails due to temporary network/proxy/API connectivity errors, the service no longer exits immediately and instead retries with exponential backoff (5s → up to 60s).
-- RU: Исправлена устойчивость старта Telegram-бота: если `start_polling()` падает из-за временных сетевых/прокси/API ошибок, сервис больше не завершается сразу и повторяет подключение с экспоненциальной задержкой (5с → до 60с).
-- EN: Added safe updater reset before retry attempts to avoid stuck partially-initialized polling state after failed Telegram connect.
-- RU: Добавлен безопасный сброс updater перед повторными попытками, чтобы не зависать в частично инициализированном состоянии polling после неудачного подключения к Telegram.
+- EN: Fixed Android Settings → Extensions → “Open extension settings”: this screen now always builds buttons from active extensions settings actions (`settings_*`) and no longer shows extension actions from the main menu.
+- RU: Исправлен сценарий Android Настройки → Расширения → «Открыть настройки расширений»: экран теперь всегда строит кнопки из действий настроек активных расширений (`settings_*`) и больше не подтягивает действия расширений из главного меню.
+- EN: Fixed `/v1/settings/extensions/actions` behavior for extension settings root callbacks (`settings_ext_*`, `settings_zfs`): backend now returns extension-settings responses instead of forwarding these callbacks to main extension menu actions.
+- RU: Исправлено поведение `/v1/settings/extensions/actions` для корневых callback’ов настроек расширений (`settings_ext_*`, `settings_zfs`): backend теперь возвращает ответы настроек расширений вместо прокидывания в действия главного меню расширений.
 
 ### Changed / Изменено
-- EN: Completed repository-wide patch version bump to `8.33.23`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.23`, `ANDROID_VERSION_CODE=142`.
-- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.23`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.23`, `ANDROID_VERSION_CODE=142`.
+- EN: Completed repository-wide patch version bump to `8.33.24`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.24`, `ANDROID_VERSION_CODE=143`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.24`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.24`, `ANDROID_VERSION_CODE=143`.
 
 ## [8.33.20] - 2026-03-19
 
