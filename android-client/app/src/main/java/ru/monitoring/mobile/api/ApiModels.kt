@@ -351,5 +351,6 @@ data class ExtensionsActionRequest(
 data class ExtensionsActionResponse(
     @Json(name = "request_id") val requestId: String? = null,
     val action: String? = null,
-    val message: String? = null
+    val message: String? = null,
+    @Json(name = "menu_options") val menuOptions: List<MenuOption>? = null
 )

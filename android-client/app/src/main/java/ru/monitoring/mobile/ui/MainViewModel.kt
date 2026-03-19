@@ -50,7 +50,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.33.26"
+    private val projectVersion = "8.33.27"
     private val fallbackUpdateUrl = "https://github.com/sukhanovai/monitoring/releases/latest"
     private val mailBackupHistoryRegex = Regex(
         pattern = """^([✅✔❌⚠️🚨])\s*(.+?)\s*[—-]\s*(.+?)\s*\(([^()]+)\)\s*$"""
@@ -829,10 +829,19 @@ class MainViewModel(
                 runCatching {
                     currentApi().runExtensionsAction(ExtensionsActionRequest(normalizedAction))
                 }.map { response ->
+                    val filteredOptions = filterMenuOptionsByEnabledExtensions(
+                        response.menuOptions.orEmpty(),
+                        state.extensions
+                    )
+                    val nextOptions = if (filteredOptions.isNotEmpty()) {
+                        filteredOptions
+                    } else {
+                        state.extensionSettingsMenuOptions
+                    }
                     Triple(
                         response.message ?: "Команда отправлена",
-                        state.extensionSettingsMenuOptions,
-                        state.extensionSettingsMenuAction
+                        nextOptions,
+                        if (filteredOptions.isNotEmpty()) normalizedAction else state.extensionSettingsMenuAction
                     )
                 }
             }
@@ -924,7 +933,7 @@ class MainViewModel(
             "settings_backup_db_patterns",
             "settings_backup_mail",
             "settings_stock_load",
-            "settings_supplier_stock" -> baseOptions
+            "settings_supplier_stock" -> null
             else -> if (action == localExtensionsSettingsCloseAction) {
                 emptyList()
             } else {

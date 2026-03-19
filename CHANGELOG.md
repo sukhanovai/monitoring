@@ -6,15 +6,17 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.33.26] - 2026-03-19
+## [8.33.27] - 2026-03-19
 
 ### Fixed / Исправлено
-- EN: Fixed Android Settings → Extensions → “Open extension settings” UX: tapping extension sections now opens a local nested submenu (Hosts/Patterns/Back/Close and peers) instead of only showing a toast-like “settings opened” status line.
-- RU: Исправлен UX в Android Настройки → Расширения → «Открыть настройки расширений»: по нажатию на разделы расширений теперь открывается локальное вложенное подменю (Хосты/Паттерны/Назад/Закрыть и аналоги), а не только строка статуса «настройки открыты».
+- EN: Fixed Android Settings → Extensions → “Open extension settings”: nested buttons now return actionable server-driven menus (including Proxmox Hosts flow and child actions), matching Telegram bot behavior instead of static status-only responses.
+- RU: Исправлен экран Android Настройки → Расширения → «Открыть настройки расширений»: вложенные кнопки теперь получают рабочие серверные меню (включая сценарий Proxmox → Хосты и дочерние действия) по аналогии с Telegram-ботом, а не статичные ответы-статусы.
+- EN: Extended Android API model for `/v1/settings/extensions/actions` to consume `menu_options`, so nested extension settings menus can update dynamically after each callback action.
+- RU: Расширена Android API-модель для `/v1/settings/extensions/actions` с поддержкой `menu_options`, чтобы вложенные меню настроек расширений динамически обновлялись после каждого callback-действия.
 
 ### Changed / Изменено
-- EN: Completed repository-wide patch version bump to `8.33.26`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.26`, `ANDROID_VERSION_CODE=145`.
-- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.26`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.26`, `ANDROID_VERSION_CODE=145`.
+- EN: Completed repository-wide patch version bump to `8.33.27`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.27`, `ANDROID_VERSION_CODE=146`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.27`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.27`, `ANDROID_VERSION_CODE=146`.
 
 ## [8.33.24] - 2026-03-19
 
