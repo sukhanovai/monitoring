@@ -6,6 +6,18 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.33.33] - 2026-03-19
+
+### Added / Добавлено
+- EN: Added host-level actions for Proxmox backup settings in the web/API extension menu (`edit`, `delete`, `enable/disable`) so Android can use the same host operation flow as Telegram.
+- RU: Добавлены действия по каждому Proxmox-хосту в web/API-меню настроек расширения (`редактировать`, `удалить`, `включить/отключить`), чтобы Android использовал тот же флоу операций по хостам, что и Telegram.
+
+### Changed / Изменено
+- EN: Improved Android rendering of extension-settings actions: deduplicated repeated menu buttons and grouped adjacent `edit/delete` host actions into a two-column row to better match Telegram layout.
+- RU: Улучшен рендер действий в Android-настройках расширений: убраны дублирующиеся кнопки меню и сгруппированы соседние действия `редактировать/удалить` хоста в двухколоночный ряд для лучшего соответствия Telegram-раскладке.
+- EN: Completed repository-wide patch version bump to `8.33.33`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.33` and `ANDROID_VERSION_CODE=152`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.33`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.33` и `ANDROID_VERSION_CODE=152`.
+
 ## [8.33.32] - 2026-03-19
 
 ### Fixed / Исправлено

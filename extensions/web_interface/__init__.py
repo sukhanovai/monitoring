@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.33.32
+Server Monitoring System v8.33.33
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.33.32
+Версия: 8.33.33
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -2841,14 +2841,114 @@ def v1_extensions_actions():
                 if isinstance(host_value, dict):
                     enabled = bool(host_value.get('enabled', True))
                 lines.append(f"{'🟢' if enabled else '🔴'} {host_name}")
+        menu_options = []
+        for host_name in sorted(proxmox_hosts.keys()):
+            host_value = proxmox_hosts.get(host_name)
+            enabled = True
+            if isinstance(host_value, dict):
+                enabled = bool(host_value.get('enabled', True))
+            toggle_label = "⛔️ Отключить" if enabled else "✅ Включить"
+            menu_options.extend([
+                {"label": f"✏️ {host_name}", "action": f"settings_proxmox_edit_{host_name}"},
+                {"label": f"🗑️ {host_name}", "action": f"settings_proxmox_delete_{host_name}"},
+                {"label": f"{toggle_label} {host_name}", "action": f"settings_proxmox_toggle_{host_name}"},
+            ])
         return jsonify({
             "request_id": request_id,
             "action": action,
             "result": "accepted",
             "message": "\n".join(lines),
-            "menu_options": [
+            "menu_options": menu_options + [
                 {"label": "🏠 На главную", "action": "main_menu"},
                 {"label": "↩️ Назад", "action": "settings_backup_proxmox"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        }), 200
+
+    if action.startswith("settings_proxmox_toggle_"):
+        host_name = action[len("settings_proxmox_toggle_"):]
+        proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
+        proxmox_hosts = proxmox_hosts if isinstance(proxmox_hosts, dict) else {}
+
+        host_value = proxmox_hosts.get(host_name)
+        if host_value is None:
+            return jsonify({
+                "request_id": request_id,
+                "action": action,
+                "result": "rejected",
+                "message": f"❌ Хост '{host_name}' не найден.",
+                "menu_options": [
+                    {"label": "↩️ Назад", "action": "settings_proxmox_list"},
+                    {"label": "✖️ Закрыть", "action": "close"},
+                ],
+            }), 200
+
+        enabled = True
+        if isinstance(host_value, dict):
+            enabled = bool(host_value.get('enabled', True))
+            host_value['enabled'] = not enabled
+        else:
+            proxmox_hosts[host_name] = {"pattern": str(host_value), "enabled": not enabled}
+
+        settings_manager.set_setting('PROXMOX_HOSTS', proxmox_hosts)
+        next_action = "settings_proxmox_list"
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "result": "accepted",
+            "message": f"🔄 Хост '{host_name}': {'включён' if not enabled else 'отключён'}.",
+            "menu_options": [
+                {"label": "📋 Обновить список", "action": next_action},
+                {"label": "🏠 На главную", "action": "main_menu"},
+                {"label": "↩️ Назад", "action": "settings_backup_proxmox"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        }), 200
+
+    if action.startswith("settings_proxmox_delete_"):
+        host_name = action[len("settings_proxmox_delete_"):]
+        proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
+        proxmox_hosts = proxmox_hosts if isinstance(proxmox_hosts, dict) else {}
+
+        if host_name not in proxmox_hosts:
+            return jsonify({
+                "request_id": request_id,
+                "action": action,
+                "result": "rejected",
+                "message": f"❌ Хост '{host_name}' не найден.",
+                "menu_options": [
+                    {"label": "↩️ Назад", "action": "settings_proxmox_list"},
+                    {"label": "✖️ Закрыть", "action": "close"},
+                ],
+            }), 200
+
+        proxmox_hosts.pop(host_name, None)
+        settings_manager.set_setting('PROXMOX_HOSTS', proxmox_hosts)
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "result": "accepted",
+            "message": f"✅ Хост '{host_name}' удалён.",
+            "menu_options": [
+                {"label": "📋 Обновить список", "action": "settings_proxmox_list"},
+                {"label": "🏠 На главную", "action": "main_menu"},
+                {"label": "↩️ Назад", "action": "settings_backup_proxmox"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        }), 200
+
+    if action.startswith("settings_proxmox_edit_"):
+        host_name = action[len("settings_proxmox_edit_"):]
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "result": "accepted",
+            "message": (
+                f"✏️ Редактирование хоста '{host_name}' пока выполняется в Telegram-боте.\n\n"
+                "В Android/web сейчас доступны выключение и удаление."
+            ),
+            "menu_options": [
+                {"label": "↩️ Назад", "action": "settings_proxmox_list"},
                 {"label": "✖️ Закрыть", "action": "close"},
             ],
         }), 200
