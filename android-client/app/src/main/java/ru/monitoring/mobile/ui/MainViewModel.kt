@@ -50,7 +50,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.33.20"
+    private val projectVersion = "8.33.21"
     private val fallbackUpdateUrl = "https://github.com/sukhanovai/monitoring/releases/latest"
     private val mailBackupHistoryRegex = Regex(
         pattern = """^([✅✔❌⚠️🚨])\s*(.+?)\s*[—-]\s*(.+?)\s*\(([^()]+)\)\s*$"""
@@ -845,6 +845,28 @@ class MainViewModel(
         }
     }
 
+    private fun resolveMenuOptionAction(option: MenuOption, preferCallbackData: Boolean = false): String {
+        val optionAction = option.action?.trim().orEmpty()
+        val callbackAction = option.callbackData?.trim().orEmpty()
+        val callbackActionCamel = option.callbackDataCamel?.trim().orEmpty()
+
+        return if (preferCallbackData) {
+            when {
+                callbackAction.isNotBlank() -> callbackAction
+                callbackActionCamel.isNotBlank() -> callbackActionCamel
+                optionAction.isNotBlank() -> optionAction
+                else -> ""
+            }
+        } else {
+            when {
+                optionAction.isNotBlank() -> optionAction
+                callbackAction.isNotBlank() -> callbackAction
+                callbackActionCamel.isNotBlank() -> callbackActionCamel
+                else -> ""
+            }
+        }
+    }
+
     private fun filterMenuOptionsByEnabledExtensions(
         options: List<MenuOption>,
         extensions: List<ExtensionItem>
@@ -858,15 +880,7 @@ class MainViewModel(
 
         return options.filter { option ->
             val optionExtensionId = normalizeExtensionId(option.extensionId.orEmpty())
-            val optionAction = option.action?.trim().orEmpty()
-            val callbackAction = option.callbackData?.trim().orEmpty()
-            val callbackActionCamel = option.callbackDataCamel?.trim().orEmpty()
-            val targetAction = when {
-                optionAction.isNotBlank() -> optionAction
-                callbackAction.isNotBlank() -> callbackAction
-                callbackActionCamel.isNotBlank() -> callbackActionCamel
-                else -> ""
-            }
+            val targetAction = resolveMenuOptionAction(option, preferCallbackData = true)
             if (optionExtensionId.isNotBlank()) {
                 return@filter optionExtensionId in enabledExtensionIds
             }
@@ -885,15 +899,7 @@ class MainViewModel(
         extensionActionToIdMatchers.firstOrNull { (matcher, _) -> matcher(action) }?.second
 
     private fun isMainMenuExtensionOption(option: MenuOption): Boolean {
-        val optionAction = option.action?.trim().orEmpty()
-        val callbackAction = option.callbackData?.trim().orEmpty()
-        val callbackActionCamel = option.callbackDataCamel?.trim().orEmpty()
-        val targetAction = when {
-            optionAction.isNotBlank() -> optionAction
-            callbackAction.isNotBlank() -> callbackAction
-            callbackActionCamel.isNotBlank() -> callbackActionCamel
-            else -> ""
-        }
+        val targetAction = resolveMenuOptionAction(option, preferCallbackData = true)
         if (targetAction.isBlank()) return false
         return targetAction in extensionMainMenuActions ||
             targetAction == "backup_proxmox" ||
