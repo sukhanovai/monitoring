@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
 /main.py
-Server Monitoring System v8.33.21
+Server Monitoring System v8.33.23
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Main launch module
 Система мониторинга серверов
-Версия: 8.33.21
+Версия: 8.33.23
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль запуска
@@ -16,6 +16,7 @@ import os
 import sys
 import argparse
 import threading
+import time
 from pathlib import Path
 
 from lib.logging import setup_logging
@@ -312,9 +313,38 @@ def main(args: argparse.Namespace):
         logger.info("🧪 Dry-run завершён: опрос Telegram не запускался")
         return
     
-    updater.start_polling(timeout=20, read_latency=2.0)
-    logger.info("✅ Бот запущен и готов к работе")
-    updater.idle()
+    retry_delay_sec = 5
+    max_retry_delay_sec = 60
+
+    while True:
+        try:
+            updater.start_polling(timeout=20, read_latency=2.0)
+            logger.info("✅ Бот запущен и готов к работе")
+            updater.idle()
+            break
+        except Exception as e:
+            try:
+                from telegram.error import NetworkError, TimedOut
+                network_errors = (NetworkError, TimedOut, TimeoutError, ConnectionError, OSError)
+            except Exception:
+                network_errors = (TimeoutError, ConnectionError, OSError)
+
+            if isinstance(e, network_errors):
+                logger.warning(
+                    "⚠️ Не удалось подключиться к Telegram API (%s). Повтор через %s сек.",
+                    e.__class__.__name__,
+                    retry_delay_sec,
+                )
+                try:
+                    updater.stop()
+                except Exception:
+                    pass
+                time.sleep(retry_delay_sec)
+                retry_delay_sec = min(retry_delay_sec * 2, max_retry_delay_sec)
+                continue
+
+            logger.exception("❌ Критическая ошибка запуска Telegram polling")
+            raise
 
 
 if __name__ == "__main__":

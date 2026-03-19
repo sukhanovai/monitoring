@@ -6,17 +6,17 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.33.21] - 2026-03-19
+## [8.33.23] - 2026-03-19
 
 ### Fixed / Исправлено
-- EN: Fixed Android Settings → Extensions → “Open extensions settings”: buttons in this section now prefer extension settings callbacks (`callback_data`) over generic action fields, so tapping a button opens extension settings instead of extension result screens.
-- RU: Исправлен сценарий Android Настройки → Расширения → «Открыть настройки расширений»: кнопки в этом разделе теперь используют callback’и настроек расширений (`callback_data`) с приоритетом над общими action-полями, поэтому нажатие открывает именно настройки расширения, а не экран результатов работы.
-- EN: Updated extension-settings menu filtering to resolve target actions with callback priority; this keeps only relevant settings actions for active extensions and avoids mixing with main extension actions.
-- RU: Обновлена фильтрация меню настроек расширений с приоритетом callback-данных при определении target action; это сохраняет только релевантные действия настроек активных расширений и исключает подмешивание действий основного меню расширений.
+- EN: Fixed Telegram startup resilience: when `start_polling()` fails due to temporary network/proxy/API connectivity errors, the service no longer exits immediately and instead retries with exponential backoff (5s → up to 60s).
+- RU: Исправлена устойчивость старта Telegram-бота: если `start_polling()` падает из-за временных сетевых/прокси/API ошибок, сервис больше не завершается сразу и повторяет подключение с экспоненциальной задержкой (5с → до 60с).
+- EN: Added safe updater reset before retry attempts to avoid stuck partially-initialized polling state after failed Telegram connect.
+- RU: Добавлен безопасный сброс updater перед повторными попытками, чтобы не зависать в частично инициализированном состоянии polling после неудачного подключения к Telegram.
 
 ### Changed / Изменено
-- EN: Completed repository-wide patch version bump to `8.33.21`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.21`, `ANDROID_VERSION_CODE=141`.
-- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.21`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.21`, `ANDROID_VERSION_CODE=141`.
+- EN: Completed repository-wide patch version bump to `8.33.23`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.23`, `ANDROID_VERSION_CODE=142`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.23`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.23`, `ANDROID_VERSION_CODE=142`.
 
 ## [8.33.20] - 2026-03-19
 
