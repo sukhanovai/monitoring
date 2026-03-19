@@ -797,31 +797,71 @@ private fun MonitoringApp(
                                 Text(state.message)
                             }
                             if (isExtensionsSettingsOpened) {
-                                state.extensionSettingsMenuOptions.forEach { item ->
-                                    val optionLabel = item.label?.trim().orEmpty()
-                                    val optionAction = item.action?.trim().orEmpty()
-                                    val callbackAction = item.callbackData?.trim().orEmpty()
-                                    val callbackActionCamel = item.callbackDataCamel?.trim().orEmpty()
-                                    val targetAction = when {
-                                        callbackAction.isNotBlank() -> callbackAction
-                                        callbackActionCamel.isNotBlank() -> callbackActionCamel
-                                        optionAction.isNotBlank() -> optionAction
-                                        else -> ""
-                                    }
-                                    if (optionLabel.isNotBlank() && targetAction.isNotBlank()) {
-                                        Button(
-                                            onClick = {
-                                                if (targetAction == "settings_extensions_close_local") {
-                                                    isExtensionsSettingsOpened = false
-                                                } else {
-                                                    onExtensionsSettingsAction(targetAction)
-                                                }
-                                            },
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            Text(optionLabel)
+                                val menuOptions = state.extensionSettingsMenuOptions
+                                    .mapNotNull { item ->
+                                        val optionLabel = item.label?.trim().orEmpty()
+                                        val optionAction = item.action?.trim().orEmpty()
+                                        val callbackAction = item.callbackData?.trim().orEmpty()
+                                        val callbackActionCamel = item.callbackDataCamel?.trim().orEmpty()
+                                        val targetAction = when {
+                                            callbackAction.isNotBlank() -> callbackAction
+                                            callbackActionCamel.isNotBlank() -> callbackActionCamel
+                                            optionAction.isNotBlank() -> optionAction
+                                            else -> ""
+                                        }
+                                        if (optionLabel.isNotBlank() && targetAction.isNotBlank()) {
+                                            optionLabel to targetAction
+                                        } else {
+                                            null
                                         }
                                     }
+                                    .distinctBy { (label, action) -> "${label.lowercase()}|$action" }
+
+                                var index = 0
+                                while (index < menuOptions.size) {
+                                    val (label, action) = menuOptions[index]
+                                    val hostNameForEdit = label.removePrefix("✏️ ").trim().takeIf { label.startsWith("✏️ ") && it.isNotBlank() }
+                                    val next = menuOptions.getOrNull(index + 1)
+                                    val isEditDeletePair = hostNameForEdit != null &&
+                                        next != null &&
+                                        next.first.startsWith("🗑️ ") &&
+                                        next.first.removePrefix("🗑️ ").trim() == hostNameForEdit
+
+                                    if (isEditDeletePair) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Button(
+                                                onClick = { onExtensionsSettingsAction(action) },
+                                                modifier = Modifier.weight(1f)
+                                            ) {
+                                                Text(label)
+                                            }
+                                            Button(
+                                                onClick = { onExtensionsSettingsAction(next!!.second) },
+                                                modifier = Modifier.weight(1f)
+                                            ) {
+                                                Text(next.first)
+                                            }
+                                        }
+                                        index += 2
+                                        continue
+                                    }
+
+                                    Button(
+                                        onClick = {
+                                            if (action == "settings_extensions_close_local") {
+                                                isExtensionsSettingsOpened = false
+                                            } else {
+                                                onExtensionsSettingsAction(action)
+                                            }
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text(label)
+                                    }
+                                    index += 1
                                 }
                             }
                         }
