@@ -6,6 +6,14 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.33.29] - 2026-03-19
+- EN: Fixed Android extension-settings callback flow to match Telegram behavior: removed local placeholder submenu actions and normalized legacy local action aliases to real backend callbacks (`settings_backup_proxmox`, `settings_db_main`, etc.), so nested buttons now trigger server-side actions instead of HTTP 400.
+- RU: Исправлен callback-флоу настроек расширений в Android под поведение Telegram: убраны локальные заглушки подменю и добавлена нормализация устаревших локальных action-алиасов в реальные backend-callback’и (`settings_backup_proxmox`, `settings_db_main` и т.д.), поэтому вложенные кнопки теперь запускают серверные действия без HTTP 400.
+- EN: Extended `/v1/settings/extensions/actions` to handle nested extension settings callbacks (`settings_zfs_toggle_*`, `settings_zfs_edit_name_*`, `settings_zfs_delete_*`, `settings_db_*`, `supplier_stock_*`) with actionable responses instead of `INVALID_ACTION`.
+- RU: Расширен `/v1/settings/extensions/actions` поддержкой вложенных callback’ов настроек расширений (`settings_zfs_toggle_*`, `settings_zfs_edit_name_*`, `settings_zfs_delete_*`, `settings_db_*`, `supplier_stock_*`) с рабочими ответами вместо `INVALID_ACTION`.
+- EN: Completed repository-wide patch version bump to `8.33.29`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.29`, `ANDROID_VERSION_CODE=148`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.29`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.29`, `ANDROID_VERSION_CODE=148`.
+
 ## [8.33.28] - 2026-03-19
 
 ### Fixed / Исправлено
