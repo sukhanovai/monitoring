@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.33.25] - 2026-03-19
+
+### Fixed / Исправлено
+- EN: Fixed Android Settings → Extensions submenu flow: after tapping an extension section, the app now keeps the current settings list if backend returns an empty/filtered menu, so users do not get a fake “settings opened” message without visible options.
+- RU: Исправлен сценарий подменю в Android Настройки → Расширения: после нажатия на раздел расширения приложение теперь сохраняет текущий список настроек, если backend вернул пустое/отфильтрованное меню, чтобы не было фейкового «настройки открыты», когда кнопок нет.
+
+### Changed / Изменено
+- EN: Completed repository-wide patch version bump to `8.33.25`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.25`, `ANDROID_VERSION_CODE=144`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.25`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.25`, `ANDROID_VERSION_CODE=144`.
+
 ## [8.33.24] - 2026-03-19
 
 ### Fixed / Исправлено

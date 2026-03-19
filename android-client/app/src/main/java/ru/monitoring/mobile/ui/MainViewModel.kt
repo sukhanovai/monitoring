@@ -50,7 +50,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.33.24"
+    private val projectVersion = "8.33.25"
     private val fallbackUpdateUrl = "https://github.com/sukhanovai/monitoring/releases/latest"
     private val mailBackupHistoryRegex = Regex(
         pattern = """^([✅✔❌⚠️🚨])\s*(.+?)\s*[—-]\s*(.+?)\s*\(([^()]+)\)\s*$"""
@@ -795,12 +795,18 @@ class MainViewModel(
                 runCatching {
                     currentApi().runControlAction(ControlActionRequest(normalizedAction))
                 }.map { response ->
+                    val filteredOptions = filterMenuOptionsByEnabledExtensions(
+                        response.menuOptions.orEmpty(),
+                        state.extensions
+                    )
+                    val nextOptions = if (filteredOptions.isNotEmpty()) {
+                        filteredOptions
+                    } else {
+                        state.extensionSettingsMenuOptions
+                    }
                     Triple(
                         response.message ?: response.result ?: "Команда отправлена",
-                        filterMenuOptionsByEnabledExtensions(
-                            response.menuOptions.orEmpty(),
-                            state.extensions
-                        ).filterNot(::isMainMenuExtensionOption),
+                        nextOptions,
                         normalizedAction
                     )
                 }
@@ -892,18 +898,6 @@ class MainViewModel(
 
     private fun mapActionToExtensionId(action: String): String? =
         extensionActionToIdMatchers.firstOrNull { (matcher, _) -> matcher(action) }?.second
-
-    private fun isMainMenuExtensionOption(option: MenuOption): Boolean {
-        val targetAction = resolveMenuOptionAction(option, preferCallbackData = true)
-        if (targetAction.isBlank()) return false
-        return targetAction in extensionMainMenuActions ||
-            targetAction == "backup_proxmox" ||
-            targetAction == "zfs" ||
-            targetAction.startsWith("backup_host_") ||
-            targetAction.startsWith("backup_mail") ||
-            targetAction.startsWith("supplier_stock_reports_") ||
-            targetAction.startsWith("supplier_stock_report_source_day|")
-    }
 
     private fun buildExtensionsSettingsFallbackOptions(extensions: List<ExtensionItem>): List<MenuOption> {
         val enabledExtensionIds = extensions.asSequence()
