@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.33.27
+Server Monitoring System v8.33.28
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.33.27
+Версия: 8.33.28
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -2601,14 +2601,20 @@ def v1_extensions_actions():
         "settings_ext_supplier_stock": {
             "message": "📦 Настройки расширения остатков поставщиков открыты.",
             "menu_options": [
+                {"label": "🌐 Скачивание файлов", "action": "supplier_stock_download"},
+                {"label": "📧 Почтовые сообщения", "action": "supplier_stock_mail"},
+                {"label": "🗓 Период отчётов", "action": "supplier_stock_report_period"},
                 {"label": "🏠 На главную", "action": "main_menu"},
                 {"label": "↩️ Назад", "action": "settings_extensions"},
                 {"label": "✖️ Закрыть", "action": "close"},
             ],
         },
         "settings_db_main": {
-            "message": "🗃️ Управление списком баз данных пока доступно в Telegram-боте.",
+            "message": "🗃️ Настройки баз данных для бэкапов открыты.",
             "menu_options": [
+                {"label": "📋 Просмотр всех БД", "action": "settings_db_view_all"},
+                {"label": "➕ Добавить категорию БД", "action": "settings_db_add_category"},
+                {"label": "🗑️ Удалить категорию", "action": "settings_db_delete_category"},
                 {"label": "🏠 На главную", "action": "main_menu"},
                 {"label": "↩️ Назад", "action": "settings_ext_backup_db"},
                 {"label": "✖️ Закрыть", "action": "close"},
@@ -2653,6 +2659,38 @@ def v1_extensions_actions():
                 {"label": "🔍 Паттерны", "action": "settings_patterns_zfs"},
                 {"label": "🏠 На главную", "action": "main_menu"},
                 {"label": "↩️ Назад", "action": "settings_extensions"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        },
+        "settings_zfs_add": {
+            "message": "➕ Добавление ZFS-сервера пока доступно в Telegram-боте.",
+            "menu_options": [
+                {"label": "🏠 На главную", "action": "main_menu"},
+                {"label": "↩️ Назад", "action": "settings_zfs_list"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        },
+        "settings_db_add_category": {
+            "message": "➕ Добавление категории БД пока доступно в Telegram-боте.",
+            "menu_options": [
+                {"label": "🏠 На главную", "action": "main_menu"},
+                {"label": "↩️ Назад", "action": "settings_db_main"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        },
+        "settings_db_delete_category": {
+            "message": "🗑️ Удаление категории БД пока доступно в Telegram-боте.",
+            "menu_options": [
+                {"label": "🏠 На главную", "action": "main_menu"},
+                {"label": "↩️ Назад", "action": "settings_db_main"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        },
+        "settings_db_view_all": {
+            "message": "📋 Просмотр полного списка БД пока доступен в Telegram-боте.",
+            "menu_options": [
+                {"label": "🏠 На главную", "action": "main_menu"},
+                {"label": "↩️ Назад", "action": "settings_db_main"},
                 {"label": "✖️ Закрыть", "action": "close"},
             ],
         },
@@ -2827,6 +2865,116 @@ def v1_extensions_actions():
             "menu_options": [
                 {"label": "🏠 На главную", "action": "main_menu"},
                 {"label": "↩️ Назад", "action": "settings_backup_proxmox"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        }), 200
+
+    if action == "settings_zfs_list":
+        zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
+        zfs_servers = zfs_servers if isinstance(zfs_servers, dict) else {}
+
+        lines = ["📋 ZFS серверы", ""]
+        if not zfs_servers:
+            lines.append("❌ Серверы не настроены.")
+        else:
+            for server_name in sorted(zfs_servers.keys()):
+                server_value = zfs_servers.get(server_name)
+                enabled = True
+                if isinstance(server_value, dict):
+                    enabled = bool(server_value.get('enabled', True))
+                lines.append(f"{'🟢' if enabled else '🔴'} {server_name}")
+
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "result": "accepted",
+            "message": "\n".join(lines),
+            "menu_options": [
+                {"label": "➕ Добавить сервер", "action": "settings_zfs_add"},
+                {"label": "🏠 На главную", "action": "main_menu"},
+                {"label": "↩️ Назад", "action": "settings_zfs"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        }), 200
+
+    if action == "supplier_stock_download":
+        supplier_config = extension_manager.load_extension_config('supplier_stock_files')
+        download_settings = supplier_config.get('download', {}) if isinstance(supplier_config, dict) else {}
+        sources = download_settings.get('sources', []) if isinstance(download_settings, dict) else []
+        source_count = len(sources) if isinstance(sources, list) else 0
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "result": "accepted",
+            "message": (
+                "🌐 Скачивание файлов остатков поставщиков\n\n"
+                f"Источников: {source_count}\n\n"
+                "Выберите раздел:"
+            ),
+            "menu_options": [
+                {"label": "⏱ Расписание", "action": "supplier_stock_schedule"},
+                {"label": "🖥 Ресурсы", "action": "supplier_stock_resources"},
+                {"label": "🗄 FTP", "action": "supplier_stock_ftp"},
+                {"label": "⚙️ Обработка", "action": "supplier_stock_processing"},
+                {"label": "↩️ Назад", "action": "settings_ext_supplier_stock"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        }), 200
+
+    if action == "supplier_stock_mail":
+        supplier_config = extension_manager.load_extension_config('supplier_stock_files')
+        mail_settings = supplier_config.get('mail', {}) if isinstance(supplier_config, dict) else {}
+        sources = mail_settings.get('sources', []) if isinstance(mail_settings, dict) else []
+        source_count = len(sources) if isinstance(sources, list) else 0
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "result": "accepted",
+            "message": (
+                "📧 Почтовые сообщения (остатки поставщиков)\n\n"
+                f"Источников: {source_count}\n\n"
+                "Выберите раздел:"
+            ),
+            "menu_options": [
+                {"label": "📨 Источники почты", "action": "supplier_stock_mail_sources"},
+                {"label": "🗓 Отчёты (download)", "action": "supplier_stock_reports_download"},
+                {"label": "🗓 Отчёты (mail)", "action": "supplier_stock_reports_mail"},
+                {"label": "↩️ Назад", "action": "settings_ext_supplier_stock"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        }), 200
+
+    if action in {
+        "supplier_stock_report_period",
+        "supplier_stock_schedule",
+        "supplier_stock_resources",
+        "supplier_stock_ftp",
+        "supplier_stock_processing",
+        "supplier_stock_mail_sources",
+        "supplier_stock_reports_download",
+        "supplier_stock_reports_mail",
+    }:
+        title_map = {
+            "supplier_stock_report_period": "🗓 Период отчётов",
+            "supplier_stock_schedule": "⏱ Расписание",
+            "supplier_stock_resources": "🖥 Ресурсы",
+            "supplier_stock_ftp": "🗄 FTP",
+            "supplier_stock_processing": "⚙️ Обработка",
+            "supplier_stock_mail_sources": "📨 Источники почты",
+            "supplier_stock_reports_download": "🗓 Отчёты (download)",
+            "supplier_stock_reports_mail": "🗓 Отчёты (mail)",
+        }
+        back_action = "supplier_stock_mail" if action.startswith("supplier_stock_mail_") or action.startswith("supplier_stock_reports_") else "supplier_stock_download"
+        if action == "supplier_stock_report_period":
+            back_action = "settings_ext_supplier_stock"
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "result": "accepted",
+            "message": f"{title_map.get(action, 'Раздел')}\n\nДетальная настройка пока доступна в Telegram-боте.",
+            "menu_options": [
+                {"label": "🏠 На главную", "action": "main_menu"},
+                {"label": "↩️ Назад", "action": back_action},
                 {"label": "✖️ Закрыть", "action": "close"},
             ],
         }), 200
