@@ -6,15 +6,15 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.33.19] - 2026-03-18
+## [8.33.20] - 2026-03-19
 
 ### Fixed / Исправлено
-- EN: Fixed Android Settings → Extensions → “Open extensions settings” buttons that sent `settings_*` actions to `/v1/control/actions` and produced HTTP 400; these actions now route to `/v1/settings/extensions/actions`.
-- RU: Исправлены кнопки Android Настройки → Расширения → «Открыть настройки расширений», которые отправляли `settings_*` в `/v1/control/actions` и получали HTTP 400; теперь эти действия идут в `/v1/settings/extensions/actions`.
+- EN: Fixed HTTP 400 in Android Settings → Extensions → “Open extensions settings”: backend endpoint `/v1/settings/extensions/actions` now supports extension-settings callbacks (`settings_ext_*`, `settings_zfs`, `settings_resources`) and returns proper action results.
+- RU: Исправлен HTTP 400 в Android Настройки → Расширения → «Открыть настройки расширений»: backend endpoint `/v1/settings/extensions/actions` теперь поддерживает callback’и настроек расширений (`settings_ext_*`, `settings_zfs`, `settings_resources`) и возвращает корректные результаты действий.
 
 ### Changed / Изменено
-- EN: Completed repository-wide patch version bump to `8.33.19`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.19`, `ANDROID_VERSION_CODE=139`.
-- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.19`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.19`, `ANDROID_VERSION_CODE=139`.
+- EN: Completed repository-wide patch version bump to `8.33.20`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.20`, `ANDROID_VERSION_CODE=140`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.20`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.20`, `ANDROID_VERSION_CODE=140`.
 - EN: Synchronized leftover `8.33.18` references across runtime banners, config constants, scripts, and docs to eliminate partial version drift.
 - RU: Синхронизированы оставшиеся ссылки `8.33.18` в runtime-баннерах, константах конфигурации, скриптах и документации, чтобы убрать частичный рассинхрон версии.
 

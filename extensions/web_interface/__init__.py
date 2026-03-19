@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.33.19
+Server Monitoring System v8.33.20
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.33.19
+Версия: 8.33.20
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -2567,6 +2567,15 @@ def v1_extensions_actions():
     payload = request.get_json(silent=True) or {}
     action = str(payload.get('action') or '').strip().lower()
 
+    settings_menu_action_map = {
+        "settings_ext_backup_proxmox": "backup_proxmox",
+        "settings_ext_backup_db": "backup_databases",
+        "settings_ext_backup_mail": "backup_mail",
+        "settings_ext_stock_load": "backup_stock_loads",
+        "settings_ext_supplier_stock": "supplier_stock_reports",
+        "settings_zfs": "zfs_menu",
+    }
+
     if action == 'enable_all':
         changed = 0
         for ext_id in extension_manager.get_extensions_status():
@@ -2591,10 +2600,106 @@ def v1_extensions_actions():
             "message": f"✅ Отключено {changed} расширений",
         }), 200
 
+    if action == 'settings_ext_enable_all':
+        changed = 0
+        for ext_id in extension_manager.get_extensions_status():
+            success, _ = extension_manager.enable_extension(ext_id)
+            if success:
+                changed += 1
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "message": f"✅ Включено {changed} расширений",
+        }), 200
+
+    if action == 'settings_ext_disable_all':
+        changed = 0
+        for ext_id in extension_manager.get_extensions_status():
+            success, _ = extension_manager.disable_extension(ext_id)
+            if success:
+                changed += 1
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "message": f"✅ Отключено {changed} расширений",
+        }), 200
+
+    if action.startswith('settings_ext_toggle_'):
+        extension_id = action.replace('settings_ext_toggle_', '', 1).strip()
+        if not extension_id:
+            return jsonify({
+                "error": {
+                    "code": "INVALID_ACTION",
+                    "message": "Extension id is required for settings_ext_toggle_*",
+                    "request_id": request_id,
+                }
+            }), 400
+
+        status_map = extension_manager.get_extensions_status()
+        if extension_id not in status_map:
+            return jsonify({
+                "error": {
+                    "code": "NOT_FOUND",
+                    "message": f"Extension '{extension_id}' not found",
+                    "request_id": request_id,
+                }
+            }), 404
+
+        enabled_now = bool((status_map.get(extension_id) or {}).get('enabled'))
+        success, message = (
+            extension_manager.disable_extension(extension_id)
+            if enabled_now
+            else extension_manager.enable_extension(extension_id)
+        )
+        if not success:
+            return jsonify({
+                "error": {
+                    "code": "UPDATE_FAILED",
+                    "message": message,
+                    "request_id": request_id,
+                }
+            }), 500
+
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "message": message,
+        }), 200
+
+    mapped_action = settings_menu_action_map.get(action)
+    if mapped_action:
+        ok, message, result, menu_options = _execute_mobile_control_action(mapped_action)
+        if not ok:
+            return jsonify({
+                "error": {
+                    "code": "INVALID_ACTION",
+                    "message": message,
+                    "request_id": request_id,
+                }
+            }), 400
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "result": result,
+            "message": message,
+            "menu_options": menu_options,
+        }), 200
+
+    if action == 'settings_resources':
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "message": "Откройте раздел «Доступность и ресурсы» для просмотра ресурсов серверов.",
+        }), 200
+
     return jsonify({
         "error": {
             "code": "INVALID_ACTION",
-            "message": "Supported actions: enable_all, disable_all",
+            "message": (
+                "Supported actions: enable_all, disable_all, "
+                "settings_ext_enable_all, settings_ext_disable_all, "
+                "settings_ext_toggle_{extension_id}, settings_ext_*, settings_zfs, settings_resources"
+            ),
             "request_id": request_id,
         }
     }), 400
