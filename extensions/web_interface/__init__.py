@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.33.26
+Server Monitoring System v8.33.27
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.33.26
+Версия: 8.33.27
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -2567,13 +2567,95 @@ def v1_extensions_actions():
     payload = request.get_json(silent=True) or {}
     action = str(payload.get('action') or '').strip().lower()
 
+    from config.db_settings_app import settings_manager
+
     settings_menu_action_map = {
-        "settings_ext_backup_proxmox": "🖥️ Настройки расширения Proxmox открыты.",
-        "settings_ext_backup_db": "🗃️ Настройки расширения бэкапов БД открыты.",
-        "settings_ext_backup_mail": "📬 Настройки расширения бэкапов почты открыты.",
-        "settings_ext_stock_load": "📦 Настройки расширения загрузки остатков 1С открыты.",
-        "settings_ext_supplier_stock": "📦 Настройки расширения остатков поставщиков открыты.",
-        "settings_zfs": "🧊 Настройки расширения ZFS открыты.",
+        "settings_ext_backup_db": {
+            "message": "🗃️ Настройки расширения бэкапов БД открыты.",
+            "menu_options": [
+                {"label": "📋 Базы", "action": "settings_db_main"},
+                {"label": "🔍 Паттерны", "action": "settings_patterns_db"},
+                {"label": "🏠 На главную", "action": "main_menu"},
+                {"label": "↩️ Назад", "action": "settings_extensions"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        },
+        "settings_ext_backup_mail": {
+            "message": "📬 Настройки расширения бэкапов почты открыты.",
+            "menu_options": [
+                {"label": "🔍 Паттерны", "action": "settings_patterns_mail"},
+                {"label": "🏠 На главную", "action": "main_menu"},
+                {"label": "↩️ Назад", "action": "settings_extensions"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        },
+        "settings_ext_stock_load": {
+            "message": "📦 Настройки расширения загрузки остатков 1С открыты.",
+            "menu_options": [
+                {"label": "🔍 Паттерны", "action": "settings_patterns_stock"},
+                {"label": "🏠 На главную", "action": "main_menu"},
+                {"label": "↩️ Назад", "action": "settings_extensions"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        },
+        "settings_ext_supplier_stock": {
+            "message": "📦 Настройки расширения остатков поставщиков открыты.",
+            "menu_options": [
+                {"label": "🏠 На главную", "action": "main_menu"},
+                {"label": "↩️ Назад", "action": "settings_extensions"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        },
+        "settings_db_main": {
+            "message": "🗃️ Управление списком баз данных пока доступно в Telegram-боте.",
+            "menu_options": [
+                {"label": "🏠 На главную", "action": "main_menu"},
+                {"label": "↩️ Назад", "action": "settings_ext_backup_db"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        },
+        "settings_patterns_proxmox": {
+            "message": "🔍 Паттерны Proxmox открыты.",
+            "menu_options": [
+                {"label": "🏠 На главную", "action": "main_menu"},
+                {"label": "↩️ Назад", "action": "settings_ext_backup_proxmox"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        },
+        "settings_patterns_db": {
+            "message": "🔍 Паттерны бэкапов БД открыты.",
+            "menu_options": [
+                {"label": "🏠 На главную", "action": "main_menu"},
+                {"label": "↩️ Назад", "action": "settings_ext_backup_db"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        },
+        "settings_patterns_mail": {
+            "message": "🔍 Паттерны бэкапов почты открыты.",
+            "menu_options": [
+                {"label": "🏠 На главную", "action": "main_menu"},
+                {"label": "↩️ Назад", "action": "settings_ext_backup_mail"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        },
+        "settings_patterns_stock": {
+            "message": "🔍 Паттерны загрузки остатков открыты.",
+            "menu_options": [
+                {"label": "🏠 На главную", "action": "main_menu"},
+                {"label": "↩️ Назад", "action": "settings_ext_stock_load"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        },
+        "settings_zfs": {
+            "message": "🧊 Настройки расширения ZFS открыты.",
+            "menu_options": [
+                {"label": "📋 Хосты", "action": "settings_zfs_list"},
+                {"label": "🔍 Паттерны", "action": "settings_patterns_zfs"},
+                {"label": "🏠 На главную", "action": "main_menu"},
+                {"label": "↩️ Назад", "action": "settings_extensions"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        },
     }
 
     if action == 'enable_all':
@@ -2666,14 +2748,97 @@ def v1_extensions_actions():
             "message": message,
         }), 200
 
+    if action == "settings_ext_backup_proxmox":
+        proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
+        proxmox_count = len(proxmox_hosts) if isinstance(proxmox_hosts, dict) else 0
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "result": "accepted",
+            "message": (
+                "🖥️ Бэкапы Proxmox\n\n"
+                f"Хостов в списке: {proxmox_count}\n\n"
+                "Выберите раздел:"
+            ),
+            "menu_options": [
+                {"label": "📋 Хосты", "action": "settings_backup_proxmox"},
+                {"label": "🔍 Паттерны", "action": "settings_patterns_proxmox"},
+                {"label": "🏠 На главную", "action": "main_menu"},
+                {"label": "↩️ Назад", "action": "settings_extensions"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        }), 200
+
+    if action == "settings_backup_proxmox":
+        proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
+        proxmox_hosts = proxmox_hosts if isinstance(proxmox_hosts, dict) else {}
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "result": "accepted",
+            "message": (
+                "🖥️ Бэкапы Proxmox\n\n"
+                f"Хостов в списке: {len(proxmox_hosts)}\n\n"
+                "Выберите действие:"
+            ),
+            "menu_options": [
+                {"label": "📋 Список хостов", "action": "settings_proxmox_list"},
+                {"label": "➕ Добавить хост", "action": "settings_proxmox_add"},
+                {"label": "🏠 На главную", "action": "main_menu"},
+                {"label": "↩️ Назад", "action": "settings_ext_backup_proxmox"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        }), 200
+
+    if action == "settings_proxmox_list":
+        proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
+        proxmox_hosts = proxmox_hosts if isinstance(proxmox_hosts, dict) else {}
+        lines = ["📋 Хосты Proxmox", ""]
+        if not proxmox_hosts:
+            lines.append("❌ Хосты не настроены.")
+        else:
+            for host_name in sorted(proxmox_hosts.keys()):
+                host_value = proxmox_hosts.get(host_name)
+                enabled = True
+                if isinstance(host_value, dict):
+                    enabled = bool(host_value.get('enabled', True))
+                lines.append(f"{'🟢' if enabled else '🔴'} {host_name}")
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "result": "accepted",
+            "message": "\n".join(lines),
+            "menu_options": [
+                {"label": "🏠 На главную", "action": "main_menu"},
+                {"label": "↩️ Назад", "action": "settings_backup_proxmox"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        }), 200
+
+    if action == "settings_proxmox_add":
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "result": "accepted",
+            "message": (
+                "➕ Добавление Proxmox хоста\n\n"
+                "Добавление/редактирование хостов пока выполняется в Telegram-боте."
+            ),
+            "menu_options": [
+                {"label": "🏠 На главную", "action": "main_menu"},
+                {"label": "↩️ Назад", "action": "settings_backup_proxmox"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        }), 200
+
     mapped_action = settings_menu_action_map.get(action)
     if mapped_action:
         return jsonify({
             "request_id": request_id,
             "action": action,
             "result": "accepted",
-            "message": mapped_action,
-            "menu_options": [],
+            "message": mapped_action.get("message"),
+            "menu_options": mapped_action.get("menu_options", []),
         }), 200
 
     if action == 'settings_resources':
