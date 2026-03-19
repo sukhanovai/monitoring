@@ -50,7 +50,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.33.23"
+    private val projectVersion = "8.33.24"
     private val fallbackUpdateUrl = "https://github.com/sukhanovai/monitoring/releases/latest"
     private val mailBackupHistoryRegex = Regex(
         pattern = """^([✅✔❌⚠️🚨])\s*(.+?)\s*[—-]\s*(.+?)\s*\(([^()]+)\)\s*$"""
@@ -767,18 +767,13 @@ class MainViewModel(
             }
 
             val extensions = extensionsResponse?.items ?: state.extensions
-            val filteredMenuOptions = filterMenuOptionsByEnabledExtensions(
-                menuResponse?.menuOptions.orEmpty(),
-                extensions
-            ).filterNot(::isMainMenuExtensionOption)
+            val fallbackOptions = buildExtensionsSettingsFallbackOptions(extensions)
             state = state.copy(
                 isLoading = false,
                 extensions = extensions,
                 message = menuResponse?.message ?: "Список расширений обновлён",
                 messageSource = "extensions_settings",
-                extensionSettingsMenuOptions = filteredMenuOptions.ifEmpty {
-                    buildExtensionsSettingsFallbackOptions(extensions)
-                },
+                extensionSettingsMenuOptions = fallbackOptions,
                 extensionSettingsMenuAction = "open_extensions_settings"
             )
         }
