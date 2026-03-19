@@ -50,7 +50,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.33.25"
+    private val projectVersion = "8.33.26"
     private val fallbackUpdateUrl = "https://github.com/sukhanovai/monitoring/releases/latest"
     private val mailBackupHistoryRegex = Regex(
         pattern = """^([✅✔❌⚠️🚨])\s*(.+?)\s*[—-]\s*(.+?)\s*\(([^()]+)\)\s*$"""
@@ -89,6 +89,8 @@ class MainViewModel(
         Triple("zfs_monitor", "🧊 ZFS", "settings_zfs"),
         Triple("resource_monitor", "💻 Ресурсы", "settings_resources")
     )
+    private val localExtensionsSettingsBackAction = "settings_extensions_back_local"
+    private val localExtensionsSettingsCloseAction = "settings_extensions_close_local"
     private val morningReportActions = listOf("send_morning_report", "morning_report")
 
     private fun currentApi() = ApiFactory.createApi(
@@ -784,6 +786,19 @@ class MainViewModel(
         if (normalizedAction.isBlank()) return
 
         viewModelScope.launch {
+            val localMenuOptions = buildLocalExtensionsSettingsMenuOptions(normalizedAction)
+            if (localMenuOptions != null) {
+                val message = localExtensionsSettingsMessage(normalizedAction)
+                state = state.copy(
+                    isLoading = false,
+                    message = message,
+                    messageSource = "extensions_settings",
+                    extensionSettingsMenuOptions = localMenuOptions,
+                    extensionSettingsMenuAction = normalizedAction
+                )
+                return@launch
+            }
+
             state = state.copy(isLoading = true)
             val actionCall = if (
                 normalizedAction in extensionSettingsControlActions ||
@@ -843,6 +858,78 @@ class MainViewModel(
                         messageSource = "extensions_settings"
                     )
                 }
+        }
+    }
+
+    private fun localExtensionsSettingsMessage(action: String): String = when (action) {
+        "settings_ext_backup_proxmox" -> "🖥️ Настройки Proxmox открыты."
+        "settings_ext_backup_db" -> "🗃️ Настройки бэкапов БД открыты."
+        "settings_ext_backup_mail" -> "📬 Настройки бэкапов почты открыты."
+        "settings_ext_stock_load" -> "📦 Настройки загрузки остатков 1С открыты."
+        "settings_ext_supplier_stock" -> "📦 Настройки остатков поставщиков открыты."
+        "settings_zfs" -> "🧊 Настройки ZFS открыты."
+        "settings_backup_hosts" -> "🖥️ Раздел «Хосты» открыт."
+        "settings_backup_patterns" -> "🔍 Раздел «Паттерны» открыт."
+        "settings_backup_databases" -> "🗃️ Раздел «Базы данных» открыт."
+        "settings_backup_db_patterns" -> "🔍 Раздел «Паттерны БД» открыт."
+        "settings_backup_mail" -> "📬 Раздел «Почтовые бэкапы» открыт."
+        "settings_stock_load" -> "📦 Раздел «Загрузка остатков 1С» открыт."
+        "settings_supplier_stock" -> "📦 Раздел «Остатки поставщиков» открыт."
+        localExtensionsSettingsBackAction -> "Список настроек расширений обновлён."
+        else -> "Настройки расширений открыты."
+    }
+
+    private fun buildLocalExtensionsSettingsMenuOptions(action: String): List<MenuOption>? {
+        val baseOptions = state.extensionSettingsMenuOptions
+        val closeOption = MenuOption(label = "✖️ Закрыть", action = localExtensionsSettingsCloseAction)
+        val backOption = MenuOption(label = "↩️ Назад", action = localExtensionsSettingsBackAction)
+
+        return when (action) {
+            "settings_ext_backup_proxmox" -> listOf(
+                MenuOption(label = "🖥️ Хосты", action = "settings_backup_hosts"),
+                MenuOption(label = "🔍 Паттерны", action = "settings_backup_patterns"),
+                backOption,
+                closeOption
+            )
+            "settings_ext_backup_db" -> listOf(
+                MenuOption(label = "🗃️ Базы данных", action = "settings_backup_databases"),
+                MenuOption(label = "🔍 Паттерны БД", action = "settings_backup_db_patterns"),
+                backOption,
+                closeOption
+            )
+            "settings_ext_backup_mail" -> listOf(
+                MenuOption(label = "📬 Настройки почтовых бэкапов", action = "settings_backup_mail"),
+                backOption,
+                closeOption
+            )
+            "settings_ext_stock_load" -> listOf(
+                MenuOption(label = "📦 Настройки загрузки", action = "settings_stock_load"),
+                backOption,
+                closeOption
+            )
+            "settings_ext_supplier_stock" -> listOf(
+                MenuOption(label = "📦 Настройки поставщиков", action = "settings_supplier_stock"),
+                backOption,
+                closeOption
+            )
+            "settings_zfs" -> listOf(
+                MenuOption(label = "🧊 Настройки ZFS", action = "settings_zfs"),
+                backOption,
+                closeOption
+            )
+            localExtensionsSettingsBackAction -> buildExtensionsSettingsFallbackOptions(state.extensions) + closeOption
+            "settings_backup_hosts",
+            "settings_backup_patterns",
+            "settings_backup_databases",
+            "settings_backup_db_patterns",
+            "settings_backup_mail",
+            "settings_stock_load",
+            "settings_supplier_stock" -> baseOptions
+            else -> if (action == localExtensionsSettingsCloseAction) {
+                emptyList()
+            } else {
+                null
+            }
         }
     }
 

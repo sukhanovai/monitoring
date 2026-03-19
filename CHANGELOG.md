@@ -6,15 +6,15 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.33.25] - 2026-03-19
+## [8.33.26] - 2026-03-19
 
 ### Fixed / Исправлено
-- EN: Fixed Android Settings → Extensions submenu flow: after tapping an extension section, the app now keeps the current settings list if backend returns an empty/filtered menu, so users do not get a fake “settings opened” message without visible options.
-- RU: Исправлен сценарий подменю в Android Настройки → Расширения: после нажатия на раздел расширения приложение теперь сохраняет текущий список настроек, если backend вернул пустое/отфильтрованное меню, чтобы не было фейкового «настройки открыты», когда кнопок нет.
+- EN: Fixed Android Settings → Extensions → “Open extension settings” UX: tapping extension sections now opens a local nested submenu (Hosts/Patterns/Back/Close and peers) instead of only showing a toast-like “settings opened” status line.
+- RU: Исправлен UX в Android Настройки → Расширения → «Открыть настройки расширений»: по нажатию на разделы расширений теперь открывается локальное вложенное подменю (Хосты/Паттерны/Назад/Закрыть и аналоги), а не только строка статуса «настройки открыты».
 
 ### Changed / Изменено
-- EN: Completed repository-wide patch version bump to `8.33.25`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.25`, `ANDROID_VERSION_CODE=144`.
-- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.25`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.25`, `ANDROID_VERSION_CODE=144`.
+- EN: Completed repository-wide patch version bump to `8.33.26`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.26`, `ANDROID_VERSION_CODE=145`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.26`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.26`, `ANDROID_VERSION_CODE=145`.
 
 ## [8.33.24] - 2026-03-19
 

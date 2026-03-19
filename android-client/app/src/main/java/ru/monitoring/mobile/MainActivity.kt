@@ -810,7 +810,13 @@ private fun MonitoringApp(
                                     }
                                     if (optionLabel.isNotBlank() && targetAction.isNotBlank()) {
                                         Button(
-                                            onClick = { onExtensionsSettingsAction(targetAction) },
+                                            onClick = {
+                                                if (targetAction == "settings_extensions_close_local") {
+                                                    isExtensionsSettingsOpened = false
+                                                } else {
+                                                    onExtensionsSettingsAction(targetAction)
+                                                }
+                                            },
                                             modifier = Modifier.fillMaxWidth()
                                         ) {
                                             Text(optionLabel)
