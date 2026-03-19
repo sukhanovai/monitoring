@@ -2989,6 +2989,78 @@ def v1_extensions_actions():
             "menu_options": mapped_action.get("menu_options", []),
         }), 200
 
+    if action.startswith("settings_zfs_toggle_"):
+        server_name = action.replace("settings_zfs_toggle_", "", 1).strip()
+        if not server_name:
+            return jsonify({
+                "error": {
+                    "code": "INVALID_ACTION",
+                    "message": "Server name is required for settings_zfs_toggle_*",
+                    "request_id": request_id,
+                }
+            }), 400
+
+        zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
+        if not isinstance(zfs_servers, dict):
+            zfs_servers = {}
+
+        for key, value in zfs_servers.items():
+            if key != server_name:
+                continue
+            if isinstance(value, dict):
+                value['enabled'] = not bool(value.get('enabled', True))
+            else:
+                zfs_servers[key] = {'host': str(value), 'enabled': False}
+            settings_manager.set_setting('ZFS_SERVERS', zfs_servers, 'zfs')
+            break
+
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "result": "accepted",
+            "message": "🔄 Статус ZFS-сервера обновлён.",
+            "menu_options": [
+                {"label": "↩️ Назад", "action": "settings_zfs_list"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        }), 200
+
+    if action.startswith("settings_zfs_edit_name_") or action.startswith("settings_zfs_delete_"):
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "result": "accepted",
+            "message": "✏️ Редактирование и удаление ZFS-серверов пока доступно в Telegram-боте.",
+            "menu_options": [
+                {"label": "↩️ Назад", "action": "settings_zfs_list"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        }), 200
+
+    if action.startswith("settings_db_"):
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "result": "accepted",
+            "message": "🗃️ Детальное редактирование БД пока доступно в Telegram-боте.",
+            "menu_options": [
+                {"label": "↩️ Назад", "action": "settings_db_main"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        }), 200
+
+    if action.startswith("supplier_stock_"):
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "result": "accepted",
+            "message": "📦 Детальная настройка раздела остатков поставщиков пока доступна в Telegram-боте.",
+            "menu_options": [
+                {"label": "↩️ Назад", "action": "settings_ext_supplier_stock"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        }), 200
+
     if action == 'settings_resources':
         return jsonify({
             "request_id": request_id,
