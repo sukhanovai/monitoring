@@ -824,43 +824,6 @@ private fun MonitoringApp(
                                     }
                                 }
                             }
-                            val isProxmoxHostsManagementOpen =
-                                state.extensionSettingsMenuAction == "settings_backup_proxmox" ||
-                                    state.extensionSettingsMenuAction == "settings_backup_hosts"
-                            if (isExtensionsSettingsOpened && isProxmoxHostsManagementOpen) {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text("🖥️ Хосты Proxmox", fontWeight = FontWeight.Bold)
-                                if (state.managedServers.isEmpty()) {
-                                    Text("Список хостов пуст")
-                                } else {
-                                    state.managedServers.forEach { server ->
-                                        ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                                            Column(
-                                                modifier = Modifier.padding(10.dp),
-                                                verticalArrangement = Arrangement.spacedBy(6.dp)
-                                            ) {
-                                                Text("${server.name} (${server.ip})", fontWeight = FontWeight.Bold)
-                                                Text("Тип: ${server.type}, timeout: ${server.timeout ?: 30} сек")
-                                                Text("Мониторинг: ${if (server.enabled == true) "включен" else "выключен"}")
-                                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                                    Button(onClick = { onToggleServerMonitoring(server.ip, server.enabled != true) }) {
-                                                        Text(if (server.enabled == true) "Отключить из наблюдения" else "Включить в наблюдение")
-                                                    }
-                                                    Button(
-                                                        onClick = {
-                                                            onEditServer(server)
-                                                            settingsSection = "servers"
-                                                        }
-                                                    ) {
-                                                        Text("Редактировать")
-                                                    }
-                                                    Button(onClick = { onDeleteServer(server.ip) }) { Text("Удалить") }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
                         }
 
                         if (settingsSection == "auth") {

@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.33.32] - 2026-03-19
+
+### Fixed / Исправлено
+- EN: Fixed Android extension settings for Proxmox backups: the “Hosts” screen no longer renders the monitoring-servers management list and now relies on backend Proxmox-host actions/menu responses.
+- RU: Исправлены настройки расширения бэкапов Proxmox в Android: экран «Хосты» больше не показывает список управления серверами мониторинга и теперь использует backend-меню/действия именно для Proxmox-хостов.
+
+### Changed / Изменено
+- EN: Completed repository-wide patch version bump to `8.33.32`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.32` and `ANDROID_VERSION_CODE=151`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.32`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.32` и `ANDROID_VERSION_CODE=151`.
+
 ## [8.33.31] - 2026-03-19
 
 ### Added / Добавлено
