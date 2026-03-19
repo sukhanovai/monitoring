@@ -6,6 +6,14 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.33.30] - 2026-03-19
+
+### Changed / Изменено
+- EN: Synchronized project version references across Python modules, docs, and Android client to `8.33.30` to remove version drift.
+- RU: Синхронизированы ссылки на версию проекта в Python-модулях, документации и Android-клиенте до `8.33.30`, чтобы устранить рассинхрон версий.
+- EN: Updated Android metadata to `ANDROID_VERSION_NAME=8.33.30` and `ANDROID_VERSION_CODE=149`.
+- RU: Обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.33.30` и `ANDROID_VERSION_CODE=149`.
+
 ## [8.33.29] - 2026-03-19
 - EN: Fixed Android extension-settings callback flow to match Telegram behavior: removed local placeholder submenu actions and normalized legacy local action aliases to real backend callbacks (`settings_backup_proxmox`, `settings_db_main`, etc.), so nested buttons now trigger server-side actions instead of HTTP 400.
 - RU: Исправлен callback-флоу настроек расширений в Android под поведение Telegram: убраны локальные заглушки подменю и добавлена нормализация устаревших локальных action-алиасов в реальные backend-callback’и (`settings_backup_proxmox`, `settings_db_main` и т.д.), поэтому вложенные кнопки теперь запускают серверные действия без HTTP 400.
