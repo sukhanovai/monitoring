@@ -6,17 +6,17 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.33.33] - 2026-03-19
+## [8.33.34] - 2026-03-20
 
-### Added / Добавлено
-- EN: Added host-level actions for Proxmox backup settings in the web/API extension menu (`edit`, `delete`, `enable/disable`) so Android can use the same host operation flow as Telegram.
-- RU: Добавлены действия по каждому Proxmox-хосту в web/API-меню настроек расширения (`редактировать`, `удалить`, `включить/отключить`), чтобы Android использовал тот же флоу операций по хостам, что и Telegram.
+### Fixed / Исправлено
+- EN: Fixed Android extension-settings action dispatch priority: when both `action` and legacy callback fields are present, the app now uses `action` first, preventing wrong navigation in Proxmox backups → Hosts → Host list.
+- RU: Исправлен приоритет отправки действий в Android-настройках расширений: если одновременно пришли `action` и legacy callback-поля, приложение теперь использует сначала `action`, что убирает неверную навигацию в Бэкапы Proxmox → Хосты → Список хостов.
 
 ### Changed / Изменено
-- EN: Improved Android rendering of extension-settings actions: deduplicated repeated menu buttons and grouped adjacent `edit/delete` host actions into a two-column row to better match Telegram layout.
-- RU: Улучшен рендер действий в Android-настройках расширений: убраны дублирующиеся кнопки меню и сгруппированы соседние действия `редактировать/удалить` хоста в двухколоночный ряд для лучшего соответствия Telegram-раскладке.
-- EN: Completed repository-wide patch version bump to `8.33.33`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.33` and `ANDROID_VERSION_CODE=152`.
-- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.33`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.33` и `ANDROID_VERSION_CODE=152`.
+- EN: Updated extension-settings menu filtering to resolve actions with `action` priority for consistent enabled-extension gating.
+- RU: Обновлена фильтрация меню настроек расширений: разрешение действия теперь также с приоритетом `action` для консистентной фильтрации по включённым расширениям.
+- EN: Completed repository-wide patch version bump to `8.33.34`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.34` and `ANDROID_VERSION_CODE=153`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.34`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.34` и `ANDROID_VERSION_CODE=153`.
 
 ## [8.33.32] - 2026-03-19
 

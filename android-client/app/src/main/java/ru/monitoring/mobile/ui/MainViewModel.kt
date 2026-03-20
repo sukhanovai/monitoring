@@ -50,7 +50,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.33.33"
+    private val projectVersion = "8.33.34"
     private val fallbackUpdateUrl = "https://github.com/sukhanovai/monitoring/releases/latest"
     private val mailBackupHistoryRegex = Regex(
         pattern = """^([✅✔❌⚠️🚨])\s*(.+?)\s*[—-]\s*(.+?)\s*\(([^()]+)\)\s*$"""
@@ -943,7 +943,7 @@ class MainViewModel(
 
         return options.filter { option ->
             val optionExtensionId = normalizeExtensionId(option.extensionId.orEmpty())
-            val targetAction = resolveMenuOptionAction(option, preferCallbackData = true)
+            val targetAction = resolveMenuOptionAction(option)
             if (optionExtensionId.isNotBlank()) {
                 return@filter optionExtensionId in enabledExtensionIds
             }
