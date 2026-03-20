@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.33.34
+Server Monitoring System v8.33.35
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.33.34
+Версия: 8.33.35
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -2569,6 +2569,19 @@ def v1_extensions_actions():
 
     from config.db_settings_app import settings_manager
 
+    def _get_proxmox_hosts_for_mobile_settings() -> dict:
+        proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
+        proxmox_hosts = proxmox_hosts if isinstance(proxmox_hosts, dict) else {}
+        if proxmox_hosts:
+            return proxmox_hosts
+
+        try:
+            from config.settings import PROXMOX_HOSTS as fallback_proxmox_hosts
+        except Exception:
+            fallback_proxmox_hosts = {}
+
+        return fallback_proxmox_hosts if isinstance(fallback_proxmox_hosts, dict) else {}
+
     settings_menu_action_map = {
         "settings_ext_backup_db": {
             "message": "🗃️ Настройки расширения бэкапов БД открыты.",
@@ -2787,8 +2800,8 @@ def v1_extensions_actions():
         }), 200
 
     if action == "settings_ext_backup_proxmox":
-        proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
-        proxmox_count = len(proxmox_hosts) if isinstance(proxmox_hosts, dict) else 0
+        proxmox_hosts = _get_proxmox_hosts_for_mobile_settings()
+        proxmox_count = len(proxmox_hosts)
         return jsonify({
             "request_id": request_id,
             "action": action,
@@ -2808,8 +2821,7 @@ def v1_extensions_actions():
         }), 200
 
     if action == "settings_backup_proxmox":
-        proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
-        proxmox_hosts = proxmox_hosts if isinstance(proxmox_hosts, dict) else {}
+        proxmox_hosts = _get_proxmox_hosts_for_mobile_settings()
         return jsonify({
             "request_id": request_id,
             "action": action,
@@ -2829,8 +2841,7 @@ def v1_extensions_actions():
         }), 200
 
     if action == "settings_proxmox_list":
-        proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
-        proxmox_hosts = proxmox_hosts if isinstance(proxmox_hosts, dict) else {}
+        proxmox_hosts = _get_proxmox_hosts_for_mobile_settings()
         lines = ["📋 Хосты Proxmox", ""]
         if not proxmox_hosts:
             lines.append("❌ Хосты не настроены.")
@@ -2867,8 +2878,7 @@ def v1_extensions_actions():
 
     if action.startswith("settings_proxmox_toggle_"):
         host_name = action[len("settings_proxmox_toggle_"):]
-        proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
-        proxmox_hosts = proxmox_hosts if isinstance(proxmox_hosts, dict) else {}
+        proxmox_hosts = _get_proxmox_hosts_for_mobile_settings()
 
         host_value = proxmox_hosts.get(host_name)
         if host_value is None:
@@ -2907,8 +2917,7 @@ def v1_extensions_actions():
 
     if action.startswith("settings_proxmox_delete_"):
         host_name = action[len("settings_proxmox_delete_"):]
-        proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
-        proxmox_hosts = proxmox_hosts if isinstance(proxmox_hosts, dict) else {}
+        proxmox_hosts = _get_proxmox_hosts_for_mobile_settings()
 
         if host_name not in proxmox_hosts:
             return jsonify({
