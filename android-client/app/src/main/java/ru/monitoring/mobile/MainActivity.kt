@@ -804,9 +804,9 @@ private fun MonitoringApp(
                                         val callbackAction = item.callbackData?.trim().orEmpty()
                                         val callbackActionCamel = item.callbackDataCamel?.trim().orEmpty()
                                         val targetAction = when {
+                                            optionAction.isNotBlank() -> optionAction
                                             callbackAction.isNotBlank() -> callbackAction
                                             callbackActionCamel.isNotBlank() -> callbackActionCamel
-                                            optionAction.isNotBlank() -> optionAction
                                             else -> ""
                                         }
                                         if (optionLabel.isNotBlank() && targetAction.isNotBlank()) {
