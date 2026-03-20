@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.33.37] - 2026-03-20
+
+### Fixed / Исправлено
+- EN: Fixed Android extension-settings button routing for Proxmox backups: in Settings → Extensions → Open extension settings, nested buttons now prioritize explicit `action` values from backend menus, preventing stale callback aliases from reopening the generic Proxmox screen with “Hosts not configured”.
+- RU: Исправлена маршрутизация кнопок в Android-настройках расширений для бэкапов Proxmox: в Настройки → Расширения → Открыть настройки расширений вложенные кнопки теперь в приоритете используют явные `action` из backend-меню, что убирает зацикливание на общий экран Proxmox с «Хосты не настроены» из-за устаревших callback-алиасов.
+
+### Changed / Изменено
+- EN: Completed repository-wide patch version bump to `8.33.37`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.37` and `ANDROID_VERSION_CODE=156`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.37`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.37` и `ANDROID_VERSION_CODE=156`.
+
 ## [8.33.36] - 2026-03-20
 
 ### Fixed / Исправлено
