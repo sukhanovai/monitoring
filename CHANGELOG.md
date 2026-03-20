@@ -6,18 +6,15 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.33.34] - 2026-03-20
+## [8.33.35] - 2026-03-20
 
 ### Fixed / Исправлено
-- EN: Fixed Android extension-settings action dispatch priority: when both `action` and legacy callback fields are present, the app now uses `action` first, preventing wrong navigation in Proxmox backups → Hosts → Host list.
-- RU: Исправлен приоритет отправки действий в Android-настройках расширений: если одновременно пришли `action` и legacy callback-поля, приложение теперь использует сначала `action`, что убирает неверную навигацию в Бэкапы Proxmox → Хосты → Список хостов.
+- EN: Fixed Android extension settings flow for Proxmox backups: Host list now loads `PROXMOX_HOSTS` with fallback to file-based config when DB value is empty, so "Hosts not configured" no longer appears when hosts exist in runtime config.
+- RU: Исправлен сценарий Android-настроек расширения бэкапов Proxmox: список хостов теперь берёт `PROXMOX_HOSTS` с fallback на файловую конфигурацию, если значение в БД пустое, поэтому сообщение «Хосты не настроены» больше не показывается при наличии хостов в runtime-конфиге.
 
 ### Changed / Изменено
-- EN: Updated extension-settings menu filtering to resolve actions with `action` priority for consistent enabled-extension gating.
-- RU: Обновлена фильтрация меню настроек расширений: разрешение действия теперь также с приоритетом `action` для консистентной фильтрации по включённым расширениям.
-- EN: Completed repository-wide patch version bump to `8.33.34`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.34` and `ANDROID_VERSION_CODE=153`.
-- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.34`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.34` и `ANDROID_VERSION_CODE=153`.
-
+- EN: Completed repository-wide patch version bump to `8.33.35`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.35` and `ANDROID_VERSION_CODE=154`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.35`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.35` и `ANDROID_VERSION_CODE=154`.
 ## [8.33.32] - 2026-03-19
 
 ### Fixed / Исправлено
