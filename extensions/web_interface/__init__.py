@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.33.37
+Server Monitoring System v8.33.38
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.33.37
+Версия: 8.33.38
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -2565,7 +2565,8 @@ def v1_extensions_actions():
         }), 401
 
     payload = request.get_json(silent=True) or {}
-    action = str(payload.get('action') or '').strip().lower()
+    raw_action = str(payload.get('action') or '').strip()
+    action = raw_action.lower()
 
     from config.db_settings_app import settings_manager
 
@@ -2574,6 +2575,14 @@ def v1_extensions_actions():
         proxmox_hosts = proxmox_hosts if isinstance(proxmox_hosts, dict) else {}
         if proxmox_hosts:
             return proxmox_hosts
+
+        try:
+            from core.config_manager import config_manager
+            fallback_db_hosts = config_manager.get_setting('PROXMOX_HOSTS', {})
+        except Exception:
+            fallback_db_hosts = {}
+        if isinstance(fallback_db_hosts, dict) and fallback_db_hosts:
+            return fallback_db_hosts
 
         try:
             from config.settings import PROXMOX_HOSTS as fallback_proxmox_hosts
@@ -2877,7 +2886,7 @@ def v1_extensions_actions():
         }), 200
 
     if action.startswith("settings_proxmox_toggle_"):
-        host_name = action[len("settings_proxmox_toggle_"):]
+        host_name = raw_action[len("settings_proxmox_toggle_"):]
         proxmox_hosts = _get_proxmox_hosts_for_mobile_settings()
 
         host_value = proxmox_hosts.get(host_name)
@@ -2916,7 +2925,7 @@ def v1_extensions_actions():
         }), 200
 
     if action.startswith("settings_proxmox_delete_"):
-        host_name = action[len("settings_proxmox_delete_"):]
+        host_name = raw_action[len("settings_proxmox_delete_"):]
         proxmox_hosts = _get_proxmox_hosts_for_mobile_settings()
 
         if host_name not in proxmox_hosts:
@@ -2947,7 +2956,7 @@ def v1_extensions_actions():
         }), 200
 
     if action.startswith("settings_proxmox_edit_"):
-        host_name = action[len("settings_proxmox_edit_"):]
+        host_name = raw_action[len("settings_proxmox_edit_"):]
         return jsonify({
             "request_id": request_id,
             "action": action,
