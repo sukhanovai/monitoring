@@ -6,15 +6,15 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.33.35] - 2026-03-20
+## [8.33.36] - 2026-03-20
 
 ### Fixed / Исправлено
-- EN: Fixed Android extension settings flow for Proxmox backups: Host list now loads `PROXMOX_HOSTS` with fallback to file-based config when DB value is empty, so "Hosts not configured" no longer appears when hosts exist in runtime config.
-- RU: Исправлен сценарий Android-настроек расширения бэкапов Proxmox: список хостов теперь берёт `PROXMOX_HOSTS` с fallback на файловую конфигурацию, если значение в БД пустое, поэтому сообщение «Хосты не настроены» больше не показывается при наличии хостов в runtime-конфиге.
+- EN: Fixed Android extension-settings action routing for Proxmox backups: in Settings → Extensions → Open extension settings, buttons now prioritize backend callback data over legacy action aliases, so “Hosts → Host list” opens the real Proxmox host list (Telegram-parity flow) instead of looping to a generic screen with “Hosts not configured.”
+- RU: Исправлена маршрутизация действий в Android-настройках расширений для бэкапов Proxmox: в Настройки → Расширения → Открыть настройки расширений кнопки теперь в приоритете используют backend callback data вместо legacy action-алиасов, поэтому «Хосты → Список хостов» открывает реальный список Proxmox-хостов (как в Telegram), а не уводит на общий экран с «Хосты не настроены».
 
 ### Changed / Изменено
-- EN: Completed repository-wide patch version bump to `8.33.35`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.35` and `ANDROID_VERSION_CODE=154`.
-- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.35`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.35` и `ANDROID_VERSION_CODE=154`.
+- EN: Completed repository-wide patch version bump to `8.33.36`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.36` and `ANDROID_VERSION_CODE=155`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.36`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.36` и `ANDROID_VERSION_CODE=155`.
 ## [8.33.32] - 2026-03-19
 
 ### Fixed / Исправлено
