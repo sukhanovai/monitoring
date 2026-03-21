@@ -1,11 +1,11 @@
 """
 /app/modules/morning_report.py
-Server Monitoring System v8.33.42
+Server Monitoring System v8.33.43
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Morning Report Module
 Система мониторинга серверов
-Версия: 8.33.42
+Версия: 8.33.43
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль утреннего отчета
@@ -69,14 +69,11 @@ class MorningReport:
             message += f"🔖 *Версия:* {APP_VERSION}\n"
         message += "🖥 *Доступность серверов*\n"
         availability_rows = [
-            ("Всего серверов", str(total_servers)),
-            ("Доступно", f"🟢 {up_count}"),
-            ("Недоступно", f"🔴 {down_count}"),
+            ("Всего", str(total_servers)),
+            ("🟢 Доступно", str(up_count)),
+            ("🔴 Недоступно", str(down_count)),
         ]
-        message += self._render_table(
-            headers=("Показатель", "Значение"),
-            rows=availability_rows,
-        )
+        message += self._render_key_value_table(availability_rows)
 
         from telegram.utils.helpers import escape_markdown
 
@@ -126,7 +123,7 @@ class MorningReport:
                     f"\n{backup_header_icon} *Статус бэкапов "
                     f"({'за последние 24ч' if is_manual else 'за последние 16ч'})*\n"
                 )
-                message += backup_summary
+                message += self._render_plain_block(backup_summary)
         except Exception as e:
             debug_log(f"⚠️ Ошибка получения данных о бэкапах: {e}")
             message += "\n💾 *Статус бэкапов:* данные недоступны\n"
@@ -139,7 +136,7 @@ class MorningReport:
 
                 stock_summary = get_stock_load_summary(24 if is_manual else 16)
                 message += "\n📦 *Загрузка остатков 1С*\n"
-                message += stock_summary
+                message += self._render_plain_block(stock_summary)
         except Exception as e:
             debug_log(f"⚠️ Ошибка получения данных о загрузке остатков: {e}")
             message += "\n📦 *Загрузка остатков 1С:* данные недоступны\n"
@@ -151,7 +148,7 @@ class MorningReport:
                 zfs_summary, zfs_has_issues = self.get_zfs_summary_for_report()
                 zfs_header_icon = "🔴" if zfs_has_issues else "🟢"
                 message += f"\n{zfs_header_icon} *Статусы ZFS (последние)*\n"
-                message += zfs_summary
+                message += self._render_plain_block(zfs_summary)
         except Exception as e:
             debug_log(f"⚠️ Ошибка получения данных о ZFS: {e}")
             message += "\n🧊 *Статусы ZFS:* данные недоступны\n"
@@ -175,6 +172,32 @@ class MorningReport:
         separator = "-+-".join("-" * width for width in widths)
         lines = [format_row(normalized_headers), separator]
         lines.extend(format_row(row) for row in normalized_rows)
+        return "```\n" + "\n".join(lines) + "\n```\n"
+
+    def _render_key_value_table(self, rows):
+        """Рендерит компактную 2-колоночную таблицу без заголовков."""
+        normalized_rows = [tuple(str(cell) for cell in row) for row in rows]
+        if not normalized_rows:
+            return "```\nнет данных\n```\n"
+
+        left_width = max(len(row[0]) for row in normalized_rows)
+        lines = [f"{key.ljust(left_width)} | {value}" for key, value in normalized_rows]
+        return "```\n" + "\n".join(lines) + "\n```\n"
+
+    def _render_plain_block(self, text):
+        """Приводит markdown-списки к компактному блоку фиксированной ширины."""
+        lines = []
+        for raw_line in str(text).splitlines():
+            line = raw_line.strip()
+            if not line:
+                continue
+            if line.startswith("• "):
+                line = line[2:]
+            if line.startswith("- "):
+                line = line[2:]
+            lines.append(line)
+        if not lines:
+            return "```\nнет данных\n```\n"
         return "```\n" + "\n".join(lines) + "\n```\n"
 
     def force_report(self):
