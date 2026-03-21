@@ -1,11 +1,11 @@
 """
 /app/modules/morning_report.py
-Server Monitoring System v8.33.41
+Server Monitoring System v8.33.42
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Morning Report Module
 Система мониторинга серверов
-Версия: 8.33.41
+Версия: 8.33.42
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль утреннего отчета
@@ -68,29 +68,37 @@ class MorningReport:
         if APP_VERSION:
             message += f"🔖 *Версия:* {APP_VERSION}\n"
         message += "🖥 *Доступность серверов*\n"
-        message += (
-            f"• Всего: {total_servers} "
-            f"(🟢 {up_count} / 🔴 {down_count})\n"
+        availability_rows = [
+            ("Всего серверов", str(total_servers)),
+            ("Доступно", f"🟢 {up_count}"),
+            ("Недоступно", f"🔴 {down_count}"),
+        ]
+        message += self._render_table(
+            headers=("Показатель", "Значение"),
+            rows=availability_rows,
         )
 
         from telegram.utils.helpers import escape_markdown
 
         if down_count > 0:
-            message += f"\n🔴 *Проблемные серверы ({down_count}):*\n"
+            message += f"\n🔴 *Проблемные серверы ({down_count})*\n"
             # Группируем по типу
             by_type = {}
             for server in status["failed"]:
                 if server["type"] not in by_type:
                     by_type[server["type"]] = []
                 by_type[server["type"]].append(server)
-                
-            for server_type, servers_list in by_type.items():
-                safe_type = escape_markdown(str(server_type).upper(), version=1)
-                message += f"\n**{safe_type} ({len(servers_list)}):**\n"
+            problem_rows = []
+            for server_type, servers_list in sorted(by_type.items(), key=lambda item: str(item[0])):
                 for s in servers_list:
+                    safe_type = escape_markdown(str(server_type).upper(), version=1)
                     safe_name = escape_markdown(str(s.get('name', '')), version=1)
                     safe_ip = escape_markdown(str(s.get('ip', '')), version=1)
-                    message += f"• {safe_name} ({safe_ip})\n"
+                    problem_rows.append((safe_type, safe_name, safe_ip))
+            message += self._render_table(
+                headers=("Тип", "Сервер", "IP"),
+                rows=problem_rows,
+            )
 
         # Добавляем информацию о бэкапах
         try:
@@ -150,6 +158,24 @@ class MorningReport:
             
         message += f"\n⏰ *Отчёт сформирован:* {collection_time.strftime('%H:%M:%S')}"
         return message
+
+    def _render_table(self, headers, rows):
+        """Рендерит компактную ASCII-таблицу в markdown code block."""
+        normalized_rows = [tuple(str(cell) for cell in row) for row in rows]
+        normalized_headers = tuple(str(cell) for cell in headers)
+        widths = [len(normalized_headers[i]) for i in range(len(normalized_headers))]
+
+        for row in normalized_rows:
+            for i, cell in enumerate(row):
+                widths[i] = max(widths[i], len(cell))
+
+        def format_row(row_values):
+            return " | ".join(row_values[i].ljust(widths[i]) for i in range(len(row_values)))
+
+        separator = "-+-".join("-" * width for width in widths)
+        lines = [format_row(normalized_headers), separator]
+        lines.extend(format_row(row) for row in normalized_rows)
+        return "```\n" + "\n".join(lines) + "\n```\n"
 
     def force_report(self):
         """Формирует отчет для ручного запроса и возвращает текст"""
