@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -407,23 +408,51 @@ private fun MonitoringApp(
 
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = onRefreshData, modifier = Modifier.fillMaxWidth()) {
-                        Text("🔄 Обновить данные")
-                    }
-                    Button(onClick = { onAction("send_morning_report") }, modifier = Modifier.fillMaxWidth()) {
-                        Text("🌅 Отчёт")
+                    Text("Быстрые действия", fontWeight = FontWeight.Bold)
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        maxItemsInEachRow = 2
+                    ) {
+                        Button(
+                            onClick = onRefreshData,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("🔄 Обновить")
+                        }
+                        Button(
+                            onClick = { onAction("send_morning_report") },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("🌅 Отчёт")
+                        }
                     }
                     if (state.message.isNotBlank() && state.messageSource == "morning_report") {
                         Text(state.message)
                     }
-                    Button(onClick = onRefresh, modifier = Modifier.fillMaxWidth()) {
-                        Text("🖥 Доступность всех серверов")
+                    Text("Проверки", fontWeight = FontWeight.Bold)
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        maxItemsInEachRow = 2
+                    ) {
+                        Button(
+                            onClick = onRefresh,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("🖥 Все серверы")
+                        }
+                        Button(
+                            onClick = { showServerAvailabilityMenu = !showServerAvailabilityMenu },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("🔍 По серверу")
+                        }
                     }
                     if (state.message.isNotBlank() && state.messageSource == "all_servers") {
                         Text(state.message)
-                    }
-                    Button(onClick = { showServerAvailabilityMenu = !showServerAvailabilityMenu }, modifier = Modifier.fillMaxWidth()) {
-                        Text("🔍 Доступность сервера")
                     }
                     if (showServerAvailabilityMenu) {
                         state.managedServers.forEach { server ->
@@ -447,6 +476,7 @@ private fun MonitoringApp(
                             }
                         }
                     }
+                    Text("Расширения", fontWeight = FontWeight.Bold)
                     extensionButtons.forEach { extensionButton ->
                         Button(
                             onClick = {

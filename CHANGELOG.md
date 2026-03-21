@@ -6,6 +6,14 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.33.44] - 2026-03-21
+
+### Changed / Изменено
+- EN: Improved Android main-screen action layout for better ergonomics: quick actions and server checks are now grouped into compact two-column button rows with clear section headers, reducing vertical clutter and making frequent taps easier.
+- RU: Улучшена компоновка действий на главном экране Android: быстрые действия и проверки серверов сгруппированы в компактные двухколоночные ряды кнопок с явными заголовками секций, что уменьшает «простыню» по высоте и упрощает частые нажатия.
+- EN: Completed repository-wide patch version bump to `8.33.44`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.44` and `ANDROID_VERSION_CODE=162`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.44`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.44` и `ANDROID_VERSION_CODE=162`.
+
 ## [8.33.43] - 2026-03-21
 
 ### Fixed / Исправлено
