@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.33.41] - 2026-03-21
+
+### Fixed / Исправлено
+- EN: Fixed backup summary generation in morning/manual reports for degraded configuration states: summary builder now safely handles non-dictionary `PROXMOX_HOSTS` and `DATABASE_BACKUP_CONFIG` values and continues to render available Proxmox/DB backup data instead of failing with “Ошибка формирования отчета о бэкапах”.
+- RU: Исправлена генерация сводки бэкапов в утреннем/ручном отчёте при деградировавшей конфигурации: сборщик сводки теперь безопасно обрабатывает недопустимые (не dict) значения `PROXMOX_HOSTS` и `DATABASE_BACKUP_CONFIG` и продолжает показывать доступные данные по бэкапам Proxmox/БД вместо падения с «Ошибка формирования отчета о бэкапах».
+
+### Changed / Изменено
+- EN: Completed repository-wide patch version bump to `8.33.41`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.41` and `ANDROID_VERSION_CODE=159`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.41`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.41` и `ANDROID_VERSION_CODE=159`.
+
 ## [8.33.40] - 2026-03-21
 
 ### Fixed / Исправлено
