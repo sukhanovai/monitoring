@@ -6,15 +6,19 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.33.46] - 2026-03-21
+## [8.33.47] - 2026-03-21
+
+### Fixed / Исправлено
+- EN: Fixed Android debug build compilation in `MainActivity.kt`: corrected `PaddingValues` import to `androidx.compose.foundation.layout.PaddingValues`, eliminating unresolved reference errors in `:app:compileDebugKotlin`.
+- RU: Исправлена компиляция Android debug-сборки в `MainActivity.kt`: импорт `PaddingValues` заменён на `androidx.compose.foundation.layout.PaddingValues`, из-за чего исчезли ошибки unresolved reference в `:app:compileDebugKotlin`.
 
 ### Changed / Изменено
 - EN: Refined Android main menu layout: moved “Management” and “Settings” buttons into a dedicated “System section” card to visually separate core controls from checks/extensions.
 - RU: Доработан layout главного меню Android: кнопки «Управление» и «Настройки» вынесены в отдельную карточку «Раздел системы», чтобы визуально отделить базовое управление от проверок/расширений.
 - EN: Made extension buttons more compact on Android by switching them to a two-column flow with reduced internal paddings and single-line labels.
 - RU: Сделаны более компактные кнопки расширений в Android: переведены в двухколоночный flow с уменьшенными внутренними отступами и однострочными подписями.
-- EN: Completed repository-wide patch version bump to `8.33.46`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.46` and `ANDROID_VERSION_CODE=164`.
-- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.46`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.46` и `ANDROID_VERSION_CODE=164`.
+- EN: Completed repository-wide patch version bump to `8.33.47`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.47` and `ANDROID_VERSION_CODE=165`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.47`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.47` и `ANDROID_VERSION_CODE=165`.
 
 ## [8.33.45] - 2026-03-21
 
