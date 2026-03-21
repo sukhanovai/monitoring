@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_utils.py
-Server Monitoring System v8.33.40
+Server Monitoring System v8.33.41
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Utilities for working with backups
 Система мониторинга серверов
-Версия: 8.33.40
+Версия: 8.33.41
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Утилиты для работы с бэкапами
@@ -50,6 +50,11 @@ def get_backup_summary(
     try:
         from config.db_settings import DATA_DIR, DATABASE_BACKUP_CONFIG, PROXMOX_HOSTS
 
+        proxmox_hosts_config = PROXMOX_HOSTS if isinstance(PROXMOX_HOSTS, dict) else {}
+        database_backup_config = (
+            DATABASE_BACKUP_CONFIG if isinstance(DATABASE_BACKUP_CONFIG, dict) else {}
+        )
+
         db_path = DATA_DIR / "backups.db"
         if not db_path.exists():
             logger.error("База данных бэкапов недоступна: %s", db_path)
@@ -74,9 +79,9 @@ def get_backup_summary(
                     ORDER BY host_name
                 ''')
                 all_hosts = [row[0] for row in cursor.fetchall()]
-                if PROXMOX_HOSTS:
+                if proxmox_hosts_config:
                     configured_hosts = {
-                        host for host, value in PROXMOX_HOSTS.items()
+                        host for host, value in proxmox_hosts_config.items()
                         if _is_proxmox_host_enabled(value)
                     }
                     db_hosts = set(all_hosts)
@@ -177,8 +182,8 @@ def get_backup_summary(
 
         allowed_hosts = set(all_hosts)
         unavailable_hosts_set = set()
-        if include_proxmox and PROXMOX_HOSTS and unavailable_hosts_norm:
-            for host_name, host_value in PROXMOX_HOSTS.items():
+        if include_proxmox and proxmox_hosts_config and unavailable_hosts_norm:
+            for host_name, host_value in proxmox_hosts_config.items():
                 if host_name not in allowed_hosts:
                     continue
                 aliases = {_normalize_host_key(host_name)}
@@ -212,13 +217,13 @@ def get_backup_summary(
             return {}
 
         company_databases = _get_db_config(
-            DATABASE_BACKUP_CONFIG,
+            database_backup_config,
             "company_databases",
             "company_database",
             "company",
         )
         client_databases = _get_db_config(
-            DATABASE_BACKUP_CONFIG,
+            database_backup_config,
             "client_databases",
             "client",
             "clients",
@@ -231,13 +236,13 @@ def get_backup_summary(
         config_databases = {
             'company_database': company_databases,
             'barnaul': _get_db_config(
-                DATABASE_BACKUP_CONFIG,
+                database_backup_config,
                 "barnaul_backups",
                 "barnaul",
                 "Филиалы",
             ),
             'client': client_databases,
-            'yandex': _get_db_config(DATABASE_BACKUP_CONFIG, "yandex_backups", "yandex"),
+            'yandex': _get_db_config(database_backup_config, "yandex_backups", "yandex"),
         }
 
         db_stats = {}
