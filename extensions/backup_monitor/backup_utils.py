@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_utils.py
-Server Monitoring System v8.33.38
+Server Monitoring System v8.33.40
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Utilities for working with backups
 Система мониторинга серверов
-Версия: 8.33.38
+Версия: 8.33.40
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Утилиты для работы с бэкапами
@@ -66,64 +66,81 @@ def get_backup_summary(
         all_hosts = []
         unavailable_hosts_norm = {_normalize_host_key(host) for host in (unavailable_hosts or [])}
         if include_proxmox:
-            cursor.execute('''
-                SELECT DISTINCT host_name
-                FROM proxmox_backups
-                WHERE received_at >= datetime('now', '-30 days')
-                ORDER BY host_name
-            ''')
-            all_hosts = [row[0] for row in cursor.fetchall()]
-            if PROXMOX_HOSTS:
-                configured_hosts = {
-                    host for host, value in PROXMOX_HOSTS.items()
-                    if _is_proxmox_host_enabled(value)
-                }
-                db_hosts = set(all_hosts)
-                matched_hosts = sorted(configured_hosts & db_hosts)
-                all_hosts = matched_hosts or list(configured_hosts)
+            try:
+                cursor.execute('''
+                    SELECT DISTINCT host_name
+                    FROM proxmox_backups
+                    WHERE received_at >= datetime('now', '-30 days')
+                    ORDER BY host_name
+                ''')
+                all_hosts = [row[0] for row in cursor.fetchall()]
+                if PROXMOX_HOSTS:
+                    configured_hosts = {
+                        host for host, value in PROXMOX_HOSTS.items()
+                        if _is_proxmox_host_enabled(value)
+                    }
+                    db_hosts = set(all_hosts)
+                    matched_hosts = sorted(configured_hosts & db_hosts)
+                    all_hosts = matched_hosts or list(configured_hosts)
 
-            cursor.execute('''
-                SELECT host_name, backup_status, MAX(received_at) as last_backup
-                FROM proxmox_backups
-                WHERE received_at >= ?
-                GROUP BY host_name
-            ''', (since_time,))
-            proxmox_results = cursor.fetchall()
+                cursor.execute('''
+                    SELECT host_name, backup_status, MAX(received_at) as last_backup
+                    FROM proxmox_backups
+                    WHERE received_at >= ?
+                    GROUP BY host_name
+                ''', (since_time,))
+                proxmox_results = cursor.fetchall()
 
-            cursor.execute('''
-                SELECT host_name, MAX(received_at) as last_backup
-                FROM proxmox_backups
-                GROUP BY host_name
-                HAVING last_backup < ?
-            ''', (stale_threshold,))
-            stale_hosts = cursor.fetchall()
+                cursor.execute('''
+                    SELECT host_name, MAX(received_at) as last_backup
+                    FROM proxmox_backups
+                    GROUP BY host_name
+                    HAVING last_backup < ?
+                ''', (stale_threshold,))
+                stale_hosts = cursor.fetchall()
+            except Exception as exc:
+                if "no such table: proxmox_backups" in str(exc):
+                    logger.warning("Таблица proxmox_backups ещё не создана")
+                    all_hosts = []
+                    proxmox_results = []
+                    stale_hosts = []
+                else:
+                    raise
 
         db_results = []
         stale_databases = []
         if include_databases:
-            cursor.execute('''
-                SELECT backup_type, database_name, backup_status, MAX(received_at) as last_backup
-                FROM database_backups
-                WHERE received_at >= ?
-                GROUP BY backup_type, database_name
-            ''', (since_time,))
-            db_results = cursor.fetchall()
-            db_results = [
-                (_normalize_backup_type(backup_type, db_name), db_name, status, last_backup)
-                for backup_type, db_name, status, last_backup in db_results
-            ]
+            try:
+                cursor.execute('''
+                    SELECT backup_type, database_name, backup_status, MAX(received_at) as last_backup
+                    FROM database_backups
+                    WHERE received_at >= ?
+                    GROUP BY backup_type, database_name
+                ''', (since_time,))
+                db_results = cursor.fetchall()
+                db_results = [
+                    (_normalize_backup_type(backup_type, db_name), db_name, status, last_backup)
+                    for backup_type, db_name, status, last_backup in db_results
+                ]
 
-            cursor.execute('''
-                SELECT backup_type, database_name, MAX(received_at) as last_backup
-                FROM database_backups
-                GROUP BY backup_type, database_name
-                HAVING last_backup < ?
-            ''', (stale_threshold,))
-            stale_databases = cursor.fetchall()
-            stale_databases = [
-                (_normalize_backup_type(backup_type, db_name), db_name, last_backup)
-                for backup_type, db_name, last_backup in stale_databases
-            ]
+                cursor.execute('''
+                    SELECT backup_type, database_name, MAX(received_at) as last_backup
+                    FROM database_backups
+                    GROUP BY backup_type, database_name
+                    HAVING last_backup < ?
+                ''', (stale_threshold,))
+                stale_databases = cursor.fetchall()
+                stale_databases = [
+                    (_normalize_backup_type(backup_type, db_name), db_name, last_backup)
+                    for backup_type, db_name, last_backup in stale_databases
+                ]
+            except Exception as exc:
+                if "no such table: database_backups" in str(exc):
+                    logger.warning("Таблица database_backups ещё не создана")
+                    db_results = []
+                    stale_databases = []
+                else:
+                    raise
 
         mail_recent = None
         mail_latest = None
