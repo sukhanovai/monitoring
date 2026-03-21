@@ -6,6 +6,14 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.33.48] - 2026-03-21
+
+### Changed / Изменено
+- EN: Updated Android main menu layout in the “System section”: “Management” and “Settings” buttons are now rendered in one horizontal row (two-column flow), consistent with the “Quick actions” block style.
+- RU: Обновлён layout главного меню Android в «Разделе системы»: кнопки «Управление» и «Настройки» теперь отображаются в один горизонтальный ряд (двухколоночный flow), в стиле блока «Быстрые действия».
+- EN: Completed repository-wide patch version bump to `8.33.48`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.48` and `ANDROID_VERSION_CODE=166`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.48`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.48` и `ANDROID_VERSION_CODE=166`.
+
 ## [8.33.47] - 2026-03-21
 
 ### Fixed / Исправлено
