@@ -6,15 +6,15 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.33.42] - 2026-03-21
+## [8.33.43] - 2026-03-21
 
 ### Fixed / Исправлено
-- EN: Redesigned morning/manual monitoring report layout for better visual readability: server availability and problematic hosts are now rendered as compact fixed-width tables.
-- RU: Переработан дизайн утреннего/ручного отчёта мониторинга для более удобного визуального чтения: доступность серверов и список проблемных хостов теперь выводятся в виде компактных таблиц фиксированной ширины.
+- EN: Reworked morning/manual monitoring report layout to be compact and readable: removed bloated `Metric | Value` headers, server availability now renders as a short key/value table, and backup/1C/ZFS blocks are normalized into concise fixed-width sections.
+- RU: Переработан утренний/ручной отчёт мониторинга в компактный и читаемый вид: убраны раздутые заголовки `Показатель | Значение`, доступность серверов теперь выводится короткой key/value-таблицей, а блоки бэкапов/1С/ZFS нормализованы в лаконичные секции фиксированной ширины.
 
 ### Changed / Изменено
-- EN: Completed repository-wide patch version bump to `8.33.42`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.42` and `ANDROID_VERSION_CODE=160`.
-- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.42`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.42` и `ANDROID_VERSION_CODE=160`.
+- EN: Completed repository-wide patch version bump to `8.33.43`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.43` and `ANDROID_VERSION_CODE=161`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.43`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.43` и `ANDROID_VERSION_CODE=161`.
 
 ## [8.33.40] - 2026-03-21
 
