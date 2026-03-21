@@ -6,7 +6,17 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.33.38] - 2026-03-20
+## [8.33.40] - 2026-03-21
+
+### Fixed / Исправлено
+- EN: Fixed morning manual report generation for backup sections: summary builder now gracefully handles missing backup tables (`proxmox_backups`, `database_backups`) and returns partial status instead of aborting the whole backup block with “report generation error”.
+- RU: Исправлено формирование утреннего ручного отчёта в секции бэкапов: сборщик сводки теперь корректно обрабатывает отсутствие таблиц бэкапов (`proxmox_backups`, `database_backups`) и возвращает частичный статус вместо падения всего блока с ошибкой «Ошибка формирования отчета о бэкапах».
+
+### Changed / Изменено
+- EN: Completed repository-wide patch version bump to `8.33.40`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.40` and `ANDROID_VERSION_CODE=158`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.40`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.40` и `ANDROID_VERSION_CODE=158`.
+
+## [8.33.39] - 2026-03-20
 
 ### Fixed / Исправлено
 - EN: Fixed Proxmox host actions in mobile extension settings (`/v1/settings/extensions/actions`): host names are now extracted from the original callback value (without forced lowercasing), so edit/delete/toggle actions correctly target the same host keys as in Telegram bot flows.
@@ -15,8 +25,8 @@ The project follows Semantic Versioning (SemVer).
 - RU: Улучшен fallback-источник списка Proxmox-хостов для Android/web-настроек: если app-хранилище настроек вернуло пусто, backend дополнительно проверяет общее хранилище config manager до fallback на статические defaults, что убирает ложный экран «Хосты не настроены».
 
 ### Changed / Изменено
-- EN: Completed repository-wide patch version bump to `8.33.38`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.38` and `ANDROID_VERSION_CODE=157`.
-- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.38`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.38` и `ANDROID_VERSION_CODE=157`.
+- EN: Completed repository-wide patch version bump to `8.33.39`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.39` and `ANDROID_VERSION_CODE=157`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.39`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.39` и `ANDROID_VERSION_CODE=157`.
 
 ## [8.33.36] - 2026-03-20
 
