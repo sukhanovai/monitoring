@@ -627,23 +627,23 @@ private fun MonitoringApp(
                         }
                     }
                     Text("Раздел системы", fontWeight = FontWeight.Bold)
-                    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                        Column(
-                            modifier = Modifier.padding(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        maxItemsInEachRow = 2
+                    ) {
+                        Button(
+                            onClick = { isManagementExpanded = !isManagementExpanded },
+                            modifier = Modifier.weight(1f)
                         ) {
-                            Button(
-                                onClick = { isManagementExpanded = !isManagementExpanded },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text("🎛️ Управление")
-                            }
-                            Button(
-                                onClick = { isSettingsExpanded = !isSettingsExpanded },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text("⚙️ Настройки")
-                            }
+                            Text("🎛️ Управление")
+                        }
+                        Button(
+                            onClick = { isSettingsExpanded = !isSettingsExpanded },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("⚙️ Настройки")
                         }
                     }
                     if (isManagementExpanded) {
