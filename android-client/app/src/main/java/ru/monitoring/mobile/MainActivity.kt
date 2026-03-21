@@ -31,6 +31,7 @@ import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.PaddingValues
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -476,21 +477,36 @@ private fun MonitoringApp(
                         }
                     }
                     Text("Расширения", fontWeight = FontWeight.Bold)
-                    extensionButtons.forEach { extensionButton ->
-                        Button(
-                            onClick = {
-                                when (extensionButton.action) {
-                                    "check_resources" -> showServerResourcesMenu = !showServerResourcesMenu
-                                    "backup_proxmox" -> onToggleProxmoxBackupMenu()
-                                    "backup_databases" -> onToggleDatabaseBackupMenu()
-                                    "backup_mail" -> onToggleMailBackupMenu()
-                                    else -> onAction(extensionButton.action)
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(extensionButton.label)
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        maxItemsInEachRow = 2
+                    ) {
+                        extensionButtons.forEach { extensionButton ->
+                            Button(
+                                onClick = {
+                                    when (extensionButton.action) {
+                                        "check_resources" -> showServerResourcesMenu = !showServerResourcesMenu
+                                        "backup_proxmox" -> onToggleProxmoxBackupMenu()
+                                        "backup_databases" -> onToggleDatabaseBackupMenu()
+                                        "backup_mail" -> onToggleMailBackupMenu()
+                                        else -> onAction(extensionButton.action)
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)
+                            ) {
+                                Text(
+                                    text = extensionButton.label,
+                                    fontSize = 13.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
+                    }
+                    extensionButtons.forEach { extensionButton ->
                         if (extensionButton.action == "check_resources" && isResourceMonitorEnabled && showServerResourcesMenu) {
                             state.managedServers.forEach { server ->
                                 val serverTarget = if (server.ip.isNotBlank()) server.ip else server.name
@@ -610,8 +626,25 @@ private fun MonitoringApp(
                             }
                         }
                     }
-                    Button(onClick = { isManagementExpanded = !isManagementExpanded }, modifier = Modifier.fillMaxWidth()) {
-                        Text("🎛️ Управление")
+                    Text("Раздел системы", fontWeight = FontWeight.Bold)
+                    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = { isManagementExpanded = !isManagementExpanded },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("🎛️ Управление")
+                            }
+                            Button(
+                                onClick = { isSettingsExpanded = !isSettingsExpanded },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("⚙️ Настройки")
+                            }
+                        }
                     }
                     if (isManagementExpanded) {
                         Text("Управление мониторингом", fontWeight = FontWeight.Bold)
@@ -629,9 +662,6 @@ private fun MonitoringApp(
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(onClick = { onAction("auto_mode") }) { Text("Авто") }
                         }
-                    }
-                    Button(onClick = { isSettingsExpanded = !isSettingsExpanded }, modifier = Modifier.fillMaxWidth()) {
-                        Text("⚙️ Настройки")
                     }
                     if (isSettingsExpanded) {
                         Text("Разделы настроек", fontWeight = FontWeight.Bold)
