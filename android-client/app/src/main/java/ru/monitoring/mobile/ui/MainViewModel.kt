@@ -50,7 +50,8 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.33.55"
+    private val projectVersion = "8.33.56"
+    private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val fallbackUpdateUrl = "https://github.com/sukhanovai/monitoring/releases/latest"
     private val mailBackupHistoryRegex = Regex(
         pattern = """^([✅✔❌⚠️🚨])\s*(.+?)\s*[—-]\s*(.+?)\s*\(([^()]+)\)\s*$"""
@@ -1074,12 +1075,18 @@ class MainViewModel(
                             } else {
                                 null
                             }
+                            val hasProblemBackups = response.menuOptions
+                                .orEmpty()
+                                .mapNotNull { it.label?.trim() }
+                                .any { optionLabel -> problemBackupMarkers.any { marker -> optionLabel.contains(marker) } }
                             state = state.copy(
                                 isLoading = false,
                                 message = response.message ?: "Команда отправлена",
                                 messageSource = "global",
                                 extensionMenuOptions = response.menuOptions.orEmpty(),
                                 extensionMenuAction = if (response.menuOptions.isNullOrEmpty()) "" else action,
+                                backupProxmoxHasProblemItems = if (action == "backup_proxmox") hasProblemBackups else state.backupProxmoxHasProblemItems,
+                                backupDatabasesHasProblemItems = if (action == "backup_databases") hasProblemBackups else state.backupDatabasesHasProblemItems,
                                 mailBackupHistoryTitle = mailHistory?.title.orEmpty(),
                                 mailBackupHistoryItems = mailHistory?.items.orEmpty()
                             )
@@ -1712,6 +1719,8 @@ data class MainUiState(
     val extensionMenuAction: String = "",
     val extensionSettingsMenuOptions: List<MenuOption> = emptyList(),
     val extensionSettingsMenuAction: String = "",
+    val backupProxmoxHasProblemItems: Boolean = false,
+    val backupDatabasesHasProblemItems: Boolean = false,
     val mailBackupHistoryTitle: String = "",
     val mailBackupHistoryItems: List<MailBackupHistoryItem> = emptyList(),
     val servers: List<ServerAvailability> = emptyList(),
