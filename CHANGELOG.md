@@ -6,15 +6,15 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.33.56] - 2026-03-22
+## [8.33.57] - 2026-03-22
 
 ### Fixed / Исправлено
-- EN: In Android, added problem highlighting for the main extension buttons “💾 Proxmox Backups” and “🗃️ DB Backups”: when fetched backup menu items contain status markers (`❌`, `⚠️`, `🚨`, `🆘`, `⛔`, `🔴`, `🟠`, `⚪`), the corresponding top-level button is shown with error colors for immediate visibility.
-- RU: В Android добавлено выделение проблем для основных кнопок расширений «💾 Бэкапы Proxmox» и «🗃️ Бэкапы БД»: если в загруженных пунктах меню бэкапов есть маркеры статусов (`❌`, `⚠️`, `🚨`, `🆘`, `⛔`, `🔴`, `🟠`, `⚪`), соответствующая верхнеуровневая кнопка показывается в error-цветах для мгновенной заметности.
+- EN: Improved problematic backup highlighting in Android “🗃️ DB Backups” (and kept parity with Proxmox): buttons now switch to error colors not only by emoji markers, but also by textual failure keywords (`failed`, `error`, `problem`, `ошиб`, `проблем`, `недоступ`, etc.), making problematic backups visible even when backend labels have no status emoji.
+- RU: Улучшено выделение проблемных бэкапов в Android-разделе «🗃️ Бэкапы БД» (с сохранением паритета с Proxmox): кнопки теперь переходят в error-цвета не только по эмодзи-маркерам, но и по текстовым признакам ошибок (`failed`, `error`, `problem`, `ошиб`, `проблем`, `недоступ` и т.д.), чтобы проблемы были видны даже без статусной эмодзи в подписи.
 
 ### Changed / Изменено
-- EN: Completed repository-wide patch version bump to `8.33.56`; synchronized runtime/config/docs/Android references and updated Android metadata to `ANDROID_VERSION_NAME=8.33.56` and `ANDROID_VERSION_CODE=174`.
-- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.56`; синхронизированы ссылки в runtime/config/docs/Android и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.33.56` и `ANDROID_VERSION_CODE=174`.
+- EN: Completed repository-wide patch version bump to `8.33.57`; synchronized runtime/config/docs/Android references and updated Android metadata to `ANDROID_VERSION_NAME=8.33.57` and `ANDROID_VERSION_CODE=175`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.57`; синхронизированы ссылки в runtime/config/docs/Android и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.33.57` и `ANDROID_VERSION_CODE=175`.
 
 ## [8.33.55] - 2026-03-22
 
