@@ -50,7 +50,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.33.48"
+    private val projectVersion = "8.33.49"
     private val fallbackUpdateUrl = "https://github.com/sukhanovai/monitoring/releases/latest"
     private val mailBackupHistoryRegex = Regex(
         pattern = """^([✅✔❌⚠️🚨])\s*(.+?)\s*[—-]\s*(.+?)\s*\(([^()]+)\)\s*$"""
@@ -1009,6 +1009,7 @@ class MainViewModel(
             runCatching {
                     if (
                     action in extensionControlActions ||
+                    action == "backup_databases" ||
                     action.startsWith("backup_host_") ||
                     action.startsWith("backup_mail") ||
                     action.startsWith("supplier_stock_reports_") ||
@@ -1050,6 +1051,7 @@ class MainViewModel(
         if (
             action in extensionMainMenuActions ||
             action == "backup_proxmox" ||
+            action == "backup_databases" ||
             action.startsWith("backup_host_") ||
             action.startsWith("backup_mail") ||
             action.startsWith("supplier_stock_reports_") ||
@@ -1059,6 +1061,7 @@ class MainViewModel(
                 state = state.copy(isLoading = true)
                 if (
                     action in extensionControlActions ||
+                    action == "backup_databases" ||
                     action.startsWith("backup_host_") ||
                     action.startsWith("backup_mail") ||
                     action.startsWith("supplier_stock_reports_") ||

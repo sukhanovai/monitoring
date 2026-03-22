@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.33.49] - 2026-03-22
+
+### Fixed / Исправлено
+- EN: Fixed Android action routing for the “🗃️ DB Backups” button: `backup_databases` now uses the control-action endpoint (`/v1/control/action`) instead of extension actions (`/v1/settings/extensions/actions`), which prevents HTTP 400 responses when opening the DB backups menu.
+- RU: Исправлена маршрутизация действий Android для кнопки «🗃️ Бэкапы БД»: `backup_databases` теперь отправляется в control-action endpoint (`/v1/control/action`), а не в extension actions (`/v1/settings/extensions/actions`), из-за чего убраны HTTP 400 при открытии меню бэкапов БД.
+
+### Changed / Изменено
+- EN: Completed repository-wide patch version bump to `8.33.49`; Android metadata updated to `ANDROID_VERSION_NAME=8.33.49` and `ANDROID_VERSION_CODE=167`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.49`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.33.49` и `ANDROID_VERSION_CODE=167`.
+
 ## [8.33.48] - 2026-03-21
 
 ### Changed / Изменено
