@@ -78,6 +78,8 @@ private val MAIN_MENU_EXTENSION_BUTTONS = listOf(
     MainMenuExtensionButton("zfs_monitor", "🧊 ZFS", "zfs_menu")
 )
 
+private val PROBLEM_BACKUP_MARKERS = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
+
 class MainActivity : ComponentActivity() {
     private var downServersFromNotification by mutableStateOf<List<String>>(emptyList())
 
@@ -484,6 +486,11 @@ private fun MonitoringApp(
                         maxItemsInEachRow = 2
                     ) {
                         extensionButtons.forEach { extensionButton ->
+                            val shouldHighlightBackupButton = when (extensionButton.action) {
+                                "backup_proxmox" -> state.backupProxmoxHasProblemItems
+                                "backup_databases" -> state.backupDatabasesHasProblemItems
+                                else -> false
+                            }
                             Button(
                                 onClick = {
                                     when (extensionButton.action) {
@@ -495,7 +502,15 @@ private fun MonitoringApp(
                                     }
                                 },
                                 modifier = Modifier.weight(1f),
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+                                colors = if (shouldHighlightBackupButton) {
+                                    ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                } else {
+                                    ButtonDefaults.buttonColors()
+                                }
                             ) {
                                 Text(
                                     text = extensionButton.label,
@@ -543,9 +558,6 @@ private fun MonitoringApp(
                             Text(menuTitle, fontWeight = FontWeight.Bold)
                             val shouldHighlightProblemBackups = extensionButton.action == "backup_proxmox" ||
                                 extensionButton.action == "backup_databases"
-                            val problemBackupMarkers = listOf(
-                                "❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪"
-                            )
                             state.extensionMenuOptions.forEach { item ->
                                 val optionLabel = item.label?.trim().orEmpty()
                                 val optionAction = item.action?.trim().orEmpty()
@@ -558,7 +570,7 @@ private fun MonitoringApp(
                                     else -> ""
                                 }
                                 val isProblemBackupOption = shouldHighlightProblemBackups &&
-                                    problemBackupMarkers.any { marker -> optionLabel.contains(marker) }
+                                    PROBLEM_BACKUP_MARKERS.any { marker -> optionLabel.contains(marker) }
                                 val containerColor = if (isProblemBackupOption) {
                                     MaterialTheme.colorScheme.errorContainer
                                 } else {
