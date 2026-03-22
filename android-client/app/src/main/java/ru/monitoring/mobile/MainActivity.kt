@@ -87,6 +87,13 @@ private fun isProblemBackupLabel(label: String): Boolean {
         PROBLEM_BACKUP_KEYWORDS.any { keyword -> normalized.contains(keyword) }
 }
 
+private fun isProblemBackupOption(label: String, action: String): Boolean {
+    val normalizedAction = action.lowercase()
+    return isProblemBackupLabel(label) || PROBLEM_BACKUP_KEYWORDS.any { keyword ->
+        normalizedAction.contains(keyword)
+    }
+}
+
 class MainActivity : ComponentActivity() {
     private var downServersFromNotification by mutableStateOf<List<String>>(emptyList())
 
@@ -565,6 +572,27 @@ private fun MonitoringApp(
                             Text(menuTitle, fontWeight = FontWeight.Bold)
                             val shouldHighlightProblemBackups = extensionButton.action == "backup_proxmox" ||
                                 extensionButton.action == "backup_databases"
+                            val problemOptionsCount = state.extensionMenuOptions.count { item ->
+                                val optionLabel = item.label?.trim().orEmpty()
+                                val optionAction = item.action?.trim().orEmpty()
+                                val callbackAction = item.callbackData?.trim().orEmpty()
+                                val callbackActionCamel = item.callbackDataCamel?.trim().orEmpty()
+                                val targetAction = when {
+                                    optionAction.isNotBlank() -> optionAction
+                                    callbackAction.isNotBlank() -> callbackAction
+                                    callbackActionCamel.isNotBlank() -> callbackActionCamel
+                                    else -> ""
+                                }
+                                shouldHighlightProblemBackups &&
+                                    isProblemBackupOption(optionLabel, targetAction)
+                            }
+                            if (extensionButton.action == "backup_databases" && problemOptionsCount > 0) {
+                                Text(
+                                    text = "⚠️ Проблемных бэкапов: $problemOptionsCount",
+                                    color = MaterialTheme.colorScheme.error,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
                             state.extensionMenuOptions.forEach { item ->
                                 val optionLabel = item.label?.trim().orEmpty()
                                 val optionAction = item.action?.trim().orEmpty()
@@ -577,7 +605,7 @@ private fun MonitoringApp(
                                     else -> ""
                                 }
                                 val isProblemBackupOption = shouldHighlightProblemBackups &&
-                                    isProblemBackupLabel(optionLabel)
+                                    isProblemBackupOption(optionLabel, targetAction)
                                 val containerColor = if (isProblemBackupOption) {
                                     MaterialTheme.colorScheme.errorContainer
                                 } else {
