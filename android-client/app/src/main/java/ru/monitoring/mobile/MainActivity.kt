@@ -79,6 +79,13 @@ private val MAIN_MENU_EXTENSION_BUTTONS = listOf(
 )
 
 private val PROBLEM_BACKUP_MARKERS = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
+private val PROBLEM_BACKUP_KEYWORDS = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
+
+private fun isProblemBackupLabel(label: String): Boolean {
+    val normalized = label.lowercase()
+    return PROBLEM_BACKUP_MARKERS.any { marker -> label.contains(marker) } ||
+        PROBLEM_BACKUP_KEYWORDS.any { keyword -> normalized.contains(keyword) }
+}
 
 class MainActivity : ComponentActivity() {
     private var downServersFromNotification by mutableStateOf<List<String>>(emptyList())
@@ -570,7 +577,7 @@ private fun MonitoringApp(
                                     else -> ""
                                 }
                                 val isProblemBackupOption = shouldHighlightProblemBackups &&
-                                    PROBLEM_BACKUP_MARKERS.any { marker -> optionLabel.contains(marker) }
+                                    isProblemBackupLabel(optionLabel)
                                 val containerColor = if (isProblemBackupOption) {
                                     MaterialTheme.colorScheme.errorContainer
                                 } else {

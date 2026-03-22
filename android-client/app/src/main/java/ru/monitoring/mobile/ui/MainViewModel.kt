@@ -50,8 +50,9 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.33.56"
+    private val projectVersion = "8.33.57"
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
+    private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
     private val fallbackUpdateUrl = "https://github.com/sukhanovai/monitoring/releases/latest"
     private val mailBackupHistoryRegex = Regex(
         pattern = """^([✅✔❌⚠️🚨])\s*(.+?)\s*[—-]\s*(.+?)\s*\(([^()]+)\)\s*$"""
@@ -118,6 +119,12 @@ class MainViewModel(
         val trimmed = rawUrl.trim()
         if (trimmed.isBlank()) return "https://api.202020.ru:8443/"
         return if (trimmed.endsWith('/')) trimmed else "$trimmed/"
+    }
+
+    private fun isProblemBackupLabel(label: String): Boolean {
+        val normalized = label.lowercase()
+        return problemBackupMarkers.any { marker -> label.contains(marker) } ||
+            problemBackupKeywords.any { keyword -> normalized.contains(keyword) }
     }
 
     fun loadInitialState() {
@@ -1078,7 +1085,7 @@ class MainViewModel(
                             val hasProblemBackups = response.menuOptions
                                 .orEmpty()
                                 .mapNotNull { it.label?.trim() }
-                                .any { optionLabel -> problemBackupMarkers.any { marker -> optionLabel.contains(marker) } }
+                                .any { optionLabel -> isProblemBackupLabel(optionLabel) }
                             state = state.copy(
                                 isLoading = false,
                                 message = response.message ?: "Команда отправлена",
