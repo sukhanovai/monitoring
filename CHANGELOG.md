@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.33.53] - 2026-03-22
+
+### Fixed / Исправлено
+- EN: In the Android app, problematic backup buttons are now visually highlighted in the “💾 Proxmox Backups” and “🗃️ DB Backups” menus (for items starting with `❌`, `⚠️`, or `🚨`) using error-container colors.
+- RU: В Android-приложении визуально выделены кнопки проблемных бэкапов в меню «💾 Бэкапы Proxmox» и «🗃️ Бэкапы БД» (для пунктов, начинающихся с `❌`, `⚠️` или `🚨`) через error-цвета.
+
+### Changed / Изменено
+- EN: Completed repository-wide patch version bump to `8.33.53`; synchronized runtime/config/docs/Android references and updated Android metadata to `ANDROID_VERSION_NAME=8.33.53` and `ANDROID_VERSION_CODE=171`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.53`; синхронизированы ссылки в runtime/config/docs/Android и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.33.53` и `ANDROID_VERSION_CODE=171`.
+
 ## [8.33.52] - 2026-03-22
 
 ### Changed / Изменено
