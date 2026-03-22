@@ -541,6 +541,8 @@ private fun MonitoringApp(
                                 else -> "Выбор сервера"
                             }
                             Text(menuTitle, fontWeight = FontWeight.Bold)
+                            val shouldHighlightProblemBackups = extensionButton.action == "backup_proxmox" ||
+                                extensionButton.action == "backup_databases"
                             state.extensionMenuOptions.forEach { item ->
                                 val optionLabel = item.label?.trim().orEmpty()
                                 val optionAction = item.action?.trim().orEmpty()
@@ -552,13 +554,25 @@ private fun MonitoringApp(
                                     callbackActionCamel.isNotBlank() -> callbackActionCamel
                                     else -> ""
                                 }
+                                val isProblemBackupOption = shouldHighlightProblemBackups &&
+                                    (optionLabel.startsWith("❌") || optionLabel.startsWith("⚠️") || optionLabel.startsWith("🚨"))
+                                val containerColor = if (isProblemBackupOption) {
+                                    MaterialTheme.colorScheme.errorContainer
+                                } else {
+                                    MaterialTheme.colorScheme.tertiaryContainer
+                                }
+                                val contentColor = if (isProblemBackupOption) {
+                                    MaterialTheme.colorScheme.onErrorContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onTertiaryContainer
+                                }
                                 if (optionLabel.isNotBlank() && targetAction.isNotBlank()) {
                                     Button(
                                         onClick = { onAction(targetAction) },
                                         modifier = Modifier.fillMaxWidth(),
                                         colors = ButtonDefaults.buttonColors(
-                                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                                            containerColor = containerColor,
+                                            contentColor = contentColor
                                         )
                                     ) {
                                         Text(optionLabel)

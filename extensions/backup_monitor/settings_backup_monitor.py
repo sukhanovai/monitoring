@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/settings_backup_monitor.py
-Server Monitoring System v8.33.52
+Server Monitoring System v8.33.53
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Settings for the backup_monitor extension
 Система мониторинга серверов
-Версия: 8.33.52
+Версия: 8.33.53
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Настройки для расширения backup_monitor
