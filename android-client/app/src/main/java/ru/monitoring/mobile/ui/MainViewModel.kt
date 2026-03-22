@@ -50,7 +50,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.33.57"
+    private val projectVersion = "8.33.58"
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
     private val fallbackUpdateUrl = "https://github.com/sukhanovai/monitoring/releases/latest"
@@ -125,6 +125,18 @@ class MainViewModel(
         val normalized = label.lowercase()
         return problemBackupMarkers.any { marker -> label.contains(marker) } ||
             problemBackupKeywords.any { keyword -> normalized.contains(keyword) }
+    }
+
+    private fun isProblemBackupOption(option: MenuOption): Boolean {
+        val label = option.label?.trim().orEmpty()
+        val action = option.action?.trim().orEmpty()
+        val callbackAction = option.callbackData?.trim().orEmpty()
+        val callbackActionCamel = option.callbackDataCamel?.trim().orEmpty()
+        val normalizedAction = listOf(action, callbackAction, callbackActionCamel)
+            .joinToString(" ")
+            .lowercase()
+        return isProblemBackupLabel(label) ||
+            problemBackupKeywords.any { keyword -> normalizedAction.contains(keyword) }
     }
 
     fun loadInitialState() {
@@ -1084,8 +1096,7 @@ class MainViewModel(
                             }
                             val hasProblemBackups = response.menuOptions
                                 .orEmpty()
-                                .mapNotNull { it.label?.trim() }
-                                .any { optionLabel -> isProblemBackupLabel(optionLabel) }
+                                .any { option -> isProblemBackupOption(option) }
                             state = state.copy(
                                 isLoading = false,
                                 message = response.message ?: "Команда отправлена",
