@@ -543,7 +543,9 @@ private fun MonitoringApp(
                             Text(menuTitle, fontWeight = FontWeight.Bold)
                             val shouldHighlightProblemBackups = extensionButton.action == "backup_proxmox" ||
                                 extensionButton.action == "backup_databases"
-                            val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔")
+                            val problemBackupMarkers = listOf(
+                                "❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪"
+                            )
                             state.extensionMenuOptions.forEach { item ->
                                 val optionLabel = item.label?.trim().orEmpty()
                                 val optionAction = item.action?.trim().orEmpty()
@@ -567,6 +569,11 @@ private fun MonitoringApp(
                                 } else {
                                     MaterialTheme.colorScheme.onTertiaryContainer
                                 }
+                                val displayLabel = if (isProblemBackupOption && !optionLabel.contains("🚨")) {
+                                    "🚨 $optionLabel"
+                                } else {
+                                    optionLabel
+                                }
                                 if (optionLabel.isNotBlank() && targetAction.isNotBlank()) {
                                     Button(
                                         onClick = { onAction(targetAction) },
@@ -576,7 +583,7 @@ private fun MonitoringApp(
                                             contentColor = contentColor
                                         )
                                     ) {
-                                        Text(optionLabel)
+                                        Text(displayLabel)
                                     }
                                 }
                             }
