@@ -6,15 +6,15 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.33.54] - 2026-03-22
+## [8.33.55] - 2026-03-22
 
 ### Fixed / Исправлено
-- EN: Expanded Android problematic-backup button highlighting in “💾 Proxmox Backups” and “🗃️ DB Backups”: menu items are now marked with error colors when labels contain `❌`, `⚠️`, `🚨`, `🆘`, or `⛔` anywhere in text.
-- RU: Расширено выделение кнопок проблемных бэкапов в Android-разделах «💾 Бэкапы Proxmox» и «🗃️ Бэкапы БД»: пункты меню теперь подсвечиваются error-цветами, если в тексте есть `❌`, `⚠️`, `🚨`, `🆘` или `⛔`.
+- EN: Expanded Android problematic-backup button highlighting in “💾 Proxmox Backups” and “🗃️ DB Backups”: menu items are now marked with error colors when labels contain `❌`, `⚠️`, `🚨`, `🆘`, `⛔`, `🔴`, `🟠`, or `⚪` anywhere in text; problematic items also receive a `🚨` prefix for extra contrast.
+- RU: Расширено выделение кнопок проблемных бэкапов в Android-разделах «💾 Бэкапы Proxmox» и «🗃️ Бэкапы БД»: пункты меню теперь подсвечиваются error-цветами, если в тексте есть `❌`, `⚠️`, `🚨`, `🆘`, `⛔`, `🔴`, `🟠` или `⚪`; для дополнительного акцента проблемным пунктам добавляется префикс `🚨`.
 
 ### Changed / Изменено
-- EN: Completed repository-wide patch version bump to `8.33.54`; synchronized runtime/config/docs/Android references and updated Android metadata to `ANDROID_VERSION_NAME=8.33.54` and `ANDROID_VERSION_CODE=172`.
-- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.54`; синхронизированы ссылки в runtime/config/docs/Android и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.33.54` и `ANDROID_VERSION_CODE=172`.
+- EN: Completed repository-wide patch version bump to `8.33.55`; synchronized runtime/config/docs/Android references and updated Android metadata to `ANDROID_VERSION_NAME=8.33.55` and `ANDROID_VERSION_CODE=173`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.55`; синхронизированы ссылки в runtime/config/docs/Android и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.33.55` и `ANDROID_VERSION_CODE=173`.
 
 ## [8.33.53] - 2026-03-22
 
