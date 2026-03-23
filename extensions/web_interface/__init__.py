@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.33.58
+Server Monitoring System v8.33.59
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.33.58
+Версия: 8.33.59
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1600,20 +1600,40 @@ def _execute_mobile_control_action(action: str):
                 },
                 key=lambda item: (item[0], item[1])
             )
-            problem_dbs = sum(1 for backup_type, db_name in unique_dbs if backup_bot.get_database_display_status(backup_type, db_name) != "success")
+            db_status_rows = [
+                (backup_type, db_name, backup_bot.get_database_display_status(backup_type, db_name))
+                for backup_type, db_name in unique_dbs
+            ]
+            problem_db_rows = [
+                (backup_type, db_name, status)
+                for backup_type, db_name, status in db_status_rows
+                if status != "success"
+            ]
+            problem_dbs = len(problem_db_rows)
             ok_dbs = len(unique_dbs) - problem_dbs
             menu_options = [
                 {
-                    "label": f"🗃️ {db_name} ({backup_type})",
+                    "label": f"{'🚨' if status != 'success' else '✅'} {db_name} ({backup_type})",
                     "action": f"db_detail_{backup_type}__{db_name}",
                 }
-                for backup_type, db_name in unique_dbs
+                for backup_type, db_name, status in db_status_rows
             ]
+            problem_db_names = [f"{db_name} ({backup_type})" for backup_type, db_name, _ in problem_db_rows]
+            preview_limit = 5
+            if problem_db_names:
+                preview_names = ", ".join(problem_db_names[:preview_limit])
+                if len(problem_db_names) > preview_limit:
+                    problem_db_line = f"Проблемные базы: {preview_names} (+{len(problem_db_names) - preview_limit} ещё)"
+                else:
+                    problem_db_line = f"Проблемные базы: {preview_names}"
+            else:
+                problem_db_line = "Проблемные базы: нет"
             return True, (
                 "🗃️ Бэкапы БД\n\n"
                 f"Баз в отчёте: {len(unique_dbs)}\n"
                 f"✅ Без проблем: {ok_dbs}\n"
-                f"🚨 Проблемных: {problem_dbs}"
+                f"🚨 Проблемных: {problem_dbs}\n"
+                f"{problem_db_line}"
             ), "accepted", menu_options
 
         if action.startswith("db_detail_"):
