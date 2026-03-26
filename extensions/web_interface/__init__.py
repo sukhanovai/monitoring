@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.33.59
+Server Monitoring System v8.33.61
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.33.59
+Версия: 8.33.61
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -2292,6 +2292,17 @@ def mobile_status():
 
 
 
+def _parse_semver(raw_value):
+    value = str(raw_value or '').strip()
+    parts = value.split('.')
+    if len(parts) != 3:
+        return None
+    try:
+        return tuple(int(part) for part in parts)
+    except ValueError:
+        return None
+
+
 @app.route('/v1/mobile/version', methods=['GET'])
 @app.route('/api/v1/mobile/version', methods=['GET'])
 def v1_mobile_version():
@@ -2313,16 +2324,6 @@ def v1_mobile_version():
         ANDROID_LATEST_VERSION,
         ANDROID_APK_DOWNLOAD_URL,
     )
-
-    def _parse_semver(raw_value):
-        value = str(raw_value or '').strip()
-        parts = value.split('.')
-        if len(parts) != 3:
-            return None
-        try:
-            return tuple(int(part) for part in parts)
-        except ValueError:
-            return None
 
     current_version = (request.args.get('current_version') or '').strip()
     current_semver = _parse_semver(current_version)
