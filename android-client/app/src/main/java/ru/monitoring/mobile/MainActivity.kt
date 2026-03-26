@@ -330,6 +330,17 @@ private fun MonitoringApp(
     var proxmoxPatternValueInput by rememberSaveable { mutableStateOf("") }
     var proxmoxPatternEditAction by rememberSaveable { mutableStateOf("") }
     var proxmoxPatternEditValueInput by rememberSaveable { mutableStateOf("") }
+    var showDbCategoryAddDialog by rememberSaveable { mutableStateOf(false) }
+    var dbCategoryInput by rememberSaveable { mutableStateOf("") }
+    var showDbEntryAddDialog by rememberSaveable { mutableStateOf(false) }
+    var dbEntryAddCategory by rememberSaveable { mutableStateOf("") }
+    var dbEntryAddKeyInput by rememberSaveable { mutableStateOf("") }
+    var dbEntryAddNameInput by rememberSaveable { mutableStateOf("") }
+    var showDbEntryEditDialog by rememberSaveable { mutableStateOf(false) }
+    var dbEntryEditCategory by rememberSaveable { mutableStateOf("") }
+    var dbEntryEditOriginalKey by rememberSaveable { mutableStateOf("") }
+    var dbEntryEditNewKeyInput by rememberSaveable { mutableStateOf("") }
+    var dbEntryEditNameInput by rememberSaveable { mutableStateOf("") }
 
     val canSaveMonitoring = state.checkIntervalInput.isNotBlank() ||
         state.timeoutInput.isNotBlank() ||
@@ -905,14 +916,6 @@ private fun MonitoringApp(
                             Text("🧩 Настройки расширений", fontWeight = FontWeight.Bold)
                             Text("Включай/выключай расширения и открывай настройки активных расширений.")
 
-                            Text("🛠️ Управление расширениями (вкл/выкл)", fontWeight = FontWeight.Bold)
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Button(onClick = onEnableAllExtensions) { Text("📊 Включить все") }
-                                Button(onClick = onDisableAllExtensions) { Text("📋 Отключить все") }
-                            }
-                            ExtensionsSection(items = state.extensions, onToggleExtension = onToggleExtension)
-                            Spacer(modifier = Modifier.height(8.dp))
-
                             Button(
                                 onClick = {
                                     if (isExtensionsSettingsOpened) {
@@ -926,6 +929,14 @@ private fun MonitoringApp(
                             ) {
                                 Text(if (isExtensionsSettingsOpened) "⚙️ Скрыть настройки расширений" else "⚙️ Открыть настройки расширений")
                             }
+
+                            Text("🛠️ Управление расширениями (вкл/выкл)", fontWeight = FontWeight.Bold)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(onClick = onEnableAllExtensions) { Text("📊 Включить все") }
+                                Button(onClick = onDisableAllExtensions) { Text("📋 Отключить все") }
+                            }
+                            ExtensionsSection(items = state.extensions, onToggleExtension = onToggleExtension)
+                            Spacer(modifier = Modifier.height(8.dp))
                             if (isExtensionsSettingsOpened && state.extensionSettingsMenuOptions.isEmpty()) {
                                 Text("Нет доступных настроек для активных расширений.")
                             }
@@ -1006,6 +1017,25 @@ private fun MonitoringApp(
                                                     proxmoxPatternEditAction = action
                                                     proxmoxPatternEditValueInput = ""
                                                     showProxmoxPatternEditDialog = true
+                                                }
+                                                action == "settings_db_add_category" -> {
+                                                    dbCategoryInput = ""
+                                                    showDbCategoryAddDialog = true
+                                                }
+                                                action.startsWith("settings_db_add_db_") -> {
+                                                    dbEntryAddCategory = action.removePrefix("settings_db_add_db_")
+                                                    dbEntryAddKeyInput = ""
+                                                    dbEntryAddNameInput = ""
+                                                    showDbEntryAddDialog = true
+                                                }
+                                                action.startsWith("settings_db_edit_db_") -> {
+                                                    val raw = action.removePrefix("settings_db_edit_db_")
+                                                    val parts = raw.split("__", limit = 2)
+                                                    dbEntryEditCategory = parts.getOrNull(0).orEmpty()
+                                                    dbEntryEditOriginalKey = parts.getOrNull(1).orEmpty()
+                                                    dbEntryEditNewKeyInput = dbEntryEditOriginalKey
+                                                    dbEntryEditNameInput = dbEntryEditOriginalKey
+                                                    showDbEntryEditDialog = dbEntryEditCategory.isNotBlank() && dbEntryEditOriginalKey.isNotBlank()
                                                 }
                                                 else -> {
                                                     onExtensionsSettingsAction(action)
@@ -1101,6 +1131,110 @@ private fun MonitoringApp(
                                         TextButton(onClick = { showProxmoxPatternEditDialog = false }) {
                                             Text("Отмена")
                                         }
+                                    }
+                                )
+                            }
+
+                            if (showDbCategoryAddDialog) {
+                                AlertDialog(
+                                    onDismissRequest = { showDbCategoryAddDialog = false },
+                                    title = { Text("➕ Добавить категорию БД") },
+                                    text = {
+                                        OutlinedTextField(
+                                            value = dbCategoryInput,
+                                            onValueChange = { dbCategoryInput = it },
+                                            label = { Text("Название категории") },
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    },
+                                    confirmButton = {
+                                        TextButton(onClick = {
+                                            val category = dbCategoryInput.trim()
+                                            if (category.isNotBlank()) {
+                                                onExtensionsSettingsAction("settings_db_add_category|${Uri.encode(category)}")
+                                            }
+                                            showDbCategoryAddDialog = false
+                                        }) { Text("Добавить") }
+                                    },
+                                    dismissButton = {
+                                        TextButton(onClick = { showDbCategoryAddDialog = false }) { Text("Отмена") }
+                                    }
+                                )
+                            }
+
+                            if (showDbEntryAddDialog) {
+                                AlertDialog(
+                                    onDismissRequest = { showDbEntryAddDialog = false },
+                                    title = { Text("➕ Добавить БД в ${dbEntryAddCategory.uppercase()}") },
+                                    text = {
+                                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            OutlinedTextField(
+                                                value = dbEntryAddKeyInput,
+                                                onValueChange = { dbEntryAddKeyInput = it },
+                                                label = { Text("Ключ БД") },
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
+                                            OutlinedTextField(
+                                                value = dbEntryAddNameInput,
+                                                onValueChange = { dbEntryAddNameInput = it },
+                                                label = { Text("Отображаемое имя") },
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
+                                        }
+                                    },
+                                    confirmButton = {
+                                        TextButton(onClick = {
+                                            val key = dbEntryAddKeyInput.trim()
+                                            val name = dbEntryAddNameInput.trim()
+                                            if (dbEntryAddCategory.isNotBlank() && key.isNotBlank()) {
+                                                onExtensionsSettingsAction(
+                                                    "settings_db_add_db_submit|${Uri.encode(dbEntryAddCategory)}|${Uri.encode(key)}|${Uri.encode(name)}"
+                                                )
+                                            }
+                                            showDbEntryAddDialog = false
+                                        }) { Text("Добавить") }
+                                    },
+                                    dismissButton = {
+                                        TextButton(onClick = { showDbEntryAddDialog = false }) { Text("Отмена") }
+                                    }
+                                )
+                            }
+
+                            if (showDbEntryEditDialog) {
+                                AlertDialog(
+                                    onDismissRequest = { showDbEntryEditDialog = false },
+                                    title = { Text("✏️ Редактировать БД") },
+                                    text = {
+                                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            Text("Категория: ${dbEntryEditCategory.uppercase()}")
+                                            OutlinedTextField(
+                                                value = dbEntryEditNewKeyInput,
+                                                onValueChange = { dbEntryEditNewKeyInput = it },
+                                                label = { Text("Новый ключ БД") },
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
+                                            OutlinedTextField(
+                                                value = dbEntryEditNameInput,
+                                                onValueChange = { dbEntryEditNameInput = it },
+                                                label = { Text("Новое отображаемое имя") },
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
+                                        }
+                                    },
+                                    confirmButton = {
+                                        TextButton(onClick = {
+                                            val newKey = dbEntryEditNewKeyInput.trim()
+                                            val newName = dbEntryEditNameInput.trim()
+                                            if (dbEntryEditCategory.isNotBlank() && dbEntryEditOriginalKey.isNotBlank() && newKey.isNotBlank()) {
+                                                onExtensionsSettingsAction(
+                                                    "settings_db_edit_db_submit|${Uri.encode(dbEntryEditCategory)}|${Uri.encode(dbEntryEditOriginalKey)}|${Uri.encode(newKey)}|${Uri.encode(newName)}"
+                                                )
+                                            }
+                                            showDbEntryEditDialog = false
+                                        }) { Text("Сохранить") }
+                                    },
+                                    dismissButton = {
+                                        TextButton(onClick = { showDbEntryEditDialog = false }) { Text("Отмена") }
                                     }
                                 )
                             }

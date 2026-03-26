@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.33.78
+Server Monitoring System v8.33.79
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.33.78
+Версия: 8.33.79
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -43,6 +43,7 @@ import subprocess
 import sys
 import time
 import uuid
+from urllib.parse import quote, unquote
 
 app = Flask(__name__)
 
@@ -3378,12 +3379,235 @@ def v1_extensions_actions():
                 lines.append("")
             lines.append(f"Итого: {total_dbs} баз данных в {len(db_config)} категориях")
 
+        menu_options = []
+        for category in sorted(db_config.keys()):
+            databases = db_config.get(category)
+            if not isinstance(databases, dict):
+                databases = {}
+            encoded_category = quote(str(category), safe="")
+            menu_options.append({
+                "label": f"➕ Добавить БД в {str(category).upper()}",
+                "action": f"settings_db_add_db_{encoded_category}",
+            })
+            for db_key in sorted(databases.keys()):
+                encoded_db_key = quote(str(db_key), safe="")
+                menu_options.extend([
+                    {
+                        "label": f"✏️ {str(category).upper()}: {str(db_key)}",
+                        "action": f"settings_db_edit_db_{encoded_category}__{encoded_db_key}",
+                    },
+                    {
+                        "label": f"🗑️ {str(category).upper()}: {str(db_key)}",
+                        "action": f"settings_db_delete_db_{encoded_category}__{encoded_db_key}",
+                    },
+                ])
+            menu_options.append({
+                "label": f"🗑️ Удалить категорию {str(category).upper()}",
+                "action": f"settings_db_delete_{encoded_category}",
+            })
+
         return jsonify({
             "request_id": request_id,
             "action": action,
             "result": "accepted",
             "message": "\n".join(lines),
+            "menu_options": menu_options + [
+                {"label": "↩️ Назад", "action": "settings_db_main"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        }), 200
+
+    if action.startswith("settings_db_add_category|"):
+        payload = action.split("|", 1)[1].strip()
+        category = unquote(payload).strip().lower()
+        if not category:
+            return jsonify({
+                "request_id": request_id,
+                "action": action,
+                "result": "rejected",
+                "message": "❌ Категория не указана.",
+                "menu_options": [{"label": "↩️ Назад", "action": "settings_db_main"}],
+            }), 200
+
+        db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+        if not isinstance(db_config, dict):
+            db_config = {}
+        if category in db_config:
+            message = f"ℹ️ Категория «{category}» уже существует."
+        else:
+            db_config[category] = {}
+            settings_manager.set_setting('DATABASE_CONFIG', db_config, 'backup', data_type='auto')
+            message = f"✅ Категория «{category}» добавлена."
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "result": "accepted",
+            "message": message,
             "menu_options": [
+                {"label": "📋 Просмотр всех БД", "action": "settings_db_view_all"},
+                {"label": "↩️ Назад", "action": "settings_db_main"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        }), 200
+
+    if action == "settings_db_delete_category":
+        db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+        if not isinstance(db_config, dict):
+            db_config = {}
+        categories = sorted([str(item) for item in db_config.keys()])
+        menu_options = [
+            {
+                "label": f"🗑️ {category.upper()}",
+                "action": f"settings_db_delete_{quote(category, safe='')}",
+            }
+            for category in categories
+        ]
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "result": "accepted",
+            "message": "Выбери категорию БД для удаления." if categories else "❌ Категории БД не найдены.",
+            "menu_options": menu_options + [
+                {"label": "↩️ Назад", "action": "settings_db_main"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        }), 200
+
+    if action.startswith("settings_db_add_db_submit|"):
+        parts = action.split("|")
+        category = unquote(parts[1]).strip().lower() if len(parts) > 1 else ""
+        db_key = unquote(parts[2]).strip() if len(parts) > 2 else ""
+        db_name = unquote(parts[3]).strip() if len(parts) > 3 else ""
+        if not category or not db_key:
+            return jsonify({
+                "request_id": request_id,
+                "action": action,
+                "result": "rejected",
+                "message": "❌ Укажи категорию и ключ БД.",
+                "menu_options": [{"label": "↩️ Назад", "action": "settings_db_view_all"}],
+            }), 200
+        if not db_name:
+            db_name = db_key
+
+        db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+        if not isinstance(db_config, dict):
+            db_config = {}
+        if category not in db_config or not isinstance(db_config.get(category), dict):
+            db_config[category] = {}
+        db_config[category][db_key] = db_name
+        settings_manager.set_setting('DATABASE_CONFIG', db_config, 'backup', data_type='auto')
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "result": "accepted",
+            "message": f"✅ БД «{db_key}» сохранена в категории «{category}».",
+            "menu_options": [
+                {"label": "📋 Просмотр всех БД", "action": "settings_db_view_all"},
+                {"label": "↩️ Назад", "action": "settings_db_main"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        }), 200
+
+    if action.startswith("settings_db_edit_db_submit|"):
+        parts = action.split("|")
+        category = unquote(parts[1]).strip().lower() if len(parts) > 1 else ""
+        old_key = unquote(parts[2]).strip() if len(parts) > 2 else ""
+        new_key = unquote(parts[3]).strip() if len(parts) > 3 else ""
+        new_name = unquote(parts[4]).strip() if len(parts) > 4 else ""
+        if not category or not old_key or not new_key:
+            return jsonify({
+                "request_id": request_id,
+                "action": action,
+                "result": "rejected",
+                "message": "❌ Недостаточно данных для редактирования БД.",
+                "menu_options": [{"label": "↩️ Назад", "action": "settings_db_view_all"}],
+            }), 200
+
+        db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+        if not isinstance(db_config, dict):
+            db_config = {}
+        category_map = db_config.get(category) if isinstance(db_config.get(category), dict) else {}
+        if old_key not in category_map:
+            return jsonify({
+                "request_id": request_id,
+                "action": action,
+                "result": "rejected",
+                "message": "❌ База не найдена в указанной категории.",
+                "menu_options": [{"label": "↩️ Назад", "action": "settings_db_view_all"}],
+            }), 200
+        value = new_name or category_map.get(old_key) or new_key
+        if old_key != new_key:
+            category_map.pop(old_key, None)
+        category_map[new_key] = value
+        db_config[category] = category_map
+        settings_manager.set_setting('DATABASE_CONFIG', db_config, 'backup', data_type='auto')
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "result": "accepted",
+            "message": f"✅ БД «{old_key}» обновлена.",
+            "menu_options": [
+                {"label": "📋 Просмотр всех БД", "action": "settings_db_view_all"},
+                {"label": "↩️ Назад", "action": "settings_db_main"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        }), 200
+
+    if action.startswith("settings_db_delete_db_"):
+        raw = action.replace("settings_db_delete_db_", "", 1)
+        parts = raw.split("__", 1)
+        category = unquote(parts[0]).strip().lower() if parts else ""
+        db_key = unquote(parts[1]).strip() if len(parts) > 1 else ""
+        if not category or not db_key:
+            return jsonify({
+                "request_id": request_id,
+                "action": action,
+                "result": "rejected",
+                "message": "❌ Не удалось определить категорию/БД для удаления.",
+                "menu_options": [{"label": "↩️ Назад", "action": "settings_db_view_all"}],
+            }), 200
+        db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+        if not isinstance(db_config, dict):
+            db_config = {}
+        category_map = db_config.get(category) if isinstance(db_config.get(category), dict) else {}
+        removed = category_map.pop(db_key, None)
+        db_config[category] = category_map
+        settings_manager.set_setting('DATABASE_CONFIG', db_config, 'backup', data_type='auto')
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "result": "accepted",
+            "message": f"{'✅' if removed is not None else 'ℹ️'} БД «{db_key}» {'удалена' if removed is not None else 'не найдена'}.",
+            "menu_options": [
+                {"label": "📋 Просмотр всех БД", "action": "settings_db_view_all"},
+                {"label": "↩️ Назад", "action": "settings_db_main"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        }), 200
+
+    if action.startswith("settings_db_delete_") and action != "settings_db_delete_category":
+        encoded_category = action.replace("settings_db_delete_", "", 1)
+        category = unquote(encoded_category).strip().lower()
+        if not category:
+            return jsonify({
+                "request_id": request_id,
+                "action": action,
+                "result": "rejected",
+                "message": "❌ Категория для удаления не указана.",
+                "menu_options": [{"label": "↩️ Назад", "action": "settings_db_view_all"}],
+            }), 200
+        db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+        if not isinstance(db_config, dict):
+            db_config = {}
+        removed = db_config.pop(category, None)
+        settings_manager.set_setting('DATABASE_CONFIG', db_config, 'backup', data_type='auto')
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "result": "accepted",
+            "message": f"{'✅' if removed is not None else 'ℹ️'} Категория «{category}» {'удалена' if removed is not None else 'не найдена'}.",
+            "menu_options": [
+                {"label": "📋 Просмотр всех БД", "action": "settings_db_view_all"},
                 {"label": "↩️ Назад", "action": "settings_db_main"},
                 {"label": "✖️ Закрыть", "action": "close"},
             ],
