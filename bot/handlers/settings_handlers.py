@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.33.65
+Server Monitoring System v8.33.66
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.33.65
+Версия: 8.33.66
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -13,6 +13,7 @@ Handlers for managing settings via a bot
 
 import sqlite3
 from datetime import datetime
+import ast
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.error import BadRequest, TelegramError
@@ -59,6 +60,21 @@ BACKUP_SETTINGS_CALLBACKS = {
 }
 
 debug_logger = debug_log
+
+def _normalize_proxmox_hosts(raw_hosts) -> dict:
+    """Нормализует PROXMOX_HOSTS к словарю для всех входных форматов."""
+    if isinstance(raw_hosts, dict):
+        return raw_hosts
+    if isinstance(raw_hosts, str):
+        try:
+            parsed_hosts = json.loads(raw_hosts)
+        except Exception:
+            try:
+                parsed_hosts = ast.literal_eval(raw_hosts)
+            except Exception:
+                parsed_hosts = {}
+        return parsed_hosts if isinstance(parsed_hosts, dict) else {}
+    return {}
 
 def _safe_query_answer(query, text: str | None = None, **kwargs) -> None:
     try:
@@ -689,8 +705,8 @@ def show_proxmox_backup_settings(update, context):
     query = update.callback_query
     query.answer()
 
-    proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
-    proxmox_count = len(proxmox_hosts) if isinstance(proxmox_hosts, dict) else 0
+    proxmox_hosts = _normalize_proxmox_hosts(settings_manager.get_setting('PROXMOX_HOSTS', {}))
+    proxmox_count = len(proxmox_hosts)
 
     message = (
         "🖥️ *Бэкапы Proxmox*\n\n"
