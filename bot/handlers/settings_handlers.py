@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.33.67
+Server Monitoring System v8.33.68
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.33.67
+Версия: 8.33.68
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -725,7 +725,7 @@ def show_proxmox_backup_settings(update, context):
     query = update.callback_query
     query.answer()
 
-    proxmox_hosts = _normalize_proxmox_hosts(settings_manager.get_setting('PROXMOX_HOSTS', {}))
+    proxmox_hosts = _get_proxmox_hosts_for_settings()
     proxmox_count = len(proxmox_hosts)
 
     message = (
@@ -8111,9 +8111,7 @@ def delete_proxmox_host(update, context, host_name):
     query = update.callback_query
     query.answer()
 
-    proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
-    if not isinstance(proxmox_hosts, dict):
-        proxmox_hosts = {}
+    proxmox_hosts = _get_proxmox_hosts_for_settings()
 
     if host_name not in proxmox_hosts:
         query.edit_message_text(
@@ -8149,9 +8147,7 @@ def handle_proxmox_host_input(update, context):
         update.message.reply_text("❌ Имя хоста не может быть пустым. Попробуйте снова:")
         return
 
-    proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
-    if not isinstance(proxmox_hosts, dict):
-        proxmox_hosts = {}
+    proxmox_hosts = _get_proxmox_hosts_for_settings()
 
     if host_name in proxmox_hosts:
         update.message.reply_text("❌ Такой хост уже есть. Введите другой:")
@@ -8177,9 +8173,7 @@ def edit_proxmox_host_handler(update, context, host_name):
     query = update.callback_query
     query.answer()
 
-    proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
-    if not isinstance(proxmox_hosts, dict):
-        proxmox_hosts = {}
+    proxmox_hosts = _get_proxmox_hosts_for_settings()
 
     if host_name not in proxmox_hosts:
         query.edit_message_text(
@@ -8217,9 +8211,7 @@ def handle_proxmox_host_edit_input(update, context):
         update.message.reply_text("❌ Имя хоста не может быть пустым. Попробуйте снова:")
         return
 
-    proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
-    if not isinstance(proxmox_hosts, dict):
-        proxmox_hosts = {}
+    proxmox_hosts = _get_proxmox_hosts_for_settings()
 
     old_host_name = context.user_data.get('editing_proxmox_host_name')
     if not old_host_name or old_host_name not in proxmox_hosts:
@@ -8256,9 +8248,7 @@ def toggle_proxmox_host(update, context, host_name):
     query = update.callback_query
     query.answer()
 
-    proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
-    if not isinstance(proxmox_hosts, dict):
-        proxmox_hosts = {}
+    proxmox_hosts = _get_proxmox_hosts_for_settings()
 
     if host_name not in proxmox_hosts:
         query.edit_message_text(
