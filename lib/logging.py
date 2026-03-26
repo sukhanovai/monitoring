@@ -1,11 +1,11 @@
 """
 /lib/logging.py
-Server Monitoring System v8.33.66
+Server Monitoring System v8.33.67
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Unified logging system
 Система мониторинга серверов
-Версия: 8.33.66
+Версия: 8.33.67
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единая система логирования
