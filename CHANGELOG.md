@@ -6,15 +6,15 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.33.67] - 2026-03-26
+## [8.33.68] - 2026-03-26
 
 ### Fixed / Исправлено
-- EN: Fixed inconsistency in Telegram Proxmox backup settings path `Settings → Extensions → Proxmox Backups`: the hosts list now uses the same normalized/fallback source resolution as the section summary, so “Hosts are not configured” no longer appears when hosts are actually configured.
-- RU: Исправлена рассинхронизация в Telegram-цепочке `Настройки → Расширения → Бэкапы Proxmox`: список хостов теперь использует тот же нормализованный источник с fallback, что и карточка раздела, поэтому сообщение «Хосты не настроены» больше не появляется при фактически настроенных хостах.
+- EN: Fixed Telegram Proxmox host actions in `Settings → Extensions → Proxmox Backups → Hosts → Host list`: edit/delete/toggle now load hosts from the same normalized source with runtime/config fallback as the list itself, so valid host buttons no longer fail with `❌ Host not found`.
+- RU: Исправлены действия по Proxmox-хостам в Telegram-цепочке `Настройки → Расширения → Бэкапы Proxmox → Хосты → Список хостов`: редактирование/удаление/переключение теперь берут хосты из того же нормализованного источника с runtime/config fallback, что и сам список, поэтому корректные кнопки больше не падают с `❌ Хост не найден`.
 
 ### Changed / Изменено
-- EN: Completed repository-wide patch version bump to `8.33.67`; synchronized runtime/config/docs/Android references and updated Android metadata to `ANDROID_VERSION_NAME=8.33.67` and `ANDROID_VERSION_CODE=184`.
-- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.67`; синхронизированы ссылки в runtime/config/docs/Android и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.33.67` и `ANDROID_VERSION_CODE=184`.
+- EN: Completed repository-wide patch version bump to `8.33.68`; synchronized runtime/config/docs/Android references and updated Android metadata to `ANDROID_VERSION_NAME=8.33.68` and `ANDROID_VERSION_CODE=185`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.68`; синхронизированы ссылки в runtime/config/docs/Android и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.33.68` и `ANDROID_VERSION_CODE=185`.
 
 ## [8.33.65] - 2026-03-26
 
