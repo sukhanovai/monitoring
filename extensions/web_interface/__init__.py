@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.33.64
+Server Monitoring System v8.33.65
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.33.64
+Версия: 8.33.65
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -31,6 +31,7 @@ from extensions.supplier_stock_files import (
 import threading
 from datetime import datetime
 import json
+import ast
 import re
 import os
 import sqlite3
@@ -2598,7 +2599,10 @@ def v1_extensions_actions():
             try:
                 parsed_hosts = json.loads(raw_hosts)
             except Exception:
-                parsed_hosts = {}
+                try:
+                    parsed_hosts = ast.literal_eval(raw_hosts)
+                except Exception:
+                    parsed_hosts = {}
             return parsed_hosts if isinstance(parsed_hosts, dict) else {}
         return {}
 
