@@ -6,15 +6,15 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.33.74] - 2026-03-26
+## [8.33.75] - 2026-03-26
 
 ### Fixed / Исправлено
-- EN: Fixed Proxmox pattern edit action for Android/Web extension settings: opening edit without a value now returns the current pattern and explicit submit format (`settings_proxmox_pattern_edit_<id>|<new_pattern>`), so the flow is a real edit step instead of an informational placeholder.
-- RU: Исправлен шаг редактирования Proxmox-паттерна в Android/Web настройках расширений: при открытии редактирования без значения теперь возвращается текущий паттерн и явный формат отправки (`settings_proxmox_pattern_edit_<id>|<новый_паттерн>`), поэтому шаг стал рабочим редактированием, а не информационной заглушкой.
+- EN: Fixed Proxmox pattern edit flow in extension settings: when opening `settings_proxmox_pattern_edit_<id>` without a value, backend now returns an explicit action button (`✏️ Enter new pattern`) and marks response as accepted, so clients can open the input dialog instead of showing a dead-end informational message.
+- RU: Исправлен сценарий редактирования Proxmox-паттерна в настройках расширений: при открытии `settings_proxmox_pattern_edit_<id>` без значения backend теперь отдаёт явную кнопку действия (`✏️ Ввести новый паттерн`) и помечает ответ как accepted, поэтому клиент может открыть диалог ввода вместо тупиковой информационной плашки.
 
 ### Changed / Изменено
-- EN: Completed repository-wide patch version bump to `8.33.74`; synchronized project/runtime/docs references, updated Android metadata to `ANDROID_VERSION_NAME=8.33.74` and `ANDROID_VERSION_CODE=191`, and aligned prerelease links.
-- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.74`; синхронизированы ссылки на версию в проекте/runtime/docs, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.33.74` и `ANDROID_VERSION_CODE=191`, а также выровнены prerelease-ссылки.
+- EN: Completed repository-wide patch version bump to `8.33.75`; synchronized project/runtime/docs references, updated Android metadata to `ANDROID_VERSION_NAME=8.33.75` and `ANDROID_VERSION_CODE=192`, and aligned prerelease links.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.75`; синхронизированы ссылки на версию в проекте/runtime/docs, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.33.75` и `ANDROID_VERSION_CODE=192`, а также выровнены prerelease-ссылки.
 
 ## [8.33.72] - 2026-03-26
 
