@@ -63,6 +63,14 @@ function Resolve-TargetDevice {
     return ($deviceLine -split "\t")[0]
 }
 
+function Test-AnyDeviceConnected {
+    param(
+        [string]$AdbPath
+    )
+
+    return [bool](Resolve-TargetDevice -AdbPath $AdbPath)
+}
+
 function Ensure-DeviceReadyForLaunch {
     param(
         [string]$AdbPath,
@@ -142,6 +150,16 @@ Write-Host "[3/5] Assemble project..."
 Invoke-GradleStep -Description "Assemble debug" -Tasks @("assembleDebug")
 
 if (-not $SkipInstall) {
+    $adbPath = Resolve-AdbPath
+    if (-not (Test-AnyDeviceConnected -AdbPath $adbPath)) {
+        Write-Warning "No connected adb devices/emulators. Install and run steps will be skipped."
+        Write-Host "Tip: connect a device or start an emulator, then rerun script without -SkipInstall."
+        $SkipInstall = $true
+        $SkipRun = $true
+    }
+}
+
+if (-not $SkipInstall) {
     Write-Host "[4/5] Install app on connected device/emulator..."
     Invoke-GradleStep -Description "Install debug APK" -Tasks @(":app:installDebug")
 }
@@ -156,8 +174,6 @@ if ($SkipRun) {
 }
 
 if (-not $SkipInstall) {
-    $adbPath = Resolve-AdbPath
-
     $targetDevice = Resolve-TargetDevice -AdbPath $adbPath
     if (-not $targetDevice) {
         Write-Warning "No active adb device/emulator. APK installation finished, but app launch skipped."

@@ -6,17 +6,13 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.33.61] - 2026-03-26
+## [8.33.62] - 2026-03-26
 
 ### Changed / Изменено
-- EN: Optimized network checks in `lib/network.py`: `check_port` now uses `socket.create_connection` context management to reduce manual socket handling overhead and avoid descriptor leaks on exceptional paths.
-- RU: Оптимизированы сетевые проверки в `lib/network.py`: `check_port` теперь использует `socket.create_connection` с контекстным менеджером, что уменьшает накладные расходы ручного управления сокетом и исключает утечки дескрипторов при ошибках.
-- EN: Optimized ping latency parsing in `lib/network.py`: removed unused timing variable, switched to `splitlines()`/`partition()`, and stop parsing after first valid `time=` token per probe.
-- RU: Оптимизирован парсинг задержки ping в `lib/network.py`: удалена неиспользуемая переменная времени, применены `splitlines()`/`partition()`, добавлен ранний выход после первого валидного `time=` в каждом пробном пакете.
-- EN: Moved SemVer parsing helper in mobile version endpoint to module scope to avoid recreating the function on every request and keep request-path logic lighter.
-- RU: Вынесен helper парсинга SemVer для mobile version endpoint на уровень модуля, чтобы не создавать функцию заново на каждый запрос и облегчить request-path.
-- EN: Completed repository-wide patch version bump to `8.33.61`; synchronized runtime/config/docs/Android references and updated Android metadata to `ANDROID_VERSION_NAME=8.33.61` and `ANDROID_VERSION_CODE=179`.
-- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.61`; синхронизированы ссылки в runtime/config/docs/Android и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.33.61` и `ANDROID_VERSION_CODE=179`.
+- EN: Updated `scripts/android_post_pull_build_run.ps1`: script now checks adb connectivity before `:app:installDebug` and gracefully skips install/run when no device or emulator is connected.
+- RU: Обновлён `scripts/android_post_pull_build_run.ps1`: скрипт теперь проверяет подключение adb до `:app:installDebug` и корректно пропускает install/run, если нет устройства или эмулятора.
+- EN: Completed repository-wide patch version bump to `8.33.62`; synchronized runtime/config/docs/Android references and updated Android metadata to `ANDROID_VERSION_NAME=8.33.62` and `ANDROID_VERSION_CODE=180`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.62`; синхронизированы ссылки в runtime/config/docs/Android и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.33.62` и `ANDROID_VERSION_CODE=180`.
 
 ## [8.33.60] - 2026-03-23
 
