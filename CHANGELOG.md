@@ -6,15 +6,15 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.33.69] - 2026-03-26
+## [8.33.70] - 2026-03-26
 
 ### Fixed / Исправлено
-- EN: Fixed Proxmox host enable/disable sync between Telegram bot and Android extension settings (`Settings → Extensions → Open extension settings → Proxmox backups`): mobile API now reads/writes `PROXMOX_HOSTS` via shared `core.config_manager` and forces fresh reads (`use_cache=False`), eliminating split state caused by different settings managers and stale cache.
-- RU: Исправлена синхронизация вкл/выкл Proxmox-хостов между Telegram-ботом и Android в разделе расширения (`Настройки → Расширения → Открыть настройки расширений → Бэкапы Proxmox`): mobile API теперь читает/пишет `PROXMOX_HOSTS` через общий `core.config_manager` и принудительно читает без кэша (`use_cache=False`), из-за чего пропадает рассинхрон между клиентами.
+- EN: Fixed stale Proxmox host visibility in backup menus after disabling a host in settings (`Settings → Extensions → Proxmox backups → Hosts` in Telegram and Android extension settings): host list resolution now reads `PROXMOX_HOSTS` from runtime settings via `core.config_manager` with `use_cache=False`, so disabled hosts no longer remain in the “Proxmox backups” menu.
+- RU: Исправлено «залипание» отключённых Proxmox-хостов в меню бэкапов после выключения хоста в настройках (`Настройки → Расширения → Бэкапы Proxmox → Хосты` в Telegram и Android): получение списка хостов теперь берёт `PROXMOX_HOSTS` из runtime-настроек через `core.config_manager` с `use_cache=False`, поэтому отключённые хосты больше не остаются в меню «Бэкапы Proxmox».
 
 ### Changed / Изменено
-- EN: Completed repository-wide patch version bump to `8.33.69`; synchronized runtime/config/docs/Android references and updated Android metadata to `ANDROID_VERSION_NAME=8.33.69` and `ANDROID_VERSION_CODE=186`.
-- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.69`; синхронизированы ссылки в runtime/config/docs/Android и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.33.69` и `ANDROID_VERSION_CODE=186`.
+- EN: Completed repository-wide patch version bump to `8.33.70`; synchronized runtime/config/docs/Android references and updated Android metadata to `ANDROID_VERSION_NAME=8.33.70` and `ANDROID_VERSION_CODE=187`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.70`; синхронизированы ссылки в runtime/config/docs/Android и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.33.70` и `ANDROID_VERSION_CODE=187`.
 
 ## [8.33.65] - 2026-03-26
 

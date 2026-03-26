@@ -1,17 +1,19 @@
 """
 /extensions/backup_monitor/bot_handler.py
-Server Monitoring System v8.33.69
+Server Monitoring System v8.33.70
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring Proxmox backups
 Система мониторинга серверов
-Версия: 8.33.69
+Версия: 8.33.70
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг бэкапов Proxmox
 """
 
 import sys
+import ast
+import json
 from datetime import datetime, timedelta
 from pathlib import Path
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -229,21 +231,51 @@ class BackupMonitorBot(BackupBase):
         results = self.execute_query(query)
         db_hosts = [row[0] for row in results]
 
-        try:
-            from .db_settings_backup_monitor import PROXMOX_HOSTS
-        except Exception:
-            PROXMOX_HOSTS = {}
-
-        if not isinstance(PROXMOX_HOSTS, dict):
+        proxmox_hosts = self._get_proxmox_hosts_runtime()
+        if not isinstance(proxmox_hosts, dict):
             return db_hosts
 
         enabled_hosts = {
-            host for host, value in PROXMOX_HOSTS.items()
+            host for host, value in proxmox_hosts.items()
             if not isinstance(value, dict) or value.get("enabled", True)
         }
 
         filtered_hosts = [host for host in db_hosts if host in enabled_hosts]
         return filtered_hosts or list(enabled_hosts)
+
+    @staticmethod
+    def _normalize_proxmox_hosts(raw_hosts) -> dict:
+        if isinstance(raw_hosts, dict):
+            return raw_hosts
+        if isinstance(raw_hosts, str):
+            try:
+                parsed_hosts = json.loads(raw_hosts)
+            except Exception:
+                try:
+                    parsed_hosts = ast.literal_eval(raw_hosts)
+                except Exception:
+                    parsed_hosts = {}
+            return parsed_hosts if isinstance(parsed_hosts, dict) else {}
+        return {}
+
+    @classmethod
+    def _get_proxmox_hosts_runtime(cls) -> dict:
+        try:
+            from core.config_manager import config_manager
+            proxmox_hosts = cls._normalize_proxmox_hosts(
+                config_manager.get_setting('PROXMOX_HOSTS', {}, use_cache=False)
+            )
+            if proxmox_hosts:
+                return proxmox_hosts
+        except Exception:
+            pass
+
+        try:
+            from .db_settings_backup_monitor import PROXMOX_HOSTS
+        except Exception:
+            PROXMOX_HOSTS = {}
+
+        return cls._normalize_proxmox_hosts(PROXMOX_HOSTS)
 
     def get_host_recent_status(self, host_name, hours=48):
         """Получает статус хоста за указанный период"""
