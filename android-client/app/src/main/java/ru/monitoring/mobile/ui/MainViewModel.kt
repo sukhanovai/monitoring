@@ -50,7 +50,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.33.75"
+    private val projectVersion = "8.33.76"
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
     private val fallbackUpdateUrl = "https://github.com/sukhanovai/monitoring/releases/latest"
@@ -820,13 +820,7 @@ class MainViewModel(
             }
 
             state = state.copy(isLoading = true)
-            val actionCall = if (
-                normalizedAction in extensionSettingsControlActions ||
-                normalizedAction.startsWith("backup_host_") ||
-                normalizedAction.startsWith("backup_mail") ||
-                normalizedAction.startsWith("supplier_stock_reports_") ||
-                normalizedAction.startsWith("supplier_stock_report_source_day|")
-            ) {
+            val actionCall = if (shouldRunExtensionsSettingsViaControlApi(normalizedAction)) {
                 runCatching {
                     currentApi().runControlAction(ControlActionRequest(normalizedAction))
                 }.map { response ->
@@ -889,6 +883,14 @@ class MainViewModel(
                 }
         }
     }
+
+    private fun shouldRunExtensionsSettingsViaControlApi(action: String): Boolean =
+        action in extensionSettingsControlActions ||
+            action.startsWith("settings_") ||
+            action.startsWith("backup_host_") ||
+            action.startsWith("backup_mail") ||
+            action.startsWith("supplier_stock_reports_") ||
+            action.startsWith("supplier_stock_report_source_day|")
 
     private fun normalizeExtensionsSettingsAction(action: String): String = when (action) {
         "settings_backup_hosts" -> "settings_backup_proxmox"
