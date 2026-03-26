@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.33.62
+Server Monitoring System v8.33.64
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.33.62
+Версия: 8.33.64
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -2591,26 +2591,44 @@ def v1_extensions_actions():
 
     from config.db_settings_app import settings_manager
 
+    def _normalize_proxmox_hosts(raw_hosts) -> dict:
+        if isinstance(raw_hosts, dict):
+            return raw_hosts
+        if isinstance(raw_hosts, str):
+            try:
+                parsed_hosts = json.loads(raw_hosts)
+            except Exception:
+                parsed_hosts = {}
+            return parsed_hosts if isinstance(parsed_hosts, dict) else {}
+        return {}
+
     def _get_proxmox_hosts_for_mobile_settings() -> dict:
-        proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
-        proxmox_hosts = proxmox_hosts if isinstance(proxmox_hosts, dict) else {}
+        proxmox_hosts = _normalize_proxmox_hosts(settings_manager.get_setting('PROXMOX_HOSTS', {}))
         if proxmox_hosts:
             return proxmox_hosts
 
         try:
             from core.config_manager import config_manager
-            fallback_db_hosts = config_manager.get_setting('PROXMOX_HOSTS', {})
+            fallback_db_hosts = _normalize_proxmox_hosts(config_manager.get_setting('PROXMOX_HOSTS', {}))
         except Exception:
             fallback_db_hosts = {}
-        if isinstance(fallback_db_hosts, dict) and fallback_db_hosts:
+        if fallback_db_hosts:
             return fallback_db_hosts
+
+        try:
+            from config.db_settings import PROXMOX_HOSTS as runtime_proxmox_hosts
+        except Exception:
+            runtime_proxmox_hosts = {}
+        runtime_proxmox_hosts = _normalize_proxmox_hosts(runtime_proxmox_hosts)
+        if runtime_proxmox_hosts:
+            return runtime_proxmox_hosts
 
         try:
             from config.settings import PROXMOX_HOSTS as fallback_proxmox_hosts
         except Exception:
             fallback_proxmox_hosts = {}
 
-        return fallback_proxmox_hosts if isinstance(fallback_proxmox_hosts, dict) else {}
+        return _normalize_proxmox_hosts(fallback_proxmox_hosts)
 
     settings_menu_action_map = {
         "settings_ext_backup_db": {
