@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.33.72
+Server Monitoring System v8.33.73
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.33.72
+Версия: 8.33.73
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -3182,15 +3182,153 @@ def v1_extensions_actions():
         }), 200
 
     if action == "settings_proxmox_pattern_add" or action.startswith("settings_proxmox_pattern_edit_"):
+        from urllib.parse import unquote
+
+        def _decode_action_part(value: str) -> str:
+            return unquote(str(value or "")).strip()
+
+        def _proxmox_type_to_db_type(pattern_type_value: str, category_value: str) -> str:
+            normalized_type = (pattern_type_value or "subject").strip().lower() or "subject"
+            normalized_category = (category_value or "proxmox").strip().lower() or "proxmox"
+            if normalized_category == "database":
+                if normalized_type.startswith("proxmox"):
+                    return normalized_type
+                return f"proxmox_{normalized_type}"
+            return normalized_type
+
+        action_parts = raw_action.split("|")
+
+        if action == "settings_proxmox_pattern_add":
+            if len(action_parts) < 4:
+                return jsonify({
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": (
+                        "➕ Добавление паттерна Proxmox\n\n"
+                        "Android/web: откройте форму, заполните категорию/тип/паттерн и отправьте."
+                    ),
+                    "menu_options": [
+                        {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }), 200
+
+            category = _decode_action_part(action_parts[1]).lower() or "proxmox"
+            pattern_type = _decode_action_part(action_parts[2]).lower() or "subject"
+            pattern_value = _decode_action_part("|".join(action_parts[3:]))
+
+            if category not in {"proxmox", "database"}:
+                return jsonify({
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "rejected",
+                    "message": "❌ Категория должна быть proxmox или database.",
+                    "menu_options": [
+                        {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }), 200
+
+            if not pattern_value:
+                return jsonify({
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "rejected",
+                    "message": "❌ Паттерн не может быть пустым.",
+                    "menu_options": [
+                        {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }), 200
+
+            db_pattern_type = _proxmox_type_to_db_type(pattern_type, category)
+            conn = settings_manager.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO backup_patterns (pattern_type, pattern, category, enabled)
+                VALUES (?, ?, ?, 1)
+                """,
+                (db_pattern_type, pattern_value, category)
+            )
+            conn.commit()
+            conn.close()
+            return jsonify({
+                "request_id": request_id,
+                "action": action,
+                "result": "accepted",
+                "message": "✅ Паттерн Proxmox добавлен.",
+                "menu_options": [
+                    {"label": "📋 Обновить список", "action": "settings_patterns_proxmox"},
+                    {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
+                    {"label": "✖️ Закрыть", "action": "close"},
+                ],
+            }), 200
+
+        pattern_id_raw = raw_action[len("settings_proxmox_pattern_edit_"):].split("|", 1)[0].strip()
+        if not pattern_id_raw.isdigit():
+            return jsonify({
+                "request_id": request_id,
+                "action": action,
+                "result": "rejected",
+                "message": "❌ Некорректный идентификатор паттерна.",
+                "menu_options": [
+                    {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
+                    {"label": "✖️ Закрыть", "action": "close"},
+                ],
+            }), 200
+
+        if len(action_parts) < 2:
+            return jsonify({
+                "request_id": request_id,
+                "action": action,
+                "result": "accepted",
+                "message": (
+                    "✏️ Редактирование паттерна Proxmox\n\n"
+                    "Android/web: откройте форму редактирования и отправьте новый паттерн."
+                ),
+                "menu_options": [
+                    {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
+                    {"label": "✖️ Закрыть", "action": "close"},
+                ],
+            }), 200
+
+        new_pattern = _decode_action_part("|".join(action_parts[1:]))
+        if not new_pattern:
+            return jsonify({
+                "request_id": request_id,
+                "action": action,
+                "result": "rejected",
+                "message": "❌ Паттерн не может быть пустым.",
+                "menu_options": [
+                    {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
+                    {"label": "✖️ Закрыть", "action": "close"},
+                ],
+            }), 200
+
+        pattern_id = int(pattern_id_raw)
+        conn = settings_manager.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            UPDATE backup_patterns
+            SET pattern = ?
+            WHERE id = ?
+              AND (category = 'proxmox' OR (category = 'database' AND pattern_type LIKE 'proxmox%'))
+            """,
+            (new_pattern, pattern_id)
+        )
+        conn.commit()
+        updated = cursor.rowcount > 0
+        conn.close()
         return jsonify({
             "request_id": request_id,
             "action": action,
-            "result": "accepted",
-            "message": (
-                "✏️ Добавление и редактирование паттернов Proxmox пока выполняется в Telegram-боте.\n\n"
-                "В Android/web сейчас доступны просмотр, включение/выключение и удаление."
-            ),
+            "result": "accepted" if updated else "rejected",
+            "message": "✅ Паттерн обновлён." if updated else "❌ Паттерн не найден.",
             "menu_options": [
+                {"label": "📋 Обновить список", "action": "settings_patterns_proxmox"},
                 {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
                 {"label": "✖️ Закрыть", "action": "close"},
             ],
