@@ -30,6 +30,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.Scaffold
@@ -322,6 +323,13 @@ private fun MonitoringApp(
     var showServerAvailabilityMenu by rememberSaveable { mutableStateOf(false) }
     var showServerResourcesMenu by rememberSaveable { mutableStateOf(false) }
     var settingsSection by rememberSaveable { mutableStateOf("bff") }
+    var showProxmoxPatternAddDialog by rememberSaveable { mutableStateOf(false) }
+    var showProxmoxPatternEditDialog by rememberSaveable { mutableStateOf(false) }
+    var proxmoxPatternCategoryInput by rememberSaveable { mutableStateOf("proxmox") }
+    var proxmoxPatternTypeInput by rememberSaveable { mutableStateOf("subject") }
+    var proxmoxPatternValueInput by rememberSaveable { mutableStateOf("") }
+    var proxmoxPatternEditAction by rememberSaveable { mutableStateOf("") }
+    var proxmoxPatternEditValueInput by rememberSaveable { mutableStateOf("") }
 
     val canSaveMonitoring = state.checkIntervalInput.isNotBlank() ||
         state.timeoutInput.isNotBlank() ||
@@ -979,10 +987,24 @@ private fun MonitoringApp(
 
                                     Button(
                                         onClick = {
-                                            if (action == "settings_extensions_close_local") {
-                                                isExtensionsSettingsOpened = false
-                                            } else {
-                                                onExtensionsSettingsAction(action)
+                                            when {
+                                                action == "settings_extensions_close_local" -> {
+                                                    isExtensionsSettingsOpened = false
+                                                }
+                                                action == "settings_proxmox_pattern_add" -> {
+                                                    proxmoxPatternCategoryInput = "proxmox"
+                                                    proxmoxPatternTypeInput = "subject"
+                                                    proxmoxPatternValueInput = ""
+                                                    showProxmoxPatternAddDialog = true
+                                                }
+                                                action.startsWith("settings_proxmox_pattern_edit_") -> {
+                                                    proxmoxPatternEditAction = action
+                                                    proxmoxPatternEditValueInput = ""
+                                                    showProxmoxPatternEditDialog = true
+                                                }
+                                                else -> {
+                                                    onExtensionsSettingsAction(action)
+                                                }
                                             }
                                         },
                                         modifier = Modifier.fillMaxWidth()
@@ -991,6 +1013,91 @@ private fun MonitoringApp(
                                     }
                                     index += 1
                                 }
+                            }
+
+                            if (showProxmoxPatternAddDialog) {
+                                AlertDialog(
+                                    onDismissRequest = { showProxmoxPatternAddDialog = false },
+                                    title = { Text("➕ Добавить паттерн Proxmox") },
+                                    text = {
+                                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            OutlinedTextField(
+                                                value = proxmoxPatternCategoryInput,
+                                                onValueChange = { proxmoxPatternCategoryInput = it },
+                                                label = { Text("Категория (proxmox/database)") },
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
+                                            OutlinedTextField(
+                                                value = proxmoxPatternTypeInput,
+                                                onValueChange = { proxmoxPatternTypeInput = it },
+                                                label = { Text("Тип (например subject)") },
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
+                                            OutlinedTextField(
+                                                value = proxmoxPatternValueInput,
+                                                onValueChange = { proxmoxPatternValueInput = it },
+                                                label = { Text("Паттерн") },
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
+                                        }
+                                    },
+                                    confirmButton = {
+                                        TextButton(
+                                            onClick = {
+                                                val actionPayload = "settings_proxmox_pattern_add|" +
+                                                    Uri.encode(proxmoxPatternCategoryInput.trim()) + "|" +
+                                                    Uri.encode(proxmoxPatternTypeInput.trim()) + "|" +
+                                                    Uri.encode(proxmoxPatternValueInput.trim())
+                                                onExtensionsSettingsAction(actionPayload)
+                                                showProxmoxPatternAddDialog = false
+                                            },
+                                            enabled = proxmoxPatternCategoryInput.isNotBlank() &&
+                                                proxmoxPatternTypeInput.isNotBlank() &&
+                                                proxmoxPatternValueInput.isNotBlank()
+                                        ) {
+                                            Text("Сохранить")
+                                        }
+                                    },
+                                    dismissButton = {
+                                        TextButton(onClick = { showProxmoxPatternAddDialog = false }) {
+                                            Text("Отмена")
+                                        }
+                                    }
+                                )
+                            }
+
+                            if (showProxmoxPatternEditDialog) {
+                                AlertDialog(
+                                    onDismissRequest = { showProxmoxPatternEditDialog = false },
+                                    title = { Text("✏️ Редактировать паттерн") },
+                                    text = {
+                                        OutlinedTextField(
+                                            value = proxmoxPatternEditValueInput,
+                                            onValueChange = { proxmoxPatternEditValueInput = it },
+                                            label = { Text("Новый паттерн") },
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    },
+                                    confirmButton = {
+                                        TextButton(
+                                            onClick = {
+                                                val actionPayload = proxmoxPatternEditAction + "|" +
+                                                    Uri.encode(proxmoxPatternEditValueInput.trim())
+                                                onExtensionsSettingsAction(actionPayload)
+                                                showProxmoxPatternEditDialog = false
+                                            },
+                                            enabled = proxmoxPatternEditAction.isNotBlank() &&
+                                                proxmoxPatternEditValueInput.isNotBlank()
+                                        ) {
+                                            Text("Сохранить")
+                                        }
+                                    },
+                                    dismissButton = {
+                                        TextButton(onClick = { showProxmoxPatternEditDialog = false }) {
+                                            Text("Отмена")
+                                        }
+                                    }
+                                )
                             }
                         }
 
