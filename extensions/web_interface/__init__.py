@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.33.74
+Server Monitoring System v8.33.75
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.33.74
+Версия: 8.33.75
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -3298,16 +3298,19 @@ def v1_extensions_actions():
             return jsonify({
                 "request_id": request_id,
                 "action": action,
-                "result": "rejected",
+                "result": "accepted" if current_pattern else "rejected",
                 "message": (
                     "✏️ Редактирование паттерна Proxmox\n\n"
                     f"Текущий паттерн: `{current_pattern}`\n\n"
-                    "Для сохранения передайте действие в формате:\n"
+                    "Нажмите кнопку ниже, чтобы открыть ввод нового значения.\n"
+                    "Если клиент не поддерживает окно ввода, отправьте действие в формате:\n"
                     "`settings_proxmox_pattern_edit_<id>|<новый_паттерн>`"
                 ) if current_pattern else (
                     "❌ Паттерн не найден."
                 ),
-                "menu_options": [
+                "menu_options": ([
+                    {"label": "✏️ Ввести новый паттерн", "action": f"settings_proxmox_pattern_edit_{pattern_id}"},
+                ] if current_pattern else []) + [
                     {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
                     {"label": "✖️ Закрыть", "action": "close"},
                 ],
