@@ -2685,14 +2685,6 @@ def v1_extensions_actions():
                 {"label": "✖️ Закрыть", "action": "close"},
             ],
         },
-        "settings_patterns_proxmox": {
-            "message": "🔍 Паттерны Proxmox открыты.",
-            "menu_options": [
-                {"label": "🏠 На главную", "action": "main_menu"},
-                {"label": "↩️ Назад", "action": "settings_ext_backup_proxmox"},
-                {"label": "✖️ Закрыть", "action": "close"},
-            ],
-        },
         "settings_patterns_db": {
             "message": "🔍 Паттерны бэкапов БД открыты.",
             "menu_options": [
@@ -3026,6 +3018,180 @@ def v1_extensions_actions():
             "menu_options": [
                 {"label": "🏠 На главную", "action": "main_menu"},
                 {"label": "↩️ Назад", "action": "settings_backup_proxmox"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        }), 200
+
+    if action == "settings_patterns_proxmox":
+        conn = settings_manager.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT id, pattern_type, pattern, category, enabled
+            FROM backup_patterns
+            WHERE category = 'proxmox'
+               OR (category = 'database' AND pattern_type LIKE 'proxmox%')
+            ORDER BY enabled DESC, category, pattern_type, id
+            """
+        )
+        rows = cursor.fetchall()
+        conn.close()
+
+        lines = ["🔍 Паттерны Proxmox", ""]
+        if not rows:
+            lines.append("❌ Паттерны не настроены.")
+        else:
+            for index, (pattern_id, pattern_type, pattern_value, category, enabled) in enumerate(rows, start=1):
+                display_category = category
+                display_type = pattern_type
+                if category == "database" and isinstance(pattern_type, str) and pattern_type.startswith("proxmox"):
+                    display_category = "proxmox"
+                    suffix = pattern_type[len("proxmox"):].strip("_:- ")
+                    display_type = suffix or "subject"
+                marker = "🟢" if bool(enabled) else "🔴"
+                lines.append(f"{index}. {marker} [{display_category}/{display_type}] {pattern_value}")
+
+        menu_options = []
+        for index, (pattern_id, pattern_type, _, category, enabled) in enumerate(rows, start=1):
+            display_category = category
+            display_type = pattern_type
+            if category == "database" and isinstance(pattern_type, str) and pattern_type.startswith("proxmox"):
+                display_category = "proxmox"
+                suffix = pattern_type[len("proxmox"):].strip("_:- ")
+                display_type = suffix or "subject"
+            toggle_label = "⛔️ Отключить" if bool(enabled) else "✅ Включить"
+            menu_options.extend([
+                {"label": f"✏️ {index}. {display_category}:{display_type}", "action": f"settings_proxmox_pattern_edit_{pattern_id}"},
+                {"label": f"🗑️ {index}. {display_category}:{display_type}", "action": f"settings_proxmox_pattern_delete_{pattern_id}"},
+                {"label": f"{toggle_label} {index}. {display_category}:{display_type}", "action": f"settings_proxmox_pattern_toggle_{pattern_id}"},
+            ])
+
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "result": "accepted",
+            "message": "\n".join(lines),
+            "menu_options": menu_options + [
+                {"label": "➕ Добавить паттерн", "action": "settings_proxmox_pattern_add"},
+                {"label": "🏠 На главную", "action": "main_menu"},
+                {"label": "↩️ Назад", "action": "settings_ext_backup_proxmox"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        }), 200
+
+    if action.startswith("settings_proxmox_pattern_toggle_"):
+        pattern_id_raw = raw_action[len("settings_proxmox_pattern_toggle_"):].strip()
+        if not pattern_id_raw.isdigit():
+            return jsonify({
+                "request_id": request_id,
+                "action": action,
+                "result": "rejected",
+                "message": "❌ Некорректный идентификатор паттерна.",
+                "menu_options": [
+                    {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
+                    {"label": "✖️ Закрыть", "action": "close"},
+                ],
+            }), 200
+
+        pattern_id = int(pattern_id_raw)
+        conn = settings_manager.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT enabled
+            FROM backup_patterns
+            WHERE id = ?
+              AND (category = 'proxmox' OR (category = 'database' AND pattern_type LIKE 'proxmox%'))
+            """,
+            (pattern_id,)
+        )
+        row = cursor.fetchone()
+        if not row:
+            conn.close()
+            return jsonify({
+                "request_id": request_id,
+                "action": action,
+                "result": "rejected",
+                "message": "❌ Паттерн не найден.",
+                "menu_options": [
+                    {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
+                    {"label": "✖️ Закрыть", "action": "close"},
+                ],
+            }), 200
+
+        next_enabled = 0 if bool(row[0]) else 1
+        cursor.execute(
+            "UPDATE backup_patterns SET enabled = ? WHERE id = ?",
+            (next_enabled, pattern_id)
+        )
+        conn.commit()
+        conn.close()
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "result": "accepted",
+            "message": f"🔄 Паттерн {'включён' if next_enabled else 'отключён'}.",
+            "menu_options": [
+                {"label": "📋 Обновить список", "action": "settings_patterns_proxmox"},
+                {"label": "🏠 На главную", "action": "main_menu"},
+                {"label": "↩️ Назад", "action": "settings_ext_backup_proxmox"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        }), 200
+
+    if action.startswith("settings_proxmox_pattern_delete_"):
+        pattern_id_raw = raw_action[len("settings_proxmox_pattern_delete_"):].strip()
+        if not pattern_id_raw.isdigit():
+            return jsonify({
+                "request_id": request_id,
+                "action": action,
+                "result": "rejected",
+                "message": "❌ Некорректный идентификатор паттерна.",
+                "menu_options": [
+                    {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
+                    {"label": "✖️ Закрыть", "action": "close"},
+                ],
+            }), 200
+
+        pattern_id = int(pattern_id_raw)
+        conn = settings_manager.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            UPDATE backup_patterns
+            SET enabled = 0
+            WHERE id = ?
+              AND (category = 'proxmox' OR (category = 'database' AND pattern_type LIKE 'proxmox%'))
+            """,
+            (pattern_id,)
+        )
+        conn.commit()
+        deleted = cursor.rowcount > 0
+        conn.close()
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "result": "accepted" if deleted else "rejected",
+            "message": "✅ Паттерн удалён." if deleted else "❌ Паттерн не найден.",
+            "menu_options": [
+                {"label": "📋 Обновить список", "action": "settings_patterns_proxmox"},
+                {"label": "🏠 На главную", "action": "main_menu"},
+                {"label": "↩️ Назад", "action": "settings_ext_backup_proxmox"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        }), 200
+
+    if action == "settings_proxmox_pattern_add" or action.startswith("settings_proxmox_pattern_edit_"):
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "result": "accepted",
+            "message": (
+                "✏️ Добавление и редактирование паттернов Proxmox пока выполняется в Telegram-боте.\n\n"
+                "В Android/web сейчас доступны просмотр, включение/выключение и удаление."
+            ),
+            "menu_options": [
+                {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
                 {"label": "✖️ Закрыть", "action": "close"},
             ],
         }), 200
