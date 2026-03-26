@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.33.73
+Server Monitoring System v8.33.74
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.33.73
+Версия: 8.33.74
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -3280,13 +3280,32 @@ def v1_extensions_actions():
             }), 200
 
         if len(action_parts) < 2:
+            pattern_id = int(pattern_id_raw)
+            conn = settings_manager.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT pattern
+                FROM backup_patterns
+                WHERE id = ?
+                  AND (category = 'proxmox' OR (category = 'database' AND pattern_type LIKE 'proxmox%'))
+                """,
+                (pattern_id,)
+            )
+            row = cursor.fetchone()
+            conn.close()
+            current_pattern = row[0] if row and len(row) > 0 else ""
             return jsonify({
                 "request_id": request_id,
                 "action": action,
-                "result": "accepted",
+                "result": "rejected",
                 "message": (
                     "✏️ Редактирование паттерна Proxmox\n\n"
-                    "Android/web: откройте форму редактирования и отправьте новый паттерн."
+                    f"Текущий паттерн: `{current_pattern}`\n\n"
+                    "Для сохранения передайте действие в формате:\n"
+                    "`settings_proxmox_pattern_edit_<id>|<новый_паттерн>`"
+                ) if current_pattern else (
+                    "❌ Паттерн не найден."
                 ),
                 "menu_options": [
                     {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
