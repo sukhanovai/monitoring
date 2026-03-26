@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.33.66
+Server Monitoring System v8.33.67
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.33.66
+Версия: 8.33.67
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -75,6 +75,26 @@ def _normalize_proxmox_hosts(raw_hosts) -> dict:
                 parsed_hosts = {}
         return parsed_hosts if isinstance(parsed_hosts, dict) else {}
     return {}
+
+def _get_proxmox_hosts_for_settings() -> dict:
+    """Получить PROXMOX_HOSTS с fallback, как в мобильном API настроек."""
+    proxmox_hosts = _normalize_proxmox_hosts(settings_manager.get_setting('PROXMOX_HOSTS', {}))
+    if proxmox_hosts:
+        return proxmox_hosts
+
+    try:
+        from config.db_settings import PROXMOX_HOSTS as runtime_proxmox_hosts
+    except Exception:
+        runtime_proxmox_hosts = {}
+    runtime_proxmox_hosts = _normalize_proxmox_hosts(runtime_proxmox_hosts)
+    if runtime_proxmox_hosts:
+        return runtime_proxmox_hosts
+
+    try:
+        from config.settings import PROXMOX_HOSTS as fallback_proxmox_hosts
+    except Exception:
+        fallback_proxmox_hosts = {}
+    return _normalize_proxmox_hosts(fallback_proxmox_hosts)
 
 def _safe_query_answer(query, text: str | None = None, **kwargs) -> None:
     try:
@@ -7989,9 +8009,7 @@ def show_backup_proxmox_settings(update, context):
     query = update.callback_query
     query.answer()
 
-    proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
-    if not isinstance(proxmox_hosts, dict):
-        proxmox_hosts = {}
+    proxmox_hosts = _get_proxmox_hosts_for_settings()
 
     message = "🖥️ *Бэкапы Proxmox*\n\n"
     if not proxmox_hosts:
@@ -8020,9 +8038,7 @@ def show_proxmox_hosts_list(update, context):
     query = update.callback_query
     query.answer()
 
-    proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
-    if not isinstance(proxmox_hosts, dict):
-        proxmox_hosts = {}
+    proxmox_hosts = _get_proxmox_hosts_for_settings()
 
     message = "📋 *Хосты Proxmox*\n\n"
     if not proxmox_hosts:
