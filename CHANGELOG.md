@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.33.66] - 2026-03-26
+
+### Fixed / Исправлено
+- EN: Fixed Proxmox host counter in Telegram extension settings path `Settings → Extensions → Proxmox Backups`: `PROXMOX_HOSTS` is now normalized from dict/JSON/Python-string formats before counting, so configured hosts are no longer displayed as `0`.
+- RU: Исправлен счётчик Proxmox-хостов в Telegram-цепочке `Настройки → Расширения → Бэкапы Proxmox`: перед подсчётом `PROXMOX_HOSTS` теперь нормализуется из форматов dict/JSON/Python-строки, поэтому настроенные хосты больше не показываются как `0`.
+
+### Changed / Изменено
+- EN: Completed repository-wide patch version bump to `8.33.66`; synchronized runtime/config/docs/Android references and updated Android metadata to `ANDROID_VERSION_NAME=8.33.66` and `ANDROID_VERSION_CODE=183`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.66`; синхронизированы ссылки в runtime/config/docs/Android и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.33.66` и `ANDROID_VERSION_CODE=183`.
+
 ## [8.33.65] - 2026-03-26
 
 ### Fixed / Исправлено
