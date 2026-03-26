@@ -1,11 +1,11 @@
 """
 /lib/network.py
-Server Monitoring System v8.33.59
+Server Monitoring System v8.33.61
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Network utilities
 Система мониторинга серверов
-Версия: 8.33.59
+Версия: 8.33.61
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Сетевые утилиты
@@ -14,7 +14,7 @@ Network utilities
 import socket
 import subprocess
 import time
-from typing import Optional, Tuple
+from typing import Optional
 from lib.logging import debug_log
 
 def check_port(ip: str, port: int, timeout: int = 5) -> bool:
@@ -30,11 +30,8 @@ def check_port(ip: str, port: int, timeout: int = 5) -> bool:
         True если порт доступен
     """
     try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(timeout)
-        result = sock.connect_ex((ip, port))
-        sock.close()
-        return result == 0
+        with socket.create_connection((ip, port), timeout=timeout):
+            return True
     except Exception as e:
         debug_log(f"Port check error for {ip}:{port}: {e}", force=True)
         return False
@@ -96,11 +93,10 @@ def get_network_latency(ip: str, count: int = 3) -> Optional[float]:
         Средняя задержка в мс или None при ошибке
     """
     try:
-        total_time = 0
+        total_time = 0.0
         successful = 0
         
         for _ in range(count):
-            start_time = time.time()
             result = subprocess.run(
                 ['ping', '-c', '1', '-W', '1', ip],
                 capture_output=True,
@@ -109,13 +105,14 @@ def get_network_latency(ip: str, count: int = 3) -> Optional[float]:
             
             if result.returncode == 0:
                 # Парсим время из вывода ping
-                for line in result.stdout.split('\n'):
+                for line in result.stdout.splitlines():
                     if 'time=' in line:
                         try:
-                            time_str = line.split('time=')[1].split(' ')[0]
+                            time_str = line.partition('time=')[2].split(' ', 1)[0]
                             latency = float(time_str)
                             total_time += latency
                             successful += 1
+                            break
                         except (ValueError, IndexError):
                             pass
         
