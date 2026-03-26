@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.33.77] - 2026-03-26
+
+### Fixed / Исправлено
+- EN: Fixed Android extension settings routing for DB backups (`Settings → Extensions → Open extension settings → DB backups`): `settings_*` actions are now handled by Extensions Settings API, so submenu items `📋 Databases` and `🔍 Patterns` open correctly (aligned with Telegram bot behavior).
+- RU: Исправлена маршрутизация настроек расширений Android для бэкапов БД (`Настройки → Расширения → Открыть настройки расширений → Бэкапы БД`): действия `settings_*` теперь обрабатываются через Extensions Settings API, поэтому подпункты `📋 Базы` и `🔍 Паттерны` открываются корректно (вровень с поведением Telegram-бота).
+
+### Changed / Изменено
+- EN: Completed repository-wide patch version bump to `8.33.77`; synchronized project/runtime/docs references, updated Android metadata to `ANDROID_VERSION_NAME=8.33.77` and `ANDROID_VERSION_CODE=194`, and aligned prerelease links.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.77`; синхронизированы ссылки на версию в проекте/runtime/docs, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.33.77` и `ANDROID_VERSION_CODE=194`, а также выровнены prerelease-ссылки.
+
 ## [8.33.76] - 2026-03-26
 
 ### Fixed / Исправлено

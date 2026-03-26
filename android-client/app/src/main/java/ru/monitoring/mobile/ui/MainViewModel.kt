@@ -50,7 +50,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.33.76"
+    private val projectVersion = "8.33.77"
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
     private val fallbackUpdateUrl = "https://github.com/sukhanovai/monitoring/releases/latest"
@@ -886,7 +886,6 @@ class MainViewModel(
 
     private fun shouldRunExtensionsSettingsViaControlApi(action: String): Boolean =
         action in extensionSettingsControlActions ||
-            action.startsWith("settings_") ||
             action.startsWith("backup_host_") ||
             action.startsWith("backup_mail") ||
             action.startsWith("supplier_stock_reports_") ||
