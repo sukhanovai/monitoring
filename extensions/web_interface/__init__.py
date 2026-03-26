@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.33.77
+Server Monitoring System v8.33.78
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.33.77
+Версия: 8.33.78
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -3352,6 +3352,87 @@ def v1_extensions_actions():
             "menu_options": [
                 {"label": "📋 Обновить список", "action": "settings_patterns_proxmox"},
                 {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        }), 200
+
+    if action == "settings_db_view_all":
+        db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+        if not isinstance(db_config, dict):
+            db_config = {}
+
+        lines = ["📋 Все базы данных", ""]
+        total_dbs = 0
+        if not db_config:
+            lines.append("❌ Нет настроенных баз данных.")
+        else:
+            for category in sorted(db_config.keys()):
+                databases = db_config.get(category)
+                if not isinstance(databases, dict):
+                    databases = {}
+                lines.append(f"📁 {str(category).upper()} ({len(databases)} БД):")
+                for db_key in sorted(databases.keys()):
+                    db_name = str(databases.get(db_key) or db_key)
+                    lines.append(f"• {db_name}")
+                    total_dbs += 1
+                lines.append("")
+            lines.append(f"Итого: {total_dbs} баз данных в {len(db_config)} категориях")
+
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "result": "accepted",
+            "message": "\n".join(lines),
+            "menu_options": [
+                {"label": "↩️ Назад", "action": "settings_db_main"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        }), 200
+
+    if action == "settings_patterns_db":
+        conn = settings_manager.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT id, pattern_type, pattern, enabled
+            FROM backup_patterns
+            WHERE category = 'database'
+              AND pattern_type NOT LIKE 'proxmox%'
+            ORDER BY enabled DESC, pattern_type, id
+            """
+        )
+        rows = cursor.fetchall()
+        conn.close()
+
+        lines = ["🔍 Паттерны бэкапов БД", ""]
+        if not rows:
+            lines.append("❌ Паттерны бэкапов БД не настроены.")
+        else:
+            for index, (_, pattern_type, pattern_value, enabled) in enumerate(rows, start=1):
+                marker = "🟢" if bool(enabled) else "🔴"
+                lines.append(f"{index}. {marker} [{pattern_type}] {pattern_value}")
+
+        menu_options = []
+        for index, (pattern_id, pattern_type, _, enabled) in enumerate(rows, start=1):
+            toggle_label = "⛔️ Отключить" if bool(enabled) else "✅ Включить"
+            menu_options.extend([
+                {"label": f"✏️ {index}. {pattern_type}", "action": f"settings_proxmox_pattern_edit_{pattern_id}"},
+                {"label": f"🗑️ {index}. {pattern_type}", "action": f"settings_proxmox_pattern_delete_{pattern_id}"},
+                {"label": f"{toggle_label} {index}. {pattern_type}", "action": f"settings_proxmox_pattern_toggle_{pattern_id}"},
+            ])
+
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "result": "accepted",
+            "message": "\n".join(lines),
+            "menu_options": menu_options + [
+                {
+                    "label": "➕ Добавить паттерн БД",
+                    "action": "settings_proxmox_pattern_add|database|subject|",
+                },
+                {"label": "🏠 На главную", "action": "main_menu"},
+                {"label": "↩️ Назад", "action": "settings_ext_backup_db"},
                 {"label": "✖️ Закрыть", "action": "close"},
             ],
         }), 200

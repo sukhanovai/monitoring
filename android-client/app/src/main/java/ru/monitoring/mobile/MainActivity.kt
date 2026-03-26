@@ -991,10 +991,15 @@ private fun MonitoringApp(
                                                 action == "settings_extensions_close_local" -> {
                                                     isExtensionsSettingsOpened = false
                                                 }
-                                                action == "settings_proxmox_pattern_add" -> {
-                                                    proxmoxPatternCategoryInput = "proxmox"
-                                                    proxmoxPatternTypeInput = "subject"
-                                                    proxmoxPatternValueInput = ""
+                                                action.startsWith("settings_proxmox_pattern_add") -> {
+                                                    val parts = action.split("|")
+                                                    proxmoxPatternCategoryInput = parts.getOrNull(1)
+                                                        ?.takeIf { it.isNotBlank() }
+                                                        ?: "proxmox"
+                                                    proxmoxPatternTypeInput = parts.getOrNull(2)
+                                                        ?.takeIf { it.isNotBlank() }
+                                                        ?: "subject"
+                                                    proxmoxPatternValueInput = parts.getOrNull(3).orEmpty()
                                                     showProxmoxPatternAddDialog = true
                                                 }
                                                 action.startsWith("settings_proxmox_pattern_edit_") -> {

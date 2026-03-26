@@ -6,6 +6,18 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.33.78] - 2026-03-26
+
+### Fixed / Исправлено
+- EN: Implemented working DB backup settings actions in Android/Web extension settings, synchronized with Telegram-bot data sources: `📋 View all DBs` now returns actual `DATABASE_CONFIG`, and `🔍 DB patterns` now shows real records from `backup_patterns` with enable/disable, edit, and disable-as-delete actions.
+- RU: Реализованы рабочие действия настроек бэкапов БД в Android/Web с синхронизацией по тем же источникам, что и в Telegram-боте: `📋 Просмотр всех БД` теперь отдаёт реальный `DATABASE_CONFIG`, а `🔍 Паттерны БД` показывает записи из `backup_patterns` с включением/выключением, редактированием и «удалением» через отключение.
+- EN: Improved Android pattern-add dialog trigger for extension settings: action `settings_proxmox_pattern_add|...` now correctly opens the input form with prefilled category/type, enabling DB-pattern creation flow from `🔍 DB patterns`.
+- RU: Улучшен триггер Android-диалога добавления паттерна: действие `settings_proxmox_pattern_add|...` теперь корректно открывает форму с предзаполненной категорией/типом, что включает сценарий добавления DB-паттерна из `🔍 Паттерны БД`.
+
+### Changed / Изменено
+- EN: Completed repository-wide patch version bump to `8.33.78`; synchronized project/runtime/docs references, updated Android metadata to `ANDROID_VERSION_NAME=8.33.78` and `ANDROID_VERSION_CODE=195`, and aligned prerelease links.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.78`; синхронизированы ссылки на версию в проекте/runtime/docs, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.33.78` и `ANDROID_VERSION_CODE=195`, а также выровнены prerelease-ссылки.
+
 ## [8.33.77] - 2026-03-26
 
 ### Fixed / Исправлено
