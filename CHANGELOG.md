@@ -6,13 +6,15 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.33.62] - 2026-03-26
+## [8.33.64] - 2026-03-26
+
+### Fixed / Исправлено
+- EN: Fixed Proxmox hosts counter in Android path `Settings → Extensions → Open extension settings → Proxmox backups`: host source resolution now supports JSON-string values and additionally falls back to runtime `config.db_settings.PROXMOX_HOSTS`, so valid configured hosts are no longer shown as `0`.
+- RU: Исправлен счётчик Proxmox-хостов в Android-цепочке `Настройки → Расширения → Открыть настройки расширений → Бэкапы Proxmox`: источник хостов теперь корректно обрабатывает JSON-строку и дополнительно использует runtime `config.db_settings.PROXMOX_HOSTS`, поэтому при реальной конфигурации больше не показывается `0`.
 
 ### Changed / Изменено
-- EN: Updated `scripts/android_post_pull_build_run.ps1`: script now checks adb connectivity before `:app:installDebug` and gracefully skips install/run when no device or emulator is connected.
-- RU: Обновлён `scripts/android_post_pull_build_run.ps1`: скрипт теперь проверяет подключение adb до `:app:installDebug` и корректно пропускает install/run, если нет устройства или эмулятора.
-- EN: Completed repository-wide patch version bump to `8.33.62`; synchronized runtime/config/docs/Android references and updated Android metadata to `ANDROID_VERSION_NAME=8.33.62` and `ANDROID_VERSION_CODE=180`.
-- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.62`; синхронизированы ссылки в runtime/config/docs/Android и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.33.62` и `ANDROID_VERSION_CODE=180`.
+- EN: Completed repository-wide patch version bump to `8.33.64`; synchronized runtime/config/docs/Android references and updated Android metadata to `ANDROID_VERSION_NAME=8.33.64` and `ANDROID_VERSION_CODE=181`.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.64`; синхронизированы ссылки в runtime/config/docs/Android и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.33.64` и `ANDROID_VERSION_CODE=181`.
 
 ## [8.33.60] - 2026-03-23
 
