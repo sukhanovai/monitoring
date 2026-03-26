@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.33.68
+Server Monitoring System v8.33.69
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.33.68
+Версия: 8.33.69
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -2590,7 +2590,7 @@ def v1_extensions_actions():
     raw_action = str(payload.get('action') or '').strip()
     action = raw_action.lower()
 
-    from config.db_settings_app import settings_manager
+    from core.config_manager import config_manager as settings_manager
 
     def _normalize_proxmox_hosts(raw_hosts) -> dict:
         if isinstance(raw_hosts, dict):
@@ -2607,7 +2607,7 @@ def v1_extensions_actions():
         return {}
 
     def _get_proxmox_hosts_for_mobile_settings() -> dict:
-        proxmox_hosts = _normalize_proxmox_hosts(settings_manager.get_setting('PROXMOX_HOSTS', {}))
+        proxmox_hosts = _normalize_proxmox_hosts(settings_manager.get_setting('PROXMOX_HOSTS', {}, use_cache=False))
         if proxmox_hosts:
             return proxmox_hosts
 
