@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.33.81
+Server Monitoring System v8.33.82
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.33.81
+Версия: 8.33.82
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -3975,6 +3975,53 @@ def v1_extensions_actions():
             ],
         }), 200
 
+    if action == "settings_patterns_zfs":
+        conn = settings_manager.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT id, pattern_type, pattern, enabled
+            FROM backup_patterns
+            WHERE category = 'zfs'
+            ORDER BY enabled DESC, id
+            """
+        )
+        rows = cursor.fetchall()
+        conn.close()
+
+        lines = ["🔍 Паттерны ZFS", ""]
+        if not rows:
+            lines.append("❌ Паттерны ZFS не настроены.")
+        else:
+            for index, (_, pattern_type, pattern_value, enabled) in enumerate(rows, start=1):
+                marker = "🟢" if bool(enabled) else "🔴"
+                lines.append(f"{index}. {marker} [{pattern_type}] {pattern_value}")
+
+        menu_options = []
+        for index, (pattern_id, pattern_type, _, enabled) in enumerate(rows, start=1):
+            toggle_label = "⛔️ Отключить" if bool(enabled) else "✅ Включить"
+            menu_options.extend([
+                {"label": f"✏️ {index}. {pattern_type}", "action": f"settings_proxmox_pattern_edit_{pattern_id}"},
+                {"label": f"🗑️ {index}. {pattern_type}", "action": f"settings_proxmox_pattern_delete_{pattern_id}"},
+                {"label": f"{toggle_label} {index}. {pattern_type}", "action": f"settings_proxmox_pattern_toggle_{pattern_id}"},
+            ])
+
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "result": "accepted",
+            "message": "\n".join(lines),
+            "menu_options": menu_options + [
+                {
+                    "label": "➕ Добавить паттерн ZFS",
+                    "action": "settings_proxmox_pattern_add|zfs|subject|",
+                },
+                {"label": "🏠 На главную", "action": "main_menu"},
+                {"label": "↩️ Назад", "action": "settings_zfs"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        }), 200
+
     if action == "settings_zfs_list":
         zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
         zfs_servers = zfs_servers if isinstance(zfs_servers, dict) else {}
@@ -3990,14 +4037,77 @@ def v1_extensions_actions():
                     enabled = bool(server_value.get('enabled', True))
                 lines.append(f"{'🟢' if enabled else '🔴'} {server_name}")
 
+        menu_options = []
+        for server_name in sorted(zfs_servers.keys()):
+            encoded_server_name = quote(str(server_name), safe="")
+            server_value = zfs_servers.get(server_name)
+            enabled = True
+            if isinstance(server_value, dict):
+                enabled = bool(server_value.get('enabled', True))
+            toggle_label = "⛔️ Отключить" if enabled else "✅ Включить"
+            menu_options.extend([
+                {"label": f"✏️ {server_name}", "action": f"settings_zfs_edit_name_{encoded_server_name}"},
+                {"label": f"🗑️ {server_name}", "action": f"settings_zfs_delete_{encoded_server_name}"},
+                {"label": f"{toggle_label} {server_name}", "action": f"settings_zfs_toggle_{encoded_server_name}"},
+            ])
+
         return jsonify({
             "request_id": request_id,
             "action": action,
             "result": "accepted",
             "message": "\n".join(lines),
-            "menu_options": [
+            "menu_options": menu_options + [
                 {"label": "➕ Добавить сервер", "action": "settings_zfs_add"},
                 {"label": "🏠 На главную", "action": "main_menu"},
+                {"label": "↩️ Назад", "action": "settings_zfs"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        }), 200
+
+    if action == "settings_zfs_add" or action.startswith("settings_zfs_add|"):
+        payload = raw_action.split("|", 1)
+        server_name = unquote(payload[1]).strip() if len(payload) > 1 else ""
+        if not server_name:
+            return jsonify({
+                "request_id": request_id,
+                "action": action,
+                "result": "accepted",
+                "message": (
+                    "➕ Добавление ZFS-сервера\n\n"
+                    "Отправьте действие в формате:\n"
+                    "`settings_zfs_add|<имя_сервера>`"
+                ),
+                "menu_options": [
+                    {"label": "↩️ Назад", "action": "settings_zfs_list"},
+                    {"label": "✖️ Закрыть", "action": "close"},
+                ],
+            }), 200
+
+        zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
+        if not isinstance(zfs_servers, dict):
+            zfs_servers = {}
+
+        if server_name in zfs_servers:
+            return jsonify({
+                "request_id": request_id,
+                "action": action,
+                "result": "accepted",
+                "message": f"❌ ZFS-сервер «{server_name}» уже существует.",
+                "menu_options": [
+                    {"label": "↩️ Назад", "action": "settings_zfs_list"},
+                    {"label": "✖️ Закрыть", "action": "close"},
+                ],
+            }), 200
+
+        zfs_servers[server_name] = {"enabled": True}
+        settings_manager.set_setting('ZFS_SERVERS', zfs_servers, 'zfs')
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "result": "accepted",
+            "message": f"✅ ZFS-сервер «{server_name}» добавлен.",
+            "menu_options": [
+                {"label": "📋 Обновить список", "action": "settings_zfs_list"},
                 {"label": "↩️ Назад", "action": "settings_zfs"},
                 {"label": "✖️ Закрыть", "action": "close"},
             ],
@@ -4096,7 +4206,7 @@ def v1_extensions_actions():
         }), 200
 
     if action.startswith("settings_zfs_toggle_"):
-        server_name = action.replace("settings_zfs_toggle_", "", 1).strip()
+        server_name = unquote(raw_action[len("settings_zfs_toggle_"):]).strip()
         if not server_name:
             return jsonify({
                 "error": {
@@ -4131,14 +4241,155 @@ def v1_extensions_actions():
             ],
         }), 200
 
-    if action.startswith("settings_zfs_edit_name_") or action.startswith("settings_zfs_delete_"):
+    if action.startswith("settings_zfs_edit_name_"):
+        payload = raw_action[len("settings_zfs_edit_name_"):]
+        parts = payload.split("|", 1)
+        current_name = unquote(parts[0]).strip() if parts else ""
+        new_name = unquote(parts[1]).strip() if len(parts) > 1 else ""
+
+        if not current_name:
+            return jsonify({
+                "error": {
+                    "code": "INVALID_ACTION",
+                    "message": "Server name is required for settings_zfs_edit_name_*",
+                    "request_id": request_id,
+                }
+            }), 400
+
+        if not new_name:
+            return jsonify({
+                "request_id": request_id,
+                "action": action,
+                "result": "accepted",
+                "message": (
+                    "✏️ Переименование ZFS-сервера\n\n"
+                    "Отправьте действие в формате:\n"
+                    f"`settings_zfs_edit_name_{quote(current_name, safe='')}|<новое_имя>`"
+                ),
+                "menu_options": [
+                    {"label": "↩️ Назад", "action": "settings_zfs_list"},
+                    {"label": "✖️ Закрыть", "action": "close"},
+                ],
+            }), 200
+
+        zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
+        if not isinstance(zfs_servers, dict):
+            zfs_servers = {}
+        if current_name not in zfs_servers:
+            return jsonify({
+                "request_id": request_id,
+                "action": action,
+                "result": "accepted",
+                "message": f"❌ ZFS-сервер «{current_name}» не найден.",
+                "menu_options": [
+                    {"label": "↩️ Назад", "action": "settings_zfs_list"},
+                    {"label": "✖️ Закрыть", "action": "close"},
+                ],
+            }), 200
+        if new_name in zfs_servers and new_name != current_name:
+            return jsonify({
+                "request_id": request_id,
+                "action": action,
+                "result": "accepted",
+                "message": f"❌ ZFS-сервер «{new_name}» уже существует.",
+                "menu_options": [
+                    {"label": "↩️ Назад", "action": "settings_zfs_list"},
+                    {"label": "✖️ Закрыть", "action": "close"},
+                ],
+            }), 200
+
+        server_value = zfs_servers.pop(current_name, None)
+        if not isinstance(server_value, dict):
+            server_value = {"enabled": True}
+        zfs_servers[new_name] = server_value
+        settings_manager.set_setting('ZFS_SERVERS', zfs_servers, 'zfs')
+        try:
+            backup_db_path = BACKUP_DATABASE_CONFIG.get("backups_db")
+            if backup_db_path:
+                conn = sqlite3.connect(str(backup_db_path))
+                cursor = conn.cursor()
+                cursor.execute(
+                    "UPDATE zfs_pool_status SET server_name = ? WHERE server_name = ?",
+                    (new_name, current_name),
+                )
+                conn.commit()
+                conn.close()
+        except Exception as exc:
+            if "no such table: zfs_pool_status" not in str(exc):
+                app.logger.warning(
+                    "Failed to rename zfs_pool_status from %s to %s: %s",
+                    current_name,
+                    new_name,
+                    exc,
+                )
+
         return jsonify({
             "request_id": request_id,
             "action": action,
             "result": "accepted",
-            "message": "✏️ Редактирование и удаление ZFS-серверов пока доступно в Telegram-боте.",
+            "message": f"✅ ZFS-сервер переименован: «{current_name}» → «{new_name}».",
             "menu_options": [
-                {"label": "↩️ Назад", "action": "settings_zfs_list"},
+                {"label": "📋 Обновить список", "action": "settings_zfs_list"},
+                {"label": "↩️ Назад", "action": "settings_zfs"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        }), 200
+
+    if action.startswith("settings_zfs_delete_"):
+        server_name = unquote(raw_action[len("settings_zfs_delete_"):]).strip()
+        if not server_name:
+            return jsonify({
+                "error": {
+                    "code": "INVALID_ACTION",
+                    "message": "Server name is required for settings_zfs_delete_*",
+                    "request_id": request_id,
+                }
+            }), 400
+
+        zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
+        if not isinstance(zfs_servers, dict):
+            zfs_servers = {}
+        removed = zfs_servers.pop(server_name, None)
+        if removed is None:
+            return jsonify({
+                "request_id": request_id,
+                "action": action,
+                "result": "accepted",
+                "message": f"❌ ZFS-сервер «{server_name}» не найден.",
+                "menu_options": [
+                    {"label": "↩️ Назад", "action": "settings_zfs_list"},
+                    {"label": "✖️ Закрыть", "action": "close"},
+                ],
+            }), 200
+
+        settings_manager.set_setting('ZFS_SERVERS', zfs_servers, 'zfs')
+        try:
+            backup_db_path = BACKUP_DATABASE_CONFIG.get("backups_db")
+            if backup_db_path:
+                conn = sqlite3.connect(str(backup_db_path))
+                cursor = conn.cursor()
+                cursor.execute(
+                    "DELETE FROM zfs_pool_status WHERE server_name = ?",
+                    (server_name,),
+                )
+                conn.commit()
+                conn.close()
+        except Exception as exc:
+            if "no such table: zfs_pool_status" not in str(exc):
+                app.logger.warning(
+                    "Failed to delete zfs_pool_status for %s: %s",
+                    server_name,
+                    exc,
+                )
+
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "result": "accepted",
+            "message": f"✅ ZFS-сервер «{server_name}» удалён.",
+            "menu_options": [
+                {"label": "📋 Обновить список", "action": "settings_zfs_list"},
+                {"label": "↩️ Назад", "action": "settings_zfs"},
                 {"label": "✖️ Закрыть", "action": "close"},
             ],
         }), 200
