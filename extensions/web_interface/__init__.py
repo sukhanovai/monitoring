@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.33.82
+Server Monitoring System v8.33.83
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.33.82
+Версия: 8.33.83
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -3497,8 +3497,6 @@ def v1_extensions_actions():
         }), 200
 
     if action == "settings_proxmox_pattern_add" or action.startswith("settings_proxmox_pattern_edit_"):
-        from urllib.parse import unquote
-
         def _decode_action_part(value: str) -> str:
             return unquote(str(value or "")).strip()
 
