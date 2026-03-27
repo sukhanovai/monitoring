@@ -347,6 +347,12 @@ private fun MonitoringApp(
     var dbEntryEditOriginalKey by rememberSaveable { mutableStateOf("") }
     var dbEntryEditNewKeyInput by rememberSaveable { mutableStateOf("") }
     var dbEntryEditNameInput by rememberSaveable { mutableStateOf("") }
+    var showZfsHostAddDialog by rememberSaveable { mutableStateOf(false) }
+    var showZfsHostEditDialog by rememberSaveable { mutableStateOf(false) }
+    var zfsHostInput by rememberSaveable { mutableStateOf("") }
+    var zfsHostEditAction by rememberSaveable { mutableStateOf("") }
+    var zfsHostEditCurrentName by rememberSaveable { mutableStateOf("") }
+    var zfsHostEditNewNameInput by rememberSaveable { mutableStateOf("") }
 
     val canSaveMonitoring = state.checkIntervalInput.isNotBlank() ||
         state.timeoutInput.isNotBlank() ||
@@ -1016,6 +1022,17 @@ private fun MonitoringApp(
                                                     mailPatternEditValueInput = ""
                                                     showMailPatternEditDialog = true
                                                 }
+                                                action == "settings_zfs_add" -> {
+                                                    zfsHostInput = ""
+                                                    showZfsHostAddDialog = true
+                                                }
+                                                action.startsWith("settings_zfs_edit_name_") -> {
+                                                    val raw = action.removePrefix("settings_zfs_edit_name_")
+                                                    zfsHostEditAction = "settings_zfs_edit_name_$raw"
+                                                    zfsHostEditCurrentName = Uri.decode(raw)
+                                                    zfsHostEditNewNameInput = zfsHostEditCurrentName
+                                                    showZfsHostEditDialog = zfsHostEditCurrentName.isNotBlank()
+                                                }
                                                 action == "settings_db_add_category" -> {
                                                     dbCategoryInput = ""
                                                     showDbCategoryAddDialog = true
@@ -1228,6 +1245,66 @@ private fun MonitoringApp(
                                     },
                                     dismissButton = {
                                         TextButton(onClick = { showMailPatternEditDialog = false }) {
+                                            Text("Отмена")
+                                        }
+                                    }
+                                )
+                            }
+
+                            if (showZfsHostAddDialog) {
+                                AlertDialog(
+                                    onDismissRequest = { showZfsHostAddDialog = false },
+                                    title = { Text("➕ Добавить ZFS-хост") },
+                                    text = {
+                                        OutlinedTextField(
+                                            value = zfsHostInput,
+                                            onValueChange = { zfsHostInput = it },
+                                            label = { Text("Имя сервера") },
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    },
+                                    confirmButton = {
+                                        TextButton(
+                                            onClick = {
+                                                val actionPayload = "settings_zfs_add|${Uri.encode(zfsHostInput.trim())}"
+                                                onExtensionsSettingsAction(actionPayload)
+                                                showZfsHostAddDialog = false
+                                            },
+                                            enabled = zfsHostInput.isNotBlank()
+                                        ) { Text("Добавить") }
+                                    },
+                                    dismissButton = {
+                                        TextButton(onClick = { showZfsHostAddDialog = false }) {
+                                            Text("Отмена")
+                                        }
+                                    }
+                                )
+                            }
+
+                            if (showZfsHostEditDialog) {
+                                AlertDialog(
+                                    onDismissRequest = { showZfsHostEditDialog = false },
+                                    title = { Text("✏️ Переименовать ZFS-хост") },
+                                    text = {
+                                        OutlinedTextField(
+                                            value = zfsHostEditNewNameInput,
+                                            onValueChange = { zfsHostEditNewNameInput = it },
+                                            label = { Text("Новое имя сервера") },
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    },
+                                    confirmButton = {
+                                        TextButton(
+                                            onClick = {
+                                                val actionPayload = "$zfsHostEditAction|${Uri.encode(zfsHostEditNewNameInput.trim())}"
+                                                onExtensionsSettingsAction(actionPayload)
+                                                showZfsHostEditDialog = false
+                                            },
+                                            enabled = zfsHostEditAction.isNotBlank() && zfsHostEditNewNameInput.isNotBlank()
+                                        ) { Text("Сохранить") }
+                                    },
+                                    dismissButton = {
+                                        TextButton(onClick = { showZfsHostEditDialog = false }) {
                                             Text("Отмена")
                                         }
                                     }

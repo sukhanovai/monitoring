@@ -50,7 +50,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.33.81"
+    private val projectVersion = "8.33.82"
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
     private val fallbackUpdateUrl = "https://github.com/sukhanovai/monitoring/releases/latest"
@@ -916,6 +916,7 @@ class MainViewModel(
         "settings_backup_mail" -> "📬 Раздел «Почтовые бэкапы» открыт."
         "settings_stock_load" -> "📦 Раздел «Загрузка остатков 1С» открыт."
         "settings_supplier_stock" -> "📦 Раздел «Остатки поставщиков» открыт."
+        "settings_patterns_zfs" -> "🔍 Раздел «Паттерны ZFS» открыт."
         localExtensionsSettingsBackAction -> "Список настроек расширений обновлён."
         else -> "Настройки расширений открыты."
     }

@@ -6,17 +6,17 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.33.81] - 2026-03-27
+## [8.33.82] - 2026-03-27
 
 ### Added / Добавлено
-- EN: Added mail-backup pattern management for Android/Web extension settings (`Settings → Extensions → Open extension settings → Mail backups → Patterns`): list/view with status, enable/disable, delete, add-from-subject/fragments wizard, and pattern editing actions are now available similarly to Telegram-bot flow.
-- RU: Добавлено управление паттернами почтовых бэкапов в Android/Web (`Настройки → Расширения → Открыть настройки расширений → Бэкапы почты → Паттерны`): теперь доступны просмотр списка со статусом, включение/выключение, удаление, мастер добавления по теме/фрагментам и редактирование паттернов по аналогии со сценарием Telegram-бота.
+- EN: Added full ZFS host management in Android/Web extension settings (`Settings → Extensions → Open extension settings → ZFS → Hosts`): host list now includes edit/delete/enable-toggle actions, and add/rename flows are available from Android dialogs via action payloads.
+- RU: Добавлено полноценное управление ZFS-хостами в Android/Web (`Настройки → Расширения → Открыть настройки расширений → ZFS → Хосты`): в списке появились действия редактирования/удаления/переключения, а добавление и переименование работают через Android-диалоги с payload-действиями.
+- EN: Added ZFS patterns management in Android/Web extension settings (`Settings → Extensions → Open extension settings → ZFS → Patterns`): list with statuses, enable/disable, delete, and add/edit actions now work similarly to Telegram-bot behavior.
+- RU: Добавлено управление ZFS-паттернами в Android/Web (`Настройки → Расширения → Открыть настройки расширений → ZFS → Паттерны`): теперь работают список со статусами, включение/выключение, удаление и действия добавления/редактирования по аналогии с поведением Telegram-бота.
 
 ### Changed / Изменено
-- EN: Reordered Android extension settings UI in `Settings → Extensions`: `Open extension settings` button moved above extension enable/disable controls.
-- RU: Переставлен UI в Android-разделе `Настройки → Расширения`: кнопка `Открыть настройки расширений` перенесена выше блока управления включением/выключением расширений.
-- EN: Completed repository-wide patch version bump to `8.33.81`; synchronized project/runtime/docs references, updated Android metadata to `ANDROID_VERSION_NAME=8.33.81` and `ANDROID_VERSION_CODE=198`, and aligned prerelease links.
-- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.81`; синхронизированы ссылки на версию в проекте/runtime/docs, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.33.81` и `ANDROID_VERSION_CODE=198`, а также выровнены prerelease-ссылки.
+- EN: Completed repository-wide patch version bump to `8.33.82`; synchronized project/runtime/docs references, updated Android metadata to `ANDROID_VERSION_NAME=8.33.82` and `ANDROID_VERSION_CODE=199`, and aligned prerelease links.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.82`; синхронизированы ссылки на версию в проекте/runtime/docs, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.33.82` и `ANDROID_VERSION_CODE=199`, а также выровнены prerelease-ссылки.
 
 ## [8.33.78] - 2026-03-26
 
