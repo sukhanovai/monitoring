@@ -50,7 +50,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.33.84"
+    private val projectVersion = "8.33.85"
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
     private val fallbackUpdateUrl = "https://github.com/sukhanovai/monitoring/releases/latest"
@@ -93,6 +93,14 @@ class MainViewModel(
     )
     private val localExtensionsSettingsBackAction = "settings_extensions_back_local"
     private val localExtensionsSettingsCloseAction = "settings_extensions_close_local"
+    private val localResourceThresholdActions = setOf(
+        "set_cpu_warning",
+        "set_cpu_critical",
+        "set_ram_warning",
+        "set_ram_critical",
+        "set_disk_warning",
+        "set_disk_critical"
+    )
     private val localResourcesSettingsActions = listOf(
         MenuOption(label = "💻 CPU предупреждение", action = "set_cpu_warning"),
         MenuOption(label = "💻 CPU критический", action = "set_cpu_critical"),
@@ -931,6 +939,10 @@ class MainViewModel(
         "settings_stock_load" -> "📦 Раздел «Загрузка остатков 1С» открыт."
         "settings_supplier_stock" -> "📦 Раздел «Остатки поставщиков» открыт."
         "settings_patterns_zfs" -> "🔍 Раздел «Паттерны ZFS» открыт."
+        in localResourceThresholdActions -> (
+            "⚙️ Настройка порогов ресурсов в Android пока не реализована. " +
+                "Пока меняй это в Telegram-боте: Настройки → Расширения → Ресурсы."
+            )
         localExtensionsSettingsBackAction -> "Список настроек расширений обновлён."
         else -> "Настройки расширений открыты."
     }
@@ -938,6 +950,7 @@ class MainViewModel(
     private fun buildLocalExtensionsSettingsMenuOptions(action: String): List<MenuOption>? {
         return when (action) {
             "settings_resources" -> localResourcesSettingsActions
+            in localResourceThresholdActions -> localResourcesSettingsActions
             localExtensionsSettingsBackAction -> buildExtensionsSettingsFallbackOptions(state.extensions) +
                 MenuOption(label = "✖️ Закрыть", action = localExtensionsSettingsCloseAction)
             localExtensionsSettingsCloseAction -> emptyList()

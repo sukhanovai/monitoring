@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.33.85] - 2026-03-27
+
+### Fixed / Исправлено
+- EN: Fixed Android extension settings flow for resource-threshold buttons (`Settings → Extensions → Open extension settings → Resources`): taps on `CPU warning/critical`, `RAM warning/critical`, `Disk warning/critical` are now handled locally in the app, so it no longer sends unsupported `POST /v1/control/actions` requests that returned HTTP 400.
+- RU: Исправлен сценарий Android-настроек расширений для кнопок порогов ресурсов (`Настройки → Расширения → Открыть настройки расширений → Ресурсы`): нажатия `CPU предупреждение/критический`, `RAM предупреждение/критический`, `Disk предупреждение/критический` теперь обрабатываются локально в приложении, поэтому больше не отправляется неподдерживаемый `POST /v1/control/actions`, который возвращал HTTP 400.
+
+### Changed / Изменено
+- EN: Completed repository-wide patch version bump to `8.33.85`; synchronized project/runtime/docs references, updated Android metadata to `ANDROID_VERSION_NAME=8.33.85` and `ANDROID_VERSION_CODE=202`, and aligned prerelease links.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.85`; синхронизированы ссылки на версию в проекте/runtime/docs, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.33.85` и `ANDROID_VERSION_CODE=202`, а также выровнены prerelease-ссылки.
+
 ## [8.33.84] - 2026-03-27
 
 ### Fixed / Исправлено
