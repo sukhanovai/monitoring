@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.33.79
+Server Monitoring System v8.33.81
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.33.79
+Версия: 8.33.81
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -3076,6 +3076,320 @@ def v1_extensions_actions():
                 {"label": "➕ Добавить паттерн", "action": "settings_proxmox_pattern_add"},
                 {"label": "🏠 На главную", "action": "main_menu"},
                 {"label": "↩️ Назад", "action": "settings_ext_backup_proxmox"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        }), 200
+
+    if action == "settings_patterns_mail":
+        conn = settings_manager.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT id, pattern_type, pattern, enabled
+            FROM backup_patterns
+            WHERE category = 'mail'
+            ORDER BY enabled DESC, id
+            """
+        )
+        rows = cursor.fetchall()
+        conn.close()
+
+        lines = ["🔍 Паттерны бэкапов почты", ""]
+        if not rows:
+            lines.append("❌ Паттерны не настроены.")
+        else:
+            for index, (_, pattern_type, pattern_value, enabled) in enumerate(rows, start=1):
+                marker = "🟢" if bool(enabled) else "🔴"
+                lines.append(f"{index}. {marker} [{pattern_type}] {pattern_value}")
+
+        menu_options = []
+        for index, (pattern_id, pattern_type, _, enabled) in enumerate(rows, start=1):
+            toggle_label = "⛔️ Отключить" if bool(enabled) else "✅ Включить"
+            menu_options.extend([
+                {"label": f"✏️ {index}. {pattern_type}", "action": f"settings_mail_pattern_edit_{pattern_id}"},
+                {"label": f"🗑️ {index}. {pattern_type}", "action": f"settings_mail_pattern_delete_{pattern_id}"},
+                {"label": f"{toggle_label} {index}. {pattern_type}", "action": f"settings_mail_pattern_toggle_{pattern_id}"},
+            ])
+
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "result": "accepted",
+            "message": "\n".join(lines),
+            "menu_options": menu_options + [
+                {"label": "➕ Добавить паттерн", "action": "settings_mail_pattern_add"},
+                {"label": "🏠 На главную", "action": "main_menu"},
+                {"label": "↩️ Назад", "action": "settings_ext_backup_mail"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        }), 200
+
+    if action.startswith("settings_mail_pattern_toggle_"):
+        pattern_id_raw = raw_action[len("settings_mail_pattern_toggle_"):].strip()
+        if not pattern_id_raw.isdigit():
+            return jsonify({
+                "request_id": request_id,
+                "action": action,
+                "result": "rejected",
+                "message": "❌ Некорректный идентификатор паттерна.",
+                "menu_options": [
+                    {"label": "↩️ Назад", "action": "settings_patterns_mail"},
+                    {"label": "✖️ Закрыть", "action": "close"},
+                ],
+            }), 200
+
+        pattern_id = int(pattern_id_raw)
+        conn = settings_manager.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT enabled FROM backup_patterns WHERE id = ? AND category = 'mail'",
+            (pattern_id,)
+        )
+        row = cursor.fetchone()
+        if not row:
+            conn.close()
+            return jsonify({
+                "request_id": request_id,
+                "action": action,
+                "result": "rejected",
+                "message": "❌ Паттерн не найден.",
+                "menu_options": [
+                    {"label": "↩️ Назад", "action": "settings_patterns_mail"},
+                    {"label": "✖️ Закрыть", "action": "close"},
+                ],
+            }), 200
+
+        next_enabled = 0 if bool(row[0]) else 1
+        cursor.execute("UPDATE backup_patterns SET enabled = ? WHERE id = ?", (next_enabled, pattern_id))
+        conn.commit()
+        conn.close()
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "result": "accepted",
+            "message": f"🔄 Паттерн {'включён' if next_enabled else 'отключён'}.",
+            "menu_options": [
+                {"label": "📋 Обновить список", "action": "settings_patterns_mail"},
+                {"label": "↩️ Назад", "action": "settings_ext_backup_mail"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        }), 200
+
+    if action.startswith("settings_mail_pattern_delete_"):
+        pattern_id_raw = raw_action[len("settings_mail_pattern_delete_"):].strip()
+        if not pattern_id_raw.isdigit():
+            return jsonify({
+                "request_id": request_id,
+                "action": action,
+                "result": "rejected",
+                "message": "❌ Некорректный идентификатор паттерна.",
+                "menu_options": [
+                    {"label": "↩️ Назад", "action": "settings_patterns_mail"},
+                    {"label": "✖️ Закрыть", "action": "close"},
+                ],
+            }), 200
+
+        pattern_id = int(pattern_id_raw)
+        conn = settings_manager.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE backup_patterns SET enabled = 0 WHERE id = ? AND category = 'mail'",
+            (pattern_id,)
+        )
+        conn.commit()
+        deleted = cursor.rowcount > 0
+        conn.close()
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "result": "accepted" if deleted else "rejected",
+            "message": "✅ Паттерн удалён." if deleted else "❌ Паттерн не найден.",
+            "menu_options": [
+                {"label": "📋 Обновить список", "action": "settings_patterns_mail"},
+                {"label": "↩️ Назад", "action": "settings_ext_backup_mail"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ],
+        }), 200
+
+    if action == "settings_mail_pattern_add" or action.startswith("settings_mail_pattern_edit_"):
+        def _decode_action_part(value: str) -> str:
+            return unquote(str(value or "")).strip()
+
+        def _build_mail_pattern_from_subject(subject: str) -> str:
+            if not subject:
+                return ""
+            normalized = subject.strip()
+            if not normalized:
+                return ""
+
+            size_regex = r"\b\d+(?:[.,]\d+)?\s*[TGMK]?(?:i?B)?\b"
+            path_regex = r"/\S+"
+            date_iso_regex = r"\b\d{4}[-/.]\d{2}[-/.]\d{2}\b"
+            date_ru_regex = r"\b\d{2}[-/.]\d{2}[-/.]\d{4}\b"
+            time_regex = r"\b\d{2}:\d{2}(?::\d{2})?\b"
+
+            draft = re.sub(size_regex, "__SIZE__", normalized, flags=re.IGNORECASE)
+            draft = re.sub(path_regex, "__PATH__", draft)
+            draft = re.sub(date_iso_regex, "__DATE__", draft)
+            draft = re.sub(date_ru_regex, "__DATE__", draft)
+            draft = re.sub(time_regex, "__TIME__", draft)
+
+            escaped = re.escape(draft)
+            escaped = re.sub(r"\\\s+", r"\\s+", escaped)
+
+            replacements = {
+                "__SIZE__": r"(?P<size>\d+(?:[.,]\d+)?\s*[TGMK]?(?:i?B)?)",
+                "__PATH__": r"(?P<path>/\S+)",
+                "__DATE__": r"\d{2,4}[-/.]\d{2}[-/.]\d{2,4}",
+                "__TIME__": r"\d{2}:\d{2}(?::\d{2})?",
+            }
+            for placeholder, pattern in replacements.items():
+                escaped = escaped.replace(re.escape(placeholder), pattern)
+            return escaped
+
+        def _build_mail_pattern_from_fragments(raw_fragments: str) -> str:
+            fragments = [item.strip() for item in re.split(r"[;,]", raw_fragments or "") if item.strip()]
+            if not fragments:
+                return ""
+            escaped_parts = [re.escape(fragment) for fragment in fragments]
+            return r".*".join(escaped_parts)
+
+        action_parts = raw_action.split("|")
+
+        if action == "settings_mail_pattern_add":
+            if len(action_parts) < 3:
+                return jsonify({
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "accepted",
+                    "message": (
+                        "➕ Добавление паттерна почты\n\n"
+                        "Android/web: выберите режим (тема или фрагменты), введите значение и сохраните."
+                    ),
+                    "menu_options": [
+                        {"label": "➕ По теме письма", "action": "settings_mail_pattern_add|subject|"},
+                        {"label": "➕ По фрагментам", "action": "settings_mail_pattern_add|fragments|"},
+                        {"label": "↩️ Назад", "action": "settings_patterns_mail"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }), 200
+
+            build_mode = _decode_action_part(action_parts[1]).lower() or "subject"
+            raw_value = _decode_action_part("|".join(action_parts[2:]))
+            pattern_value = (
+                _build_mail_pattern_from_fragments(raw_value)
+                if build_mode == "fragments"
+                else _build_mail_pattern_from_subject(raw_value)
+            )
+            source_label = "фрагменты" if build_mode == "fragments" else "тема"
+
+            if not pattern_value:
+                return jsonify({
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "rejected",
+                    "message": "❌ Не удалось собрать паттерн. Проверьте ввод.",
+                    "menu_options": [
+                        {"label": "↩️ Назад", "action": "settings_patterns_mail"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }), 200
+
+            conn = settings_manager.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO backup_patterns (pattern_type, pattern, category, enabled)
+                VALUES (?, ?, ?, 1)
+                """,
+                ("subject", pattern_value, "mail")
+            )
+            conn.commit()
+            conn.close()
+            return jsonify({
+                "request_id": request_id,
+                "action": action,
+                "result": "accepted",
+                "message": f"✅ Паттерн добавлен (источник: {source_label}).",
+                "menu_options": [
+                    {"label": "📋 Обновить список", "action": "settings_patterns_mail"},
+                    {"label": "↩️ Назад", "action": "settings_patterns_mail"},
+                    {"label": "✖️ Закрыть", "action": "close"},
+                ],
+            }), 200
+
+        pattern_id_raw = raw_action[len("settings_mail_pattern_edit_"):].split("|", 1)[0].strip()
+        if not pattern_id_raw.isdigit():
+            return jsonify({
+                "request_id": request_id,
+                "action": action,
+                "result": "rejected",
+                "message": "❌ Некорректный идентификатор паттерна.",
+                "menu_options": [
+                    {"label": "↩️ Назад", "action": "settings_patterns_mail"},
+                    {"label": "✖️ Закрыть", "action": "close"},
+                ],
+            }), 200
+
+        if len(action_parts) < 2:
+            pattern_id = int(pattern_id_raw)
+            conn = settings_manager.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT pattern FROM backup_patterns WHERE id = ? AND category = 'mail'",
+                (pattern_id,)
+            )
+            row = cursor.fetchone()
+            conn.close()
+            current_pattern = row[0] if row and len(row) > 0 else ""
+            return jsonify({
+                "request_id": request_id,
+                "action": action,
+                "result": "accepted" if current_pattern else "rejected",
+                "message": (
+                    "✏️ Редактирование паттерна почты\n\n"
+                    f"Текущий паттерн: `{current_pattern}`\n\n"
+                    "Нажмите кнопку ниже, чтобы открыть ввод нового значения."
+                ) if current_pattern else "❌ Паттерн не найден.",
+                "menu_options": ([
+                    {"label": "✏️ Ввести новый паттерн", "action": f"settings_mail_pattern_edit_{pattern_id}"},
+                ] if current_pattern else []) + [
+                    {"label": "↩️ Назад", "action": "settings_patterns_mail"},
+                    {"label": "✖️ Закрыть", "action": "close"},
+                ],
+            }), 200
+
+        new_pattern = _decode_action_part("|".join(action_parts[1:]))
+        if not new_pattern:
+            return jsonify({
+                "request_id": request_id,
+                "action": action,
+                "result": "rejected",
+                "message": "❌ Паттерн не может быть пустым.",
+                "menu_options": [
+                    {"label": "↩️ Назад", "action": "settings_patterns_mail"},
+                    {"label": "✖️ Закрыть", "action": "close"},
+                ],
+            }), 200
+
+        pattern_id = int(pattern_id_raw)
+        conn = settings_manager.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE backup_patterns SET pattern = ? WHERE id = ? AND category = 'mail'",
+            (new_pattern, pattern_id)
+        )
+        conn.commit()
+        updated = cursor.rowcount > 0
+        conn.close()
+        return jsonify({
+            "request_id": request_id,
+            "action": action,
+            "result": "accepted" if updated else "rejected",
+            "message": "✅ Паттерн обновлён." if updated else "❌ Паттерн не найден.",
+            "menu_options": [
+                {"label": "📋 Обновить список", "action": "settings_patterns_mail"},
+                {"label": "↩️ Назад", "action": "settings_patterns_mail"},
                 {"label": "✖️ Закрыть", "action": "close"},
             ],
         }), 200
