@@ -50,7 +50,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.33.83"
+    private val projectVersion = "8.33.84"
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
     private val fallbackUpdateUrl = "https://github.com/sukhanovai/monitoring/releases/latest"
@@ -93,6 +93,16 @@ class MainViewModel(
     )
     private val localExtensionsSettingsBackAction = "settings_extensions_back_local"
     private val localExtensionsSettingsCloseAction = "settings_extensions_close_local"
+    private val localResourcesSettingsActions = listOf(
+        MenuOption(label = "💻 CPU предупреждение", action = "set_cpu_warning"),
+        MenuOption(label = "💻 CPU критический", action = "set_cpu_critical"),
+        MenuOption(label = "🧠 RAM предупреждение", action = "set_ram_warning"),
+        MenuOption(label = "🧠 RAM критический", action = "set_ram_critical"),
+        MenuOption(label = "💾 Disk предупреждение", action = "set_disk_warning"),
+        MenuOption(label = "💾 Disk критический", action = "set_disk_critical"),
+        MenuOption(label = "↩️ Назад", action = localExtensionsSettingsBackAction),
+        MenuOption(label = "✖️ Закрыть", action = localExtensionsSettingsCloseAction)
+    )
     private val morningReportActions = listOf("send_morning_report", "morning_report")
 
     private fun currentApi() = ApiFactory.createApi(
@@ -886,6 +896,9 @@ class MainViewModel(
 
     private fun shouldRunExtensionsSettingsViaControlApi(action: String): Boolean =
         action in extensionSettingsControlActions ||
+            action.startsWith("set_cpu_") ||
+            action.startsWith("set_ram_") ||
+            action.startsWith("set_disk_") ||
             action.startsWith("backup_host_") ||
             action.startsWith("backup_mail") ||
             action.startsWith("supplier_stock_reports_") ||
@@ -908,6 +921,7 @@ class MainViewModel(
         "settings_ext_backup_mail" -> "📬 Настройки бэкапов почты открыты."
         "settings_ext_stock_load" -> "📦 Настройки загрузки остатков 1С открыты."
         "settings_ext_supplier_stock" -> "📦 Настройки остатков поставщиков открыты."
+        "settings_resources" -> "💻 Настройки ресурсов открыты."
         "settings_zfs" -> "🧊 Настройки ZFS открыты."
         "settings_backup_hosts" -> "🖥️ Раздел «Хосты» открыт."
         "settings_backup_patterns" -> "🔍 Раздел «Паттерны» открыт."
@@ -923,6 +937,7 @@ class MainViewModel(
 
     private fun buildLocalExtensionsSettingsMenuOptions(action: String): List<MenuOption>? {
         return when (action) {
+            "settings_resources" -> localResourcesSettingsActions
             localExtensionsSettingsBackAction -> buildExtensionsSettingsFallbackOptions(state.extensions) +
                 MenuOption(label = "✖️ Закрыть", action = localExtensionsSettingsCloseAction)
             localExtensionsSettingsCloseAction -> emptyList()
