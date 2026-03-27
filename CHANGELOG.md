@@ -6,15 +6,17 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.33.83] - 2026-03-27
+## [8.33.84] - 2026-03-27
 
 ### Fixed / Исправлено
-- EN: Fixed crash in Extensions Settings API when toggling ZFS host state from Android/Web (`Settings → Extensions → Open extension settings → ZFS → Hosts`): removed function-local `unquote` import shadowing that caused `UnboundLocalError` on `POST /v1/settings/extensions/actions`.
-- RU: Исправлен крэш в API настроек расширений при переключении состояния ZFS-хоста из Android/Web (`Настройки → Расширения → Открыть настройки расширений → ZFS → Хосты`): убрано локальное затенение `unquote`, из-за которого возникал `UnboundLocalError` на `POST /v1/settings/extensions/actions`.
+- EN: Added local Android extension settings submenu for Resources (`Settings → Extensions → Open extension settings → Resources`) with the same threshold actions as in Telegram bot: `CPU warning`, `CPU critical`, `RAM warning`, `RAM critical`, `Disk warning`, `Disk critical`.
+- RU: Добавлено локальное подменю Android-настроек расширений для «Ресурсов» (`Настройки → Расширения → Открыть настройки расширений → Ресурсы`) с теми же пороговыми действиями, что и в Telegram-боте: `CPU предупреждение`, `CPU критический`, `RAM предупреждение`, `RAM критический`, `Disk предупреждение`, `Disk критический`.
+- EN: Updated Android routing for resource-threshold actions so `set_cpu_*`, `set_ram_*`, `set_disk_*` commands are sent through Control API and behave consistently with bot callbacks.
+- RU: Обновлена маршрутизация Android для действий порогов ресурсов: команды `set_cpu_*`, `set_ram_*`, `set_disk_*` отправляются через Control API и работают консистентно с callback’ами бота.
 
 ### Changed / Изменено
-- EN: Completed repository-wide patch version bump to `8.33.83`; synchronized project/runtime/docs references, updated Android metadata to `ANDROID_VERSION_NAME=8.33.83` and `ANDROID_VERSION_CODE=200`, and aligned prerelease links.
-- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.83`; синхронизированы ссылки на версию в проекте/runtime/docs, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.33.83` и `ANDROID_VERSION_CODE=200`, а также выровнены prerelease-ссылки.
+- EN: Completed repository-wide patch version bump to `8.33.84`; synchronized project/runtime/docs references, updated Android metadata to `ANDROID_VERSION_NAME=8.33.84` and `ANDROID_VERSION_CODE=201`, and aligned prerelease links.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.84`; синхронизированы ссылки на версию в проекте/runtime/docs, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.33.84` и `ANDROID_VERSION_CODE=201`, а также выровнены prerelease-ссылки.
 
 ## [8.33.82] - 2026-03-27
 
