@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.33.83] - 2026-03-27
+
+### Fixed / Исправлено
+- EN: Fixed crash in Extensions Settings API when toggling ZFS host state from Android/Web (`Settings → Extensions → Open extension settings → ZFS → Hosts`): removed function-local `unquote` import shadowing that caused `UnboundLocalError` on `POST /v1/settings/extensions/actions`.
+- RU: Исправлен крэш в API настроек расширений при переключении состояния ZFS-хоста из Android/Web (`Настройки → Расширения → Открыть настройки расширений → ZFS → Хосты`): убрано локальное затенение `unquote`, из-за которого возникал `UnboundLocalError` на `POST /v1/settings/extensions/actions`.
+
+### Changed / Изменено
+- EN: Completed repository-wide patch version bump to `8.33.83`; synchronized project/runtime/docs references, updated Android metadata to `ANDROID_VERSION_NAME=8.33.83` and `ANDROID_VERSION_CODE=200`, and aligned prerelease links.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.83`; синхронизированы ссылки на версию в проекте/runtime/docs, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.33.83` и `ANDROID_VERSION_CODE=200`, а также выровнены prerelease-ссылки.
+
 ## [8.33.82] - 2026-03-27
 
 ### Added / Добавлено
