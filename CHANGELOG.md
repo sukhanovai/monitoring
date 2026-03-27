@@ -6,19 +6,17 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.33.79] - 2026-03-26
+## [8.33.81] - 2026-03-27
 
 ### Added / Добавлено
-- EN: Added full DB editing flow in Android extension settings (`Settings → Extensions → Open extension settings → DB backups → Databases → View all DBs`): now supports adding DBs, editing DB key/display name, and deleting DB entries with direct action buttons (parity with Telegram-bot operational flow).
-- RU: Добавлен полный сценарий редактирования БД в Android-настройках расширений (`Настройки → Расширения → Открыть настройки расширений → Бэкапы БД → Базы → Просмотр всех БД`): теперь доступны добавление БД, редактирование ключа/отображаемого имени и удаление записей кнопками (паритет с рабочим сценарием Telegram-бота).
-- EN: Added category management for DB backup settings in Android/Web: create category and delete category actions are now executable from extension settings.
-- RU: Добавлено управление категориями для настроек бэкапов БД в Android/Web: действия создания и удаления категорий теперь выполняются прямо из настроек расширений.
+- EN: Added mail-backup pattern management for Android/Web extension settings (`Settings → Extensions → Open extension settings → Mail backups → Patterns`): list/view with status, enable/disable, delete, add-from-subject/fragments wizard, and pattern editing actions are now available similarly to Telegram-bot flow.
+- RU: Добавлено управление паттернами почтовых бэкапов в Android/Web (`Настройки → Расширения → Открыть настройки расширений → Бэкапы почты → Паттерны`): теперь доступны просмотр списка со статусом, включение/выключение, удаление, мастер добавления по теме/фрагментам и редактирование паттернов по аналогии со сценарием Telegram-бота.
 
 ### Changed / Изменено
 - EN: Reordered Android extension settings UI in `Settings → Extensions`: `Open extension settings` button moved above extension enable/disable controls.
 - RU: Переставлен UI в Android-разделе `Настройки → Расширения`: кнопка `Открыть настройки расширений` перенесена выше блока управления включением/выключением расширений.
-- EN: Completed repository-wide patch version bump to `8.33.79`; synchronized project/runtime/docs references, updated Android metadata to `ANDROID_VERSION_NAME=8.33.79` and `ANDROID_VERSION_CODE=196`, and aligned prerelease links.
-- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.79`; синхронизированы ссылки на версию в проекте/runtime/docs, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.33.79` и `ANDROID_VERSION_CODE=196`, а также выровнены prerelease-ссылки.
+- EN: Completed repository-wide patch version bump to `8.33.81`; synchronized project/runtime/docs references, updated Android metadata to `ANDROID_VERSION_NAME=8.33.81` and `ANDROID_VERSION_CODE=198`, and aligned prerelease links.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.81`; синхронизированы ссылки на версию в проекте/runtime/docs, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.33.81` и `ANDROID_VERSION_CODE=198`, а также выровнены prerelease-ссылки.
 
 ## [8.33.78] - 2026-03-26
 

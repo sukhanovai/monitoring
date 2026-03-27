@@ -330,6 +330,12 @@ private fun MonitoringApp(
     var proxmoxPatternValueInput by rememberSaveable { mutableStateOf("") }
     var proxmoxPatternEditAction by rememberSaveable { mutableStateOf("") }
     var proxmoxPatternEditValueInput by rememberSaveable { mutableStateOf("") }
+    var showMailPatternAddDialog by rememberSaveable { mutableStateOf(false) }
+    var showMailPatternEditDialog by rememberSaveable { mutableStateOf(false) }
+    var mailPatternInputMode by rememberSaveable { mutableStateOf("subject") }
+    var mailPatternInputValue by rememberSaveable { mutableStateOf("") }
+    var mailPatternEditAction by rememberSaveable { mutableStateOf("") }
+    var mailPatternEditValueInput by rememberSaveable { mutableStateOf("") }
     var showDbCategoryAddDialog by rememberSaveable { mutableStateOf(false) }
     var dbCategoryInput by rememberSaveable { mutableStateOf("") }
     var showDbEntryAddDialog by rememberSaveable { mutableStateOf(false) }
@@ -916,27 +922,6 @@ private fun MonitoringApp(
                             Text("🧩 Настройки расширений", fontWeight = FontWeight.Bold)
                             Text("Включай/выключай расширения и открывай настройки активных расширений.")
 
-                            Button(
-                                onClick = {
-                                    if (isExtensionsSettingsOpened) {
-                                        isExtensionsSettingsOpened = false
-                                    } else {
-                                        isExtensionsSettingsOpened = true
-                                        onOpenExtensionsSettingsMenu()
-                                    }
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text(if (isExtensionsSettingsOpened) "⚙️ Скрыть настройки расширений" else "⚙️ Открыть настройки расширений")
-                            }
-
-                            Text("🛠️ Управление расширениями (вкл/выкл)", fontWeight = FontWeight.Bold)
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Button(onClick = onEnableAllExtensions) { Text("📊 Включить все") }
-                                Button(onClick = onDisableAllExtensions) { Text("📋 Отключить все") }
-                            }
-                            ExtensionsSection(items = state.extensions, onToggleExtension = onToggleExtension)
-                            Spacer(modifier = Modifier.height(8.dp))
                             if (isExtensionsSettingsOpened && state.extensionSettingsMenuOptions.isEmpty()) {
                                 Text("Нет доступных настроек для активных расширений.")
                             }
@@ -1018,6 +1003,19 @@ private fun MonitoringApp(
                                                     proxmoxPatternEditValueInput = ""
                                                     showProxmoxPatternEditDialog = true
                                                 }
+                                                action.startsWith("settings_mail_pattern_add") -> {
+                                                    val parts = action.split("|")
+                                                    mailPatternInputMode = parts.getOrNull(1)
+                                                        ?.takeIf { it == "subject" || it == "fragments" }
+                                                        ?: "subject"
+                                                    mailPatternInputValue = parts.getOrNull(2).orEmpty()
+                                                    showMailPatternAddDialog = true
+                                                }
+                                                action.startsWith("settings_mail_pattern_edit_") -> {
+                                                    mailPatternEditAction = action
+                                                    mailPatternEditValueInput = ""
+                                                    showMailPatternEditDialog = true
+                                                }
                                                 action == "settings_db_add_category" -> {
                                                     dbCategoryInput = ""
                                                     showDbCategoryAddDialog = true
@@ -1049,6 +1047,28 @@ private fun MonitoringApp(
                                     index += 1
                                 }
                             }
+
+                            Button(
+                                onClick = {
+                                    if (isExtensionsSettingsOpened) {
+                                        isExtensionsSettingsOpened = false
+                                    } else {
+                                        isExtensionsSettingsOpened = true
+                                        onOpenExtensionsSettingsMenu()
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(if (isExtensionsSettingsOpened) "⚙️ Скрыть настройки расширений" else "⚙️ Открыть настройки расширений")
+                            }
+
+                            Text("🛠️ Управление расширениями (вкл/выкл)", fontWeight = FontWeight.Bold)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(onClick = onEnableAllExtensions) { Text("📊 Включить все") }
+                                Button(onClick = onDisableAllExtensions) { Text("📋 Отключить все") }
+                            }
+                            ExtensionsSection(items = state.extensions, onToggleExtension = onToggleExtension)
+                            Spacer(modifier = Modifier.height(8.dp))
 
                             if (showProxmoxPatternAddDialog) {
                                 AlertDialog(
@@ -1129,6 +1149,85 @@ private fun MonitoringApp(
                                     },
                                     dismissButton = {
                                         TextButton(onClick = { showProxmoxPatternEditDialog = false }) {
+                                            Text("Отмена")
+                                        }
+                                    }
+                                )
+                            }
+
+                            if (showMailPatternAddDialog) {
+                                AlertDialog(
+                                    onDismissRequest = { showMailPatternAddDialog = false },
+                                    title = { Text("➕ Добавить паттерн почты") },
+                                    text = {
+                                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            Text("Режим генерации:")
+                                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                Button(
+                                                    onClick = { mailPatternInputMode = "subject" }
+                                                ) { Text("Тема письма") }
+                                                Button(
+                                                    onClick = { mailPatternInputMode = "fragments" }
+                                                ) { Text("Фрагменты") }
+                                            }
+                                            OutlinedTextField(
+                                                value = mailPatternInputValue,
+                                                onValueChange = { mailPatternInputValue = it },
+                                                label = { Text(if (mailPatternInputMode == "subject") "Тема письма" else "Фрагменты через ; или ,") },
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
+                                        }
+                                    },
+                                    confirmButton = {
+                                        TextButton(
+                                            onClick = {
+                                                val actionPayload = "settings_mail_pattern_add|" +
+                                                    Uri.encode(mailPatternInputMode) + "|" +
+                                                    Uri.encode(mailPatternInputValue.trim())
+                                                onExtensionsSettingsAction(actionPayload)
+                                                showMailPatternAddDialog = false
+                                            },
+                                            enabled = mailPatternInputValue.isNotBlank()
+                                        ) {
+                                            Text("Сохранить")
+                                        }
+                                    },
+                                    dismissButton = {
+                                        TextButton(onClick = { showMailPatternAddDialog = false }) {
+                                            Text("Отмена")
+                                        }
+                                    }
+                                )
+                            }
+
+                            if (showMailPatternEditDialog) {
+                                AlertDialog(
+                                    onDismissRequest = { showMailPatternEditDialog = false },
+                                    title = { Text("✏️ Редактировать паттерн почты") },
+                                    text = {
+                                        OutlinedTextField(
+                                            value = mailPatternEditValueInput,
+                                            onValueChange = { mailPatternEditValueInput = it },
+                                            label = { Text("Новый regex паттерн") },
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    },
+                                    confirmButton = {
+                                        TextButton(
+                                            onClick = {
+                                                val actionPayload = mailPatternEditAction + "|" +
+                                                    Uri.encode(mailPatternEditValueInput.trim())
+                                                onExtensionsSettingsAction(actionPayload)
+                                                showMailPatternEditDialog = false
+                                            },
+                                            enabled = mailPatternEditAction.isNotBlank() &&
+                                                mailPatternEditValueInput.isNotBlank()
+                                        ) {
+                                            Text("Сохранить")
+                                        }
+                                    },
+                                    dismissButton = {
+                                        TextButton(onClick = { showMailPatternEditDialog = false }) {
                                             Text("Отмена")
                                         }
                                     }
