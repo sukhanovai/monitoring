@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.36.0] - 2026-03-28
+
+### Changed / Изменено
+- EN: Reworked Android visual style for the Compact Ops flavor into a command-center layout: new centered top bar with mode subtitle, gradient hero block, metric chips, and dashboard action buttons for sync/availability/report/settings.
+- RU: Полностью переработан визуальный стиль Android для flavor Compact Ops в формат command-center: новая центрированная верхняя панель с подписью режима, градиентный hero-блок, метрики-чипы и dashboard-кнопки для синхронизации/доступности/отчёта/настроек.
+- EN: Introduced a custom Material 3 color system for both dark and light themes to make the interface visually distinct from the previous default look.
+- RU: Добавлена кастомная цветовая система Material 3 для тёмной и светлой тем, чтобы интерфейс выглядел принципиально иначе по сравнению с прежним дефолтным видом.
+- EN: Completed repository-wide SemVer minor bump to `8.36.0`; synchronized runtime/config/docs/version headers, updated Android metadata to `ANDROID_VERSION_NAME=8.36.0` and `ANDROID_VERSION_CODE=208`, and refreshed prerelease links.
+- RU: Выполнен SemVer minor-бамп версии по репозиторию до `8.36.0`; синхронизированы runtime/config/docs/version-заголовки, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.36.0` и `ANDROID_VERSION_CODE=208`, а также обновлены prerelease-ссылки.
+
 ## [8.35.1] - 2026-03-28
 
 ### Fixed / Исправлено
