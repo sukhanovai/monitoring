@@ -6,21 +6,23 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.37.0] - 2026-03-28
+## [8.38.0] - 2026-03-28
 
 ### Added / Добавлено
-- EN: Added interactive metric tiles in Compact Ops Hub: each tile is now clickable and opens the related details section (servers, extensions, or Windows credentials) directly.
-- RU: Добавлены интерактивные окошки-метрики в Compact Ops Hub: каждое окошко стало кнопкой и открывает соответствующий раздел сведений (серверы, расширения или Windows-учётки).
-- EN: Added extension-focused tiles (`disabled extensions`, `extension issues`) in the Ops center to surface extension state at a glance.
-- RU: Добавлены отдельные окошки по расширениям (`выключенные расширения`, `проблемы расширений`) для быстрого контроля состояния.
+- EN: Added a Compact Ops tile settings dialog: users can choose which tiles stay visible by default, while the rest move under the “Expand/Collapse details” button.
+- RU: Добавлена настройка плашек в Compact Ops: можно выбрать, какие плашки показываются сразу, а какие скрываются под кнопкой «Развернуть/свернуть сведения».
+- EN: Added a new “Modes” tile in Compact Ops that opens the corresponding settings section and shows the current silent-mode status.
+- RU: Добавлена новая плашка «Режимы» в Compact Ops, которая открывает соответствующий раздел настроек и показывает текущий статус тихого режима.
 
 ### Changed / Изменено
-- EN: Updated tile visuals to highlight problematic metrics with an error-colored value when incidents are present (DOWN/UNKNOWN servers, extension issues).
-- RU: Обновлён внешний вид окошек: при наличии проблем значение в окошке подсвечивается цветом ошибки (DOWN/UNKNOWN серверы, проблемы расширений).
-- EN: Implemented configurable tile visibility in Compact Ops Hub: default view shows only part of the tiles, with a button to expand/collapse the full tile list.
-- RU: Реализована настройка видимости окошек в Compact Ops Hub: по умолчанию показывается только часть окошек, полный список открывается/сворачивается кнопкой.
-- EN: Completed repository-wide SemVer minor bump to `8.37.0`; synchronized runtime/config/docs/version headers, updated Android metadata to `ANDROID_VERSION_NAME=8.37.0` and `ANDROID_VERSION_CODE=209`, and refreshed prerelease links.
-- RU: Выполнен SemVer minor-бамп версии по репозиторию до `8.37.0`; синхронизированы runtime/config/docs/version-заголовки, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.37.0` и `ANDROID_VERSION_CODE=209`, а также обновлены prerelease-ссылки.
+- EN: Updated Compact Ops tile composition: removed `DOWN`, `UNKNOWN`, `Disabled extensions`, `Extension issues`, `Win credentials`, and `Win types`; kept focused tiles for `Servers`, `Extensions`, and `Modes`.
+- RU: Обновлён состав плашек Compact Ops: убраны `DOWN`, `UNKNOWN`, `Выкл. расширения`, `Проблемы расширений`, `Win-учётки` и `Типы Win`; оставлены ключевые плашки `Серверы`, `Расширения` и `Режимы`.
+- EN: Updated server and extension tile counters to `active/total` format and renamed the toggle button text to “Expand/Collapse details”.
+- RU: Обновлён формат счётчиков плашек серверов и расширений на `активные/всего`, а текст кнопки переключения переименован в «Развернуть/свернуть сведения».
+- EN: Removed the Compact Ops subtitle text (“Focus on state …”) from the hero block.
+- RU: Удалена подпись в hero-блоке Compact Ops («Фокус на состоянии …»).
+- EN: Completed repository-wide SemVer minor bump to `8.38.0`; synchronized runtime/config/docs/version headers, updated Android metadata to `ANDROID_VERSION_NAME=8.38.0` and `ANDROID_VERSION_CODE=210`, and refreshed prerelease links.
+- RU: Выполнен SemVer minor-бамп версии по репозиторию до `8.38.0`; синхронизированы runtime/config/docs/version-заголовки, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.38.0` и `ANDROID_VERSION_CODE=210`, а также обновлены prerelease-ссылки.
 
 ## [8.36.0] - 2026-03-28
 

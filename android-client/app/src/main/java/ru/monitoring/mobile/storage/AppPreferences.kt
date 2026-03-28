@@ -54,6 +54,12 @@ class AppPreferences(context: Context) {
             prefs.edit().putString(KEY_LAST_DOWN_SERVERS_FINGERPRINT, value).apply()
         }
 
+    var compactOpsPinnedTileIds: String
+        get() = prefs.getString(KEY_COMPACT_OPS_PINNED_TILE_IDS, DEFAULT_COMPACT_OPS_PINNED_TILE_IDS) ?: DEFAULT_COMPACT_OPS_PINNED_TILE_IDS
+        set(value) {
+            prefs.edit().putString(KEY_COMPACT_OPS_PINNED_TILE_IDS, value).apply()
+        }
+
     val deviceId: String
         get() {
             val existing = prefs.getString(KEY_DEVICE_ID, null)?.trim().orEmpty()
@@ -73,7 +79,9 @@ class AppPreferences(context: Context) {
         private const val KEY_MORNING_REPORT_RECEIVED_AT = "morning_report_received_at"
         private const val KEY_MORNING_REPORT_UNREAD = "morning_report_unread"
         private const val KEY_LAST_DOWN_SERVERS_FINGERPRINT = "last_down_servers_fingerprint"
+        private const val KEY_COMPACT_OPS_PINNED_TILE_IDS = "compact_ops_pinned_tile_ids"
         private const val DEFAULT_API_BASE_URL = "https://api.202020.ru:8443/"
         private const val DEFAULT_THEME_MODE = "dark"
+        private const val DEFAULT_COMPACT_OPS_PINNED_TILE_IDS = "servers,extensions,modes"
     }
 }
