@@ -1,12 +1,40 @@
 param(
     [string]$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")),
-    [string]$AppId = "ru.monitoring.mobile",
+    [ValidateSet("legacy", "compactOps")]
+    [string]$Flavor = "compactOps",
+    [string]$AppId = "",
     [string]$MainActivity = ".MainActivity",
     [switch]$SkipInstall,
     [switch]$SkipRun
 )
 
 $ErrorActionPreference = "Stop"
+
+
+function Get-FlavorConfig {
+    param(
+        [ValidateSet("legacy", "compactOps")]
+        [string]$Flavor
+    )
+
+    switch ($Flavor) {
+        "legacy" {
+            return @{
+                Variant = "Legacy"
+                AppId = "ru.monitoring.mobile.legacy"
+            }
+        }
+        "compactOps" {
+            return @{
+                Variant = "CompactOps"
+                AppId = "ru.monitoring.mobile.compactops"
+            }
+        }
+        default {
+            throw "Unsupported flavor: $Flavor"
+        }
+    }
+}
 
 function Resolve-AdbPath {
     $adbCommand = Get-Command adb -ErrorAction SilentlyContinue
@@ -122,6 +150,12 @@ function Test-AppIsForeground {
 
 $androidDir = Join-Path $RepoRoot "android-client"
 $gradlew = Join-Path $androidDir "gradlew.bat"
+$flavorConfig = Get-FlavorConfig -Flavor $Flavor
+$variantName = $flavorConfig.Variant
+
+if (-not $AppId) {
+    $AppId = $flavorConfig.AppId
+}
 
 if (-not (Test-Path $gradlew)) {
     throw "gradlew.bat was not found at: $gradlew"
@@ -147,7 +181,8 @@ Write-Host "[2/5] Clean project..."
 Invoke-GradleStep -Description "Clean project" -Tasks @("clean")
 
 Write-Host "[3/5] Assemble project..."
-Invoke-GradleStep -Description "Assemble debug" -Tasks @("assembleDebug")
+$assembleTask = ":app:assemble{0}Debug" -f $variantName
+Invoke-GradleStep -Description "Assemble $Flavor debug" -Tasks @($assembleTask)
 
 if (-not $SkipInstall) {
     $adbPath = Resolve-AdbPath
@@ -161,7 +196,8 @@ if (-not $SkipInstall) {
 
 if (-not $SkipInstall) {
     Write-Host "[4/5] Install app on connected device/emulator..."
-    Invoke-GradleStep -Description "Install debug APK" -Tasks @(":app:installDebug")
+    $installTask = ":app:install{0}Debug" -f $variantName
+    Invoke-GradleStep -Description "Install $Flavor debug APK" -Tasks @($installTask)
 }
 else {
     Write-Host "[4/5] Install skipped (-SkipInstall)."
@@ -169,7 +205,7 @@ else {
 
 if ($SkipRun) {
     Write-Host "[5/5] App launch skipped (-SkipRun)."
-    Write-Host "✅ Done: sync + clean + assemble"
+    Write-Host "✅ Done: sync + clean + assemble ($Flavor)"
     exit 0
 }
 
@@ -213,9 +249,9 @@ if (-not $SkipInstall) {
         }
     }
 
-    Write-Host "✅ Done: sync + clean + assemble + install + run"
+    Write-Host "✅ Done: sync + clean + assemble + install + run ($Flavor)"
 }
 else {
     Write-Host "[5/5] Launch skipped because install was skipped."
-    Write-Host "✅ Done: sync + clean + assemble"
+    Write-Host "✅ Done: sync + clean + assemble ($Flavor)"
 }

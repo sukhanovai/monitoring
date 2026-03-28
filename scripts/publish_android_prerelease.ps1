@@ -2,6 +2,8 @@ param(
     [string]$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")),
     [ValidateSet("debug", "release")]
     [string]$BuildType = "debug",
+    [ValidateSet("legacy", "compactOps")]
+    [string]$Flavor = "compactOps",
     [switch]$SkipBuild,
     [switch]$AllowDirty,
     [switch]$AutoStashDirty,
@@ -434,16 +436,24 @@ or run script with `$env:GH_TOKEN in current terminal session.
 function Resolve-ApkSource {
     param(
         [string]$AndroidDir,
+        [ValidateSet("legacy", "compactOps")]
+        [string]$Flavor,
         [ValidateSet("debug", "release")]
         [string]$BuildType
     )
 
-    $apkDir = Join-Path $AndroidDir "app/build/outputs/apk/$BuildType"
-    if (-not (Test-Path $apkDir)) {
-        throw "APK $BuildType directory not found: $apkDir"
+    $apkDirs = @(
+        (Join-Path $AndroidDir "app/build/outputs/apk/$Flavor/$BuildType"),
+        (Join-Path $AndroidDir "app/build/outputs/apk/$BuildType")
+    )
+
+    $apkDir = $apkDirs | Where-Object { Test-Path $_ } | Select-Object -First 1
+    if (-not $apkDir) {
+        throw "APK output directory was not found for flavor '$Flavor' and build type '$BuildType'. Checked: $($apkDirs -join ', ')"
     }
 
     $preferred = @(
+        (Join-Path $apkDir "app-$Flavor-$BuildType.apk")
         (Join-Path $apkDir "app-$BuildType.apk")
         (Join-Path $apkDir "app-universal-$BuildType.apk")
     )
@@ -457,7 +467,11 @@ function Resolve-ApkSource {
     $candidateApks = Get-ChildItem -Path $apkDir -Filter "*.apk" -File
 
     $signedCandidates = $candidateApks |
-        Where-Object { $_.Name -notmatch "unsigned" -and $_.Name -notmatch "-x86|-x86_64|-arm64-v8a|-armeabi-v7a|-universal-debug" } |
+        Where-Object {
+            $_.Name -notmatch "unsigned" -and
+            $_.Name -notmatch "-x86|-x86_64|-arm64-v8a|-armeabi-v7a|-universal-debug" -and
+            $_.Name -match $Flavor
+        } |
         Sort-Object LastWriteTime -Descending
 
     if ($signedCandidates) {
@@ -809,10 +823,12 @@ try {
     }
 
     if (-not $SkipBuild) {
-        Write-Host "[3/7] Building $BuildType APK..."
+        Write-Host "[3/7] Building $Flavor/$BuildType APK..."
         Push-Location $androidDir
         try {
-            $gradleTask = ":app:assemble$((Get-Culture).TextInfo.ToTitleCase($BuildType))"
+            $variantName = Get-AndroidFlavorVariant -Flavor $Flavor
+            $buildTypeName = (Get-Culture).TextInfo.ToTitleCase($BuildType)
+            $gradleTask = ":app:assemble{0}{1}" -f $variantName, $buildTypeName
             if (Test-Path (Join-Path $androidDir "gradlew.bat")) {
                 & .\gradlew.bat $gradleTask
             }
@@ -832,13 +848,13 @@ try {
     }
 
     Write-Host "[4/7] Checking APK output..."
-    $apkSource = Resolve-ApkSource -AndroidDir $androidDir -BuildType $BuildType
+    $apkSource = Resolve-ApkSource -AndroidDir $androidDir -Flavor $Flavor -BuildType $BuildType
     Write-Host "[4/7] Using APK: $apkSource"
 
     $artifactDir = Join-Path $RepoRoot "artifacts"
     New-Item -ItemType Directory -Path $artifactDir -Force | Out-Null
 
-    $apkName = "monitoring-android-$projectVersion-develop-$BuildType.apk"
+    $apkName = "monitoring-android-$projectVersion-develop-$Flavor-$BuildType.apk"
     $apkTarget = Join-Path $artifactDir $apkName
     Copy-Item -Path $apkSource -Destination $apkTarget -Force
 
@@ -867,11 +883,11 @@ try {
 
     $notes = @"
 EN: Android prerelease for develop branch.
-EN: Built from branch develop, version $projectVersion, buildType $BuildType.
+EN: Built from branch develop, version $projectVersion, flavor $Flavor, buildType $BuildType.
 EN: Stable release in main remains unchanged.
 
 RU: Пререлиз Android для ветки develop.
-RU: Собрано из ветки develop, версия $projectVersion, buildType $BuildType.
+RU: Собрано из ветки develop, версия $projectVersion, flavor $Flavor, buildType $BuildType.
 RU: Стабильный релиз в main не изменяется.
 "@
 
@@ -916,4 +932,16 @@ $($postDirty -join "`n")
 catch {
     [Console]::Error.WriteLine($_.Exception.Message)
     exit 1
+}
+function Get-AndroidFlavorVariant {
+    param(
+        [ValidateSet("legacy", "compactOps")]
+        [string]$Flavor
+    )
+
+    switch ($Flavor) {
+        "legacy" { return "Legacy" }
+        "compactOps" { return "CompactOps" }
+        default { throw "Unsupported flavor: $Flavor" }
+    }
 }
