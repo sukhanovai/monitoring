@@ -50,7 +50,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.33.85"
+    private val projectVersion = "8.33.86"
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
     private val fallbackUpdateUrl = "https://github.com/sukhanovai/monitoring/releases/latest"
@@ -939,10 +939,7 @@ class MainViewModel(
         "settings_stock_load" -> "📦 Раздел «Загрузка остатков 1С» открыт."
         "settings_supplier_stock" -> "📦 Раздел «Остатки поставщиков» открыт."
         "settings_patterns_zfs" -> "🔍 Раздел «Паттерны ZFS» открыт."
-        in localResourceThresholdActions -> (
-            "⚙️ Настройка порогов ресурсов в Android пока не реализована. " +
-                "Пока меняй это в Telegram-боте: Настройки → Расширения → Ресурсы."
-            )
+        in localResourceThresholdActions -> "Введите новый порог ресурса в процентах."
         localExtensionsSettingsBackAction -> "Список настроек расширений обновлён."
         else -> "Настройки расширений открыты."
     }

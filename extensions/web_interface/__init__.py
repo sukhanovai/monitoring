@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.33.85
+Server Monitoring System v8.33.86
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.33.85
+Версия: 8.33.86
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1511,6 +1511,66 @@ def _execute_mobile_control_action(action: str):
         "zfs",
         "zfs_menu",
     }
+    resource_threshold_settings = {
+        "set_cpu_warning": ("CPU_WARNING", "CPU предупреждение"),
+        "set_cpu_critical": ("CPU_CRITICAL", "CPU критический"),
+        "set_ram_warning": ("RAM_WARNING", "RAM предупреждение"),
+        "set_ram_critical": ("RAM_CRITICAL", "RAM критический"),
+        "set_disk_warning": ("DISK_WARNING", "Disk предупреждение"),
+        "set_disk_critical": ("DISK_CRITICAL", "Disk критический"),
+    }
+
+    if action.startswith("set_"):
+        action_name, raw_value = (action.split("|", 1) + [""])[:2]
+        threshold_meta = resource_threshold_settings.get(action_name)
+        if threshold_meta is None:
+            return False, f"Неизвестное действие: {action_name}", "failed", None
+
+        setting_key, setting_title = threshold_meta
+        value_raw = raw_value.strip()
+        if not value_raw:
+            return False, (
+                f"Для «{setting_title}» передай значение 0-100: "
+                f"`{action_name}|<число>`"
+            ), "failed", None
+
+        try:
+            threshold_value = int(value_raw)
+        except ValueError:
+            return False, f"Порог «{setting_title}» должен быть целым числом 0-100.", "failed", None
+
+        if threshold_value < 0 or threshold_value > 100:
+            return False, f"Порог «{setting_title}» должен быть в диапазоне 0-100.", "failed", None
+
+        from core.config_manager import config_manager as settings_manager
+        settings_manager.set_setting(setting_key, threshold_value, "monitoring")
+
+        cpu_warning = settings_manager.get_setting('CPU_WARNING', 80)
+        cpu_critical = settings_manager.get_setting('CPU_CRITICAL', 90)
+        ram_warning = settings_manager.get_setting('RAM_WARNING', 85)
+        ram_critical = settings_manager.get_setting('RAM_CRITICAL', 95)
+        disk_warning = settings_manager.get_setting('DISK_WARNING', 80)
+        disk_critical = settings_manager.get_setting('DISK_CRITICAL', 90)
+
+        return True, (
+            f"✅ {setting_title}: {threshold_value}%\n\n"
+            "Текущие пороги:\n"
+            f"• CPU предупреждение: {cpu_warning}%\n"
+            f"• CPU критический: {cpu_critical}%\n"
+            f"• RAM предупреждение: {ram_warning}%\n"
+            f"• RAM критический: {ram_critical}%\n"
+            f"• Disk предупреждение: {disk_warning}%\n"
+            f"• Disk критический: {disk_critical}%"
+        ), "accepted", [
+            {"label": "💻 CPU предупреждение", "action": "set_cpu_warning"},
+            {"label": "💻 CPU критический", "action": "set_cpu_critical"},
+            {"label": "🧠 RAM предупреждение", "action": "set_ram_warning"},
+            {"label": "🧠 RAM критический", "action": "set_ram_critical"},
+            {"label": "💾 Disk предупреждение", "action": "set_disk_warning"},
+            {"label": "💾 Disk критический", "action": "set_disk_critical"},
+            {"label": "↩️ Назад", "action": "settings_extensions_back_local"},
+            {"label": "✖️ Закрыть", "action": "settings_extensions_close_local"},
+        ]
 
     if action in menu_actions or action.startswith("backup_host_") or action.startswith("db_detail_"):
         from extensions.extension_manager import extension_manager
