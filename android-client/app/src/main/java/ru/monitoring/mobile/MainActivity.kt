@@ -29,6 +29,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -39,6 +41,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -374,6 +378,7 @@ private fun MonitoringApp(
     var showServerResourcesMenu by rememberSaveable { mutableStateOf(false) }
     var areOpsTilesExpanded by rememberSaveable { mutableStateOf(false) }
     var showTileSettingsDialog by rememberSaveable { mutableStateOf(false) }
+    var showServersCheckDialog by rememberSaveable { mutableStateOf(false) }
     var settingsSection by rememberSaveable { mutableStateOf("bff") }
     var showProxmoxPatternAddDialog by rememberSaveable { mutableStateOf(false) }
     var showProxmoxPatternEditDialog by rememberSaveable { mutableStateOf(false) }
@@ -453,9 +458,7 @@ private fun MonitoringApp(
     val sectionSpacing = if (isCompactOpsHub) 8.dp else 12.dp
 
     val openServersDetails = {
-        isManagementExpanded = true
-        isSettingsExpanded = true
-        settingsSection = "servers"
+        showServersCheckDialog = true
     }
     val openExtensionsDetails = {
         isSettingsExpanded = true
@@ -463,8 +466,12 @@ private fun MonitoringApp(
         isExtensionsSettingsOpened = true
     }
     val openModesDetails = {
-        isSettingsExpanded = true
-        settingsSection = "time"
+        val nextModeAction = when {
+            state.silentStatusText.contains("Принудительно тих", ignoreCase = true) -> "force_loud"
+            state.silentStatusText.contains("Принудительно громк", ignoreCase = true) -> "auto_mode"
+            else -> "force_quiet"
+        }
+        onAction(nextModeAction)
     }
     val opsTiles = listOf(
         OpsMetricTile(
@@ -483,7 +490,7 @@ private fun MonitoringApp(
         ),
         OpsMetricTile(
             id = "modes",
-            label = "Режимы",
+            label = "Режим",
             value = state.silentStatusText,
             onClick = openModesDetails
         )
@@ -546,7 +553,19 @@ private fun MonitoringApp(
                             .padding(14.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Text("⚡ Оперативный центр", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("⚡ Оперативный центр", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                            IconButton(onClick = { showTileSettingsDialog = true }) {
+                                Icon(
+                                    imageVector = Icons.Filled.Settings,
+                                    contentDescription = "Настроить плашки"
+                                )
+                            }
+                        }
                         FlowRow(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -575,8 +594,22 @@ private fun MonitoringApp(
                                 Text(if (areOpsTilesExpanded) "Свернуть сведения" else "Развернуть сведения")
                             }
                         }
-                        TextButton(onClick = { showTileSettingsDialog = true }) {
-                            Text("Настроить плашки")
+                        val extensionInfoTiles = state.extensions.filter { it.enabled }
+                        if (extensionInfoTiles.isNotEmpty()) {
+                            Text("Плашки расширений", fontWeight = FontWeight.SemiBold)
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                maxItemsInEachRow = 2
+                            ) {
+                                extensionInfoTiles.forEach { extension ->
+                                    OpsMetricChip(
+                                        label = extension.name,
+                                        value = if (extension.description.isNotBlank()) extension.description else "Включено"
+                                    )
+                                }
+                            }
                         }
                         FlowRow(
                             modifier = Modifier.fillMaxWidth(),
@@ -1922,6 +1955,30 @@ private fun MonitoringApp(
             }
 
         }
+    }
+
+    if (showServersCheckDialog) {
+        AlertDialog(
+            onDismissRequest = { showServersCheckDialog = false },
+            title = { Text("Проверка серверов") },
+            text = { Text("Выбери вариант проверки") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showServersCheckDialog = false
+                    onRefresh()
+                }) {
+                    Text("Все серверы")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showServersCheckDialog = false
+                    showServerAvailabilityMenu = true
+                }) {
+                    Text("Один сервер")
+                }
+            }
+        )
     }
 
     if (showTileSettingsDialog) {
