@@ -26,6 +26,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ElevatedCard
@@ -98,6 +99,7 @@ private fun isProblemBackupOption(label: String, action: String): Boolean {
 }
 
 private data class OpsMetricTile(
+    val id: String,
     val label: String,
     val value: String,
     val hasProblem: Boolean = false,
@@ -165,6 +167,7 @@ class MainActivity : ComponentActivity() {
 
                 MonitoringApp(
                     state = vm.state,
+                    preferences = preferences,
                     onTokenChanged = vm::setTokenInput,
                     onBaseUrlChanged = vm::setBaseUrlInput,
                     onSaveToken = vm::saveToken,
@@ -280,6 +283,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun MonitoringApp(
     state: MainUiState,
+    preferences: AppPreferences,
     onTokenChanged: (String) -> Unit,
     onBaseUrlChanged: (String) -> Unit,
     onSaveToken: (String) -> Unit,
@@ -369,6 +373,7 @@ private fun MonitoringApp(
     var showServerAvailabilityMenu by rememberSaveable { mutableStateOf(false) }
     var showServerResourcesMenu by rememberSaveable { mutableStateOf(false) }
     var areOpsTilesExpanded by rememberSaveable { mutableStateOf(false) }
+    var showTileSettingsDialog by rememberSaveable { mutableStateOf(false) }
     var settingsSection by rememberSaveable { mutableStateOf("bff") }
     var showProxmoxPatternAddDialog by rememberSaveable { mutableStateOf(false) }
     var showProxmoxPatternEditDialog by rememberSaveable { mutableStateOf(false) }
@@ -424,10 +429,12 @@ private fun MonitoringApp(
 
     val hiddenTransformation = PasswordVisualTransformation()
     val windowsByType = state.windowsCredentials.groupBy { it.serverType ?: "default" }
-    val windowsTotal = state.windowsCredentials.size
-    val windowsTypes = windowsByType.keys.size
     val enabledExtensions = state.extensions.filter { it.enabled }.map { it.id }.toSet()
-    val disabledExtensionsCount = state.extensions.count { !it.enabled }
+    val enabledExtensionsCount = state.extensions.count { it.enabled }
+    val totalExtensionsCount = state.extensions.size
+    val upServersCount = state.servers.count { it.status.equals("UP", ignoreCase = true) }
+    val totalServersCount = state.managedServers.size.takeIf { it > 0 } ?: state.servers.size
+    val activeServersCount = upServersCount.coerceAtMost(totalServersCount)
     val downServersCount = state.servers.count { it.status.equals("DOWN", ignoreCase = true) }
     val unknownServersCount = state.servers.count { it.status.equals("UNKNOWN", ignoreCase = true) }
     val extensionProblemsCount = listOf(
@@ -435,7 +442,7 @@ private fun MonitoringApp(
         state.backupDatabasesHasProblemItems,
         state.mailBackupHistoryItems.any { item -> item.statusIcon.contains("❌") || item.statusIcon.contains("⚠️") || item.statusIcon.contains("🚨") }
     ).count { it }
-    val hasServerProblems = downServersCount > 0 || unknownServersCount > 0
+    val hasServerProblems = downServersCount > 0 || unknownServersCount > 0 || activeServersCount < totalServersCount
     val hasExtensionProblems = extensionProblemsCount > 0
     val extensionButtons = MAIN_MENU_EXTENSION_BUTTONS.filter { it.extensionId in enabledExtensions }
     val isResourceMonitorEnabled = "resource_monitor" in enabledExtensions
@@ -453,21 +460,47 @@ private fun MonitoringApp(
         settingsSection = "extensions"
         isExtensionsSettingsOpened = true
     }
-    val openWindowsDetails = {
+    val openModesDetails = {
         isSettingsExpanded = true
-        settingsSection = "auth"
-        isWindowsAuthExpanded = true
+        settingsSection = "time"
     }
     val opsTiles = listOf(
-        OpsMetricTile("Серверы", state.managedServers.size.toString(), hasServerProblems, openServersDetails),
-        OpsMetricTile("DOWN", downServersCount.toString(), downServersCount > 0, openServersDetails),
-        OpsMetricTile("UNKNOWN", unknownServersCount.toString(), unknownServersCount > 0, openServersDetails),
-        OpsMetricTile("Расширения", state.extensions.count { it.enabled }.toString(), hasExtensionProblems, openExtensionsDetails),
-        OpsMetricTile("Выкл. расширения", disabledExtensionsCount.toString(), disabledExtensionsCount > 0, openExtensionsDetails),
-        OpsMetricTile("Проблемы расширений", extensionProblemsCount.toString(), hasExtensionProblems, openExtensionsDetails),
-        OpsMetricTile("Win-учётки", state.windowsCredentials.size.toString(), false, openWindowsDetails),
-        OpsMetricTile("Типы Win", windowsTypes.toString(), false, openWindowsDetails)
+        OpsMetricTile(
+            id = "servers",
+            label = "Серверы",
+            value = "$activeServersCount/$totalServersCount",
+            hasProblem = hasServerProblems,
+            onClick = openServersDetails
+        ),
+        OpsMetricTile(
+            id = "extensions",
+            label = "Расширения",
+            value = "$enabledExtensionsCount/$totalExtensionsCount",
+            hasProblem = hasExtensionProblems,
+            onClick = openExtensionsDetails
+        ),
+        OpsMetricTile(
+            id = "modes",
+            label = "Режимы",
+            value = state.silentStatusText,
+            onClick = openModesDetails
+        )
     )
+    val defaultPinnedTileIds = setOf("servers", "extensions", "modes")
+    var pinnedOpsTileIds by rememberSaveable {
+        mutableStateOf(
+            preferences.compactOpsPinnedTileIds.split(",")
+                .map { it.trim() }
+                .filter { it.isNotBlank() }
+                .toSet()
+                .ifEmpty { defaultPinnedTileIds }
+        )
+    }
+    val orderedPinnedTileIds = opsTiles.map { it.id }.filter { it in pinnedOpsTileIds }.toSet()
+    val effectivePinnedTileIds = if (orderedPinnedTileIds.isEmpty()) defaultPinnedTileIds else orderedPinnedTileIds
+    val pinnedTiles = opsTiles.filter { it.id in effectivePinnedTileIds }
+    val hiddenTiles = opsTiles.filterNot { it.id in effectivePinnedTileIds }
+    val visibleTiles = if (areOpsTilesExpanded) pinnedTiles + hiddenTiles else pinnedTiles
 
     Scaffold(
         topBar = {
@@ -512,11 +545,6 @@ private fun MonitoringApp(
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Text("⚡ Оперативный центр", fontWeight = FontWeight.Bold, fontSize = 20.sp)
-                        Text(
-                            "Фокус на состоянии и действиях без переходов по лишним карточкам.",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        val visibleTiles = if (areOpsTilesExpanded) opsTiles else opsTiles.take(4)
                         FlowRow(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -532,7 +560,7 @@ private fun MonitoringApp(
                                 )
                             }
                         }
-                        if (opsTiles.size > 4) {
+                        if (hiddenTiles.isNotEmpty()) {
                             Button(
                                 onClick = { areOpsTilesExpanded = !areOpsTilesExpanded },
                                 modifier = Modifier.fillMaxWidth(),
@@ -542,8 +570,11 @@ private fun MonitoringApp(
                                     contentColor = MaterialTheme.colorScheme.onSurface
                                 )
                             ) {
-                                Text(if (areOpsTilesExpanded) "Свернуть окошечки" else "Развернуть все окошечки")
+                                Text(if (areOpsTilesExpanded) "Свернуть сведения" else "Развернуть сведения")
                             }
+                        }
+                        TextButton(onClick = { showTileSettingsDialog = true }) {
+                            Text("Настроить плашки")
                         }
                         FlowRow(
                             modifier = Modifier.fillMaxWidth(),
@@ -571,6 +602,7 @@ private fun MonitoringApp(
                     }
                 }
             }
+
             if (state.isUpdateRequired) {
                 item {
                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
@@ -1888,6 +1920,43 @@ private fun MonitoringApp(
             }
 
         }
+    }
+
+    if (showTileSettingsDialog) {
+        AlertDialog(
+            onDismissRequest = { showTileSettingsDialog = false },
+            title = { Text("Настройка плашек") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Отметь плашки, которые показывать сразу. Остальные уйдут под «Развернуть сведения».")
+                    opsTiles.forEach { tile ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = tile.id in pinnedOpsTileIds,
+                                onCheckedChange = { checked ->
+                                    val updated = if (checked) {
+                                        pinnedOpsTileIds + tile.id
+                                    } else {
+                                        pinnedOpsTileIds - tile.id
+                                    }
+                                    pinnedOpsTileIds = if (updated.isEmpty()) setOf(tile.id) else updated
+                                    preferences.compactOpsPinnedTileIds = pinnedOpsTileIds.joinToString(",")
+                                }
+                            )
+                            Text(tile.label)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showTileSettingsDialog = false }) {
+                    Text("Готово")
+                }
+            }
+        )
     }
 }
 
