@@ -6,16 +6,21 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.38.3] - 2026-03-28
+## [8.38.4] - 2026-03-28
 
 ### Fixed / Исправлено
-- EN: Fixed `scripts/publish_android_prerelease.ps1` startup flow by moving `Get-AndroidFlavorVariant` before first usage; PowerShell now resolves the function correctly during prerelease builds.
-- RU: Исправлен порядок инициализации в `scripts/publish_android_prerelease.ps1`: `Get-AndroidFlavorVariant` перенесена выше первого вызова, поэтому PowerShell корректно находит функцию при prerelease-сборке.
+- EN: In Compact Ops, wired the "⟳ Sync" button to the same refresh flow as Quick Actions "🔄 Update" and additionally collapse per-server menus after sync to avoid stale per-item state.
+- RU: В Compact Ops кнопка «⟳ Синхронизировать» привязана к тому же refresh-сценарию, что и «🔄 Обновить» в «Быстрых действиях»; после синхронизации дополнительно закрываются меню проверок по отдельным серверам, чтобы не оставалось устаревшего состояния.
+- EN: Changed Servers tile click behavior: now it immediately requests fresh server settings list and opens single-server check menu (without intermediate choice dialog).
+- RU: Изменено поведение плашки «Серверы»: теперь при нажатии сразу запрашивается актуальный список серверов и открывается меню проверки одного сервера (без промежуточного диалога выбора).
 
 ### Changed / Изменено
-- EN: Completed repository-wide patch bump to `8.38.3`; synchronized runtime/config/docs/mobile version references, updated Android metadata to `ANDROID_VERSION_NAME=8.38.3` and `ANDROID_VERSION_CODE=213`, and refreshed prerelease links.
-- RU: Выполнен полный patch-бамп версии по репозиторию до `8.38.3`; синхронизированы ссылки на версию в runtime/config/docs/mobile, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.38.3` и `ANDROID_VERSION_CODE=213`, а также обновлены prerelease-ссылки.
-
+- EN: Renamed Compact Ops extension subsection title from "Extension tiles" to "Extensions".
+- RU: Переименован заголовок секции расширений в Compact Ops: вместо «Плашки расширений» теперь «Расширения».
+- EN: Reworked Compact Ops extensions block: replaced metric chips with result cards that show extension name and extension execution/result details.
+- RU: Переработан блок расширений в Compact Ops: вместо плашек-метрик выводятся карточки результатов с названием расширения и деталями результата работы.
+- EN: Completed repository-wide patch bump to `8.38.4`; synchronized runtime/config/docs/mobile version references, updated Android metadata to `ANDROID_VERSION_NAME=8.38.4` and `ANDROID_VERSION_CODE=214`, and refreshed prerelease links.
+- RU: Выполнен полный patch-бамп версии по репозиторию до `8.38.4`; синхронизированы ссылки на версию в runtime/config/docs/mobile, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.38.4` и `ANDROID_VERSION_CODE=214`, а также обновлены prerelease-ссылки.
 ## [8.38.2] - 2026-03-28
 
 ### Changed / Изменено

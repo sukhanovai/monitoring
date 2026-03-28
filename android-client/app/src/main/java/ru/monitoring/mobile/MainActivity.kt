@@ -177,6 +177,7 @@ class MainActivity : ComponentActivity() {
                     onSaveToken = vm::saveToken,
                     onSaveBaseUrl = vm::saveBaseUrl,
                     onRefreshData = vm::refreshData,
+                    onLoadServersForSingleCheck = { vm.refreshSettingsFromServer(showErrors = true) },
                     onRefresh = vm::refreshAvailability,
                     onCloseApp = { moveTaskToBack(true) },
                     onToggleApiTokenVisibility = vm::toggleApiTokenVisibility,
@@ -293,6 +294,7 @@ private fun MonitoringApp(
     onSaveToken: (String) -> Unit,
     onSaveBaseUrl: () -> Unit,
     onRefreshData: () -> Unit,
+    onLoadServersForSingleCheck: () -> Unit,
     onRefresh: () -> Unit,
     onCloseApp: () -> Unit,
     onToggleApiTokenVisibility: () -> Unit,
@@ -378,7 +380,6 @@ private fun MonitoringApp(
     var showServerResourcesMenu by rememberSaveable { mutableStateOf(false) }
     var areOpsTilesExpanded by rememberSaveable { mutableStateOf(false) }
     var showTileSettingsDialog by rememberSaveable { mutableStateOf(false) }
-    var showServersCheckDialog by rememberSaveable { mutableStateOf(false) }
     var settingsSection by rememberSaveable { mutableStateOf("bff") }
     var showProxmoxPatternAddDialog by rememberSaveable { mutableStateOf(false) }
     var showProxmoxPatternEditDialog by rememberSaveable { mutableStateOf(false) }
@@ -458,7 +459,8 @@ private fun MonitoringApp(
     val sectionSpacing = if (isCompactOpsHub) 8.dp else 12.dp
 
     val openServersDetails = {
-        showServersCheckDialog = true
+        onLoadServersForSingleCheck()
+        showServerAvailabilityMenu = true
     }
     val openExtensionsDetails = {
         isSettingsExpanded = true
@@ -596,18 +598,24 @@ private fun MonitoringApp(
                         }
                         val extensionInfoTiles = state.extensions.filter { it.enabled }
                         if (extensionInfoTiles.isNotEmpty()) {
-                            Text("Плашки расширений", fontWeight = FontWeight.SemiBold)
-                            FlowRow(
+                            Text("Расширения", fontWeight = FontWeight.SemiBold)
+                            Column(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                                maxItemsInEachRow = 2
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 extensionInfoTiles.forEach { extension ->
-                                    OpsMetricChip(
-                                        label = extension.name,
-                                        value = if (extension.description.isNotBlank()) extension.description else "Включено"
-                                    )
+                                    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                                        Column(
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Text(extension.name, fontWeight = FontWeight.Medium)
+                                            Text(
+                                                text = extension.description.ifBlank { "Результат пока не получен" },
+                                                style = MaterialTheme.typography.bodySmall
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -619,7 +627,11 @@ private fun MonitoringApp(
                         ) {
                             DashboardActionButton(
                                 label = "⟳ Синхронизировать",
-                                onClick = onRefreshData
+                                onClick = {
+                                    onRefreshData()
+                                    showServerAvailabilityMenu = false
+                                    showServerResourcesMenu = false
+                                }
                             )
                             DashboardActionButton(
                                 label = "🛰 Проверить доступность",
@@ -1955,30 +1967,6 @@ private fun MonitoringApp(
             }
 
         }
-    }
-
-    if (showServersCheckDialog) {
-        AlertDialog(
-            onDismissRequest = { showServersCheckDialog = false },
-            title = { Text("Проверка серверов") },
-            text = { Text("Выбери вариант проверки") },
-            confirmButton = {
-                TextButton(onClick = {
-                    showServersCheckDialog = false
-                    onRefresh()
-                }) {
-                    Text("Все серверы")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    showServersCheckDialog = false
-                    showServerAvailabilityMenu = true
-                }) {
-                    Text("Один сервер")
-                }
-            }
-        )
     }
 
     if (showTileSettingsDialog) {
