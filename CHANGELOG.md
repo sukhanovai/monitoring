@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.38.1] - 2026-03-28
+
+### Fixed / Исправлено
+- EN: Fixed Android `compactOps` build failure in `MainActivity` by restoring derived Windows auth counters (`windowsTotal`, `windowsTypes`) used in the auth settings block.
+- RU: Исправлено падение Android-сборки `compactOps` в `MainActivity`: восстановлены вычисляемые счётчики Windows-аутентификации (`windowsTotal`, `windowsTypes`), используемые в блоке настроек auth.
+
+### Changed / Изменено
+- EN: Completed repository-wide patch bump to `8.38.1`; synchronized runtime/config/docs/mobile version references, updated Android metadata to `ANDROID_VERSION_NAME=8.38.1` and `ANDROID_VERSION_CODE=211`, and refreshed prerelease links.
+- RU: Выполнен полный patch-бамп версии по репозиторию до `8.38.1`; синхронизированы ссылки на версию в runtime/config/docs/mobile, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.38.1` и `ANDROID_VERSION_CODE=211`, а также обновлены prerelease-ссылки.
+
 ## [8.38.0] - 2026-03-28
 
 ### Added / Добавлено
