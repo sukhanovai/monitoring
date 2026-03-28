@@ -1,42 +1,54 @@
 # Варианты интерфейса Android-приложения
 
-Ниже три концепта экрана для мобильного мониторинга. Их можно использовать как основу для дальнейшего UI/UX-обсуждения.
+Ниже собраны дополнительные UI-концепты с упором на:
+- **компактность**;
+- **информативность**;
+- **доступное и быстрое управление + вызов отчётов**;
+- **удобные настройки**.
 
-## 1) Dashboard Cards (оперативный обзор)
-**Когда подходит:** когда нужен быстрый контроль ключевых метрик и событий.
+## Вариант A — Compact Ops Hub
+**Идея:** максимум полезной информации на одном экране, минимум скролла, быстрые действия для on-call.
 
-**Плюсы:**
-- моментально видно состояние CPU/RAM/Disk;
-- фокус на критичных инцидентах;
-- удобно для on-call сценариев.
+### A1) Dashboard
+![Вариант A — Dashboard](assets/android-ui-concepts/variant-compact-ops-dashboard.svg)
 
-![Вариант 1 — Dashboard Cards](assets/android-ui-concepts/variant-dashboard-cards.svg)
+### A2) Reports
+![Вариант A — Reports](assets/android-ui-concepts/variant-compact-ops-reports.svg)
 
----
-
-## 2) Server List + Filters (операционная работа)
-**Когда подходит:** если основная задача — ежедневно работать со списком серверов и фильтрами.
-
-**Плюсы:**
-- быстрый поиск по серверу/тегу/IP;
-- понятная сегментация (All/Prod/Staging/Critical);
-- хорошо масштабируется на большое число хостов.
-
-![Вариант 2 — Server List + Filters](assets/android-ui-concepts/variant-list-filters.svg)
+### A3) Settings
+![Вариант A — Settings](assets/android-ui-concepts/variant-compact-ops-settings.svg)
 
 ---
 
-## 3) Incident Timeline (центр инцидентов)
-**Когда подходит:** если важна хронология событий, SLA и разбор инцидентов.
+## Вариант B — Info-First Matrix
+**Идея:** высокая информативность, контекст инцидентов, метрики и тренды без потери читаемости.
 
-**Плюсы:**
-- прозрачная timeline-модель;
-- легко отслеживать этапы реакции;
-- удобно для постмортемов и аудита.
+### B1) Dashboard
+![Вариант B — Dashboard](assets/android-ui-concepts/variant-info-matrix-dashboard.svg)
 
-![Вариант 3 — Incident Timeline](assets/android-ui-concepts/variant-incident-timeline.svg)
+### B2) Reports
+![Вариант B — Reports](assets/android-ui-concepts/variant-info-matrix-reports.svg)
+
+### B3) Settings
+![Вариант B — Settings](assets/android-ui-concepts/variant-info-matrix-settings.svg)
 
 ---
 
-## Рекомендация
-Для MVP логично стартовать с **варианта 2 (Server List + Filters)**, а экран **варианта 1** использовать как домашний дашборд. **Вариант 3** вынести в отдельный раздел Incident Center.
+## Вариант C — Accessible Command Center
+**Идея:** крупные контролы, высокая доступность, простая навигация и отчёты в 1–3 действия.
+
+### C1) Dashboard
+![Вариант C — Dashboard](assets/android-ui-concepts/variant-accessible-command-dashboard.svg)
+
+### C2) Reports
+![Вариант C — Reports](assets/android-ui-concepts/variant-accessible-command-reports.svg)
+
+### C3) Settings
+![Вариант C — Settings](assets/android-ui-concepts/variant-accessible-command-settings.svg)
+
+---
+
+## Рекомендация по следующему шагу
+1. Взять **A** как базу для MVP (компактность + скорость реакций).
+2. Добавить из **B** блоки аналитики и drill-down отчётов.
+3. Применить из **C** паттерны доступности (размеры контролов, контраст, TalkBack-labels).
