@@ -1,0 +1,21 @@
+<svg width="1080" height="1920" viewBox="0 0 1080 1920" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1080" height="1920" fill="#121826"/>
+  <rect x="40" y="40" width="1000" height="1840" rx="70" fill="none" stroke="#e5e7eb" stroke-width="6"/>
+  <text x="90" y="140" fill="white" font-size="46" font-family="Arial" font-weight="700">Variant 1: Dashboard Cards</text>
+  <g font-family="Arial">
+    <rect x="90" y="260" width="420" height="220" rx="30" fill="#1e293b"/><text x="120" y="325" fill="#cbd5e1" font-size="34">CPU load</text><text x="120" y="410" fill="#38bdf8" font-size="58" font-weight="700">42%</text>
+    <rect x="550" y="260" width="420" height="220" rx="30" fill="#1e293b"/><text x="580" y="325" fill="#cbd5e1" font-size="34">RAM load</text><text x="580" y="410" fill="#facc15" font-size="58" font-weight="700">67%</text>
+    <rect x="90" y="540" width="420" height="220" rx="30" fill="#1e293b"/><text x="120" y="605" fill="#cbd5e1" font-size="34">Disk usage</text><text x="120" y="690" fill="#34d399" font-size="58" font-weight="700">73%</text>
+    <rect x="550" y="540" width="420" height="220" rx="30" fill="#1e293b"/><text x="580" y="605" fill="#cbd5e1" font-size="34">Incidents today</text><text x="580" y="690" fill="#f87171" font-size="58" font-weight="700">3</text>
+  </g>
+  <rect x="90" y="860" width="900" height="610" rx="32" fill="#0f172a"/>
+  <text x="130" y="930" fill="white" font-size="36" font-family="Arial">Recent events</text>
+  <g fill="#cbd5e1" font-size="31" font-family="Arial">
+    <circle cx="140" cy="1008" r="10" fill="#38bdf8"/><text x="170" y="1018">Server #2 ping timeout</text>
+    <circle cx="140" cy="1138" r="10" fill="#38bdf8"/><text x="170" y="1148">Disk warning on backup-node</text>
+    <circle cx="140" cy="1268" r="10" fill="#38bdf8"/><text x="170" y="1278">CPU normalized on web-01</text>
+  </g>
+  <g fill="#94a3b8" font-size="30" font-family="Arial">
+    <text x="130" y="1670">Home</text><text x="365" y="1670">Alerts</text><text x="590" y="1670">Servers</text><text x="840" y="1670">Settings</text>
+  </g>
+</svg>

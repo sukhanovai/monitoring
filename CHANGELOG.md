@@ -6,7 +6,11 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.33.86] - 2026-03-28
+## [8.33.87] - 2026-03-28
+
+### Added / Добавлено
+- EN: Added `docs/android_ui_concepts.md` with three Android interface concepts and accompanying SVG mockups: Dashboard Cards, Server List + Filters, and Incident Timeline.
+- RU: Добавлен `docs/android_ui_concepts.md` с тремя концептами Android-интерфейса и SVG-макетами: Dashboard Cards, Server List + Filters и Incident Timeline.
 
 ### Fixed / Исправлено
 - EN: Implemented Android resource-threshold editing in extension settings (`Settings → Extensions → Open extension settings → Resources`): taps on `CPU warning/critical`, `RAM warning/critical`, `Disk warning/critical` now open input dialogs and submit value payloads.
@@ -15,8 +19,8 @@ The project follows Semantic Versioning (SemVer).
 - RU: Добавлена серверная обработка `set_cpu_*|value`, `set_ram_*|value`, `set_disk_*|value` в mobile Control API с валидацией (0-100), сохранением настроек и возвратом обновлённой сводки/меню порогов.
 
 ### Changed / Изменено
-- EN: Completed repository-wide patch version bump to `8.33.86`; synchronized project/runtime/docs references, updated Android metadata to `ANDROID_VERSION_NAME=8.33.86` and `ANDROID_VERSION_CODE=203`, and aligned prerelease links.
-- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.86`; синхронизированы ссылки на версию в проекте/runtime/docs, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.33.86` и `ANDROID_VERSION_CODE=203`, а также выровнены prerelease-ссылки.
+- EN: Completed repository-wide patch version bump to `8.33.87`; synchronized project/runtime/docs references, updated Android metadata to `ANDROID_VERSION_NAME=8.33.87` and `ANDROID_VERSION_CODE=204`, and aligned prerelease links.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.87`; синхронизированы ссылки на версию в проекте/runtime/docs, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.33.87` и `ANDROID_VERSION_CODE=204`, а также выровнены prerelease-ссылки.
 
 ## [8.33.84] - 2026-03-27
 

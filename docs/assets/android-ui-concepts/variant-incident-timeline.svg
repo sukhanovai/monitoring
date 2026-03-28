@@ -1,0 +1,17 @@
+<svg width="1080" height="1920" viewBox="0 0 1080 1920" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1080" height="1920" fill="#0a0a0a"/>
+  <rect x="40" y="40" width="1000" height="1840" rx="70" fill="none" stroke="#94a3b8" stroke-width="4"/>
+  <text x="90" y="140" fill="#fafafa" font-size="46" font-family="Arial" font-weight="700">Variant 3: Incident Timeline</text>
+  <rect x="90" y="250" width="900" height="190" rx="28" fill="#171717" stroke="#404040" stroke-width="2"/>
+  <text x="130" y="325" fill="#f8fafc" font-size="40" font-family="Arial">MTTA: 4m 12s</text>
+  <text x="130" y="385" fill="#f87171" font-size="38" font-family="Arial">Open incidents: 2</text>
+  <g font-family="Arial" font-size="28">
+    <line x1="140" y1="560" x2="140" y2="1340" stroke="#475569" stroke-width="4"/>
+    <circle cx="140" cy="620" r="14" fill="#f87171"/><rect x="260" y="540" width="730" height="170" rx="24" fill="#171717" stroke="#475569"/><text x="290" y="605" fill="#94a3b8">09:14</text><text x="290" y="655" fill="#e2e8f0">db-01 disk critical</text>
+    <circle cx="140" cy="860" r="14" fill="#38bdf8"/><rect x="260" y="780" width="730" height="170" rx="24" fill="#171717" stroke="#475569"/><text x="290" y="845" fill="#94a3b8">09:17</text><text x="290" y="895" fill="#e2e8f0">engineer acknowledged</text>
+    <circle cx="140" cy="1100" r="14" fill="#38bdf8"/><rect x="260" y="1020" width="730" height="170" rx="24" fill="#171717" stroke="#475569"/><text x="290" y="1085" fill="#94a3b8">09:23</text><text x="290" y="1135" fill="#e2e8f0">cleanup started</text>
+    <circle cx="140" cy="1340" r="14" fill="#facc15"/><rect x="260" y="1260" width="730" height="170" rx="24" fill="#171717" stroke="#475569"/><text x="290" y="1325" fill="#94a3b8">09:41</text><text x="290" y="1375" fill="#e2e8f0">status downgraded to warning</text>
+  </g>
+  <rect x="90" y="1650" width="900" height="110" rx="30" fill="#dc2626"/>
+  <text x="350" y="1720" fill="#ffffff" font-size="40" font-family="Arial">Create postmortem</text>
+</svg>
