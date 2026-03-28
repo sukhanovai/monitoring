@@ -6,6 +6,18 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.33.88] - 2026-03-28
+
+### Added / Добавлено
+- EN: Added 9 new Android UI concept images with multi-screen coverage (`Dashboard`, `Reports`, `Settings`) for three design directions: Compact Ops Hub, Info-First Matrix, and Accessible Command Center.
+- RU: Добавлены 9 новых изображений концептов Android UI с покрытием нескольких разделов (`Dashboard`, `Reports`, `Settings`) для трёх направлений дизайна: Compact Ops Hub, Info-First Matrix и Accessible Command Center.
+- EN: Expanded `docs/android_ui_concepts.md` with additional design variants focused on compactness, high information density, accessible controls/report actions, and convenient settings UX.
+- RU: Расширен `docs/android_ui_concepts.md` дополнительными вариантами дизайна с акцентом на компактность, информативность, доступные функции управления/вызова отчётов и удобные настройки.
+
+### Changed / Изменено
+- EN: Completed repository-wide patch version bump to `8.33.88`; synchronized project/runtime/docs references, updated Android metadata to `ANDROID_VERSION_NAME=8.33.88` and `ANDROID_VERSION_CODE=205`, and aligned prerelease links.
+- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.88`; синхронизированы ссылки на версию в проекте/runtime/docs, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.33.88` и `ANDROID_VERSION_CODE=205`, а также выровнены prerelease-ссылки.
+
 ## [8.33.87] - 2026-03-28
 
 ### Added / Добавлено
