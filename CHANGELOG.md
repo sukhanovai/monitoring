@@ -6,6 +6,18 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.35.1] - 2026-03-28
+
+### Fixed / Исправлено
+- EN: Fixed `scripts/android_post_pull_build_run.ps1` for flavor-based Android builds: script now builds/installs an explicit flavor (`compactOps` by default), avoids ambiguous `installDebug`, and uses the corresponding package ID for launch.
+- RU: Исправлен `scripts/android_post_pull_build_run.ps1` для flavor-сборок Android: скрипт теперь собирает/ставит конкретный flavor (`compactOps` по умолчанию), убирает неоднозначный `installDebug` и использует соответствующий package ID для запуска.
+- EN: Updated `scripts/publish_android_prerelease.ps1` to support explicit flavor selection for Gradle assemble tasks and APK lookup, preventing incorrect artifact resolution in multi-flavor outputs.
+- RU: Обновлён `scripts/publish_android_prerelease.ps1`: добавлен явный выбор flavor для Gradle assemble-задач и поиска APK, что убирает ошибки выбора артефакта при нескольких flavor.
+
+### Changed / Изменено
+- EN: Completed repository-wide patch bump to `8.35.1`; synchronized project/runtime/docs references, updated Android metadata to `ANDROID_VERSION_NAME=8.35.1` and `ANDROID_VERSION_CODE=207`, and refreshed prerelease links.
+- RU: Выполнен полный patch-бамп версии по репозиторию до `8.35.1`; синхронизированы ссылки на версию в проекте/runtime/docs, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.35.1` и `ANDROID_VERSION_CODE=207`, а также обновлены prerelease-ссылки.
+
 ## [8.35.0] - 2026-03-28
 
 ### Added / Добавлено
