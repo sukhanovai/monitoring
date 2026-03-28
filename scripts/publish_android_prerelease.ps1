@@ -20,6 +20,19 @@ function Require-Command {
     }
 }
 
+function Get-AndroidFlavorVariant {
+    param(
+        [ValidateSet("legacy", "compactOps")]
+        [string]$Flavor
+    )
+
+    switch ($Flavor) {
+        "legacy" { return "Legacy" }
+        "compactOps" { return "CompactOps" }
+        default { throw "Unsupported flavor: $Flavor" }
+    }
+}
+
 
 function Ensure-CleanWorkingTree {
     $dirty = (git status --porcelain)
@@ -932,16 +945,4 @@ $($postDirty -join "`n")
 catch {
     [Console]::Error.WriteLine($_.Exception.Message)
     exit 1
-}
-function Get-AndroidFlavorVariant {
-    param(
-        [ValidateSet("legacy", "compactOps")]
-        [string]$Flavor
-    )
-
-    switch ($Flavor) {
-        "legacy" { return "Legacy" }
-        "compactOps" { return "CompactOps" }
-        default { throw "Unsupported flavor: $Flavor" }
-    }
 }
