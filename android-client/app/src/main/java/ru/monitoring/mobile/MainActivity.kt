@@ -27,6 +27,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -36,7 +37,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -45,6 +45,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -92,6 +93,34 @@ private fun isProblemBackupOption(label: String, action: String): Boolean {
     val normalizedAction = action.lowercase()
     return isProblemBackupLabel(label) || PROBLEM_BACKUP_KEYWORDS.any { keyword ->
         normalizedAction.contains(keyword)
+    }
+}
+
+@Composable
+private fun OpsMetricChip(label: String, value: String) {
+    Column(
+        modifier = Modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
+            .padding(horizontal = 10.dp, vertical = 8.dp)
+    ) {
+        Text(value, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        Text(label, style = MaterialTheme.typography.labelSmall)
+    }
+}
+
+@Composable
+private fun DashboardActionButton(label: String, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+        )
+    ) {
+        Text(label, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -384,12 +413,27 @@ private fun MonitoringApp(
     val enabledExtensions = state.extensions.filter { it.enabled }.map { it.id }.toSet()
     val extensionButtons = MAIN_MENU_EXTENSION_BUTTONS.filter { it.extensionId in enabledExtensions }
     val isResourceMonitorEnabled = "resource_monitor" in enabledExtensions
-    val appTitle = if (isCompactOpsHub) "Compact Ops Hub" else "Monitoring"
+    val appTitle = if (isCompactOpsHub) "Ops Command Center" else "Monitoring"
     val contentPadding = if (isCompactOpsHub) 10.dp else 16.dp
     val sectionSpacing = if (isCompactOpsHub) 8.dp else 12.dp
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text(appTitle) }) }
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(appTitle, fontWeight = FontWeight.SemiBold)
+                        if (isCompactOpsHub) {
+                            Text(
+                                "Новый визуальный режим",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+            )
+        }
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
@@ -400,23 +444,58 @@ private fun MonitoringApp(
         ) {
             if (isCompactOpsHub) {
                 item {
-                    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text("⚡ Ops snapshot", fontWeight = FontWeight.Bold)
-                            Text(
-                                "Серверов: ${state.managedServers.size} · Расширений: ${state.extensions.count { it.enabled }} · Win-учеток: ${state.windowsCredentials.size}",
-                                style = MaterialTheme.typography.bodyMedium
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    listOf(
+                                        MaterialTheme.colorScheme.primaryContainer,
+                                        MaterialTheme.colorScheme.surfaceContainerHigh
+                                    )
+                                )
                             )
-                            FlowRow(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp),
-                                maxItemsInEachRow = 3
-                            ) {
-                                Button(onClick = onRefreshData, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)) { Text("Обновить") }
-                                Button(onClick = onRefresh, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)) { Text("Проверка") }
-                                Button(onClick = { onAction("send_morning_report") }, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)) { Text("Отчёт") }
-                            }
+                            .padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text("⚡ Оперативный центр", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                        Text(
+                            "Фокус на состоянии и действиях без переходов по лишним карточкам.",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            maxItemsInEachRow = 3
+                        ) {
+                            OpsMetricChip("Серверы", state.managedServers.size.toString())
+                            OpsMetricChip("Расширения", state.extensions.count { it.enabled }.toString())
+                            OpsMetricChip("Win-учётки", state.windowsCredentials.size.toString())
+                        }
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            maxItemsInEachRow = 2
+                        ) {
+                            DashboardActionButton(
+                                label = "⟳ Синхронизировать",
+                                onClick = onRefreshData
+                            )
+                            DashboardActionButton(
+                                label = "🛰 Проверить доступность",
+                                onClick = onRefresh
+                            )
+                            DashboardActionButton(
+                                label = "🌅 Утренний отчёт",
+                                onClick = { onAction("send_morning_report") }
+                            )
+                            DashboardActionButton(
+                                label = "⚙️ Настройки",
+                                onClick = { isSettingsExpanded = true }
+                            )
                         }
                     }
                 }
