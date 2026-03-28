@@ -353,6 +353,10 @@ private fun MonitoringApp(
     var zfsHostEditAction by rememberSaveable { mutableStateOf("") }
     var zfsHostEditCurrentName by rememberSaveable { mutableStateOf("") }
     var zfsHostEditNewNameInput by rememberSaveable { mutableStateOf("") }
+    var showResourceThresholdDialog by rememberSaveable { mutableStateOf(false) }
+    var resourceThresholdAction by rememberSaveable { mutableStateOf("") }
+    var resourceThresholdLabel by rememberSaveable { mutableStateOf("") }
+    var resourceThresholdValueInput by rememberSaveable { mutableStateOf("") }
 
     val canSaveMonitoring = state.checkIntervalInput.isNotBlank() ||
         state.timeoutInput.isNotBlank() ||
@@ -993,6 +997,19 @@ private fun MonitoringApp(
                                                 action == "settings_extensions_close_local" -> {
                                                     isExtensionsSettingsOpened = false
                                                 }
+                                                action in setOf(
+                                                    "set_cpu_warning",
+                                                    "set_cpu_critical",
+                                                    "set_ram_warning",
+                                                    "set_ram_critical",
+                                                    "set_disk_warning",
+                                                    "set_disk_critical"
+                                                ) -> {
+                                                    resourceThresholdAction = action
+                                                    resourceThresholdLabel = label
+                                                    resourceThresholdValueInput = ""
+                                                    showResourceThresholdDialog = true
+                                                }
                                                 action.startsWith("settings_proxmox_pattern_add") -> {
                                                     val parts = action.split("|")
                                                     proxmoxPatternCategoryInput = parts.getOrNull(1)
@@ -1132,6 +1149,43 @@ private fun MonitoringApp(
                                     },
                                     dismissButton = {
                                         TextButton(onClick = { showProxmoxPatternAddDialog = false }) {
+                                            Text("Отмена")
+                                        }
+                                    }
+                                )
+                            }
+
+                            if (showResourceThresholdDialog) {
+                                AlertDialog(
+                                    onDismissRequest = { showResourceThresholdDialog = false },
+                                    title = { Text(resourceThresholdLabel.ifBlank { "Изменить порог ресурса" }) },
+                                    text = {
+                                        OutlinedTextField(
+                                            value = resourceThresholdValueInput,
+                                            onValueChange = { input ->
+                                                resourceThresholdValueInput = input.filter { it.isDigit() }.take(3)
+                                            },
+                                            label = { Text("Порог в % (0-100)") },
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    },
+                                    confirmButton = {
+                                        val thresholdValue = resourceThresholdValueInput.toIntOrNull()
+                                        TextButton(
+                                            onClick = {
+                                                val actionPayload = "${resourceThresholdAction}|$thresholdValue"
+                                                onExtensionsSettingsAction(actionPayload)
+                                                showResourceThresholdDialog = false
+                                            },
+                                            enabled = resourceThresholdAction.isNotBlank() &&
+                                                thresholdValue != null &&
+                                                thresholdValue in 0..100
+                                        ) {
+                                            Text("Сохранить")
+                                        }
+                                    },
+                                    dismissButton = {
+                                        TextButton(onClick = { showResourceThresholdDialog = false }) {
                                             Text("Отмена")
                                         }
                                     }
