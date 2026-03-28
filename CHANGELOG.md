@@ -6,6 +6,22 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.37.0] - 2026-03-28
+
+### Added / Добавлено
+- EN: Added interactive metric tiles in Compact Ops Hub: each tile is now clickable and opens the related details section (servers, extensions, or Windows credentials) directly.
+- RU: Добавлены интерактивные окошки-метрики в Compact Ops Hub: каждое окошко стало кнопкой и открывает соответствующий раздел сведений (серверы, расширения или Windows-учётки).
+- EN: Added extension-focused tiles (`disabled extensions`, `extension issues`) in the Ops center to surface extension state at a glance.
+- RU: Добавлены отдельные окошки по расширениям (`выключенные расширения`, `проблемы расширений`) для быстрого контроля состояния.
+
+### Changed / Изменено
+- EN: Updated tile visuals to highlight problematic metrics with an error-colored value when incidents are present (DOWN/UNKNOWN servers, extension issues).
+- RU: Обновлён внешний вид окошек: при наличии проблем значение в окошке подсвечивается цветом ошибки (DOWN/UNKNOWN серверы, проблемы расширений).
+- EN: Implemented configurable tile visibility in Compact Ops Hub: default view shows only part of the tiles, with a button to expand/collapse the full tile list.
+- RU: Реализована настройка видимости окошек в Compact Ops Hub: по умолчанию показывается только часть окошек, полный список открывается/сворачивается кнопкой.
+- EN: Completed repository-wide SemVer minor bump to `8.37.0`; synchronized runtime/config/docs/version headers, updated Android metadata to `ANDROID_VERSION_NAME=8.37.0` and `ANDROID_VERSION_CODE=209`, and refreshed prerelease links.
+- RU: Выполнен SemVer minor-бамп версии по репозиторию до `8.37.0`; синхронизированы runtime/config/docs/version-заголовки, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.37.0` и `ANDROID_VERSION_CODE=209`, а также обновлены prerelease-ссылки.
+
 ## [8.36.0] - 2026-03-28
 
 ### Changed / Изменено
