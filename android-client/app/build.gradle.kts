@@ -33,6 +33,22 @@ android {
         }
     }
 
+    flavorDimensions += "ui"
+    productFlavors {
+        create("legacy") {
+            dimension = "ui"
+            applicationIdSuffix = ".legacy"
+            versionNameSuffix = "-legacy"
+            buildConfigField("boolean", "IS_COMPACT_OPS_HUB", "false")
+        }
+        create("compactOps") {
+            dimension = "ui"
+            applicationIdSuffix = ".compactops"
+            versionNameSuffix = "-compactops"
+            buildConfigField("boolean", "IS_COMPACT_OPS_HUB", "true")
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

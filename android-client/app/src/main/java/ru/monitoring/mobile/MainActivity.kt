@@ -312,6 +312,8 @@ private fun MonitoringApp(
     onClearMorningReport: () -> Unit,
     onOpenUpdateUrl: (String) -> Unit
 ) {
+    val isCompactOpsHub = BuildConfig.IS_COMPACT_OPS_HUB
+
     var isManagementExpanded by rememberSaveable { mutableStateOf(false) }
     var isSettingsExpanded by rememberSaveable { mutableStateOf(false) }
     var isExtensionsSettingsOpened by rememberSaveable { mutableStateOf(false) }
@@ -382,17 +384,43 @@ private fun MonitoringApp(
     val enabledExtensions = state.extensions.filter { it.enabled }.map { it.id }.toSet()
     val extensionButtons = MAIN_MENU_EXTENSION_BUTTONS.filter { it.extensionId in enabledExtensions }
     val isResourceMonitorEnabled = "resource_monitor" in enabledExtensions
+    val appTitle = if (isCompactOpsHub) "Compact Ops Hub" else "Monitoring"
+    val contentPadding = if (isCompactOpsHub) 10.dp else 16.dp
+    val sectionSpacing = if (isCompactOpsHub) 8.dp else 12.dp
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Monitoring") }) }
+        topBar = { TopAppBar(title = { Text(appTitle) }) }
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(contentPadding),
+            verticalArrangement = Arrangement.spacedBy(sectionSpacing)
         ) {
+            if (isCompactOpsHub) {
+                item {
+                    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text("⚡ Ops snapshot", fontWeight = FontWeight.Bold)
+                            Text(
+                                "Серверов: ${state.managedServers.size} · Расширений: ${state.extensions.count { it.enabled }} · Win-учеток: ${state.windowsCredentials.size}",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                                maxItemsInEachRow = 3
+                            ) {
+                                Button(onClick = onRefreshData, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)) { Text("Обновить") }
+                                Button(onClick = onRefresh, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)) { Text("Проверка") }
+                                Button(onClick = { onAction("send_morning_report") }, contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)) { Text("Отчёт") }
+                            }
+                        }
+                    }
+                }
+            }
             if (state.isUpdateRequired) {
                 item {
                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {

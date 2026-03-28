@@ -6,18 +6,19 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.33.88] - 2026-03-28
+## [8.35.0] - 2026-03-28
 
 ### Added / Добавлено
-- EN: Added 9 new Android UI concept images with multi-screen coverage (`Dashboard`, `Reports`, `Settings`) for three design directions: Compact Ops Hub, Info-First Matrix, and Accessible Command Center.
-- RU: Добавлены 9 новых изображений концептов Android UI с покрытием нескольких разделов (`Dashboard`, `Reports`, `Settings`) для трёх направлений дизайна: Compact Ops Hub, Info-First Matrix и Accessible Command Center.
-- EN: Expanded `docs/android_ui_concepts.md` with additional design variants focused on compactness, high information density, accessible controls/report actions, and convenient settings UX.
-- RU: Расширен `docs/android_ui_concepts.md` дополнительными вариантами дизайна с акцентом на компактность, информативность, доступные функции управления/вызова отчётов и удобные настройки.
+- EN: Added Android product flavor split for parallel UI development in one branch: `legacy` (current app) and `compactOps` (new Variant A — Compact Ops Hub), including separate install IDs and app labels.
+- RU: Добавлено разделение Android-приложения на product flavor для параллельной разработки UI в одной ветке: `legacy` (текущий вариант) и `compactOps` (новый Вариант A — Compact Ops Hub), включая раздельные install ID и названия приложения.
+- EN: Added implementation and rollout guide `docs/android_compact_ops_hub_plan.md` with step-by-step Android Studio switching instructions for Build Variants.
+- RU: Добавлен гайд по реализации и раскатке `docs/android_compact_ops_hub_plan.md` с пошаговой инструкцией переключения Build Variants в Android Studio.
 
 ### Changed / Изменено
-- EN: Completed repository-wide patch version bump to `8.33.88`; synchronized project/runtime/docs references, updated Android metadata to `ANDROID_VERSION_NAME=8.33.88` and `ANDROID_VERSION_CODE=205`, and aligned prerelease links.
-- RU: Выполнен полный патч-бамп версии по репозиторию до `8.33.88`; синхронизированы ссылки на версию в проекте/runtime/docs, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.33.88` и `ANDROID_VERSION_CODE=205`, а также выровнены prerelease-ссылки.
-
+- EN: Implemented initial Compact Ops Hub visual layer in Android app: dense top layout, Ops Snapshot block, compact quick actions, and adaptive spacing controlled by `BuildConfig.IS_COMPACT_OPS_HUB` while preserving full legacy behavior.
+- RU: Реализован стартовый визуальный слой Compact Ops Hub в Android-приложении: плотная верхняя компоновка, блок Ops Snapshot, компактные быстрые действия и адаптивные отступы через `BuildConfig.IS_COMPACT_OPS_HUB` при полном сохранении legacy-поведения.
+- EN: Completed repository-wide SemVer minor bump to `8.35.0`; synchronized project/runtime/docs references, updated Android metadata to `ANDROID_VERSION_NAME=8.35.0` and `ANDROID_VERSION_CODE=206`, and aligned prerelease links.
+- RU: Выполнен SemVer minor-бамп версии по репозиторию до `8.35.0`; синхронизированы ссылки на версию в проекте/runtime/docs, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.35.0` и `ANDROID_VERSION_CODE=206`, а также выровнены prerelease-ссылки.
 ## [8.33.87] - 2026-03-28
 
 ### Added / Добавлено
