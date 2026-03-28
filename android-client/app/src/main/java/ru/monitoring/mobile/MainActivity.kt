@@ -429,6 +429,8 @@ private fun MonitoringApp(
 
     val hiddenTransformation = PasswordVisualTransformation()
     val windowsByType = state.windowsCredentials.groupBy { it.serverType ?: "default" }
+    val windowsTotal = state.windowsCredentials.size
+    val windowsTypes = windowsByType.size
     val enabledExtensions = state.extensions.filter { it.enabled }.map { it.id }.toSet()
     val enabledExtensionsCount = state.extensions.count { it.enabled }
     val totalExtensionsCount = state.extensions.size
