@@ -1,11 +1,11 @@
 """
 /lib/common.py
-Server Monitoring System v8.36.0
+Server Monitoring System v8.37.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 General system utilities
 Система мониторинга серверов
-Версия: 8.36.0
+Версия: 8.37.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Общие утилиты системы

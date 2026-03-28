@@ -35,6 +35,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -96,16 +97,30 @@ private fun isProblemBackupOption(label: String, action: String): Boolean {
     }
 }
 
+private data class OpsMetricTile(
+    val label: String,
+    val value: String,
+    val hasProblem: Boolean = false,
+    val onClick: () -> Unit = {}
+)
+
 @Composable
-private fun OpsMetricChip(label: String, value: String) {
-    Column(
+private fun OpsMetricChip(label: String, value: String, hasProblem: Boolean = false, onClick: () -> Unit = {}) {
+    val valueColor = if (hasProblem) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+    Surface(
         modifier = Modifier
             .clip(RoundedCornerShape(14.dp))
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
-            .padding(horizontal = 10.dp, vertical = 8.dp)
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)),
+        shape = RoundedCornerShape(14.dp),
+        tonalElevation = 1.dp,
+        onClick = onClick
     ) {
-        Text(value, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-        Text(label, style = MaterialTheme.typography.labelSmall)
+        Column(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)
+        ) {
+            Text(value, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = valueColor)
+            Text(label, style = MaterialTheme.typography.labelSmall)
+        }
     }
 }
 
@@ -353,6 +368,7 @@ private fun MonitoringApp(
     var showWindowsTypeStats by rememberSaveable { mutableStateOf(false) }
     var showServerAvailabilityMenu by rememberSaveable { mutableStateOf(false) }
     var showServerResourcesMenu by rememberSaveable { mutableStateOf(false) }
+    var areOpsTilesExpanded by rememberSaveable { mutableStateOf(false) }
     var settingsSection by rememberSaveable { mutableStateOf("bff") }
     var showProxmoxPatternAddDialog by rememberSaveable { mutableStateOf(false) }
     var showProxmoxPatternEditDialog by rememberSaveable { mutableStateOf(false) }
@@ -411,11 +427,47 @@ private fun MonitoringApp(
     val windowsTotal = state.windowsCredentials.size
     val windowsTypes = windowsByType.keys.size
     val enabledExtensions = state.extensions.filter { it.enabled }.map { it.id }.toSet()
+    val disabledExtensionsCount = state.extensions.count { !it.enabled }
+    val downServersCount = state.servers.count { it.status.equals("DOWN", ignoreCase = true) }
+    val unknownServersCount = state.servers.count { it.status.equals("UNKNOWN", ignoreCase = true) }
+    val extensionProblemsCount = listOf(
+        state.backupProxmoxHasProblemItems,
+        state.backupDatabasesHasProblemItems,
+        state.mailBackupHistoryItems.any { item -> item.statusIcon.contains("❌") || item.statusIcon.contains("⚠️") || item.statusIcon.contains("🚨") }
+    ).count { it }
+    val hasServerProblems = downServersCount > 0 || unknownServersCount > 0
+    val hasExtensionProblems = extensionProblemsCount > 0
     val extensionButtons = MAIN_MENU_EXTENSION_BUTTONS.filter { it.extensionId in enabledExtensions }
     val isResourceMonitorEnabled = "resource_monitor" in enabledExtensions
     val appTitle = if (isCompactOpsHub) "Ops Command Center" else "Monitoring"
     val contentPadding = if (isCompactOpsHub) 10.dp else 16.dp
     val sectionSpacing = if (isCompactOpsHub) 8.dp else 12.dp
+
+    val openServersDetails = {
+        isManagementExpanded = true
+        isSettingsExpanded = true
+        settingsSection = "servers"
+    }
+    val openExtensionsDetails = {
+        isSettingsExpanded = true
+        settingsSection = "extensions"
+        isExtensionsSettingsOpened = true
+    }
+    val openWindowsDetails = {
+        isSettingsExpanded = true
+        settingsSection = "auth"
+        isWindowsAuthExpanded = true
+    }
+    val opsTiles = listOf(
+        OpsMetricTile("Серверы", state.managedServers.size.toString(), hasServerProblems, openServersDetails),
+        OpsMetricTile("DOWN", downServersCount.toString(), downServersCount > 0, openServersDetails),
+        OpsMetricTile("UNKNOWN", unknownServersCount.toString(), unknownServersCount > 0, openServersDetails),
+        OpsMetricTile("Расширения", state.extensions.count { it.enabled }.toString(), hasExtensionProblems, openExtensionsDetails),
+        OpsMetricTile("Выкл. расширения", disabledExtensionsCount.toString(), disabledExtensionsCount > 0, openExtensionsDetails),
+        OpsMetricTile("Проблемы расширений", extensionProblemsCount.toString(), hasExtensionProblems, openExtensionsDetails),
+        OpsMetricTile("Win-учётки", state.windowsCredentials.size.toString(), false, openWindowsDetails),
+        OpsMetricTile("Типы Win", windowsTypes.toString(), false, openWindowsDetails)
+    )
 
     Scaffold(
         topBar = {
@@ -464,15 +516,34 @@ private fun MonitoringApp(
                             "Фокус на состоянии и действиях без переходов по лишним карточкам.",
                             style = MaterialTheme.typography.bodyMedium
                         )
+                        val visibleTiles = if (areOpsTilesExpanded) opsTiles else opsTiles.take(4)
                         FlowRow(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                             maxItemsInEachRow = 3
                         ) {
-                            OpsMetricChip("Серверы", state.managedServers.size.toString())
-                            OpsMetricChip("Расширения", state.extensions.count { it.enabled }.toString())
-                            OpsMetricChip("Win-учётки", state.windowsCredentials.size.toString())
+                            visibleTiles.forEach { tile ->
+                                OpsMetricChip(
+                                    label = tile.label,
+                                    value = tile.value,
+                                    hasProblem = tile.hasProblem,
+                                    onClick = tile.onClick
+                                )
+                            }
+                        }
+                        if (opsTiles.size > 4) {
+                            Button(
+                                onClick = { areOpsTilesExpanded = !areOpsTilesExpanded },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                    contentColor = MaterialTheme.colorScheme.onSurface
+                                )
+                            ) {
+                                Text(if (areOpsTilesExpanded) "Свернуть окошечки" else "Развернуть все окошечки")
+                            }
                         }
                         FlowRow(
                             modifier = Modifier.fillMaxWidth(),
