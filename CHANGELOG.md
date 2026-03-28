@@ -6,6 +6,20 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.38.2] - 2026-03-28
+
+### Changed / Изменено
+- EN: Updated Compact Ops UX: tile settings are now opened via a gear icon in the top-right corner of the Ops frame.
+- RU: Обновлён UX Compact Ops: настройка плашек теперь открывается через иконку-шестерёнку в правом верхнем углу Ops-фрейма.
+- EN: Added extension info tiles under the main Ops tiles to show enabled extension cards with extension-provided details.
+- RU: Добавлены плашки расширений под основными Ops-плашками: показываются карточки активных расширений со сведениями из самих расширений.
+- EN: Changed the "Servers" tile click behavior to open a choice dialog with two options: "All servers" and "One server".
+- RU: Изменено поведение нажатия плашки «Серверы»: теперь открывается диалог выбора проверки с вариантами «Все серверы» и «Один сервер».
+- EN: Changed the "Mode" tile click behavior to cycle silent mode in a loop: `force_quiet -> force_loud -> auto_mode -> force_quiet`.
+- RU: Изменено поведение плашки «Режим»: теперь при нажатии режим переключается по циклу `force_quiet -> force_loud -> auto_mode -> force_quiet`.
+- EN: Completed repository-wide patch bump to `8.38.2`; synchronized runtime/config/docs/mobile version references, updated Android metadata to `ANDROID_VERSION_NAME=8.38.2` and `ANDROID_VERSION_CODE=212`, and refreshed prerelease links.
+- RU: Выполнен полный patch-бамп версии по репозиторию до `8.38.2`; синхронизированы ссылки на версию в runtime/config/docs/mobile, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.38.2` и `ANDROID_VERSION_CODE=212`, а также обновлены prerelease-ссылки.
+
 ## [8.38.1] - 2026-03-28
 
 ### Fixed / Исправлено
