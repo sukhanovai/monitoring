@@ -6,6 +6,18 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.38.8] - 2026-03-30
+
+### Changed / Изменено
+- EN: Compact Ops extension cards in the Ops Center now use short labels (`proxmox`, `БД`, `почта`, `остатки`, `поставщики`, `ресурсы`, `web`, `mail`) instead of verbose monitoring names.
+- RU: Плашки расширений в оперативном центре Compact Ops теперь используют короткие названия (`proxmox`, `БД`, `почта`, `остатки`, `поставщики`, `ресурсы`, `web`, `mail`) вместо длинных мониторинговых формулировок.
+- EN: Added ratio summaries for `stock_load_monitor` and `supplier_stock_files` based on extension control-action responses (`без проблем/всего`) with problem highlighting behavior aligned to Proxmox/DB cards.
+- RU: Для `stock_load_monitor` и `supplier_stock_files` добавлены сводки в формате `без проблем/всего` из ответов control-action, с той же логикой подсветки проблем, что у карточек Proxmox/БД.
+- EN: Resource tile now shows aggregated status (`ОК` or `!`) based on extension-reported problem markers; `web_interface` and `email_processor` tiles now show trigger state as `вкл/выкл`.
+- RU: Плашка ресурсов теперь показывает агрегированное состояние (`ОК` или `!`) по маркерам проблем в данных расширения; для `web_interface` и `email_processor` добавлено отображение состояния триггера `вкл/выкл`.
+- EN: Completed repository-wide patch bump to `8.38.8`; synchronized runtime/config/docs/mobile version references, updated Android metadata to `ANDROID_VERSION_NAME=8.38.8` and `ANDROID_VERSION_CODE=218`, and refreshed prerelease links.
+- RU: Выполнен полный patch-бамп версии по репозиторию до `8.38.8`; синхронизированы ссылки на версию в runtime/config/docs/mobile, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.38.8` и `ANDROID_VERSION_CODE=218`, а также обновлены prerelease-ссылки.
+
 ## [8.38.7] - 2026-03-30
 
 ### Changed / Изменено
