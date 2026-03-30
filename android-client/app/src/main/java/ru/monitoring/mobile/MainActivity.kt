@@ -144,6 +144,15 @@ private fun buildExtensionDataTile(
     )
 }
 
+private fun buildToggleDataTile(label: String, enabled: Boolean, details: String): ExtensionDataTile {
+    return ExtensionDataTile(
+        label = label,
+        value = if (enabled) "вкл" else "выкл",
+        details = details,
+        hasProblem = false
+    )
+}
+
 @Composable
 private fun OpsMetricChip(label: String, value: String, hasProblem: Boolean = false, onClick: () -> Unit = {}) {
     val valueColor = if (hasProblem) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
@@ -482,6 +491,8 @@ private fun MonitoringApp(
     val extensionProblemsCount = listOf(
         state.backupProxmoxHasProblemItems,
         state.backupDatabasesHasProblemItems,
+        state.backupStockLoadsHasProblemItems,
+        state.supplierStockHasProblemItems,
         state.mailBackupHistoryItems.any { item -> item.statusIcon.contains("❌") || item.statusIcon.contains("⚠️") || item.statusIcon.contains("🚨") }
     ).count { it }
     val hasServerProblems = downServersCount > 0 || unknownServersCount > 0 || activeServersCount < totalServersCount
@@ -630,23 +641,65 @@ private fun MonitoringApp(
                                 Text(if (areOpsTilesExpanded) "Свернуть сведения" else "Развернуть сведения")
                             }
                         }
-                        val extensionInfoTiles = state.extensions
-                            .filter { it.enabled }
-                            .map { extension ->
-                                when (extension.id) {
-                                    "backup_monitor" -> buildExtensionDataTile(
-                                        extension = extension,
+                        val extensionsById = state.extensions.associateBy { it.id }
+                        val extensionInfoTiles = buildList {
+                            extensionsById["backup_monitor"]?.let { extension ->
+                                add(
+                                    buildExtensionDataTile(
+                                        extension = extension.copy(name = "proxmox"),
                                         summaryOverride = state.backupProxmoxSummary,
                                         hasProblemOverride = state.backupProxmoxHasProblemItems
                                     )
-                                    "database_backup_monitor" -> buildExtensionDataTile(
-                                        extension = extension,
+                                )
+                            }
+                            extensionsById["database_backup_monitor"]?.let { extension ->
+                                add(
+                                    buildExtensionDataTile(
+                                        extension = extension.copy(name = "БД"),
                                         summaryOverride = state.backupDatabasesSummary,
                                         hasProblemOverride = state.backupDatabasesHasProblemItems
                                     )
-                                    else -> buildExtensionDataTile(extension)
-                                }
+                                )
                             }
+                            extensionsById["mail_backup_monitor"]?.let { extension ->
+                                add(buildExtensionDataTile(extension = extension.copy(name = "почта")))
+                            }
+                            extensionsById["stock_load_monitor"]?.let { extension ->
+                                add(
+                                    buildExtensionDataTile(
+                                        extension = extension.copy(name = "остатки"),
+                                        summaryOverride = state.backupStockLoadsSummary,
+                                        hasProblemOverride = state.backupStockLoadsHasProblemItems
+                                    )
+                                )
+                            }
+                            extensionsById["supplier_stock_files"]?.let { extension ->
+                                add(
+                                    buildExtensionDataTile(
+                                        extension = extension.copy(name = "поставщики"),
+                                        summaryOverride = state.supplierStockSummary,
+                                        hasProblemOverride = state.supplierStockHasProblemItems
+                                    )
+                                )
+                            }
+                            extensionsById["resource_monitor"]?.let { extension ->
+                                val hasProblem = isProblemBackupLabel(extension.description)
+                                add(
+                                    ExtensionDataTile(
+                                        label = "ресурсы",
+                                        value = if (hasProblem) "!" else "ОК",
+                                        details = extension.description.ifBlank { "Состояние ресурсов не получено" },
+                                        hasProblem = hasProblem
+                                    )
+                                )
+                            }
+                            extensionsById["web_interface"]?.let { extension ->
+                                add(buildToggleDataTile(label = "web", enabled = extension.enabled, details = extension.description))
+                            }
+                            extensionsById["email_processor"]?.let { extension ->
+                                add(buildToggleDataTile(label = "mail", enabled = extension.enabled, details = extension.description))
+                            }
+                        }
                         if (extensionInfoTiles.isNotEmpty()) {
                             Text("Расширения", fontWeight = FontWeight.SemiBold)
                             Column(

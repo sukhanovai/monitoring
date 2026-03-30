@@ -51,7 +51,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.38.7"
+    private val projectVersion = "8.38.8"
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
     private val fallbackUpdateUrl = "https://github.com/sukhanovai/monitoring/releases/latest"
@@ -511,6 +511,12 @@ class MainViewModel(
                 val dbBackupSummary = runCatching {
                     currentApi().runControlAction(ControlActionRequest("backup_databases"))
                 }.getOrNull()
+                val stockLoadSummary = runCatching {
+                    currentApi().runControlAction(ControlActionRequest("backup_stock_loads"))
+                }.getOrNull()
+                val supplierStockSummary = runCatching {
+                    currentApi().runControlAction(ControlActionRequest("supplier_stock_reports"))
+                }.getOrNull()
                 listOf(
                     monitoring,
                     bot,
@@ -522,7 +528,9 @@ class MainViewModel(
                     servers,
                     extensions,
                     proxmoxBackupSummary,
-                    dbBackupSummary
+                    dbBackupSummary,
+                    stockLoadSummary,
+                    supplierStockSummary
                 )
             }
 
@@ -537,6 +545,8 @@ class MainViewModel(
             val extensions = result[8] as? ru.monitoring.mobile.api.ExtensionsSettingsResponse
             val proxmoxBackupSummary = buildBackupTileSummary(result[9] as? ControlActionResult)
             val dbBackupSummary = buildBackupTileSummary(result[10] as? ControlActionResult)
+            val stockLoadSummary = buildBackupTileSummary(result[11] as? ControlActionResult)
+            val supplierStockSummary = buildBackupTileSummary(result[12] as? ControlActionResult)
 
             val monitoringData = monitoring?.settings
             val botData = bot?.settings
@@ -592,8 +602,12 @@ class MainViewModel(
                 extensions = extensions?.items ?: state.extensions,
                 backupProxmoxSummary = proxmoxBackupSummary?.ratioText ?: state.backupProxmoxSummary,
                 backupDatabasesSummary = dbBackupSummary?.ratioText ?: state.backupDatabasesSummary,
+                backupStockLoadsSummary = stockLoadSummary?.ratioText ?: state.backupStockLoadsSummary,
+                supplierStockSummary = supplierStockSummary?.ratioText ?: state.supplierStockSummary,
                 backupProxmoxHasProblemItems = proxmoxBackupSummary?.hasProblem ?: state.backupProxmoxHasProblemItems,
                 backupDatabasesHasProblemItems = dbBackupSummary?.hasProblem ?: state.backupDatabasesHasProblemItems,
+                backupStockLoadsHasProblemItems = stockLoadSummary?.hasProblem ?: state.backupStockLoadsHasProblemItems,
+                supplierStockHasProblemItems = supplierStockSummary?.hasProblem ?: state.supplierStockHasProblemItems,
                 monitoringStatusText = when {
                     control?.monitoringActive == true -> "🟢 Активен"
                     control?.monitoringActive == false -> "🔴 Приостановлен"
@@ -1828,8 +1842,12 @@ data class MainUiState(
     val extensionSettingsMenuAction: String = "",
     val backupProxmoxSummary: String = "",
     val backupDatabasesSummary: String = "",
+    val backupStockLoadsSummary: String = "",
+    val supplierStockSummary: String = "",
     val backupProxmoxHasProblemItems: Boolean = false,
     val backupDatabasesHasProblemItems: Boolean = false,
+    val backupStockLoadsHasProblemItems: Boolean = false,
+    val supplierStockHasProblemItems: Boolean = false,
     val mailBackupHistoryTitle: String = "",
     val mailBackupHistoryItems: List<MailBackupHistoryItem> = emptyList(),
     val servers: List<ServerAvailability> = emptyList(),
