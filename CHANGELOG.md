@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.38.7] - 2026-03-30
+
+### Changed / Изменено
+- EN: Compact Ops extension cards now fetch live extension summaries during refresh and display extension-produced ratios for backup monitors (for example, `14/14` for Proxmox and `34/35` for DB backups) instead of static extension naming on the value line.
+- RU: Плашки расширений в Compact Ops теперь при обновлении подтягивают live-сводки от расширений и показывают соотношения, полученные от мониторинга бэкапов (например, `14/14` для Proxmox и `34/35` для БД), а не статичное имя расширения в строке значения.
+- EN: Added shared parsing of backup monitor responses (`Без проблем`, `Проблемных`, totals) to keep ratio text and error-color behavior aligned with the Servers tile logic.
+- RU: Добавлен общий парсинг ответов мониторинга бэкапов (`Без проблем`, `Проблемных`, итоги), чтобы соотношение и цветовая маркировка ошибок работали по логике, согласованной с плашкой «Серверы».
+- EN: Completed repository-wide patch bump to `8.38.7`; synchronized runtime/config/docs/mobile version references, updated Android metadata to `ANDROID_VERSION_NAME=8.38.7` and `ANDROID_VERSION_CODE=217`, and refreshed prerelease links.
+- RU: Выполнен полный patch-бамп версии по репозиторию до `8.38.7`; синхронизированы ссылки на версию в runtime/config/docs/mobile, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.38.7` и `ANDROID_VERSION_CODE=217`, а также обновлены prerelease-ссылки.
+
 ## [8.38.6] - 2026-03-30
 
 ### Changed / Изменено

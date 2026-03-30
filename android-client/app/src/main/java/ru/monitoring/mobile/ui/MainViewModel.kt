@@ -26,6 +26,7 @@ import ru.monitoring.mobile.api.AvailabilityItem
 import ru.monitoring.mobile.api.BotChatRequest
 import ru.monitoring.mobile.api.CreateWindowsTypeRequest
 import ru.monitoring.mobile.api.ControlActionRequest
+import ru.monitoring.mobile.api.ControlActionResult
 import ru.monitoring.mobile.api.ExtensionItem
 import ru.monitoring.mobile.api.ExtensionUpdateRequest
 import ru.monitoring.mobile.api.ExtensionsActionRequest
@@ -50,7 +51,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.38.6"
+    private val projectVersion = "8.38.7"
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
     private val fallbackUpdateUrl = "https://github.com/sukhanovai/monitoring/releases/latest"
@@ -155,6 +156,43 @@ class MainViewModel(
             .lowercase()
         return isProblemBackupLabel(label) ||
             problemBackupKeywords.any { keyword -> normalizedAction.contains(keyword) }
+    }
+
+    private data class BackupTileSummary(
+        val ratioText: String,
+        val hasProblem: Boolean
+    )
+
+    private val backupSummaryNumberRegex = Regex("""(\d+)""")
+
+    private fun extractSummaryValue(message: String, marker: String): Int? {
+        val line = message
+            .lineSequence()
+            .firstOrNull { it.contains(marker, ignoreCase = true) }
+            .orEmpty()
+        return backupSummaryNumberRegex.find(line)?.value?.toIntOrNull()
+    }
+
+    private fun buildBackupTileSummary(response: ControlActionResult?): BackupTileSummary? {
+        if (response == null) return null
+
+        val message = response.message.orEmpty()
+        val okFromMessage = extractSummaryValue(message, "Без проблем")
+        val problemsFromMessage = extractSummaryValue(message, "Проблемных")
+        val totalFromMessage = extractSummaryValue(message, "Всего хостов")
+            ?: extractSummaryValue(message, "Баз в отчёте")
+
+        val total = totalFromMessage ?: response.menuOptions?.size ?: 0
+        val problems = problemsFromMessage
+            ?: response.menuOptions.orEmpty().count { option -> isProblemBackupOption(option) }
+        val ok = okFromMessage ?: (total - problems).coerceAtLeast(0)
+
+        if (total <= 0) return null
+
+        return BackupTileSummary(
+            ratioText = "$ok/$total",
+            hasProblem = problems > 0 || ok < total
+        )
     }
 
     fun loadInitialState() {
@@ -467,7 +505,25 @@ class MainViewModel(
                 val winCreds = runCatching { currentApi().getWindowsCredentials() }.getOrNull()
                 val servers = runCatching { currentApi().getServersSettings() }.getOrNull()
                 val extensions = runCatching { currentApi().getExtensionsSettings() }.getOrNull()
-                listOf(monitoring, bot, time, auth, control, winTypes, winCreds, servers, extensions)
+                val proxmoxBackupSummary = runCatching {
+                    currentApi().runControlAction(ControlActionRequest("backup_proxmox"))
+                }.getOrNull()
+                val dbBackupSummary = runCatching {
+                    currentApi().runControlAction(ControlActionRequest("backup_databases"))
+                }.getOrNull()
+                listOf(
+                    monitoring,
+                    bot,
+                    time,
+                    auth,
+                    control,
+                    winTypes,
+                    winCreds,
+                    servers,
+                    extensions,
+                    proxmoxBackupSummary,
+                    dbBackupSummary
+                )
             }
 
             val monitoring = result[0] as? ru.monitoring.mobile.api.SettingsMonitoringResponse
@@ -479,6 +535,8 @@ class MainViewModel(
             val winCreds = result[6] as? ru.monitoring.mobile.api.WindowsCredentialsResponse
             val servers = result[7] as? ru.monitoring.mobile.api.ServersSettingsResponse
             val extensions = result[8] as? ru.monitoring.mobile.api.ExtensionsSettingsResponse
+            val proxmoxBackupSummary = buildBackupTileSummary(result[9] as? ControlActionResult)
+            val dbBackupSummary = buildBackupTileSummary(result[10] as? ControlActionResult)
 
             val monitoringData = monitoring?.settings
             val botData = bot?.settings
@@ -532,6 +590,10 @@ class MainViewModel(
                 windowsTypes = winTypes?.types ?: state.windowsTypes,
                 managedServers = servers?.items ?: state.managedServers,
                 extensions = extensions?.items ?: state.extensions,
+                backupProxmoxSummary = proxmoxBackupSummary?.ratioText ?: state.backupProxmoxSummary,
+                backupDatabasesSummary = dbBackupSummary?.ratioText ?: state.backupDatabasesSummary,
+                backupProxmoxHasProblemItems = proxmoxBackupSummary?.hasProblem ?: state.backupProxmoxHasProblemItems,
+                backupDatabasesHasProblemItems = dbBackupSummary?.hasProblem ?: state.backupDatabasesHasProblemItems,
                 monitoringStatusText = when {
                     control?.monitoringActive == true -> "🟢 Активен"
                     control?.monitoringActive == false -> "🔴 Приостановлен"
@@ -1764,6 +1826,8 @@ data class MainUiState(
     val extensionMenuAction: String = "",
     val extensionSettingsMenuOptions: List<MenuOption> = emptyList(),
     val extensionSettingsMenuAction: String = "",
+    val backupProxmoxSummary: String = "",
+    val backupDatabasesSummary: String = "",
     val backupProxmoxHasProblemItems: Boolean = false,
     val backupDatabasesHasProblemItems: Boolean = false,
     val mailBackupHistoryTitle: String = "",
