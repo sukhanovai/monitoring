@@ -567,9 +567,22 @@ private fun MonitoringApp(
                 val ok = state.mailBackupHistoryItems.count { it.statusIcon.contains("✅") || it.statusIcon.contains("✔") }
                 "$ok/${state.mailBackupHistoryItems.size}"
             } else {
-                null
+                state.backupMailSummary
             }
-            add(buildExtensionDataTile(extension = extension.copy(name = "почта"), summaryOverride = summary))
+            val hasProblem = if (state.mailBackupHistoryItems.isNotEmpty()) {
+                state.mailBackupHistoryItems.any { item ->
+                    item.statusIcon.contains("❌") || item.statusIcon.contains("⚠️") || item.statusIcon.contains("🚨")
+                }
+            } else {
+                state.backupMailHasProblemItems
+            }
+            add(
+                buildExtensionDataTile(
+                    extension = extension.copy(name = "почта"),
+                    summaryOverride = summary,
+                    hasProblemOverride = hasProblem
+                )
+            )
         }
         extensionsById["stock_load_monitor"]?.let { extension ->
             add(

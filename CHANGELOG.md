@@ -6,7 +6,19 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.39.0] - 2026-03-30
+## [8.39.2] - 2026-03-30
+
+### Fixed / Исправлено
+- EN: Fixed Compact Ops Ops Center cards `почта` and `остатки`: they now show operational ratios instead of dashes when extension summaries are available.
+- RU: Исправлены плашки `почта` и `остатки` в оперативном центре Compact Ops: теперь отображаются рабочие сводки вместо прочерков, когда доступны данные расширений.
+- EN: Extended backup summary parsing with fallback by status-icon lines (`✅/✔/❌/⚠️/🚨`) so tiles can derive totals/problems even when response text does not contain legacy markers.
+- RU: Расширен парсинг сводок бэкапов fallback-логикой по строкам со статус-иконками (`✅/✔/❌/⚠️/🚨`), чтобы плашки могли считать итоги/проблемы даже без старых текстовых маркеров.
+- EN: Added dedicated mail backup summary prefetch in settings refresh flow and wired Ops Center mail tile to use this summary and problem status before opening detailed history.
+- RU: Добавлена предзагрузка сводки `backup_mail` в потоке обновления настроек; плашка почты в Ops Center теперь использует эту сводку и признак проблемы ещё до открытия истории.
+- EN: Completed repository-wide patch bump to `8.39.2`; Android metadata updated to `ANDROID_VERSION_NAME=8.39.2` and `ANDROID_VERSION_CODE=221`.
+- RU: Выполнен patch-бамп по репозиторию до `8.39.2`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.39.2` и `ANDROID_VERSION_CODE=221`.
+
+## [8.39.1] - 2026-03-30
 
 ### Changed / Изменено
 - EN: In Compact Ops, extension tiles in the Ops Center now show collected operational values (ratios/statuses like on the `Servers` tile) instead of empty placeholders.
@@ -19,8 +31,8 @@ The project follows Semantic Versioning (SemVer).
 - RU: Убрано отдельное окно «Статус» из дашборда Compact Ops; ключевые индикаторы перенесены в заголовок оперативного центра: версия проекта отображается справа от названия, а статус синхронизации — под названием.
 - EN: Added compact sync indicator styling: `synchronized` is shown in green, `not synchronized` in red.
 - RU: Добавлена компактная индикация синхронизации: `синхронизировано` отображается зелёным, `не синхронизировано` — красным.
-- EN: Completed patch bump to `8.39.0`; Android metadata updated to `ANDROID_VERSION_NAME=8.39.0` and `ANDROID_VERSION_CODE=220`.
-- RU: Выполнен patch-бамп до `8.39.0`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.39.0` и `ANDROID_VERSION_CODE=220`.
+- EN: Completed patch bump to `8.39.1`; Android metadata updated to `ANDROID_VERSION_NAME=8.39.1` and `ANDROID_VERSION_CODE=220`.
+- RU: Выполнен patch-бамп до `8.39.1`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.39.1` и `ANDROID_VERSION_CODE=220`.
 
 ## [8.38.8] - 2026-03-30
 

@@ -51,7 +51,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.39.0"
+    private val projectVersion = "8.39.2"
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
     private val fallbackUpdateUrl = "https://github.com/sukhanovai/monitoring/releases/latest"
@@ -164,6 +164,7 @@ class MainViewModel(
     )
 
     private val backupSummaryNumberRegex = Regex("""(\d+)""")
+    private val backupSummaryStatusLineRegex = Regex("""^\s*([✅✔❌⚠️🚨]).*$""")
 
     private fun extractSummaryValue(message: String, marker: String): Int? {
         val line = message
@@ -181,10 +182,21 @@ class MainViewModel(
         val problemsFromMessage = extractSummaryValue(message, "Проблемных")
         val totalFromMessage = extractSummaryValue(message, "Всего хостов")
             ?: extractSummaryValue(message, "Баз в отчёте")
+        val statusLines = message.lineSequence()
+            .map { line -> line.trim() }
+            .filter { line -> backupSummaryStatusLineRegex.matches(line) }
+            .toList()
+        val okFromStatusLines = statusLines.count { line -> line.startsWith("✅") || line.startsWith("✔") }
+        val problemsFromStatusLines = statusLines.size - okFromStatusLines
 
-        val total = totalFromMessage ?: response.menuOptions?.size ?: 0
+        val total = totalFromMessage
+            ?: response.menuOptions?.size
+            ?: statusLines.size
+            ?: 0
         val problems = problemsFromMessage
             ?: response.menuOptions.orEmpty().count { option -> isProblemBackupOption(option) }
+                .takeIf { it > 0 }
+            ?: problemsFromStatusLines
         val ok = okFromMessage ?: (total - problems).coerceAtLeast(0)
 
         if (total <= 0) return null
@@ -517,6 +529,9 @@ class MainViewModel(
                 val supplierStockSummary = runCatching {
                     currentApi().runControlAction(ControlActionRequest("supplier_stock_reports"))
                 }.getOrNull()
+                val mailBackupSummary = runCatching {
+                    currentApi().runControlAction(ControlActionRequest("backup_mail"))
+                }.getOrNull()
                 listOf(
                     monitoring,
                     bot,
@@ -530,7 +545,8 @@ class MainViewModel(
                     proxmoxBackupSummary,
                     dbBackupSummary,
                     stockLoadSummary,
-                    supplierStockSummary
+                    supplierStockSummary,
+                    mailBackupSummary
                 )
             }
 
@@ -547,6 +563,7 @@ class MainViewModel(
             val dbBackupSummary = buildBackupTileSummary(result[10] as? ControlActionResult)
             val stockLoadSummary = buildBackupTileSummary(result[11] as? ControlActionResult)
             val supplierStockSummary = buildBackupTileSummary(result[12] as? ControlActionResult)
+            val mailBackupSummary = buildBackupTileSummary(result[13] as? ControlActionResult)
 
             val monitoringData = monitoring?.settings
             val botData = bot?.settings
@@ -604,10 +621,12 @@ class MainViewModel(
                 backupDatabasesSummary = dbBackupSummary?.ratioText ?: state.backupDatabasesSummary,
                 backupStockLoadsSummary = stockLoadSummary?.ratioText ?: state.backupStockLoadsSummary,
                 supplierStockSummary = supplierStockSummary?.ratioText ?: state.supplierStockSummary,
+                backupMailSummary = mailBackupSummary?.ratioText ?: state.backupMailSummary,
                 backupProxmoxHasProblemItems = proxmoxBackupSummary?.hasProblem ?: state.backupProxmoxHasProblemItems,
                 backupDatabasesHasProblemItems = dbBackupSummary?.hasProblem ?: state.backupDatabasesHasProblemItems,
                 backupStockLoadsHasProblemItems = stockLoadSummary?.hasProblem ?: state.backupStockLoadsHasProblemItems,
                 supplierStockHasProblemItems = supplierStockSummary?.hasProblem ?: state.supplierStockHasProblemItems,
+                backupMailHasProblemItems = mailBackupSummary?.hasProblem ?: state.backupMailHasProblemItems,
                 monitoringStatusText = when {
                     control?.monitoringActive == true -> "🟢 Активен"
                     control?.monitoringActive == false -> "🔴 Приостановлен"
@@ -1848,10 +1867,12 @@ data class MainUiState(
     val backupDatabasesSummary: String = "",
     val backupStockLoadsSummary: String = "",
     val supplierStockSummary: String = "",
+    val backupMailSummary: String = "",
     val backupProxmoxHasProblemItems: Boolean = false,
     val backupDatabasesHasProblemItems: Boolean = false,
     val backupStockLoadsHasProblemItems: Boolean = false,
     val supplierStockHasProblemItems: Boolean = false,
+    val backupMailHasProblemItems: Boolean = false,
     val mailBackupHistoryTitle: String = "",
     val mailBackupHistoryItems: List<MailBackupHistoryItem> = emptyList(),
     val servers: List<ServerAvailability> = emptyList(),
