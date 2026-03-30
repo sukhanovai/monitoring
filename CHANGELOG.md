@@ -6,7 +6,17 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.38.4] - 2026-03-28
+## [8.38.6] - 2026-03-30
+
+### Changed / Изменено
+- EN: Updated Compact Ops extension cards in the Ops Center: cards now prioritize extension-produced data values (for example, `14/14` for Proxmox backups) instead of only showing extension identity/description.
+- RU: Обновлены плашки расширений в оперативном центре Compact Ops: теперь в приоритете отображаются данные, полученные расширениями (например, `14/14` для бэкапов Proxmox), а не только само название/описание расширения.
+- EN: Added ratio-aware visual marking for extension values: if the parsed `done/total` ratio is degraded, value text uses error color behavior aligned with the Servers tile.
+- RU: Добавлена цветовая маркировка значений по соотношению `выполнено/всего`: при деградации значение подсвечивается ошибочным цветом по той же логике, что и у плашки «Серверы».
+- EN: Completed repository-wide patch bump to `8.38.6`; synchronized runtime/config/docs/mobile version references, updated Android metadata to `ANDROID_VERSION_NAME=8.38.6` and `ANDROID_VERSION_CODE=216`, and refreshed prerelease links.
+- RU: Выполнен полный patch-бамп версии по репозиторию до `8.38.6`; синхронизированы ссылки на версию в runtime/config/docs/mobile, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.38.6` и `ANDROID_VERSION_CODE=216`, а также обновлены prerelease-ссылки.
+
+## [8.38.5] - 2026-03-28
 
 ### Fixed / Исправлено
 - EN: In Compact Ops, wired the "⟳ Sync" button to the same refresh flow as Quick Actions "🔄 Update" and additionally collapse per-server menus after sync to avoid stale per-item state.
@@ -19,8 +29,8 @@ The project follows Semantic Versioning (SemVer).
 - RU: Переименован заголовок секции расширений в Compact Ops: вместо «Плашки расширений» теперь «Расширения».
 - EN: Reworked Compact Ops extensions block: replaced metric chips with result cards that show extension name and extension execution/result details.
 - RU: Переработан блок расширений в Compact Ops: вместо плашек-метрик выводятся карточки результатов с названием расширения и деталями результата работы.
-- EN: Completed repository-wide patch bump to `8.38.4`; synchronized runtime/config/docs/mobile version references, updated Android metadata to `ANDROID_VERSION_NAME=8.38.4` and `ANDROID_VERSION_CODE=214`, and refreshed prerelease links.
-- RU: Выполнен полный patch-бамп версии по репозиторию до `8.38.4`; синхронизированы ссылки на версию в runtime/config/docs/mobile, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.38.4` и `ANDROID_VERSION_CODE=214`, а также обновлены prerelease-ссылки.
+- EN: Completed repository-wide patch bump to `8.38.5`; synchronized runtime/config/docs/mobile version references, updated Android metadata to `ANDROID_VERSION_NAME=8.38.5` and `ANDROID_VERSION_CODE=215`, and refreshed prerelease links.
+- RU: Выполнен полный patch-бамп версии по репозиторию до `8.38.5`; синхронизированы ссылки на версию в runtime/config/docs/mobile, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.38.5` и `ANDROID_VERSION_CODE=215`, а также обновлены prerelease-ссылки.
 ## [8.38.2] - 2026-03-28
 
 ### Changed / Изменено
