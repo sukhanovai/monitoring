@@ -6,17 +6,17 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.39.2] - 2026-03-30
+## [8.39.3] - 2026-03-30
 
-### Fixed / Исправлено
-- EN: Fixed Compact Ops Ops Center cards `почта` and `остатки`: they now show operational ratios instead of dashes when extension summaries are available.
-- RU: Исправлены плашки `почта` и `остатки` в оперативном центре Compact Ops: теперь отображаются рабочие сводки вместо прочерков, когда доступны данные расширений.
-- EN: Extended backup summary parsing with fallback by status-icon lines (`✅/✔/❌/⚠️/🚨`) so tiles can derive totals/problems even when response text does not contain legacy markers.
-- RU: Расширен парсинг сводок бэкапов fallback-логикой по строкам со статус-иконками (`✅/✔/❌/⚠️/🚨`), чтобы плашки могли считать итоги/проблемы даже без старых текстовых маркеров.
-- EN: Added dedicated mail backup summary prefetch in settings refresh flow and wired Ops Center mail tile to use this summary and problem status before opening detailed history.
-- RU: Добавлена предзагрузка сводки `backup_mail` в потоке обновления настроек; плашка почты в Ops Center теперь использует эту сводку и признак проблемы ещё до открытия истории.
-- EN: Completed repository-wide patch bump to `8.39.2`; Android metadata updated to `ANDROID_VERSION_NAME=8.39.2` and `ANDROID_VERSION_CODE=221`.
-- RU: Выполнен patch-бамп по репозиторию до `8.39.2`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.39.2` и `ANDROID_VERSION_CODE=221`.
+### Changed / Изменено
+- EN: Added a dedicated `ZFS` tile to Compact Ops Ops Center metrics, so ZFS extension status is visible in the same compact chip grid as other operational monitors.
+- RU: В оперативном центре Compact Ops добавлена отдельная плашка `ZFS`, чтобы статус ZFS-расширения отображался в общем наборе компактных метрик.
+- EN: Reworked the `почта` tile logic: it now shows only `OK` or `!` based on the status of the most recent mail backup entry, with fallback to existing backup health flag when history is unavailable.
+- RU: Переделана логика плашки `почта`: теперь она показывает только `ОК` или `!` по статусу последнего почтового бэкапа, с fallback на существующий флаг проблем бэкапа, если история недоступна.
+- EN: Moved Compact Ops synchronization action from the separate `⟳ Synchronize` button to tap on the `⚡ Ops Center` header area, and removed the standalone sync button from the action row.
+- RU: Функция синхронизации в Compact Ops перенесена с отдельной кнопки `⟳ Синхронизировать` на тап по области заголовка `⚡ Оперативный центр`; отдельная кнопка синхронизации удалена.
+- EN: Completed repository-wide patch bump to `8.39.3`; Android metadata updated to `ANDROID_VERSION_NAME=8.39.3` and `ANDROID_VERSION_CODE=222`.
+- RU: Выполнен patch-бамп по репозиторию до `8.39.3`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.39.3` и `ANDROID_VERSION_CODE=222`.
 
 ## [8.39.1] - 2026-03-30
 
