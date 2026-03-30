@@ -51,7 +51,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.38.8"
+    private val projectVersion = "8.38.9"
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
     private val fallbackUpdateUrl = "https://github.com/sukhanovai/monitoring/releases/latest"
@@ -661,7 +661,8 @@ class MainViewModel(
                         servers = servers,
                         summaryText = buildSummaryText(servers),
                         message = "Данные обновлены",
-                        messageSource = "all_servers"
+                        messageSource = "all_servers",
+                        isDataSynchronized = true
                     )
                 }
                 .onFailure { error ->
@@ -670,7 +671,7 @@ class MainViewModel(
                         403 -> "HTTP 403: нет прав на получение статуса серверов"
                         else -> formatNetworkError(error)
                     }
-                    state = state.copy(isLoading = false, message = userMessage, messageSource = "all_servers")
+                    state = state.copy(isLoading = false, message = userMessage, messageSource = "all_servers", isDataSynchronized = false)
                 }
         }
     }
@@ -744,7 +745,8 @@ class MainViewModel(
                         summaryText = "${server.name} (${server.ip}): $statusLabel",
                         message = "$statusEmoji ${server.name} (${server.ip}): $statusLabel",
                         messageSource = "server_availability",
-                        availabilityServerMessageTarget = serverTarget
+                        availabilityServerMessageTarget = serverTarget,
+                        isDataSynchronized = true
                     )
                 }
                 .onFailure { error ->
@@ -758,7 +760,8 @@ class MainViewModel(
                         isLoading = false,
                         message = userMessage,
                         messageSource = "server_availability",
-                        availabilityServerMessageTarget = serverTarget
+                        availabilityServerMessageTarget = serverTarget,
+                        isDataSynchronized = false
                     )
                 }
         }
@@ -1836,6 +1839,7 @@ data class MainUiState(
     val isWindowsPasswordVisible: Boolean = false,
     val isLoading: Boolean = false,
     val summaryText: String = "Статус не запрошен",
+    val isDataSynchronized: Boolean = false,
     val extensionMenuOptions: List<MenuOption> = emptyList(),
     val extensionMenuAction: String = "",
     val extensionSettingsMenuOptions: List<MenuOption> = emptyList(),

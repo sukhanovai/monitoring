@@ -557,6 +557,9 @@ private fun MonitoringApp(
     val pinnedTiles = opsTiles.filter { it.id in effectivePinnedTileIds }
     val hiddenTiles = opsTiles.filterNot { it.id in effectivePinnedTileIds }
     val visibleTiles = if (areOpsTilesExpanded) pinnedTiles + hiddenTiles else pinnedTiles
+    val isSynchronized = state.isDataSynchronized
+    val synchronizationText = if (isSynchronized) "синхронизировано" else "не синхронизировано"
+    val synchronizationColor = if (isSynchronized) Color(0xFF2E7D32) else Color(0xFFC62828)
 
     Scaffold(
         topBar = {
@@ -605,7 +608,24 @@ private fun MonitoringApp(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("⚡ Оперативный центр", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("⚡ Оперативный центр", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                                    Text(
+                                        state.projectVersion,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Text(
+                                    synchronizationText,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = synchronizationColor
+                                )
+                            }
                             IconButton(onClick = { showTileSettingsDialog = true }) {
                                 Icon(
                                     imageVector = Icons.Filled.Settings,
@@ -712,17 +732,12 @@ private fun MonitoringApp(
                                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
                                             verticalArrangement = Arrangement.spacedBy(4.dp)
                                         ) {
-                                            val extensionValueColor = if (extension.hasProblem) {
+                                            val extensionLabelColor = if (extension.hasProblem) {
                                                 MaterialTheme.colorScheme.error
                                             } else {
                                                 MaterialTheme.colorScheme.onSurface
                                             }
-                                            Text(extension.value, fontWeight = FontWeight.Bold, color = extensionValueColor)
-                                            Text(extension.label, fontWeight = FontWeight.Medium)
-                                            Text(
-                                                text = extension.details,
-                                                style = MaterialTheme.typography.bodySmall
-                                            )
+                                            Text(extension.label, fontWeight = FontWeight.Medium, color = extensionLabelColor)
                                         }
                                     }
                                 }
@@ -786,18 +801,20 @@ private fun MonitoringApp(
                 return@LazyColumn
             }
 
-            item {
-                if (state.isLoading) {
-                    CircularProgressIndicator()
-                }
+            if (!isCompactOpsHub) {
+                item {
+                    if (state.isLoading) {
+                        CircularProgressIndicator()
+                    }
 
-                ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text("Статус", fontWeight = FontWeight.Bold)
-                        Text(state.summaryText)
-                        Text("Версия проекта: ${state.projectVersion}")
-                        if (state.message.isNotBlank() && state.messageSource == "global") {
-                            Text(state.message)
+                    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text("Статус", fontWeight = FontWeight.Bold)
+                            Text(state.summaryText)
+                            Text("Версия проекта: ${state.projectVersion}")
+                            if (state.message.isNotBlank() && state.messageSource == "global") {
+                                Text(state.message)
+                            }
                         }
                     }
                 }
