@@ -111,9 +111,9 @@ private data class OpsMetricTile(
 )
 
 private data class ExtensionDataTile(
+    val id: String,
     val label: String,
     val value: String,
-    val details: String,
     val hasProblem: Boolean
 )
 
@@ -137,18 +137,18 @@ private fun buildExtensionDataTile(
         else -> isProblemBackupLabel(description)
     }
     return ExtensionDataTile(
+        id = extension.id,
         label = extension.name,
         value = summaryOverride?.takeIf { it.isNotBlank() } ?: ratioValue ?: "—",
-        details = description.ifBlank { "Результат пока не получен" },
         hasProblem = hasProblemOverride ?: defaultHasProblem
     )
 }
 
-private fun buildToggleDataTile(label: String, enabled: Boolean, details: String): ExtensionDataTile {
+private fun buildToggleDataTile(label: String, enabled: Boolean): ExtensionDataTile {
     return ExtensionDataTile(
+        id = label.lowercase(),
         label = label,
         value = if (enabled) "вкл" else "выкл",
-        details = details,
         hasProblem = false
     )
 }
@@ -542,6 +542,81 @@ private fun MonitoringApp(
             onClick = openModesDetails
         )
     )
+    val extensionsById = state.extensions.associateBy { it.id }
+    val extensionInfoTiles = buildList {
+        extensionsById["backup_monitor"]?.let { extension ->
+            add(
+                buildExtensionDataTile(
+                    extension = extension.copy(name = "proxmox"),
+                    summaryOverride = state.backupProxmoxSummary,
+                    hasProblemOverride = state.backupProxmoxHasProblemItems
+                )
+            )
+        }
+        extensionsById["database_backup_monitor"]?.let { extension ->
+            add(
+                buildExtensionDataTile(
+                    extension = extension.copy(name = "БД"),
+                    summaryOverride = state.backupDatabasesSummary,
+                    hasProblemOverride = state.backupDatabasesHasProblemItems
+                )
+            )
+        }
+        extensionsById["mail_backup_monitor"]?.let { extension ->
+            val summary = if (state.mailBackupHistoryItems.isNotEmpty()) {
+                val ok = state.mailBackupHistoryItems.count { it.statusIcon.contains("✅") || it.statusIcon.contains("✔") }
+                "$ok/${state.mailBackupHistoryItems.size}"
+            } else {
+                null
+            }
+            add(buildExtensionDataTile(extension = extension.copy(name = "почта"), summaryOverride = summary))
+        }
+        extensionsById["stock_load_monitor"]?.let { extension ->
+            add(
+                buildExtensionDataTile(
+                    extension = extension.copy(name = "остатки"),
+                    summaryOverride = state.backupStockLoadsSummary,
+                    hasProblemOverride = state.backupStockLoadsHasProblemItems
+                )
+            )
+        }
+        extensionsById["supplier_stock_files"]?.let { extension ->
+            add(
+                buildExtensionDataTile(
+                    extension = extension.copy(name = "поставщики"),
+                    summaryOverride = state.supplierStockSummary,
+                    hasProblemOverride = state.supplierStockHasProblemItems
+                )
+            )
+        }
+        extensionsById["resource_monitor"]?.let { extension ->
+            val hasProblem = isProblemBackupLabel(extension.description)
+            add(
+                ExtensionDataTile(
+                    id = extension.id,
+                    label = "ресурсы",
+                    value = if (hasProblem) "!" else "ОК",
+                    hasProblem = hasProblem
+                )
+            )
+        }
+        extensionsById["web_interface"]?.let { extension ->
+            add(buildToggleDataTile(label = "web", enabled = extension.enabled))
+        }
+        extensionsById["email_processor"]?.let { extension ->
+            add(buildToggleDataTile(label = "mail", enabled = extension.enabled))
+        }
+    }
+    val extensionOpsTiles = extensionInfoTiles.map { extension ->
+        OpsMetricTile(
+            id = "extension_${extension.id}",
+            label = extension.label,
+            value = extension.value,
+            hasProblem = extension.hasProblem,
+            onClick = openExtensionsDetails
+        )
+    }
+    val allOpsTiles = opsTiles + extensionOpsTiles
     val defaultPinnedTileIds = setOf("servers", "extensions", "modes")
     var pinnedOpsTileIds by rememberSaveable {
         mutableStateOf(
@@ -552,10 +627,10 @@ private fun MonitoringApp(
                 .ifEmpty { defaultPinnedTileIds }
         )
     }
-    val orderedPinnedTileIds = opsTiles.map { it.id }.filter { it in pinnedOpsTileIds }.toSet()
+    val orderedPinnedTileIds = allOpsTiles.map { it.id }.filter { it in pinnedOpsTileIds }.toSet()
     val effectivePinnedTileIds = if (orderedPinnedTileIds.isEmpty()) defaultPinnedTileIds else orderedPinnedTileIds
-    val pinnedTiles = opsTiles.filter { it.id in effectivePinnedTileIds }
-    val hiddenTiles = opsTiles.filterNot { it.id in effectivePinnedTileIds }
+    val pinnedTiles = allOpsTiles.filter { it.id in effectivePinnedTileIds }
+    val hiddenTiles = allOpsTiles.filterNot { it.id in effectivePinnedTileIds }
     val visibleTiles = if (areOpsTilesExpanded) pinnedTiles + hiddenTiles else pinnedTiles
     val isSynchronized = state.isDataSynchronized
     val synchronizationText = if (isSynchronized) "синхронизировано" else "не синхронизировано"
@@ -659,88 +734,6 @@ private fun MonitoringApp(
                                 )
                             ) {
                                 Text(if (areOpsTilesExpanded) "Свернуть сведения" else "Развернуть сведения")
-                            }
-                        }
-                        val extensionsById = state.extensions.associateBy { it.id }
-                        val extensionInfoTiles = buildList {
-                            extensionsById["backup_monitor"]?.let { extension ->
-                                add(
-                                    buildExtensionDataTile(
-                                        extension = extension.copy(name = "proxmox"),
-                                        summaryOverride = state.backupProxmoxSummary,
-                                        hasProblemOverride = state.backupProxmoxHasProblemItems
-                                    )
-                                )
-                            }
-                            extensionsById["database_backup_monitor"]?.let { extension ->
-                                add(
-                                    buildExtensionDataTile(
-                                        extension = extension.copy(name = "БД"),
-                                        summaryOverride = state.backupDatabasesSummary,
-                                        hasProblemOverride = state.backupDatabasesHasProblemItems
-                                    )
-                                )
-                            }
-                            extensionsById["mail_backup_monitor"]?.let { extension ->
-                                add(buildExtensionDataTile(extension = extension.copy(name = "почта")))
-                            }
-                            extensionsById["stock_load_monitor"]?.let { extension ->
-                                add(
-                                    buildExtensionDataTile(
-                                        extension = extension.copy(name = "остатки"),
-                                        summaryOverride = state.backupStockLoadsSummary,
-                                        hasProblemOverride = state.backupStockLoadsHasProblemItems
-                                    )
-                                )
-                            }
-                            extensionsById["supplier_stock_files"]?.let { extension ->
-                                add(
-                                    buildExtensionDataTile(
-                                        extension = extension.copy(name = "поставщики"),
-                                        summaryOverride = state.supplierStockSummary,
-                                        hasProblemOverride = state.supplierStockHasProblemItems
-                                    )
-                                )
-                            }
-                            extensionsById["resource_monitor"]?.let { extension ->
-                                val hasProblem = isProblemBackupLabel(extension.description)
-                                add(
-                                    ExtensionDataTile(
-                                        label = "ресурсы",
-                                        value = if (hasProblem) "!" else "ОК",
-                                        details = extension.description.ifBlank { "Состояние ресурсов не получено" },
-                                        hasProblem = hasProblem
-                                    )
-                                )
-                            }
-                            extensionsById["web_interface"]?.let { extension ->
-                                add(buildToggleDataTile(label = "web", enabled = extension.enabled, details = extension.description))
-                            }
-                            extensionsById["email_processor"]?.let { extension ->
-                                add(buildToggleDataTile(label = "mail", enabled = extension.enabled, details = extension.description))
-                            }
-                        }
-                        if (extensionInfoTiles.isNotEmpty()) {
-                            Text("Расширения", fontWeight = FontWeight.SemiBold)
-                            Column(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                extensionInfoTiles.forEach { extension ->
-                                    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                                        Column(
-                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-                                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                                        ) {
-                                            val extensionLabelColor = if (extension.hasProblem) {
-                                                MaterialTheme.colorScheme.error
-                                            } else {
-                                                MaterialTheme.colorScheme.onSurface
-                                            }
-                                            Text(extension.label, fontWeight = FontWeight.Medium, color = extensionLabelColor)
-                                        }
-                                    }
-                                }
                             }
                         }
                         FlowRow(
@@ -2102,7 +2095,7 @@ private fun MonitoringApp(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Отметь плашки, которые показывать сразу. Остальные уйдут под «Развернуть сведения».")
-                    opsTiles.forEach { tile ->
+                    allOpsTiles.forEach { tile ->
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically

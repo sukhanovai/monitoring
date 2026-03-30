@@ -6,17 +6,21 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.38.9] - 2026-03-30
+## [8.39.0] - 2026-03-30
 
 ### Changed / Изменено
-- EN: In Compact Ops, removed verbose extension card descriptions and left only short extension names in the Ops Center extension block.
-- RU: В Compact Ops убраны длинные описания карточек расширений: в блоке «Расширения» оперативного центра оставлены только короткие наименования.
+- EN: In Compact Ops, extension tiles in the Ops Center now show collected operational values (ratios/statuses like on the `Servers` tile) instead of empty placeholders.
+- RU: В Compact Ops плашки расширений в оперативном центре теперь показывают собранные значения (соотношения/статусы по аналогии с плашкой «Серверы») вместо пустых заглушек.
+- EN: Moved extension tiles into the shared `Details` tile flow next to `Servers`: they now participate in the same expand/collapse behavior (`Expand details` / `Collapse details`) and can be configured in tile settings.
+- RU: Плашки расширений перенесены в общий поток «Сведения» рядом с «Серверами»: теперь они участвуют в том же механизме сворачивания/разворачивания («Развернуть сведения» / «Свернуть сведения») и настраиваются в настройках плашек.
+- EN: Reworked extension visualization from elongated cards to compact metric chips consistent with `Servers`, reducing visual noise in the Ops Center.
+- RU: Визуал расширений переделан с вытянутых карточек на компактные metric-chip плашки в стиле «Серверов», чтобы уменьшить визуальный шум в оперативном центре.
 - EN: Removed the separate status card from Compact Ops dashboard and moved core state indicators into the Ops Center header: project version is now shown to the right of the title, and sync state is shown below the title.
 - RU: Убрано отдельное окно «Статус» из дашборда Compact Ops; ключевые индикаторы перенесены в заголовок оперативного центра: версия проекта отображается справа от названия, а статус синхронизации — под названием.
 - EN: Added compact sync indicator styling: `synchronized` is shown in green, `not synchronized` in red.
 - RU: Добавлена компактная индикация синхронизации: `синхронизировано` отображается зелёным, `не синхронизировано` — красным.
-- EN: Completed patch bump to `8.38.9`; Android metadata updated to `ANDROID_VERSION_NAME=8.38.9` and `ANDROID_VERSION_CODE=219`.
-- RU: Выполнен patch-бамп до `8.38.9`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.38.9` и `ANDROID_VERSION_CODE=219`.
+- EN: Completed patch bump to `8.39.0`; Android metadata updated to `ANDROID_VERSION_NAME=8.39.0` and `ANDROID_VERSION_CODE=220`.
+- RU: Выполнен patch-бамп до `8.39.0`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.39.0` и `ANDROID_VERSION_CODE=220`.
 
 ## [8.38.8] - 2026-03-30
 
