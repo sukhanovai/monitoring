@@ -6,6 +6,18 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.38.9] - 2026-03-30
+
+### Changed / Изменено
+- EN: In Compact Ops, removed verbose extension card descriptions and left only short extension names in the Ops Center extension block.
+- RU: В Compact Ops убраны длинные описания карточек расширений: в блоке «Расширения» оперативного центра оставлены только короткие наименования.
+- EN: Removed the separate status card from Compact Ops dashboard and moved core state indicators into the Ops Center header: project version is now shown to the right of the title, and sync state is shown below the title.
+- RU: Убрано отдельное окно «Статус» из дашборда Compact Ops; ключевые индикаторы перенесены в заголовок оперативного центра: версия проекта отображается справа от названия, а статус синхронизации — под названием.
+- EN: Added compact sync indicator styling: `synchronized` is shown in green, `not synchronized` in red.
+- RU: Добавлена компактная индикация синхронизации: `синхронизировано` отображается зелёным, `не синхронизировано` — красным.
+- EN: Completed patch bump to `8.38.9`; Android metadata updated to `ANDROID_VERSION_NAME=8.38.9` and `ANDROID_VERSION_CODE=219`.
+- RU: Выполнен patch-бамп до `8.38.9`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.38.9` и `ANDROID_VERSION_CODE=219`.
+
 ## [8.38.8] - 2026-03-30
 
 ### Changed / Изменено
