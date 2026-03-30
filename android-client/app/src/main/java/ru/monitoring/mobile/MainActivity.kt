@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -563,18 +564,19 @@ private fun MonitoringApp(
             )
         }
         extensionsById["mail_backup_monitor"]?.let { extension ->
-            val summary = if (state.mailBackupHistoryItems.isNotEmpty()) {
-                val ok = state.mailBackupHistoryItems.count { it.statusIcon.contains("✅") || it.statusIcon.contains("✔") }
-                "$ok/${state.mailBackupHistoryItems.size}"
-            } else {
-                state.backupMailSummary
+            val latestMailBackup = state.mailBackupHistoryItems.firstOrNull()
+            val latestIsOk = latestMailBackup?.statusIcon?.let { icon ->
+                icon.contains("✅") || icon.contains("✔")
             }
-            val hasProblem = if (state.mailBackupHistoryItems.isNotEmpty()) {
-                state.mailBackupHistoryItems.any { item ->
-                    item.statusIcon.contains("❌") || item.statusIcon.contains("⚠️") || item.statusIcon.contains("🚨")
-                }
-            } else {
-                state.backupMailHasProblemItems
+            val hasProblem = when (latestIsOk) {
+                true -> false
+                false -> true
+                null -> state.backupMailHasProblemItems
+            }
+            val summary = when (latestIsOk) {
+                true -> "ОК"
+                false -> "!"
+                null -> if (state.backupMailHasProblemItems) "!" else "ОК"
             }
             add(
                 buildExtensionDataTile(
@@ -590,6 +592,13 @@ private fun MonitoringApp(
                     extension = extension.copy(name = "остатки"),
                     summaryOverride = state.backupStockLoadsSummary,
                     hasProblemOverride = state.backupStockLoadsHasProblemItems
+                )
+            )
+        }
+        extensionsById["zfs_monitor"]?.let { extension ->
+            add(
+                buildExtensionDataTile(
+                    extension = extension.copy(name = "ZFS")
                 )
             )
         }
@@ -696,7 +705,14 @@ private fun MonitoringApp(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Column(
+                                modifier = Modifier.clickable {
+                                    onRefreshData()
+                                    showServerAvailabilityMenu = false
+                                    showServerResourcesMenu = false
+                                },
+                                verticalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
                                 Row(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     verticalAlignment = Alignment.CenterVertically
@@ -755,14 +771,6 @@ private fun MonitoringApp(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                             maxItemsInEachRow = 2
                         ) {
-                            DashboardActionButton(
-                                label = "⟳ Синхронизировать",
-                                onClick = {
-                                    onRefreshData()
-                                    showServerAvailabilityMenu = false
-                                    showServerResourcesMenu = false
-                                }
-                            )
                             DashboardActionButton(
                                 label = "🛰 Проверить доступность",
                                 onClick = onRefresh
