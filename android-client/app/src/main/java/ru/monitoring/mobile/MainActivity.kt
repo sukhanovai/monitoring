@@ -119,11 +119,15 @@ private data class ExtensionDataTile(
 
 private val extensionRatioRegex = Regex("""(\d+)\s*/\s*(\d+)""")
 
-private fun buildExtensionDataTile(extension: ExtensionItem): ExtensionDataTile {
+private fun buildExtensionDataTile(
+    extension: ExtensionItem,
+    summaryOverride: String? = null,
+    hasProblemOverride: Boolean? = null
+): ExtensionDataTile {
     val description = extension.description.trim()
     val ratioMatch = extensionRatioRegex.find(description)
     val ratioValue = ratioMatch?.value?.replace(" ", "")
-    val hasProblem = when {
+    val defaultHasProblem = when {
         ratioMatch != null -> {
             val done = ratioMatch.groupValues[1].toIntOrNull() ?: 0
             val total = ratioMatch.groupValues[2].toIntOrNull() ?: 0
@@ -134,9 +138,9 @@ private fun buildExtensionDataTile(extension: ExtensionItem): ExtensionDataTile 
     }
     return ExtensionDataTile(
         label = extension.name,
-        value = ratioValue ?: "—",
+        value = summaryOverride?.takeIf { it.isNotBlank() } ?: ratioValue ?: "—",
         details = description.ifBlank { "Результат пока не получен" },
-        hasProblem = hasProblem
+        hasProblem = hasProblemOverride ?: defaultHasProblem
     )
 }
 
@@ -628,7 +632,21 @@ private fun MonitoringApp(
                         }
                         val extensionInfoTiles = state.extensions
                             .filter { it.enabled }
-                            .map(::buildExtensionDataTile)
+                            .map { extension ->
+                                when (extension.id) {
+                                    "backup_monitor" -> buildExtensionDataTile(
+                                        extension = extension,
+                                        summaryOverride = state.backupProxmoxSummary,
+                                        hasProblemOverride = state.backupProxmoxHasProblemItems
+                                    )
+                                    "database_backup_monitor" -> buildExtensionDataTile(
+                                        extension = extension,
+                                        summaryOverride = state.backupDatabasesSummary,
+                                        hasProblemOverride = state.backupDatabasesHasProblemItems
+                                    )
+                                    else -> buildExtensionDataTile(extension)
+                                }
+                            }
                         if (extensionInfoTiles.isNotEmpty()) {
                             Text("Расширения", fontWeight = FontWeight.SemiBold)
                             Column(
