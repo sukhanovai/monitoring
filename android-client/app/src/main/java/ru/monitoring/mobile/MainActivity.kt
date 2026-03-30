@@ -110,6 +110,36 @@ private data class OpsMetricTile(
     val onClick: () -> Unit = {}
 )
 
+private data class ExtensionDataTile(
+    val label: String,
+    val value: String,
+    val details: String,
+    val hasProblem: Boolean
+)
+
+private val extensionRatioRegex = Regex("""(\d+)\s*/\s*(\d+)""")
+
+private fun buildExtensionDataTile(extension: ExtensionItem): ExtensionDataTile {
+    val description = extension.description.trim()
+    val ratioMatch = extensionRatioRegex.find(description)
+    val ratioValue = ratioMatch?.value?.replace(" ", "")
+    val hasProblem = when {
+        ratioMatch != null -> {
+            val done = ratioMatch.groupValues[1].toIntOrNull() ?: 0
+            val total = ratioMatch.groupValues[2].toIntOrNull() ?: 0
+            total <= 0 || done < total
+        }
+        description.isBlank() -> false
+        else -> isProblemBackupLabel(description)
+    }
+    return ExtensionDataTile(
+        label = extension.name,
+        value = ratioValue ?: "—",
+        details = description.ifBlank { "Результат пока не получен" },
+        hasProblem = hasProblem
+    )
+}
+
 @Composable
 private fun OpsMetricChip(label: String, value: String, hasProblem: Boolean = false, onClick: () -> Unit = {}) {
     val valueColor = if (hasProblem) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
@@ -596,7 +626,9 @@ private fun MonitoringApp(
                                 Text(if (areOpsTilesExpanded) "Свернуть сведения" else "Развернуть сведения")
                             }
                         }
-                        val extensionInfoTiles = state.extensions.filter { it.enabled }
+                        val extensionInfoTiles = state.extensions
+                            .filter { it.enabled }
+                            .map(::buildExtensionDataTile)
                         if (extensionInfoTiles.isNotEmpty()) {
                             Text("Расширения", fontWeight = FontWeight.SemiBold)
                             Column(
@@ -609,9 +641,15 @@ private fun MonitoringApp(
                                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
                                             verticalArrangement = Arrangement.spacedBy(4.dp)
                                         ) {
-                                            Text(extension.name, fontWeight = FontWeight.Medium)
+                                            val extensionValueColor = if (extension.hasProblem) {
+                                                MaterialTheme.colorScheme.error
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurface
+                                            }
+                                            Text(extension.value, fontWeight = FontWeight.Bold, color = extensionValueColor)
+                                            Text(extension.label, fontWeight = FontWeight.Medium)
                                             Text(
-                                                text = extension.description.ifBlank { "Результат пока не получен" },
+                                                text = extension.details,
                                                 style = MaterialTheme.typography.bodySmall
                                             )
                                         }
