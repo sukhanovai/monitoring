@@ -51,7 +51,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.39.3"
+    private val projectVersion = "8.39.5"
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
     private val fallbackUpdateUrl = "https://github.com/sukhanovai/monitoring/releases/latest"
@@ -664,7 +664,7 @@ class MainViewModel(
     fun refreshAvailability() {
         viewModelScope.launch {
             state = state.copy(isLoading = true)
-            runCatching { currentApi().getAvailability() }
+            runCatching { fetchAvailabilityWithRetry() }
                 .onSuccess { response ->
                     val servers = if (response.servers.isNotEmpty()) response.servers else mapItemsToServers(response.items)
                     if (servers.isEmpty()) {
@@ -692,6 +692,16 @@ class MainViewModel(
                     }
                     state = state.copy(isLoading = false, message = userMessage, messageSource = "all_servers", isDataSynchronized = false)
                 }
+        }
+    }
+
+    private suspend fun fetchAvailabilityWithRetry(): ru.monitoring.mobile.api.AvailabilityResponse {
+        return try {
+            currentApi().getAvailability()
+        } catch (error: Throwable) {
+            val shouldRetry = error is SocketTimeoutException || error is ConnectException || error is UnknownHostException
+            if (!shouldRetry) throw error
+            currentApi().getAvailability()
         }
     }
 
