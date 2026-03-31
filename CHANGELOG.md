@@ -6,6 +6,20 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.39.5] - 2026-03-31
+
+### Changed / Изменено
+- EN: Completed follow-up repository-wide patch bump to `8.39.5` after review feedback; synchronized Android runtime/doc references and updated Android metadata to `ANDROID_VERSION_NAME=8.39.5` and `ANDROID_VERSION_CODE=224`.
+- RU: По результатам ревью выполнен дополнительный patch-бамп по репозиторию до `8.39.5`; синхронизированы ссылки на версию в Android/runtime/docs и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.39.5` и `ANDROID_VERSION_CODE=224`.
+
+## [8.39.4] - 2026-03-31
+
+### Changed / Изменено
+- EN: Added one automatic retry for `getAvailability()` when synchronization fails due to transient network failures (`timeout`, `connect`, `DNS`) to reduce false `not synchronized` states in Compact Ops.
+- RU: Для `getAvailability()` добавлена одна автоматическая повторная попытка при временных сетевых сбоях (`timeout`, `connect`, `DNS`), чтобы снизить число ложных состояний `не синхронизировано` в Compact Ops.
+- EN: Completed repository-wide patch bump to `8.39.4`; Android metadata updated to `ANDROID_VERSION_NAME=8.39.4` and `ANDROID_VERSION_CODE=223`, and prerelease links were updated.
+- RU: Выполнен patch-бамп по репозиторию до `8.39.4`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.39.4` и `ANDROID_VERSION_CODE=223`, prerelease-ссылки обновлены.
+
 ## [8.39.3] - 2026-03-30
 
 ### Changed / Изменено
