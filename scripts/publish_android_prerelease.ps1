@@ -687,7 +687,34 @@ function Publish-WithApi {
             draft            = $false
             prerelease       = $true
         }
-        $release = Invoke-GitHubApi -Method PATCH -Url "https://api.github.com/repos/$owner/$name/releases/$($release.id)" -Body $editBody
+        try {
+            $release = Invoke-GitHubApi -Method PATCH -Url "https://api.github.com/repos/$owner/$name/releases/$($release.id)" -Body $editBody
+        }
+        catch {
+            if ($_.Exception.Message -notmatch "HTTP status: (400|422)") {
+                throw
+            }
+
+            Write-Host "[6/7] API update returned 400/422. Retrying without target_commitish..."
+            $editBody.Remove("target_commitish")
+
+            try {
+                $release = Invoke-GitHubApi -Method PATCH -Url "https://api.github.com/repos/$owner/$name/releases/$($release.id)" -Body $editBody
+            }
+            catch {
+                if ($_.Exception.Message -notmatch "HTTP status: (400|422)") {
+                    throw
+                }
+
+                Write-Host "[6/7] API update returned 400/422. Retrying with minimal payload (without body)..."
+                $minimalEditBody = @{
+                    name       = $ReleaseTitle
+                    draft      = $false
+                    prerelease = $true
+                }
+                $release = Invoke-GitHubApi -Method PATCH -Url "https://api.github.com/repos/$owner/$name/releases/$($release.id)" -Body $minimalEditBody
+            }
+        }
     }
 
     $assets = Invoke-GitHubApi -Method GET -Url "https://api.github.com/repos/$owner/$name/releases/$($release.id)/assets"
