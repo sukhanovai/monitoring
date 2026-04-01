@@ -6,6 +6,18 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.39.7] - 2026-04-01
+
+### Fixed / Исправлено
+- EN: Fixed Compact Ops `Расширения` alert state: extension summary now evaluates mail backup health by the latest mail backup entry only, so historical older failures no longer paint the tile red when current backup is healthy.
+- RU: Исправлено аварийное состояние `Расширения` в Compact Ops: здоровье почтовых бэкапов теперь считается только по последней записи, поэтому старые ошибки из истории больше не красят плашку в красный при актуально успешном бэкапе.
+- EN: Fixed Compact Ops `ZFS` tile fallback value: when ZFS extension is enabled/disabled and ratio summary is unavailable, the tile now shows `вкл`/`выкл` instead of a dash.
+- RU: Исправлен fallback для плашки `ZFS` в Compact Ops: когда у расширения нет ratio-сводки, теперь отображается `вкл`/`выкл` вместо прочерка.
+
+### Changed / Изменено
+- EN: Completed repository patch bump to `8.39.7`; updated Android metadata to `ANDROID_VERSION_NAME=8.39.7` and `ANDROID_VERSION_CODE=226`, synchronized Android runtime version string and prerelease README link.
+- RU: Выполнен patch-бамп репозитория до `8.39.7`; обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.39.7` и `ANDROID_VERSION_CODE=226`, синхронизированы runtime-версия Android и prerelease-ссылка в README.
+
 ## [8.39.6] - 2026-03-31
 
 ### Fixed / Исправлено

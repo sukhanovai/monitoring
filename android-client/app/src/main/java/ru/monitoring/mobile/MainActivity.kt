@@ -489,12 +489,16 @@ private fun MonitoringApp(
     val activeServersCount = upServersCount.coerceAtMost(totalServersCount)
     val downServersCount = state.servers.count { it.status.equals("DOWN", ignoreCase = true) }
     val unknownServersCount = state.servers.count { it.status.equals("UNKNOWN", ignoreCase = true) }
+    val latestMailBackup = state.mailBackupHistoryItems.firstOrNull()
+    val hasMailProblemByLatest = latestMailBackup?.statusIcon?.let { icon ->
+        icon.contains("❌") || icon.contains("⚠️") || icon.contains("🚨")
+    } ?: state.backupMailHasProblemItems
     val extensionProblemsCount = listOf(
         state.backupProxmoxHasProblemItems,
         state.backupDatabasesHasProblemItems,
         state.backupStockLoadsHasProblemItems,
         state.supplierStockHasProblemItems,
-        state.mailBackupHistoryItems.any { item -> item.statusIcon.contains("❌") || item.statusIcon.contains("⚠️") || item.statusIcon.contains("🚨") }
+        hasMailProblemByLatest
     ).count { it }
     val hasServerProblems = downServersCount > 0 || unknownServersCount > 0 || activeServersCount < totalServersCount
     val hasExtensionProblems = extensionProblemsCount > 0
@@ -564,7 +568,6 @@ private fun MonitoringApp(
             )
         }
         extensionsById["mail_backup_monitor"]?.let { extension ->
-            val latestMailBackup = state.mailBackupHistoryItems.firstOrNull()
             val latestIsOk = latestMailBackup?.statusIcon?.let { icon ->
                 icon.contains("✅") || icon.contains("✔")
             }
@@ -598,7 +601,8 @@ private fun MonitoringApp(
         extensionsById["zfs_monitor"]?.let { extension ->
             add(
                 buildExtensionDataTile(
-                    extension = extension.copy(name = "ZFS")
+                    extension = extension.copy(name = "ZFS"),
+                    summaryOverride = if (extension.enabled) "вкл" else "выкл"
                 )
             )
         }
