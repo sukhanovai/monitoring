@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.39.6] - 2026-03-31
+
+### Fixed / Исправлено
+- EN: Improved GitHub API fallback in `publish_android_prerelease.ps1` for existing prereleases: when `PATCH /releases/{id}` returns `400/422`, the script now retries without `target_commitish`, then with a minimal payload, so release updates are more resilient to GitHub validation differences.
+- RU: Улучшен GitHub API fallback в `publish_android_prerelease.ps1` для уже существующих prerelease: если `PATCH /releases/{id}` возвращает `400/422`, скрипт теперь повторяет запрос без `target_commitish`, а затем с минимальным payload, чтобы обновление релиза было устойчивее к различиям в валидации GitHub.
+
+### Changed / Изменено
+- EN: Completed repository-wide patch bump to `8.39.6`; synchronized runtime/config/docs/mobile references, updated Android metadata to `ANDROID_VERSION_NAME=8.39.6` and `ANDROID_VERSION_CODE=225`, and refreshed prerelease links.
+- RU: Выполнен patch-бамп по репозиторию до `8.39.6`; синхронизированы ссылки на версию в runtime/config/docs/mobile, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.39.6` и `ANDROID_VERSION_CODE=225`, а также обновлены prerelease-ссылки.
+
 ## [8.39.5] - 2026-03-31
 
 ### Changed / Изменено
