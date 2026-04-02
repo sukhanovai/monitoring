@@ -6,17 +6,19 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.40.0] - 2026-04-02
+## [8.40.1] - 2026-04-02
 
 ### Fixed / Исправлено
-- EN: Updated Compact Ops `почта` tile in Ops Center to display only the latest mail-backup size (for example `236G`) from parsed mail backup history, matching the morning-report style focus on backup volume.
-- RU: Обновлена плашка `почта` в Ops Center режима Compact Ops: теперь отображается только объём последнего почтового бэкапа (например `236G`) из распарсенной истории, как в утреннем отчёте.
+- EN: Updated Compact Ops `почта` tile in the operations center: it now prioritizes mail backup volume from parsed backup history and falls back to morning-report text parsing, so backup size is shown instead of `нет данных` when data exists.
+- RU: Обновлена плашка `почта` в оперативном центре Compact Ops: теперь приоритетно берётся объём почтового бэкапа из распарсенной истории, а при её отсутствии используется парсинг утреннего отчёта, поэтому вместо `нет данных` показывается фактический объём, если он есть.
 
 ### Changed / Изменено
-- EN: Renamed Android project/app naming to `Sysmoraq` (`app_name` across flavors, app top title, and Android Gradle root project name).
-- RU: Переименован нейминг Android-проекта/приложения в `Sysmoraq` (`app_name` во flavor-ах, заголовок приложения и имя root-проекта Gradle).
-- EN: Completed repository-wide SemVer minor bump to `8.40.0`; synchronized runtime/config/docs/mobile references, updated Android metadata to `ANDROID_VERSION_NAME=8.40.0` and `ANDROID_VERSION_CODE=234`, and refreshed prerelease links.
-- RU: Выполнен репозиторный SemVer minor-бамп до `8.40.0`; синхронизированы ссылки на версию в runtime/config/docs/mobile, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.40.0` и `ANDROID_VERSION_CODE=234`, а также обновлены prerelease-ссылки.
+- EN: Unified Android app naming for Compact Ops by renaming `Sysmoraq Compact Ops` to `Sysmoraq`, and changed the in-app top title from `Sysmoraq Ops Center` to `Sysmoraq`.
+- RU: Унифицировано имя Android-приложения для Compact Ops: `Sysmoraq Compact Ops` переименовано в `Sysmoraq`, а верхний заголовок в приложении изменён с `Sysmoraq Ops Center` на `Sysmoraq`.
+- EN: Removed the `Quick actions` section from the Android main screen.
+- RU: Удалён раздел `Быстрые действия` с главного экрана Android-приложения.
+- EN: Completed repository-wide SemVer patch bump to `8.40.1`; synchronized runtime/config/docs/mobile references, updated Android metadata to `ANDROID_VERSION_NAME=8.40.1` and `ANDROID_VERSION_CODE=235`, and refreshed prerelease links.
+- RU: Выполнен репозиторный SemVer patch-бамп до `8.40.1`; синхронизированы ссылки на версию в runtime/config/docs/mobile, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.40.1` и `ANDROID_VERSION_CODE=235`, а также обновлены prerelease-ссылки.
 
 ## [8.39.13] - 2026-04-02
 
