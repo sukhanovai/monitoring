@@ -6,6 +6,20 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.39.14] - 2026-04-02
+
+### Fixed / Исправлено
+- EN: Fixed Compact Ops `почта` tile in the operations center: it now displays the size of the latest mail backup from the backup history report line (e.g. `236G`) instead of the aggregate ratio like `4/5`.
+- RU: Исправлена плашка `почта` в оперативном центре Compact Ops: теперь она показывает объём последнего бэкапа почты из строки истории (например `236G`) вместо агрегированного соотношения вроде `4/5`.
+- EN: Added support for Telegram report format `✅ Почта: <size> <path> (<relative time>)` in mail backup history parsing, so the latest backup entry is correctly recognized.
+- RU: Добавлена поддержка формата Telegram-отчёта `✅ Почта: <size> <path> (<относительное время>)` при парсинге истории бэкапов почты, чтобы корректно определялась последняя запись.
+- EN: If the latest mail backup entry is missing, Compact Ops now shows a red exclamation mark for the `почта` tile.
+- RU: Если запись о последнем бэкапе почты отсутствует, в Compact Ops для плашки `почта` теперь показывается красный восклицательный знак.
+
+### Changed / Изменено
+- EN: Completed repository-wide patch bump to `8.39.14`; synchronized version references across runtime/config/docs/mobile, updated Android metadata to `ANDROID_VERSION_NAME=8.39.14` and `ANDROID_VERSION_CODE=233`, and refreshed prerelease links.
+- RU: Выполнен полный patch-бамп версии по репозиторию до `8.39.14`; синхронизированы ссылки на версию в runtime/config/docs/mobile, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.39.14` и `ANDROID_VERSION_CODE=233`, а также обновлены prerelease-ссылки.
+
 ## [8.39.13] - 2026-04-02
 
 ### Fixed / Исправлено

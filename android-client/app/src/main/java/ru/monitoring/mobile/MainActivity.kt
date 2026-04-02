@@ -572,16 +572,15 @@ private fun MonitoringApp(
                 icon.contains("✅") || icon.contains("✔")
             }
             val latestSize = latestMailBackup?.size?.takeIf { it.isNotBlank() }
-            val ratioSummary = state.backupMailSummary.takeIf { it.isNotBlank() }
             val hasProblem = when (latestIsOk) {
                 true -> false
                 false -> true
-                null -> state.backupMailHasProblemItems
+                null -> true
             }
-            val summary = ratioSummary ?: when (latestIsOk) {
+            val summary = when (latestIsOk) {
                 true -> latestSize ?: "ОК"
                 false -> latestSize ?: "!"
-                null -> latestSize ?: if (state.backupMailHasProblemItems) "!" else "ОК"
+                null -> latestSize ?: "!"
             }
             add(
                 buildExtensionDataTile(
