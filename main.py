@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
 /main.py
-Server Monitoring System v8.0.1
+Server Monitoring System v8.0.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Main launch module
 Система мониторинга серверов
-Версия: 8.0.1
+Версия: 8.0.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль запуска
@@ -139,7 +139,14 @@ def main(args: argparse.Namespace):
     # 1. Загрузка конфигурации
     # ------------------------------------------------------------------
     try:
-        from config.db_settings import TELEGRAM_TOKEN, DEBUG_MODE, CHAT_IDS, SILENT_START, SILENT_END
+        from config.db_settings import (
+            TELEGRAM_TOKEN,
+            DEBUG_MODE,
+            CHAT_IDS,
+            SILENT_START,
+            SILENT_END,
+            TELEGRAM_PROXY_URL,
+        )
     except ImportError as e:
         print(f"❌ Не удалось загрузить db_settings: {e}")
         sys.exit(1)
@@ -178,7 +185,15 @@ def main(args: argparse.Namespace):
         Updater,
     )
 
-    updater = Updater(token=bot_token, use_context=True)
+    updater_kwargs = {
+        "token": bot_token,
+        "use_context": True,
+    }
+    if TELEGRAM_PROXY_URL:
+        updater_kwargs["request_kwargs"] = {"proxy_url": TELEGRAM_PROXY_URL}
+        logger.info("🌐 Для Telegram включён прокси из TELEGRAM_PROXY_URL")
+
+    updater = Updater(**updater_kwargs)
     dispatcher = updater.dispatcher
     try:
         from lib.alerts import init_telegram_bot
