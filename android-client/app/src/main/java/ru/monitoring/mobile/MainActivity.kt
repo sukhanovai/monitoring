@@ -34,6 +34,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
@@ -156,16 +157,23 @@ private fun buildToggleDataTile(label: String, enabled: Boolean): ExtensionDataT
 
 private fun extractMailBackupVolumeFromMorningReport(report: String): String? {
     if (report.isBlank()) return null
-    val lines = report.lines().map { it.trim() }.filter { it.isNotBlank() }
-    val line = lines.firstOrNull { current ->
-        current.contains("почт", ignoreCase = true) ||
-            current.contains("mail", ignoreCase = true)
-    } ?: return null
-
-    val normalized = line
+    val normalizedReport = report
         .replace("\\_", "_")
         .replace("\\-", "-")
         .replace("*", "")
+    val lines = normalizedReport.lines().map { it.trim() }.filter { it.isNotBlank() }
+
+    val mailLineIndex = lines.indexOfFirst { current ->
+        current.contains("почт", ignoreCase = true) || current.contains("mail", ignoreCase = true)
+    }
+    val nearMailSection = if (mailLineIndex >= 0) {
+        lines.subList(
+            fromIndex = mailLineIndex,
+            toIndex = (mailLineIndex + 4).coerceAtMost(lines.size)
+        ).joinToString("\n")
+    } else {
+        ""
+    }
 
     val regexes = listOf(
         Regex("""([0-9]+(?:[.,][0-9]+)?\s*(?:B|KB|MB|GB|TB|KiB|MiB|GiB|TiB|байт(?:а|ов)?))""", RegexOption.IGNORE_CASE),
@@ -173,9 +181,12 @@ private fun extractMailBackupVolumeFromMorningReport(report: String): String? {
         Regex("""size\s*[:=-]?\s*([0-9]+(?:[.,][0-9]+)?\s*\S+)""", RegexOption.IGNORE_CASE)
     )
 
-    return regexes.firstNotNullOfOrNull { regex ->
-        regex.find(normalized)?.groupValues?.getOrNull(1)?.trim()?.trimEnd('.', ',', ';')
+    val extractFrom: (String) -> String? = { text ->
+        regexes.firstNotNullOfOrNull { regex ->
+            regex.find(text)?.groupValues?.getOrNull(1)?.trim()?.trimEnd('.', ',', ';')
+        }
     }
+    return extractFrom(nearMailSection) ?: extractFrom(normalizedReport)
 }
 
 @Composable
@@ -756,6 +767,20 @@ private fun MonitoringApp(
                                     style = MaterialTheme.typography.labelSmall,
                                     color = synchronizationColor
                                 )
+                                if (state.isLoading) {
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    LinearProgressIndicator(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(4.dp)
+                                            .clip(RoundedCornerShape(10.dp))
+                                    )
+                                    Text(
+                                        "идёт синхронизация…",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                             IconButton(onClick = { showTileSettingsDialog = true }) {
                                 Icon(
