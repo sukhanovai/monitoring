@@ -51,7 +51,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.40.3"
+    private val projectVersion = "8.40.4"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -59,6 +59,11 @@ class MainViewModel(
     private val mailBackupHistoryRegexes = listOf(
         Regex(pattern = """^([✅✔❌⚠️🚨])\s*(.+?)\s*[—-]\s*(.+?)\s*\(([^()]+)\)\s*$"""),
         Regex(pattern = """^([✅✔❌⚠️🚨])\s*(?:Почта:\s*)?(.+?)\s+(/.+?)\s*\(([^()]+)\)\s*$""")
+    )
+    private val mailBackupVolumeRegexes = listOf(
+        Regex("""([0-9]+(?:[.,][0-9]+)?\s*(?:B|KB|MB|GB|TB|KiB|MiB|GiB|TiB|байт(?:а|ов)?))""", RegexOption.IGNORE_CASE),
+        Regex("""об(?:ъ|ь)ем\s*[:=-]?\s*([0-9]+(?:[.,][0-9]+)?\s*\S+)""", RegexOption.IGNORE_CASE),
+        Regex("""size\s*[:=-]?\s*([0-9]+(?:[.,][0-9]+)?\s*\S+)""", RegexOption.IGNORE_CASE)
     )
     private val extensionMainMenuActions = setOf(
         "backup_hosts",
@@ -597,7 +602,13 @@ class MainViewModel(
             val dbBackupSummary = buildBackupTileSummary(result[10] as? ControlActionResult)
             val stockLoadSummary = buildBackupTileSummary(result[11] as? ControlActionResult)
             val supplierStockSummary = buildBackupTileSummary(result[12] as? ControlActionResult)
-            val mailBackupSummary = buildBackupTileSummary(result[13] as? ControlActionResult)
+            val mailBackupResponse = result[13] as? ControlActionResult
+            val mailBackupSummary = buildBackupTileSummary(mailBackupResponse)
+            val mailBackupVolume = parseMailBackupHistory(mailBackupResponse?.message.orEmpty())
+                ?.items
+                ?.firstOrNull()
+                ?.size
+                ?: extractMailBackupVolume(mailBackupResponse?.message.orEmpty())
             val zfsSummary = buildBackupTileSummary(result[14] as? ControlActionResult)
 
             val monitoringData = monitoring?.settings
@@ -657,6 +668,7 @@ class MainViewModel(
                 backupStockLoadsSummary = stockLoadSummary?.ratioText ?: state.backupStockLoadsSummary,
                 supplierStockSummary = supplierStockSummary?.ratioText ?: state.supplierStockSummary,
                 backupMailSummary = mailBackupSummary?.ratioText ?: state.backupMailSummary,
+                mailBackupLastVolume = mailBackupVolume ?: state.mailBackupLastVolume,
                 zfsSummary = zfsSummary?.ratioText ?: state.zfsSummary,
                 backupProxmoxHasProblemItems = proxmoxBackupSummary?.hasProblem ?: state.backupProxmoxHasProblemItems,
                 backupDatabasesHasProblemItems = dbBackupSummary?.hasProblem ?: state.backupDatabasesHasProblemItems,
@@ -1280,7 +1292,10 @@ class MainViewModel(
                                 backupProxmoxHasProblemItems = if (action == "backup_proxmox") hasProblemBackups else state.backupProxmoxHasProblemItems,
                                 backupDatabasesHasProblemItems = if (action == "backup_databases") hasProblemBackups else state.backupDatabasesHasProblemItems,
                                 mailBackupHistoryTitle = mailHistory?.title.orEmpty(),
-                                mailBackupHistoryItems = mailHistory?.items.orEmpty()
+                                mailBackupHistoryItems = mailHistory?.items.orEmpty(),
+                                mailBackupLastVolume = mailHistory?.items?.firstOrNull()?.size
+                                    ?: extractMailBackupVolume(response.message.orEmpty())
+                                    ?: state.mailBackupLastVolume
                             )
                         }
                         .onFailure { error ->
@@ -1407,6 +1422,19 @@ class MainViewModel(
         }
 
         return if (items.isNotEmpty()) MailBackupHistory(title = title, items = items) else null
+    }
+
+    private fun extractMailBackupVolume(message: String): String? {
+        if (message.isBlank()) return null
+        val normalized = message
+            .replace("*", "")
+            .replace("\\_", "_")
+            .replace("\\-", "-")
+            .replace("\\(", "(")
+            .replace("\\)", ")")
+        return mailBackupVolumeRegexes.firstNotNullOfOrNull { regex ->
+            regex.find(normalized)?.groupValues?.getOrNull(1)?.trim()?.trimEnd('.', ',', ';')
+        }
     }
 
     private suspend fun runMorningReportControlAction() =
@@ -1920,6 +1948,7 @@ data class MainUiState(
     val backupStockLoadsSummary: String = "",
     val supplierStockSummary: String = "",
     val backupMailSummary: String = "",
+    val mailBackupLastVolume: String = "",
     val zfsSummary: String = "",
     val backupProxmoxHasProblemItems: Boolean = false,
     val backupDatabasesHasProblemItems: Boolean = false,
