@@ -51,13 +51,14 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.39.13"
+    private val projectVersion = "8.39.14"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
     private val fallbackUpdateUrl = "https://github.com/sukhanovai/monitoring/releases/latest"
-    private val mailBackupHistoryRegex = Regex(
-        pattern = """^([✅✔❌⚠️🚨])\s*(.+?)\s*[—-]\s*(.+?)\s*\(([^()]+)\)\s*$"""
+    private val mailBackupHistoryRegexes = listOf(
+        Regex(pattern = """^([✅✔❌⚠️🚨])\s*(.+?)\s*[—-]\s*(.+?)\s*\(([^()]+)\)\s*$"""),
+        Regex(pattern = """^([✅✔❌⚠️🚨])\s*(?:Почта:\s*)?(.+?)\s+(/.+?)\s*\(([^()]+)\)\s*$""")
     )
     private val extensionMainMenuActions = setOf(
         "backup_hosts",
@@ -1394,7 +1395,9 @@ class MainViewModel(
             it.contains("бэкап", ignoreCase = true) && it.contains("почт", ignoreCase = true)
         } ?: normalizedLines.first()
         val items = normalizedLines.drop(1).mapNotNull { line ->
-            val match = mailBackupHistoryRegex.matchEntire(line) ?: return@mapNotNull null
+            val match = mailBackupHistoryRegexes.firstNotNullOfOrNull { regex ->
+                regex.matchEntire(line)
+            } ?: return@mapNotNull null
             MailBackupHistoryItem(
                 statusIcon = match.groupValues[1].trim(),
                 size = match.groupValues[2].trim(),
