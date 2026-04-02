@@ -51,7 +51,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.40.7"
+    private val projectVersion = "8.40.8"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -120,6 +120,10 @@ class MainViewModel(
         MenuOption(label = "✖️ Закрыть", action = localExtensionsSettingsCloseAction)
     )
     private val morningReportActions = listOf("send_morning_report", "morning_report")
+    private val syncProgressPartsTotal = 2
+    private var syncProgressSessionId = 0
+    private var syncProgressCompletedParts = 0
+
 
     private fun currentApi() = ApiFactory.createApi(
         tokenProvider = { normalizeToken(state.token.ifBlank { preferences.apiToken }) },
@@ -536,8 +540,28 @@ class MainViewModel(
     // Совместимость со старыми ссылками после частичных merge/cherry-pick.
     private fun hasUnsavedConnectionSettings(): Boolean = false
 
-    fun refreshSettingsFromServer(showErrors: Boolean = false) {
-        if (state.token.isBlank()) return
+    private fun startSyncProgressSession(): Int {
+        syncProgressSessionId += 1
+        syncProgressCompletedParts = 0
+        state = state.copy(isSyncInProgress = true, syncProgress = 0f)
+        return syncProgressSessionId
+    }
+
+    private fun completeSyncProgressPart(sessionId: Int?) {
+        if (sessionId == null || sessionId != syncProgressSessionId) return
+        syncProgressCompletedParts = (syncProgressCompletedParts + 1).coerceAtMost(syncProgressPartsTotal)
+        val progress = syncProgressCompletedParts.toFloat() / syncProgressPartsTotal.toFloat()
+        state = state.copy(
+            syncProgress = progress,
+            isSyncInProgress = syncProgressCompletedParts < syncProgressPartsTotal
+        )
+    }
+
+    fun refreshSettingsFromServer(showErrors: Boolean = false, syncSessionId: Int? = null) {
+        if (state.token.isBlank()) {
+            completeSyncProgressPart(syncSessionId)
+            return
+        }
 
         viewModelScope.launch {
             state = state.copy(isLoading = true)
@@ -628,6 +652,7 @@ class MainViewModel(
                 } else {
                     state.copy(isLoading = false)
                 }
+                completeSyncProgressPart(syncSessionId)
                 return@launch
             }
 
@@ -689,13 +714,15 @@ class MainViewModel(
                 }
             )
             rescheduleBackgroundWorkers()
+            completeSyncProgressPart(syncSessionId)
         }
     }
 
 
     fun refreshData() {
-        refreshSettingsFromServer(showErrors = true)
-        refreshAvailability()
+        val syncSessionId = startSyncProgressSession()
+        refreshSettingsFromServer(showErrors = true, syncSessionId = syncSessionId)
+        refreshAvailability(syncSessionId = syncSessionId)
     }
 
     fun applyServerDownNotification(downServers: List<String>) {
@@ -710,7 +737,7 @@ class MainViewModel(
         )
     }
 
-    fun refreshAvailability() {
+    fun refreshAvailability(syncSessionId: Int? = null) {
         viewModelScope.launch {
             state = state.copy(isLoading = true)
             runCatching { fetchAvailabilityWithRetry() }
@@ -722,6 +749,7 @@ class MainViewModel(
                             message = "API ответил, но список серверов пуст",
                             messageSource = "all_servers"
                         )
+                        completeSyncProgressPart(syncSessionId)
                         return@onSuccess
                     }
                     state = state.copy(
@@ -733,6 +761,7 @@ class MainViewModel(
                         isDataSynchronized = true,
                         lastSyncTime = LocalDateTime.now().format(syncTimeFormatter)
                     )
+                    completeSyncProgressPart(syncSessionId)
                 }
                 .onFailure { error ->
                     val userMessage = when ((error as? HttpException)?.code()) {
@@ -741,6 +770,7 @@ class MainViewModel(
                         else -> formatNetworkError(error)
                     }
                     state = state.copy(isLoading = false, message = userMessage, messageSource = "all_servers", isDataSynchronized = false)
+                    completeSyncProgressPart(syncSessionId)
                 }
         }
     }
@@ -1936,6 +1966,8 @@ data class MainUiState(
     val isSshPasswordVisible: Boolean = false,
     val isWindowsPasswordVisible: Boolean = false,
     val isLoading: Boolean = false,
+    val isSyncInProgress: Boolean = false,
+    val syncProgress: Float = 0f,
     val summaryText: String = "Статус не запрошен",
     val isDataSynchronized: Boolean = false,
     val lastSyncTime: String = "",

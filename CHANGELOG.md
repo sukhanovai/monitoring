@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.40.8] - 2026-04-02
+
+### Fixed / Исправлено
+- EN: Fixed Android sync indicator behavior in Compact Ops: sync progress now tracks both settings and availability stages, remains visible until both complete, and shows deterministic percentage instead of disappearing early.
+- RU: Исправлено поведение индикатора синхронизации Android в Compact Ops: прогресс теперь учитывает этапы загрузки настроек и доступности, остаётся видимым до завершения обоих этапов и показывает детерминированный процент вместо преждевременного скрытия.
+
+### Changed / Изменено
+- EN: Completed repository-wide SemVer patch bump to `8.40.8`; synchronized runtime/config/docs/mobile references and updated Android metadata to `ANDROID_VERSION_NAME=8.40.8` and `ANDROID_VERSION_CODE=242`.
+- RU: Выполнен репозиторный SemVer patch-бамп до `8.40.8`; синхронизированы ссылки на версию в runtime/config/docs/mobile и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.40.8` и `ANDROID_VERSION_CODE=242`.
+
 ## [8.40.7] - 2026-04-02
 
 ### Fixed / Исправлено
