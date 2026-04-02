@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.0.1
+Server Monitoring System v8.0.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.0.1
+Версия: 8.0.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -527,7 +527,7 @@ HTML_TEMPLATE = """
         <button class="refresh-btn" onclick="location.reload()">🔄 Обновить данные</button>
         
         <div class="last-update">
-            Система мониторинга серверов • Версия 2.0 • Темная тема
+            Система мониторинга серверов • Версия 8.0.2
         </div>
     </div>
 

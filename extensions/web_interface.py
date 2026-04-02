@@ -1,5 +1,5 @@
 """
-Server Monitoring System v2.4.8
+Server Monitoring System v8.0.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Веб-интерфейс
@@ -522,7 +522,7 @@ HTML_TEMPLATE = """
         <button class="refresh-btn" onclick="location.reload()">🔄 Обновить данные</button>
         
         <div class="last-update">
-            Система мониторинга серверов • Версия 2.0 • Темная тема
+            Система мониторинга серверов • Версия 8.0.2
         </div>
     </div>
 
