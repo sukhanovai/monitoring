@@ -6,19 +6,15 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.40.5] - 2026-04-02
+## [8.40.6] - 2026-04-02
 
 ### Fixed / Исправлено
-- EN: Fixed Android `compactOps` debug build failure in `MainActivity.kt`: replaced unavailable `PullToRefreshBox` with Material3 `pullToRefresh` modifier + `PullToRefreshContainer`, restoring successful Kotlin compilation.
-- RU: Исправлено падение Android-сборки `compactOps` debug в `MainActivity.kt`: недоступный `PullToRefreshBox` заменён на Material3 `pullToRefresh` + `PullToRefreshContainer`, сборка Kotlin снова проходит.
-- EN: Fixed Compact Ops mail tile data source in the Android Ops Center: latest mail backup volume is now parsed directly from `backup_mail` control response/history and shown in the `почта` tile instead of false `нет данных`.
-- RU: Исправлен источник данных для плашки `почта` в Android оперативном центре: объём последнего почтового бэкапа теперь парсится напрямую из ответа/истории `backup_mail` и отображается вместо ложного `нет данных`.
+- EN: Fixed Android `compactOps` debug build failure in `MainActivity.kt`: replaced unresolved Material3 `pullToRefresh` API usage with compatible Compose Material pull-refresh APIs (`rememberPullRefreshState` / `Modifier.pullRefresh` / `PullRefreshIndicator`).
+- RU: Исправлено падение Android-сборки `compactOps` debug в `MainActivity.kt`: неподдерживаемое использование Material3 `pullToRefresh` заменено на совместимый Compose Material pull-refresh API (`rememberPullRefreshState` / `Modifier.pullRefresh` / `PullRefreshIndicator`).
 
 ### Changed / Изменено
-- EN: Added pull-to-refresh gesture for the Android app main screen (`pull down to sync`), wired to full data refresh (settings + availability), similar to browser page refresh.
-- RU: Для главного экрана Android-приложения добавлен жест pull-to-refresh (`потянуть вниз для синхронизации`), который запускает полное обновление данных (настройки + доступность) по аналогии с обновлением страницы в браузере.
-- EN: Completed repository-wide SemVer patch bump to `8.40.5`; synchronized runtime/config/docs/mobile references, updated Android metadata to `ANDROID_VERSION_NAME=8.40.5` and `ANDROID_VERSION_CODE=239`, and refreshed prerelease links.
-- RU: Выполнен репозиторный SemVer patch-бамп до `8.40.5`; синхронизированы ссылки на версию в runtime/config/docs/mobile, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.40.5` и `ANDROID_VERSION_CODE=239`, а также обновлены prerelease-ссылки.
+- EN: Added explicit `androidx.compose.material:material` dependency for pull-refresh components and completed repository-wide SemVer patch bump to `8.40.6`; synchronized runtime/config/docs/mobile references and updated Android metadata to `ANDROID_VERSION_NAME=8.40.6` and `ANDROID_VERSION_CODE=240`.
+- RU: Добавлена явная зависимость `androidx.compose.material:material` для pull-refresh компонентов и выполнен репозиторный SemVer patch-бамп до `8.40.6`; синхронизированы ссылки на версию в runtime/config/docs/mobile и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.40.6` и `ANDROID_VERSION_CODE=240`.
 
 ## [8.40.2] - 2026-04-02
 
