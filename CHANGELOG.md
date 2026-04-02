@@ -6,15 +6,15 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.40.6] - 2026-04-02
+## [8.40.7] - 2026-04-02
 
 ### Fixed / Исправлено
-- EN: Fixed Android `compactOps` debug build failure in `MainActivity.kt`: replaced unresolved Material3 `pullToRefresh` API usage with compatible Compose Material pull-refresh APIs (`rememberPullRefreshState` / `Modifier.pullRefresh` / `PullRefreshIndicator`).
-- RU: Исправлено падение Android-сборки `compactOps` debug в `MainActivity.kt`: неподдерживаемое использование Material3 `pullToRefresh` заменено на совместимый Compose Material pull-refresh API (`rememberPullRefreshState` / `Modifier.pullRefresh` / `PullRefreshIndicator`).
+- EN: Fixed Android `compactOps` debug Kotlin compilation failure in `MainActivity.kt`: added explicit opt-in for Compose Material experimental API (`@OptIn(ExperimentalMaterialApi::class)`) required by pull-refresh components.
+- RU: Исправлена ошибка компиляции Kotlin для Android `compactOps` debug в `MainActivity.kt`: добавлен явный opt-in для экспериментального API Compose Material (`@OptIn(ExperimentalMaterialApi::class)`), необходимого pull-refresh компонентам.
 
 ### Changed / Изменено
-- EN: Added explicit `androidx.compose.material:material` dependency for pull-refresh components and completed repository-wide SemVer patch bump to `8.40.6`; synchronized runtime/config/docs/mobile references and updated Android metadata to `ANDROID_VERSION_NAME=8.40.6` and `ANDROID_VERSION_CODE=240`.
-- RU: Добавлена явная зависимость `androidx.compose.material:material` для pull-refresh компонентов и выполнен репозиторный SemVer patch-бамп до `8.40.6`; синхронизированы ссылки на версию в runtime/config/docs/mobile и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.40.6` и `ANDROID_VERSION_CODE=240`.
+- EN: Completed repository-wide SemVer patch bump to `8.40.7`; synchronized runtime/config/docs/mobile references and updated Android metadata to `ANDROID_VERSION_NAME=8.40.7` and `ANDROID_VERSION_CODE=241`.
+- RU: Выполнен репозиторный SemVer patch-бамп до `8.40.7`; синхронизированы ссылки на версию в runtime/config/docs/mobile и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.40.7` и `ANDROID_VERSION_CODE=241`.
 
 ## [8.40.2] - 2026-04-02
 
