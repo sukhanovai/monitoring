@@ -662,23 +662,22 @@ private fun MonitoringApp(
     val hiddenTiles = allOpsTiles.filterNot { it.id in effectivePinnedTileIds }
     val visibleTiles = if (areOpsTilesExpanded) pinnedTiles + hiddenTiles else pinnedTiles
     val isSynchronized = state.isDataSynchronized
-    val synchronizationText = if (isSynchronized) "синхронизировано" else "не синхронизировано"
+    val synchronizationTimeSuffix = state.lastSyncTime
+        .takeIf { it.isNotBlank() }
+        ?.let { " • $it" }
+        .orEmpty()
+    val synchronizationText = if (isSynchronized) {
+        "синхронизировано$synchronizationTimeSuffix"
+    } else {
+        "не синхронизировано"
+    }
     val synchronizationColor = if (isSynchronized) Color(0xFF2E7D32) else Color(0xFFC62828)
 
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(appTitle, fontWeight = FontWeight.SemiBold)
-                        if (isCompactOpsHub) {
-                            Text(
-                                "Новый визуальный режим",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
+                    Text(appTitle, fontWeight = FontWeight.SemiBold)
                 }
             )
         }

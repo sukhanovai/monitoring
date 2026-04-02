@@ -51,7 +51,8 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.39.11"
+    private val projectVersion = "8.39.13"
+    private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
     private val fallbackUpdateUrl = "https://github.com/sukhanovai/monitoring/releases/latest"
@@ -716,7 +717,8 @@ class MainViewModel(
                         summaryText = buildSummaryText(servers),
                         message = "Данные обновлены",
                         messageSource = "all_servers",
-                        isDataSynchronized = true
+                        isDataSynchronized = true,
+                        lastSyncTime = LocalDateTime.now().format(syncTimeFormatter)
                     )
                 }
                 .onFailure { error ->
@@ -810,7 +812,8 @@ class MainViewModel(
                         message = "$statusEmoji ${server.name} (${server.ip}): $statusLabel",
                         messageSource = "server_availability",
                         availabilityServerMessageTarget = serverTarget,
-                        isDataSynchronized = true
+                        isDataSynchronized = true,
+                        lastSyncTime = LocalDateTime.now().format(syncTimeFormatter)
                     )
                 }
                 .onFailure { error ->
@@ -1904,6 +1907,7 @@ data class MainUiState(
     val isLoading: Boolean = false,
     val summaryText: String = "Статус не запрошен",
     val isDataSynchronized: Boolean = false,
+    val lastSyncTime: String = "",
     val extensionMenuOptions: List<MenuOption> = emptyList(),
     val extensionMenuAction: String = "",
     val extensionSettingsMenuOptions: List<MenuOption> = emptyList(),

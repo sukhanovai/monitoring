@@ -6,15 +6,17 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.39.11] - 2026-04-02
+## [8.39.13] - 2026-04-02
 
 ### Fixed / Исправлено
-- EN: Fixed Compact Ops `почта` tile in the operations center: it now prioritizes the computed backup ratio (for example `9/10`) instead of showing a non-informative `!`/`OK` fallback when ratio data is available.
-- RU: Исправлена плашка `почта` в оперативном центре Compact Ops: теперь при наличии агрегированной сводки приоритетно показывается ratio бэкапов (например `9/10`), а не бесполезный fallback `!`/`OK`.
+- EN: Fixed Compact Ops sync indicator in the operations center: the status line now displays the exact sync time (HH:mm:ss) after a successful sync.
+- RU: Исправлен индикатор синхронизации в оперативном центре Compact Ops: после успешной синхронизации строка статуса теперь показывает точное время синка (HH:mm:ss).
 
 ### Changed / Изменено
-- EN: Completed repository-wide patch bump to `8.39.11`; synchronized version references across runtime/config/docs/mobile, updated Android metadata to `ANDROID_VERSION_NAME=8.39.11` and `ANDROID_VERSION_CODE=230`, and refreshed prerelease links.
-- RU: Выполнен полный patch-бамп версии по репозиторию до `8.39.11`; синхронизированы ссылки на версию в runtime/config/docs/mobile, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.39.11` и `ANDROID_VERSION_CODE=230`, а также обновлены prerelease-ссылки.
+- EN: Removed the `New visual mode` subtitle from the Compact Ops top bar to keep the header cleaner.
+- RU: Убрана подпись `Новый визуальный режим` из верхней панели Compact Ops, чтобы шапка была чище.
+- EN: Completed repository-wide patch bump to `8.39.13`; synchronized version references across runtime/config/docs/mobile, updated Android metadata to `ANDROID_VERSION_NAME=8.39.13` and `ANDROID_VERSION_CODE=232`, and refreshed prerelease links.
+- RU: Выполнен полный patch-бамп версии по репозиторию до `8.39.13`; синхронизированы ссылки на версию в runtime/config/docs/mobile, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.39.13` и `ANDROID_VERSION_CODE=232`, а также обновлены prerelease-ссылки.
 
 ## [8.39.9] - 2026-04-01
 
