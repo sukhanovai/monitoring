@@ -154,6 +154,30 @@ private fun buildToggleDataTile(label: String, enabled: Boolean): ExtensionDataT
     )
 }
 
+private fun extractMailBackupVolumeFromMorningReport(report: String): String? {
+    if (report.isBlank()) return null
+    val lines = report.lines().map { it.trim() }.filter { it.isNotBlank() }
+    val line = lines.firstOrNull { current ->
+        current.contains("почт", ignoreCase = true) ||
+            current.contains("mail", ignoreCase = true)
+    } ?: return null
+
+    val normalized = line
+        .replace("\\_", "_")
+        .replace("\\-", "-")
+        .replace("*", "")
+
+    val regexes = listOf(
+        Regex("""([0-9]+(?:[.,][0-9]+)?\s*(?:B|KB|MB|GB|TB|KiB|MiB|GiB|TiB|байт(?:а|ов)?))""", RegexOption.IGNORE_CASE),
+        Regex("""об(?:ъ|ь)ем\s*[:=-]?\s*([0-9]+(?:[.,][0-9]+)?\s*\S+)""", RegexOption.IGNORE_CASE),
+        Regex("""size\s*[:=-]?\s*([0-9]+(?:[.,][0-9]+)?\s*\S+)""", RegexOption.IGNORE_CASE)
+    )
+
+    return regexes.firstNotNullOfOrNull { regex ->
+        regex.find(normalized)?.groupValues?.getOrNull(1)?.trim()?.trimEnd('.', ',', ';')
+    }
+}
+
 @Composable
 private fun OpsMetricChip(label: String, value: String, hasProblem: Boolean = false, onClick: () -> Unit = {}) {
     val valueColor = if (hasProblem) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
@@ -669,29 +693,6 @@ private fun MonitoringApp(
     }
     val synchronizationColor = if (isSynchronized) Color(0xFF2E7D32) else Color(0xFFC62828)
 
-    fun extractMailBackupVolumeFromMorningReport(report: String): String? {
-        if (report.isBlank()) return null
-        val lines = report.lines().map { it.trim() }.filter { it.isNotBlank() }
-        val line = lines.firstOrNull { current ->
-            current.contains("почт", ignoreCase = true) ||
-                current.contains("mail", ignoreCase = true)
-        } ?: return null
-
-        val normalized = line
-            .replace("\\_", "_")
-            .replace("\\-", "-")
-            .replace("*", "")
-
-        val regexes = listOf(
-            Regex("""([0-9]+(?:[.,][0-9]+)?\s*(?:B|KB|MB|GB|TB|KiB|MiB|GiB|TiB|байт(?:а|ов)?))""", RegexOption.IGNORE_CASE),
-            Regex("""об(?:ъ|ь)ем\s*[:=-]?\s*([0-9]+(?:[.,][0-9]+)?\s*\S+)""", RegexOption.IGNORE_CASE),
-            Regex("""size\s*[:=-]?\s*([0-9]+(?:[.,][0-9]+)?\s*\S+)""", RegexOption.IGNORE_CASE)
-        )
-
-        return regexes.firstNotNullOfOrNull { regex ->
-            regex.find(normalized)?.groupValues?.getOrNull(1)?.trim()?.trimEnd('.', ',', ';')
-        }
-    }
 
     Scaffold(
         topBar = {

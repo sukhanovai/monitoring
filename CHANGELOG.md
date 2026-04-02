@@ -6,19 +6,15 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.40.1] - 2026-04-02
+## [8.40.2] - 2026-04-02
 
 ### Fixed / Исправлено
-- EN: Updated Compact Ops `почта` tile in the operations center: it now prioritizes mail backup volume from parsed backup history and falls back to morning-report text parsing, so backup size is shown instead of `нет данных` when data exists.
-- RU: Обновлена плашка `почта` в оперативном центре Compact Ops: теперь приоритетно берётся объём почтового бэкапа из распарсенной истории, а при её отсутствии используется парсинг утреннего отчёта, поэтому вместо `нет данных` показывается фактический объём, если он есть.
+- EN: Fixed Android `compactOps` build failure in `MainActivity`: moved `extractMailBackupVolumeFromMorningReport` to top-level private scope so the mail tile summary logic resolves correctly during Kotlin compilation.
+- RU: Исправлено падение Android-сборки `compactOps` в `MainActivity`: `extractMailBackupVolumeFromMorningReport` вынесена в private-функцию верхнего уровня, чтобы логика сводки плашки почты корректно резолвилась при компиляции Kotlin.
 
 ### Changed / Изменено
-- EN: Unified Android app naming for Compact Ops by renaming `Sysmoraq Compact Ops` to `Sysmoraq`, and changed the in-app top title from `Sysmoraq Ops Center` to `Sysmoraq`.
-- RU: Унифицировано имя Android-приложения для Compact Ops: `Sysmoraq Compact Ops` переименовано в `Sysmoraq`, а верхний заголовок в приложении изменён с `Sysmoraq Ops Center` на `Sysmoraq`.
-- EN: Removed the `Quick actions` section from the Android main screen.
-- RU: Удалён раздел `Быстрые действия` с главного экрана Android-приложения.
-- EN: Completed repository-wide SemVer patch bump to `8.40.1`; synchronized runtime/config/docs/mobile references, updated Android metadata to `ANDROID_VERSION_NAME=8.40.1` and `ANDROID_VERSION_CODE=235`, and refreshed prerelease links.
-- RU: Выполнен репозиторный SemVer patch-бамп до `8.40.1`; синхронизированы ссылки на версию в runtime/config/docs/mobile, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.40.1` и `ANDROID_VERSION_CODE=235`, а также обновлены prerelease-ссылки.
+- EN: Completed repository-wide SemVer patch bump to `8.40.2`; synchronized runtime/config/docs/mobile references, updated Android metadata to `ANDROID_VERSION_NAME=8.40.2` and `ANDROID_VERSION_CODE=236`, and refreshed prerelease links.
+- RU: Выполнен репозиторный SemVer patch-бамп до `8.40.2`; синхронизированы ссылки на версию в runtime/config/docs/mobile, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.40.2` и `ANDROID_VERSION_CODE=236`, а также обновлены prerelease-ссылки.
 
 ## [8.39.13] - 2026-04-02
 
