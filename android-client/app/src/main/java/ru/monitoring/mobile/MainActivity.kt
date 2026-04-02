@@ -602,7 +602,8 @@ private fun MonitoringApp(
             add(
                 buildExtensionDataTile(
                     extension = extension.copy(name = "ZFS"),
-                    summaryOverride = if (extension.enabled) "вкл" else "выкл"
+                    summaryOverride = state.zfsSummary.ifBlank { if (extension.enabled) "ОК" else "выкл" },
+                    hasProblemOverride = state.zfsHasProblemItems
                 )
             )
         }

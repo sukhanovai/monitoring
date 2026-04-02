@@ -6,11 +6,17 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.39.8] - 2026-04-01
+## [8.39.9] - 2026-04-01
+
+### Fixed / Исправлено
+- EN: Fixed Compact Ops `ZFS` tile summary in the operations center: it now uses monitoring ratio data (for example, combined `servers + pools` like `48/48`) instead of static `вкл/выкл`.
+- RU: Исправлена сводка плашки `ZFS` в оперативном центре Compact Ops: теперь используется мониторинговое соотношение (например суммарно `серверы + пулы`, как `48/48`), а не статичное `вкл/выкл`.
+- EN: Fixed false red state for Compact Ops `Расширения`/`поставщики` tile when supplier stock reports are fully successful (e.g. `9/9`): health now prioritizes explicit success ratios from the report response.
+- RU: Исправлена ложная красная подсветка плашки `Расширения`/`поставщики` в Compact Ops при полностью успешных отчётах поставщиков (например `9/9`): оценка состояния теперь приоритетно берёт явные ratio успеха из ответа отчёта.
 
 ### Changed / Изменено
-- EN: Completed repository-wide patch bump to `8.39.8`; synchronized version references across runtime/config/docs/mobile, updated Android metadata to `ANDROID_VERSION_NAME=8.39.8` and `ANDROID_VERSION_CODE=227`, and refreshed prerelease links.
-- RU: Выполнен полный patch-бамп версии по репозиторию до `8.39.8`; синхронизированы ссылки на версию в runtime/config/docs/mobile, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.39.8` и `ANDROID_VERSION_CODE=227`, а также обновлены prerelease-ссылки.
+- EN: Completed repository-wide patch bump to `8.39.9`; synchronized version references across runtime/config/docs/mobile, updated Android metadata to `ANDROID_VERSION_NAME=8.39.9` and `ANDROID_VERSION_CODE=228`, and refreshed prerelease links.
+- RU: Выполнен полный patch-бамп версии по репозиторию до `8.39.9`; синхронизированы ссылки на версию в runtime/config/docs/mobile, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.39.9` и `ANDROID_VERSION_CODE=228`, а также обновлены prerelease-ссылки.
 
 ## [8.39.7] - 2026-04-01
 
