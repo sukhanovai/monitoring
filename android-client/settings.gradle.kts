@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "MonitoringMobile"
+rootProject.name = "SysmoraqMobile"
 include(":app")
