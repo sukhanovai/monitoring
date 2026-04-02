@@ -6,15 +6,15 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.39.10] - 2026-04-02
+## [8.39.11] - 2026-04-02
 
 ### Fixed / Исправлено
-- EN: Fixed Compact Ops `почта` tile in the operations center: it now shows the latest mail backup size (for example `236G`) instead of a non-informative `!`/`OK` value when backup history is available.
-- RU: Исправлена плашка `почта` в оперативном центре Compact Ops: теперь при наличии истории бэкапов отображается размер последнего почтового бэкапа (например `236G`), а не бесполезное `!`/`OK`.
+- EN: Fixed Compact Ops `почта` tile in the operations center: it now prioritizes the computed backup ratio (for example `9/10`) instead of showing a non-informative `!`/`OK` fallback when ratio data is available.
+- RU: Исправлена плашка `почта` в оперативном центре Compact Ops: теперь при наличии агрегированной сводки приоритетно показывается ratio бэкапов (например `9/10`), а не бесполезный fallback `!`/`OK`.
 
 ### Changed / Изменено
-- EN: Completed repository-wide patch bump to `8.39.10`; synchronized version references across runtime/config/docs/mobile, updated Android metadata to `ANDROID_VERSION_NAME=8.39.10` and `ANDROID_VERSION_CODE=229`, and refreshed prerelease links.
-- RU: Выполнен полный patch-бамп версии по репозиторию до `8.39.10`; синхронизированы ссылки на версию в runtime/config/docs/mobile, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.39.10` и `ANDROID_VERSION_CODE=229`, а также обновлены prerelease-ссылки.
+- EN: Completed repository-wide patch bump to `8.39.11`; synchronized version references across runtime/config/docs/mobile, updated Android metadata to `ANDROID_VERSION_NAME=8.39.11` and `ANDROID_VERSION_CODE=230`, and refreshed prerelease links.
+- RU: Выполнен полный patch-бамп версии по репозиторию до `8.39.11`; синхронизированы ссылки на версию в runtime/config/docs/mobile, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.39.11` и `ANDROID_VERSION_CODE=230`, а также обновлены prerelease-ссылки.
 
 ## [8.39.9] - 2026-04-01
 
