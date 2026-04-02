@@ -44,9 +44,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
-import androidx.compose.material3.pulltorefresh.pullToRefresh
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
@@ -709,7 +709,7 @@ private fun MonitoringApp(
         "не синхронизировано"
     }
     val synchronizationColor = if (isSynchronized) Color(0xFF2E7D32) else Color(0xFFC62828)
-    val pullToRefreshState = rememberPullToRefreshState()
+    val pullToRefreshState = rememberPullRefreshState(state.isLoading, onRefreshData)
 
 
     Scaffold(
@@ -725,11 +725,7 @@ private fun MonitoringApp(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .pullToRefresh(
-                    isRefreshing = state.isLoading,
-                    state = pullToRefreshState,
-                    onRefresh = onRefreshData
-                )
+                .pullRefresh(pullToRefreshState)
         ) {
             LazyColumn(
                 modifier = Modifier
@@ -2155,7 +2151,8 @@ private fun MonitoringApp(
             }
 
             }
-            PullToRefreshContainer(
+            PullRefreshIndicator(
+                refreshing = state.isLoading,
                 state = pullToRefreshState,
                 modifier = Modifier.align(Alignment.TopCenter)
             )
