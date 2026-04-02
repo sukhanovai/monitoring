@@ -780,16 +780,17 @@ private fun MonitoringApp(
                                     style = MaterialTheme.typography.labelSmall,
                                     color = synchronizationColor
                                 )
-                                if (state.isLoading) {
+                                if (state.isSyncInProgress) {
                                     Spacer(modifier = Modifier.height(6.dp))
                                     LinearProgressIndicator(
+                                        progress = { state.syncProgress.coerceIn(0f, 1f) },
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .height(4.dp)
                                             .clip(RoundedCornerShape(10.dp))
                                     )
                                     Text(
-                                        "идёт синхронизация…",
+                                        "идёт синхронизация… ${(state.syncProgress * 100).toInt()}%",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
