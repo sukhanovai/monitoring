@@ -176,7 +176,6 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=/opt/monitoring
-Environment="TELEGRAM_PROXY_URL=socks5h://127.0.0.1:1080"
 ExecStart=/opt/monitoring/venv/bin/python /opt/monitoring/main.py
 Restart=always
 RestartSec=10
@@ -184,9 +183,6 @@ RestartSec=10
 [Install]
 WantedBy=multi-user.target
 ```
-
-> Рекомендуется **не** оборачивать весь процесс в `proxychains4`.
-> Вместо этого задайте `TELEGRAM_PROXY_URL`, тогда только запросы Telegram пойдут через прокси, а локальные/веб/API вызовы (включая мобильную синхронизацию) останутся прямыми.
 
 Активируйте:
 ```bash
