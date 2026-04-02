@@ -45,7 +45,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.pullToRefresh
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
@@ -721,13 +721,15 @@ private fun MonitoringApp(
             )
         }
     ) { innerPadding ->
-        PullToRefreshBox(
-            isRefreshing = state.isLoading,
-            onRefresh = onRefreshData,
-            state = pullToRefreshState,
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .pullToRefresh(
+                    isRefreshing = state.isLoading,
+                    state = pullToRefreshState,
+                    onRefresh = onRefreshData
+                )
         ) {
             LazyColumn(
                 modifier = Modifier

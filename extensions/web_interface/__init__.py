@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.40.4
+Server Monitoring System v8.40.5
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.40.4
+Версия: 8.40.5
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
