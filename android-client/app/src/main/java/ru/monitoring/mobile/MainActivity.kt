@@ -12,6 +12,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -43,6 +44,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
@@ -62,6 +66,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.monitoring.mobile.api.ExtensionItem
 import ru.monitoring.mobile.api.ManagedServer
@@ -607,8 +612,9 @@ private fun MonitoringApp(
                 icon.contains("✅") || icon.contains("✔")
             }
             val latestSize = latestMailBackup?.size?.takeIf { it.isNotBlank() }
+            val serverMailVolume = state.mailBackupLastVolume.takeIf { it.isNotBlank() }
             val morningMailVolume = extractMailBackupVolumeFromMorningReport(state.morningReportText)
-            val summary = latestSize ?: morningMailVolume ?: "нет данных"
+            val summary = latestSize ?: serverMailVolume ?: morningMailVolume ?: "нет данных"
             val hasProblem = when {
                 latestSize.isNullOrBlank() -> false
                 latestIsOk == false -> true
@@ -703,6 +709,7 @@ private fun MonitoringApp(
         "не синхронизировано"
     }
     val synchronizationColor = if (isSynchronized) Color(0xFF2E7D32) else Color(0xFFC62828)
+    val pullToRefreshState = rememberPullToRefreshState()
 
 
     Scaffold(
@@ -714,13 +721,20 @@ private fun MonitoringApp(
             )
         }
     ) { innerPadding ->
-        LazyColumn(
+        PullToRefreshBox(
+            isRefreshing = state.isLoading,
+            onRefresh = onRefreshData,
+            state = pullToRefreshState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(contentPadding),
-            verticalArrangement = Arrangement.spacedBy(sectionSpacing)
         ) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(contentPadding),
+                verticalArrangement = Arrangement.spacedBy(sectionSpacing)
+            ) {
             if (isCompactOpsHub) {
                 item {
                     Column(
@@ -2138,6 +2152,11 @@ private fun MonitoringApp(
                 }
             }
 
+            }
+            PullToRefreshContainer(
+                state = pullToRefreshState,
+                modifier = Modifier.align(Alignment.TopCenter)
+            )
         }
     }
 
