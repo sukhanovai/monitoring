@@ -504,7 +504,7 @@ private fun MonitoringApp(
     val hasExtensionProblems = extensionProblemsCount > 0
     val extensionButtons = MAIN_MENU_EXTENSION_BUTTONS.filter { it.extensionId in enabledExtensions }
     val isResourceMonitorEnabled = "resource_monitor" in enabledExtensions
-    val appTitle = if (isCompactOpsHub) "Sysmoraq Ops Center" else "Sysmoraq"
+    val appTitle = "Sysmoraq"
     val contentPadding = if (isCompactOpsHub) 10.dp else 16.dp
     val sectionSpacing = if (isCompactOpsHub) 8.dp else 12.dp
 
@@ -572,7 +572,8 @@ private fun MonitoringApp(
                 icon.contains("✅") || icon.contains("✔")
             }
             val latestSize = latestMailBackup?.size?.takeIf { it.isNotBlank() }
-            val summary = latestSize ?: "нет данных"
+            val morningMailVolume = extractMailBackupVolumeFromMorningReport(state.morningReportText)
+            val summary = latestSize ?: morningMailVolume ?: "нет данных"
             val hasProblem = when {
                 latestSize.isNullOrBlank() -> false
                 latestIsOk == false -> true
@@ -667,6 +668,30 @@ private fun MonitoringApp(
         "не синхронизировано"
     }
     val synchronizationColor = if (isSynchronized) Color(0xFF2E7D32) else Color(0xFFC62828)
+
+    fun extractMailBackupVolumeFromMorningReport(report: String): String? {
+        if (report.isBlank()) return null
+        val lines = report.lines().map { it.trim() }.filter { it.isNotBlank() }
+        val line = lines.firstOrNull { current ->
+            current.contains("почт", ignoreCase = true) ||
+                current.contains("mail", ignoreCase = true)
+        } ?: return null
+
+        val normalized = line
+            .replace("\\_", "_")
+            .replace("\\-", "-")
+            .replace("*", "")
+
+        val regexes = listOf(
+            Regex("""([0-9]+(?:[.,][0-9]+)?\s*(?:B|KB|MB|GB|TB|KiB|MiB|GiB|TiB|байт(?:а|ов)?))""", RegexOption.IGNORE_CASE),
+            Regex("""об(?:ъ|ь)ем\s*[:=-]?\s*([0-9]+(?:[.,][0-9]+)?\s*\S+)""", RegexOption.IGNORE_CASE),
+            Regex("""size\s*[:=-]?\s*([0-9]+(?:[.,][0-9]+)?\s*\S+)""", RegexOption.IGNORE_CASE)
+        )
+
+        return regexes.firstNotNullOfOrNull { regex ->
+            regex.find(normalized)?.groupValues?.getOrNull(1)?.trim()?.trimEnd('.', ',', ';')
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -857,26 +882,6 @@ private fun MonitoringApp(
 
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Быстрые действия", fontWeight = FontWeight.Bold)
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        maxItemsInEachRow = 2
-                    ) {
-                        Button(
-                            onClick = onRefreshData,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("🔄 Обновить")
-                        }
-                        Button(
-                            onClick = { onAction("send_morning_report") },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("🌅 Отчёт")
-                        }
-                    }
                     if (state.message.isNotBlank() && state.messageSource == "morning_report") {
                         Text(state.message)
                     }
