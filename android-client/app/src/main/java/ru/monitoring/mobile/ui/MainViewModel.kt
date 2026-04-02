@@ -51,7 +51,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.39.8"
+    private val projectVersion = "8.39.9"
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
     private val fallbackUpdateUrl = "https://github.com/sukhanovai/monitoring/releases/latest"
@@ -165,6 +165,10 @@ class MainViewModel(
 
     private val backupSummaryNumberRegex = Regex("""(\d+)""")
     private val backupSummaryStatusLineRegex = Regex("""^\s*([✅✔❌⚠️🚨]).*$""")
+    private val backupSuccessRatioRegex = Regex("""(\d+)\s*/\s*(\d+)\s+успеш""", RegexOption.IGNORE_CASE)
+    private val zfsSummaryRegex = Regex(
+        """(?i)(серверов|пулов)\s*:\s*\d+\s*\(\s*🟢?\s*(\d+)\s*/\s*🔴?\s*(\d+)\s*\)"""
+    )
 
     private fun extractSummaryValue(message: String, marker: String): Int? {
         val line = message
@@ -178,6 +182,30 @@ class MainViewModel(
         if (response == null) return null
 
         val message = response.message.orEmpty()
+        backupSuccessRatioRegex.find(message)?.let { match ->
+            val ok = match.groupValues.getOrNull(1)?.toIntOrNull() ?: return@let
+            val total = match.groupValues.getOrNull(2)?.toIntOrNull() ?: return@let
+            if (total > 0) {
+                return BackupTileSummary(
+                    ratioText = "$ok/$total",
+                    hasProblem = ok < total
+                )
+            }
+        }
+
+        val zfsMatches = zfsSummaryRegex.findAll(message).toList()
+        if (zfsMatches.isNotEmpty()) {
+            val ok = zfsMatches.sumOf { it.groupValues.getOrNull(2)?.toIntOrNull() ?: 0 }
+            val problems = zfsMatches.sumOf { it.groupValues.getOrNull(3)?.toIntOrNull() ?: 0 }
+            val total = ok + problems
+            if (total > 0) {
+                return BackupTileSummary(
+                    ratioText = "$ok/$total",
+                    hasProblem = problems > 0 || ok < total
+                )
+            }
+        }
+
         val okFromMessage = extractSummaryValue(message, "Без проблем")
         val problemsFromMessage = extractSummaryValue(message, "Проблемных")
         val totalFromMessage = extractSummaryValue(message, "Всего хостов")
@@ -532,6 +560,9 @@ class MainViewModel(
                 val mailBackupSummary = runCatching {
                     currentApi().runControlAction(ControlActionRequest("backup_mail"))
                 }.getOrNull()
+                val zfsSummary = runCatching {
+                    currentApi().runControlAction(ControlActionRequest("zfs_menu"))
+                }.getOrNull()
                 listOf(
                     monitoring,
                     bot,
@@ -546,7 +577,8 @@ class MainViewModel(
                     dbBackupSummary,
                     stockLoadSummary,
                     supplierStockSummary,
-                    mailBackupSummary
+                    mailBackupSummary,
+                    zfsSummary
                 )
             }
 
@@ -564,6 +596,7 @@ class MainViewModel(
             val stockLoadSummary = buildBackupTileSummary(result[11] as? ControlActionResult)
             val supplierStockSummary = buildBackupTileSummary(result[12] as? ControlActionResult)
             val mailBackupSummary = buildBackupTileSummary(result[13] as? ControlActionResult)
+            val zfsSummary = buildBackupTileSummary(result[14] as? ControlActionResult)
 
             val monitoringData = monitoring?.settings
             val botData = bot?.settings
@@ -622,11 +655,13 @@ class MainViewModel(
                 backupStockLoadsSummary = stockLoadSummary?.ratioText ?: state.backupStockLoadsSummary,
                 supplierStockSummary = supplierStockSummary?.ratioText ?: state.supplierStockSummary,
                 backupMailSummary = mailBackupSummary?.ratioText ?: state.backupMailSummary,
+                zfsSummary = zfsSummary?.ratioText ?: state.zfsSummary,
                 backupProxmoxHasProblemItems = proxmoxBackupSummary?.hasProblem ?: state.backupProxmoxHasProblemItems,
                 backupDatabasesHasProblemItems = dbBackupSummary?.hasProblem ?: state.backupDatabasesHasProblemItems,
                 backupStockLoadsHasProblemItems = stockLoadSummary?.hasProblem ?: state.backupStockLoadsHasProblemItems,
                 supplierStockHasProblemItems = supplierStockSummary?.hasProblem ?: state.supplierStockHasProblemItems,
                 backupMailHasProblemItems = mailBackupSummary?.hasProblem ?: state.backupMailHasProblemItems,
+                zfsHasProblemItems = zfsSummary?.hasProblem ?: state.zfsHasProblemItems,
                 monitoringStatusText = when {
                     control?.monitoringActive == true -> "🟢 Активен"
                     control?.monitoringActive == false -> "🔴 Приостановлен"
@@ -1878,11 +1913,13 @@ data class MainUiState(
     val backupStockLoadsSummary: String = "",
     val supplierStockSummary: String = "",
     val backupMailSummary: String = "",
+    val zfsSummary: String = "",
     val backupProxmoxHasProblemItems: Boolean = false,
     val backupDatabasesHasProblemItems: Boolean = false,
     val backupStockLoadsHasProblemItems: Boolean = false,
     val supplierStockHasProblemItems: Boolean = false,
     val backupMailHasProblemItems: Boolean = false,
+    val zfsHasProblemItems: Boolean = false,
     val mailBackupHistoryTitle: String = "",
     val mailBackupHistoryItems: List<MailBackupHistoryItem> = emptyList(),
     val servers: List<ServerAvailability> = emptyList(),
