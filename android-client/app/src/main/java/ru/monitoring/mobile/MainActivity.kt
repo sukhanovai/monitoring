@@ -474,7 +474,9 @@ private fun MonitoringApp(
     var showWindowsAll by rememberSaveable { mutableStateOf(false) }
     var showWindowsByType by rememberSaveable { mutableStateOf(false) }
     var showWindowsTypeStats by rememberSaveable { mutableStateOf(false) }
-    var showServerAvailabilityMenu by rememberSaveable { mutableStateOf(false) }
+    var showServerAvailabilityDialog by rememberSaveable { mutableStateOf(false) }
+    var showServerListSettingsDialog by rememberSaveable { mutableStateOf(false) }
+    var showOnlyMonitoredServers by rememberSaveable { mutableStateOf(true) }
     var showServerResourcesMenu by rememberSaveable { mutableStateOf(false) }
     var areOpsTilesExpanded by rememberSaveable { mutableStateOf(false) }
     var showTileSettingsDialog by rememberSaveable { mutableStateOf(false) }
@@ -564,11 +566,11 @@ private fun MonitoringApp(
 
     val openServersDetails = {
         onRefresh()
-        showServerAvailabilityMenu = false
+        showServerAvailabilityDialog = false
     }
     val openServerSingleCheckDetails = {
         onLoadServersForSingleCheck()
-        showServerAvailabilityMenu = true
+        showServerAvailabilityDialog = true
     }
     val openExtensionsDetails = {
         isSettingsExpanded = true
@@ -729,6 +731,11 @@ private fun MonitoringApp(
     }
     val synchronizationColor = if (isSynchronized) Color(0xFF2E7D32) else Color(0xFFC62828)
     val pullToRefreshState = rememberPullRefreshState(state.isLoading, onRefreshData)
+    val serverButtonsForDialog = state.managedServers
+        .asSequence()
+        .filter { server -> !showOnlyMonitoredServers || server.enabled == true }
+        .sortedBy { "${it.name.lowercase()}_${it.ip}" }
+        .toList()
 
 
     Scaffold(
@@ -777,7 +784,7 @@ private fun MonitoringApp(
                             Column(
                                 modifier = Modifier.clickable {
                                     onRefreshData()
-                                    showServerAvailabilityMenu = false
+                                    showServerAvailabilityDialog = false
                                     showServerResourcesMenu = false
                                 },
                                 verticalArrangement = Arrangement.spacedBy(2.dp)
@@ -958,61 +965,6 @@ private fun MonitoringApp(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (state.message.isNotBlank() && state.messageSource == "morning_report") {
                         Text(state.message)
-                    }
-                    Text("Проверки", fontWeight = FontWeight.Bold)
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        maxItemsInEachRow = 2
-                    ) {
-                        Button(
-                            onClick = onRefresh,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("🖥 Все серверы")
-                        }
-                        Button(
-                            onClick = { showServerAvailabilityMenu = !showServerAvailabilityMenu },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("🔍 По серверу")
-                        }
-                    }
-                    if (state.message.isNotBlank() && state.messageSource == "all_servers") {
-                        Text(state.message)
-                    }
-                    if (state.isServerBatchCheckInProgress) {
-                        LinearProgressIndicator(
-                            progress = { state.serverBatchCheckProgress.coerceIn(0f, 1f) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(4.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                        )
-                        Text("Сейчас проверяется: ${state.serverBatchCheckCurrentServer.ifBlank { "подготовка" }}")
-                    }
-                    if (showServerAvailabilityMenu) {
-                        state.managedServers.forEach { server ->
-                            val serverTarget = if (server.ip.isNotBlank()) server.ip else server.name
-                            if (
-                                state.message.isNotBlank() &&
-                                state.messageSource == "server_availability" &&
-                                state.availabilityServerMessageTarget == serverTarget
-                            ) {
-                                Text(state.message)
-                            }
-                            Button(
-                                onClick = { onCheckServerAvailability(server) },
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                                )
-                            ) {
-                                Text("${server.name} (${server.ip})")
-                            }
-                        }
                     }
                     Text("Расширения", fontWeight = FontWeight.Bold)
                     FlowRow(
@@ -2203,6 +2155,108 @@ private fun MonitoringApp(
                 modifier = Modifier.align(Alignment.TopCenter)
             )
         }
+    }
+
+    if (showServerAvailabilityDialog) {
+        AlertDialog(
+            onDismissRequest = { showServerAvailabilityDialog = false },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Точечная проверка серверов")
+                    IconButton(onClick = { showServerListSettingsDialog = true }) {
+                        Icon(
+                            imageVector = Icons.Filled.Settings,
+                            contentDescription = "Настройки списка серверов"
+                        )
+                    }
+                }
+            },
+            text = {
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    if (serverButtonsForDialog.isEmpty()) {
+                        item {
+                            Text("Серверы для выбранного фильтра не найдены.")
+                        }
+                    } else {
+                        items(serverButtonsForDialog.size) { index ->
+                            val server = serverButtonsForDialog[index]
+                            val serverTarget = if (server.ip.isNotBlank()) server.ip else server.name
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                if (
+                                    state.message.isNotBlank() &&
+                                    state.messageSource == "server_availability" &&
+                                    state.availabilityServerMessageTarget == serverTarget
+                                ) {
+                                    Text(
+                                        text = state.message,
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
+                                Button(
+                                    onClick = { onCheckServerAvailability(server) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                                    )
+                                ) {
+                                    Text(
+                                        text = "${server.name} (${server.ip})",
+                                        fontSize = 12.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showServerAvailabilityDialog = false }) {
+                    Text("Закрыть")
+                }
+            }
+        )
+    }
+
+    if (showServerListSettingsDialog) {
+        AlertDialog(
+            onDismissRequest = { showServerListSettingsDialog = false },
+            title = { Text("Настройки списка серверов") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Показывать только включённые")
+                        Checkbox(
+                            checked = showOnlyMonitoredServers,
+                            onCheckedChange = { checked -> showOnlyMonitoredServers = checked }
+                        )
+                    }
+                    Text(
+                        text = "Кнопки отсортированы по имени сервера.",
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showServerListSettingsDialog = false }) {
+                    Text("Готово")
+                }
+            }
+        )
     }
 
     if (showTileSettingsDialog) {
