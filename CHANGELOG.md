@@ -6,6 +6,20 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.41.4] - 2026-04-03
+
+### Changed / Изменено
+- EN: In Android targeted server checks, made the server-management list denser: reduced card spacing and replaced large row action buttons with compact text controls.
+- RU: В Android точечной проверке серверов список управления сделан плотнее: уменьшены отступы карточек и крупные кнопки действий заменены компактными текстовыми контролами.
+- EN: In Android server edit flow, replaced explicit close action with a close icon (`✕`) on the right side of the section header.
+- RU: В Android-флоу редактирования сервера явное закрытие заменено на иконку крестика (`✕`) справа от заголовка секции.
+- EN: In Android Operations Center and tile settings copy, changed the label `Развернуть сведения` to shorter `Развернуть` (and matching collapse text to `Свернуть`).
+- RU: В Android оперативном центре и настройке плашек надпись `Развернуть сведения` заменена на короткую `Развернуть` (а парная — на `Свернуть`).
+- EN: In Android tile-settings dialog, replaced `Готово` UX with close icon (`✕`) in the title and kept close action as `Закрыть`; also made the list text denser.
+- RU: В Android-диалоге настройки плашек UX `Готово` заменён на крестик (`✕`) в заголовке, действие оставлено как `Закрыть`; список сделан более компактным по тексту.
+- EN: Completed repository-wide SemVer patch bump to `8.41.4`; synchronized runtime/config/docs/mobile references and updated Android metadata to `ANDROID_VERSION_NAME=8.41.4` and `ANDROID_VERSION_CODE=248`.
+- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.4`; синхронизированы ссылки на версию в runtime/config/docs/mobile и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.4` и `ANDROID_VERSION_CODE=248`.
+
 ## [8.41.3] - 2026-04-03
 
 ### Fixed / Исправлено
