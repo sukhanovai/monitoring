@@ -2201,27 +2201,34 @@ private fun MonitoringApp(
         AlertDialog(
             onDismissRequest = { showServerAvailabilityDialog = false },
             title = {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.Top
                     ) {
-                        Text("Точечная проверка серверов")
+                        Text(
+                            text = "Точечная проверка серверов",
+                            modifier = Modifier.weight(1f)
+                        )
                         Column(horizontalAlignment = Alignment.End) {
-                            IconButton(
-                                onClick = { showServerAvailabilityDialog = false }
+                            FilledIconButton(
+                                onClick = { showServerAvailabilityDialog = false },
+                                modifier = Modifier
+                                    .padding(bottom = 2.dp)
+                                    .height(30.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Filled.Close,
                                     contentDescription = "Закрыть окно точечной проверки"
                                 )
                             }
-                            IconButton(
+                            FilledIconButton(
                                 onClick = {
                                     onCancelServerEdit()
                                     showServerAddDialog = true
-                                }
+                                },
+                                modifier = Modifier.height(30.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Filled.Settings,
