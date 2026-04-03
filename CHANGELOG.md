@@ -6,6 +6,18 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.41.2] - 2026-04-03
+
+### Changed / Изменено
+- EN: In Android targeted server check dialog, moved the gear button from the floating list overlay into the dialog header next to the title for more predictable access.
+- RU: В Android-диалоге точечной проверки серверов шестерёнка перенесена из плавающего оверлея списка в заголовок диалога рядом с названием для более предсказуемого доступа.
+- EN: Rewired the gear action to open a dedicated server-add dialog (IP/name/type/timeout), so adding a server is now available directly from targeted checks.
+- RU: Действие шестерёнки перенастроено на открытие отдельного диалога добавления сервера (IP/имя/тип/timeout), поэтому добавление сервера теперь доступно прямо из точечной проверки.
+- EN: Replaced server list buttons with compact tappable cards; short tap runs targeted availability check, long tap opens compact icon-based actions (edit, enable/disable, delete).
+- RU: Кнопки списка серверов заменены на компактные плашки; короткий тап запускает точечную проверку доступности, долгий тап открывает компактные иконки действий (редактирование, включение/выключение, удаление).
+- EN: Completed repository-wide SemVer patch bump to `8.41.2`; synchronized runtime/config/docs/mobile references and updated Android metadata to `ANDROID_VERSION_NAME=8.41.2` and `ANDROID_VERSION_CODE=246`.
+- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.2`; синхронизированы ссылки на версию в runtime/config/docs/mobile и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.2` и `ANDROID_VERSION_CODE=246`.
+
 ## [8.41.1] - 2026-04-03
 
 ### Changed / Изменено
