@@ -2160,62 +2160,63 @@ private fun MonitoringApp(
     if (showServerAvailabilityDialog) {
         AlertDialog(
             onDismissRequest = { showServerAvailabilityDialog = false },
-            title = {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Точечная проверка серверов")
-                    IconButton(onClick = { showServerListSettingsDialog = true }) {
-                        Icon(
-                            imageVector = Icons.Filled.Settings,
-                            contentDescription = "Настройки списка серверов"
-                        )
-                    }
-                }
-            },
+            title = { Text("Точечная проверка серверов") },
             text = {
-                LazyColumn(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    if (serverButtonsForDialog.isEmpty()) {
-                        item {
-                            Text("Серверы для выбранного фильтра не найдены.")
-                        }
-                    } else {
-                        items(serverButtonsForDialog.size) { index ->
-                            val server = serverButtonsForDialog[index]
-                            val serverTarget = if (server.ip.isNotBlank()) server.ip else server.name
-                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                if (
-                                    state.message.isNotBlank() &&
-                                    state.messageSource == "server_availability" &&
-                                    state.availabilityServerMessageTarget == serverTarget
-                                ) {
-                                    Text(
-                                        text = state.message,
-                                        style = MaterialTheme.typography.labelSmall
-                                    )
-                                }
-                                Button(
-                                    onClick = { onCheckServerAvailability(server) },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                                    )
-                                ) {
-                                    Text(
-                                        text = "${server.name} (${server.ip})",
-                                        fontSize = 12.sp,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        if (serverButtonsForDialog.isEmpty()) {
+                            item {
+                                Text("Серверы для выбранного фильтра не найдены.")
+                            }
+                        } else {
+                            items(serverButtonsForDialog.size) { index ->
+                                val server = serverButtonsForDialog[index]
+                                val serverTarget = if (server.ip.isNotBlank()) server.ip else server.name
+                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    if (
+                                        state.message.isNotBlank() &&
+                                        state.messageSource == "server_availability" &&
+                                        state.availabilityServerMessageTarget == serverTarget
+                                    ) {
+                                        Text(
+                                            text = state.message,
+                                            style = MaterialTheme.typography.labelSmall
+                                        )
+                                    }
+                                    Button(
+                                        onClick = { onCheckServerAvailability(server) },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                                        )
+                                    ) {
+                                        Text(
+                                            text = "${server.name} (${server.ip})",
+                                            fontSize = 11.sp,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
                                 }
                             }
+                        }
+                    }
+                    Surface(
+                        modifier = Modifier.align(Alignment.TopEnd),
+                        shape = RoundedCornerShape(10.dp),
+                        shadowElevation = 2.dp,
+                        tonalElevation = 2.dp
+                    ) {
+                        IconButton(onClick = { showServerListSettingsDialog = true }) {
+                            Icon(
+                                imageVector = Icons.Filled.Settings,
+                                contentDescription = "Настройки списка серверов"
+                            )
                         }
                     }
                 }
