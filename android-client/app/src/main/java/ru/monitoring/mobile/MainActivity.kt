@@ -889,10 +889,6 @@ private fun MonitoringApp(
                             maxItemsInEachRow = 2
                         ) {
                             DashboardActionButton(
-                                label = "🛰 Проверить доступность",
-                                onClick = onRefresh
-                            )
-                            DashboardActionButton(
                                 label = "🌅 Утренний отчёт",
                                 onClick = { onAction("send_morning_report") }
                             )
@@ -2211,78 +2207,97 @@ private fun MonitoringApp(
                 }
             },
             text = {
-                LazyColumn(
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                "Только включённые",
-                                style = MaterialTheme.typography.labelMedium
-                            )
-                            Checkbox(
-                                checked = showOnlyMonitoredServers,
-                                onCheckedChange = { checked -> showOnlyMonitoredServers = checked }
-                            )
-                        }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            "Только включённые",
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                        Checkbox(
+                            checked = showOnlyMonitoredServers,
+                            onCheckedChange = { checked -> showOnlyMonitoredServers = checked }
+                        )
                     }
+
                     if (serverButtonsForDialog.isEmpty()) {
-                        item {
-                            Text("Серверы для выбранного фильтра не найдены.")
-                        }
+                        Text("Серверы для выбранного фильтра не найдены.")
                     } else {
-                        items(serverButtonsForDialog.size) { index ->
-                            val server = serverButtonsForDialog[index]
-                            val serverTarget = if (server.ip.isNotBlank()) server.ip else server.name
-                            val isServerEnabled = server.enabled == true
-                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                if (
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            maxItemsInEachRow = 2
+                        ) {
+                            serverButtonsForDialog.forEach { server ->
+                                val serverTarget = if (server.ip.isNotBlank()) server.ip else server.name
+                                val isServerEnabled = server.enabled == true
+                                val serverMessage = if (
                                     state.message.isNotBlank() &&
                                     state.messageSource == "server_availability" &&
                                     state.availabilityServerMessageTarget == serverTarget
                                 ) {
-                                    Text(
-                                        text = state.message,
-                                        style = MaterialTheme.typography.labelSmall
-                                    )
+                                    state.message
+                                } else {
+                                    ""
                                 }
                                 Surface(
                                     modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(12.dp))
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(10.dp))
                                         .combinedClickable(
                                             onClick = { onCheckServerAvailability(server) },
                                             onLongClick = {
                                                 serverActionsTargetKey = serverTarget.trim()
                                             }
                                         ),
-                                    tonalElevation = 3.dp,
-                                    shape = RoundedCornerShape(12.dp),
+                                    tonalElevation = 2.dp,
+                                    shape = RoundedCornerShape(10.dp),
                                     color = if (isServerEnabled) {
                                         MaterialTheme.colorScheme.tertiaryContainer
                                     } else {
                                         MaterialTheme.colorScheme.surfaceContainerHigh
                                     }
                                 ) {
-                                    Row(
+                                    Column(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(horizontal = 10.dp, vertical = 8.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween
+                                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                                        verticalArrangement = Arrangement.spacedBy(2.dp)
                                     ) {
                                         Text(
-                                            text = "${server.name} (${server.ip})",
+                                            text = server.name.ifBlank { server.ip },
                                             fontSize = 12.sp,
                                             maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
+                                            overflow = TextOverflow.Ellipsis,
+                                            fontWeight = FontWeight.SemiBold
                                         )
-                                        Text(if (isServerEnabled) "●" else "○")
+                                        Text(
+                                            text = server.ip,
+                                            fontSize = 11.sp,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Text(
+                                            text = if (isServerEnabled) "● Вкл" else "○ Выкл",
+                                            style = MaterialTheme.typography.labelSmall
+                                        )
+                                        if (serverMessage.isNotBlank()) {
+                                            Text(
+                                                text = serverMessage,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.error,
+                                                maxLines = 2,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -2351,7 +2366,21 @@ private fun MonitoringApp(
     if (selectedServerForActions != null) {
         AlertDialog(
             onDismissRequest = { serverActionsTargetKey = "" },
-            title = { Text(selectedServerForActions.name) },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(selectedServerForActions.name)
+                    IconButton(onClick = { serverActionsTargetKey = "" }) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Закрыть"
+                        )
+                    }
+                }
+            },
             text = {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -2402,11 +2431,7 @@ private fun MonitoringApp(
                     }
                 }
             },
-            confirmButton = {
-                TextButton(onClick = { serverActionsTargetKey = "" }) {
-                    Text("Закрыть")
-                }
-            }
+            confirmButton = {}
         )
     }
 

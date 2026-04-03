@@ -6,6 +6,18 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.41.5] - 2026-04-03
+
+### Changed / Изменено
+- EN: In Android Operations Center, removed the `🛰 Проверить доступность` action button from the main action block.
+- RU: В Android оперативном центре удалена кнопка `🛰 Проверить доступность` из основного блока действий.
+- EN: In Android targeted server check dialog, replaced list-like server buttons with denser compact tiles and kept tap/long-press behavior for quick checks and actions.
+- RU: В Android-диалоге точечной проверки серверов кнопки-строки заменены на компактные плашки; сохранены короткий тап для проверки и длинный тап для действий.
+- EN: In Android server action dialog, replaced bottom close action with a close icon (`✕`) on the right side of the title.
+- RU: В Android-диалоге действий по серверу закрытие через нижнюю кнопку заменено на крестик (`✕`) справа в заголовке.
+- EN: Completed repository-wide SemVer patch bump to `8.41.5`; synchronized runtime/config/docs/mobile references and updated Android metadata to `ANDROID_VERSION_NAME=8.41.5` and `ANDROID_VERSION_CODE=249`.
+- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.5`; синхронизированы ссылки на версию в runtime/config/docs/mobile и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.5` и `ANDROID_VERSION_CODE=249`.
+
 ## [8.41.4] - 2026-04-03
 
 ### Changed / Изменено
