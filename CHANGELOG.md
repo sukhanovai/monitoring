@@ -6,21 +6,17 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.41.13] - 2026-04-03
+## [8.41.15] - 2026-04-03
 
 ### Changed / Изменено
-- EN: Fixed Android `compactOps` debug Kotlin compilation in `MainActivity.kt` by switching sort chips to Material3 `FilterChip` API with explicit `label` parameter.
-- RU: Исправлена Kotlin-компиляция Android `compactOps` debug в `MainActivity.kt`: сортировочные плашки переведены на API Material3 `FilterChip` с явным параметром `label`.
-- EN: In Android Operations Center tile settings, removed the bottom `Закрыть` text action and kept only the close icon (`✕`) in the header.
-- RU: В Android-настройках плашек оперативного центра убрана нижняя текстовая кнопка `Закрыть`; оставлен только крестик (`✕`) в заголовке.
-- EN: Made tile settings list denser by replacing checkbox rows with compact selectable chips.
-- RU: Список в настройках плашек сделан компактнее: строки с чекбоксами заменены на компактные выбираемые плашки.
-- EN: In targeted server check dialog, removed filled backgrounds under close/settings icons and aligned them visually with the plain icon style used in Operations Center settings.
-- RU: В диалоге точечной проверки серверов убран фон под крестиком и шестерёнкой; внешний вид приведён к стилю обычных иконок, как в оперативном центре и настройках плашек.
-- EN: Replaced verbose sorting labels with checkmarks by compact sort chips (`Имя`, `IP`) in targeted server checks.
-- RU: В точечной проверке серверов длинные подписи сортировки с галочками заменены на компактные плашки сортировки (`Имя`, `IP`).
-- EN: Completed repository-wide SemVer patch bump to `8.41.13`; synchronized runtime/config/docs/mobile references and updated Android metadata to `ANDROID_VERSION_NAME=8.41.13` and `ANDROID_VERSION_CODE=257`.
-- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.13`; синхронизированы ссылки на версию в runtime/config/docs/mobile и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.13` и `ANDROID_VERSION_CODE=257`.
+- EN: In Android Operations Center, tapping the `proxmox` tile now opens a chips list of Proxmox backup names (same compact tile style as server quick actions).
+- RU: В Android оперативном центре тап по плашке `proxmox` теперь открывает список имён Proxmox-бэкапов в виде компактных плашек (в том же стиле, что и быстрые действия по серверам).
+- EN: Proxmox backup statistics now open as an overlay dialog above the Operations Center; added close (`✕`) and settings (`⚙`) controls in the header.
+- RU: Статистика Proxmox-бэкапа теперь открывается поверх оперативного центра во всплывающем диалоге; в заголовок добавлены крестик закрытия (`✕`) и шестерёнка (`⚙`).
+- EN: Added a quick settings route from backup statistics (`settings_backup_hosts`) to start adding/configuring new backup entries.
+- RU: Добавлен быстрый переход из статистики бэкапа в настройки (`settings_backup_hosts`) для добавления/настройки новых backup-элементов.
+- EN: Completed repository-wide SemVer patch bump to `8.41.15`; synchronized runtime/config/docs/mobile references and updated Android metadata to `ANDROID_VERSION_NAME=8.41.15` and `ANDROID_VERSION_CODE=259`.
+- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.15`; синхронизированы ссылки на версию в runtime/config/docs/mobile и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.15` и `ANDROID_VERSION_CODE=259`.
 
 ## [8.41.11] - 2026-04-03
 

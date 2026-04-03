@@ -542,6 +542,7 @@ private fun MonitoringApp(
     var resourceThresholdLabel by rememberSaveable { mutableStateOf("") }
     var resourceThresholdValueInput by rememberSaveable { mutableStateOf("") }
     var selectedProxmoxBackupLabel by rememberSaveable { mutableStateOf("") }
+    var showProxmoxBackupStatsDialog by rememberSaveable { mutableStateOf(false) }
 
     val canSaveMonitoring = state.checkIntervalInput.isNotBlank() ||
         state.timeoutInput.isNotBlank() ||
@@ -730,6 +731,7 @@ private fun MonitoringApp(
             onClick = if (extension.id == "backup_monitor") {
                 {
                     selectedProxmoxBackupLabel = ""
+                    showProxmoxBackupStatsDialog = false
                     onToggleProxmoxBackupMenu()
                 }
             } else {
@@ -949,21 +951,11 @@ private fun MonitoringApp(
                                             hasProblem = isProblemBackupOption(label, targetAction),
                                             onClick = {
                                                 selectedProxmoxBackupLabel = label
+                                                showProxmoxBackupStatsDialog = true
                                                 onAction(targetAction)
                                             }
                                         )
                                     }
-                                }
-                            }
-                        }
-                        if (selectedProxmoxBackupLabel.isNotBlank() && state.message.isNotBlank() && state.messageSource == "global") {
-                            ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                                Column(
-                                    modifier = Modifier.padding(12.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Text("📈 Статистика: $selectedProxmoxBackupLabel", fontWeight = FontWeight.Bold)
-                                    Text(state.message)
                                 }
                             }
                         }
@@ -2392,6 +2384,61 @@ private fun MonitoringApp(
                                 }
                             }
                         }
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    if (showProxmoxBackupStatsDialog && selectedProxmoxBackupLabel.isNotBlank()) {
+        AlertDialog(
+            onDismissRequest = { showProxmoxBackupStatsDialog = false },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "📈 Статистика: $selectedProxmoxBackupLabel",
+                        modifier = Modifier.weight(1f),
+                        fontWeight = FontWeight.Bold
+                    )
+                    Row {
+                        IconButton(
+                            onClick = {
+                                showProxmoxBackupStatsDialog = false
+                                isSettingsExpanded = true
+                                onAction("settings_backup_hosts")
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Settings,
+                                contentDescription = "Добавить новый бэкап"
+                            )
+                        }
+                        IconButton(onClick = { showProxmoxBackupStatsDialog = false }) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "Закрыть статистику бэкапа"
+                            )
+                        }
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (state.message.isNotBlank() && state.messageSource == "global") {
+                        Text(state.message)
+                    } else {
+                        Text("Загружаем статистику бэкапа…")
                     }
                 }
             },
