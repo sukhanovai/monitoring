@@ -6,16 +6,15 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.41.7] - 2026-04-03
+## [8.41.8] - 2026-04-03
 
 ### Changed / Изменено
-- EN: In the Android Operations Center targeted server check dialog, kept the close icon (`✕`) explicitly on the right side of the title and moved the server-add action to the dialog content area.
-- RU: В Android-диалоге точечной проверки серверов оперативного центра закреплён крестик закрытия (`✕`) справа в заголовке, а действие добавления сервера перенесено в область содержимого.
-- EN: Fixed scrolling in the targeted server check tiles list by adding vertical scrolling with a max-height container in the dialog content.
-- RU: Исправлен скролл списка плашек в точечной проверке: в содержимом диалога добавлен вертикальный скролл с ограничением по максимальной высоте.
-- EN: Completed repository-wide SemVer patch bump to `8.41.7`; synchronized runtime/config/docs/mobile references and updated Android metadata to `ANDROID_VERSION_NAME=8.41.7` and `ANDROID_VERSION_CODE=251`.
-- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.7`; синхронизированы ссылки на версию в runtime/config/docs/mobile и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.7` и `ANDROID_VERSION_CODE=251`.
-
+- EN: In the Android Operations Center targeted server check dialog, kept the close icon (`✕`) on the right side of the title and moved the settings icon directly under it; removed the `Добавить сервер` text label from that action.
+- RU: В Android-диалоге точечной проверки серверов оперативного центра крестик закрытия (`✕`) сохранён справа в заголовке, шестерёнка перенесена прямо под него, а текстовая подпись `Добавить сервер` убрана.
+- EN: Added sorting for targeted check server tiles with quick toggles between name-based and IP-based order.
+- RU: Добавлена сортировка плашек точечной проверки с быстрым переключением между порядком по имени и по IP.
+- EN: Completed repository-wide SemVer patch bump to `8.41.8`; synchronized runtime/config/docs/mobile references and updated Android metadata to `ANDROID_VERSION_NAME=8.41.8` and `ANDROID_VERSION_CODE=252`.
+- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.8`; синхронизированы ссылки на версию в runtime/config/docs/mobile и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.8` и `ANDROID_VERSION_CODE=252`.
 ## [8.41.6] - 2026-04-03
 
 ### Changed / Изменено

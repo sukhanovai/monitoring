@@ -136,6 +136,11 @@ private data class ExtensionDataTile(
     val hasProblem: Boolean
 )
 
+private enum class ServerCardsSortMode {
+    BY_NAME,
+    BY_IP
+}
+
 private val extensionRatioRegex = Regex("""(\d+)\s*/\s*(\d+)""")
 
 private fun buildExtensionDataTile(
@@ -485,6 +490,7 @@ private fun MonitoringApp(
     var showServerAvailabilityDialog by rememberSaveable { mutableStateOf(false) }
     var showServerAddDialog by rememberSaveable { mutableStateOf(false) }
     var serverActionsTargetKey by rememberSaveable { mutableStateOf("") }
+    var serverCardsSortMode by rememberSaveable { mutableStateOf(ServerCardsSortMode.BY_NAME.name) }
     var showServerResourcesMenu by rememberSaveable { mutableStateOf(false) }
     var areOpsTilesExpanded by rememberSaveable { mutableStateOf(false) }
     var showTileSettingsDialog by rememberSaveable { mutableStateOf(false) }
@@ -741,7 +747,14 @@ private fun MonitoringApp(
     val pullToRefreshState = rememberPullRefreshState(state.isLoading, onRefreshData)
     val serverButtonsForDialog = state.managedServers
         .asSequence()
-        .sortedBy { "${it.name.lowercase()}_${it.ip}" }
+        .sortedWith(
+            when (ServerCardsSortMode.valueOf(serverCardsSortMode)) {
+                ServerCardsSortMode.BY_NAME -> compareBy<ManagedServer> { it.name.lowercase() }
+                    .thenBy { it.ip.lowercase() }
+                ServerCardsSortMode.BY_IP -> compareBy<ManagedServer> { it.ip.lowercase() }
+                    .thenBy { it.name.lowercase() }
+            }
+        )
         .toList()
     val selectedServerForActions = state.managedServers.firstOrNull { managedServer ->
         val key = managedServer.ip.ifBlank { managedServer.name }.trim()
@@ -2191,16 +2204,29 @@ private fun MonitoringApp(
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.Top
                 ) {
                     Text("Точечная проверка серверов")
-                    IconButton(
-                        onClick = { showServerAvailabilityDialog = false }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Close,
-                            contentDescription = "Закрыть окно точечной проверки"
-                        )
+                    Column(horizontalAlignment = Alignment.End) {
+                        IconButton(
+                            onClick = { showServerAvailabilityDialog = false }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "Закрыть окно точечной проверки"
+                            )
+                        }
+                        IconButton(
+                            onClick = {
+                                onCancelServerEdit()
+                                showServerAddDialog = true
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Settings,
+                                contentDescription = "Открыть добавление сервера"
+                            )
+                        }
                     }
                 }
             },
@@ -2212,17 +2238,20 @@ private fun MonitoringApp(
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    TextButton(
-                        onClick = {
-                            onCancelServerEdit()
-                            showServerAddDialog = true
-                        }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Filled.Settings,
-                            contentDescription = null
-                        )
-                        Text("Добавить сервер", modifier = Modifier.padding(start = 4.dp))
+                        TextButton(
+                            onClick = { serverCardsSortMode = ServerCardsSortMode.BY_NAME.name }
+                        ) {
+                            Text(if (serverCardsSortMode == ServerCardsSortMode.BY_NAME.name) "Сортировка: имя ✓" else "Сортировка: имя")
+                        }
+                        TextButton(
+                            onClick = { serverCardsSortMode = ServerCardsSortMode.BY_IP.name }
+                        ) {
+                            Text(if (serverCardsSortMode == ServerCardsSortMode.BY_IP.name) "Сортировка: IP ✓" else "Сортировка: IP")
+                        }
                     }
                     if (serverButtonsForDialog.isEmpty()) {
                         Text("Серверы для выбранного фильтра не найдены.")
