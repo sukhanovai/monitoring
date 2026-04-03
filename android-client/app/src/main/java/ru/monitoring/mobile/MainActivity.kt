@@ -2301,16 +2301,14 @@ private fun MonitoringApp(
                     ) {
                         FilterChip(
                             selected = serverCardsSortMode == ServerCardsSortMode.BY_NAME.name,
-                            onClick = { serverCardsSortMode = ServerCardsSortMode.BY_NAME.name }
-                        ) {
-                            Text("Имя")
-                        }
+                            onClick = { serverCardsSortMode = ServerCardsSortMode.BY_NAME.name },
+                            label = { Text("Имя") }
+                        )
                         FilterChip(
                             selected = serverCardsSortMode == ServerCardsSortMode.BY_IP.name,
-                            onClick = { serverCardsSortMode = ServerCardsSortMode.BY_IP.name }
-                        ) {
-                            Text("IP")
-                        }
+                            onClick = { serverCardsSortMode = ServerCardsSortMode.BY_IP.name },
+                            label = { Text("IP") }
+                        )
                     }
                 }
             },
