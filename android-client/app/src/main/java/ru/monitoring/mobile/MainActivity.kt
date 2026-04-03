@@ -2201,43 +2201,35 @@ private fun MonitoringApp(
         AlertDialog(
             onDismissRequest = { showServerAvailabilityDialog = false },
             title = {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top
-                ) {
-                    Text("Точечная проверка серверов")
-                    Column(horizontalAlignment = Alignment.End) {
-                        IconButton(
-                            onClick = { showServerAvailabilityDialog = false }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Close,
-                                contentDescription = "Закрыть окно точечной проверки"
-                            )
-                        }
-                        IconButton(
-                            onClick = {
-                                onCancelServerEdit()
-                                showServerAddDialog = true
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Text("Точечная проверка серверов")
+                        Column(horizontalAlignment = Alignment.End) {
+                            IconButton(
+                                onClick = { showServerAvailabilityDialog = false }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Close,
+                                    contentDescription = "Закрыть окно точечной проверки"
+                                )
                             }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Settings,
-                                contentDescription = "Открыть добавление сервера"
-                            )
+                            IconButton(
+                                onClick = {
+                                    onCancelServerEdit()
+                                    showServerAddDialog = true
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Settings,
+                                    contentDescription = "Открыть добавление сервера"
+                                )
+                            }
                         }
                     }
-                }
-            },
-            text = {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 420.dp)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -2253,6 +2245,16 @@ private fun MonitoringApp(
                             Text(if (serverCardsSortMode == ServerCardsSortMode.BY_IP.name) "Сортировка: IP ✓" else "Сортировка: IP")
                         }
                     }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     if (serverButtonsForDialog.isEmpty()) {
                         Text("Серверы для выбранного фильтра не найдены.")
                     } else {
