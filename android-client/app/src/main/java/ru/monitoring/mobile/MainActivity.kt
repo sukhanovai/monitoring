@@ -44,6 +44,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material.ExperimentalMaterialApi
@@ -51,6 +52,9 @@ import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -475,7 +479,8 @@ private fun MonitoringApp(
     var showWindowsByType by rememberSaveable { mutableStateOf(false) }
     var showWindowsTypeStats by rememberSaveable { mutableStateOf(false) }
     var showServerAvailabilityDialog by rememberSaveable { mutableStateOf(false) }
-    var showServerListSettingsDialog by rememberSaveable { mutableStateOf(false) }
+    var showServerAddDialog by rememberSaveable { mutableStateOf(false) }
+    var serverActionsTargetKey by rememberSaveable { mutableStateOf("") }
     var showOnlyMonitoredServers by rememberSaveable { mutableStateOf(true) }
     var showServerResourcesMenu by rememberSaveable { mutableStateOf(false) }
     var areOpsTilesExpanded by rememberSaveable { mutableStateOf(false) }
@@ -736,6 +741,10 @@ private fun MonitoringApp(
         .filter { server -> !showOnlyMonitoredServers || server.enabled == true }
         .sortedBy { "${it.name.lowercase()}_${it.ip}" }
         .toList()
+    val selectedServerForActions = state.managedServers.firstOrNull { managedServer ->
+        val key = managedServer.ip.ifBlank { managedServer.name }.trim()
+        key == serverActionsTargetKey
+    }
 
 
     Scaffold(
@@ -2160,63 +2169,102 @@ private fun MonitoringApp(
     if (showServerAvailabilityDialog) {
         AlertDialog(
             onDismissRequest = { showServerAvailabilityDialog = false },
-            title = { Text("Точечная проверка серверов") },
-            text = {
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Точечная проверка серверов")
+                    IconButton(
+                        onClick = {
+                            onCancelServerEdit()
+                            showServerAddDialog = true
+                        }
                     ) {
-                        if (serverButtonsForDialog.isEmpty()) {
-                            item {
-                                Text("Серверы для выбранного фильтра не найдены.")
-                            }
-                        } else {
-                            items(serverButtonsForDialog.size) { index ->
-                                val server = serverButtonsForDialog[index]
-                                val serverTarget = if (server.ip.isNotBlank()) server.ip else server.name
-                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                    if (
-                                        state.message.isNotBlank() &&
-                                        state.messageSource == "server_availability" &&
-                                        state.availabilityServerMessageTarget == serverTarget
-                                    ) {
-                                        Text(
-                                            text = state.message,
-                                            style = MaterialTheme.typography.labelSmall
-                                        )
+                        Icon(
+                            imageVector = Icons.Filled.Settings,
+                            contentDescription = "Добавить сервер"
+                        )
+                    }
+                }
+            },
+            text = {
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                "Только включённые",
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                            Checkbox(
+                                checked = showOnlyMonitoredServers,
+                                onCheckedChange = { checked -> showOnlyMonitoredServers = checked }
+                            )
+                        }
+                    }
+                    if (serverButtonsForDialog.isEmpty()) {
+                        item {
+                            Text("Серверы для выбранного фильтра не найдены.")
+                        }
+                    } else {
+                        items(serverButtonsForDialog.size) { index ->
+                            val server = serverButtonsForDialog[index]
+                            val serverTarget = if (server.ip.isNotBlank()) server.ip else server.name
+                            val isServerEnabled = server.enabled == true
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                if (
+                                    state.message.isNotBlank() &&
+                                    state.messageSource == "server_availability" &&
+                                    state.availabilityServerMessageTarget == serverTarget
+                                ) {
+                                    Text(
+                                        text = state.message,
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
+                                Surface(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .combinedClickable(
+                                            onClick = { onCheckServerAvailability(server) },
+                                            onLongClick = {
+                                                serverActionsTargetKey = serverTarget.trim()
+                                            }
+                                        ),
+                                    tonalElevation = 3.dp,
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = if (isServerEnabled) {
+                                        MaterialTheme.colorScheme.tertiaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.surfaceContainerHigh
                                     }
-                                    Button(
-                                        onClick = { onCheckServerAvailability(server) },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                                        )
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
                                         Text(
                                             text = "${server.name} (${server.ip})",
-                                            fontSize = 11.sp,
+                                            fontSize = 12.sp,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
+                                        Text(if (isServerEnabled) "●" else "○")
                                     }
                                 }
                             }
-                        }
-                    }
-                    Surface(
-                        modifier = Modifier.align(Alignment.TopEnd),
-                        shape = RoundedCornerShape(10.dp),
-                        shadowElevation = 2.dp,
-                        tonalElevation = 2.dp
-                    ) {
-                        IconButton(onClick = { showServerListSettingsDialog = true }) {
-                            Icon(
-                                imageVector = Icons.Filled.Settings,
-                                contentDescription = "Настройки списка серверов"
-                            )
                         }
                     }
                 }
@@ -2229,32 +2277,113 @@ private fun MonitoringApp(
         )
     }
 
-    if (showServerListSettingsDialog) {
+    if (showServerAddDialog) {
         AlertDialog(
-            onDismissRequest = { showServerListSettingsDialog = false },
-            title = { Text("Настройки списка серверов") },
+            onDismissRequest = { showServerAddDialog = false },
+            title = { Text("Добавить сервер") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("Показывать только включённые")
-                        Checkbox(
-                            checked = showOnlyMonitoredServers,
-                            onCheckedChange = { checked -> showOnlyMonitoredServers = checked }
-                        )
-                    }
-                    Text(
-                        text = "Кнопки отсортированы по имени сервера.",
-                        style = MaterialTheme.typography.labelSmall
+                    OutlinedTextField(
+                        value = state.serverIpInput,
+                        onValueChange = onServerIpChanged,
+                        label = { Text("IP") },
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = state.serverNameInput,
+                        onValueChange = onServerNameChanged,
+                        label = { Text("Имя") },
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = state.serverTypeInput,
+                        onValueChange = onServerTypeChanged,
+                        label = { Text("Тип (rdp / ssh / ping)") },
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = state.serverTimeoutInput,
+                        onValueChange = onServerTimeoutChanged,
+                        label = { Text("Timeout, сек") },
+                        singleLine = true
                     )
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showServerListSettingsDialog = false }) {
-                    Text("Готово")
+                TextButton(
+                    onClick = {
+                        onSaveServer()
+                        showServerAddDialog = false
+                    }
+                ) {
+                    Text("Сохранить")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showServerAddDialog = false }) {
+                    Text("Отмена")
+                }
+            }
+        )
+    }
+
+    if (selectedServerForActions != null) {
+        AlertDialog(
+            onDismissRequest = { serverActionsTargetKey = "" },
+            title = { Text(selectedServerForActions.name) },
+            text = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        FilledIconButton(
+                            onClick = {
+                                onEditServer(selectedServerForActions)
+                                isSettingsExpanded = true
+                                settingsSection = "servers"
+                                showServerAvailabilityDialog = false
+                                serverActionsTargetKey = ""
+                            }
+                        ) {
+                            Icon(Icons.Filled.Edit, contentDescription = "Редактировать")
+                        }
+                        Text("Изм.", style = MaterialTheme.typography.labelSmall)
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        FilledIconButton(
+                            onClick = {
+                                onToggleServerMonitoring(
+                                    selectedServerForActions.ip,
+                                    selectedServerForActions.enabled != true
+                                )
+                                serverActionsTargetKey = ""
+                            }
+                        ) {
+                            Icon(Icons.Filled.PowerSettingsNew, contentDescription = "Вкл/выкл")
+                        }
+                        Text(
+                            if (selectedServerForActions.enabled == true) "Выкл." else "Вкл.",
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        FilledIconButton(
+                            onClick = {
+                                onDeleteServer(selectedServerForActions.ip)
+                                serverActionsTargetKey = ""
+                            }
+                        ) {
+                            Icon(Icons.Filled.Delete, contentDescription = "Удалить")
+                        }
+                        Text("Удал.", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { serverActionsTargetKey = "" }) {
+                    Text("Закрыть")
                 }
             }
         )
