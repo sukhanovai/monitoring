@@ -33,9 +33,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ElevatedCard
@@ -2270,7 +2270,7 @@ private fun MonitoringApp(
                             modifier = Modifier.weight(1f)
                         )
                         Column(horizontalAlignment = Alignment.End) {
-                            FilledIconButton(
+                            IconButton(
                                 onClick = { showServerAvailabilityDialog = false },
                                 modifier = Modifier
                                     .padding(bottom = 2.dp)
@@ -2281,7 +2281,7 @@ private fun MonitoringApp(
                                     contentDescription = "Закрыть окно точечной проверки"
                                 )
                             }
-                            FilledIconButton(
+                            IconButton(
                                 onClick = {
                                     onCancelServerEdit()
                                     showServerAddDialog = true
@@ -2299,15 +2299,17 @@ private fun MonitoringApp(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        TextButton(
+                        FilterChip(
+                            selected = serverCardsSortMode == ServerCardsSortMode.BY_NAME.name,
                             onClick = { serverCardsSortMode = ServerCardsSortMode.BY_NAME.name }
                         ) {
-                            Text(if (serverCardsSortMode == ServerCardsSortMode.BY_NAME.name) "Сортировка: имя ✓" else "Сортировка: имя")
+                            Text("Имя")
                         }
-                        TextButton(
+                        FilterChip(
+                            selected = serverCardsSortMode == ServerCardsSortMode.BY_IP.name,
                             onClick = { serverCardsSortMode = ServerCardsSortMode.BY_IP.name }
                         ) {
-                            Text(if (serverCardsSortMode == ServerCardsSortMode.BY_IP.name) "Сортировка: IP ✓" else "Сортировка: IP")
+                            Text("IP")
                         }
                     }
                 }
@@ -2540,37 +2542,28 @@ private fun MonitoringApp(
                 }
             },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("Отметь плашки, которые показывать сразу. Остальные уйдут под «Развернуть».")
                     allOpsTiles.forEach { tile ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 1.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Checkbox(
-                                checked = tile.id in pinnedOpsTileIds,
-                                onCheckedChange = { checked ->
-                                    val updated = if (checked) {
-                                        pinnedOpsTileIds + tile.id
-                                    } else {
-                                        pinnedOpsTileIds - tile.id
-                                    }
-                                    pinnedOpsTileIds = if (updated.isEmpty()) setOf(tile.id) else updated
-                                    preferences.compactOpsPinnedTileIds = pinnedOpsTileIds.joinToString(",")
+                        FilterChip(
+                            selected = tile.id in pinnedOpsTileIds,
+                            onClick = {
+                                val checked = tile.id !in pinnedOpsTileIds
+                                val updated = if (checked) {
+                                    pinnedOpsTileIds + tile.id
+                                } else {
+                                    pinnedOpsTileIds - tile.id
                                 }
-                            )
-                            Text(tile.label, style = MaterialTheme.typography.labelMedium)
-                        }
+                                pinnedOpsTileIds = if (updated.isEmpty()) setOf(tile.id) else updated
+                                preferences.compactOpsPinnedTileIds = pinnedOpsTileIds.joinToString(",")
+                            },
+                            label = { Text(tile.label, style = MaterialTheme.typography.labelMedium) },
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
                 }
             },
-            confirmButton = {
-                TextButton(onClick = { showTileSettingsDialog = false }) {
-                    Text("Закрыть")
-                }
-            }
+            confirmButton = {}
         )
     }
 }
