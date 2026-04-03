@@ -55,6 +55,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PowerSettingsNew
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -878,7 +879,7 @@ private fun MonitoringApp(
                                     contentColor = MaterialTheme.colorScheme.onSurface
                                 )
                             ) {
-                                Text(if (areOpsTilesExpanded) "Свернуть сведения" else "Развернуть сведения")
+                                Text(if (areOpsTilesExpanded) "Свернуть" else "Развернуть")
                             }
                         }
                         FlowRow(
@@ -971,7 +972,7 @@ private fun MonitoringApp(
             }
 
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     if (state.message.isNotBlank() && state.messageSource == "morning_report") {
                         Text(state.message)
                     }
@@ -2095,10 +2096,24 @@ private fun MonitoringApp(
                             Text("Всего: ${state.managedServers.size}")
                             Text("Активных: ${state.managedServers.count { it.enabled == true }}")
 
-                            Text(
-                                if (state.serverEditIp.isBlank()) "Добавить сервер" else "Редактирование сервера ${state.serverEditIp}",
-                                fontWeight = FontWeight.Bold
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    if (state.serverEditIp.isBlank()) "Добавить сервер" else "Редактирование сервера ${state.serverEditIp}",
+                                    fontWeight = FontWeight.Bold
+                                )
+                                if (state.serverEditIp.isNotBlank()) {
+                                    IconButton(onClick = onCancelServerEdit) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Close,
+                                            contentDescription = "Закрыть редактирование"
+                                        )
+                                    }
+                                }
+                            }
                             OutlinedTextField(
                                 value = state.serverIpInput,
                                 onValueChange = onServerIpChanged,
@@ -2128,23 +2143,29 @@ private fun MonitoringApp(
                                 Button(onClick = onSaveServer) {
                                     Text(if (state.serverEditIp.isBlank()) "Добавить сервер" else "Сохранить изменения")
                                 }
-                                if (state.serverEditIp.isNotBlank()) {
-                                    Button(onClick = onCancelServerEdit) { Text("Отмена") }
-                                }
                             }
 
                             state.managedServers.forEach { server ->
                                 ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                                    Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                         Text("${server.name} (${server.ip})", fontWeight = FontWeight.Bold)
                                         Text("Тип: ${server.type}, timeout: ${server.timeout ?: 30} сек")
                                         Text("Мониторинг: ${if (server.enabled == true) "включен" else "выключен"}")
-                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            Button(onClick = { onToggleServerMonitoring(server.ip, server.enabled != true) }) {
-                                                Text(if (server.enabled == true) "Выключить" else "Включить")
+                                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                            TextButton(
+                                                onClick = { onToggleServerMonitoring(server.ip, server.enabled != true) },
+                                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                                            ) {
+                                                Text(if (server.enabled == true) "Выкл" else "Вкл")
                                             }
-                                            Button(onClick = { onEditServer(server) }) { Text("Редактировать") }
-                                            Button(onClick = { onDeleteServer(server.ip) }) { Text("Удалить") }
+                                            TextButton(
+                                                onClick = { onEditServer(server) },
+                                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                                            ) { Text("Изм.") }
+                                            TextButton(
+                                                onClick = { onDeleteServer(server.ip) },
+                                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                                            ) { Text("Удал.") }
                                         }
                                     }
                                 }
@@ -2282,7 +2303,7 @@ private fun MonitoringApp(
             onDismissRequest = { showServerAddDialog = false },
             title = { Text("Добавить сервер") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     OutlinedTextField(
                         value = state.serverIpInput,
                         onValueChange = onServerIpChanged,
@@ -2392,13 +2413,29 @@ private fun MonitoringApp(
     if (showTileSettingsDialog) {
         AlertDialog(
             onDismissRequest = { showTileSettingsDialog = false },
-            title = { Text("Настройка плашек") },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Настройка плашек")
+                    IconButton(onClick = { showTileSettingsDialog = false }) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Закрыть"
+                        )
+                    }
+                }
+            },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Отметь плашки, которые показывать сразу. Остальные уйдут под «Развернуть сведения».")
+                    Text("Отметь плашки, которые показывать сразу. Остальные уйдут под «Развернуть».")
                     allOpsTiles.forEach { tile ->
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 1.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Checkbox(
@@ -2413,14 +2450,14 @@ private fun MonitoringApp(
                                     preferences.compactOpsPinnedTileIds = pinnedOpsTileIds.joinToString(",")
                                 }
                             )
-                            Text(tile.label)
+                            Text(tile.label, style = MaterialTheme.typography.labelMedium)
                         }
                     }
                 }
             },
             confirmButton = {
                 TextButton(onClick = { showTileSettingsDialog = false }) {
-                    Text("Готово")
+                    Text("Закрыть")
                 }
             }
         )
