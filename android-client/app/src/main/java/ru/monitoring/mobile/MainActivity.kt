@@ -22,12 +22,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
@@ -2191,34 +2194,36 @@ private fun MonitoringApp(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text("Точечная проверка серверов")
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(
-                            onClick = {
-                                onCancelServerEdit()
-                                showServerAddDialog = true
-                            }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Settings,
-                                contentDescription = "Добавить сервер"
-                            )
-                        }
-                        IconButton(
-                            onClick = { showServerAvailabilityDialog = false }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Close,
-                                contentDescription = "Закрыть окно точечной проверки"
-                            )
-                        }
+                    IconButton(
+                        onClick = { showServerAvailabilityDialog = false }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Закрыть окно точечной проверки"
+                        )
                     }
                 }
             },
             text = {
                 Column(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    TextButton(
+                        onClick = {
+                            onCancelServerEdit()
+                            showServerAddDialog = true
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Settings,
+                            contentDescription = null
+                        )
+                        Text("Добавить сервер", modifier = Modifier.padding(start = 4.dp))
+                    }
                     if (serverButtonsForDialog.isEmpty()) {
                         Text("Серверы для выбранного фильтра не найдены.")
                     } else {
