@@ -120,6 +120,18 @@ private fun isProblemBackupOption(label: String, action: String): Boolean {
     }
 }
 
+private fun resolveMenuOptionAction(option: ru.monitoring.mobile.api.MenuOption): String {
+    val optionAction = option.action?.trim().orEmpty()
+    val callbackAction = option.callbackData?.trim().orEmpty()
+    val callbackActionCamel = option.callbackDataCamel?.trim().orEmpty()
+    return when {
+        optionAction.isNotBlank() -> optionAction
+        callbackAction.isNotBlank() -> callbackAction
+        callbackActionCamel.isNotBlank() -> callbackActionCamel
+        else -> ""
+    }
+}
+
 private data class OpsMetricTile(
     val id: String,
     val label: String,
@@ -529,6 +541,7 @@ private fun MonitoringApp(
     var resourceThresholdAction by rememberSaveable { mutableStateOf("") }
     var resourceThresholdLabel by rememberSaveable { mutableStateOf("") }
     var resourceThresholdValueInput by rememberSaveable { mutableStateOf("") }
+    var selectedProxmoxBackupLabel by rememberSaveable { mutableStateOf("") }
 
     val canSaveMonitoring = state.checkIntervalInput.isNotBlank() ||
         state.timeoutInput.isNotBlank() ||
@@ -714,7 +727,14 @@ private fun MonitoringApp(
             label = extension.label,
             value = extension.value,
             hasProblem = extension.hasProblem,
-            onClick = openExtensionsDetails
+            onClick = if (extension.id == "backup_monitor") {
+                {
+                    selectedProxmoxBackupLabel = ""
+                    onToggleProxmoxBackupMenu()
+                }
+            } else {
+                openExtensionsDetails
+            }
         )
     }
     val allOpsTiles = opsTiles + extensionOpsTiles
@@ -910,6 +930,42 @@ private fun MonitoringApp(
                                 label = "⚙️ Настройки",
                                 onClick = { isSettingsExpanded = true }
                             )
+                        }
+                        if (state.extensionMenuAction == "backup_proxmox" && state.extensionMenuOptions.isNotEmpty()) {
+                            Text("💾 Бэкапы Proxmox", fontWeight = FontWeight.Bold)
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                maxItemsInEachRow = 3
+                            ) {
+                                state.extensionMenuOptions.forEach { option ->
+                                    val label = option.label?.trim().orEmpty()
+                                    val targetAction = resolveMenuOptionAction(option)
+                                    if (label.isNotBlank() && targetAction.isNotBlank()) {
+                                        OpsMetricChip(
+                                            label = "бэкап",
+                                            value = label,
+                                            hasProblem = isProblemBackupOption(label, targetAction),
+                                            onClick = {
+                                                selectedProxmoxBackupLabel = label
+                                                onAction(targetAction)
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        if (selectedProxmoxBackupLabel.isNotBlank() && state.message.isNotBlank() && state.messageSource == "global") {
+                            ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                                Column(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text("📈 Статистика: $selectedProxmoxBackupLabel", fontWeight = FontWeight.Bold)
+                                    Text(state.message)
+                                }
+                            }
                         }
                     }
                 }
@@ -1189,27 +1245,29 @@ private fun MonitoringApp(
                             }
                         }
                     }
-                    Text("Раздел системы", fontWeight = FontWeight.Bold)
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        maxItemsInEachRow = 2
-                    ) {
-                        Button(
-                            onClick = { isManagementExpanded = !isManagementExpanded },
-                            modifier = Modifier.weight(1f)
+                    if (!isCompactOpsHub) {
+                        Text("Раздел системы", fontWeight = FontWeight.Bold)
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            maxItemsInEachRow = 2
                         ) {
-                            Text("🎛️ Управление")
-                        }
-                        Button(
-                            onClick = { isSettingsExpanded = !isSettingsExpanded },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("⚙️ Настройки")
+                            Button(
+                                onClick = { isManagementExpanded = !isManagementExpanded },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("🎛️ Управление")
+                            }
+                            Button(
+                                onClick = { isSettingsExpanded = !isSettingsExpanded },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("⚙️ Настройки")
+                            }
                         }
                     }
-                    if (isManagementExpanded) {
+                    if (!isCompactOpsHub && isManagementExpanded) {
                         Text("Управление мониторингом", fontWeight = FontWeight.Bold)
                         Text("Статус: ${state.monitoringStatusText}")
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

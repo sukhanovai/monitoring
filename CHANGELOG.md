@@ -6,6 +6,18 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.41.11] - 2026-04-03
+
+### Changed / Изменено
+- EN: In Android Compact Operations Center, removed the `Раздел системы` block from the Ops Hub screen; system controls remain available in non-compact layout and via existing settings entry points.
+- RU: В Android Compact оперативном центре убран блок `Раздел системы` с экрана Ops Hub; системные действия остаются доступны в некомпактной раскладке и через существующие точки входа в настройки.
+- EN: In the Proxmox tile flow, tapping the `proxmox` tile now opens a chips list of Proxmox backup names directly in the Operations Center.
+- RU: В сценарии плашки Proxmox тап по плашке `proxmox` теперь открывает список имён Proxmox-бэкапов в виде плашек прямо в оперативном центре.
+- EN: Added in-place Proxmox backup statistics card: tapping a backup-name chip runs the backup action and renders returned stats under the Proxmox block.
+- RU: Добавлена inline-карточка статистики Proxmox-бэкапа: нажатие на плашку имени бэкапа запускает действие и показывает возвращённую статистику под блоком Proxmox.
+- EN: Completed repository-wide SemVer patch bump to `8.41.11`; synchronized runtime/config/docs/mobile references and updated Android metadata to `ANDROID_VERSION_NAME=8.41.11` and `ANDROID_VERSION_CODE=255`.
+- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.11`; синхронизированы ссылки на версию в runtime/config/docs/mobile и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.11` и `ANDROID_VERSION_CODE=255`.
+
 ## [8.41.10] - 2026-04-03
 
 ### Changed / Изменено
