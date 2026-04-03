@@ -482,7 +482,6 @@ private fun MonitoringApp(
     var showServerAvailabilityDialog by rememberSaveable { mutableStateOf(false) }
     var showServerAddDialog by rememberSaveable { mutableStateOf(false) }
     var serverActionsTargetKey by rememberSaveable { mutableStateOf("") }
-    var showOnlyMonitoredServers by rememberSaveable { mutableStateOf(true) }
     var showServerResourcesMenu by rememberSaveable { mutableStateOf(false) }
     var areOpsTilesExpanded by rememberSaveable { mutableStateOf(false) }
     var showTileSettingsDialog by rememberSaveable { mutableStateOf(false) }
@@ -739,7 +738,6 @@ private fun MonitoringApp(
     val pullToRefreshState = rememberPullRefreshState(state.isLoading, onRefreshData)
     val serverButtonsForDialog = state.managedServers
         .asSequence()
-        .filter { server -> !showOnlyMonitoredServers || server.enabled == true }
         .sortedBy { "${it.name.lowercase()}_${it.ip}" }
         .toList()
     val selectedServerForActions = state.managedServers.firstOrNull { managedServer ->
@@ -2193,16 +2191,26 @@ private fun MonitoringApp(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text("Точечная проверка серверов")
-                    IconButton(
-                        onClick = {
-                            onCancelServerEdit()
-                            showServerAddDialog = true
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(
+                            onClick = {
+                                onCancelServerEdit()
+                                showServerAddDialog = true
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Settings,
+                                contentDescription = "Добавить сервер"
+                            )
                         }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Settings,
-                            contentDescription = "Добавить сервер"
-                        )
+                        IconButton(
+                            onClick = { showServerAvailabilityDialog = false }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "Закрыть окно точечной проверки"
+                            )
+                        }
                     }
                 }
             },
@@ -2211,21 +2219,6 @@ private fun MonitoringApp(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            "Только включённые",
-                            style = MaterialTheme.typography.labelMedium
-                        )
-                        Checkbox(
-                            checked = showOnlyMonitoredServers,
-                            onCheckedChange = { checked -> showOnlyMonitoredServers = checked }
-                        )
-                    }
-
                     if (serverButtonsForDialog.isEmpty()) {
                         Text("Серверы для выбранного фильтра не найдены.")
                     } else {
@@ -2262,7 +2255,7 @@ private fun MonitoringApp(
                                     color = if (isServerEnabled) {
                                         MaterialTheme.colorScheme.tertiaryContainer
                                     } else {
-                                        MaterialTheme.colorScheme.surfaceContainerHigh
+                                        MaterialTheme.colorScheme.errorContainer
                                     }
                                 ) {
                                     Column(
@@ -2285,10 +2278,6 @@ private fun MonitoringApp(
                                             overflow = TextOverflow.Ellipsis,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
-                                        Text(
-                                            text = if (isServerEnabled) "● Вкл" else "○ Выкл",
-                                            style = MaterialTheme.typography.labelSmall
-                                        )
                                         if (serverMessage.isNotBlank()) {
                                             Text(
                                                 text = serverMessage,
@@ -2305,11 +2294,7 @@ private fun MonitoringApp(
                     }
                 }
             },
-            confirmButton = {
-                TextButton(onClick = { showServerAvailabilityDialog = false }) {
-                    Text("Закрыть")
-                }
-            }
+            confirmButton = {}
         )
     }
 
