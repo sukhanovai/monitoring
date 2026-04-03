@@ -51,7 +51,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.40.8"
+    private val projectVersion = "8.40.9"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -739,39 +739,115 @@ class MainViewModel(
 
     fun refreshAvailability(syncSessionId: Int? = null) {
         viewModelScope.launch {
-            state = state.copy(isLoading = true)
-            runCatching { fetchAvailabilityWithRetry() }
-                .onSuccess { response ->
-                    val servers = if (response.servers.isNotEmpty()) response.servers else mapItemsToServers(response.items)
-                    if (servers.isEmpty()) {
+            val serversForBatchCheck = state.managedServers.filter { managed ->
+                managed.ip.isNotBlank() || managed.name.isNotBlank()
+            }
+
+            if (serversForBatchCheck.isEmpty()) {
+                state = state.copy(isLoading = true)
+                runCatching { fetchAvailabilityWithRetry() }
+                    .onSuccess { response ->
+                        val servers = if (response.servers.isNotEmpty()) response.servers else mapItemsToServers(response.items)
+                        if (servers.isEmpty()) {
+                            state = state.copy(
+                                isLoading = false,
+                                message = "API ответил, но список серверов пуст",
+                                messageSource = "all_servers"
+                            )
+                            completeSyncProgressPart(syncSessionId)
+                            return@onSuccess
+                        }
                         state = state.copy(
                             isLoading = false,
-                            message = "API ответил, но список серверов пуст",
-                            messageSource = "all_servers"
+                            servers = servers,
+                            summaryText = buildSummaryText(servers),
+                            message = "Данные обновлены",
+                            messageSource = "all_servers",
+                            isDataSynchronized = true,
+                            lastSyncTime = LocalDateTime.now().format(syncTimeFormatter)
                         )
                         completeSyncProgressPart(syncSessionId)
-                        return@onSuccess
                     }
-                    state = state.copy(
-                        isLoading = false,
-                        servers = servers,
-                        summaryText = buildSummaryText(servers),
-                        message = "Данные обновлены",
-                        messageSource = "all_servers",
-                        isDataSynchronized = true,
-                        lastSyncTime = LocalDateTime.now().format(syncTimeFormatter)
+                    .onFailure { error ->
+                        val userMessage = when ((error as? HttpException)?.code()) {
+                            401 -> "HTTP 401: нет доступа к статусу серверов. Проверь Base URL и токен в Настройках"
+                            403 -> "HTTP 403: нет прав на получение статуса серверов"
+                            else -> formatNetworkError(error)
+                        }
+                        state = state.copy(isLoading = false, message = userMessage, messageSource = "all_servers", isDataSynchronized = false)
+                        completeSyncProgressPart(syncSessionId)
+                    }
+                return@launch
+            }
+
+            val totalServers = serversForBatchCheck.size
+            val results = mutableListOf<ServerAvailability>()
+            var failedChecks = 0
+            state = state.copy(
+                isLoading = true,
+                isServerBatchCheckInProgress = true,
+                serverBatchCheckProgress = 0f,
+                serverBatchCheckCurrentServer = "подготовка"
+            )
+
+            serversForBatchCheck.forEachIndexed { index, managedServer ->
+                val serverTarget = managedServer.ip.ifBlank { managedServer.name }.trim()
+                val displayServerName = managedServer.name.ifBlank { managedServer.ip }
+                val displayServerLabel = listOf(displayServerName, managedServer.ip.takeIf { it.isNotBlank() })
+                    .distinct()
+                    .joinToString(" • ")
+                    .ifBlank { serverTarget }
+
+                state = state.copy(
+                    serverBatchCheckCurrentServer = displayServerLabel,
+                    serverBatchCheckProgress = index.toFloat() / totalServers.toFloat()
+                )
+
+                val availability = runCatching {
+                    currentApi().getAvailabilitySingle(serverTarget)
+                }.getOrElse {
+                    failedChecks += 1
+                    null
+                }
+
+                val checkedServer = availability
+                    ?.let { response ->
+                        if (response.servers.isNotEmpty()) response.servers else mapItemsToServers(response.items)
+                    }
+                    ?.firstOrNull()
+                    ?: ServerAvailability(
+                        id = managedServer.ip.ifBlank { managedServer.name },
+                        name = managedServer.name.ifBlank { managedServer.ip },
+                        status = if (availability == null) "UNKNOWN" else "DOWN",
+                        lastCheckedAt = null
                     )
-                    completeSyncProgressPart(syncSessionId)
-                }
-                .onFailure { error ->
-                    val userMessage = when ((error as? HttpException)?.code()) {
-                        401 -> "HTTP 401: нет доступа к статусу серверов. Проверь Base URL и токен в Настройках"
-                        403 -> "HTTP 403: нет прав на получение статуса серверов"
-                        else -> formatNetworkError(error)
-                    }
-                    state = state.copy(isLoading = false, message = userMessage, messageSource = "all_servers", isDataSynchronized = false)
-                    completeSyncProgressPart(syncSessionId)
-                }
+
+                results += checkedServer
+
+                state = state.copy(
+                    serverBatchCheckProgress = (index + 1).toFloat() / totalServers.toFloat()
+                )
+            }
+
+            val checksMessage = if (failedChecks > 0) {
+                "Проверка завершена: ошибок $failedChecks из $totalServers"
+            } else {
+                "Проверка завершена: $totalServers из $totalServers"
+            }
+
+            state = state.copy(
+                isLoading = false,
+                isServerBatchCheckInProgress = false,
+                serverBatchCheckProgress = 0f,
+                serverBatchCheckCurrentServer = "",
+                servers = results,
+                summaryText = buildSummaryText(results),
+                message = checksMessage,
+                messageSource = "all_servers",
+                isDataSynchronized = failedChecks == 0,
+                lastSyncTime = LocalDateTime.now().format(syncTimeFormatter)
+            )
+            completeSyncProgressPart(syncSessionId)
         }
     }
 
@@ -1968,6 +2044,9 @@ data class MainUiState(
     val isLoading: Boolean = false,
     val isSyncInProgress: Boolean = false,
     val syncProgress: Float = 0f,
+    val isServerBatchCheckInProgress: Boolean = false,
+    val serverBatchCheckProgress: Float = 0f,
+    val serverBatchCheckCurrentServer: String = "",
     val summaryText: String = "Статус не запрошен",
     val isDataSynchronized: Boolean = false,
     val lastSyncTime: String = "",
