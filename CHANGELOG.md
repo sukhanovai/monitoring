@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.41.1] - 2026-04-03
+
+### Changed / Изменено
+- EN: In Android targeted server check overlay, moved the server-list settings gear to a floating top-right position (overlay method) directly over the list area for faster access.
+- RU: В оверлее точечной проверки серверов Android шестерёнка настроек списка перенесена в плавающее положение справа сверху (методом наложения) прямо над областью списка для более быстрого доступа.
+- EN: Made server buttons in the targeted check list even more compact by reducing list spacing and button/text paddings, which decreases scrolling while searching for a specific server.
+- RU: Кнопки серверов в списке точечной проверки сделаны ещё компактнее: уменьшены интервалы списка и внутренние отступы кнопок/текста, что снижает объём скроллинга при поиске нужного сервера.
+- EN: Completed repository-wide SemVer patch bump to `8.41.1`; synchronized runtime/config/docs/mobile references and updated Android metadata to `ANDROID_VERSION_NAME=8.41.1` and `ANDROID_VERSION_CODE=245`.
+- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.1`; синхронизированы ссылки на версию в runtime/config/docs/mobile и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.1` и `ANDROID_VERSION_CODE=245`.
+
 ## [8.41.0] - 2026-04-03
 
 ### Added / Добавлено
