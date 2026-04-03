@@ -6,6 +6,18 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.41.6] - 2026-04-03
+
+### Changed / Изменено
+- EN: In Android Operations Center targeted server check dialog, removed the `Только включённые` filter label/checkbox and always show the full server list.
+- RU: В Android-диалоге точечной проверки серверов оперативного центра убраны надпись и галка `Только включённые`; теперь всегда показывается полный список серверов.
+- EN: In targeted server check tiles, removed inline `Вкл/Выкл` status text and made disabled server tiles visually distinct with `errorContainer` background color.
+- RU: В плашках точечной проверки убран текстовый статус `Вкл/Выкл`, а отключённые серверы теперь выделяются отдельным цветом фона (`errorContainer`).
+- EN: Replaced the bottom `Закрыть` action in the targeted server check dialog with a close icon (`✕`) in the top-right corner of the dialog header.
+- RU: Нижняя кнопка `Закрыть` в диалоге точечной проверки заменена на крестик (`✕`) в правом верхнем углу заголовка.
+- EN: Completed repository-wide SemVer patch bump to `8.41.6`; synchronized runtime/config/docs/mobile references and updated Android metadata to `ANDROID_VERSION_NAME=8.41.6` and `ANDROID_VERSION_CODE=250`.
+- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.6`; синхронизированы ссылки на версию в runtime/config/docs/mobile и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.6` и `ANDROID_VERSION_CODE=250`.
+
 ## [8.41.5] - 2026-04-03
 
 ### Changed / Изменено
