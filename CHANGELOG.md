@@ -6,6 +6,18 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.40.9] - 2026-04-03
+
+### Added / Добавлено
+- EN: Android Compact Ops server tile now supports two interaction modes: short tap starts sequential availability check for all configured servers, while long tap opens per-server quick check buttons.
+- RU: В Android Compact Ops плашка серверов теперь поддерживает два режима: короткое нажатие запускает последовательную проверку доступности всех настроенных серверов, долгое нажатие открывает кнопки точечной проверки по одному серверу.
+
+### Changed / Изменено
+- EN: Added visual progress for bulk server checks in Android UI, including current server label and linear progress bar during the run.
+- RU: Добавлен визуальный прогресс пакетной проверки серверов в Android UI: отображается текущий сервер и линейный прогресс-бар во время выполнения.
+- EN: Completed repository-wide SemVer patch bump to `8.40.9`; synchronized runtime/config/docs/mobile references and updated Android metadata to `ANDROID_VERSION_NAME=8.40.9` and `ANDROID_VERSION_CODE=243`.
+- RU: Выполнен репозиторный SemVer patch-бамп до `8.40.9`; синхронизированы ссылки на версию в runtime/config/docs/mobile и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.40.9` и `ANDROID_VERSION_CODE=243`.
+
 ## [8.40.8] - 2026-04-02
 
 ### Fixed / Исправлено

@@ -11,6 +11,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +25,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -115,7 +117,8 @@ private data class OpsMetricTile(
     val label: String,
     val value: String,
     val hasProblem: Boolean = false,
-    val onClick: () -> Unit = {}
+    val onClick: () -> Unit = {},
+    val onLongClick: (() -> Unit)? = null
 )
 
 private data class ExtensionDataTile(
@@ -195,16 +198,26 @@ private fun extractMailBackupVolumeFromMorningReport(report: String): String? {
     return extractFrom(nearMailSection) ?: extractFrom(normalizedReport)
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun OpsMetricChip(label: String, value: String, hasProblem: Boolean = false, onClick: () -> Unit = {}) {
+private fun OpsMetricChip(
+    label: String,
+    value: String,
+    hasProblem: Boolean = false,
+    onClick: () -> Unit = {},
+    onLongClick: (() -> Unit)? = null
+) {
     val valueColor = if (hasProblem) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
     Surface(
         modifier = Modifier
             .clip(RoundedCornerShape(14.dp))
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)),
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
         shape = RoundedCornerShape(14.dp),
-        tonalElevation = 1.dp,
-        onClick = onClick
+        tonalElevation = 1.dp
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)
@@ -550,6 +563,10 @@ private fun MonitoringApp(
     val sectionSpacing = if (isCompactOpsHub) 8.dp else 12.dp
 
     val openServersDetails = {
+        onRefresh()
+        showServerAvailabilityMenu = false
+    }
+    val openServerSingleCheckDetails = {
         onLoadServersForSingleCheck()
         showServerAvailabilityMenu = true
     }
@@ -572,7 +589,8 @@ private fun MonitoringApp(
             label = "Серверы",
             value = "$activeServersCount/$totalServersCount",
             hasProblem = hasServerProblems,
-            onClick = openServersDetails
+            onClick = openServersDetails,
+            onLongClick = openServerSingleCheckDetails
         ),
         OpsMetricTile(
             id = "extensions",
@@ -795,6 +813,21 @@ private fun MonitoringApp(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
+                                if (state.isServerBatchCheckInProgress) {
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    LinearProgressIndicator(
+                                        progress = { state.serverBatchCheckProgress.coerceIn(0f, 1f) },
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(4.dp)
+                                            .clip(RoundedCornerShape(10.dp))
+                                    )
+                                    Text(
+                                        "проверяется: ${state.serverBatchCheckCurrentServer.ifBlank { "подготовка" }}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                             IconButton(onClick = { showTileSettingsDialog = true }) {
                                 Icon(
@@ -814,7 +847,8 @@ private fun MonitoringApp(
                                     label = tile.label,
                                     value = tile.value,
                                     hasProblem = tile.hasProblem,
-                                    onClick = tile.onClick
+                                    onClick = tile.onClick,
+                                    onLongClick = tile.onLongClick
                                 )
                             }
                         }
@@ -947,6 +981,16 @@ private fun MonitoringApp(
                     }
                     if (state.message.isNotBlank() && state.messageSource == "all_servers") {
                         Text(state.message)
+                    }
+                    if (state.isServerBatchCheckInProgress) {
+                        LinearProgressIndicator(
+                            progress = { state.serverBatchCheckProgress.coerceIn(0f, 1f) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(4.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                        )
+                        Text("Сейчас проверяется: ${state.serverBatchCheckCurrentServer.ifBlank { "подготовка" }}")
                     }
                     if (showServerAvailabilityMenu) {
                         state.managedServers.forEach { server ->
