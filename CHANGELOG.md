@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.41.3] - 2026-04-03
+
+### Fixed / Исправлено
+- EN: Added `ExperimentalFoundationApi` opt-in to the Android `MonitoringApp` composable so `combinedClickable` in Compact Ops compiles without experimental API errors.
+- RU: Добавлен opt-in `ExperimentalFoundationApi` для Android-компонуемого `MonitoringApp`, чтобы `combinedClickable` в Compact Ops компилировался без ошибок experimental API.
+
+### Changed / Изменено
+- EN: Completed repository-wide SemVer patch bump to `8.41.3`; synchronized runtime/config/docs/mobile references and updated Android metadata to `ANDROID_VERSION_NAME=8.41.3` and `ANDROID_VERSION_CODE=247`.
+- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.3`; синхронизированы ссылки на версию в runtime/config/docs/mobile и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.3` и `ANDROID_VERSION_CODE=247`.
+
 ## [8.41.2] - 2026-04-03
 
 ### Changed / Изменено
