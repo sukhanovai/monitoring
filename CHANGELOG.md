@@ -6,9 +6,11 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.41.12] - 2026-04-03
+## [8.41.13] - 2026-04-03
 
 ### Changed / Изменено
+- EN: Fixed Android `compactOps` debug Kotlin compilation in `MainActivity.kt` by switching sort chips to Material3 `FilterChip` API with explicit `label` parameter.
+- RU: Исправлена Kotlin-компиляция Android `compactOps` debug в `MainActivity.kt`: сортировочные плашки переведены на API Material3 `FilterChip` с явным параметром `label`.
 - EN: In Android Operations Center tile settings, removed the bottom `Закрыть` text action and kept only the close icon (`✕`) in the header.
 - RU: В Android-настройках плашек оперативного центра убрана нижняя текстовая кнопка `Закрыть`; оставлен только крестик (`✕`) в заголовке.
 - EN: Made tile settings list denser by replacing checkbox rows with compact selectable chips.
@@ -17,8 +19,8 @@ The project follows Semantic Versioning (SemVer).
 - RU: В диалоге точечной проверки серверов убран фон под крестиком и шестерёнкой; внешний вид приведён к стилю обычных иконок, как в оперативном центре и настройках плашек.
 - EN: Replaced verbose sorting labels with checkmarks by compact sort chips (`Имя`, `IP`) in targeted server checks.
 - RU: В точечной проверке серверов длинные подписи сортировки с галочками заменены на компактные плашки сортировки (`Имя`, `IP`).
-- EN: Completed repository-wide SemVer patch bump to `8.41.12`; synchronized runtime/config/docs/mobile references and updated Android metadata to `ANDROID_VERSION_NAME=8.41.12` and `ANDROID_VERSION_CODE=256`.
-- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.12`; синхронизированы ссылки на версию в runtime/config/docs/mobile и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.12` и `ANDROID_VERSION_CODE=256`.
+- EN: Completed repository-wide SemVer patch bump to `8.41.13`; synchronized runtime/config/docs/mobile references and updated Android metadata to `ANDROID_VERSION_NAME=8.41.13` and `ANDROID_VERSION_CODE=257`.
+- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.13`; синхронизированы ссылки на версию в runtime/config/docs/mobile и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.13` и `ANDROID_VERSION_CODE=257`.
 
 ## [8.41.11] - 2026-04-03
 
