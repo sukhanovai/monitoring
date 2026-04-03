@@ -6,17 +6,19 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.41.15] - 2026-04-03
+## [8.41.16] - 2026-04-03
 
 ### Changed / Изменено
+- EN: Updated Android launcher icon concept: the foreground now shows a satellite above cupped hands to reflect monitoring and protection.
+- RU: Обновлена концепция иконки Android-приложения: на переднем плане теперь спутник над раскрытыми ладонями как символ мониторинга и защиты.
 - EN: In Android Operations Center, tapping the `proxmox` tile now opens a chips list of Proxmox backup names (same compact tile style as server quick actions).
 - RU: В Android оперативном центре тап по плашке `proxmox` теперь открывает список имён Proxmox-бэкапов в виде компактных плашек (в том же стиле, что и быстрые действия по серверам).
 - EN: Proxmox backup statistics now open as an overlay dialog above the Operations Center; added close (`✕`) and settings (`⚙`) controls in the header.
 - RU: Статистика Proxmox-бэкапа теперь открывается поверх оперативного центра во всплывающем диалоге; в заголовок добавлены крестик закрытия (`✕`) и шестерёнка (`⚙`).
 - EN: Added a quick settings route from backup statistics (`settings_backup_hosts`) to start adding/configuring new backup entries.
 - RU: Добавлен быстрый переход из статистики бэкапа в настройки (`settings_backup_hosts`) для добавления/настройки новых backup-элементов.
-- EN: Completed repository-wide SemVer patch bump to `8.41.15`; synchronized runtime/config/docs/mobile references and updated Android metadata to `ANDROID_VERSION_NAME=8.41.15` and `ANDROID_VERSION_CODE=259`.
-- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.15`; синхронизированы ссылки на версию в runtime/config/docs/mobile и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.15` и `ANDROID_VERSION_CODE=259`.
+- EN: Completed repository-wide SemVer patch bump to `8.41.16`; synchronized runtime/config/docs/mobile references and updated Android metadata to `ANDROID_VERSION_NAME=8.41.16` and `ANDROID_VERSION_CODE=260`.
+- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.16`; синхронизированы ссылки на версию в runtime/config/docs/mobile и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.16` и `ANDROID_VERSION_CODE=260`.
 
 ## [8.41.11] - 2026-04-03
 
