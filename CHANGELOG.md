@@ -6,6 +6,22 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.41.0] - 2026-04-03
+
+### Added / Добавлено
+- EN: In Android Compact Ops, long-press on the `Servers` tile now opens a modal overlay with per-server targeted availability check buttons.
+- RU: В Android Compact Ops долгое нажатие на плашку `Серверы` теперь открывает модальное наложение с кнопками точечной проверки доступности по каждому серверу.
+- EN: Added a gear button in the top-right corner of the server list overlay that opens a second overlay with server list settings.
+- RU: Добавлена шестерёнка в правом верхнем углу списка серверов: она открывает отдельное наложение с настройками списка серверов.
+
+### Changed / Изменено
+- EN: Made server action buttons in the targeted-check overlay more compact (reduced paddings and smaller text) to reduce scrolling while searching for a specific server.
+- RU: Кнопки серверов в оверлее точечной проверки сделаны более компактными (уменьшены отступы и размер текста), чтобы снизить скроллинг при поиске нужного сервера.
+- EN: Removed the separate `Checks` section that was rendered below the Ops Center in Android Compact Ops.
+- RU: Удалён отдельный раздел `Проверки`, который отображался ниже оперативного центра в Android Compact Ops.
+- EN: Completed repository-wide SemVer minor bump to `8.41.0`; synchronized runtime/config/docs/mobile references and updated Android metadata to `ANDROID_VERSION_NAME=8.41.0` and `ANDROID_VERSION_CODE=244`.
+- RU: Выполнен репозиторный SemVer minor-бамп до `8.41.0`; синхронизированы ссылки на версию в runtime/config/docs/mobile и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.0` и `ANDROID_VERSION_CODE=244`.
+
 ## [8.40.9] - 2026-04-03
 
 ### Added / Добавлено
