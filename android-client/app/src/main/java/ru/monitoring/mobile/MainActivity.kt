@@ -526,6 +526,7 @@ private fun MonitoringApp(
     var selectedProxmoxBackupLabel by rememberSaveable { mutableStateOf("") }
     var showProxmoxBackupStatsDialog by rememberSaveable { mutableStateOf(false) }
     var showProxmoxBackupsDialog by rememberSaveable { mutableStateOf(false) }
+    var showMorningReportDialog by rememberSaveable { mutableStateOf(false) }
 
     val canSaveMonitoring = state.checkIntervalInput.isNotBlank() ||
         state.timeoutInput.isNotBlank() ||
@@ -908,7 +909,10 @@ private fun MonitoringApp(
                         ) {
                             DashboardActionButton(
                                 label = "🌅 Утренний отчёт",
-                                onClick = { onAction("send_morning_report") }
+                                onClick = {
+                                    showMorningReportDialog = true
+                                    onAction("send_morning_report")
+                                }
                             )
                             DashboardActionButton(
                                 label = "⚙️ Настройки",
@@ -965,24 +969,6 @@ private fun MonitoringApp(
                 }
             }
 
-            item {
-                if (state.morningReportText.isNotBlank()) {
-                    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("Утренний отчет", fontWeight = FontWeight.Bold)
-                            Text(state.morningReportText)
-                            if (state.morningReportReceivedAt.isNotBlank()) {
-                                Text("Получен: ${state.morningReportReceivedAt}")
-                            }
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                if (state.morningReportUnread) {
-                                    Button(onClick = onMarkMorningReportRead) { Text("Прочитано") }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
 
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -2140,6 +2126,53 @@ private fun MonitoringApp(
         )
     }
 
+
+
+    if (showMorningReportDialog) {
+        AlertDialog(
+            onDismissRequest = { showMorningReportDialog = false },
+            title = {
+                Text("🌅 Утренний отчет", fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (state.morningReportText.isNotBlank()) {
+                        Text(state.morningReportText)
+                        if (state.morningReportReceivedAt.isNotBlank()) {
+                            Text("Получен: ${state.morningReportReceivedAt}")
+                        }
+                    } else {
+                        Text("Формируем утренний отчет…")
+                    }
+                    if (state.messageSource == "morning_report" && state.message.isNotBlank()) {
+                        Text(state.message)
+                    }
+                }
+            },
+            confirmButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (state.morningReportUnread) {
+                        TextButton(onClick = {
+                            onMarkMorningReportRead()
+                            showMorningReportDialog = false
+                        }) {
+                            Text("Прочитано")
+                        }
+                    }
+                    TextButton(onClick = { showMorningReportDialog = false }) {
+                        Text("Закрыть")
+                    }
+                }
+            }
+        )
+    }
+
     if (showProxmoxBackupStatsDialog && selectedProxmoxBackupLabel.isNotBlank()) {
         AlertDialog(
             onDismissRequest = { showProxmoxBackupStatsDialog = false },
@@ -2199,7 +2232,6 @@ private fun MonitoringApp(
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         IconButton(onClick = {
-                            showProxmoxBackupsDialog = false
                             onExtensionsSettingsAction("settings_proxmox_add")
                         }) {
                             Icon(
