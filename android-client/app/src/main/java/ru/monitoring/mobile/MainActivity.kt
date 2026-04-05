@@ -762,6 +762,14 @@ private fun MonitoringApp(
             CenterAlignedTopAppBar(
                 title = {
                     Text(appTitle, fontWeight = FontWeight.SemiBold)
+                },
+                actions = {
+                    IconButton(onClick = onCloseApp) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Свернуть приложение"
+                        )
+                    }
                 }
             )
         }
@@ -856,12 +864,6 @@ private fun MonitoringApp(
                                 }
                             }
                             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                IconButton(onClick = onCloseApp) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Close,
-                                        contentDescription = "Свернуть приложение"
-                                    )
-                                }
                                 IconButton(onClick = { showTileSettingsDialog = true }) {
                                     Icon(
                                         imageVector = Icons.Filled.Settings,
