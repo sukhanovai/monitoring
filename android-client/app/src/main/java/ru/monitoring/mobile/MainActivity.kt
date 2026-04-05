@@ -916,32 +916,6 @@ private fun MonitoringApp(
                                 onClick = { isSettingsExpanded = true }
                             )
                         }
-                        if (state.extensionMenuAction == "backup_proxmox" && state.extensionMenuOptions.isNotEmpty()) {
-                            Text("💾 Бэкапы Proxmox", fontWeight = FontWeight.Bold)
-                            FlowRow(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                                maxItemsInEachRow = 3
-                            ) {
-                                state.extensionMenuOptions.forEach { option ->
-                                    val label = option.label?.trim().orEmpty()
-                                    val targetAction = resolveMenuOptionAction(option)
-                                    if (label.isNotBlank() && targetAction.isNotBlank()) {
-                                        OpsMetricChip(
-                                            label = "бэкап",
-                                            value = label,
-                                            hasProblem = isProblemBackupOption(label, targetAction),
-                                            onClick = {
-                                                selectedProxmoxBackupLabel = label
-                                                showProxmoxBackupStatsDialog = true
-                                                onAction(targetAction)
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-                        }
                     }
                 }
             }
@@ -2182,16 +2156,6 @@ private fun MonitoringApp(
                         fontWeight = FontWeight.Bold
                     )
                     Row {
-                        IconButton(
-                            onClick = {
-                                showProxmoxBackupAddDialog = true
-                            }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Settings,
-                                contentDescription = "Добавить новый бэкап"
-                            )
-                        }
                         IconButton(onClick = { showProxmoxBackupStatsDialog = false }) {
                             Icon(
                                 imageVector = Icons.Filled.Close,
@@ -2234,11 +2198,19 @@ private fun MonitoringApp(
                         modifier = Modifier.weight(1f),
                         fontWeight = FontWeight.Bold
                     )
-                    IconButton(onClick = { showProxmoxBackupsDialog = false }) {
-                        Icon(
-                            imageVector = Icons.Filled.Close,
-                            contentDescription = "Закрыть выбор бэкапа Proxmox"
-                        )
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        IconButton(onClick = { showProxmoxBackupAddDialog = true }) {
+                            Icon(
+                                imageVector = Icons.Filled.Settings,
+                                contentDescription = "Добавить новый сервер Proxmox в бэкапы"
+                            )
+                        }
+                        IconButton(onClick = { showProxmoxBackupsDialog = false }) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "Закрыть выбор бэкапа Proxmox"
+                            )
+                        }
                     }
                 }
             },
