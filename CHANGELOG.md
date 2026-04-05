@@ -9,8 +9,8 @@ The project follows Semantic Versioning (SemVer).
 ## [8.41.18] - 2026-04-05
 
 ### Changed / Изменено
-- EN: Redesigned the Android launcher foreground icon: replaced the satellite with a radio antenna mast and redrew both lower palms as clearly open hands oriented toward the center.
-- RU: Перерисована foreground-иконка Android-приложения: спутник заменён на антенну-мачту, обе нижние ладони переработаны в более явно раскрытые руки, направленные к центру.
+- EN: Played on the new product name `ComDone` in public branding: updated main README title/intro and Android app naming (`ComDone`, `ComDone Legacy`, `ComDoneMobile`) to keep identity consistent across docs and mobile UI.
+- RU: Обыграно новое название `ComDone` в публичном брендинге: обновлены заголовок/вступление README и Android-нейминг (`ComDone`, `ComDone Legacy`, `ComDoneMobile`) для единого образа в документации и мобильном UI.
 - EN: Completed repository-wide SemVer patch bump to `8.41.18`; synchronized runtime/config/docs/mobile references and updated Android metadata to `ANDROID_VERSION_NAME=8.41.18` and `ANDROID_VERSION_CODE=262`.
 - RU: Выполнен репозиторный SemVer patch-бамп до `8.41.18`; синхронизированы ссылки на версию в runtime/config/docs/mobile и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.18` и `ANDROID_VERSION_CODE=262`.
 
