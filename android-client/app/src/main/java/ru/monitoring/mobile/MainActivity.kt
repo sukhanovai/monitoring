@@ -526,7 +526,6 @@ private fun MonitoringApp(
     var selectedProxmoxBackupLabel by rememberSaveable { mutableStateOf("") }
     var showProxmoxBackupStatsDialog by rememberSaveable { mutableStateOf(false) }
     var showProxmoxBackupsDialog by rememberSaveable { mutableStateOf(false) }
-    var showProxmoxBackupAddDialog by rememberSaveable { mutableStateOf(false) }
 
     val canSaveMonitoring = state.checkIntervalInput.isNotBlank() ||
         state.timeoutInput.isNotBlank() ||
@@ -2199,7 +2198,10 @@ private fun MonitoringApp(
                         fontWeight = FontWeight.Bold
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        IconButton(onClick = { showProxmoxBackupAddDialog = true }) {
+                        IconButton(onClick = {
+                            showProxmoxBackupsDialog = false
+                            onExtensionsSettingsAction("settings_proxmox_add")
+                        }) {
                             Icon(
                                 imageVector = Icons.Filled.Settings,
                                 contentDescription = "Добавить новый сервер Proxmox в бэкапы"
@@ -2274,31 +2276,6 @@ private fun MonitoringApp(
                 }
             },
             confirmButton = {}
-        )
-    }
-
-    if (showProxmoxBackupAddDialog) {
-        AlertDialog(
-            onDismissRequest = { showProxmoxBackupAddDialog = false },
-            title = { Text("➕ Добавить Proxmox-бэкап") },
-            text = {
-                Text("Открыть отдельный диалог добавления бэкапа Proxmox?")
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        onExtensionsSettingsAction("settings_proxmox_add")
-                        showProxmoxBackupAddDialog = false
-                    }
-                ) {
-                    Text("Открыть")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showProxmoxBackupAddDialog = false }) {
-                    Text("Отмена")
-                }
-            }
         )
     }
 
