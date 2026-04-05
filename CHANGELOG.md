@@ -6,6 +6,14 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.41.27] - 2026-04-05
+
+### Changed / Изменено
+- EN: Redesigned Android launcher foreground icon: now it emphasizes an antenna/satellite communication motif above open palms (hands) for clearer monitoring-and-protection symbolism.
+- RU: Переработана foreground-иконка launcher в Android: теперь акцент на антенне/спутниковой связи над раскрытыми ладонями для более явной символики мониторинга и защиты.
+- EN: Completed repository-wide SemVer patch bump to `8.41.27`; synchronized explicit project-version references, updated Android metadata to `ANDROID_VERSION_NAME=8.41.27` and `ANDROID_VERSION_CODE=270`, and aligned prerelease APK links.
+- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.27`; синхронизированы явные упоминания версии проекта, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.27` и `ANDROID_VERSION_CODE=270`, а также выровнены prerelease-ссылки на APK.
+
 ## [8.41.26] - 2026-04-05
 
 ### Changed / Изменено
