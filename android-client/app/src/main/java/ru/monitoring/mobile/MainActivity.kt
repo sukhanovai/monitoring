@@ -590,7 +590,7 @@ private fun MonitoringApp(
     val hasExtensionProblems = extensionProblemsCount > 0
     val extensionButtons = MAIN_MENU_EXTENSION_BUTTONS.filter { it.extensionId in enabledExtensions }
     val isResourceMonitorEnabled = "resource_monitor" in enabledExtensions
-    val appTitle = "Sysmoraq"
+    val appTitle = "ComDone"
     val contentPadding = if (isCompactOpsHub) 10.dp else 16.dp
     val sectionSpacing = if (isCompactOpsHub) 8.dp else 12.dp
 
