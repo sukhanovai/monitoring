@@ -543,6 +543,8 @@ private fun MonitoringApp(
     var resourceThresholdValueInput by rememberSaveable { mutableStateOf("") }
     var selectedProxmoxBackupLabel by rememberSaveable { mutableStateOf("") }
     var showProxmoxBackupStatsDialog by rememberSaveable { mutableStateOf(false) }
+    var showProxmoxBackupsDialog by rememberSaveable { mutableStateOf(false) }
+    var showProxmoxBackupAddDialog by rememberSaveable { mutableStateOf(false) }
 
     val canSaveMonitoring = state.checkIntervalInput.isNotBlank() ||
         state.timeoutInput.isNotBlank() ||
@@ -599,6 +601,10 @@ private fun MonitoringApp(
     val openServerSingleCheckDetails = {
         onLoadServersForSingleCheck()
         showServerAvailabilityDialog = true
+    }
+    val openProxmoxBackupDetails = {
+        onAction("backup_proxmox")
+        showProxmoxBackupsDialog = true
     }
     val openExtensionsDetails = {
         isSettingsExpanded = true
@@ -732,7 +738,7 @@ private fun MonitoringApp(
                 {
                     selectedProxmoxBackupLabel = ""
                     showProxmoxBackupStatsDialog = false
-                    onToggleProxmoxBackupMenu()
+                    openProxmoxBackupDetails()
                 }
             } else {
                 openExtensionsDetails
@@ -2408,9 +2414,7 @@ private fun MonitoringApp(
                     Row {
                         IconButton(
                             onClick = {
-                                showProxmoxBackupStatsDialog = false
-                                isSettingsExpanded = true
-                                onAction("settings_backup_hosts")
+                                showProxmoxBackupAddDialog = true
                             }
                         ) {
                             Icon(
@@ -2443,6 +2447,116 @@ private fun MonitoringApp(
                 }
             },
             confirmButton = {}
+        )
+    }
+
+    if (showProxmoxBackupsDialog) {
+        AlertDialog(
+            onDismissRequest = { showProxmoxBackupsDialog = false },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "💾 Бэкапы Proxmox",
+                        modifier = Modifier.weight(1f),
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(onClick = { showProxmoxBackupsDialog = false }) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Закрыть выбор бэкапа Proxmox"
+                        )
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (state.extensionMenuAction != "backup_proxmox" || state.extensionMenuOptions.isEmpty()) {
+                        Text("Загружаем список бэкапов Proxmox…")
+                    } else {
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            maxItemsInEachRow = 2
+                        ) {
+                            state.extensionMenuOptions.forEach { option ->
+                                val label = option.label?.trim().orEmpty()
+                                val targetAction = resolveMenuOptionAction(option)
+                                if (label.isNotBlank() && targetAction.isNotBlank()) {
+                                    Surface(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .clickable {
+                                                showProxmoxBackupsDialog = false
+                                                selectedProxmoxBackupLabel = label
+                                                showProxmoxBackupStatsDialog = true
+                                                onAction(targetAction)
+                                            },
+                                        tonalElevation = 2.dp,
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = if (isProblemBackupOption(label, targetAction)) {
+                                            MaterialTheme.colorScheme.errorContainer
+                                        } else {
+                                            MaterialTheme.colorScheme.tertiaryContainer
+                                        }
+                                    ) {
+                                        Text(
+                                            text = label,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 10.dp, vertical = 8.dp),
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis,
+                                            color = if (isProblemBackupOption(label, targetAction)) {
+                                                MaterialTheme.colorScheme.onErrorContainer
+                                            } else {
+                                                MaterialTheme.colorScheme.onTertiaryContainer
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    if (showProxmoxBackupAddDialog) {
+        AlertDialog(
+            onDismissRequest = { showProxmoxBackupAddDialog = false },
+            title = { Text("➕ Добавить Proxmox-бэкап") },
+            text = {
+                Text("Открыть отдельный диалог добавления бэкапа Proxmox?")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onExtensionsSettingsAction("settings_proxmox_add")
+                        showProxmoxBackupAddDialog = false
+                    }
+                ) {
+                    Text("Открыть")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showProxmoxBackupAddDialog = false }) {
+                    Text("Отмена")
+                }
+            }
         )
     }
 
