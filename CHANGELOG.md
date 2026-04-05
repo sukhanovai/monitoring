@@ -6,6 +6,14 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.41.33] - 2026-04-05
+
+### Changed / Изменено
+- EN: Refreshed Android launcher icon assets (`ic_launcher`, `ic_launcher_round`, and density-specific mipmaps) including adaptive icon background value sync.
+- RU: Обновлены ассеты launcher-иконок Android (`ic_launcher`, `ic_launcher_round` и density-специфичные mipmap), включая синхронизацию значения background для adaptive-иконки.
+- EN: Completed repository-wide SemVer patch bump to `8.41.33`; synchronized explicit project-version references, updated Android metadata to `ANDROID_VERSION_NAME=8.41.33` and `ANDROID_VERSION_CODE=276`, and aligned prerelease APK links.
+- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.33`; синхронизированы явные упоминания версии проекта, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.33` и `ANDROID_VERSION_CODE=276`, а также выровнены prerelease-ссылки на APK.
+
 ## [8.41.32] - 2026-04-05
 
 ### Changed / Изменено
