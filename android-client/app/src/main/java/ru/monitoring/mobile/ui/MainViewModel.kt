@@ -51,7 +51,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.41.20"
+    private val projectVersion = "8.41.21"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -720,6 +720,10 @@ class MainViewModel(
 
 
     fun refreshData() {
+        if (state.isSyncInProgress) {
+            state = state.copy(message = "Синхронизация уже выполняется", messageSource = "global")
+            return
+        }
         val syncSessionId = startSyncProgressSession()
         refreshSettingsFromServer(showErrors = true, syncSessionId = syncSessionId)
         refreshAvailability(syncSessionId = syncSessionId)
