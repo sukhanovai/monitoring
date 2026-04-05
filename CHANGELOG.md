@@ -6,15 +6,23 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.41.18] - 2026-04-05
+## [8.41.20] - 2026-04-05
+
+### Changed / Изменено
+- EN: Follow-up release after review: completed repository-wide SemVer patch bump to `8.41.20` and synchronized all in-code/doc references where project version is explicitly declared.
+- RU: Довыпуск после ревью: выполнен репозиторный SemVer patch-бамп до `8.41.20` и синхронизированы все in-code/doc ссылки, где версия проекта указана явно.
+- EN: Android metadata was incremented to `ANDROID_VERSION_NAME=8.41.20` and `ANDROID_VERSION_CODE=263`; prerelease links were aligned to `v8.41.20-develop`.
+- RU: Android-метаданные увеличены до `ANDROID_VERSION_NAME=8.41.20` и `ANDROID_VERSION_CODE=263`; prerelease-ссылки выровнены на `v8.41.20-develop`.
+
+## [8.41.19] - 2026-04-05
 
 ### Changed / Изменено
 - EN: In Android Compact Operations Center, tapping the `proxmox` tile now behaves like a long tap on `Servers`: it opens a dedicated Proxmox backup selection dialog and lets you launch backup stats directly from that dialog.
 - RU: В Android Compact оперативном центре тап по плашке `proxmox` теперь работает как долгий тап по `Серверы`: открывается отдельный диалог выбора Proxmox-бэкапа с быстрым запуском статистики.
 - EN: In Proxmox backup statistics, tapping the settings gear (`⚙`) now opens a dedicated Proxmox backup add dialog instead of routing to common settings.
 - RU: В статистике Proxmox-бэкапа нажатие на шестерёнку (`⚙`) теперь открывает отдельный диалог добавления Proxmox-бэкапа вместо перехода в общие настройки.
-- EN: Completed repository-wide SemVer patch bump to `8.41.18`; synchronized runtime/config/docs/mobile references and updated Android metadata to `ANDROID_VERSION_NAME=8.41.18` and `ANDROID_VERSION_CODE=262`.
-- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.18`; синхронизированы ссылки на версию в runtime/config/docs/mobile и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.18` и `ANDROID_VERSION_CODE=262`.
+- EN: Completed repository-wide SemVer patch bump to `8.41.19`; synchronized runtime/config/docs/mobile references and updated Android metadata to `ANDROID_VERSION_NAME=8.41.19` and `ANDROID_VERSION_CODE=262`.
+- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.19`; синхронизированы ссылки на версию в runtime/config/docs/mobile и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.19` и `ANDROID_VERSION_CODE=262`.
 
 ## [8.41.16] - 2026-04-03
 
