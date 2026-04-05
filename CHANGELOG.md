@@ -6,6 +6,14 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.41.18] - 2026-04-05
+
+### Changed / Изменено
+- EN: Played on the new product name `ComDone` in public branding: updated main README title/intro and Android app naming (`ComDone`, `ComDone Legacy`, `ComDoneMobile`) to keep identity consistent across docs and mobile UI.
+- RU: Обыграно новое название `ComDone` в публичном брендинге: обновлены заголовок/вступление README и Android-нейминг (`ComDone`, `ComDone Legacy`, `ComDoneMobile`) для единого образа в документации и мобильном UI.
+- EN: Completed repository-wide SemVer patch bump to `8.41.18`; synchronized runtime/config/docs/mobile references and updated Android metadata to `ANDROID_VERSION_NAME=8.41.18` and `ANDROID_VERSION_CODE=262`.
+- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.18`; синхронизированы ссылки на версию в runtime/config/docs/mobile и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.18` и `ANDROID_VERSION_CODE=262`.
+
 ## [8.41.17] - 2026-04-03
 
 ### Changed / Изменено

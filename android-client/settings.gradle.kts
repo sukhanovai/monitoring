@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "SysmoraqMobile"
+rootProject.name = "ComDoneMobile"
 include(":app")

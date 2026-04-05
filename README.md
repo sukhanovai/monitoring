@@ -1,6 +1,6 @@
-# 🛰️ Monitoring: Telegram/TamTam-бот и платформа мониторинга серверов
+# 🛰️ ComDone: Telegram/TamTam-бот и платформа мониторинга серверов
 
-**Monitoring** — это модульная система мониторинга инфраструктуры с управлением через Telegram/TamTam-ботов, CLI-проверками и опциональным веб‑интерфейсом. Проект умеет отслеживать доступность, ресурсы, бэкапы и события из почтовых уведомлений, а также отправлять алерты в чат.
+**ComDone** — это модульная система мониторинга инфраструктуры (communication done, контроль done) с управлением через Telegram/TamTam-ботов, CLI-проверками и опциональным веб‑интерфейсом. Проект умеет отслеживать доступность, ресурсы, бэкапы и события из почтовых уведомлений, а также отправлять алерты в чат.
 
 ## ✨ Ключевые возможности
 
@@ -193,7 +193,7 @@ AVAILABLE_EXTENSIONS = {
 - загружает APK в релиз, не затрагивая стабильный релиз в `main`.
 
 Актуальная ссылка на APK prerelease (скрипт обновляет её только при запуске с флагом `-UpdateDocsLinks`):
-<!-- ANDROID_PRERELEASE_APK_LINK_START -->https://github.com/sukhanovai/monitoring/releases/download/v8.41.17-develop/monitoring-android-8.41.17-develop-debug.apk<!-- ANDROID_PRERELEASE_APK_LINK_END -->
+<!-- ANDROID_PRERELEASE_APK_LINK_START -->https://github.com/sukhanovai/monitoring/releases/download/v8.41.18-develop/monitoring-android-8.41.18-develop-debug.apk<!-- ANDROID_PRERELEASE_APK_LINK_END -->
 
 Требования:
 - либо установлен `gh` (GitHub CLI) и выполнен `gh auth login`;
