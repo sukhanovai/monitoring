@@ -6,6 +6,14 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.41.22] - 2026-04-05
+
+### Changed / Изменено
+- EN: Completed repository-wide SemVer patch bump to `8.41.22`; synchronized all explicit project-version mentions across runtime/config/docs/mobile files.
+- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.22`; синхронизированы все явные упоминания версии проекта в runtime/config/docs/mobile файлах.
+- EN: Android metadata updated to `ANDROID_VERSION_NAME=8.41.22` and `ANDROID_VERSION_CODE=265`; prerelease links aligned to `v8.41.22-develop`.
+- RU: Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.41.22` и `ANDROID_VERSION_CODE=265`; prerelease-ссылки выровнены на `v8.41.22-develop`.
+
 ## [8.41.21] - 2026-04-05
 
 - EN: Updated Android operational center UX: added top-right quick app minimize button, removed explicit close buttons, and removed the extensions block from the operational center surface.
