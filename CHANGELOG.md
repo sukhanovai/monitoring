@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.41.28] - 2026-04-05
+
+### Changed / Изменено
+- EN: Android Proxmox UX in Ops Center was refined: removed the duplicate inline "Proxmox backups" list under the Settings button and kept only the overlay list dialog.
+- RU: Доработан UX Proxmox в оперативном центре Android: убран дублирующийся встроенный список «бэкапы Proxmox» под кнопкой «Настройки», оставлен только оверлейный список.
+- EN: Added a gear action in the "Proxmox backups" dialog for opening backup-server addition flow, and removed the gear action from the backup statistics dialog.
+- RU: Добавлена шестерёнка в диалоге «бэкапы Proxmox» для запуска добавления сервера в бэкап, а из диалога статистики бэкапа шестерёнка удалена.
+- EN: Completed repository-wide SemVer patch bump to `8.41.28`; synchronized explicit project-version references, updated Android metadata to `ANDROID_VERSION_NAME=8.41.28` and `ANDROID_VERSION_CODE=271`, and aligned prerelease APK links.
+- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.28`; синхронизированы явные упоминания версии проекта, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.28` и `ANDROID_VERSION_CODE=271`, а также выровнены prerelease-ссылки на APK.
+
 ## [8.41.27] - 2026-04-05
 
 ### Changed / Изменено
