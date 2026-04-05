@@ -1,11 +1,11 @@
 """
 /extensions/base.py
-Server Monitoring System v8.41.30
+Server Monitoring System v8.41.31
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Extensions interface
 Система мониторинга серверов
-Версия: 8.41.30
+Версия: 8.41.31
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Интерфейс расширений
