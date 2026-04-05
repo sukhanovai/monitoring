@@ -6,14 +6,13 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.41.25] - 2026-04-05
+## [8.41.26] - 2026-04-05
 
 ### Changed / Изменено
-- EN: Removed binary launcher asset from the Android app package and switched back to XML/vector foreground resources so PR creation works in environments that reject binary files.
-- RU: Удалён бинарный launcher-ассет из Android-пакета и возвращён XML/vector foreground-ресурс, чтобы создание PR проходило в окружениях, где бинарные файлы не поддерживаются.
-- EN: Completed repository-wide SemVer patch bump to `8.41.25`; synchronized explicit project-version references and updated Android metadata to `ANDROID_VERSION_NAME=8.41.25` and `ANDROID_VERSION_CODE=268`.
-- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.25`; синхронизированы явные упоминания версии проекта и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.25` и `ANDROID_VERSION_CODE=268`.
-
+- EN: Updated Android launcher icon scaling by removing extra foreground inset (`0dp` on all sides) so the icon art is used at full adaptive-icon area without adding new binary assets.
+- RU: Обновлён масштаб иконки Android launcher: убран дополнительный отступ foreground (`0dp` со всех сторон), чтобы изображение использовалось на полной adaptive-icon области без добавления новых бинарных ассетов.
+- EN: Completed repository-wide SemVer patch bump to `8.41.26`; synchronized explicit project-version references and updated Android metadata to `ANDROID_VERSION_NAME=8.41.26` and `ANDROID_VERSION_CODE=269`.
+- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.26`; синхронизированы явные упоминания версии проекта и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.26` и `ANDROID_VERSION_CODE=269`.
 ## [8.41.21] - 2026-04-05
 
 - EN: Updated Android operational center UX: added top-right quick app minimize button, removed explicit close buttons, and removed the extensions block from the operational center surface.
