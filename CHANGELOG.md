@@ -6,13 +6,15 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.41.22] - 2026-04-05
+## [8.41.23] - 2026-04-05
 
 ### Changed / Изменено
-- EN: Completed repository-wide SemVer patch bump to `8.41.22`; synchronized all explicit project-version mentions across runtime/config/docs/mobile files.
-- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.22`; синхронизированы все явные упоминания версии проекта в runtime/config/docs/mobile файлах.
-- EN: Android metadata updated to `ANDROID_VERSION_NAME=8.41.22` and `ANDROID_VERSION_CODE=265`; prerelease links aligned to `v8.41.22-develop`.
-- RU: Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.41.22` и `ANDROID_VERSION_CODE=265`; prerelease-ссылки выровнены на `v8.41.22-develop`.
+- EN: Android launcher icon was updated to a new satellite/dish concept and foreground insets were increased so the full image fits inside adaptive icon masks.
+- RU: Иконка Android-приложения обновлена на новую концепцию со спутником/антенной, а отступы foreground увеличены, чтобы изображение целиком помещалось в адаптивной маске.
+- EN: The app close (`✕`) action was moved from the Operations Center card header to the main app title bar.
+- RU: Действие закрытия/сворачивания приложения (`✕`) перенесено из заголовка «Оперативного центра» в верхний заголовок приложения.
+- EN: Completed repository-wide SemVer patch bump to `8.41.23`; synchronized explicit project-version references and updated Android metadata to `ANDROID_VERSION_NAME=8.41.23` and `ANDROID_VERSION_CODE=266`.
+- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.23`; синхронизированы явные упоминания версии проекта и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.23` и `ANDROID_VERSION_CODE=266`.
 
 ## [8.41.21] - 2026-04-05
 
