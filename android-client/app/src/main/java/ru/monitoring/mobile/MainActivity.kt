@@ -88,22 +88,6 @@ import ru.monitoring.mobile.ui.MainUiState
 import ru.monitoring.mobile.ui.MonitoringTheme
 import ru.monitoring.mobile.ui.MainViewModel
 
-private data class MainMenuExtensionButton(
-    val extensionId: String,
-    val label: String,
-    val action: String
-)
-
-private val MAIN_MENU_EXTENSION_BUTTONS = listOf(
-    MainMenuExtensionButton("resource_monitor", "📊 Ресурсы сервера", "check_resources"),
-    MainMenuExtensionButton("backup_monitor", "💾 Бэкапы Proxmox", "backup_proxmox"),
-    MainMenuExtensionButton("database_backup_monitor", "🗃️ Бэкапы БД", "backup_databases"),
-    MainMenuExtensionButton("mail_backup_monitor", "📬 Бэкапы почты", "backup_mail"),
-    MainMenuExtensionButton("stock_load_monitor", "📦 Остатки 1С", "backup_stock_loads"),
-    MainMenuExtensionButton("supplier_stock_files", "📦 Результаты остатков поставщиков", "supplier_stock_reports"),
-    MainMenuExtensionButton("zfs_monitor", "🧊 ZFS", "zfs_menu")
-)
-
 private val PROBLEM_BACKUP_MARKERS = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
 private val PROBLEM_BACKUP_KEYWORDS = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
 
@@ -369,7 +353,6 @@ class MainActivity : ComponentActivity() {
                     onThemeModeChanged = vm::setThemeMode,
                     onMorningNotificationsEnabledChanged = vm::setMorningReportNotificationsEnabled,
                     onMarkMorningReportRead = vm::markMorningReportRead,
-                    onClearMorningReport = vm::clearMorningReport,
                     onOpenUpdateUrl = { url ->
                         if (url.isNotBlank()) {
                             runCatching {
@@ -486,7 +469,6 @@ private fun MonitoringApp(
     onThemeModeChanged: (String) -> Unit,
     onMorningNotificationsEnabledChanged: (Boolean) -> Unit,
     onMarkMorningReportRead: () -> Unit,
-    onClearMorningReport: () -> Unit,
     onOpenUpdateUrl: (String) -> Unit
 ) {
     val isCompactOpsHub = BuildConfig.IS_COMPACT_OPS_HUB
@@ -587,9 +569,6 @@ private fun MonitoringApp(
         hasMailProblemByLatest
     ).count { it }
     val hasServerProblems = downServersCount > 0 || unknownServersCount > 0 || activeServersCount < totalServersCount
-    val hasExtensionProblems = extensionProblemsCount > 0
-    val extensionButtons = MAIN_MENU_EXTENSION_BUTTONS.filter { it.extensionId in enabledExtensions }
-    val isResourceMonitorEnabled = "resource_monitor" in enabledExtensions
     val appTitle = "ComDone"
     val contentPadding = if (isCompactOpsHub) 10.dp else 16.dp
     val sectionSpacing = if (isCompactOpsHub) 8.dp else 12.dp
@@ -605,11 +584,6 @@ private fun MonitoringApp(
     val openProxmoxBackupDetails = {
         onAction("backup_proxmox")
         showProxmoxBackupsDialog = true
-    }
-    val openExtensionsDetails = {
-        isSettingsExpanded = true
-        settingsSection = "extensions"
-        isExtensionsSettingsOpened = true
     }
     val openModesDetails = {
         val nextModeAction = when {
@@ -627,13 +601,6 @@ private fun MonitoringApp(
             hasProblem = hasServerProblems,
             onClick = openServersDetails,
             onLongClick = openServerSingleCheckDetails
-        ),
-        OpsMetricTile(
-            id = "extensions",
-            label = "Расширения",
-            value = "$enabledExtensionsCount/$totalExtensionsCount",
-            hasProblem = hasExtensionProblems,
-            onClick = openExtensionsDetails
         ),
         OpsMetricTile(
             id = "modes",
@@ -741,12 +708,12 @@ private fun MonitoringApp(
                     openProxmoxBackupDetails()
                 }
             } else {
-                openExtensionsDetails
+                { isSettingsExpanded = true; settingsSection = "extensions"; isExtensionsSettingsOpened = true }
             }
         )
     }
     val allOpsTiles = opsTiles + extensionOpsTiles
-    val defaultPinnedTileIds = setOf("servers", "extensions", "modes")
+    val defaultPinnedTileIds = setOf("servers", "modes")
     var pinnedOpsTileIds by rememberSaveable {
         mutableStateOf(
             preferences.compactOpsPinnedTileIds.split(",")
@@ -888,11 +855,19 @@ private fun MonitoringApp(
                                     )
                                 }
                             }
-                            IconButton(onClick = { showTileSettingsDialog = true }) {
-                                Icon(
-                                    imageVector = Icons.Filled.Settings,
-                                    contentDescription = "Настроить плашки"
-                                )
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                IconButton(onClick = onCloseApp) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Close,
+                                        contentDescription = "Свернуть приложение"
+                                    )
+                                }
+                                IconButton(onClick = { showTileSettingsDialog = true }) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Settings,
+                                        contentDescription = "Настроить плашки"
+                                    )
+                                }
                             }
                         }
                         FlowRow(
@@ -1028,7 +1003,6 @@ private fun MonitoringApp(
                                 if (state.morningReportUnread) {
                                     Button(onClick = onMarkMorningReportRead) { Text("Прочитано") }
                                 }
-                                Button(onClick = onClearMorningReport) { Text("Закрыть") }
                             }
                         }
                     }
@@ -1039,209 +1013,6 @@ private fun MonitoringApp(
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     if (state.message.isNotBlank() && state.messageSource == "morning_report") {
                         Text(state.message)
-                    }
-                    Text("Расширения", fontWeight = FontWeight.Bold)
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        maxItemsInEachRow = 2
-                    ) {
-                        extensionButtons.forEach { extensionButton ->
-                            val shouldHighlightBackupButton = when (extensionButton.action) {
-                                "backup_proxmox" -> state.backupProxmoxHasProblemItems
-                                "backup_databases" -> state.backupDatabasesHasProblemItems
-                                else -> false
-                            }
-                            Button(
-                                onClick = {
-                                    when (extensionButton.action) {
-                                        "check_resources" -> showServerResourcesMenu = !showServerResourcesMenu
-                                        "backup_proxmox" -> onToggleProxmoxBackupMenu()
-                                        "backup_databases" -> onToggleDatabaseBackupMenu()
-                                        "backup_mail" -> onToggleMailBackupMenu()
-                                        else -> onAction(extensionButton.action)
-                                    }
-                                },
-                                modifier = Modifier.weight(1f),
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
-                                colors = if (shouldHighlightBackupButton) {
-                                    ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                                        contentColor = MaterialTheme.colorScheme.onErrorContainer
-                                    )
-                                } else {
-                                    ButtonDefaults.buttonColors()
-                                }
-                            ) {
-                                Text(
-                                    text = extensionButton.label,
-                                    fontSize = 13.sp,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        }
-                    }
-                    extensionButtons.forEach { extensionButton ->
-                        if (extensionButton.action == "check_resources" && isResourceMonitorEnabled && showServerResourcesMenu) {
-                            state.managedServers.forEach { server ->
-                                val serverTarget = if (server.ip.isNotBlank()) server.ip else server.name
-                                if (
-                                    state.message.isNotBlank() &&
-                                    state.messageSource == "server_resources" &&
-                                    state.availabilityServerMessageTarget == serverTarget
-                                ) {
-                                    Text(state.message)
-                                }
-                                Button(
-                                    onClick = { onCheckServerResources(server) },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                                    )
-                                ) {
-                                    Text("${server.name} (${server.ip})")
-                                }
-                            }
-                        }
-                        if (
-                            state.extensionMenuOptions.isNotEmpty() &&
-                            ((extensionButton.action == "backup_proxmox" && state.extensionMenuAction == "backup_proxmox") ||
-                                (extensionButton.action == "backup_databases" && state.extensionMenuAction == "backup_databases") ||
-                                (extensionButton.action == "backup_mail" && state.extensionMenuAction == "backup_mail"))
-                        ) {
-                            val menuTitle = when (extensionButton.action) {
-                                "backup_databases" -> "Выбор базы"
-                                "backup_mail" -> "Выбор почтового ящика"
-                                else -> "Выбор сервера"
-                            }
-                            Text(menuTitle, fontWeight = FontWeight.Bold)
-                            val shouldHighlightProblemBackups = extensionButton.action == "backup_proxmox" ||
-                                extensionButton.action == "backup_databases"
-                            val problemOptionsCount = state.extensionMenuOptions.count { item ->
-                                val optionLabel = item.label?.trim().orEmpty()
-                                val optionAction = item.action?.trim().orEmpty()
-                                val callbackAction = item.callbackData?.trim().orEmpty()
-                                val callbackActionCamel = item.callbackDataCamel?.trim().orEmpty()
-                                val targetAction = when {
-                                    optionAction.isNotBlank() -> optionAction
-                                    callbackAction.isNotBlank() -> callbackAction
-                                    callbackActionCamel.isNotBlank() -> callbackActionCamel
-                                    else -> ""
-                                }
-                                shouldHighlightProblemBackups &&
-                                    isProblemBackupOption(optionLabel, targetAction)
-                            }
-                            if (extensionButton.action == "backup_databases" && problemOptionsCount > 0) {
-                                Text(
-                                    text = "⚠️ Проблемных бэкапов: $problemOptionsCount",
-                                    color = MaterialTheme.colorScheme.error,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-                            state.extensionMenuOptions.forEach { item ->
-                                val optionLabel = item.label?.trim().orEmpty()
-                                val optionAction = item.action?.trim().orEmpty()
-                                val callbackAction = item.callbackData?.trim().orEmpty()
-                                val callbackActionCamel = item.callbackDataCamel?.trim().orEmpty()
-                                val targetAction = when {
-                                    optionAction.isNotBlank() -> optionAction
-                                    callbackAction.isNotBlank() -> callbackAction
-                                    callbackActionCamel.isNotBlank() -> callbackActionCamel
-                                    else -> ""
-                                }
-                                val isProblemBackupOption = shouldHighlightProblemBackups &&
-                                    isProblemBackupOption(optionLabel, targetAction)
-                                val containerColor = if (isProblemBackupOption) {
-                                    MaterialTheme.colorScheme.errorContainer
-                                } else {
-                                    MaterialTheme.colorScheme.tertiaryContainer
-                                }
-                                val contentColor = if (isProblemBackupOption) {
-                                    MaterialTheme.colorScheme.onErrorContainer
-                                } else {
-                                    MaterialTheme.colorScheme.onTertiaryContainer
-                                }
-                                val displayLabel = if (isProblemBackupOption && !optionLabel.contains("🚨")) {
-                                    "🚨 $optionLabel"
-                                } else {
-                                    optionLabel
-                                }
-                                if (optionLabel.isNotBlank() && targetAction.isNotBlank()) {
-                                    Button(
-                                        onClick = { onAction(targetAction) },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = containerColor,
-                                            contentColor = contentColor
-                                        )
-                                    ) {
-                                        Text(displayLabel)
-                                    }
-                                }
-                            }
-                        }
-                        if (
-                            extensionButton.action == "backup_mail" &&
-                            state.mailBackupHistoryItems.isNotEmpty()
-                        ) {
-                            ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                                Column(
-                                    modifier = Modifier.padding(12.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Text(
-                                        text = if (state.mailBackupHistoryTitle.isNotBlank()) {
-                                            state.mailBackupHistoryTitle
-                                        } else {
-                                            "📬 Бэкапы почтового сервера"
-                                        },
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clip(RoundedCornerShape(10.dp))
-                                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
-                                            .padding(horizontal = 8.dp, vertical = 6.dp),
-                                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                                    ) {
-                                        state.mailBackupHistoryItems.forEach { backup ->
-                                            val statusColor = when (backup.statusIcon) {
-                                                "✅", "✔" -> Color(0xFF42D37D)
-                                                "⚠️" -> Color(0xFFF5C451)
-                                                else -> MaterialTheme.colorScheme.error
-                                            }
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                            ) {
-                                                Text(
-                                                    text = backup.statusIcon,
-                                                    color = statusColor,
-                                                    fontWeight = FontWeight.SemiBold
-                                                )
-                                                Text(
-                                                    text = "${backup.size} — ${backup.path}",
-                                                    color = MaterialTheme.colorScheme.onSurface,
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis,
-                                                    modifier = Modifier.weight(1f)
-                                                )
-                                                Text(
-                                                    text = "(${backup.relativeTime})",
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    fontSize = 12.sp
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
                     }
                     if (!isCompactOpsHub) {
                         Text("Раздел системы", fontWeight = FontWeight.Bold)
@@ -2237,9 +2008,6 @@ private fun MonitoringApp(
                                 }
                             }
                         }
-                    }
-                    Button(onClick = onCloseApp, modifier = Modifier.fillMaxWidth()) {
-                        Text("❎ Закрыть")
                     }
                 }
             }

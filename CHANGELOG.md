@@ -6,6 +6,15 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.41.21] - 2026-04-05
+
+- EN: Updated Android operational center UX: added top-right quick app minimize button, removed explicit close buttons, and removed the extensions block from the operational center surface.
+- RU: Обновлён UX оперативного центра Android: добавлен быстрый крестик сворачивания приложения в правом верхнем углу, убраны явные кнопки закрытия и удалён блок «Расширения» с поверхности оперативного центра.
+- EN: Sync trigger is now guarded from duplicate starts while an active synchronization is already running.
+- RU: Запуск синхронизации теперь защищён от повторного старта, пока предыдущая синхронизация ещё выполняется.
+- EN: Performed repository patch bump to `8.41.21`; updated Android metadata to `ANDROID_VERSION_NAME=8.41.21` and `ANDROID_VERSION_CODE=264`, plus aligned prerelease README link.
+- RU: Выполнен patch-бамп репозитория до `8.41.21`; обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.21` и `ANDROID_VERSION_CODE=264`, а также выровнена prerelease-ссылка в README.
+
 ## [8.41.20] - 2026-04-05
 
 ### Changed / Изменено
