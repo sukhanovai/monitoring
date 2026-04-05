@@ -6,16 +6,15 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.41.29] - 2026-04-05
+## [8.41.30] - 2026-04-05
 
 ### Changed / Изменено
-- EN: In Android Ops Center, tapping the gear in the Proxmox backups dialog now opens the Proxmox server-add flow immediately, without an extra confirmation dialog.
-- RU: В Android оперативном центре нажатие на шестерёнку в диалоге Proxmox-бэкапов теперь сразу открывает сценарий добавления Proxmox-сервера, без лишнего подтверждающего диалога.
-- EN: Removed the redundant intermediate "Add Proxmox backup" confirmation popup to streamline the add-server UX path from the Proxmox tile.
-- RU: Удалён лишний промежуточный попап «Добавить Proxmox-бэкап», чтобы упростить UX-переход к добавлению сервера из плашки Proxmox.
-- EN: Completed repository-wide SemVer patch bump to `8.41.29`; synchronized explicit project-version references, updated Android metadata to `ANDROID_VERSION_NAME=8.41.29` and `ANDROID_VERSION_CODE=272`, and aligned prerelease APK links.
-- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.29`; синхронизированы явные упоминания версии проекта, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.29` и `ANDROID_VERSION_CODE=272`, а также выровнены prerelease-ссылки на APK.
-
+- EN: In Android Ops Center, tapping the gear in the Proxmox backups overlay no longer closes the backups window first; the add-server action is triggered directly from the same overlay context.
+- RU: В Android оперативном центре нажатие на шестерёнку в оверлее бэкапов Proxmox больше не закрывает окно бэкапов перед действием; запуск добавления сервера выполняется прямо из текущего оверлея.
+- EN: Morning report display in Android was moved to a top overlay dialog (AlertDialog) opened from the Ops Center quick action, with scrollable content and mark-as-read support.
+- RU: Показ утреннего отчёта в Android перенесён в верхний оверлейный диалог (AlertDialog), который открывается из быстрого действия оперативного центра, со скроллом контента и поддержкой отметки «Прочитано».
+- EN: Completed repository-wide SemVer patch bump to `8.41.30`; synchronized explicit project-version references, updated Android metadata to `ANDROID_VERSION_NAME=8.41.30` and `ANDROID_VERSION_CODE=273`, and aligned prerelease APK links.
+- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.30`; синхронизированы явные упоминания версии проекта, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.30` и `ANDROID_VERSION_CODE=273`, а также выровнены prerelease-ссылки на APK.
 ## [8.41.28] - 2026-04-05
 
 ### Changed / Изменено
