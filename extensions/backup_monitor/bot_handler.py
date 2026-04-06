@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/bot_handler.py
-Server Monitoring System v8.41.34
+Server Monitoring System v8.41.35
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring Proxmox backups
 Система мониторинга серверов
-Версия: 8.41.34
+Версия: 8.41.35
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг бэкапов Proxmox
@@ -240,8 +240,10 @@ class BackupMonitorBot(BackupBase):
             if not isinstance(value, dict) or value.get("enabled", True)
         }
 
-        filtered_hosts = [host for host in db_hosts if host in enabled_hosts]
-        return filtered_hosts or list(enabled_hosts)
+        if enabled_hosts:
+            return sorted(enabled_hosts, key=lambda host: host.lower())
+
+        return db_hosts
 
     @staticmethod
     def _normalize_proxmox_hosts(raw_hosts) -> dict:

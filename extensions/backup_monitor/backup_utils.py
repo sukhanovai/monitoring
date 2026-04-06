@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_utils.py
-Server Monitoring System v8.41.34
+Server Monitoring System v8.41.35
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Utilities for working with backups
 Система мониторинга серверов
-Версия: 8.41.34
+Версия: 8.41.35
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Утилиты для работы с бэкапами
@@ -84,9 +84,7 @@ def get_backup_summary(
                         host for host, value in proxmox_hosts_config.items()
                         if _is_proxmox_host_enabled(value)
                     }
-                    db_hosts = set(all_hosts)
-                    matched_hosts = sorted(configured_hosts & db_hosts)
-                    all_hosts = matched_hosts or list(configured_hosts)
+                    all_hosts = sorted(configured_hosts)
 
                 cursor.execute('''
                     SELECT host_name, backup_status, MAX(received_at) as last_backup
@@ -203,6 +201,12 @@ def get_backup_summary(
                 host_name for host_name in allowed_hosts
                 if _normalize_host_key(host_name) in unavailable_hosts_norm
             }
+        stale_hosts = [
+            (host_name, last_backup)
+            for host_name, last_backup in stale_hosts
+            if host_name in allowed_hosts
+        ]
+
         hosts_with_success = len([
             r for r in proxmox_results
             if r[1] == 'success' and r[0] in allowed_hosts
