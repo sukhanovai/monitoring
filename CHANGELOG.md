@@ -6,15 +6,15 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.41.37] - 2026-04-06
+## [8.41.38] - 2026-04-06
 
 ### Changed / Изменено
-- EN: Fixed Proxmox backup host visibility for Android Ops Center: `backup_proxmox` now returns configured disabled hosts too, so they no longer disappear from the host grid.
-- RU: Исправлена видимость Proxmox-хостов в оперативном центре Android: `backup_proxmox` теперь возвращает и отключённые настроенные хосты, поэтому они больше не пропадают из сетки.
-- EN: Added disabled-host highlighting in Proxmox backup menu payload (`⚪ host`) and expanded summary counters with explicit disabled-host count for clearer status diagnostics.
-- RU: Для payload меню бэкапов Proxmox добавлена подсветка отключённых хостов (`⚪ host`), а также расширены счётчики сводки отдельным количеством отключённых хостов для более понятной диагностики.
-- EN: Completed repository-wide SemVer patch bump to `8.41.37`; synchronized explicit project-version references, updated Android metadata to `ANDROID_VERSION_NAME=8.41.37` and `ANDROID_VERSION_CODE=280`, and aligned prerelease APK links.
-- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.37`; синхронизированы явные упоминания версии проекта, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.37` и `ANDROID_VERSION_CODE=280`, а также выровнены prerelease-ссылки на APK.
+- EN: In Android Ops Center, the database backup tile now opens a dedicated overlay list of databases in the same interaction pattern as Proxmox backup hosts.
+- RU: В Android «Оперативном центре» плашка бэкапов БД теперь открывает отдельный оверлейный список баз по тому же паттерну взаимодействия, что и список Proxmox-хостов.
+- EN: Added direct database-item tap flow from this overlay to run the selected backup action and open per-item statistics in a modal dialog.
+- RU: Добавлен прямой запуск действия по выбранной базе из этого оверлея с открытием статистики по конкретной базе в модальном диалоге.
+- EN: Completed repository-wide SemVer patch bump to `8.41.38`; synchronized explicit project-version references, updated Android metadata to `ANDROID_VERSION_NAME=8.41.38` and `ANDROID_VERSION_CODE=281`, and aligned prerelease APK links.
+- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.38`; синхронизированы явные упоминания версии проекта, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.38` и `ANDROID_VERSION_CODE=281`, а также выровнены prerelease-ссылки на APK.
 
 ## [8.41.36] - 2026-04-06
 
