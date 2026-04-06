@@ -6,15 +6,15 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.41.38] - 2026-04-06
+## [8.41.39] - 2026-04-06
 
 ### Changed / Изменено
-- EN: In Android Ops Center, the database backup tile now opens a dedicated overlay list of databases in the same interaction pattern as Proxmox backup hosts.
-- RU: В Android «Оперативном центре» плашка бэкапов БД теперь открывает отдельный оверлейный список баз по тому же паттерну взаимодействия, что и список Proxmox-хостов.
-- EN: Added direct database-item tap flow from this overlay to run the selected backup action and open per-item statistics in a modal dialog.
-- RU: Добавлен прямой запуск действия по выбранной базе из этого оверлея с открытием статистики по конкретной базе в модальном диалоге.
-- EN: Completed repository-wide SemVer patch bump to `8.41.38`; synchronized explicit project-version references, updated Android metadata to `ANDROID_VERSION_NAME=8.41.38` and `ANDROID_VERSION_CODE=281`, and aligned prerelease APK links.
-- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.38`; синхронизированы явные упоминания версии проекта, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.38` и `ANDROID_VERSION_CODE=281`, а также выровнены prerelease-ссылки на APK.
+- EN: In Android Ops Center, database tiles in the "Database backups" overlay now support long-tap actions in the same pattern as Proxmox tiles (quick manage actions from a dedicated dialog).
+- RU: В Android «Оперативном центре» плашки баз в оверлее «Бэкапы БД» теперь поддерживают долгий тап по аналогии с Proxmox-плашками (быстрые действия управления в отдельном диалоге).
+- EN: Added a gear action to the "Database backups" overlay header for direct DB-entry creation from Ops Center, without leaving the current context.
+- RU: В заголовок оверлея «Бэкапы БД» добавлена шестерёнка для прямого добавления записи БД из оперативного центра без выхода из текущего контекста.
+- EN: Completed repository-wide SemVer patch bump to `8.41.39`; synchronized explicit project-version references, updated Android metadata to `ANDROID_VERSION_NAME=8.41.39` and `ANDROID_VERSION_CODE=282`, and aligned prerelease APK links.
+- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.39`; синхронизированы явные упоминания версии проекта, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.39` и `ANDROID_VERSION_CODE=282`, а также выровнены prerelease-ссылки на APK.
 
 ## [8.41.36] - 2026-04-06
 

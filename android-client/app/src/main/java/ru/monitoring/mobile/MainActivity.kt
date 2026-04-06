@@ -531,6 +531,7 @@ private fun MonitoringApp(
     var showProxmoxServerAddDialog by rememberSaveable { mutableStateOf(false) }
     var proxmoxServerNameInput by rememberSaveable { mutableStateOf("") }
     var proxmoxHostActionsTargetKey by rememberSaveable { mutableStateOf("") }
+    var databaseActionsTargetAction by rememberSaveable { mutableStateOf("") }
     var showMorningReportDialog by rememberSaveable { mutableStateOf(false) }
 
     val canSaveMonitoring = state.checkIntervalInput.isNotBlank() ||
@@ -598,6 +599,22 @@ private fun MonitoringApp(
         val targetAction = resolveMenuOptionAction(option)
         targetAction == "backup_host_$proxmoxHostActionsTargetKey"
     }
+    val selectedDatabaseForActions = state.extensionMenuOptions.firstOrNull { option ->
+        val targetAction = resolveMenuOptionAction(option)
+        targetAction == databaseActionsTargetAction
+    }
+    val selectedDatabaseActionPayload = selectedDatabaseForActions
+        ?.let { resolveMenuOptionAction(it) }
+        ?.removePrefix("db_detail_")
+        ?.takeIf { "__" in it }
+    val selectedDatabaseActionCategory = selectedDatabaseActionPayload
+        ?.substringBefore("__")
+        ?.trim()
+        .orEmpty()
+    val selectedDatabaseActionKey = selectedDatabaseActionPayload
+        ?.substringAfter("__", "")
+        ?.trim()
+        .orEmpty()
     val openModesDetails = {
         val nextModeAction = when {
             state.silentStatusText.contains("Принудительно тих", ignoreCase = true) -> "force_loud"
@@ -1663,9 +1680,23 @@ private fun MonitoringApp(
                             if (showDbEntryAddDialog) {
                                 AlertDialog(
                                     onDismissRequest = { showDbEntryAddDialog = false },
-                                    title = { Text("➕ Добавить БД в ${dbEntryAddCategory.uppercase()}") },
+                                    title = {
+                                        Text(
+                                            if (dbEntryAddCategory.isNotBlank()) {
+                                                "➕ Добавить БД в ${dbEntryAddCategory.uppercase()}"
+                                            } else {
+                                                "➕ Добавить БД"
+                                            }
+                                        )
+                                    },
                                     text = {
                                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            OutlinedTextField(
+                                                value = dbEntryAddCategory,
+                                                onValueChange = { dbEntryAddCategory = it },
+                                                label = { Text("Категория БД") },
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
                                             OutlinedTextField(
                                                 value = dbEntryAddKeyInput,
                                                 onValueChange = { dbEntryAddKeyInput = it },
@@ -2443,11 +2474,24 @@ private fun MonitoringApp(
                         modifier = Modifier.weight(1f),
                         fontWeight = FontWeight.Bold
                     )
-                    IconButton(onClick = { showDatabaseBackupsDialog = false }) {
-                        Icon(
-                            imageVector = Icons.Filled.Close,
-                            contentDescription = "Закрыть список баз"
-                        )
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        IconButton(onClick = {
+                            dbEntryAddCategory = ""
+                            dbEntryAddKeyInput = ""
+                            dbEntryAddNameInput = ""
+                            showDbEntryAddDialog = true
+                        }) {
+                            Icon(
+                                imageVector = Icons.Filled.Settings,
+                                contentDescription = "Добавить новую БД в список бэкапов"
+                            )
+                        }
+                        IconButton(onClick = { showDatabaseBackupsDialog = false }) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "Закрыть список баз"
+                            )
+                        }
                     }
                 }
             },
@@ -2476,13 +2520,20 @@ private fun MonitoringApp(
                                         modifier = Modifier
                                             .weight(1f)
                                             .clip(RoundedCornerShape(10.dp))
-                                            .clickable {
-                                                showDatabaseBackupsDialog = false
-                                                selectedDatabaseBackupLabel = label
-                                                selectedProxmoxBackupLabel = ""
-                                                showProxmoxBackupStatsDialog = true
-                                                onAction(targetAction)
-                                            },
+                                            .combinedClickable(
+                                                onClick = {
+                                                    showDatabaseBackupsDialog = false
+                                                    selectedDatabaseBackupLabel = label
+                                                    selectedProxmoxBackupLabel = ""
+                                                    showProxmoxBackupStatsDialog = true
+                                                    onAction(targetAction)
+                                                },
+                                                onLongClick = {
+                                                    if (targetAction.startsWith("db_detail_") && "__" in targetAction) {
+                                                        databaseActionsTargetAction = targetAction
+                                                    }
+                                                }
+                                            ),
                                         tonalElevation = 2.dp,
                                         shape = RoundedCornerShape(10.dp),
                                         color = if (isProblemBackupOption(label, targetAction)) {
@@ -2508,6 +2559,68 @@ private fun MonitoringApp(
                                 }
                             }
                         }
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    if (selectedDatabaseForActions != null) {
+        AlertDialog(
+            onDismissRequest = { databaseActionsTargetAction = "" },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(selectedDatabaseForActions.label?.trim().orEmpty())
+                    IconButton(onClick = { databaseActionsTargetAction = "" }) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Закрыть"
+                        )
+                    }
+                }
+            },
+            text = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        FilledIconButton(
+                            onClick = {
+                                if (selectedDatabaseActionCategory.isNotBlank() && selectedDatabaseActionKey.isNotBlank()) {
+                                    onExtensionsSettingsAction(
+                                        "settings_db_edit_db_$selectedDatabaseActionCategory" +
+                                            "__$selectedDatabaseActionKey"
+                                    )
+                                }
+                                databaseActionsTargetAction = ""
+                            }
+                        ) {
+                            Icon(Icons.Filled.Edit, contentDescription = "Редактировать")
+                        }
+                        Text("Изм.", style = MaterialTheme.typography.labelSmall)
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        FilledIconButton(
+                            onClick = {
+                                if (selectedDatabaseActionCategory.isNotBlank() && selectedDatabaseActionKey.isNotBlank()) {
+                                    onExtensionsSettingsAction(
+                                        "settings_db_delete_db_$selectedDatabaseActionCategory" +
+                                            "__$selectedDatabaseActionKey"
+                                    )
+                                }
+                                databaseActionsTargetAction = ""
+                            }
+                        ) {
+                            Icon(Icons.Filled.Delete, contentDescription = "Удалить")
+                        }
+                        Text("Удал.", style = MaterialTheme.typography.labelSmall)
                     }
                 }
             },
