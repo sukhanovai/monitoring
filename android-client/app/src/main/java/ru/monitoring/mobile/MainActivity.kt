@@ -528,6 +528,7 @@ private fun MonitoringApp(
     var showProxmoxBackupsDialog by rememberSaveable { mutableStateOf(false) }
     var showProxmoxServerAddDialog by rememberSaveable { mutableStateOf(false) }
     var proxmoxServerNameInput by rememberSaveable { mutableStateOf("") }
+    var proxmoxHostActionsTargetKey by rememberSaveable { mutableStateOf("") }
     var showMorningReportDialog by rememberSaveable { mutableStateOf(false) }
 
     val canSaveMonitoring = state.checkIntervalInput.isNotBlank() ||
@@ -586,6 +587,10 @@ private fun MonitoringApp(
     val openProxmoxBackupDetails = {
         onAction("backup_proxmox")
         showProxmoxBackupsDialog = true
+    }
+    val selectedProxmoxHostForActions = state.extensionMenuOptions.firstOrNull { option ->
+        val targetAction = resolveMenuOptionAction(option)
+        targetAction == "backup_host_$proxmoxHostActionsTargetKey"
     }
     val openModesDetails = {
         val nextModeAction = when {
@@ -2239,10 +2244,13 @@ private fun MonitoringApp(
                 }
             },
             confirmButton = {
-                TextButton(
+                    TextButton(
                     onClick = {
-                        onExtensionsSettingsAction("settings_proxmox_add")
+                        val hostName = proxmoxServerNameInput.trim()
+                        val actionPayload = "settings_proxmox_add|" + Uri.encode(hostName)
+                        onExtensionsSettingsAction(actionPayload)
                         showProxmoxServerAddDialog = false
+                        proxmoxServerNameInput = ""
                     },
                     enabled = proxmoxServerNameInput.trim().isNotBlank()
                 ) {
@@ -2316,12 +2324,22 @@ private fun MonitoringApp(
                                         modifier = Modifier
                                             .weight(1f)
                                             .clip(RoundedCornerShape(10.dp))
-                                            .clickable {
-                                                showProxmoxBackupsDialog = false
-                                                selectedProxmoxBackupLabel = label
-                                                showProxmoxBackupStatsDialog = true
-                                                onAction(targetAction)
-                                            },
+                                            .combinedClickable(
+                                                onClick = {
+                                                    showProxmoxBackupsDialog = false
+                                                    selectedProxmoxBackupLabel = label
+                                                    showProxmoxBackupStatsDialog = true
+                                                    onAction(targetAction)
+                                                },
+                                                onLongClick = {
+                                                    val hostName = targetAction
+                                                        .removePrefix("backup_host_")
+                                                        .trim()
+                                                    if (hostName.isNotBlank()) {
+                                                        proxmoxHostActionsTargetKey = hostName
+                                                    }
+                                                }
+                                            ),
                                         tonalElevation = 2.dp,
                                         shape = RoundedCornerShape(10.dp),
                                         color = if (isProblemBackupOption(label, targetAction)) {
@@ -2401,6 +2419,69 @@ private fun MonitoringApp(
                     Text("Отмена")
                 }
             }
+        )
+    }
+
+    if (selectedProxmoxHostForActions != null) {
+        AlertDialog(
+            onDismissRequest = { proxmoxHostActionsTargetKey = "" },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(proxmoxHostActionsTargetKey)
+                    IconButton(onClick = { proxmoxHostActionsTargetKey = "" }) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Закрыть"
+                        )
+                    }
+                }
+            },
+            text = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        FilledIconButton(
+                            onClick = {
+                                onExtensionsSettingsAction("settings_proxmox_edit_$proxmoxHostActionsTargetKey")
+                                proxmoxHostActionsTargetKey = ""
+                            }
+                        ) {
+                            Icon(Icons.Filled.Edit, contentDescription = "Редактировать")
+                        }
+                        Text("Изм.", style = MaterialTheme.typography.labelSmall)
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        FilledIconButton(
+                            onClick = {
+                                onExtensionsSettingsAction("settings_proxmox_toggle_$proxmoxHostActionsTargetKey")
+                                proxmoxHostActionsTargetKey = ""
+                            }
+                        ) {
+                            Icon(Icons.Filled.PowerSettingsNew, contentDescription = "Вкл/выкл")
+                        }
+                        Text("Вкл/выкл", style = MaterialTheme.typography.labelSmall)
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        FilledIconButton(
+                            onClick = {
+                                onExtensionsSettingsAction("settings_proxmox_delete_$proxmoxHostActionsTargetKey")
+                                proxmoxHostActionsTargetKey = ""
+                            }
+                        ) {
+                            Icon(Icons.Filled.Delete, contentDescription = "Удалить")
+                        }
+                        Text("Удал.", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            },
+            confirmButton = {}
         )
     }
 

@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.41.35
+Server Monitoring System v8.41.36
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.41.35
+Версия: 8.41.36
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -3067,7 +3067,41 @@ def v1_extensions_actions():
             ],
         }), 200
 
-    if action == "settings_proxmox_add":
+    if action == "settings_proxmox_add" or action.startswith("settings_proxmox_add|"):
+        host_name = ""
+        if "|" in raw_action:
+            host_name = unquote(raw_action.split("|", 1)[1]).strip()
+
+        if host_name:
+            proxmox_hosts = _get_proxmox_hosts_for_mobile_settings()
+            if host_name in proxmox_hosts:
+                return jsonify({
+                    "request_id": request_id,
+                    "action": action,
+                    "result": "rejected",
+                    "message": f"❌ Хост '{host_name}' уже добавлен.",
+                    "menu_options": [
+                        {"label": "📋 Список хостов", "action": "settings_proxmox_list"},
+                        {"label": "↩️ Назад", "action": "settings_backup_proxmox"},
+                        {"label": "✖️ Закрыть", "action": "close"},
+                    ],
+                }), 200
+
+            proxmox_hosts[host_name] = {"enabled": True}
+            settings_manager.set_setting('PROXMOX_HOSTS', proxmox_hosts)
+            return jsonify({
+                "request_id": request_id,
+                "action": action,
+                "result": "accepted",
+                "message": f"✅ Хост '{host_name}' добавлен.",
+                "menu_options": [
+                    {"label": "📋 Список хостов", "action": "settings_proxmox_list"},
+                    {"label": "🏠 На главную", "action": "main_menu"},
+                    {"label": "↩️ Назад", "action": "settings_backup_proxmox"},
+                    {"label": "✖️ Закрыть", "action": "close"},
+                ],
+            }), 200
+
         return jsonify({
             "request_id": request_id,
             "action": action,

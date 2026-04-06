@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.41.36] - 2026-04-06
+
+### Changed / Изменено
+- EN: Updated Android Ops Center Proxmox host cards with long-tap management actions (edit, toggle, delete), mirroring the long-tap control pattern used in point server checks.
+- RU: В Android оперативном центре на карточках Proxmox-хостов добавлено управление по долгому тапу (редактировать, включить/выключить, удалить) по аналогии со сценарием долгого тапа в точечной проверке серверов.
+- EN: Proxmox add-host flow from the gear button now submits only the backup host name (`settings_proxmox_add|<host>`), and backend mobile settings API now applies this payload directly by adding the host into `PROXMOX_HOSTS`.
+- RU: В сценарии добавления Proxmox-хоста по шестерёнке теперь отправляется только имя хоста бэкапа (`settings_proxmox_add|<host>`), а backend mobile settings API сразу применяет этот payload, добавляя хост в `PROXMOX_HOSTS`.
+- EN: Completed repository-wide SemVer patch bump to `8.41.36`; synchronized explicit project-version references, updated Android metadata to `ANDROID_VERSION_NAME=8.41.36` and `ANDROID_VERSION_CODE=279`, and aligned prerelease APK links.
+- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.36`; синхронизированы явные упоминания версии проекта, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.36` и `ANDROID_VERSION_CODE=279`, а также выровнены prerelease-ссылки на APK.
+
 ## [8.41.35] - 2026-04-06
 
 ### Changed / Изменено
