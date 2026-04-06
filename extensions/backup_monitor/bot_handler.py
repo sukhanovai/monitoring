@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/bot_handler.py
-Server Monitoring System v8.41.36
+Server Monitoring System v8.41.37
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring Proxmox backups
 Система мониторинга серверов
-Версия: 8.41.36
+Версия: 8.41.37
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг бэкапов Proxmox
@@ -225,25 +225,52 @@ class BackupMonitorBot(BackupBase):
         '''
         return self.execute_query(query, (since_date,))
 
-    def get_all_hosts(self):
-        """Получает список всех хостов из базы"""
+    def get_all_hosts(self, include_disabled=False):
+        """Получает список хостов Proxmox.
+
+        По умолчанию возвращает только включённые хосты (текущее поведение для
+        бота). Для мобильного клиента можно запросить include_disabled=True,
+        чтобы не скрывать отключённые хосты из списка.
+        """
         query = 'SELECT DISTINCT host_name FROM proxmox_backups ORDER BY host_name'
         results = self.execute_query(query)
-        db_hosts = [row[0] for row in results]
+        db_hosts = [row[0] for row in results if row and row[0]]
 
         proxmox_hosts = self._get_proxmox_hosts_runtime()
         if not isinstance(proxmox_hosts, dict):
             return db_hosts
 
+        configured_hosts = {str(host).strip() for host in proxmox_hosts.keys() if str(host).strip()}
+        all_hosts = configured_hosts.union(db_hosts)
+
+        if include_disabled:
+            return sorted(all_hosts, key=lambda host: host.lower())
+
         enabled_hosts = {
             host for host, value in proxmox_hosts.items()
-            if not isinstance(value, dict) or value.get("enabled", True)
+            if str(host).strip() and (not isinstance(value, dict) or value.get("enabled", True))
         }
 
         if enabled_hosts:
             return sorted(enabled_hosts, key=lambda host: host.lower())
 
         return db_hosts
+
+    def is_host_enabled(self, host_name):
+        """Возвращает флаг активности хоста из настроек Proxmox."""
+        normalized_host = str(host_name).strip()
+        if not normalized_host:
+            return True
+
+        proxmox_hosts = self._get_proxmox_hosts_runtime()
+        if not isinstance(proxmox_hosts, dict):
+            return True
+
+        host_value = proxmox_hosts.get(normalized_host)
+        if isinstance(host_value, dict):
+            return host_value.get("enabled", True)
+
+        return True
 
     @staticmethod
     def _normalize_proxmox_hosts(raw_hosts) -> dict:
