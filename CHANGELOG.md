@@ -6,16 +6,15 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.41.34] - 2026-04-06
+## [8.41.35] - 2026-04-06
 
 ### Changed / Изменено
-- EN: Fixed Android Ops Center Proxmox backups gear action: tapping the gear now opens an add-server dialog instead of doing nothing.
-- RU: Исправлено действие шестерёнки в Proxmox-бэкапах Android оперативного центра: по нажатию теперь открывается диалог добавления сервера, а не «ничего».
-- EN: Updated Ops Center quick settings button behavior and label: repeated taps now toggle visibility, and the label was renamed from "⚙️ Settings" to "⚙️ General settings".
-- RU: Обновлено поведение и подпись кнопки быстрых настроек в оперативном центре: повторное нажатие теперь скрывает/показывает блок, а подпись переименована с "⚙️ Настройки" на "⚙️ Общие настройки".
-- EN: Completed repository-wide SemVer patch bump to `8.41.34`; synchronized explicit project-version references, updated Android metadata to `ANDROID_VERSION_NAME=8.41.34` and `ANDROID_VERSION_CODE=277`, and aligned prerelease APK links.
-- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.34`; синхронизированы явные упоминания версии проекта, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.34` и `ANDROID_VERSION_CODE=277`, а также выровнены prerelease-ссылки на APK.
-
+- EN: Fixed Proxmox host counting mismatch: backup reports now use the full enabled host list from settings instead of only hosts already present in DB history.
+- RU: Исправлено расхождение подсчёта Proxmox-хостов: отчёты по бэкапам теперь используют полный список включённых хостов из настроек, а не только хосты, которые уже есть в истории БД.
+- EN: Normalized stale-host calculations to the same configured host scope to keep summary/problem counters consistent across Telegram bot and Android app.
+- RU: Нормализован расчёт «устаревших» хостов в той же области настроенных хостов, чтобы счётчики в сводке/проблемах были консистентны в Telegram-боте и Android-приложении.
+- EN: Completed repository-wide SemVer patch bump to `8.41.35`; synchronized explicit project-version references, updated Android metadata to `ANDROID_VERSION_NAME=8.41.35` and `ANDROID_VERSION_CODE=278`, and aligned prerelease APK links.
+- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.35`; синхронизированы явные упоминания версии проекта, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.35` и `ANDROID_VERSION_CODE=278`, а также выровнены prerelease-ссылки на APK.
 ## [8.41.32] - 2026-04-05
 
 ### Changed / Изменено
