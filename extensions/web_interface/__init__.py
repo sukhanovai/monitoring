@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.41.36
+Server Monitoring System v8.41.37
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.41.36
+Версия: 8.41.37
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1606,26 +1606,37 @@ def _execute_mobile_control_action(action: str):
             action = "zfs_menu"
 
         if action == "backup_hosts":
-            hosts = backup_bot.get_all_hosts()
+            hosts = backup_bot.get_all_hosts(include_disabled=True)
             if not hosts:
                 return True, "💾 Бэкапы Proxmox\n\nДанные по хостам пока отсутствуют.", "accepted", None
             problem_hosts = 0
+            disabled_hosts = 0
+            menu_options = []
             for host in hosts:
-                if backup_bot.get_host_display_status(host) != "success":
+                host_enabled = backup_bot.is_host_enabled(host)
+                if not host_enabled:
+                    disabled_hosts += 1
                     problem_hosts += 1
+                    host_prefix = "⚪"
+                else:
+                    host_status = backup_bot.get_host_display_status(host)
+                    is_problem = host_status != "success"
+                    if is_problem:
+                        problem_hosts += 1
+                    host_prefix = "🔴" if is_problem else "🟢"
+                menu_options.append(
+                    {
+                        "label": f"{host_prefix} {host}",
+                        "action": f"backup_host_{host}",
+                    }
+                )
             ok_hosts = len(hosts) - problem_hosts
-            menu_options = [
-                {
-                    "label": f"🖥️ {host}",
-                    "action": f"backup_host_{host}",
-                }
-                for host in hosts
-            ]
             return True, (
                 "💾 Бэкапы Proxmox\n\n"
                 f"Всего хостов: {len(hosts)}\n"
                 f"✅ Без проблем: {ok_hosts}\n"
-                f"🚨 Проблемных: {problem_hosts}"
+                f"🚨 Проблемных: {problem_hosts}\n"
+                f"⚪ Отключённых: {disabled_hosts}"
             ), "accepted", menu_options
 
         if action.startswith("backup_host_"):
