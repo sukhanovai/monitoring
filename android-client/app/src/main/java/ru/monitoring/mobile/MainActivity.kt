@@ -526,6 +526,8 @@ private fun MonitoringApp(
     var selectedProxmoxBackupLabel by rememberSaveable { mutableStateOf("") }
     var showProxmoxBackupStatsDialog by rememberSaveable { mutableStateOf(false) }
     var showProxmoxBackupsDialog by rememberSaveable { mutableStateOf(false) }
+    var showProxmoxServerAddDialog by rememberSaveable { mutableStateOf(false) }
+    var proxmoxServerNameInput by rememberSaveable { mutableStateOf("") }
     var showMorningReportDialog by rememberSaveable { mutableStateOf(false) }
 
     val canSaveMonitoring = state.checkIntervalInput.isNotBlank() ||
@@ -915,8 +917,8 @@ private fun MonitoringApp(
                                 }
                             )
                             DashboardActionButton(
-                                label = "⚙️ Настройки",
-                                onClick = { isSettingsExpanded = true }
+                                label = "⚙️ Общие настройки",
+                                onClick = { isSettingsExpanded = !isSettingsExpanded }
                             )
                         }
                     }
@@ -2216,6 +2218,46 @@ private fun MonitoringApp(
         )
     }
 
+    if (showProxmoxServerAddDialog) {
+        AlertDialog(
+            onDismissRequest = { showProxmoxServerAddDialog = false },
+            title = { Text("➕ Добавить сервер бэкапа Proxmox") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = proxmoxServerNameInput,
+                        onValueChange = { proxmoxServerNameInput = it },
+                        label = { Text("Имя сервера") },
+                        placeholder = { Text("например pve-01") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Text(
+                        "После подтверждения откроется backend-действие добавления хоста.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onExtensionsSettingsAction("settings_proxmox_add")
+                        showProxmoxServerAddDialog = false
+                    },
+                    enabled = proxmoxServerNameInput.trim().isNotBlank()
+                ) {
+                    Text("Добавить")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showProxmoxServerAddDialog = false }) {
+                    Text("Отмена")
+                }
+            }
+        )
+    }
+
+
     if (showProxmoxBackupsDialog) {
         AlertDialog(
             onDismissRequest = { showProxmoxBackupsDialog = false },
@@ -2232,7 +2274,8 @@ private fun MonitoringApp(
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         IconButton(onClick = {
-                            onExtensionsSettingsAction("settings_proxmox_add")
+                            proxmoxServerNameInput = ""
+                            showProxmoxServerAddDialog = true
                         }) {
                             Icon(
                                 imageVector = Icons.Filled.Settings,
