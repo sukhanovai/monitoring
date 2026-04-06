@@ -524,8 +524,10 @@ private fun MonitoringApp(
     var resourceThresholdLabel by rememberSaveable { mutableStateOf("") }
     var resourceThresholdValueInput by rememberSaveable { mutableStateOf("") }
     var selectedProxmoxBackupLabel by rememberSaveable { mutableStateOf("") }
+    var selectedDatabaseBackupLabel by rememberSaveable { mutableStateOf("") }
     var showProxmoxBackupStatsDialog by rememberSaveable { mutableStateOf(false) }
     var showProxmoxBackupsDialog by rememberSaveable { mutableStateOf(false) }
+    var showDatabaseBackupsDialog by rememberSaveable { mutableStateOf(false) }
     var showProxmoxServerAddDialog by rememberSaveable { mutableStateOf(false) }
     var proxmoxServerNameInput by rememberSaveable { mutableStateOf("") }
     var proxmoxHostActionsTargetKey by rememberSaveable { mutableStateOf("") }
@@ -587,6 +589,10 @@ private fun MonitoringApp(
     val openProxmoxBackupDetails = {
         onAction("backup_proxmox")
         showProxmoxBackupsDialog = true
+    }
+    val openDatabaseBackupDetails = {
+        onAction("backup_databases")
+        showDatabaseBackupsDialog = true
     }
     val selectedProxmoxHostForActions = state.extensionMenuOptions.firstOrNull { option ->
         val targetAction = resolveMenuOptionAction(option)
@@ -711,8 +717,16 @@ private fun MonitoringApp(
             onClick = if (extension.id == "backup_monitor") {
                 {
                     selectedProxmoxBackupLabel = ""
+                    selectedDatabaseBackupLabel = ""
                     showProxmoxBackupStatsDialog = false
                     openProxmoxBackupDetails()
+                }
+            } else if (extension.id == "database_backup_monitor") {
+                {
+                    selectedDatabaseBackupLabel = ""
+                    selectedProxmoxBackupLabel = ""
+                    showProxmoxBackupStatsDialog = false
+                    openDatabaseBackupDetails()
                 }
             } else {
                 { isSettingsExpanded = true; settingsSection = "extensions"; isExtensionsSettingsOpened = true }
@@ -2223,6 +2237,49 @@ private fun MonitoringApp(
         )
     }
 
+    if (showProxmoxBackupStatsDialog && selectedDatabaseBackupLabel.isNotBlank()) {
+        AlertDialog(
+            onDismissRequest = { showProxmoxBackupStatsDialog = false },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "📈 Статистика: $selectedDatabaseBackupLabel",
+                        modifier = Modifier.weight(1f),
+                        fontWeight = FontWeight.Bold
+                    )
+                    Row {
+                        IconButton(onClick = { showProxmoxBackupStatsDialog = false }) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "Закрыть статистику бэкапа"
+                            )
+                        }
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (state.message.isNotBlank() && state.messageSource == "global") {
+                        Text(state.message)
+                    } else {
+                        Text("Загружаем статистику бэкапа…")
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
     if (showProxmoxServerAddDialog) {
         AlertDialog(
             onDismissRequest = { showProxmoxServerAddDialog = false },
@@ -2340,6 +2397,92 @@ private fun MonitoringApp(
                                                     }
                                                 }
                                             ),
+                                        tonalElevation = 2.dp,
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = if (isProblemBackupOption(label, targetAction)) {
+                                            MaterialTheme.colorScheme.errorContainer
+                                        } else {
+                                            MaterialTheme.colorScheme.tertiaryContainer
+                                        }
+                                    ) {
+                                        Text(
+                                            text = label,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 10.dp, vertical = 8.dp),
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis,
+                                            color = if (isProblemBackupOption(label, targetAction)) {
+                                                MaterialTheme.colorScheme.onErrorContainer
+                                            } else {
+                                                MaterialTheme.colorScheme.onTertiaryContainer
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    if (showDatabaseBackupsDialog) {
+        AlertDialog(
+            onDismissRequest = { showDatabaseBackupsDialog = false },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "🗃️ Список баз",
+                        modifier = Modifier.weight(1f),
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(onClick = { showDatabaseBackupsDialog = false }) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Закрыть список баз"
+                        )
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (state.extensionMenuAction != "backup_databases" || state.extensionMenuOptions.isEmpty()) {
+                        Text("Загружаем список баз…")
+                    } else {
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            maxItemsInEachRow = 2
+                        ) {
+                            state.extensionMenuOptions.forEach { option ->
+                                val label = option.label?.trim().orEmpty()
+                                val targetAction = resolveMenuOptionAction(option)
+                                if (label.isNotBlank() && targetAction.isNotBlank()) {
+                                    Surface(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .clickable {
+                                                showDatabaseBackupsDialog = false
+                                                selectedDatabaseBackupLabel = label
+                                                selectedProxmoxBackupLabel = ""
+                                                showProxmoxBackupStatsDialog = true
+                                                onAction(targetAction)
+                                            },
                                         tonalElevation = 2.dp,
                                         shape = RoundedCornerShape(10.dp),
                                         color = if (isProblemBackupOption(label, targetAction)) {
