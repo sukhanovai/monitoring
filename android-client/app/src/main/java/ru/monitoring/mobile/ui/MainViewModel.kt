@@ -51,7 +51,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.42.0"
+    private val projectVersion = "8.42.1"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -1251,6 +1251,7 @@ class MainViewModel(
             action.startsWith("set_disk_") ||
             action.startsWith("backup_host_") ||
             action.startsWith("db_detail_") ||
+            action.startsWith("settings_db_toggle_monitor_") ||
             action.startsWith("backup_mail") ||
             action.startsWith("supplier_stock_reports_") ||
             action.startsWith("supplier_stock_report_source_day|")
@@ -1402,6 +1403,7 @@ class MainViewModel(
                     action == "backup_databases" ||
                     action.startsWith("backup_host_") ||
                     action.startsWith("db_detail_") ||
+                    action.startsWith("settings_db_toggle_monitor_") ||
                     action.startsWith("backup_mail") ||
                     action.startsWith("supplier_stock_reports_") ||
                     action.startsWith("supplier_stock_report_source_day|")
@@ -1445,6 +1447,7 @@ class MainViewModel(
             action == "backup_databases" ||
             action.startsWith("backup_host_") ||
             action.startsWith("db_detail_") ||
+            action.startsWith("settings_db_toggle_monitor_") ||
             action.startsWith("backup_mail") ||
             action.startsWith("supplier_stock_reports_") ||
             action.startsWith("supplier_stock_report_source_day|")
@@ -1456,6 +1459,7 @@ class MainViewModel(
                     action == "backup_databases" ||
                     action.startsWith("backup_host_") ||
                     action.startsWith("db_detail_") ||
+                    action.startsWith("settings_db_toggle_monitor_") ||
                     action.startsWith("backup_mail") ||
                     action.startsWith("supplier_stock_reports_") ||
                     action.startsWith("supplier_stock_report_source_day|")
