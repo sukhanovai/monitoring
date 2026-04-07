@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.41.41] - 2026-04-07
+
+### Fixed / Исправлено
+- EN: Fixed `backup_databases` mobile/backend response so disabled DBs are no longer dropped from the list: they are now shown with a disabled marker (`⚪ … — мониторинг отключён`), which restores DB list rendering in Android Ops Center and keeps access to per-DB actions.
+- RU: Исправлен mobile/backend-ответ для `backup_databases`: отключённые БД больше не выкидываются из списка, а отображаются с маркером отключения (`⚪ … — мониторинг отключён`), из-за чего в Android «Оперативном центре» снова загружается список баз и остаётся доступ к действиям по каждой базе.
+- EN: Updated DB backup summary text to include monitored DB count (`🔎 В мониторинге`), so Android tile parsing consistently receives numeric totals instead of fallback dash output.
+- RU: Обновлён текст сводки по бэкапам БД с добавлением счётчика `🔎 В мониторинге`, чтобы Android-плашка стабильно получала числовые итоги вместо fallback-прочерка.
+- EN: Completed repository-wide SemVer patch bump to `8.41.41`; synchronized explicit project-version references, updated Android metadata to `ANDROID_VERSION_NAME=8.41.41` and `ANDROID_VERSION_CODE=284`, and aligned prerelease APK links.
+- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.41`; синхронизированы явные упоминания версии проекта, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.41` и `ANDROID_VERSION_CODE=284`, а также выровнены prerelease-ссылки на APK.
+
 ## [8.41.40] - 2026-04-07
 
 ### Changed / Изменено

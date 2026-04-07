@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.41.40
+Server Monitoring System v8.41.41
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.41.40
+Версия: 8.41.41
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1693,29 +1693,36 @@ def _execute_mobile_control_action(action: str):
                 key=lambda item: (item[0], item[1])
             )
             db_status_rows = [
-                (backup_type, db_name, backup_bot.get_database_display_status(backup_type, db_name))
+                (
+                    backup_type,
+                    db_name,
+                    backup_bot.get_database_display_status(backup_type, db_name),
+                    (backup_type, db_name) in disabled_pairs,
+                )
                 for backup_type, db_name in unique_dbs
-                if (backup_type, db_name) not in disabled_pairs
             ]
-            if not db_status_rows:
-                return True, (
-                    "🗃️ Бэкапы БД\n\n"
-                    "Все базы в этом разделе отключены для мониторинга.\n"
-                    "Включите нужные базы через долгий тап в мобильном клиенте."
-                ), "accepted", None
+            enabled_db_rows = [
+                (backup_type, db_name, status)
+                for backup_type, db_name, status, is_disabled in db_status_rows
+                if not is_disabled
+            ]
             problem_db_rows = [
                 (backup_type, db_name, status)
-                for backup_type, db_name, status in db_status_rows
+                for backup_type, db_name, status in enabled_db_rows
                 if status != "success"
             ]
             problem_dbs = len(problem_db_rows)
-            ok_dbs = len(unique_dbs) - problem_dbs
+            ok_dbs = len(enabled_db_rows) - problem_dbs
             menu_options = [
                 {
-                    "label": f"{'🚨' if status != 'success' else '✅'} {db_name} ({backup_type})",
+                    "label": (
+                        f"⚪ {db_name} ({backup_type}) — мониторинг отключён"
+                        if is_disabled
+                        else f"{'🚨' if status != 'success' else '✅'} {db_name} ({backup_type})"
+                    ),
                     "action": f"db_detail_{backup_type}__{db_name}",
                 }
-                for backup_type, db_name, status in db_status_rows
+                for backup_type, db_name, status, is_disabled in db_status_rows
             ]
             problem_db_names = [f"{db_name} ({backup_type})" for backup_type, db_name, _ in problem_db_rows]
             preview_limit = 5
@@ -1733,6 +1740,7 @@ def _execute_mobile_control_action(action: str):
                 f"🚫 Отключено: {len(disabled_pairs)}\n"
                 f"✅ Без проблем: {ok_dbs}\n"
                 f"🚨 Проблемных: {problem_dbs}\n"
+                f"🔎 В мониторинге: {len(enabled_db_rows)}\n"
                 f"{problem_db_line}"
             ), "accepted", menu_options
 
