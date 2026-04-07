@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.42.0
+Server Monitoring System v8.42.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.42.0
+Версия: 8.42.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -35,6 +35,7 @@ from extensions.supplier_stock_files import (
 from lib.logging import debug_log
 import json
 import re
+from urllib.parse import quote, unquote
 
 BACKUP_SETTINGS_CALLBACKS = {
     'backup_times',
@@ -104,6 +105,48 @@ def _safe_query_answer(query, text: str | None = None, **kwargs) -> None:
             query.answer(text, **kwargs)
     except (BadRequest, TelegramError):
         pass
+
+
+def _get_disabled_db_monitors_settings() -> set[tuple[str, str]]:
+    """Получить пары (backup_type, db_name), отключённые в мониторинге бэкапов БД."""
+    raw_disabled = settings_manager.get_setting('DATABASE_MONITORING_DISABLED', [], use_cache=False)
+    if isinstance(raw_disabled, str):
+        raw_disabled = [raw_disabled]
+    if not isinstance(raw_disabled, list):
+        return set()
+
+    disabled_pairs: set[tuple[str, str]] = set()
+    for item in raw_disabled:
+        value = str(item or '').strip()
+        if '__' not in value:
+            continue
+        backup_type, db_name = value.split('__', 1)
+        backup_type = backup_type.strip()
+        db_name = db_name.strip()
+        if backup_type and db_name:
+            disabled_pairs.add((backup_type, db_name))
+    return disabled_pairs
+
+
+def _toggle_database_monitoring_settings(backup_type: str, db_name: str) -> bool:
+    """Переключить мониторинг БД. Возвращает True, если мониторинг включён после переключения."""
+    backup_type = str(backup_type or '').strip()
+    db_name = str(db_name or '').strip()
+    if not backup_type or not db_name:
+        raise ValueError("Не указан тип или имя базы")
+
+    disabled_pairs = _get_disabled_db_monitors_settings()
+    pair = (backup_type, db_name)
+    if pair in disabled_pairs:
+        disabled_pairs.remove(pair)
+        now_enabled = True
+    else:
+        disabled_pairs.add(pair)
+        now_enabled = False
+
+    serialized = sorted(f"{item_type}__{item_name}" for item_type, item_name in disabled_pairs)
+    settings_manager.set_setting('DATABASE_MONITORING_DISABLED', serialized, category='backup', data_type='auto')
+    return now_enabled
 
 def _get_mail_fallback_patterns() -> list:
     """Получить запасные паттерны для бэкапов почты."""
@@ -1734,6 +1777,11 @@ def settings_callback_handler(update, context):
             if '__' in raw_value:
                 category, db_key = raw_value.split('__', 1)
                 edit_database_entry_handler(update, context, category, db_key)
+        elif data.startswith('settings_db_toggle_monitor_'):
+            raw_value = data.replace('settings_db_toggle_monitor_', '', 1)
+            if '__' in raw_value:
+                encoded_backup_type, encoded_db_name = raw_value.split('__', 1)
+                settings_toggle_database_monitoring(update, context, encoded_backup_type, encoded_db_name)
         elif data.startswith('settings_db_delete_db_confirm_'):
             raw_value = data.replace('settings_db_delete_db_confirm_', '')
             if '__' in raw_value:
@@ -2643,6 +2691,7 @@ def show_backup_databases_settings(update, context):
     
     message += "Выберите действие:"
     
+    disabled_pairs = _get_disabled_db_monitors_settings()
     keyboard = []
 
     for category, databases in db_config.items():
@@ -2665,6 +2714,16 @@ def show_backup_databases_settings(update, context):
             if len(row) == 2:
                 keyboard.append(row)
                 row = []
+            is_disabled = (category, db_key) in disabled_pairs
+            monitor_text = "⚪ Мониторинг выкл" if is_disabled else "🟢 Мониторинг вкл"
+            encoded_category = quote(category, safe='')
+            encoded_db_key = quote(db_key, safe='')
+            keyboard.append([
+                InlineKeyboardButton(
+                    f"{monitor_text}: {db_key}",
+                    callback_data=f"settings_db_toggle_monitor_{encoded_category}__{encoded_db_key}"
+                )
+            ])
         if row:
             keyboard.append(row)
 
@@ -9169,12 +9228,23 @@ def edit_database_category_details(update, context, category):
 
     message += "\nВыберите действие:"
 
+    disabled_pairs = _get_disabled_db_monitors_settings()
     keyboard = [[InlineKeyboardButton("➕ Добавить БД", callback_data=f"settings_db_add_db_{category}")]]
     for db_key, db_name in databases.items():
         button_text = f"✏️ {db_name}"
+        is_disabled = (category, db_key) in disabled_pairs
+        toggle_text = "✅ Включить мониторинг" if is_disabled else "⛔ Отключить мониторинг"
+        encoded_category = quote(category, safe='')
+        encoded_db_key = quote(db_key, safe='')
         keyboard.append([
             InlineKeyboardButton(button_text, callback_data=f"settings_db_edit_db_{category}__{db_key}"),
             InlineKeyboardButton(f"🗑️ {db_name}", callback_data=f"settings_db_delete_db_{category}__{db_key}")
+        ])
+        keyboard.append([
+            InlineKeyboardButton(
+                f"{toggle_text}: {db_name}",
+                callback_data=f"settings_db_toggle_monitor_{encoded_category}__{encoded_db_key}"
+            )
         ])
 
     keyboard.append([
@@ -9317,6 +9387,53 @@ def delete_database_entry_execute(update, context, category, db_key):
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ])
+    )
+
+
+def settings_toggle_database_monitoring(update, context, encoded_backup_type, encoded_db_name):
+    """Переключение мониторинга конкретной БД из настроек."""
+    query = update.callback_query
+    query.answer()
+
+    backup_type = unquote(str(encoded_backup_type or '')).strip()
+    db_name = unquote(str(encoded_db_name or '')).strip()
+    if not backup_type or not db_name:
+        query.edit_message_text(
+            "❌ Не удалось переключить мониторинг: пустой тип или имя БД.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
+            ])
+        )
+        return
+
+    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    databases = db_config.get(backup_type, {})
+    if not isinstance(databases, dict):
+        databases = {}
+    if db_name not in databases:
+        query.edit_message_text(
+            "❌ База данных не найдена в настройках.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
+            ])
+        )
+        return
+
+    now_enabled = _toggle_database_monitoring_settings(backup_type, db_name)
+    status_text = "🟢 включён" if now_enabled else "⚪ отключён"
+    query.edit_message_text(
+        (
+            "🗃️ *Мониторинг базы обновлён*\n\n"
+            f"• Категория: `{backup_type}`\n"
+            f"• База: `{db_name}`\n"
+            f"• Статус: {status_text}"
+        ),
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("📋 К списку баз", callback_data='settings_db_main')],
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
     )

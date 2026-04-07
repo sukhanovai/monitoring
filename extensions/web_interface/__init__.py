@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.42.0
+Server Monitoring System v8.42.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.42.0
+Версия: 8.42.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1573,7 +1573,12 @@ def _execute_mobile_control_action(action: str):
             {"label": "✖️ Закрыть", "action": "settings_extensions_close_local"},
         ]
 
-    if action in menu_actions or action.startswith("backup_host_") or action.startswith("db_detail_"):
+    if (
+        action in menu_actions
+        or action.startswith("backup_host_")
+        or action.startswith("db_detail_")
+        or action.startswith("settings_db_toggle_monitor_")
+    ):
         from extensions.extension_manager import extension_manager
 
         extension_requirements = {
@@ -1588,6 +1593,8 @@ def _execute_mobile_control_action(action: str):
 
         extension_requirement = extension_requirements.get(action)
         if extension_requirement is None and action.startswith("db_detail_"):
+            extension_requirement = ("database_backup_monitor", "🗃️ Мониторинг бэкапов БД отключён")
+        if extension_requirement is None and action.startswith("settings_db_toggle_monitor_"):
             extension_requirement = ("database_backup_monitor", "🗃️ Мониторинг бэкапов БД отключён")
         if extension_requirement is not None:
             extension_id, disabled_message = extension_requirement
