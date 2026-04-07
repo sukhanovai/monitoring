@@ -578,11 +578,26 @@ private fun MonitoringApp(
     val enabledExtensions = state.extensions.filter { it.enabled }.map { it.id }.toSet()
     val enabledExtensionsCount = state.extensions.count { it.enabled }
     val totalExtensionsCount = state.extensions.size
-    val upServersCount = state.servers.count { it.status.equals("UP", ignoreCase = true) }
-    val totalServersCount = state.managedServers.size.takeIf { it > 0 } ?: state.servers.size
+    val enabledManagedServers = state.managedServers.filter { it.enabled != false }
+    val enabledManagedTokens = enabledManagedServers
+        .flatMap { server -> listOf(server.ip, server.name) }
+        .map { it.trim().lowercase() }
+        .filter { it.isNotBlank() }
+        .toSet()
+    val serversForOpsCenter = if (enabledManagedTokens.isEmpty()) {
+        state.servers
+    } else {
+        state.servers.filter { server ->
+            val idToken = server.id.trim().lowercase()
+            val nameToken = server.name.trim().lowercase()
+            idToken in enabledManagedTokens || nameToken in enabledManagedTokens
+        }
+    }
+    val upServersCount = serversForOpsCenter.count { it.status.equals("UP", ignoreCase = true) }
+    val downServersCount = serversForOpsCenter.count { it.status.equals("DOWN", ignoreCase = true) }
+    val unknownServersCount = serversForOpsCenter.count { it.status.equals("UNKNOWN", ignoreCase = true) }
+    val totalServersCount = enabledManagedServers.size.takeIf { it > 0 } ?: serversForOpsCenter.size
     val activeServersCount = upServersCount.coerceAtMost(totalServersCount)
-    val downServersCount = state.servers.count { it.status.equals("DOWN", ignoreCase = true) }
-    val unknownServersCount = state.servers.count { it.status.equals("UNKNOWN", ignoreCase = true) }
     val latestMailBackup = state.mailBackupHistoryItems.firstOrNull()
     val hasMailProblemByLatest = latestMailBackup?.statusIcon?.let { icon ->
         icon.contains("❌") || icon.contains("⚠️") || icon.contains("🚨")
