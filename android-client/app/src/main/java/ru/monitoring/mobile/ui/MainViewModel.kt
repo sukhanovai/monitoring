@@ -51,7 +51,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.41.52"
+    private val projectVersion = "8.41.53"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -318,10 +318,21 @@ class MainViewModel(
     }
 
     private fun resolveControlActionMessage(response: ControlActionResult): String {
-        return response.message
-            ?.takeIf { it.isNotBlank() }
-            ?: response.text?.takeIf { it.isNotBlank() }
-            ?: response.result.orEmpty()
+        val payloads = listOf(response.message, response.text, response.result)
+            .mapNotNull { value -> value?.trim()?.takeIf { it.isNotBlank() } }
+            .distinct()
+        if (payloads.isEmpty()) return ""
+
+        val semanticPayload = payloads.firstOrNull { value ->
+            value.contains("\n") ||
+                backupSuccessRatioRegex.containsMatchIn(value) ||
+                value.contains("без проблем", ignoreCase = true) ||
+                value.contains("проблем", ignoreCase = true) ||
+                value.contains("в мониторинге", ignoreCase = true) ||
+                value.contains("баз", ignoreCase = true)
+        }
+
+        return semanticPayload ?: payloads.maxByOrNull { it.length }.orEmpty()
     }
 
     private fun resolveControlActionMenuOptions(response: ControlActionResult): List<MenuOption> {
