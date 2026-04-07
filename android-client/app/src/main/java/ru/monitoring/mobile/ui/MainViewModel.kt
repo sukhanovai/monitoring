@@ -51,7 +51,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.41.41"
+    private val projectVersion = "8.41.42"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -238,7 +238,15 @@ class MainViewModel(
             ?: problemsFromStatusLines
         val ok = okFromMessage ?: (total - problems).coerceAtLeast(0)
 
-        if (total <= 0) return null
+        if (total <= 0) {
+            if (message.contains("данные по базам пока отсутствуют", ignoreCase = true)) {
+                return BackupTileSummary(
+                    ratioText = "0/0",
+                    hasProblem = false
+                )
+            }
+            return null
+        }
 
         return BackupTileSummary(
             ratioText = "$ok/$total",
@@ -1398,7 +1406,7 @@ class MainViewModel(
                                 message = response.message ?: "Команда отправлена",
                                 messageSource = "global",
                                 extensionMenuOptions = response.menuOptions.orEmpty(),
-                                extensionMenuAction = if (response.menuOptions.isNullOrEmpty()) "" else action,
+                                extensionMenuAction = if (action == "backup_databases") action else if (response.menuOptions.isNullOrEmpty()) "" else action,
                                 backupProxmoxHasProblemItems = if (action == "backup_proxmox") hasProblemBackups else state.backupProxmoxHasProblemItems,
                                 backupDatabasesHasProblemItems = if (action == "backup_databases") hasProblemBackups else state.backupDatabasesHasProblemItems,
                                 mailBackupHistoryTitle = mailHistory?.title.orEmpty(),
