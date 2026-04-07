@@ -524,6 +524,7 @@ private fun MonitoringApp(
     var showDbCategoryAddDialog by rememberSaveable { mutableStateOf(false) }
     var dbCategoryInput by rememberSaveable { mutableStateOf("") }
     var showDbEntryAddDialog by rememberSaveable { mutableStateOf(false) }
+    var showDbOpsEntryAddDialog by rememberSaveable { mutableStateOf(false) }
     var dbEntryAddCategory by rememberSaveable { mutableStateOf("") }
     var dbEntryAddKeyInput by rememberSaveable { mutableStateOf("") }
     var dbEntryAddNameInput by rememberSaveable { mutableStateOf("") }
@@ -2375,6 +2376,59 @@ private fun MonitoringApp(
         )
     }
 
+    if (showDbOpsEntryAddDialog) {
+        AlertDialog(
+            onDismissRequest = { showDbOpsEntryAddDialog = false },
+            title = { Text("➕ Добавить БД") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = dbEntryAddCategory,
+                        onValueChange = { dbEntryAddCategory = it },
+                        label = { Text("Категория БД") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = dbEntryAddKeyInput,
+                        onValueChange = { dbEntryAddKeyInput = it },
+                        label = { Text("Ключ БД") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = dbEntryAddNameInput,
+                        onValueChange = { dbEntryAddNameInput = it },
+                        label = { Text("Отображаемое имя") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val category = dbEntryAddCategory.trim()
+                        val key = dbEntryAddKeyInput.trim()
+                        val name = dbEntryAddNameInput.trim()
+                        if (category.isNotBlank() && key.isNotBlank()) {
+                            onExtensionsSettingsAction(
+                                "settings_db_add_db_submit|${Uri.encode(category)}|${Uri.encode(key)}|${Uri.encode(name)}"
+                            )
+                            onAction("backup_databases")
+                        }
+                        showDbOpsEntryAddDialog = false
+                    },
+                    enabled = dbEntryAddCategory.trim().isNotBlank() && dbEntryAddKeyInput.trim().isNotBlank()
+                ) {
+                    Text("Добавить")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDbOpsEntryAddDialog = false }) {
+                    Text("Отмена")
+                }
+            }
+        )
+    }
+
 
     if (showProxmoxBackupsDialog) {
         AlertDialog(
@@ -2501,7 +2555,7 @@ private fun MonitoringApp(
                             dbEntryAddCategory = ""
                             dbEntryAddKeyInput = ""
                             dbEntryAddNameInput = ""
-                            showDbEntryAddDialog = true
+                            showDbOpsEntryAddDialog = true
                         }) {
                             Icon(
                                 imageVector = Icons.Filled.Settings,
@@ -2617,8 +2671,8 @@ private fun MonitoringApp(
                             onClick = {
                                 if (selectedDatabaseActionCategory.isNotBlank() && selectedDatabaseActionKey.isNotBlank()) {
                                     onExtensionsSettingsAction(
-                                        "settings_db_edit_db_$selectedDatabaseActionCategory" +
-                                            "__$selectedDatabaseActionKey"
+                                        "settings_db_edit_db_${Uri.encode(selectedDatabaseActionCategory)}" +
+                                            "__${Uri.encode(selectedDatabaseActionKey)}"
                                     )
                                 }
                                 databaseActionsTargetAction = ""
@@ -2633,9 +2687,10 @@ private fun MonitoringApp(
                             onClick = {
                                 if (selectedDatabaseActionCategory.isNotBlank() && selectedDatabaseActionKey.isNotBlank()) {
                                     onExtensionsSettingsAction(
-                                        "settings_db_toggle_monitor_$selectedDatabaseActionCategory" +
-                                            "__$selectedDatabaseActionKey"
+                                        "settings_db_toggle_monitor_${Uri.encode(selectedDatabaseActionCategory)}" +
+                                            "__${Uri.encode(selectedDatabaseActionKey)}"
                                     )
+                                    onAction("backup_databases")
                                 }
                                 databaseActionsTargetAction = ""
                             }
@@ -2649,9 +2704,10 @@ private fun MonitoringApp(
                             onClick = {
                                 if (selectedDatabaseActionCategory.isNotBlank() && selectedDatabaseActionKey.isNotBlank()) {
                                     onExtensionsSettingsAction(
-                                        "settings_db_delete_db_$selectedDatabaseActionCategory" +
-                                            "__$selectedDatabaseActionKey"
+                                        "settings_db_delete_db_${Uri.encode(selectedDatabaseActionCategory)}" +
+                                            "__${Uri.encode(selectedDatabaseActionKey)}"
                                     )
+                                    onAction("backup_databases")
                                 }
                                 databaseActionsTargetAction = ""
                             }

@@ -6,15 +6,17 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.41.55] - 2026-04-07
+## [8.41.56] - 2026-04-07
 
 ### Fixed / Исправлено
-- EN: Fixed a backend crash on DB tile tap in Android Ops Center (`NameError` for `settings_manager` inside `backup_databases` action), so DB backup actions now open and load data like the Proxmox flow.
-- RU: Исправлен backend-крэш при тапе по плашке БД в Android «Оперативном центре» (`NameError` для `settings_manager` внутри действия `backup_databases`), теперь действия бэкапов БД открываются и загружают данные по тому же сценарию, что и Proxmox.
+- EN: Android Ops Center DB backup list now correctly sends DB action payloads (`edit/toggle/delete`) with URL-encoded category/key, so enabling/disabling DB monitoring works for names with special characters.
+- RU: В списке бэкапов БД Android Ops Center теперь корректно отправляются payload действий (`edit/toggle/delete`) с URL-encoding категории/ключа, поэтому включение/выключение мониторинга БД работает и для имен со спецсимволами.
+- EN: In the DB backups dialog, tapping the gear now opens a dedicated “Add DB” dialog directly in Ops Center (same interaction style as Proxmox list), without requiring a jump to extension settings.
+- RU: В диалоге бэкапов БД тап по шестерёнке теперь открывает отдельный диалог «Добавить БД» прямо в Ops Center (в том же стиле взаимодействия, как в списке Proxmox), без перехода в настройки расширений.
 
 ### Changed / Изменено
-- EN: SemVer patch bump to `8.41.55`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.41.55` and `ANDROID_VERSION_CODE=297`, with prerelease links aligned to `v8.41.55-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.41.55`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.41.55` и `ANDROID_VERSION_CODE=297`, prerelease-ссылки выровнены на `v8.41.55-develop`.
+- EN: SemVer patch bump to `8.41.56`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.41.56` and `ANDROID_VERSION_CODE=298`, with prerelease links aligned to `v8.41.56-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.41.56`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.41.56` и `ANDROID_VERSION_CODE=298`, prerelease-ссылки выровнены на `v8.41.56-develop`.
 
 ## [8.41.54] - 2026-04-07
 
