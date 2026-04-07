@@ -51,7 +51,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.41.51"
+    private val projectVersion = "8.41.52"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -197,7 +197,7 @@ class MainViewModel(
     private fun buildBackupTileSummary(response: ControlActionResult?): BackupTileSummary? {
         if (response == null) return null
 
-        val message = response.message.orEmpty()
+        val message = resolveControlActionMessage(response)
         backupSuccessRatioRegex.find(message)?.let { match ->
             val ok = match.groupValues.getOrNull(1)?.toIntOrNull() ?: return@let
             val total = match.groupValues.getOrNull(2)?.toIntOrNull() ?: return@let
@@ -238,11 +238,11 @@ class MainViewModel(
         val problemsFromStatusLines = statusLines.size - okFromStatusLines
 
         val total = totalFromMessage
-            ?: response.menuOptions?.size
+            ?: resolveControlActionMenuOptions(response).size
             ?: statusLines.size
             ?: 0
         val problems = problemsFromMessage
-            ?: response.menuOptions.orEmpty().count { option -> isProblemBackupOption(option) }
+            ?: resolveControlActionMenuOptions(response).count { option -> isProblemBackupOption(option) }
                 .takeIf { it > 0 }
             ?: problemsFromStatusLines
         val ok = okFromMessage ?: (total - problems).coerceAtLeast(0)
@@ -315,6 +315,20 @@ class MainViewModel(
                 )
             }
         }
+    }
+
+    private fun resolveControlActionMessage(response: ControlActionResult): String {
+        return response.message
+            ?.takeIf { it.isNotBlank() }
+            ?: response.text?.takeIf { it.isNotBlank() }
+            ?: response.result.orEmpty()
+    }
+
+    private fun resolveControlActionMenuOptions(response: ControlActionResult): List<MenuOption> {
+        return response.menuOptions
+            ?.takeIf { it.isNotEmpty() }
+            ?: response.menuOptionsCamel
+            ?: emptyList()
     }
 
     private fun resolveUpdateUrl(rawUrl: String): String {
@@ -1403,25 +1417,25 @@ class MainViewModel(
                     runCatching { currentApi().runControlAction(ControlActionRequest(action)) }
                         .onSuccess { response ->
                             val mailHistory = if (action.startsWith("backup_mail")) {
-                                parseMailBackupHistory(response.message.orEmpty())
+                                parseMailBackupHistory(resolveControlActionMessage(response))
                             } else {
                                 null
                             }
-                            val hasProblemBackups = response.menuOptions
-                                .orEmpty()
+                            val resolvedMenuOptions = resolveControlActionMenuOptions(response)
+                            val hasProblemBackups = resolvedMenuOptions
                                 .any { option -> isProblemBackupOption(option) }
                             state = state.copy(
                                 isLoading = false,
-                                message = response.message ?: "Команда отправлена",
+                                message = resolveControlActionMessage(response).ifBlank { "Команда отправлена" },
                                 messageSource = "global",
-                                extensionMenuOptions = response.menuOptions.orEmpty(),
-                                extensionMenuAction = if (action == "backup_databases") action else if (response.menuOptions.isNullOrEmpty()) "" else action,
+                                extensionMenuOptions = resolvedMenuOptions,
+                                extensionMenuAction = if (action == "backup_databases") action else if (resolvedMenuOptions.isEmpty()) "" else action,
                                 backupProxmoxHasProblemItems = if (action == "backup_proxmox") hasProblemBackups else state.backupProxmoxHasProblemItems,
                                 backupDatabasesHasProblemItems = if (action == "backup_databases") hasProblemBackups else state.backupDatabasesHasProblemItems,
                                 mailBackupHistoryTitle = mailHistory?.title.orEmpty(),
                                 mailBackupHistoryItems = mailHistory?.items.orEmpty(),
                                 mailBackupLastVolume = mailHistory?.items?.firstOrNull()?.size
-                                    ?: extractMailBackupVolume(response.message.orEmpty())
+                                    ?: extractMailBackupVolume(resolveControlActionMessage(response))
                                     ?: state.mailBackupLastVolume
                             )
                         }
