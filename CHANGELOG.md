@@ -6,6 +6,18 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.42.0] - 2026-04-07
+
+### Added / Добавлено
+- EN: In Telegram path `Settings → Extensions → DB Backups → Databases`, added per-database monitoring toggle: from DB details you can now disable/enable a specific DB directly, with state persisted in `DATABASE_MONITORING_DISABLED`.
+- RU: В Telegram-сценарии `Настройки → Расширения → Бэкапы БД → Базы` добавлено переключение мониторинга по каждой базе: в деталях БД теперь можно сразу отключить/включить конкретную базу, состояние сохраняется в `DATABASE_MONITORING_DISABLED`.
+
+### Changed / Изменено
+- EN: DB backups list in Telegram now marks disabled DBs with `⚪`, and excluded DBs are skipped in “problem databases” and DB summary calculations.
+- RU: В списке бэкапов БД Telegram отключённые базы теперь помечаются `⚪`, а исключённые базы не участвуют в расчётах «проблемных баз» и сводки БД.
+- EN: SemVer minor bump to `8.42.0`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.42.0` and `ANDROID_VERSION_CODE=301`, with prerelease links aligned to `v8.42.0-develop`.
+- RU: Выполнен SemVer minor-бамп до `8.42.0`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.42.0` и `ANDROID_VERSION_CODE=301`, prerelease-ссылки выровнены на `v8.42.0-develop`.
+
 ## [8.41.58] - 2026-04-07
 
 ### Fixed / Исправлено

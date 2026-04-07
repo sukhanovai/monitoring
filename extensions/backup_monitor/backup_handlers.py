@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v8.41.58
+Server Monitoring System v8.42.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 8.41.58
+Версия: 8.42.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов
@@ -496,6 +496,51 @@ def _normalize_config_backup_type(category: str) -> str:
         return "yandex"
     return category
 
+
+def _get_disabled_db_monitors() -> set[tuple[str, str]]:
+    """Возвращает список отключённых пар (backup_type, db_name)."""
+    try:
+        from core.config_manager import config_manager
+
+        raw_disabled = config_manager.get_setting("DATABASE_MONITORING_DISABLED", [], use_cache=False)
+    except Exception:
+        raw_disabled = []
+
+    if isinstance(raw_disabled, str):
+        raw_disabled = [raw_disabled]
+    if not isinstance(raw_disabled, list):
+        return set()
+
+    disabled_pairs: set[tuple[str, str]] = set()
+    for item in raw_disabled:
+        value = str(item or "").strip()
+        if "__" not in value:
+            continue
+        backup_type, db_name = value.split("__", 1)
+        backup_type = backup_type.strip()
+        db_name = db_name.strip()
+        if backup_type and db_name:
+            disabled_pairs.add((backup_type, db_name))
+    return disabled_pairs
+
+
+def _toggle_database_monitoring(backup_type: str, db_name: str) -> bool:
+    """Переключает мониторинг БД; возвращает True, если мониторинг включен после переключения."""
+    disabled_pairs = _get_disabled_db_monitors()
+    pair = (backup_type, db_name)
+
+    if pair in disabled_pairs:
+        disabled_pairs.remove(pair)
+        now_enabled = True
+    else:
+        disabled_pairs.add(pair)
+        now_enabled = False
+
+    serialized = sorted(f"{item_type}__{item_name}" for item_type, item_name in disabled_pairs)
+    from core.config_manager import config_manager
+    config_manager.set_setting("DATABASE_MONITORING_DISABLED", serialized, "backup", data_type="auto")
+    return now_enabled
+
 def show_database_backups_menu(query, backup_bot):
     """Показывает меню с базами данных (из конфигурации и backups.db)"""
     try:
@@ -573,6 +618,7 @@ def show_database_backups_menu(query, backup_bot):
                 raise
             return
 
+        disabled_pairs = _get_disabled_db_monitors()
         keyboard = []
         for backup_type in sorted(db_by_type.keys()):
             type_display = formatters.get_type_display(backup_type)
@@ -590,7 +636,12 @@ def show_database_backups_menu(query, backup_bot):
                 try:
                     effective_type = _get_latest_backup_type(backup_bot, db_name, hours=48) or backup_type
                     status = backup_bot.get_database_display_status(effective_type, db_name)
-                    display_btn = formatters.get_db_display_name(display_name, status)
+                    is_disabled = (backup_type, db_name) in disabled_pairs
+                    display_btn = (
+                        f"⚪ {display_name}"
+                        if is_disabled
+                        else formatters.get_db_display_name(display_name, status)
+                    )
 
                     current_row.append(InlineKeyboardButton(
                         display_btn,
@@ -619,7 +670,7 @@ def show_database_backups_menu(query, backup_bot):
         message += "🟠 - есть неудачные бэкапы в истории\n"
         message += "🟡 - есть ошибки или последний бэкап старше 24ч\n"
         message += "⚫ - нет бэкапов >48ч\n"
-        message += "⚪ - статус неизвестен\n\n"
+        message += "⚪ - мониторинг базы отключён\n\n"
         message += "Выберите базу данных для просмотра деталей:"
         try:
             query.edit_message_text(
@@ -743,6 +794,7 @@ def show_stale_databases(query, backup_bot):
         from .db_settings_backup_monitor import DATABASE_BACKUP_CONFIG
         
         problem_databases = []
+        disabled_pairs = _get_disabled_db_monitors()
         
         # Проверяем все базы из конфигурации
         config_mapping = []
@@ -750,9 +802,11 @@ def show_stale_databases(query, backup_bot):
             if not isinstance(databases, dict):
                 continue
             config_mapping.append((_normalize_config_backup_type(category), databases))
-        
+
         for backup_type, config_dict in config_mapping:
             for db_name in config_dict.keys():
+                if (backup_type, db_name) in disabled_pairs:
+                    continue
                 status = backup_bot.get_database_display_status(backup_type, db_name)
                 if status not in ['success', 'unknown']:
                     recent = backup_bot.get_database_recent_status(backup_type, db_name, 72)
@@ -835,11 +889,25 @@ def show_database_backups_summary(query, backup_bot, hours):
         
         # Группируем по типам
         by_type = {}
+        disabled_pairs = _get_disabled_db_monitors()
         for backup_type, db_name, db_display, status, count, last_backup in stats:
             normalized_type = _normalize_backup_type(backup_type, db_name)
+            if (normalized_type, db_name) in disabled_pairs:
+                continue
             if normalized_type not in by_type:
                 by_type[normalized_type] = []
             by_type[normalized_type].append((db_name, db_display, status, count, last_backup))
+
+        if not by_type:
+            query.edit_message_text(
+                f"📊 *Бэкапы БД ({hours}ч)*\n\nВсе базы сейчас исключены из мониторинга.",
+                parse_mode='Markdown',
+                reply_markup=create_navigation_buttons(
+                    back_button='backup_databases',
+                    refresh_button=f'db_backups_{hours}h'
+                )
+            )
+            return
 
         for backup_type, databases in by_type.items():
             type_display = formatters.get_type_display(backup_type)
@@ -1021,16 +1089,47 @@ def show_database_details(query, backup_bot, backup_type, db_name):
     try:
         details_text = format_database_details(backup_bot, backup_type, db_name, 168)
         
+        disabled_pairs = _get_disabled_db_monitors()
+        is_disabled = (backup_type, db_name) in disabled_pairs
+        toggle_label = "✅ Включить мониторинг" if is_disabled else "⛔ Отключить мониторинг"
+        reply_markup = InlineKeyboardMarkup([
+            [InlineKeyboardButton(toggle_label, callback_data=f"db_toggle_monitor_{backup_type}__{db_name}")],
+            [InlineKeyboardButton("↩️ Назад", callback_data='db_backups_list')],
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
+            [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
+        ])
+
         query.edit_message_text(
             details_text,
             parse_mode='Markdown',
-            reply_markup=create_navigation_buttons(
-                back_button='db_backups_list',
-                refresh_button=f'db_detail_{backup_type}__{db_name}'
-            )
+            reply_markup=reply_markup
         )
 
     except Exception as e:
         logger.error(f"Ошибка в show_database_details: {e}")
         query.edit_message_text("❌ Ошибка при получении деталей БД")
+
+
+def toggle_database_monitoring(query, backup_type, db_name):
+    """Обработчик переключения мониторинга БД."""
+    try:
+        now_enabled = _toggle_database_monitoring(backup_type, db_name)
+        state_text = "включён" if now_enabled else "отключён"
+        query.answer(f"Мониторинг {state_text}", show_alert=False)
+        query.edit_message_text(
+            (
+                f"🗃️ *{_esc_md(db_name)}* \\({_esc_md(backup_type)}\\)\n\n"
+                f"Мониторинг: *{state_text}*\\.\n\n"
+                "Нажмите «📋 Список БД», чтобы обновить список."
+            ),
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("📋 Список БД", callback_data='db_backups_list')],
+                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
+                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
+            ])
+        )
+    except Exception as e:
+        logger.error(f"Ошибка переключения мониторинга БД: {e}")
+        query.answer("❌ Не удалось переключить мониторинг", show_alert=True)
         
