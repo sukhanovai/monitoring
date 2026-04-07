@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.41.54
+Server Monitoring System v8.41.55
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.41.54
+Версия: 8.41.55
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1501,6 +1501,8 @@ def _execute_mobile_control_action(action: str):
     Executes explicit control actions for Android API.
     Returns tuple: (ok: bool, message: str, result: str, menu_options: list[dict] | None)
     """
+    from core.config_manager import config_manager as settings_manager
+
     menu_actions = {
         "backup_hosts",
         "backup_proxmox",
@@ -1542,7 +1544,6 @@ def _execute_mobile_control_action(action: str):
         if threshold_value < 0 or threshold_value > 100:
             return False, f"Порог «{setting_title}» должен быть в диапазоне 0-100.", "failed", None
 
-        from core.config_manager import config_manager as settings_manager
         settings_manager.set_setting(setting_key, threshold_value, "monitoring")
 
         cpu_warning = settings_manager.get_setting('CPU_WARNING', 80)
