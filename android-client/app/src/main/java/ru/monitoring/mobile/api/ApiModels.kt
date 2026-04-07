@@ -113,8 +113,10 @@ data class ControlActionResult(
     val result: String? = null,
     val accepted: Boolean? = null,
     val message: String? = null,
+    @Json(name = "text") val text: String? = null,
     @Json(name = "queued_job_id") val queuedJobId: String? = null,
-    @Json(name = "menu_options") val menuOptions: List<MenuOption>? = null
+    @Json(name = "menu_options") val menuOptions: List<MenuOption>? = null,
+    @Json(name = "menuOptions") val menuOptionsCamel: List<MenuOption>? = null
 )
 
 data class ControlStatusResponse(
