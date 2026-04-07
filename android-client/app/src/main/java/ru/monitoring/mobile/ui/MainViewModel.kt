@@ -51,7 +51,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.41.43"
+    private val projectVersion = "8.41.45"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -181,10 +181,15 @@ class MainViewModel(
         """(?i)(серверов|пулов)\s*:\s*\d+\s*\(\s*🟢?\s*(\d+)\s*/\s*🔴?\s*(\d+)\s*\)"""
     )
 
+    private fun normalizeRussianText(value: String): String {
+        return value.lowercase().replace('ё', 'е')
+    }
+
     private fun extractSummaryValue(message: String, marker: String): Int? {
+        val normalizedMarker = normalizeRussianText(marker)
         val line = message
             .lineSequence()
-            .firstOrNull { it.contains(marker, ignoreCase = true) }
+            .firstOrNull { normalizeRussianText(it).contains(normalizedMarker) }
             .orEmpty()
         return backupSummaryNumberRegex.find(line)?.value?.toIntOrNull()
     }
@@ -221,6 +226,7 @@ class MainViewModel(
         val problemsFromMessage = extractSummaryValue(message, "Проблемных")
         val totalFromMessage = extractSummaryValue(message, "Всего хостов")
             ?: extractSummaryValue(message, "Баз в отчёте")
+            ?: extractSummaryValue(message, "В мониторинге")
         val statusLines = message.lineSequence()
             .map { line -> line.trim() }
             .filter { line -> backupSummaryStatusLineRegex.matches(line) }
