@@ -2503,8 +2503,10 @@ private fun MonitoringApp(
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    if (state.extensionMenuAction != "backup_databases" || state.extensionMenuOptions.isEmpty()) {
+                    if (state.isLoading && state.extensionMenuAction != "backup_databases") {
                         Text("Загружаем список баз…")
+                    } else if (state.extensionMenuAction == "backup_databases" && state.extensionMenuOptions.isEmpty()) {
+                        Text("Список баз пока пуст (данные ещё не накоплены).")
                     } else {
                         FlowRow(
                             modifier = Modifier.fillMaxWidth(),
