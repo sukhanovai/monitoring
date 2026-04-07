@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.41.46] - 2026-04-07
+
+### Fixed / Исправлено
+- EN: Improved Android Ops Center DB tile summary parsing: added extra total markers (`Всего баз`, `Всего БД`, generic `Всего`) and broadened status-line icon matching, so the tile no longer falls back to a dash on alternative backend wording.
+- RU: Улучшен парсинг сводки плашки БД в Android «Оперативном центре»: добавлены дополнительные маркеры итогов (`Всего баз`, `Всего БД`, общий `Всего`) и расширено распознавание иконок статусных строк, поэтому плашка больше не сваливается в прочерк при альтернативных формулировках backend.
+- EN: Improved Android DB backups dialog fallback: when `backup_databases` returns no `menu_options`, the app now shows parsed DB status lines from the response message instead of an always-empty placeholder.
+- RU: Улучшен fallback диалога бэкапов БД в Android: когда `backup_databases` возвращает пустой `menu_options`, приложение теперь показывает разобранные строки статусов БД из текста ответа вместо всегда пустой заглушки.
+- EN: Completed repository-wide SemVer patch bump to `8.41.46`; synchronized explicit project-version references, updated Android metadata to `ANDROID_VERSION_NAME=8.41.46` and `ANDROID_VERSION_CODE=289`, and aligned prerelease APK links.
+- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.46`; синхронизированы явные упоминания версии проекта, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.46` и `ANDROID_VERSION_CODE=289`, а также выровнены prerelease-ссылки на APK.
+
 ## [8.41.45] - 2026-04-07
 
 ### Fixed / Исправлено

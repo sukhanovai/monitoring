@@ -116,6 +116,25 @@ private fun resolveMenuOptionAction(option: ru.monitoring.mobile.api.MenuOption)
     }
 }
 
+private fun extractDatabaseBackupLines(message: String): List<String> {
+    if (message.isBlank()) return emptyList()
+    return message.lineSequence()
+        .map { it.trim() }
+        .filter { line ->
+            line.isNotBlank() && (
+                line.startsWith("✅") ||
+                    line.startsWith("❌") ||
+                    line.startsWith("⚠️") ||
+                    line.startsWith("🚨") ||
+                    line.startsWith("⚪") ||
+                    line.startsWith("🟡") ||
+                    line.startsWith("🟢") ||
+                    line.startsWith("•")
+                )
+        }
+        .toList()
+}
+
 private data class OpsMetricTile(
     val id: String,
     val label: String,
@@ -2506,7 +2525,18 @@ private fun MonitoringApp(
                     if (state.isLoading && state.extensionMenuAction != "backup_databases") {
                         Text("Загружаем список баз…")
                     } else if (state.extensionMenuAction == "backup_databases" && state.extensionMenuOptions.isEmpty()) {
-                        Text("Список баз пока пуст (данные ещё не накоплены).")
+                        val fallbackDatabaseLines = extractDatabaseBackupLines(state.message)
+                        if (fallbackDatabaseLines.isNotEmpty()) {
+                            fallbackDatabaseLines.forEach { line ->
+                                Text(
+                                    text = line,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        } else {
+                            Text("Список баз пока пуст (данные ещё не накоплены).")
+                        }
                     } else {
                         FlowRow(
                             modifier = Modifier.fillMaxWidth(),
