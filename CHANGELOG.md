@@ -6,6 +6,14 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.41.49] - 2026-04-07
+
+### Changed / Изменено
+- EN: Completed repository-wide SemVer patch bump to `8.41.49`; synchronized explicit project-version references across runtime/config/docs/mobile files.
+- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.49`; синхронизированы явные упоминания версии проекта во всех runtime/config/docs/mobile файлах.
+- EN: Android metadata updated to `ANDROID_VERSION_NAME=8.41.49` and `ANDROID_VERSION_CODE=292`; prerelease APK links were aligned to `v8.41.49-develop`.
+- RU: Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.41.49` и `ANDROID_VERSION_CODE=292`; prerelease-ссылки на APK выровнены на `v8.41.49-develop`.
+
 ## [8.41.48] - 2026-04-07
 
 ### Fixed
