@@ -6,17 +6,15 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.41.52] - 2026-04-07
+## [8.41.53] - 2026-04-07
 
 ### Fixed / Исправлено
-- EN: Android control-action parser now supports both `menu_options` and `menuOptions`, plus `message`/`text` fallback for action payloads. This restores DB backups tile summary/list rendering when backend responds with alternate JSON key naming.
-- RU: Парсер control-action в Android теперь поддерживает оба формата `menu_options` и `menuOptions`, а также fallback по `message`/`text` для payload-ответов. Это восстанавливает корректный показ сводки и списка в плашке БД при альтернативном именовании JSON-ключей на backend.
-- EN: In Ops Center DB flow, menu option handling is now normalized through shared resolvers, so tap on the DB tile no longer opens an empty list when DB backups exist.
-- RU: В сценарии БД в оперативном центре обработка menu options нормализована через общие резолверы, поэтому тап по плашке БД больше не открывает пустой список при наличии бэкапов.
+- EN: Android Ops Center DB backups tile now selects the most informative control-action payload (`message`/`text`/`result`) instead of blindly trusting a short generic `message`. This restores ratio parsing when DB backup stats are returned in alternate fields.
+- RU: Плашка бэкапов БД в Android «Оперативном центре» теперь выбирает самый информативный payload control-action (`message`/`text`/`result`), а не слепо берёт короткий общий `message`. Это возвращает корректный разбор сводки, когда статистика БД приходит в альтернативном поле ответа.
 
 ### Changed / Изменено
-- EN: SemVer patch bump to `8.41.52`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.41.52` and `ANDROID_VERSION_CODE=294`, with prerelease links aligned to `v8.41.52-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.41.52`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.41.52` и `ANDROID_VERSION_CODE=294`, prerelease-ссылки выровнены на `v8.41.52-develop`.
+- EN: SemVer patch bump to `8.41.53`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.41.53` and `ANDROID_VERSION_CODE=295`, with prerelease links aligned to `v8.41.53-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.41.53`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.41.53` и `ANDROID_VERSION_CODE=295`, prerelease-ссылки выровнены на `v8.41.53-develop`.
 
 ## [8.41.51] - 2026-04-07
 
