@@ -2489,7 +2489,7 @@ private fun MonitoringApp(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "🗃️ Список баз",
+                        text = "🗃️ Бэкапы БД",
                         modifier = Modifier.weight(1f),
                         fontWeight = FontWeight.Bold
                     )
@@ -2508,7 +2508,7 @@ private fun MonitoringApp(
                         IconButton(onClick = { showDatabaseBackupsDialog = false }) {
                             Icon(
                                 imageVector = Icons.Filled.Close,
-                                contentDescription = "Закрыть список баз"
+                                contentDescription = "Закрыть список бэкапов БД"
                             )
                         }
                     }
@@ -2523,7 +2523,7 @@ private fun MonitoringApp(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     if (state.isLoading && state.extensionMenuAction != "backup_databases") {
-                        Text("Загружаем список баз…")
+                        Text("Загружаем список бэкапов БД…")
                     } else if (state.extensionMenuAction == "backup_databases" && state.extensionMenuOptions.isEmpty()) {
                         val fallbackDatabaseLines = extractDatabaseBackupLines(state.message)
                         if (fallbackDatabaseLines.isNotEmpty()) {
@@ -2535,7 +2535,7 @@ private fun MonitoringApp(
                                 )
                             }
                         } else {
-                            Text("Список баз пока пуст (данные ещё не накоплены).")
+                            Text("Список бэкапов БД пока пуст (данные ещё не накоплены).")
                         }
                     } else {
                         FlowRow(
