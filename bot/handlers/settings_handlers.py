@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.42.1
+Server Monitoring System v8.42.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.42.1
+Версия: 8.42.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -105,6 +105,13 @@ def _safe_query_answer(query, text: str | None = None, **kwargs) -> None:
             query.answer(text, **kwargs)
     except (BadRequest, TelegramError):
         pass
+
+def _build_db_monitor_toggle_callback(context, encoded_category: str, encoded_db_key: str) -> str:
+    """Собирает короткий callback_data для переключателя мониторинга БД."""
+    toggle_map = context.user_data.setdefault('settings_db_toggle_map', {})
+    token = f"k{len(toggle_map)}"
+    toggle_map[token] = f"{encoded_category}__{encoded_db_key}"
+    return f"settings_db_toggle_monitor_{token}"
 
 
 def _get_disabled_db_monitors_settings() -> set[tuple[str, str]]:
@@ -1782,6 +1789,14 @@ def settings_callback_handler(update, context):
             if '__' in raw_value:
                 encoded_backup_type, encoded_db_name = raw_value.split('__', 1)
                 settings_toggle_database_monitoring(update, context, encoded_backup_type, encoded_db_name)
+            else:
+                toggle_map = context.user_data.get('settings_db_toggle_map', {})
+                encoded_pair = toggle_map.get(raw_value, '')
+                if '__' in encoded_pair:
+                    encoded_backup_type, encoded_db_name = encoded_pair.split('__', 1)
+                    settings_toggle_database_monitoring(update, context, encoded_backup_type, encoded_db_name)
+                else:
+                    _safe_query_answer(query, "Не удалось определить базу данных", show_alert=True)
         elif data.startswith('settings_db_delete_db_confirm_'):
             raw_value = data.replace('settings_db_delete_db_confirm_', '')
             if '__' in raw_value:
@@ -2673,6 +2688,7 @@ def show_backup_databases_settings(update, context):
     context.user_data.pop('editing_db_entry', None)
     context.user_data.pop('db_entry_category', None)
     context.user_data.pop('db_entry_key', None)
+    context.user_data['settings_db_toggle_map'] = {}
     
     db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
     
@@ -2721,7 +2737,11 @@ def show_backup_databases_settings(update, context):
             keyboard.append([
                 InlineKeyboardButton(
                     f"{monitor_text}: {db_key}",
-                    callback_data=f"settings_db_toggle_monitor_{encoded_category}__{encoded_db_key}"
+                    callback_data=_build_db_monitor_toggle_callback(
+                        context,
+                        encoded_category,
+                        encoded_db_key,
+                    )
                 )
             ])
         if row:
