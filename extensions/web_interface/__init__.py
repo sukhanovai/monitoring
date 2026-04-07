@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.41.39
+Server Monitoring System v8.41.40
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.41.39
+Версия: 8.41.40
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1662,6 +1662,25 @@ def _execute_mobile_control_action(action: str):
             return True, "\n".join(lines), "accepted", None
 
         if action == "backup_databases":
+            def _get_disabled_db_monitors() -> set[tuple[str, str]]:
+                raw_disabled = settings_manager.get_setting("DATABASE_MONITORING_DISABLED", [])
+                disabled_pairs: set[tuple[str, str]] = set()
+                if isinstance(raw_disabled, str):
+                    raw_disabled = [raw_disabled]
+                if not isinstance(raw_disabled, list):
+                    return disabled_pairs
+                for item in raw_disabled:
+                    value = str(item or "").strip()
+                    if "__" not in value:
+                        continue
+                    backup_type, db_name = value.split("__", 1)
+                    backup_type = backup_type.strip()
+                    db_name = db_name.strip()
+                    if backup_type and db_name:
+                        disabled_pairs.add((backup_type, db_name))
+                return disabled_pairs
+
+            disabled_pairs = _get_disabled_db_monitors()
             stats = backup_bot.get_database_backups_stats_fixed(24)
             if not stats:
                 return True, "🗃️ Бэкапы БД\n\nДанные по базам пока отсутствуют.", "accepted", None
@@ -1676,7 +1695,14 @@ def _execute_mobile_control_action(action: str):
             db_status_rows = [
                 (backup_type, db_name, backup_bot.get_database_display_status(backup_type, db_name))
                 for backup_type, db_name in unique_dbs
+                if (backup_type, db_name) not in disabled_pairs
             ]
+            if not db_status_rows:
+                return True, (
+                    "🗃️ Бэкапы БД\n\n"
+                    "Все базы в этом разделе отключены для мониторинга.\n"
+                    "Включите нужные базы через долгий тап в мобильном клиенте."
+                ), "accepted", None
             problem_db_rows = [
                 (backup_type, db_name, status)
                 for backup_type, db_name, status in db_status_rows
@@ -1704,10 +1730,56 @@ def _execute_mobile_control_action(action: str):
             return True, (
                 "🗃️ Бэкапы БД\n\n"
                 f"Баз в отчёте: {len(unique_dbs)}\n"
+                f"🚫 Отключено: {len(disabled_pairs)}\n"
                 f"✅ Без проблем: {ok_dbs}\n"
                 f"🚨 Проблемных: {problem_dbs}\n"
                 f"{problem_db_line}"
             ), "accepted", menu_options
+
+        if action.startswith("settings_db_toggle_monitor_"):
+            raw = action.replace("settings_db_toggle_monitor_", "", 1)
+            if "__" not in raw:
+                return False, "Неверный формат toggle-действия для базы данных", "failed", None
+            encoded_backup_type, encoded_db_name = raw.split("__", 1)
+            backup_type = unquote(encoded_backup_type).strip()
+            db_name = unquote(encoded_db_name).strip()
+            if not backup_type or not db_name:
+                return False, "Не указан тип или имя базы для переключения мониторинга", "failed", None
+
+            raw_disabled = settings_manager.get_setting("DATABASE_MONITORING_DISABLED", [])
+            if isinstance(raw_disabled, str):
+                raw_disabled = [raw_disabled]
+            if not isinstance(raw_disabled, list):
+                raw_disabled = []
+
+            disabled_pairs: set[tuple[str, str]] = set()
+            for item in raw_disabled:
+                value = str(item or "").strip()
+                if "__" not in value:
+                    continue
+                item_type, item_name = value.split("__", 1)
+                item_type = item_type.strip()
+                item_name = item_name.strip()
+                if item_type and item_name:
+                    disabled_pairs.add((item_type, item_name))
+
+            pair = (backup_type, db_name)
+            if pair in disabled_pairs:
+                disabled_pairs.remove(pair)
+                now_enabled = True
+            else:
+                disabled_pairs.add(pair)
+                now_enabled = False
+
+            serialized = sorted(f"{item_type}__{item_name}" for item_type, item_name in disabled_pairs)
+            settings_manager.set_setting("DATABASE_MONITORING_DISABLED", serialized, "backup", data_type="auto")
+            return True, (
+                f"🗃️ {db_name} ({backup_type})\n\n"
+                f"Мониторинг: {'включён' if now_enabled else 'отключён'}."
+            ), "accepted", [
+                {"label": "📋 Обновить список БД", "action": "backup_databases"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ]
 
         if action.startswith("db_detail_"):
             payload = action.replace("db_detail_", "", 1)

@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.41.40] - 2026-04-07
+
+### Changed / Изменено
+- EN: In Android Ops Center DB tiles, long-tap actions now include monitor toggle (on/off) in addition to edit/delete.
+- RU: В Android «Оперативном центре» в плашках БД по долгому тапу добавлено переключение мониторинга (вкл/выкл) вместе с редактированием/удалением.
+- EN: Added backend support for DB monitor toggling via mobile actions and excluded disabled DB tiles from the `backup_databases` list until they are enabled again.
+- RU: Добавлена backend-поддержка переключения мониторинга БД через mobile-действия, а отключённые базы теперь исключаются из списка `backup_databases` до повторного включения.
+- EN: Completed repository-wide SemVer patch bump to `8.41.40`; synchronized explicit project-version references, updated Android metadata to `ANDROID_VERSION_NAME=8.41.40` and `ANDROID_VERSION_CODE=283`, and aligned prerelease APK links.
+- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.40`; синхронизированы явные упоминания версии проекта, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.40` и `ANDROID_VERSION_CODE=283`, а также выровнены prerelease-ссылки на APK.
+
 ## [8.41.39] - 2026-04-06
 
 ### Changed / Изменено
