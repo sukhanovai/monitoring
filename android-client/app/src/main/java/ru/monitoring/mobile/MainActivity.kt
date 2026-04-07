@@ -2611,6 +2611,22 @@ private fun MonitoringApp(
                             onClick = {
                                 if (selectedDatabaseActionCategory.isNotBlank() && selectedDatabaseActionKey.isNotBlank()) {
                                     onExtensionsSettingsAction(
+                                        "settings_db_toggle_monitor_$selectedDatabaseActionCategory" +
+                                            "__$selectedDatabaseActionKey"
+                                    )
+                                }
+                                databaseActionsTargetAction = ""
+                            }
+                        ) {
+                            Icon(Icons.Filled.PowerSettingsNew, contentDescription = "Вкл/выкл")
+                        }
+                        Text("Вкл/выкл", style = MaterialTheme.typography.labelSmall)
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        FilledIconButton(
+                            onClick = {
+                                if (selectedDatabaseActionCategory.isNotBlank() && selectedDatabaseActionKey.isNotBlank()) {
+                                    onExtensionsSettingsAction(
                                         "settings_db_delete_db_$selectedDatabaseActionCategory" +
                                             "__$selectedDatabaseActionKey"
                                     )
