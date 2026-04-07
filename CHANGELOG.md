@@ -6,15 +6,15 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.41.57] - 2026-04-07
+## [8.41.58] - 2026-04-07
 
 ### Fixed / Исправлено
-- EN: Android Ops Center `Servers` tile now counts and evaluates availability only for servers that are enabled in monitoring settings; disabled servers no longer affect UP/DOWN/UNKNOWN totals.
-- RU: Плашка `Серверы` в Android «Оперативном центре» теперь считает и оценивает доступность только для серверов, включённых в настройках мониторинга; выключенные серверы больше не влияют на счётчики UP/DOWN/UNKNOWN.
+- EN: Android Ops Center `proxmox` tile now calculates backup summary only for hosts that are enabled in monitoring; disabled hosts are excluded from ratio and problem state.
+- RU: Плашка `proxmox` в Android «Оперативном центре» теперь считает сводку бэкапов только по хостам, включённым в мониторинге; отключённые хосты исключаются из соотношения и статуса проблем.
 
 ### Changed / Изменено
-- EN: SemVer patch bump to `8.41.57`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.41.57` and `ANDROID_VERSION_CODE=299`, with prerelease links aligned to `v8.41.57-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.41.57`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.41.57` и `ANDROID_VERSION_CODE=299`, prerelease-ссылки выровнены на `v8.41.57-develop`.
+- EN: SemVer patch bump to `8.41.58`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.41.58` and `ANDROID_VERSION_CODE=300`, with prerelease links aligned to `v8.41.58-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.41.58`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.41.58` и `ANDROID_VERSION_CODE=300`, prerelease-ссылки выровнены на `v8.41.58-develop`.
 
 ## [8.41.56] - 2026-04-07
 
