@@ -51,7 +51,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.41.45"
+    private val projectVersion = "8.41.46"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -175,7 +175,7 @@ class MainViewModel(
     )
 
     private val backupSummaryNumberRegex = Regex("""(\d+)""")
-    private val backupSummaryStatusLineRegex = Regex("""^\s*([✅✔❌⚠️🚨]).*$""")
+    private val backupSummaryStatusLineRegex = Regex("""^\s*([✅✔❌⚠️🚨🟢🟡⚪]).*$""")
     private val backupSuccessRatioRegex = Regex("""(\d+)\s*/\s*(\d+)\s+успеш""", RegexOption.IGNORE_CASE)
     private val zfsSummaryRegex = Regex(
         """(?i)(серверов|пулов)\s*:\s*\d+\s*\(\s*🟢?\s*(\d+)\s*/\s*🔴?\s*(\d+)\s*\)"""
@@ -226,6 +226,9 @@ class MainViewModel(
         val problemsFromMessage = extractSummaryValue(message, "Проблемных")
         val totalFromMessage = extractSummaryValue(message, "Всего хостов")
             ?: extractSummaryValue(message, "Баз в отчёте")
+            ?: extractSummaryValue(message, "Всего баз")
+            ?: extractSummaryValue(message, "Всего БД")
+            ?: extractSummaryValue(message, "Всего")
             ?: extractSummaryValue(message, "В мониторинге")
         val statusLines = message.lineSequence()
             .map { line -> line.trim() }
