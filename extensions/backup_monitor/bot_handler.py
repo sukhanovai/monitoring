@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/bot_handler.py
-Server Monitoring System v8.41.58
+Server Monitoring System v8.42.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring Proxmox backups
 Система мониторинга серверов
-Версия: 8.41.58
+Версия: 8.42.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг бэкапов Proxmox
@@ -34,6 +34,7 @@ from extensions.backup_monitor.backup_handlers import (
     show_database_backups_menu,
     show_database_backups_summary,
     show_database_details,
+    toggle_database_monitoring,
     show_stale_databases,
     show_mail_backups,
     show_stock_loads,
@@ -70,6 +71,7 @@ try:
         show_hosts_menu, show_stale_hosts, show_host_status,
         show_database_backups_menu, show_stale_databases,
         show_database_backups_summary, show_database_details,
+        toggle_database_monitoring,
         show_stock_loads,
         format_database_details
     )
@@ -87,6 +89,7 @@ except ImportError as e:
             show_hosts_menu, show_stale_hosts, show_host_status,
             show_database_backups_menu, show_stale_databases,
             show_database_backups_summary, show_database_details,
+            toggle_database_monitoring,
             show_stock_loads,
             format_database_details
         )
@@ -657,6 +660,19 @@ def backup_callback(update, context):
                     show_database_details(query, backup_bot, backup_type, db_name)
                 else:
                     query.edit_message_text("❌ Ошибка: неверный формат запроса")
+
+        elif data.startswith('db_toggle_monitor_'):
+            payload = data.replace('db_toggle_monitor_', '', 1)
+            if '__' not in payload:
+                query.edit_message_text("❌ Ошибка: неверный формат переключения мониторинга")
+                return
+            backup_type, db_name = payload.split('__', 1)
+            backup_type = backup_type.strip()
+            db_name = db_name.strip()
+            if not backup_type or not db_name:
+                query.edit_message_text("❌ Ошибка: не указан тип или имя базы")
+                return
+            toggle_database_monitoring(query, backup_type, db_name)
 
         elif data == 'db_backups_24h':
             logger.info("🧪 db backups 24h")
