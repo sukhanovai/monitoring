@@ -51,7 +51,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.41.53"
+    private val projectVersion = "8.41.54"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -84,7 +84,7 @@ class MainViewModel(
     private val extensionActionToIdMatchers = listOf<Pair<(String) -> Boolean, String>>(
         Pair({ action -> action == "check_resources" }, "resource_monitor"),
         Pair({ action -> action == "backup_proxmox" || action.startsWith("backup_host_") }, "backup_monitor"),
-        Pair({ action -> action == "backup_databases" }, "database_backup_monitor"),
+        Pair({ action -> action == "backup_databases" || action.startsWith("db_detail_") }, "database_backup_monitor"),
         Pair({ action -> action.startsWith("backup_mail") }, "mail_backup_monitor"),
         Pair({ action -> action == "backup_stock_loads" }, "stock_load_monitor"),
         Pair({ action -> action == "supplier_stock_reports" || action.startsWith("supplier_stock_reports_") || action.startsWith("supplier_stock_report_source_day|") }, "supplier_stock_files"),
@@ -1219,6 +1219,7 @@ class MainViewModel(
             action.startsWith("set_ram_") ||
             action.startsWith("set_disk_") ||
             action.startsWith("backup_host_") ||
+            action.startsWith("db_detail_") ||
             action.startsWith("backup_mail") ||
             action.startsWith("supplier_stock_reports_") ||
             action.startsWith("supplier_stock_report_source_day|")
@@ -1369,6 +1370,7 @@ class MainViewModel(
                     action in extensionControlActions ||
                     action == "backup_databases" ||
                     action.startsWith("backup_host_") ||
+                    action.startsWith("db_detail_") ||
                     action.startsWith("backup_mail") ||
                     action.startsWith("supplier_stock_reports_") ||
                     action.startsWith("supplier_stock_report_source_day|")
@@ -1411,6 +1413,7 @@ class MainViewModel(
             action == "backup_proxmox" ||
             action == "backup_databases" ||
             action.startsWith("backup_host_") ||
+            action.startsWith("db_detail_") ||
             action.startsWith("backup_mail") ||
             action.startsWith("supplier_stock_reports_") ||
             action.startsWith("supplier_stock_report_source_day|")
@@ -1421,6 +1424,7 @@ class MainViewModel(
                     action in extensionControlActions ||
                     action == "backup_databases" ||
                     action.startsWith("backup_host_") ||
+                    action.startsWith("db_detail_") ||
                     action.startsWith("backup_mail") ||
                     action.startsWith("supplier_stock_reports_") ||
                     action.startsWith("supplier_stock_report_source_day|")

@@ -6,15 +6,15 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.41.53] - 2026-04-07
+## [8.41.54] - 2026-04-07
 
 ### Fixed / Исправлено
-- EN: Android Ops Center DB backups tile now selects the most informative control-action payload (`message`/`text`/`result`) instead of blindly trusting a short generic `message`. This restores ratio parsing when DB backup stats are returned in alternate fields.
-- RU: Плашка бэкапов БД в Android «Оперативном центре» теперь выбирает самый информативный payload control-action (`message`/`text`/`result`), а не слепо берёт короткий общий `message`. Это возвращает корректный разбор сводки, когда статистика БД приходит в альтернативном поле ответа.
+- EN: Android Ops Center DB backup flow now routes `db_detail_*` actions through the same control-action pipeline as Proxmox host actions, so tapping DB backup cards opens details without API routing errors.
+- RU: В Android «Оперативном центре» поток бэкапов БД теперь отправляет `db_detail_*` через тот же control-action пайплайн, что и действия по хостам Proxmox, поэтому тап по карточкам БД открывает детали без ошибок маршрутизации API.
 
 ### Changed / Изменено
-- EN: SemVer patch bump to `8.41.53`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.41.53` and `ANDROID_VERSION_CODE=295`, with prerelease links aligned to `v8.41.53-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.41.53`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.41.53` и `ANDROID_VERSION_CODE=295`, prerelease-ссылки выровнены на `v8.41.53-develop`.
+- EN: SemVer patch bump to `8.41.54`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.41.54` and `ANDROID_VERSION_CODE=296`, with prerelease links aligned to `v8.41.54-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.41.54`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.41.54` и `ANDROID_VERSION_CODE=296`, prerelease-ссылки выровнены на `v8.41.54-develop`.
 
 ## [8.41.51] - 2026-04-07
 
