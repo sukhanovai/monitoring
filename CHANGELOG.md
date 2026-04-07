@@ -6,6 +6,14 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.41.43] - 2026-04-07
+
+### Fixed / Исправлено
+- EN: Fixed Proxmox backup status normalization in mail parsing: trailing punctuation/spaces in subjects (for example `backup successful.`) are now trimmed before status mapping, so such reports are consistently saved with normalized status `success` / `failed`.
+- RU: Исправлена нормализация статуса Proxmox-бэкапов при парсинге почты: перед маппингом статуса теперь отрезаются хвостовые знаки пунктуации/пробелы в теме (например, `backup successful.`), поэтому такие отчёты стабильно сохраняются с нормализованным статусом `success` / `failed`.
+- EN: Completed repository-wide SemVer patch bump to `8.41.43`; synchronized explicit project-version references, updated Android metadata to `ANDROID_VERSION_NAME=8.41.43` and `ANDROID_VERSION_CODE=286`, and aligned prerelease APK links.
+- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.43`; синхронизированы явные упоминания версии проекта, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.43` и `ANDROID_VERSION_CODE=286`, а также выровнены prerelease-ссылки на APK.
+
 ## [8.41.42] - 2026-04-07
 
 ### Fixed / Исправлено

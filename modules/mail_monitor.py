@@ -1,11 +1,11 @@
 """
 /modules/mail_monitor.py
-Server Monitoring System v8.41.42
+Server Monitoring System v8.41.43
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Mailbox monitoring
 Система мониторинга серверов
-Версия: 8.41.42
+Версия: 8.41.43
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг почтового ящика
@@ -1743,6 +1743,7 @@ class BackupProcessor:
 
     def normalize_status(self, raw_status: str) -> str:
         """Нормализует статус бэкапа."""
+        normalized_raw_status = re.sub(r"[.\s]+$", "", raw_status.strip().lower())
         status_map = {
             "backup successful": "success",
             "successful": "success",
@@ -1751,7 +1752,7 @@ class BackupProcessor:
             "failed": "failed",
             "error": "failed",
         }
-        return status_map.get(raw_status, raw_status)
+        return status_map.get(normalized_raw_status, normalized_raw_status)
 
     def get_email_body(self, msg) -> str:
         """Извлекает тело письма."""
