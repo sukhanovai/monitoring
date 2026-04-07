@@ -6,15 +6,17 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.41.46] - 2026-04-07
+## [8.41.47] - 2026-04-07
 
-### Fixed / Исправлено
-- EN: Improved Android Ops Center DB tile summary parsing: added extra total markers (`Всего баз`, `Всего БД`, generic `Всего`) and broadened status-line icon matching, so the tile no longer falls back to a dash on alternative backend wording.
-- RU: Улучшен парсинг сводки плашки БД в Android «Оперативном центре»: добавлены дополнительные маркеры итогов (`Всего баз`, `Всего БД`, общий `Всего`) и расширено распознавание иконок статусных строк, поэтому плашка больше не сваливается в прочерк при альтернативных формулировках backend.
-- EN: Improved Android DB backups dialog fallback: when `backup_databases` returns no `menu_options`, the app now shows parsed DB status lines from the response message instead of an always-empty placeholder.
-- RU: Улучшен fallback диалога бэкапов БД в Android: когда `backup_databases` возвращает пустой `menu_options`, приложение теперь показывает разобранные строки статусов БД из текста ответа вместо всегда пустой заглушки.
-- EN: Completed repository-wide SemVer patch bump to `8.41.46`; synchronized explicit project-version references, updated Android metadata to `ANDROID_VERSION_NAME=8.41.46` and `ANDROID_VERSION_CODE=289`, and aligned prerelease APK links.
-- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.46`; синхронизированы явные упоминания версии проекта, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.46` и `ANDROID_VERSION_CODE=289`, а также выровнены prerelease-ссылки на APK.
+### Changed / Изменено
+- EN: In Android Ops Center, the `БД` tile now consistently renders DB backup-specific data in the same compact pattern as the `proxmox` tile (summary from `backup_databases`, list context and backup-oriented labels).
+- RU: В Android «Оперативном центре» плашка `БД` теперь стабильно показывает именно данные бэкапов БД в том же компактном паттерне, что и плашка `proxmox` (сводка из `backup_databases`, контекст списка и backup-ориентированные подписи).
+- EN: Tapping the `БД` tile now follows the same interaction model as `proxmox`: opens the dedicated backups dialog and routes further actions using DB-backup data only.
+- RU: Тап по плашке `БД` теперь работает по той же модели, что и `proxmox`: открывается отдельный диалог бэкапов и дальнейшие действия идут только по данным бэкапов БД.
+- EN: Updated Android DB-backups dialog copy (`title/loading/empty/close`) to clearly reflect backup semantics instead of a generic database list wording.
+- RU: Обновлены тексты диалога бэкапов БД в Android (`title/loading/empty/close`), чтобы явно отражать сценарий бэкапов вместо общего «списка баз».
+- EN: Completed repository-wide SemVer patch bump to `8.41.47`; synchronized explicit project-version references, updated Android metadata to `ANDROID_VERSION_NAME=8.41.47` and `ANDROID_VERSION_CODE=290`, and aligned prerelease APK links.
+- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.47`; синхронизированы явные упоминания версии проекта, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.41.47` и `ANDROID_VERSION_CODE=290`, а также выровнены prerelease-ссылки на APK.
 
 ## [8.41.45] - 2026-04-07
 
