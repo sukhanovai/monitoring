@@ -612,6 +612,9 @@ private fun MonitoringApp(
     }
     val openDatabaseBackupDetails = {
         onAction("backup_databases")
+        selectedDatabaseBackupLabel = ""
+        selectedProxmoxBackupLabel = ""
+        showProxmoxBackupStatsDialog = false
         showDatabaseBackupsDialog = true
     }
     val selectedProxmoxHostForActions = state.extensionMenuOptions.firstOrNull { option ->
@@ -2522,21 +2525,8 @@ private fun MonitoringApp(
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    if (state.isLoading && state.extensionMenuAction != "backup_databases") {
+                    if (state.extensionMenuAction != "backup_databases" || state.extensionMenuOptions.isEmpty()) {
                         Text("Загружаем список бэкапов БД…")
-                    } else if (state.extensionMenuAction == "backup_databases" && state.extensionMenuOptions.isEmpty()) {
-                        val fallbackDatabaseLines = extractDatabaseBackupLines(state.message)
-                        if (fallbackDatabaseLines.isNotEmpty()) {
-                            fallbackDatabaseLines.forEach { line ->
-                                Text(
-                                    text = line,
-                                    modifier = Modifier.fillMaxWidth(),
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-                        } else {
-                            Text("Список бэкапов БД пока пуст (данные ещё не накоплены).")
-                        }
                     } else {
                         FlowRow(
                             modifier = Modifier.fillMaxWidth(),

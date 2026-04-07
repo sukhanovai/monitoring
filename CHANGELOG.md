@@ -6,13 +6,15 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.41.49] - 2026-04-07
+## [8.41.51] - 2026-04-07
 
 ### Changed / Изменено
-- EN: Completed repository-wide SemVer patch bump to `8.41.49`; synchronized explicit project-version references across runtime/config/docs/mobile files.
-- RU: Выполнен репозиторный SemVer patch-бамп до `8.41.49`; синхронизированы явные упоминания версии проекта во всех runtime/config/docs/mobile файлах.
-- EN: Android metadata updated to `ANDROID_VERSION_NAME=8.41.49` and `ANDROID_VERSION_CODE=292`; prerelease APK links were aligned to `v8.41.49-develop`.
-- RU: Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.41.49` и `ANDROID_VERSION_CODE=292`; prerelease-ссылки на APK выровнены на `v8.41.49-develop`.
+- EN: Android Ops Center: the `БД` tile now opens in the same interaction flow as `proxmox` (reset selected backup labels, close stale stats dialog state, then open DB backups dialog for fresh data).
+- RU: Android «Оперативный центр»: плашка `БД` теперь открывается по тому же сценарию, что и `proxmox` (сброс выбранных меток бэкапа, очистка состояния старого диалога статистики и открытие диалога бэкапов БД с актуальными данными).
+- EN: Android DB backups dialog now mirrors Proxmox loading behavior: until `backup_databases` menu data is received, the dialog stays in explicit loading mode.
+- RU: Диалог бэкапов БД в Android теперь зеркалит поведение загрузки Proxmox: пока не получены menu-данные `backup_databases`, показывается явное состояние загрузки.
+- EN: SemVer patch bump to `8.41.51`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.41.51` and `ANDROID_VERSION_CODE=293`, with prerelease links aligned to `v8.41.51-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.41.51`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.41.51` и `ANDROID_VERSION_CODE=293`, prerelease-ссылки выровнены на `v8.41.51-develop`.
 
 ## [8.41.48] - 2026-04-07
 
