@@ -51,7 +51,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.41.57"
+    private val projectVersion = "8.41.58"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -173,6 +173,37 @@ class MainViewModel(
         val ratioText: String,
         val hasProblem: Boolean
     )
+
+    private fun isDisabledProxmoxBackupOption(option: MenuOption): Boolean {
+        val label = option.label?.trim().orEmpty()
+        if (label.startsWith("⚪")) return true
+
+        val normalizedLabel = normalizeRussianText(label)
+        return normalizedLabel.contains("отключ") || normalizedLabel.contains("выключ")
+    }
+
+    private fun buildProxmoxBackupTileSummary(response: ControlActionResult?): BackupTileSummary? {
+        if (response == null) return null
+
+        val options = resolveControlActionMenuOptions(response)
+        if (options.isEmpty()) return buildBackupTileSummary(response)
+
+        val enabledOptions = options.filterNot { option -> isDisabledProxmoxBackupOption(option) }
+        if (enabledOptions.isEmpty()) {
+            return BackupTileSummary(
+                ratioText = "0/0",
+                hasProblem = false
+            )
+        }
+
+        val problemHosts = enabledOptions.count { option -> isProblemBackupOption(option) }
+        val okHosts = (enabledOptions.size - problemHosts).coerceAtLeast(0)
+
+        return BackupTileSummary(
+            ratioText = "$okHosts/${enabledOptions.size}",
+            hasProblem = problemHosts > 0
+        )
+    }
 
     private val backupSummaryNumberRegex = Regex("""(\d+)""")
     private val backupSummaryStatusLineRegex = Regex("""^\s*([✅✔❌⚠️🚨🟢🟡⚪]).*$""")
@@ -664,7 +695,7 @@ class MainViewModel(
             val winCreds = result[6] as? ru.monitoring.mobile.api.WindowsCredentialsResponse
             val servers = result[7] as? ru.monitoring.mobile.api.ServersSettingsResponse
             val extensions = result[8] as? ru.monitoring.mobile.api.ExtensionsSettingsResponse
-            val proxmoxBackupSummary = buildBackupTileSummary(result[9] as? ControlActionResult)
+            val proxmoxBackupSummary = buildProxmoxBackupTileSummary(result[9] as? ControlActionResult)
             val dbBackupSummary = buildBackupTileSummary(result[10] as? ControlActionResult)
             val stockLoadSummary = buildBackupTileSummary(result[11] as? ControlActionResult)
             val supplierStockSummary = buildBackupTileSummary(result[12] as? ControlActionResult)
