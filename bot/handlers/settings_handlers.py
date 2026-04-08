@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.48.6
+Server Monitoring System v8.48.8
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.48.6
+Версия: 8.48.8
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -1690,6 +1690,8 @@ def settings_callback_handler(update, context):
             delete_database_category_handler(update, context)
         elif data == 'settings_db_view_all':
             view_all_databases_handler(update, context)
+        elif data == 'settings_db_add_new':
+            add_new_database_from_manage_handler(update, context)
         
         # Обработчики для новых пунктов меню
         elif data == 'manage_chats':
@@ -9194,10 +9196,21 @@ def view_all_databases_handler(update, context):
                         )
                     )
                 ])
+                keyboard.append([
+                    InlineKeyboardButton(
+                        "✏️ Редактировать",
+                        callback_data=f"settings_db_edit_db_{category}__{db_key}"
+                    ),
+                    InlineKeyboardButton(
+                        "🗑️ Удалить",
+                        callback_data=f"settings_db_delete_db_{category}__{db_key}"
+                    )
+                ])
             message += "\n"
 
         message += f"*Итого:* {total_dbs} баз данных в {len(db_config)} категориях"
 
+    keyboard.append([InlineKeyboardButton("➕ Добавить новую БД", callback_data='settings_db_add_new')])
     keyboard.append([
         InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
         InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
@@ -9206,6 +9219,38 @@ def view_all_databases_handler(update, context):
 
     query.edit_message_text(
         message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def add_new_database_from_manage_handler(update, context):
+    """Быстрое добавление новой БД из экрана 'Управление базами'."""
+    query = update.callback_query
+    query.answer()
+
+    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+
+    if not db_config:
+        query.edit_message_text(
+            "➕ *Добавление новой БД*\n\n"
+            "Сначала нужно создать хотя бы одну категорию БД.",
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("➕ Добавить категорию", callback_data='settings_db_add_category')],
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_view_all')]
+            ])
+        )
+        return
+
+    keyboard = []
+    for category in db_config.keys():
+        keyboard.append([InlineKeyboardButton(f"📁 {category}", callback_data=f"settings_db_add_db_{category}")])
+
+    keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data='settings_db_view_all')])
+
+    query.edit_message_text(
+        "➕ *Добавить новую БД*\n\n"
+        "Выберите категорию, куда добавить базу:",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup(keyboard)
     )

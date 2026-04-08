@@ -6,15 +6,19 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.48.6] - 2026-04-08
+## [8.48.8] - 2026-04-08
 
-### Fixed / Исправлено
-- EN: In Telegram path `Main menu → DB backups → Manage databases`, dynamic DB category/name values are now escaped before rendering with Markdown, fixing `BadRequest: Can't parse entities` in `settings_callback_handler`.
-- RU: В Telegram-сценарии `Главное меню → Бэкапы БД → Управление базами` динамические значения категорий и имён БД теперь экранируются перед рендерингом Markdown, что устраняет `BadRequest: Can't parse entities` в `settings_callback_handler`.
+### Added / Добавлено
+- EN: In Telegram path `Main menu → DB backups → Manage databases`, added a dedicated `Add new DB` button that opens quick category selection and then starts DB creation in the selected category.
+- RU: В Telegram-сценарии `Главное меню → Бэкапы БД → Управление базами` добавлена отдельная кнопка `Добавить новую БД`, которая открывает быстрый выбор категории и запуск добавления БД в выбранную категорию.
+- EN: In the same `Manage databases` screen, each DB row now has direct `Edit` and `Delete` action buttons so base management can be done without extra navigation hops.
+- RU: На том же экране `Управление базами` для каждой базы добавлены отдельные кнопки `Редактировать` и `Удалить`, чтобы управлять БД без лишних переходов по меню.
 
 ### Changed / Изменено
-- EN: SemVer patch bump to `8.48.6`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.48.6` and `ANDROID_VERSION_CODE=323`, prerelease links aligned to `v8.48.6-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.48.6`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.48.6` и `ANDROID_VERSION_CODE=323`, prerelease-ссылки выровнены на `v8.48.6-develop`.
+- EN: In `Manage databases`, monitor-state toggles now work together with explicit CRUD actions (enable/disable, edit, delete) in a single list layout.
+- RU: В `Управлении базами` переключение мониторинга теперь работает вместе с явными CRUD-действиями (включение/выключение, редактирование, удаление) в едином списке.
+- EN: SemVer patch bump to `8.48.8`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.48.8` and `ANDROID_VERSION_CODE=325`, prerelease links aligned to `v8.48.8-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.48.8`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.48.8` и `ANDROID_VERSION_CODE=325`, prerelease-ссылки выровнены на `v8.48.8-develop`.
 
 ## [8.48.3] - 2026-04-08
 
