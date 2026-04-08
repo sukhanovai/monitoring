@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/bot_handler.py
-Server Monitoring System v8.44.2
+Server Monitoring System v8.45.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring Proxmox backups
 Система мониторинга серверов
-Версия: 8.44.2
+Версия: 8.45.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг бэкапов Proxmox
@@ -25,6 +25,7 @@ from lib.logging import debug_log, setup_logging
 from extensions.backup_monitor.backup_handlers import (
     show_main_menu,
     show_proxmox_menu,
+    show_proxmox_patterns_menu,
     show_today_status,
     show_recent_backups,
     show_failed_backups,
@@ -660,6 +661,9 @@ def backup_callback(update, context):
 
         elif data == 'backup_proxmox':
             show_proxmox_menu(query, backup_bot)
+
+        elif data == 'backup_proxmox_patterns':
+            show_proxmox_patterns_menu(query)
 
         elif data == 'backup_stale_hosts':
             show_stale_hosts(query, backup_bot)
