@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.48.21
+Server Monitoring System v8.48.22
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.48.21
+Версия: 8.48.22
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -148,6 +148,12 @@ def _resolve_db_entry_from_callback(context, value: str) -> tuple[str, str]:
         return "", ""
     raw_category, raw_db_key = raw_value.split('__', 1)
     return unquote(raw_category).strip(), unquote(raw_db_key).strip()
+
+
+def _get_settings_db_back_callback(context, default: str = 'settings_ext_backup_db') -> str:
+    """Вернуть callback для кнопки «Назад» в меню БД."""
+    back_callback = str(context.user_data.get('settings_db_back') or '').strip()
+    return back_callback or default
 
 
 def _get_disabled_db_monitors_settings() -> set[tuple[str, str]]:
@@ -1725,6 +1731,9 @@ def settings_callback_handler(update, context):
         elif data == 'settings_db_add_category':
             add_database_category_handler(update, context)
         elif data == 'settings_db_manage_categories':
+            manage_database_categories_handler(update, context)
+        elif data == 'settings_db_manage_categories_from_backup':
+            context.user_data['settings_db_back'] = 'backup_databases'
             manage_database_categories_handler(update, context)
         elif data == 'settings_db_edit_category':
             edit_databases_handler(update, context)
@@ -9296,28 +9305,49 @@ def add_database_category_handler(update, context):
     )
 
 def manage_database_categories_handler(update, context):
-    """Подменю управления категориями БД."""
+    """Список категорий БД с быстрым редактированием и удалением."""
     query = update.callback_query
     query.answer()
 
     db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
-    total_categories = len(db_config) if isinstance(db_config, dict) else 0
+    categories = sorted(db_config.keys()) if isinstance(db_config, dict) else []
+    total_categories = len(categories)
+    back_callback = _get_settings_db_back_callback(context)
+
+    lines = [
+        "🗂️ *Управление категориями БД*",
+        "",
+        f"Всего категорий: *{total_categories}*",
+    ]
+
+    keyboard = [[InlineKeyboardButton("➕ Добавить категорию", callback_data='settings_db_add_category')]]
+    if not categories:
+        lines.extend(["", "Категории пока не добавлены."])
+    else:
+        lines.extend(["", "Выберите категорию для действия:"])
+        for category in categories:
+            db_count = len(db_config.get(category, {})) if isinstance(db_config.get(category), dict) else 0
+            keyboard.append([
+                InlineKeyboardButton(
+                    f"✏️ {category} ({db_count})",
+                    callback_data=_build_db_category_callback(context, "settings_db_rename_", category)
+                ),
+                InlineKeyboardButton(
+                    "🗑️",
+                    callback_data=_build_db_category_callback(context, "settings_db_delete_", category)
+                )
+            ])
+
+    keyboard.append([
+        InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+        InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
+        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+    ])
 
     query.edit_message_text(
-        (
-            "🗂️ *Управление категориями БД*\n\n"
-            f"Всего категорий: *{total_categories}*\n\n"
-            "Выберите действие:"
-        ),
+        "\n".join(lines),
         parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("➕ Добавить категорию", callback_data='settings_db_add_category')],
-            [InlineKeyboardButton("✏️ Редактировать категорию", callback_data='settings_db_edit_category')],
-            [InlineKeyboardButton("🗑️ Удалить категорию", callback_data='settings_db_delete_category')],
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_view_all'),
-             InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
 def edit_databases_handler(update, context):
