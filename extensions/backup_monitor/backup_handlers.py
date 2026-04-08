@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v8.45.3
+Server Monitoring System v8.45.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 8.45.3
+Версия: 8.45.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов
@@ -57,8 +57,10 @@ def create_proxmox_menu():
     keyboard = []
 
     if extension_manager.is_extension_enabled('backup_monitor'):
-        keyboard.append([InlineKeyboardButton("🖥️ По хостам", callback_data='backup_hosts')])
-        keyboard.append([InlineKeyboardButton("⚙️ Настройка паттернов", callback_data='backup_proxmox_patterns')])
+        keyboard.append([
+            InlineKeyboardButton("⚙️ Управление хостами", callback_data='backup_hosts_manage'),
+            InlineKeyboardButton("⚙️ Настройка паттернов", callback_data='backup_proxmox_patterns'),
+        ])
 
     keyboard.extend([
         [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
@@ -141,7 +143,10 @@ def create_hosts_keyboard(
             callback_data='backup_stale_hosts'
         )])
     
-    keyboard.append([InlineKeyboardButton("⚙️ Управление хостами", callback_data='backup_hosts_manage')])
+    keyboard.append([
+        InlineKeyboardButton("⚙️ Управление хостами", callback_data='backup_hosts_manage'),
+        InlineKeyboardButton("⚙️ Настройка паттернов", callback_data='backup_proxmox_patterns'),
+    ])
 
     keyboard.append([
         InlineKeyboardButton("↩️ Назад", callback_data=back_button),
