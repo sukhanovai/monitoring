@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.47.0
+Server Monitoring System v8.48.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.47.0
+Версия: 8.48.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1670,32 +1670,26 @@ def _execute_mobile_control_action(action: str):
             return True, "\n".join(lines), "accepted", None
 
         if action == "backup_databases":
-            from extensions.backup_monitor.backup_handlers import _get_disabled_db_monitors
+            from extensions.backup_monitor.backup_handlers import get_database_monitor_snapshot
 
-            disabled_pairs = _get_disabled_db_monitors()
-            stats = backup_bot.get_database_backups_stats_fixed(24)
-            if not stats:
+            snapshot = get_database_monitor_snapshot(backup_bot)
+            if not snapshot:
                 return True, "🗃️ Бэкапы БД\n\nДанные по базам пока отсутствуют.", "accepted", None
-            unique_dbs = sorted(
-                {
-                    (str(row[0]), str(row[1]))
-                    for row in stats
-                    if len(row) >= 2 and row[0] and row[1]
-                },
-                key=lambda item: (item[0], item[1])
-            )
+
             db_status_rows = [
                 (
-                    backup_type,
-                    db_name,
-                    backup_bot.get_database_display_status(backup_type, db_name),
-                    (backup_type, db_name) in disabled_pairs,
+                    str(item.get("backup_type", "")),
+                    str(item.get("db_name", "")),
+                    str(item.get("status", "unknown")),
+                    bool(item.get("is_disabled", False)),
+                    str(item.get("display_name") or item.get("db_name") or ""),
                 )
-                for backup_type, db_name in unique_dbs
+                for item in snapshot
+                if item.get("backup_type") and item.get("db_name")
             ]
             enabled_db_rows = [
                 (backup_type, db_name, status)
-                for backup_type, db_name, status, is_disabled in db_status_rows
+                for backup_type, db_name, status, is_disabled, _display_name in db_status_rows
                 if not is_disabled
             ]
             problem_db_rows = [
@@ -1706,12 +1700,12 @@ def _execute_mobile_control_action(action: str):
             problem_dbs = len(problem_db_rows)
             ok_dbs = len(enabled_db_rows) - problem_dbs
             menu_options = []
-            for backup_type, db_name, status, is_disabled in db_status_rows:
+            for backup_type, db_name, status, is_disabled, display_name in db_status_rows:
                 health_prefix = "🚨" if status != "success" else "✅"
                 monitor_status = "⚪ мониторинг отключён" if is_disabled else "🟢 мониторинг включён"
                 menu_options.append(
                     {
-                        "label": f"{health_prefix} {db_name} ({backup_type}) • {monitor_status}",
+                        "label": f"{health_prefix} {display_name} ({backup_type}) • {monitor_status}",
                         "action": f"db_detail_{backup_type}__{db_name}",
                     }
                 )
@@ -1727,8 +1721,8 @@ def _execute_mobile_control_action(action: str):
                 problem_db_line = "Проблемные базы: нет"
             return True, (
                 "🗃️ Бэкапы БД\n\n"
-                f"Баз в отчёте: {len(unique_dbs)}\n"
-                f"🚫 Отключено: {len(disabled_pairs)}\n"
+                f"Баз в отчёте: {len(db_status_rows)}\n"
+                f"🚫 Отключено: {sum(1 for _, _, _, is_disabled, _ in db_status_rows if is_disabled)}\n"
                 f"✅ Без проблем: {ok_dbs}\n"
                 f"🚨 Проблемных: {problem_dbs}\n"
                 f"🔎 В мониторинге: {len(enabled_db_rows)}\n"
