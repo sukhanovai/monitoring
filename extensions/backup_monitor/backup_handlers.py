@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v8.48.15
+Server Monitoring System v8.48.17
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 8.48.15
+Версия: 8.48.17
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов
@@ -747,9 +747,6 @@ def show_database_backups_menu(query, backup_bot, page=0):
                 keyboard.append([InlineKeyboardButton(
                     display_btn,
                     callback_data=f'db_detail_{backup_type}__{db_name}'
-                ), InlineKeyboardButton(
-                    "✅ Вкл" if is_disabled else "⛔ Выкл",
-                    callback_data=f'db_toggle_quick_{backup_type}__{db_name}'
                 )])
             except Exception as e:
                 logger.error(f"❌ Ошибка обработки БД {backup_type}/{db_name}: {e}")
@@ -1199,11 +1196,7 @@ def show_database_details(query, backup_bot, backup_type, db_name):
     try:
         details_text = format_database_details(backup_bot, backup_type, db_name, 168)
         
-        disabled_pairs = _get_disabled_db_monitors()
-        is_disabled = (backup_type, db_name) in disabled_pairs
-        toggle_label = "✅ Включить мониторинг" if is_disabled else "⛔ Отключить мониторинг"
         reply_markup = InlineKeyboardMarkup([
-            [InlineKeyboardButton(toggle_label, callback_data=f"db_toggle_monitor_{backup_type}__{db_name}")],
             [InlineKeyboardButton("↩️ Назад", callback_data='db_backups_list')],
             [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
             [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
