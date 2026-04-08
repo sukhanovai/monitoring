@@ -6,6 +6,20 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.42.5] - 2026-04-08
+
+### Fixed / Исправлено
+- EN: In Telegram path `Settings → Extensions → DB Backups → Databases`, added consistent navigation buttons `Back`, `Home`, and `Close` in the “Databases” sub-screens where only back navigation was available before.
+- RU: В Telegram-сценарии `Настройки → Расширения → Бэкапы БД → Базы` добавлены единообразные кнопки навигации `Назад`, `На главную` и `Закрыть` в подпунктах, где раньше был только возврат назад.
+- EN: Proxmox backup host listing no longer hides hosts present in backup history when enabled hosts are configured; DB-discovered hosts are now merged into the visible list.
+- RU: Список хостов Proxmox больше не скрывает хосты из истории бэкапов при наличии включённых хостов в конфиге; хосты из БД теперь объединяются с конфигурационным списком.
+- EN: Proxmox mail parser now resolves host aliases against `PROXMOX_HOSTS` (including `sr-` prefixed hosts like `sr-pve*` / `sr-bup*`), which fixes missing host association for subjects like `vzdump backup status (pve3.geltd.local)` and future `bup2` (`sr-bup2`) notifications.
+- RU: Парсер Proxmox-писем теперь сопоставляет алиасы хостов с `PROXMOX_HOSTS` (включая префикс `sr-` для `sr-pve*` / `sr-bup*`), что исправляет пропуски привязки хоста для тем вида `vzdump backup status (pve3.geltd.local)` и учитывает будущие уведомления `bup2` (`sr-bup2`).
+
+### Changed / Изменено
+- EN: SemVer patch bump to `8.42.5`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.42.5` and `ANDROID_VERSION_CODE=306`, prerelease links aligned to `v8.42.5-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.42.5`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.42.5` и `ANDROID_VERSION_CODE=306`, prerelease-ссылки выровнены на `v8.42.5-develop`.
+
 ## [8.42.4] - 2026-04-08
 
 ### Fixed / Исправлено

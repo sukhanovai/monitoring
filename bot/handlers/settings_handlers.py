@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.42.4
+Server Monitoring System v8.42.5
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.42.4
+Версия: 8.42.5
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -8856,7 +8856,11 @@ def add_database_category_handler(update, context):
         "Скоро здесь можно будет добавлять новые категории БД для мониторинга.",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_databases')]
+            [
+                InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_backup_db'),
+                InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
+                InlineKeyboardButton("✖️ Закрыть", callback_data='close'),
+            ]
         ])
     )
 
@@ -8874,7 +8878,11 @@ def edit_database_category_handler(update, context):
         for category in db_config.keys():
             keyboard.append([InlineKeyboardButton(f"✏️ {category}", callback_data=f'edit_category_{category}')])
     
-    keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_databases')])
+    keyboard.append([
+        InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_backup_db'),
+        InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
+        InlineKeyboardButton("✖️ Закрыть", callback_data='close'),
+    ])
     
     query.edit_message_text(
         "✏️ *Редактирование категорий баз данных*\n\n"
@@ -8897,7 +8905,11 @@ def delete_database_category_handler(update, context):
         for category in db_config.keys():
             keyboard.append([InlineKeyboardButton(f"🗑️ {category}", callback_data=f'delete_category_{category}')])
     
-    keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_databases')])
+    keyboard.append([
+        InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_backup_db'),
+        InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
+        InlineKeyboardButton("✖️ Закрыть", callback_data='close'),
+    ])
     
     query.edit_message_text(
         "🗑️ *Удаление категории баз данных*\n\n"
@@ -8933,7 +8945,11 @@ def view_all_databases_handler(update, context):
         message,
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_backup_databases')]
+            [
+                InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_backup_db'),
+                InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
+                InlineKeyboardButton("✖️ Закрыть", callback_data='close'),
+            ]
         ])
     )
 
