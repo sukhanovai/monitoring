@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/bot_handler.py
-Server Monitoring System v8.42.4
+Server Monitoring System v8.42.5
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring Proxmox backups
 Система мониторинга серверов
-Версия: 8.42.4
+Версия: 8.42.5
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг бэкапов Proxmox
@@ -258,7 +258,7 @@ class BackupMonitorBot(BackupBase):
         }
 
         if enabled_hosts:
-            return sorted(enabled_hosts, key=lambda host: host.lower())
+            return sorted(enabled_hosts.union(db_hosts), key=lambda host: host.lower())
 
         return db_hosts
 

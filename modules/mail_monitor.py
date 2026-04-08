@@ -1,11 +1,11 @@
 """
 /modules/mail_monitor.py
-Server Monitoring System v8.42.4
+Server Monitoring System v8.42.5
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Mailbox monitoring
 Система мониторинга серверов
-Версия: 8.42.4
+Версия: 8.42.5
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг почтового ящика
@@ -1691,10 +1691,70 @@ class BackupProcessor:
             ]
         )
 
+    def _resolve_proxmox_host_name(self, raw_host_name: str) -> str:
+        """Нормализует имя хоста Proxmox под конфигурацию (например, sr-pve3)."""
+        host_name = str(raw_host_name or "").strip()
+        if not host_name:
+            return host_name
+
+        normalized = host_name.lower()
+
+        proxmox_hosts = config_manager.get_setting("PROXMOX_HOSTS", {}, use_cache=False)
+        if not isinstance(proxmox_hosts, dict):
+            return host_name
+
+        configured_hosts = {
+            str(config_name).strip(): value
+            for config_name, value in proxmox_hosts.items()
+            if str(config_name).strip()
+        }
+        if not configured_hosts:
+            return host_name
+
+        for config_name, host_value in configured_hosts.items():
+            config_normalized = config_name.lower()
+            if normalized == config_normalized:
+                return config_name
+
+            if config_normalized.startswith("sr-") and normalized == config_normalized[3:]:
+                return config_name
+
+            if config_normalized.endswith(f".{normalized}"):
+                return config_name
+
+            if isinstance(host_value, dict):
+                alias_candidates = [
+                    host_value.get("host"),
+                    host_value.get("hostname"),
+                    host_value.get("name"),
+                    host_value.get("pattern"),
+                ]
+            else:
+                alias_candidates = [host_value]
+
+            for candidate in alias_candidates:
+                candidate_str = str(candidate or "").strip().lower()
+                if not candidate_str:
+                    continue
+                if candidate_str == normalized:
+                    return config_name
+                if candidate_str.startswith("sr-") and candidate_str[3:] == normalized:
+                    return config_name
+                if normalized in candidate_str:
+                    return config_name
+
+        if normalized.startswith(("pve", "bup")):
+            sr_candidate = f"sr-{normalized}"
+            for config_name in configured_hosts.keys():
+                if config_name.lower() == sr_candidate:
+                    return config_name
+
+        return host_name
+
     def parse_subject(self, subject: str) -> dict | None:
         """Парсит тему письма."""
         if "pve2-rubicon" in subject.lower():
-            host_name = "pve2-rubicon"
+            host_name = self._resolve_proxmox_host_name("pve2-rubicon")
             status_match = re.search(r":\s*([^:]+)$", subject)
             if status_match:
                 raw_status = status_match.group(1).strip().lower()
@@ -1707,7 +1767,7 @@ class BackupProcessor:
                 }
 
         if "pve-rubicon" in subject.lower() and "pve2-rubicon" not in subject.lower():
-            host_name = "pve-rubicon"
+            host_name = self._resolve_proxmox_host_name("pve-rubicon")
             status_match = re.search(r":\s*([^:]+)$", subject)
             if status_match:
                 raw_status = status_match.group(1).strip().lower()
@@ -1724,7 +1784,8 @@ class BackupProcessor:
             logger.warning(f"Не удалось извлечь имя хоста: {subject}")
             return None
 
-        host_name = host_match.group(1).split(".")[0]
+        host_name_raw = host_match.group(1).split(".")[0]
+        host_name = self._resolve_proxmox_host_name(host_name_raw)
 
         status_match = re.search(r":\s*([^:]+)$", subject)
         if not status_match:
