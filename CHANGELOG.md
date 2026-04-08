@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.48.10] - 2026-04-08
+
+### Fixed / Исправлено
+- EN: In Telegram path `Main menu → DB backups → Manage databases`, replaced the oversized per-database action keyboard with compact category-level actions (`settings_db_edit_<category>`), preventing Telegram `BadRequest: Reply markup is too long` on large DB configurations.
+- RU: В Telegram-сценарии `Главное меню → Бэкапы БД → Управление базами` громоздкая клавиатура с действиями по каждой базе заменена на компактные действия по категориям (`settings_db_edit_<category>`), что устраняет Telegram `BadRequest: Reply markup is too long` при больших конфигурациях БД.
+
+### Changed / Изменено
+- EN: SemVer patch bump to `8.48.10`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.48.10` and `ANDROID_VERSION_CODE=327`, prerelease links aligned to `v8.48.10-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.48.10`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.48.10` и `ANDROID_VERSION_CODE=327`, prerelease-ссылки выровнены на `v8.48.10-develop`.
+
 ## [8.48.9] - 2026-04-08
 
 ### Fixed / Исправлено

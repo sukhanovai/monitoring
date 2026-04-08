@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.48.9
+Server Monitoring System v8.48.10
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.48.9
+Версия: 8.48.10
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -9141,53 +9141,32 @@ def view_all_databases_handler(update, context):
     query.answer()
     
     db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
-    disabled_pairs = _get_disabled_db_monitors_settings()
-    context.user_data['settings_db_toggle_map'] = {}
 
     if not db_config:
         message = "📋 *Все базы данных*\n\n❌ *Нет настроенных баз данных*"
         keyboard = [[InlineKeyboardButton("➕ Добавить категорию БД", callback_data='settings_db_add_category')]]
     else:
-        message = "📋 *Все базы данных*\n\n"
+        message = (
+            "🛠️ *Управление базами данных*\n\n"
+            "Выберите категорию для управления базами.\n"
+            "_Детальные действия (редактирование/удаление/вкл/выкл мониторинга)_ "
+            "доступны внутри категории."
+        )
         total_dbs = 0
         keyboard = []
 
         for category, databases in db_config.items():
             if not isinstance(databases, dict):
                 databases = {}
-            safe_category = _escape_pattern_text(str(category).upper())
-            message += f"📁 *{safe_category}* ({len(databases)} БД):\n"
-            for db_key, db_name in databases.items():
-                safe_db_name = _escape_pattern_text(db_name)
-                message += f"   • {safe_db_name}\n"
-                total_dbs += 1
-                is_disabled = (category, db_key) in disabled_pairs
-                monitor_text = "⚪ Мониторинг выкл" if is_disabled else "🟢 Мониторинг вкл"
-                encoded_category = quote(category, safe='')
-                encoded_db_key = quote(db_key, safe='')
-                keyboard.append([
-                    InlineKeyboardButton(
-                        f"{monitor_text}: {db_name}",
-                        callback_data=_build_db_monitor_toggle_callback(
-                            context,
-                            encoded_category,
-                            encoded_db_key,
-                        )
-                    )
-                ])
-                keyboard.append([
-                    InlineKeyboardButton(
-                        "✏️ Редактировать",
-                        callback_data=f"settings_db_edit_db_{category}__{db_key}"
-                    ),
-                    InlineKeyboardButton(
-                        "🗑️ Удалить",
-                        callback_data=f"settings_db_delete_db_{category}__{db_key}"
-                    )
-                ])
-            message += "\n"
+            total_dbs += len(databases)
+            keyboard.append([
+                InlineKeyboardButton(
+                    f"📁 {category} ({len(databases)})",
+                    callback_data=f"settings_db_edit_{category}"
+                )
+            ])
 
-        message += f"*Итого:* {total_dbs} баз данных в {len(db_config)} категориях"
+        message += f"\n\n*Итого:* {total_dbs} баз данных в {len(db_config)} категориях"
 
     keyboard.append([InlineKeyboardButton("➕ Добавить новую БД", callback_data='settings_db_add_new')])
     keyboard.append([
