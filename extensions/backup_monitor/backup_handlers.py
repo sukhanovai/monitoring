@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v8.48.3
+Server Monitoring System v8.48.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 8.48.3
+Версия: 8.48.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов
@@ -703,9 +703,8 @@ def show_database_backups_menu(query, backup_bot, page=0):
         if not entries:
             message = "🗃️ *Бэкапы баз данных*\n\n❌ Нет данных о бэкапах БД."
             keyboard = [
-                [InlineKeyboardButton("➕ Добавить новую БД", callback_data='settings_db_edit_category')],
-                [InlineKeyboardButton("↩️ Назад", callback_data='backup_main'),
-                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
+                [InlineKeyboardButton("🛠️ Управление базами", callback_data='settings_db_view_all')],
+                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
                 [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')]
             ]
             try:
@@ -771,12 +770,10 @@ def show_database_backups_menu(query, backup_bot, page=0):
                 nav_row.append(InlineKeyboardButton("➡️", callback_data=f"db_backups_page_{safe_page + 1}"))
             keyboard.append(nav_row)
 
-        keyboard.append([InlineKeyboardButton("➕ Добавить новую БД", callback_data='settings_db_edit_category')])
-
         keyboard.extend([
+            [InlineKeyboardButton("🛠️ Управление базами", callback_data='settings_db_view_all')],
             [InlineKeyboardButton("⚙️ Настройка паттернов", callback_data='settings_patterns_db_from_backup')],
-            [InlineKeyboardButton("↩️ Назад", callback_data='backup_main'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
+            [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
             [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')]
         ])
 
