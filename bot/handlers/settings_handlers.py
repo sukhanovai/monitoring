@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.43.0
+Server Monitoring System v8.44.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.43.0
+Версия: 8.44.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -8102,6 +8102,8 @@ def show_backup_proxmox_settings(update, context):
     keyboard = [
         [InlineKeyboardButton("📋 Список хостов", callback_data='settings_proxmox_list')],
         [InlineKeyboardButton("➕ Добавить хост", callback_data='settings_proxmox_add')],
+        [InlineKeyboardButton("✏️/🗑️ Редактировать и удалить паттерны", callback_data='settings_patterns_proxmox')],
+        [InlineKeyboardButton("➕ Добавить паттерн", callback_data='add_proxmox_pattern')],
         [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_backup_proxmox'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
