@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v8.48.18
+Server Monitoring System v8.48.19
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 8.48.18
+Версия: 8.48.19
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов
@@ -722,12 +722,16 @@ def show_database_backups_menu(query, backup_bot, page=0):
 
         keyboard = []
         previous_type = None
+        pending_row = []
         for entry in page_entries:
             backup_type = entry["backup_type"]
             db_name = entry["db_name"]
             display_name = entry["display_name"]
 
             if backup_type != previous_type:
+                if pending_row:
+                    keyboard.append(pending_row)
+                    pending_row = []
                 type_display = formatters.get_type_display(backup_type)
                 keyboard.append([InlineKeyboardButton(
                     f"───── {type_display} ─────",
@@ -744,13 +748,19 @@ def show_database_backups_menu(query, backup_bot, page=0):
                     else formatters.get_db_display_name(display_name, status)
                 )
 
-                keyboard.append([InlineKeyboardButton(
+                pending_row.append(InlineKeyboardButton(
                     display_btn,
                     callback_data=f'db_detail_{backup_type}__{db_name}'
-                )])
+                ))
+                if len(pending_row) == 2:
+                    keyboard.append(pending_row)
+                    pending_row = []
             except Exception as e:
                 logger.error(f"❌ Ошибка обработки БД {backup_type}/{db_name}: {e}")
                 continue
+
+        if pending_row:
+            keyboard.append(pending_row)
 
         if total_pages > 1:
             nav_row = []
