@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/bot_handler.py
-Server Monitoring System v8.42.5
+Server Monitoring System v8.43.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring Proxmox backups
 Система мониторинга серверов
-Версия: 8.42.5
+Версия: 8.43.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг бэкапов Proxmox
@@ -17,7 +17,7 @@ import json
 from datetime import datetime, timedelta
 from pathlib import Path
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import CommandHandler, CallbackQueryHandler
+from telegram.ext import CommandHandler, CallbackQueryHandler, MessageHandler, Filters
 import traceback
 from .settings_backup_monitor import BASE_DIR, DATA_DIR
 from config.settings import BOT_DEBUG_LOG_FILE
@@ -29,6 +29,7 @@ from extensions.backup_monitor.backup_handlers import (
     show_recent_backups,
     show_failed_backups,
     show_hosts_menu,
+    show_hosts_management_menu,
     show_host_status,
     show_stale_hosts,
     show_database_backups_menu,
@@ -311,6 +312,28 @@ class BackupMonitorBot(BackupBase):
             PROXMOX_HOSTS = {}
 
         return cls._normalize_proxmox_hosts(PROXMOX_HOSTS)
+
+    def get_proxmox_hosts_config(self) -> dict:
+        """Возвращает конфиг хостов Proxmox в формате {host: {enabled: bool}}."""
+        raw_hosts = self._get_proxmox_hosts_runtime()
+        normalized_hosts = {}
+        for host_name, host_value in raw_hosts.items():
+            normalized_host = str(host_name).strip()
+            if not normalized_host:
+                continue
+            if isinstance(host_value, dict):
+                normalized_hosts[normalized_host] = {
+                    "enabled": bool(host_value.get("enabled", True))
+                }
+            else:
+                normalized_hosts[normalized_host] = {"enabled": True}
+        return normalized_hosts
+
+    @staticmethod
+    def save_proxmox_hosts_config(proxmox_hosts: dict) -> bool:
+        """Сохраняет конфигурацию хостов Proxmox в settings."""
+        from core.config_manager import config_manager
+        return config_manager.set_setting("PROXMOX_HOSTS", proxmox_hosts, "backup", data_type="auto")
 
     def get_host_recent_status(self, host_name, hours=48):
         """Получает статус хоста за указанный период"""
@@ -641,6 +664,63 @@ def backup_callback(update, context):
         elif data == 'backup_stale_hosts':
             show_stale_hosts(query, backup_bot)
 
+        elif data == 'backup_hosts_manage':
+            show_hosts_management_menu(query, backup_bot)
+
+        elif data == 'backup_host_add_prompt':
+            context.user_data.pop('backup_edit_proxmox_host_name', None)
+            context.user_data['backup_add_proxmox_host'] = True
+            query.edit_message_text(
+                "➕ *Добавление Proxmox хоста*\n\n"
+                "Введите имя нового хоста:",
+                parse_mode='Markdown',
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("↩️ Назад", callback_data='backup_hosts_manage')],
+                    [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
+                ])
+            )
+
+        elif data.startswith('backup_host_edit_prompt_'):
+            host_name = data.replace('backup_host_edit_prompt_', '', 1).strip()
+            if not host_name:
+                query.edit_message_text("❌ Ошибка: не указано имя хоста")
+                return
+            context.user_data.pop('backup_add_proxmox_host', None)
+            context.user_data['backup_edit_proxmox_host_name'] = host_name
+            query.edit_message_text(
+                "✏️ *Редактирование Proxmox хоста*\n\n"
+                f"Текущее имя: `{host_name}`\n\n"
+                "Введите новое имя хоста:",
+                parse_mode='Markdown',
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("↩️ Назад", callback_data='backup_hosts_manage')],
+                    [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
+                ])
+            )
+
+        elif data.startswith('backup_host_delete_'):
+            host_name = data.replace('backup_host_delete_', '', 1).strip()
+            proxmox_hosts = backup_bot.get_proxmox_hosts_config()
+            if host_name not in proxmox_hosts:
+                query.answer("Хост не найден", show_alert=True)
+                show_hosts_management_menu(query, backup_bot)
+                return
+            proxmox_hosts.pop(host_name, None)
+            backup_bot.save_proxmox_hosts_config(proxmox_hosts)
+            show_hosts_management_menu(query, backup_bot)
+
+        elif data.startswith('backup_host_toggle_'):
+            host_name = data.replace('backup_host_toggle_', '', 1).strip()
+            proxmox_hosts = backup_bot.get_proxmox_hosts_config()
+            if host_name not in proxmox_hosts:
+                query.answer("Хост не найден", show_alert=True)
+                show_hosts_management_menu(query, backup_bot)
+                return
+            current_enabled = bool(proxmox_hosts[host_name].get("enabled", True))
+            proxmox_hosts[host_name]["enabled"] = not current_enabled
+            backup_bot.save_proxmox_hosts_config(proxmox_hosts)
+            show_hosts_management_menu(query, backup_bot)
+
         elif data.startswith('backup_host_'):
             host_name = data.replace('backup_host_', '')
             show_host_status(query, backup_bot, host_name)
@@ -728,6 +808,59 @@ def backup_callback(update, context):
             except Exception:
                 pass
 
+def backup_host_settings_input_handler(update, context):
+    """Обработка текстового ввода для управления хостами Proxmox из backup-меню."""
+    if not update.message:
+        return
+
+    backup_bot = BackupMonitorBot()
+    message_text = (update.message.text or "").strip()
+    if not message_text:
+        update.message.reply_text("❌ Имя хоста не может быть пустым. Попробуйте снова.")
+        return
+
+    proxmox_hosts = backup_bot.get_proxmox_hosts_config()
+
+    if context.user_data.get('backup_add_proxmox_host'):
+        if message_text in proxmox_hosts:
+            update.message.reply_text("❌ Такой хост уже существует. Введите другое имя.")
+            return
+        proxmox_hosts[message_text] = {"enabled": True}
+        backup_bot.save_proxmox_hosts_config(proxmox_hosts)
+        context.user_data.pop('backup_add_proxmox_host', None)
+        update.message.reply_text(
+            f"✅ Хост `{message_text}` добавлен.",
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("⚙️ Управление хостами", callback_data='backup_hosts_manage')],
+                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
+            ])
+        )
+        return
+
+    old_host_name = context.user_data.get('backup_edit_proxmox_host_name')
+    if old_host_name:
+        if old_host_name not in proxmox_hosts:
+            context.user_data.pop('backup_edit_proxmox_host_name', None)
+            update.message.reply_text("❌ Исходный хост не найден. Откройте меню управления заново.")
+            return
+        if message_text in proxmox_hosts and message_text != old_host_name:
+            update.message.reply_text("❌ Такой хост уже существует. Введите другое имя.")
+            return
+        host_config = proxmox_hosts.pop(old_host_name)
+        proxmox_hosts[message_text] = host_config if isinstance(host_config, dict) else {"enabled": True}
+        backup_bot.save_proxmox_hosts_config(proxmox_hosts)
+        context.user_data.pop('backup_edit_proxmox_host_name', None)
+        update.message.reply_text(
+            f"✅ Хост переименован: `{old_host_name}` → `{message_text}`.",
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("⚙️ Управление хостами", callback_data='backup_hosts_manage')],
+                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
+            ])
+        )
+        return
+
 def get_database_config(self):
     """Получает полную конфигурацию баз данных"""
     from .db_settings_backup_monitor import DATABASE_BACKUP_CONFIG
@@ -761,3 +894,4 @@ def setup_backup_handlers(dispatcher):
     dispatcher.add_handler(CommandHandler("backup_help", backup_help_command))
     dispatcher.add_handler(CallbackQueryHandler(backup_callback, pattern='^backup_'))
     dispatcher.add_handler(CallbackQueryHandler(backup_callback, pattern='^db_'))
+    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, backup_host_settings_input_handler))

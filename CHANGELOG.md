@@ -6,7 +6,11 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.42.5] - 2026-04-08
+## [8.43.0] - 2026-04-08
+
+### Added / Добавлено
+- EN: In Telegram path `Backup Proxmox → Hosts`, added host management mode with actions to add a new host, rename an existing host, activate/deactivate monitoring, and delete a host directly from the backup menu.
+- RU: В Telegram-сценарии `Бэкапы Proxmox → По хостам` добавлен режим управления хостами: можно добавить новый хост, переименовать существующий, активировать/деактивировать мониторинг и удалить хост прямо из меню бэкапов.
 
 ### Fixed / Исправлено
 - EN: In Telegram path `Settings → Extensions → DB Backups → Databases`, added consistent navigation buttons `Back`, `Home`, and `Close` in the “Databases” sub-screens where only back navigation was available before.
@@ -17,8 +21,8 @@ The project follows Semantic Versioning (SemVer).
 - RU: Парсер Proxmox-писем теперь сопоставляет алиасы хостов с `PROXMOX_HOSTS` (включая префикс `sr-` для `sr-pve*` / `sr-bup*`), что исправляет пропуски привязки хоста для тем вида `vzdump backup status (pve3.geltd.local)` и учитывает будущие уведомления `bup2` (`sr-bup2`).
 
 ### Changed / Изменено
-- EN: SemVer patch bump to `8.42.5`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.42.5` and `ANDROID_VERSION_CODE=306`, prerelease links aligned to `v8.42.5-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.42.5`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.42.5` и `ANDROID_VERSION_CODE=306`, prerelease-ссылки выровнены на `v8.42.5-develop`.
+- EN: SemVer minor bump to `8.43.0`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.43.0` and `ANDROID_VERSION_CODE=307`, prerelease links aligned to `v8.43.0-develop`.
+- RU: Выполнен SemVer minor-бамп до `8.43.0`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.43.0` и `ANDROID_VERSION_CODE=307`, prerelease-ссылки выровнены на `v8.43.0-develop`.
 
 ## [8.42.4] - 2026-04-08
 

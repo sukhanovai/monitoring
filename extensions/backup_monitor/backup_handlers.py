@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v8.42.5
+Server Monitoring System v8.43.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 8.42.5
+Версия: 8.43.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов
@@ -128,6 +128,8 @@ def create_hosts_keyboard(
             callback_data='backup_stale_hosts'
         )])
     
+    keyboard.append([InlineKeyboardButton("⚙️ Управление хостами", callback_data='backup_hosts_manage')])
+
     keyboard.append([
         InlineKeyboardButton("↩️ Назад", callback_data=back_button),
         InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
@@ -135,6 +137,46 @@ def create_hosts_keyboard(
     ])
     
     return InlineKeyboardMarkup(keyboard)
+
+def create_hosts_management_keyboard(hosts, backup_bot):
+    """Создает клавиатуру управления хостами Proxmox."""
+    keyboard = [[InlineKeyboardButton("➕ Добавить новый хост", callback_data='backup_host_add_prompt')]]
+
+    for host_name in hosts:
+        enabled = backup_bot.is_host_enabled(host_name)
+        toggle_text = "⛔ Деактивировать" if enabled else "✅ Активировать"
+        keyboard.append([
+            InlineKeyboardButton(f"✏️ {host_name}", callback_data=f'backup_host_edit_prompt_{host_name}'),
+            InlineKeyboardButton(f"🗑️ {host_name}", callback_data=f'backup_host_delete_{host_name}'),
+        ])
+        keyboard.append([
+            InlineKeyboardButton(f"{toggle_text} {host_name}", callback_data=f'backup_host_toggle_{host_name}')
+        ])
+
+    keyboard.append([
+        InlineKeyboardButton("↩️ Назад к хостам", callback_data='backup_hosts'),
+        InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
+        InlineKeyboardButton("✖️ Закрыть", callback_data='close'),
+    ])
+    return InlineKeyboardMarkup(keyboard)
+
+def show_hosts_management_menu(query, backup_bot):
+    """Показывает меню управления хостами Proxmox."""
+    hosts = backup_bot.get_all_hosts(include_disabled=True)
+    message = "⚙️ *Управление хостами Proxmox*\n\n"
+    if not hosts:
+        message += "Список пуст. Добавьте первый хост."
+    else:
+        message += "🟢 — активен\n🔴 — деактивирован\n\n"
+        for host_name in hosts:
+            status_icon = "🟢" if backup_bot.is_host_enabled(host_name) else "🔴"
+            message += f"{status_icon} `{host_name}`\n"
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=create_hosts_management_keyboard(hosts, backup_bot),
+    )
 
 def create_databases_keyboard(databases_by_type, problem_db_count=0):
     """Создает клавиатуру для списка баз данных"""
@@ -328,7 +370,7 @@ def show_failed_backups(query, backup_bot):
 def show_hosts_menu(query, backup_bot):
     """Показывает меню выбора хостов"""
     try:
-        hosts = backup_bot.get_all_hosts()
+        hosts = backup_bot.get_all_hosts(include_disabled=True)
         
         if not hosts:
             query.edit_message_text(
@@ -341,7 +383,10 @@ def show_hosts_menu(query, backup_bot):
         # Получаем статусы для всех хостов
         host_statuses = {}
         for host_name in hosts:
-            status = backup_bot.get_host_display_status(host_name)
+            if not backup_bot.is_host_enabled(host_name):
+                status = 'disabled'
+            else:
+                status = backup_bot.get_host_display_status(host_name)
             host_statuses[host_name] = status
 
         # Создаем сообщение с легендой
@@ -352,7 +397,7 @@ def show_hosts_menu(query, backup_bot):
         message += "🟠 - есть неудачные бэкапы в истории\n"
         message += f"🟡 - последний бэкап старше {backup_bot.backup_alert_hours}ч\n"
         message += f"⚫ - нет бэкапов >{backup_bot.backup_stale_hours}ч\n"
-        message += "⚪ - статус неизвестен\n\n"
+        message += "⚪ - хост деактивирован или статус неизвестен\n\n"
 
         query.edit_message_text(
             message,
