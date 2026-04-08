@@ -6,17 +6,15 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.48.4] - 2026-04-08
+## [8.48.5] - 2026-04-08
 
 ### Fixed / Исправлено
-- EN: In Telegram path `Main menu → DB backups`, the `Back` button was removed from the DB backups screen to keep this section focused on operational actions only.
-- RU: В Telegram-сценарии `Главное меню → Бэкапы БД` с экрана бэкапов БД убрана кнопка `Назад`, чтобы в разделе остались только операционные действия.
-- EN: Added a dedicated `Manage databases` button in `Main menu → DB backups`; DB management actions (`add new DB`, enable/disable monitoring, edit, delete) are now accessed from this entry point via the existing settings flow.
-- RU: В `Главное меню → Бэкапы БД` добавлена отдельная кнопка `Управление базами`; действия управления БД (`добавить новую БД`, включение/выключение мониторинга, редактирование и удаление) теперь открываются через эту точку входа в существующий settings-flow.
+- EN: In Telegram path `Main menu → DB backups → Manage databases`, dynamic DB category/name values are now escaped before rendering with Markdown, fixing `BadRequest: Can't parse entities` in `settings_callback_handler`.
+- RU: В Telegram-сценарии `Главное меню → Бэкапы БД → Управление базами` динамические значения категорий и имён БД теперь экранируются перед рендерингом Markdown, что устраняет `BadRequest: Can't parse entities` в `settings_callback_handler`.
 
 ### Changed / Изменено
-- EN: SemVer patch bump to `8.48.4`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.48.4` and `ANDROID_VERSION_CODE=321`, prerelease links aligned to `v8.48.4-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.48.4`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.48.4` и `ANDROID_VERSION_CODE=321`, prerelease-ссылки выровнены на `v8.48.4-develop`.
+- EN: SemVer patch bump to `8.48.5`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.48.5` and `ANDROID_VERSION_CODE=322`, prerelease links aligned to `v8.48.5-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.48.5`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.48.5` и `ANDROID_VERSION_CODE=322`, prerelease-ссылки выровнены на `v8.48.5-develop`.
 
 ## [8.48.3] - 2026-04-08
 
