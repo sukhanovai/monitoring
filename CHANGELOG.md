@@ -6,6 +6,18 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.48.15] - 2026-04-08
+
+### Changed / Изменено
+- EN: In `Main menu → DB backups → Manage databases`, removed per-DB monitoring toggle buttons (`enable/disable`) from category details, keeping only DB edit/delete actions.
+- RU: В `Главное меню → Бэкапы БД → Управление базами` убраны кнопки включения/выключения мониторинга для конкретных БД в деталях категории; оставлены только действия редактирования/удаления БД.
+- EN: In `Main menu → DB backups → Manage databases`, replaced category actions block with explicit split: `Manage databases` and `Manage categories`.
+- RU: В `Главное меню → Бэкапы БД → Управление базами` блок действий разделён на явные пункты: `Управление базами` и `Управление категориями`.
+- EN: In `Main menu → DB backups → Manage databases → Manage categories`, removed `View all DBs` and added working category rename flow for existing categories.
+- RU: В `Главное меню → Бэкапы БД → Управление базами → Управление категориями` убран пункт `Просмотр всех БД` и добавлен рабочий сценарий переименования существующих категорий.
+- EN: SemVer patch bump to `8.48.15`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.48.15` and `ANDROID_VERSION_CODE=332`, prerelease links aligned to `v8.48.15-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.48.15`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.48.15` и `ANDROID_VERSION_CODE=332`, prerelease-ссылки выровнены на `v8.48.15-develop`.
+
 ## [8.48.14] - 2026-04-08
 
 ### Fixed / Исправлено

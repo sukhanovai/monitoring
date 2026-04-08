@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.48.14
+Server Monitoring System v8.48.15
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.48.14
+Версия: 8.48.15
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -1724,6 +1724,8 @@ def settings_callback_handler(update, context):
             show_backup_databases_settings(update, context)
         elif data == 'settings_db_add_category':
             add_database_category_handler(update, context)
+        elif data == 'settings_db_manage_categories':
+            manage_database_categories_handler(update, context)
         elif data == 'settings_db_edit_category':
             edit_databases_handler(update, context)
         elif data == 'settings_db_delete_category':
@@ -1867,6 +1869,10 @@ def settings_callback_handler(update, context):
             raw_value = data.replace('settings_db_delete_', '', 1)
             category = _resolve_db_category_from_callback(context, raw_value)
             delete_database_category_confirmation(update, context, category)
+        elif data.startswith('settings_db_rename_'):
+            raw_value = data.replace('settings_db_rename_', '', 1)
+            category = _resolve_db_category_from_callback(context, raw_value)
+            start_database_category_edit_handler(update, context, category)
         elif data.startswith('settings_db_edit_'):
             raw_value = data.replace('settings_db_edit_', '', 1)
             category = _resolve_db_category_from_callback(context, raw_value)
@@ -2071,9 +2077,11 @@ def handle_setting_value(update, context):
     if context.user_data.get('adding_server'):
         return handle_server_input(update, context)
     
-    # Затем проверяем, не добавляется ли категория БД
+    # Затем проверяем, не добавляется/редактируется ли категория БД
     if context.user_data.get('adding_db_category'):
         return handle_db_category_input(update, context)
+    if context.user_data.get('editing_db_category'):
+        return handle_db_category_rename_input(update, context)
 
     # Проверяем, не добавляется ли хост Proxmox
     if context.user_data.get('adding_proxmox_host'):
@@ -2781,12 +2789,11 @@ def show_backup_databases_settings(update, context):
         ])
 
     if len(sorted_categories) > 20:
-        message += "\n\nℹ️ Показаны первые 20 категорий. Полный список — через «Просмотр всех БД»."
+        message += "\n\nℹ️ Показаны первые 20 категорий. Для полного списка откройте «Управление базами»."
 
     keyboard.extend([
-        [InlineKeyboardButton("📋 Просмотр всех БД", callback_data='settings_db_view_all')],
-        [InlineKeyboardButton("➕ Добавить категорию БД", callback_data='settings_db_add_category')],
-        [InlineKeyboardButton("🗑️ Удалить категорию", callback_data='settings_db_delete_category')],
+        [InlineKeyboardButton("🛠️ Управление базами", callback_data='settings_db_view_all')],
+        [InlineKeyboardButton("🗂️ Управление категориями", callback_data='settings_db_manage_categories')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_backup_db'),
          InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
@@ -9195,7 +9202,7 @@ def view_all_databases_handler(update, context):
         message = (
             "🛠️ *Управление базами данных*\n\n"
             "Выберите категорию для управления базами.\n"
-            "_Детальные действия (редактирование/удаление/вкл/выкл мониторинга)_ "
+            "_Детальные действия (редактирование/удаление)_ "
             "доступны внутри категории."
         )
         total_dbs = 0
@@ -9286,8 +9293,32 @@ def add_database_category_handler(update, context):
         ])
     )
 
+def manage_database_categories_handler(update, context):
+    """Подменю управления категориями БД."""
+    query = update.callback_query
+    query.answer()
+
+    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    total_categories = len(db_config) if isinstance(db_config, dict) else 0
+
+    query.edit_message_text(
+        (
+            "🗂️ *Управление категориями БД*\n\n"
+            f"Всего категорий: *{total_categories}*\n\n"
+            "Выберите действие:"
+        ),
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("➕ Добавить категорию", callback_data='settings_db_add_category')],
+            [InlineKeyboardButton("✏️ Редактировать категорию", callback_data='settings_db_edit_category')],
+            [InlineKeyboardButton("🗑️ Удалить категорию", callback_data='settings_db_delete_category')],
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ])
+    )
+
 def edit_databases_handler(update, context):
-    """Редактировать БД - ОСНОВНАЯ РЕАЛИЗАЦИЯ"""
+    """Показать список категорий для переименования."""
     query = update.callback_query
     query.answer()
     
@@ -9301,17 +9332,45 @@ def edit_databases_handler(update, context):
             keyboard.append([
                 InlineKeyboardButton(
                     f"✏️ {category}",
-                    callback_data=_build_db_category_callback(context, "settings_db_edit_", category)
+                    callback_data=_build_db_category_callback(context, "settings_db_rename_", category)
                 )
             ])
     
-    keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')])
+    keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data='settings_db_manage_categories')])
     
     query.edit_message_text(
-        "✏️ *Редактирование баз данных*\n\n"
-        "Выберите категорию для редактирования:",
+        "✏️ *Редактирование категорий баз данных*\n\n"
+        "Выберите категорию для переименования:",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+def start_database_category_edit_handler(update, context, category):
+    """Запуск переименования существующей категории БД."""
+    query = update.callback_query
+    query.answer()
+
+    db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+    if category not in db_config:
+        query.edit_message_text(
+            "❌ Категория не найдена.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_manage_categories')]
+            ])
+        )
+        return
+
+    context.user_data['editing_db_category'] = True
+    context.user_data['editing_db_category_old_name'] = category
+
+    query.edit_message_text(
+        "✏️ *Переименование категории БД*\n\n"
+        f"Текущее название: *{_escape_pattern_text(category)}*\n\n"
+        "Введите новое название категории:",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("❌ Отмена", callback_data='settings_db_manage_categories')]
+        ])
     )
 
 def delete_database_category_handler(update, context):
@@ -9333,7 +9392,7 @@ def delete_database_category_handler(update, context):
                 )
             ])
     
-    keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')])
+    keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data='settings_db_manage_categories')])
     
     query.edit_message_text(
         "🗑️ *Удаление категории БД*\n\n"
@@ -9374,7 +9433,6 @@ def edit_database_category_details(update, context, category):
 
     message += "\nВыберите действие:"
 
-    disabled_pairs = _get_disabled_db_monitors_settings()
     keyboard = [[
         InlineKeyboardButton(
             "➕ Добавить БД",
@@ -9383,8 +9441,6 @@ def edit_database_category_details(update, context, category):
     ]]
     for db_key, db_name in databases.items():
         button_text = f"✏️ {db_name}"
-        is_disabled = (category, db_key) in disabled_pairs
-        toggle_text = "✅ Включить мониторинг" if is_disabled else "⛔ Отключить мониторинг"
         keyboard.append([
             InlineKeyboardButton(
                 button_text,
@@ -9393,12 +9449,6 @@ def edit_database_category_details(update, context, category):
             InlineKeyboardButton(
                 f"🗑️ {db_name}",
                 callback_data=_build_db_entry_callback(context, "settings_db_delete_db_", category, db_key)
-            )
-        ])
-        keyboard.append([
-            InlineKeyboardButton(
-                f"{toggle_text}: {db_name}",
-                callback_data=_build_db_monitor_toggle_callback(context, quote(category, safe=''), quote(db_key, safe=''))
             )
         ])
 
@@ -9733,6 +9783,54 @@ def handle_db_category_input(update, context):
     
     # Очищаем состояние
     context.user_data['adding_db_category'] = False
+
+def handle_db_category_rename_input(update, context):
+    """Обработчик переименования категории БД."""
+    if 'editing_db_category' not in context.user_data:
+        return
+
+    old_name = context.user_data.get('editing_db_category_old_name')
+    new_name = (update.message.text or '').strip()
+
+    try:
+        db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
+
+        if not old_name or old_name not in db_config:
+            update.message.reply_text(
+                "❌ Исходная категория не найдена.",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_manage_categories')]
+                ])
+            )
+            return
+
+        if not new_name:
+            update.message.reply_text("❌ Новое название не может быть пустым. Попробуйте снова:")
+            return
+
+        if new_name == old_name:
+            update.message.reply_text("ℹ️ Название не изменилось. Введите другое название:")
+            return
+
+        if new_name in db_config:
+            update.message.reply_text(f"❌ Категория '{new_name}' уже существует. Введите другое название:")
+            return
+
+        updated_config = dict(db_config)
+        updated_config[new_name] = updated_config.pop(old_name)
+        settings_manager.set_setting('DATABASE_CONFIG', updated_config)
+
+        update.message.reply_text(
+            f"✅ Категория '{old_name}' переименована в '{new_name}'.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ К управлению категориями", callback_data='settings_db_manage_categories')]
+            ])
+        )
+    except Exception as e:
+        update.message.reply_text(f"❌ Ошибка: {e}")
+    finally:
+        context.user_data.pop('editing_db_category', None)
+        context.user_data.pop('editing_db_category_old_name', None)
 
 def handle_db_entry_input(update, context):
     """Обработчик добавления базы данных"""
