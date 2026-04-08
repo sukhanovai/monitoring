@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.48.10
+Server Monitoring System v8.48.11
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.48.10
+Версия: 8.48.11
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -113,6 +113,41 @@ def _build_db_monitor_toggle_callback(context, encoded_category: str, encoded_db
     token = f"k{len(toggle_map)}"
     toggle_map[token] = f"{encoded_category}__{encoded_db_key}"
     return f"settings_db_toggle_monitor_{token}"
+
+
+def _build_db_category_callback(context, action_prefix: str, category: str) -> str:
+    """Собирает короткий callback_data для действий над категорией БД."""
+    category_map = context.user_data.setdefault('settings_db_category_map', {})
+    token = f"c{len(category_map)}"
+    category_map[token] = str(category or '')
+    return f"{action_prefix}{token}"
+
+
+def _resolve_db_category_from_callback(context, value: str) -> str:
+    """Расшифровать категорию БД из callback_data (token/raw/urlencoded)."""
+    category_map = context.user_data.get('settings_db_category_map', {})
+    if value in category_map:
+        return str(category_map[value] or '')
+    decoded = unquote(str(value or '')).strip()
+    return decoded
+
+
+def _build_db_entry_callback(context, action_prefix: str, category: str, db_key: str) -> str:
+    """Собирает короткий callback_data для действий над конкретной БД."""
+    entry_map = context.user_data.setdefault('settings_db_entry_map', {})
+    token = f"d{len(entry_map)}"
+    entry_map[token] = f"{category}__{db_key}"
+    return f"{action_prefix}{token}"
+
+
+def _resolve_db_entry_from_callback(context, value: str) -> tuple[str, str]:
+    """Расшифровать (category, db_key) из callback_data (token/raw/urlencoded)."""
+    entry_map = context.user_data.get('settings_db_entry_map', {})
+    raw_value = str(entry_map.get(value, value) or '')
+    if '__' not in raw_value:
+        return "", ""
+    raw_category, raw_db_key = raw_value.split('__', 1)
+    return unquote(raw_category).strip(), unquote(raw_db_key).strip()
 
 
 def _get_disabled_db_monitors_settings() -> set[tuple[str, str]]:
@@ -1784,12 +1819,13 @@ def settings_callback_handler(update, context):
         
         # Обработчики для редактирования и удаления категорий БД
         elif data.startswith('settings_db_add_db_'):
-            category = data.replace('settings_db_add_db_', '')
+            raw_value = data.replace('settings_db_add_db_', '', 1)
+            category = _resolve_db_category_from_callback(context, raw_value)
             add_database_entry_handler(update, context, category)
         elif data.startswith('settings_db_edit_db_'):
-            raw_value = data.replace('settings_db_edit_db_', '')
-            if '__' in raw_value:
-                category, db_key = raw_value.split('__', 1)
+            raw_value = data.replace('settings_db_edit_db_', '', 1)
+            category, db_key = _resolve_db_entry_from_callback(context, raw_value)
+            if category and db_key:
                 edit_database_entry_handler(update, context, category, db_key)
         elif data.startswith('settings_db_toggle_monitor_'):
             raw_value = data.replace('settings_db_toggle_monitor_', '', 1)
@@ -1805,23 +1841,26 @@ def settings_callback_handler(update, context):
                 else:
                     _safe_query_answer(query, "Не удалось определить базу данных", show_alert=True)
         elif data.startswith('settings_db_delete_db_confirm_'):
-            raw_value = data.replace('settings_db_delete_db_confirm_', '')
-            if '__' in raw_value:
-                category, db_key = raw_value.split('__', 1)
+            raw_value = data.replace('settings_db_delete_db_confirm_', '', 1)
+            category, db_key = _resolve_db_entry_from_callback(context, raw_value)
+            if category and db_key:
                 delete_database_entry_execute(update, context, category, db_key)
         elif data.startswith('settings_db_delete_db_'):
-            raw_value = data.replace('settings_db_delete_db_', '')
-            if '__' in raw_value:
-                category, db_key = raw_value.split('__', 1)
+            raw_value = data.replace('settings_db_delete_db_', '', 1)
+            category, db_key = _resolve_db_entry_from_callback(context, raw_value)
+            if category and db_key:
                 delete_database_entry_confirmation(update, context, category, db_key)
         elif data.startswith('settings_db_delete_confirm_'):
-            category = data.replace('settings_db_delete_confirm_', '')
+            raw_value = data.replace('settings_db_delete_confirm_', '', 1)
+            category = _resolve_db_category_from_callback(context, raw_value)
             delete_database_category_execute(update, context, category)
         elif data.startswith('settings_db_delete_'):
-            category = data.replace('settings_db_delete_', '')
+            raw_value = data.replace('settings_db_delete_', '', 1)
+            category = _resolve_db_category_from_callback(context, raw_value)
             delete_database_category_confirmation(update, context, category)
         elif data.startswith('settings_db_edit_'):
-            category = data.replace('settings_db_edit_', '')
+            raw_value = data.replace('settings_db_edit_', '', 1)
+            category = _resolve_db_category_from_callback(context, raw_value)
             edit_database_category_details(update, context, category)
         
         # Обработчики для серверов
@@ -2696,6 +2735,8 @@ def show_backup_databases_settings(update, context):
     context.user_data.pop('db_entry_category', None)
     context.user_data.pop('db_entry_key', None)
     context.user_data['settings_db_toggle_map'] = {}
+    context.user_data['settings_db_category_map'] = {}
+    context.user_data['settings_db_entry_map'] = {}
 
     db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
 
@@ -2726,7 +2767,7 @@ def show_backup_databases_settings(update, context):
         keyboard.append([
             InlineKeyboardButton(
                 f"⚙️ {category}",
-                callback_data=f"settings_db_edit_{category}"
+                callback_data=_build_db_category_callback(context, "settings_db_edit_", category)
             )
         ])
 
@@ -9162,7 +9203,7 @@ def view_all_databases_handler(update, context):
             keyboard.append([
                 InlineKeyboardButton(
                     f"📁 {category} ({len(databases)})",
-                    callback_data=f"settings_db_edit_{category}"
+                    callback_data=_build_db_category_callback(context, "settings_db_edit_", category)
                 )
             ])
 
@@ -9202,7 +9243,12 @@ def add_new_database_from_manage_handler(update, context):
 
     keyboard = []
     for category in db_config.keys():
-        keyboard.append([InlineKeyboardButton(f"📁 {category}", callback_data=f"settings_db_add_db_{category}")])
+        keyboard.append([
+            InlineKeyboardButton(
+                f"📁 {category}",
+                callback_data=_build_db_category_callback(context, "settings_db_add_db_", category)
+            )
+        ])
 
     keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data='settings_db_view_all')])
 
@@ -9246,7 +9292,12 @@ def edit_databases_handler(update, context):
     else:
         keyboard = []
         for category in db_config.keys():
-            keyboard.append([InlineKeyboardButton(f"✏️ {category}", callback_data=f'settings_db_edit_{category}')])
+            keyboard.append([
+                InlineKeyboardButton(
+                    f"✏️ {category}",
+                    callback_data=_build_db_category_callback(context, "settings_db_edit_", category)
+                )
+            ])
     
     keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')])
     
@@ -9269,7 +9320,12 @@ def delete_database_category_handler(update, context):
     else:
         keyboard = []
         for category in db_config.keys():
-            keyboard.append([InlineKeyboardButton(f"🗑️ {category}", callback_data=f'settings_db_delete_{category}')])
+            keyboard.append([
+                InlineKeyboardButton(
+                    f"🗑️ {category}",
+                    callback_data=_build_db_category_callback(context, "settings_db_delete_", category)
+                )
+            ])
     
     keyboard.append([InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')])
     
@@ -9313,7 +9369,12 @@ def edit_database_category_details(update, context, category):
     message += "\nВыберите действие:"
 
     disabled_pairs = _get_disabled_db_monitors_settings()
-    keyboard = [[InlineKeyboardButton("➕ Добавить БД", callback_data=f"settings_db_add_db_{category}")]]
+    keyboard = [[
+        InlineKeyboardButton(
+            "➕ Добавить БД",
+            callback_data=_build_db_category_callback(context, "settings_db_add_db_", category)
+        )
+    ]]
     for db_key, db_name in databases.items():
         button_text = f"✏️ {db_name}"
         is_disabled = (category, db_key) in disabled_pairs
@@ -9321,8 +9382,14 @@ def edit_database_category_details(update, context, category):
         encoded_category = quote(category, safe='')
         encoded_db_key = quote(db_key, safe='')
         keyboard.append([
-            InlineKeyboardButton(button_text, callback_data=f"settings_db_edit_db_{category}__{db_key}"),
-            InlineKeyboardButton(f"🗑️ {db_name}", callback_data=f"settings_db_delete_db_{category}__{db_key}")
+            InlineKeyboardButton(
+                button_text,
+                callback_data=_build_db_entry_callback(context, "settings_db_edit_db_", category, db_key)
+            ),
+            InlineKeyboardButton(
+                f"🗑️ {db_name}",
+                callback_data=_build_db_entry_callback(context, "settings_db_delete_db_", category, db_key)
+            )
         ])
         keyboard.append([
             InlineKeyboardButton(
@@ -9435,7 +9502,12 @@ def delete_database_entry_confirmation(update, context, category, db_key):
         "Удалить?",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("✅ Удалить", callback_data=f"settings_db_delete_db_confirm_{category}__{db_key}")],
+            [InlineKeyboardButton(
+                "✅ Удалить",
+                callback_data=_build_db_entry_callback(
+                    context, "settings_db_delete_db_confirm_", category, db_key
+                )
+            )],
             [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
@@ -9547,7 +9619,10 @@ def delete_database_category_confirmation(update, context, category):
         message,
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("✅ Удалить", callback_data=f"settings_db_delete_confirm_{category}")],
+            [InlineKeyboardButton(
+                "✅ Удалить",
+                callback_data=_build_db_category_callback(context, "settings_db_delete_confirm_", category)
+            )],
             [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
         ])
     )
@@ -9631,7 +9706,10 @@ def handle_db_category_input(update, context):
                 "Теперь вы можете добавить базы данных в эту категорию.",
                 parse_mode='Markdown',
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("✏️ Добавить БД", callback_data=f'settings_db_edit_{category_name}'),
+                    [InlineKeyboardButton(
+                        "✏️ Добавить БД",
+                        callback_data=_build_db_category_callback(context, 'settings_db_edit_', category_name)
+                    ),
                      InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
                 ])
             )
@@ -9692,7 +9770,10 @@ def handle_db_entry_input(update, context):
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
-             InlineKeyboardButton("✏️ Добавить еще", callback_data=f'settings_db_add_db_{category}')]
+             InlineKeyboardButton(
+                 "✏️ Добавить еще",
+                 callback_data=_build_db_category_callback(context, 'settings_db_add_db_', category)
+             )]
         ])
     )
 
@@ -9742,7 +9823,10 @@ def handle_db_entry_edit_input(update, context):
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
-             InlineKeyboardButton("✏️ Редактировать еще", callback_data=f'settings_db_edit_{category}')]
+             InlineKeyboardButton(
+                 "✏️ Редактировать еще",
+                 callback_data=_build_db_category_callback(context, 'settings_db_edit_', category)
+             )]
         ])
     )
 
