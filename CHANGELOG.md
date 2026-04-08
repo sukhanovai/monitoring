@@ -6,6 +6,20 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.48.20] - 2026-04-08
+
+### Fixed / Исправлено
+- EN: In `Main menu → DB backups → Manage categories`, fixed `Back` behavior so it returns to `Manage databases`.
+- RU: В `Главное меню → Бэкапы БД → Управление категориями` исправлено поведение `Назад`: возврат ведёт в меню `Управление базами`.
+
+### Changed / Изменено
+- EN: In `Main menu → DB backups`, switched the DB list to a single-page layout (no pagination).
+- RU: В `Главное меню → Бэкапы БД` список баз переведён в одностраничный режим (без пагинации).
+- EN: In `Main menu → DB backups`, removed the `Manage categories` button from the operational DB backups screen.
+- RU: В `Главное меню → Бэкапы БД` убрана кнопка `Управление категориями` из операционного экрана бэкапов БД.
+- EN: SemVer patch bump to `8.48.20`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.48.20` and `ANDROID_VERSION_CODE=336`, prerelease links aligned to `v8.48.20-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.48.20`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.48.20` и `ANDROID_VERSION_CODE=336`, prerelease-ссылки выровнены на `v8.48.20-develop`.
+
 ## [8.48.19] - 2026-04-08
 
 ### Fixed / Исправлено
