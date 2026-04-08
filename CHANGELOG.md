@@ -6,17 +6,17 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.45.4] - 2026-04-08
+## [8.46.1] - 2026-04-08
 
 ### Fixed / Исправлено
-- EN: In Telegram path `Main menu → Proxmox backups`, opening `Proxmox backups` now immediately shows the hosts backup list (no extra `By hosts` click required).
-- RU: В Telegram-сценарии `Главное меню → Бэкапы Proxmox` открытие `Бэкапы Proxmox` теперь сразу показывает список бэкапов по хостам (без дополнительного клика `По хостам`).
-- EN: In Proxmox backups screens, `Host management` was moved from the hosts-only screen into the main Proxmox flow and placed next to `Pattern settings`.
-- RU: В экранах бэкапов Proxmox кнопка `Управление хостами` перенесена из экрана `По хостам` в основной поток `Бэкапы Proxmox` и размещена рядом с `Настройка паттернов`.
+- EN: In Android `Operations center → DB tile`, the DB list now uses the same enabled/disabled monitoring source as the Telegram bot, so statuses are shown consistently between Telegram and Android.
+- RU: В Android `Оперативный центр → плашка БД` список баз теперь использует тот же источник статусов включения/выключения мониторинга, что и Telegram-бот, поэтому статусы синхронизированы между Telegram и Android.
+- EN: `settings_db_toggle_monitor_*` now updates DB-monitoring state through the same backup-monitor toggle path used by Telegram handlers; the updated state is persisted in the settings database and read from there for next renders.
+- RU: `settings_db_toggle_monitor_*` теперь обновляет состояние мониторинга через тот же toggle-путь backup-монитора, что и Telegram-обработчики; обновлённое состояние сохраняется в базе настроек и затем читается оттуда при следующих отрисовках.
 
 ### Changed / Изменено
-- EN: SemVer patch bump to `8.45.4`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.45.4` and `ANDROID_VERSION_CODE=314`, prerelease links aligned to `v8.45.4-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.45.4`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.45.4` и `ANDROID_VERSION_CODE=314`, prerelease-ссылки выровнены на `v8.45.4-develop`.
+- EN: SemVer patch bump to `8.46.1`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.46.1` and `ANDROID_VERSION_CODE=315`, prerelease links aligned to `v8.46.1-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.46.1`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.46.1` и `ANDROID_VERSION_CODE=315`, prerelease-ссылки выровнены на `v8.46.1-develop`.
 
 ## [8.45.3] - 2026-04-08
 
