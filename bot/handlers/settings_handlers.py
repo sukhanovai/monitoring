@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.48.13
+Server Monitoring System v8.48.14
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.48.13
+Версия: 8.48.14
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -889,12 +889,14 @@ def show_backup_databases_settings(update, context):
     
     message += "Выберите действие:"
     
+    back_callback = context.user_data.get('settings_db_back') or 'settings_extensions'
+
     keyboard = [
         [InlineKeyboardButton("➕ Добавить категорию", callback_data='settings_db_add_category')],
         [InlineKeyboardButton("✏️ Редактировать категорию", callback_data='settings_db_edit_category')],
         [InlineKeyboardButton("🗑️ Удалить категорию", callback_data='settings_db_delete_category')],
         [InlineKeyboardButton("📋 Просмотр всех БД", callback_data='settings_db_view_all')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_extensions'),
+        [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
     
@@ -1717,6 +1719,9 @@ def settings_callback_handler(update, context):
         # Новые обработчики для настроек БД
         elif data == 'settings_db_main':
             show_backup_databases_settings(update, context)
+        elif data == 'settings_db_main_from_backup':
+            context.user_data['settings_db_back'] = 'backup_databases'
+            show_backup_databases_settings(update, context)
         elif data == 'settings_db_add_category':
             add_database_category_handler(update, context)
         elif data == 'settings_db_edit_category':
@@ -1724,6 +1729,10 @@ def settings_callback_handler(update, context):
         elif data == 'settings_db_delete_category':
             delete_database_category_handler(update, context)
         elif data == 'settings_db_view_all':
+            context.user_data.pop('settings_db_back', None)
+            view_all_databases_handler(update, context)
+        elif data == 'settings_db_view_all_from_backup':
+            context.user_data['settings_db_back'] = 'backup_databases'
             view_all_databases_handler(update, context)
         elif data == 'settings_db_add_new':
             add_new_database_from_manage_handler(update, context)
@@ -2830,10 +2839,6 @@ def show_settings_extensions_menu(update, context):
     message = "🧩 *Расширения*\n\nВыберите раздел:"
 
     keyboard = []
-
-
-    if extension_manager.is_extension_enabled('database_backup_monitor'):
-        keyboard.append([InlineKeyboardButton("🗃️ Бэкапы БД", callback_data='settings_ext_backup_db')])
 
     if extension_manager.is_extension_enabled('mail_backup_monitor'):
         keyboard.append([InlineKeyboardButton("📬 Бэкапы почты", callback_data='settings_ext_backup_mail')])
@@ -9210,8 +9215,9 @@ def view_all_databases_handler(update, context):
         message += f"\n\n*Итого:* {total_dbs} баз данных в {len(db_config)} категориях"
 
     keyboard.append([InlineKeyboardButton("➕ Добавить новую БД", callback_data='settings_db_add_new')])
+    back_callback = context.user_data.get('settings_db_back') or 'settings_ext_backup_db'
     keyboard.append([
-        InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_backup_db'),
+        InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
         InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
         InlineKeyboardButton("✖️ Закрыть", callback_data='close')
     ])
