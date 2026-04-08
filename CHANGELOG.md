@@ -6,20 +6,17 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.48.8] - 2026-04-08
+## [8.48.9] - 2026-04-08
 
-### Added / Добавлено
-- EN: In Telegram path `Main menu → DB backups → Manage databases`, added a dedicated `Add new DB` button that opens quick category selection and then starts DB creation in the selected category.
-- RU: В Telegram-сценарии `Главное меню → Бэкапы БД → Управление базами` добавлена отдельная кнопка `Добавить новую БД`, которая открывает быстрый выбор категории и запуск добавления БД в выбранную категорию.
-- EN: In the same `Manage databases` screen, each DB row now has direct `Edit` and `Delete` action buttons so base management can be done without extra navigation hops.
-- RU: На том же экране `Управление базами` для каждой базы добавлены отдельные кнопки `Редактировать` и `Удалить`, чтобы управлять БД без лишних переходов по меню.
+### Fixed / Исправлено
+- EN: In Telegram path `Main menu → DB backups → Manage databases`, reduced inline keyboard payload: the screen now shows compact category actions instead of rendering per-DB CRUD/toggle buttons in one response, preventing Telegram `BadRequest: Reply markup is too long` on large DB configs.
+- RU: В Telegram-сценарии `Главное меню → Бэкапы БД → Управление базами` уменьшен объём inline-клавиатуры: экран теперь показывает компактные действия по категориям вместо отрисовки всех CRUD/переключателей по каждой БД в одном ответе, что устраняет Telegram `BadRequest: Reply markup is too long` при большом конфиге БД.
+- EN: Added category list capping (`20` items) with explicit fallback hint to use `View all DBs`, so the menu remains stable even with very large configuration trees.
+- RU: Добавлено ограничение списка категорий (`20` элементов) с явной подсказкой использовать `Просмотр всех БД`, чтобы меню оставалось стабильным даже при очень большом дереве конфигурации.
 
 ### Changed / Изменено
-- EN: In `Manage databases`, monitor-state toggles now work together with explicit CRUD actions (enable/disable, edit, delete) in a single list layout.
-- RU: В `Управлении базами` переключение мониторинга теперь работает вместе с явными CRUD-действиями (включение/выключение, редактирование, удаление) в едином списке.
-- EN: SemVer patch bump to `8.48.8`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.48.8` and `ANDROID_VERSION_CODE=325`, prerelease links aligned to `v8.48.8-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.48.8`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.48.8` и `ANDROID_VERSION_CODE=325`, prerelease-ссылки выровнены на `v8.48.8-develop`.
-
+- EN: SemVer patch bump to `8.48.9`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.48.9` and `ANDROID_VERSION_CODE=326`, prerelease links aligned to `v8.48.9-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.48.9`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.48.9` и `ANDROID_VERSION_CODE=326`, prerelease-ссылки выровнены на `v8.48.9-develop`.
 ## [8.48.3] - 2026-04-08
 
 ### Fixed / Исправлено
