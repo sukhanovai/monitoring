@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.48.15
+Server Monitoring System v8.48.17
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.48.15
+Версия: 8.48.17
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -9312,7 +9312,7 @@ def manage_database_categories_handler(update, context):
             [InlineKeyboardButton("➕ Добавить категорию", callback_data='settings_db_add_category')],
             [InlineKeyboardButton("✏️ Редактировать категорию", callback_data='settings_db_edit_category')],
             [InlineKeyboardButton("🗑️ Удалить категорию", callback_data='settings_db_delete_category')],
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_view_all'),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
     )
@@ -9440,12 +9440,19 @@ def edit_database_category_details(update, context, category):
         )
     ]]
     for db_key, db_name in databases.items():
+        encoded_backup_type = quote(str(category), safe='')
+        encoded_db_name = quote(str(db_key), safe='')
+        toggle_callback = _build_db_toggle_monitor_callback(context, encoded_backup_type, encoded_db_name)
+        is_disabled = (category, db_key) in _get_disabled_db_monitors_settings()
+        toggle_text = "✅ Вкл" if is_disabled else "⛔ Выкл"
+
         button_text = f"✏️ {db_name}"
         keyboard.append([
             InlineKeyboardButton(
                 button_text,
                 callback_data=_build_db_entry_callback(context, "settings_db_edit_db_", category, db_key)
             ),
+            InlineKeyboardButton(toggle_text, callback_data=toggle_callback),
             InlineKeyboardButton(
                 f"🗑️ {db_name}",
                 callback_data=_build_db_entry_callback(context, "settings_db_delete_db_", category, db_key)
