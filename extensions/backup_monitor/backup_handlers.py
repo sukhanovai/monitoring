@@ -1,18 +1,17 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v8.48.19
+Server Monitoring System v8.48.20
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 8.48.19
+Версия: 8.48.20
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов
 """
 
 import logging
-import math
 import os
 import sys
 from datetime import datetime, timedelta
@@ -679,11 +678,11 @@ def get_database_monitor_snapshot(backup_bot):
 
     return snapshot
 
-DB_BACKUPS_MENU_PAGE_SIZE = 20
+DB_BACKUPS_MENU_PAGE_SIZE = 10000
 
 
 def show_database_backups_menu(query, backup_bot, page=0):
-    """Показывает меню с базами данных (из конфигурации и backups.db)"""
+    """Показывает меню с базами данных (из конфигурации и backups.db) на одной странице."""
     try:
         logger.info("🧪 BACKUP DB: entering show_database_backups_menu")
 
@@ -697,7 +696,6 @@ def show_database_backups_menu(query, backup_bot, page=0):
             message = "🗃️ *Бэкапы баз данных*\n\n❌ Нет данных о бэкапах БД."
             keyboard = [
                 [InlineKeyboardButton("🛠️ Управление базами", callback_data='settings_db_view_all_from_backup')],
-                [InlineKeyboardButton("🗂️ Управление категориями", callback_data='settings_db_main_from_backup')],
                 [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
                 [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')]
             ]
@@ -714,7 +712,7 @@ def show_database_backups_menu(query, backup_bot, page=0):
                 raise
             return
 
-        total_pages = max(1, math.ceil(len(entries) / DB_BACKUPS_MENU_PAGE_SIZE))
+        total_pages = 1
         safe_page = max(0, min(int(page or 0), total_pages - 1))
         start = safe_page * DB_BACKUPS_MENU_PAGE_SIZE
         end = start + DB_BACKUPS_MENU_PAGE_SIZE
@@ -762,18 +760,8 @@ def show_database_backups_menu(query, backup_bot, page=0):
         if pending_row:
             keyboard.append(pending_row)
 
-        if total_pages > 1:
-            nav_row = []
-            if safe_page > 0:
-                nav_row.append(InlineKeyboardButton("⬅️", callback_data=f"db_backups_page_{safe_page - 1}"))
-            nav_row.append(InlineKeyboardButton(f"📄 {safe_page + 1}/{total_pages}", callback_data='no_action'))
-            if safe_page < total_pages - 1:
-                nav_row.append(InlineKeyboardButton("➡️", callback_data=f"db_backups_page_{safe_page + 1}"))
-            keyboard.append(nav_row)
-
         keyboard.extend([
             [InlineKeyboardButton("🛠️ Управление базами", callback_data='settings_db_view_all_from_backup')],
-            [InlineKeyboardButton("🗂️ Управление категориями", callback_data='settings_db_main_from_backup')],
             [InlineKeyboardButton("⚙️ Настройка паттернов", callback_data='settings_patterns_db_from_backup')],
             [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')],
             [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
@@ -788,7 +776,7 @@ def show_database_backups_menu(query, backup_bot, page=0):
         message += "🟡 - есть ошибки или последний бэкап старше 24ч\n"
         message += "⚫ - нет бэкапов >48ч\n"
         message += "⚪ - мониторинг базы отключён\n\n"
-        message += f"Выберите базу данных для просмотра деталей (страница {safe_page + 1}/{total_pages}):"
+        message += "Выберите базу данных для просмотра деталей:"
         try:
             query.edit_message_text(
                 message,
