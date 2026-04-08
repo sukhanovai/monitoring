@@ -1,17 +1,18 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v8.48.2
+Server Monitoring System v8.48.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 8.48.2
+Версия: 8.48.3
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов
 """
 
 import logging
+import math
 import os
 import sys
 from datetime import datetime, timedelta
@@ -685,17 +686,21 @@ def get_database_monitor_snapshot(backup_bot):
 
     return snapshot
 
-def show_database_backups_menu(query, backup_bot):
+DB_BACKUPS_MENU_PAGE_SIZE = 20
+
+
+def show_database_backups_menu(query, backup_bot, page=0):
     """Показывает меню с базами данных (из конфигурации и backups.db)"""
     try:
         logger.info("🧪 BACKUP DB: entering show_database_backups_menu")
 
         snapshot = get_database_monitor_snapshot(backup_bot)
-        db_by_type = {}
-        for item in snapshot:
-            db_by_type.setdefault(item["backup_type"], []).append(item)
+        entries = sorted(
+            snapshot,
+            key=lambda row: (row["backup_type"], row["display_name"].lower()),
+        )
 
-        if not db_by_type:
+        if not entries:
             message = "🗃️ *Бэкапы баз данных*\n\n❌ Нет данных о бэкапах БД."
             keyboard = [
                 [InlineKeyboardButton("➕ Добавить новую БД", callback_data='settings_db_edit_category')],
@@ -716,50 +721,55 @@ def show_database_backups_menu(query, backup_bot):
                 raise
             return
 
+        total_pages = max(1, math.ceil(len(entries) / DB_BACKUPS_MENU_PAGE_SIZE))
+        safe_page = max(0, min(int(page or 0), total_pages - 1))
+        start = safe_page * DB_BACKUPS_MENU_PAGE_SIZE
+        end = start + DB_BACKUPS_MENU_PAGE_SIZE
+        page_entries = entries[start:end]
+
         keyboard = []
-        for backup_type in sorted(db_by_type.keys()):
-            type_display = formatters.get_type_display(backup_type)
-            keyboard.append([InlineKeyboardButton(
-                f"───── {type_display} ─────",
-                callback_data='no_action'
-            )])
+        previous_type = None
+        for entry in page_entries:
+            backup_type = entry["backup_type"]
+            db_name = entry["db_name"]
+            display_name = entry["display_name"]
 
-            for entry in db_by_type[backup_type]:
-                db_name = entry["db_name"]
-                display_name = entry["display_name"]
-                try:
-                    status = entry["status"]
-                    is_disabled = entry["is_disabled"]
-                    display_btn = (
-                        f"⚪ {display_name}"
-                        if is_disabled
-                        else formatters.get_db_display_name(display_name, status)
-                    )
+            if backup_type != previous_type:
+                type_display = formatters.get_type_display(backup_type)
+                keyboard.append([InlineKeyboardButton(
+                    f"───── {type_display} ─────",
+                    callback_data='no_action'
+                )])
+                previous_type = backup_type
 
-                    keyboard.append([InlineKeyboardButton(
-                        display_btn,
-                        callback_data=f'db_detail_{backup_type}__{db_name}'
-                    ), InlineKeyboardButton(
-                        "✅ Вкл" if is_disabled else "⛔ Выкл",
-                        callback_data=f'db_toggle_quick_{backup_type}__{db_name}'
-                    )])
+            try:
+                status = entry["status"]
+                is_disabled = entry["is_disabled"]
+                display_btn = (
+                    f"⚪ {display_name}"
+                    if is_disabled
+                    else formatters.get_db_display_name(display_name, status)
+                )
 
-                    category = entry.get("category")
-                    db_key = entry.get("db_key")
-                    if category and db_key:
-                        keyboard.append([
-                            InlineKeyboardButton(
-                                f"✏️ Изменить {display_name}",
-                                callback_data=f"settings_db_edit_db_{category}__{db_key}",
-                            ),
-                            InlineKeyboardButton(
-                                f"🗑️ Удалить {display_name}",
-                                callback_data=f"settings_db_delete_db_{category}__{db_key}",
-                            ),
-                        ])
-                except Exception as e:
-                    logger.error(f"❌ Ошибка обработки БД {backup_type}/{db_name}: {e}")
-                    continue
+                keyboard.append([InlineKeyboardButton(
+                    display_btn,
+                    callback_data=f'db_detail_{backup_type}__{db_name}'
+                ), InlineKeyboardButton(
+                    "✅ Вкл" if is_disabled else "⛔ Выкл",
+                    callback_data=f'db_toggle_quick_{backup_type}__{db_name}'
+                )])
+            except Exception as e:
+                logger.error(f"❌ Ошибка обработки БД {backup_type}/{db_name}: {e}")
+                continue
+
+        if total_pages > 1:
+            nav_row = []
+            if safe_page > 0:
+                nav_row.append(InlineKeyboardButton("⬅️", callback_data=f"db_backups_page_{safe_page - 1}"))
+            nav_row.append(InlineKeyboardButton(f"📄 {safe_page + 1}/{total_pages}", callback_data='no_action'))
+            if safe_page < total_pages - 1:
+                nav_row.append(InlineKeyboardButton("➡️", callback_data=f"db_backups_page_{safe_page + 1}"))
+            keyboard.append(nav_row)
 
         keyboard.append([InlineKeyboardButton("➕ Добавить новую БД", callback_data='settings_db_edit_category')])
 
@@ -778,7 +788,7 @@ def show_database_backups_menu(query, backup_bot):
         message += "🟡 - есть ошибки или последний бэкап старше 24ч\n"
         message += "⚫ - нет бэкапов >48ч\n"
         message += "⚪ - мониторинг базы отключён\n\n"
-        message += "Выберите базу данных для просмотра деталей:"
+        message += f"Выберите базу данных для просмотра деталей (страница {safe_page + 1}/{total_pages}):"
         try:
             query.edit_message_text(
                 message,

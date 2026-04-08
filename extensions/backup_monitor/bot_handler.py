@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/bot_handler.py
-Server Monitoring System v8.48.2
+Server Monitoring System v8.48.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring Proxmox backups
 Система мониторинга серверов
-Версия: 8.48.2
+Версия: 8.48.3
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг бэкапов Proxmox
@@ -801,6 +801,15 @@ def backup_callback(update, context):
         elif data == 'db_backups_list':
             logger.info("🧪 db backups list")
             show_database_backups_menu(query, backup_bot)
+
+        elif data.startswith('db_backups_page_'):
+            raw_page = data.replace('db_backups_page_', '', 1).strip()
+            try:
+                page = int(raw_page)
+            except ValueError:
+                query.answer("❌ Ошибка страницы", show_alert=False)
+                page = 0
+            show_database_backups_menu(query, backup_bot, page=page)
 
         elif data == 'db_stale_list':
             logger.info("🧪 db state list")
