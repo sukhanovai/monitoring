@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v8.46.2
+Server Monitoring System v8.47.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 8.46.2
+Версия: 8.47.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов
@@ -59,7 +59,7 @@ def create_proxmox_menu():
     if extension_manager.is_extension_enabled('backup_monitor'):
         keyboard.append([
             InlineKeyboardButton("⚙️ Управление хостами", callback_data='backup_hosts_manage'),
-            InlineKeyboardButton("⚙️ Настройка паттернов", callback_data='settings_patterns_proxmox'),
+            InlineKeyboardButton("⚙️ Настройка паттернов", callback_data='backup_proxmox_patterns'),
         ])
 
     keyboard.extend([
@@ -72,10 +72,10 @@ def create_proxmox_menu():
 def create_proxmox_patterns_menu():
     """Создает меню настройки паттернов Proxmox."""
     keyboard = [
-        [InlineKeyboardButton("✏️ Редактировать паттерны", callback_data='settings_patterns_proxmox')],
-        [InlineKeyboardButton("🗑️ Удалить паттерны", callback_data='settings_patterns_proxmox')],
+        [InlineKeyboardButton("✏️ Редактировать паттерны", callback_data='backup_proxmox_patterns')],
+        [InlineKeyboardButton("🗑️ Удалить паттерны", callback_data='backup_proxmox_patterns')],
         [InlineKeyboardButton("➕ Добавить паттерн", callback_data='add_proxmox_pattern')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='backup_proxmox')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='backup_proxmox_menu')],
         [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
         [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
     ]
@@ -145,7 +145,7 @@ def create_hosts_keyboard(
     
     keyboard.append([
         InlineKeyboardButton("⚙️ Управление хостами", callback_data='backup_hosts_manage'),
-        InlineKeyboardButton("⚙️ Настройка паттернов", callback_data='settings_patterns_proxmox'),
+        InlineKeyboardButton("⚙️ Настройка паттернов", callback_data='backup_proxmox_patterns'),
     ])
 
     keyboard.append([
@@ -652,6 +652,8 @@ def show_database_backups_menu(query, backup_bot):
                     db_by_type[backup_type][normalized_key] = {
                         "db_name": db_name,
                         "label": db_name,
+                        "category": category,
+                        "db_key": db_name,
                     }
 
         for backup_type, db_name, display_name in rows:
@@ -674,6 +676,7 @@ def show_database_backups_menu(query, backup_bot):
         if not db_by_type:
             message = "🗃️ *Бэкапы баз данных*\n\n❌ Нет данных о бэкапах БД."
             keyboard = [
+                [InlineKeyboardButton("➕ Добавить новую БД", callback_data='settings_db_edit_category')],
                 [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')],
                 [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
                 [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
@@ -729,12 +732,28 @@ def show_database_backups_menu(query, backup_bot):
 
                     keyboard.append(current_row)
                     current_row = []
+
+                    category = entry.get("category")
+                    db_key = entry.get("db_key")
+                    if category and db_key:
+                        keyboard.append([
+                            InlineKeyboardButton(
+                                f"✏️ Изменить {display_name}",
+                                callback_data=f"settings_db_edit_db_{category}__{db_key}",
+                            ),
+                            InlineKeyboardButton(
+                                f"🗑️ Удалить {display_name}",
+                                callback_data=f"settings_db_delete_db_{category}__{db_key}",
+                            ),
+                        ])
                 except Exception as e:
                     logger.error(f"❌ Ошибка обработки БД {backup_type}/{db_name}: {e}")
                     continue
 
             if current_row:
                 keyboard.append(current_row)
+
+        keyboard.append([InlineKeyboardButton("➕ Добавить новую БД", callback_data='settings_db_edit_category')])
 
         keyboard.extend([
             [InlineKeyboardButton("⚙️ Настройка паттернов", callback_data='settings_patterns_db_from_backup')],
