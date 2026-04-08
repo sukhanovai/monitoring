@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.48.12
+Server Monitoring System v8.48.13
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.48.12
+Версия: 8.48.13
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -9211,7 +9211,7 @@ def view_all_databases_handler(update, context):
 
     keyboard.append([InlineKeyboardButton("➕ Добавить новую БД", callback_data='settings_db_add_new')])
     keyboard.append([
-        InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
+        InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_backup_db'),
         InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
         InlineKeyboardButton("✖️ Закрыть", callback_data='close')
     ])
@@ -9397,7 +9397,7 @@ def edit_database_category_details(update, context, category):
         ])
 
     keyboard.append([
-        InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
+        InlineKeyboardButton("↩️ Назад", callback_data='settings_db_view_all'),
         InlineKeyboardButton("✖️ Закрыть", callback_data='close')
     ])
 
@@ -9586,7 +9586,10 @@ def settings_toggle_database_monitoring(update, context, encoded_backup_type, en
         ),
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("📋 К списку баз", callback_data='settings_db_main')],
+            [InlineKeyboardButton(
+                "↩️ Назад",
+                callback_data=_build_db_category_callback(context, "settings_db_edit_", backup_type)
+            )],
             [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
