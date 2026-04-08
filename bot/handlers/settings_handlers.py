@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.42.2
+Server Monitoring System v8.42.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.42.2
+Версия: 8.42.3
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -2752,6 +2752,7 @@ def show_backup_databases_settings(update, context):
         [InlineKeyboardButton("➕ Добавить категорию БД", callback_data='settings_db_add_category')],
         [InlineKeyboardButton("🗑️ Удалить категорию", callback_data='settings_db_delete_category')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_backup_db'),
+         InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ])
     
@@ -9127,29 +9128,52 @@ def view_all_databases_handler(update, context):
     query.answer()
     
     db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
-    
+    disabled_pairs = _get_disabled_db_monitors_settings()
+    context.user_data['settings_db_toggle_map'] = {}
+
     if not db_config:
         message = "📋 *Все базы данных*\n\n❌ *Нет настроенных баз данных*"
+        keyboard = [[InlineKeyboardButton("➕ Добавить категорию БД", callback_data='settings_db_add_category')]]
     else:
         message = "📋 *Все базы данных*\n\n"
         total_dbs = 0
-        
+        keyboard = []
+
         for category, databases in db_config.items():
+            if not isinstance(databases, dict):
+                databases = {}
             message += f"📁 *{category.upper()}* ({len(databases)} БД):\n"
             for db_key, db_name in databases.items():
                 message += f"   • {db_name}\n"
                 total_dbs += 1
+                is_disabled = (category, db_key) in disabled_pairs
+                monitor_text = "⚪ Мониторинг выкл" if is_disabled else "🟢 Мониторинг вкл"
+                encoded_category = quote(category, safe='')
+                encoded_db_key = quote(db_key, safe='')
+                keyboard.append([
+                    InlineKeyboardButton(
+                        f"{monitor_text}: {db_name}",
+                        callback_data=_build_db_monitor_toggle_callback(
+                            context,
+                            encoded_category,
+                            encoded_db_key,
+                        )
+                    )
+                ])
             message += "\n"
-        
+
         message += f"*Итого:* {total_dbs} баз данных в {len(db_config)} категориях"
-    
+
+    keyboard.append([
+        InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
+        InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
+        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+    ])
+
     query.edit_message_text(
         message,
         parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
-             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-        ])
+        reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
 def add_database_category_handler(update, context):

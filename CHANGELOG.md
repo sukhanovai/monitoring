@@ -6,6 +6,18 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.42.3] - 2026-04-08
+
+### Fixed / Исправлено
+- EN: In Telegram path `Settings → Extensions → DB Backups → Databases`, added explicit per-database monitoring toggle buttons in the full DB list (`📋 Просмотр всех БД`) so each base can be enabled/disabled directly from this screen.
+- RU: В Telegram-сценарии `Настройки → Расширения → Бэкапы БД → Базы` добавлены явные кнопки включения/выключения мониторинга для каждой базы в полном списке (`📋 Просмотр всех БД`), чтобы переключать мониторинг сразу на этом экране.
+- EN: In DB backup settings screens, navigation now consistently includes `Back`, `Home`, and `Close` actions (including the main DB settings list and full DB view).
+- RU: В экранах настроек бэкапов БД навигация теперь везде содержит `Назад`, `На главную` и `Закрыть` (включая основной список БД и полный просмотр баз).
+
+### Changed / Изменено
+- EN: SemVer patch bump to `8.42.3`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.42.3` and `ANDROID_VERSION_CODE=304`, prerelease links aligned to `v8.42.3-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.42.3`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.42.3` и `ANDROID_VERSION_CODE=304`, prerelease-ссылки выровнены на `v8.42.3-develop`.
+
 ## [8.42.2] - 2026-04-07
 
 ### Fixed / Исправлено
