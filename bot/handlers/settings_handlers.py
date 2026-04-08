@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.45.0
+Server Monitoring System v8.45.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.45.0
+Версия: 8.45.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -58,6 +58,7 @@ BACKUP_SETTINGS_CALLBACKS = {
     'db_pattern_retry',
     'proxmox_pattern_confirm',
     'proxmox_pattern_retry',
+    'settings_patterns_db_from_backup',
 }
 
 debug_logger = debug_log
@@ -955,6 +956,8 @@ def settings_callback_handler(update, context):
             show_supplier_stock_settings(update, context)
         elif data == 'settings_patterns_db':
             show_db_patterns_menu(update, context)
+        elif data == 'settings_patterns_db_from_backup':
+            show_db_patterns_menu_from_backup(update, context)
         elif data == 'settings_patterns_proxmox':
             show_proxmox_patterns_menu(update, context)
         elif data == 'settings_patterns_zfs':
@@ -8048,6 +8051,14 @@ def show_db_patterns_menu(update, context):
     """Показать паттерны для БД"""
     context.user_data['patterns_filter'] = 'db'
     context.user_data['patterns_back'] = 'settings_ext_backup_db'
+    context.user_data['patterns_add'] = 'add_pattern'
+    context.user_data['patterns_title'] = "🗃️ *Паттерны бэкапов БД*"
+    view_patterns_handler(update, context)
+
+def show_db_patterns_menu_from_backup(update, context):
+    """Показать паттерны БД из меню бэкапов БД."""
+    context.user_data['patterns_filter'] = 'db'
+    context.user_data['patterns_back'] = 'backup_databases'
     context.user_data['patterns_add'] = 'add_pattern'
     context.user_data['patterns_title'] = "🗃️ *Паттерны бэкапов БД*"
     view_patterns_handler(update, context)
