@@ -1,11 +1,11 @@
 """
 /bot/menu/handlers.py
-Server Monitoring System v8.46.2
+Server Monitoring System v8.47.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Bot menu handlers
 Система мониторинга серверов
-Версия: 8.46.2
+Версия: 8.47.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики меню бота
@@ -1182,6 +1182,8 @@ def get_callback_handlers():
         CallbackQueryHandler(lambda u, c: lazy_handler('db_backups_list')(u, c), pattern='^db_backups_list$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('backup_main')(u, c), pattern='^backup_main$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('backup_proxmox')(u, c), pattern='^backup_proxmox$'),
+        CallbackQueryHandler(lambda u, c: lazy_handler('backup_proxmox_menu')(u, c), pattern='^backup_proxmox_menu$'),
+        CallbackQueryHandler(lambda u, c: lazy_handler('backup_proxmox_patterns')(u, c), pattern='^backup_proxmox_patterns$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('backup_databases')(u, c), pattern='^backup_databases$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('backup_mail')(u, c), pattern='^backup_mail$'),
         CallbackQueryHandler(lambda u, c: lazy_handler('backup_host_')(u, c), pattern='^backup_host_'),
@@ -1310,6 +1312,12 @@ def lazy_handler(pattern):
             from extensions.backup_monitor.bot_handler import backup_callback as handler
             return handler(update, context)
         elif pattern == 'backup_proxmox':
+            from extensions.backup_monitor.bot_handler import backup_callback as handler
+            return handler(update, context)
+        elif pattern == 'backup_proxmox_menu':
+            from extensions.backup_monitor.bot_handler import backup_callback as handler
+            return handler(update, context)
+        elif pattern == 'backup_proxmox_patterns':
             from extensions.backup_monitor.bot_handler import backup_callback as handler
             return handler(update, context)
         elif pattern == 'backup_databases':

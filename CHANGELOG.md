@@ -6,6 +6,22 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.47.0] - 2026-04-08
+
+### Added / Добавлено
+- EN: In Telegram path `Main menu → DB backups`, added a direct `Add new DB` button in the DB backups list screen to quickly jump into DB configuration/edit flow.
+- RU: В Telegram-сценарии `Главное меню → Бэкапы БД` на экране списка бэкапов добавлена отдельная кнопка `Добавить новую БД` для быстрого перехода в сценарий добавления/редактирования БД.
+- EN: In the same DB backups list, each configured DB now has dedicated `Edit` and `Delete` action buttons, so management can be done directly from the operational list.
+- RU: В том же списке бэкапов БД для каждой настроенной базы добавлены отдельные кнопки `Изменить` и `Удалить`, чтобы управлять БД прямо из операционного списка.
+
+### Fixed / Исправлено
+- EN: In Telegram path `Main menu → Proxmox backups → Pattern settings → Edit patterns`, the `Back` button now returns to the `Proxmox backups` menu screen instead of switching to the hosts list.
+- RU: В Telegram-сценарии `Главное меню → Бэкапы Proxmox → Настройка паттернов → Редактировать паттерны` кнопка `Назад` теперь возвращает в меню `Бэкапы Proxmox`, а не переводит в список хостов.
+
+### Changed / Изменено
+- EN: SemVer minor bump to `8.47.0`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.47.0` and `ANDROID_VERSION_CODE=317`, prerelease links aligned to `v8.47.0-develop`.
+- RU: Выполнен SemVer minor-бамп до `8.47.0`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.47.0` и `ANDROID_VERSION_CODE=317`, prerelease-ссылки выровнены на `v8.47.0-develop`.
+
 ## [8.46.2] - 2026-04-08
 
 ### Fixed / Исправлено
