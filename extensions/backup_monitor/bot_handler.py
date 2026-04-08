@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/bot_handler.py
-Server Monitoring System v8.48.1
+Server Monitoring System v8.48.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring Proxmox backups
 Система мониторинга серверов
-Версия: 8.48.1
+Версия: 8.48.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг бэкапов Proxmox
@@ -663,7 +663,7 @@ def backup_callback(update, context):
             if not extension_manager.is_extension_enabled('backup_monitor'):
                 query.edit_message_text("🖥️ Мониторинг бэкапов Proxmox отключён")
                 return
-            show_proxmox_menu(query, backup_bot)
+            show_hosts_menu(query, backup_bot)
 
         elif data == 'backup_proxmox_menu':
             if not extension_manager.is_extension_enabled('backup_monitor'):
