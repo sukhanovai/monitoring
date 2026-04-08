@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.48.11
+Server Monitoring System v8.48.12
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.48.11
+Версия: 8.48.12
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -9379,8 +9379,6 @@ def edit_database_category_details(update, context, category):
         button_text = f"✏️ {db_name}"
         is_disabled = (category, db_key) in disabled_pairs
         toggle_text = "✅ Включить мониторинг" if is_disabled else "⛔ Отключить мониторинг"
-        encoded_category = quote(category, safe='')
-        encoded_db_key = quote(db_key, safe='')
         keyboard.append([
             InlineKeyboardButton(
                 button_text,
@@ -9394,7 +9392,7 @@ def edit_database_category_details(update, context, category):
         keyboard.append([
             InlineKeyboardButton(
                 f"{toggle_text}: {db_name}",
-                callback_data=f"settings_db_toggle_monitor_{encoded_category}__{encoded_db_key}"
+                callback_data=_build_db_monitor_toggle_callback(context, quote(category, safe=''), quote(db_key, safe=''))
             )
         ])
 
