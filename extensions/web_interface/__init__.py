@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.45.4
+Server Monitoring System v8.46.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.45.4
+Версия: 8.46.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1670,23 +1670,7 @@ def _execute_mobile_control_action(action: str):
             return True, "\n".join(lines), "accepted", None
 
         if action == "backup_databases":
-            def _get_disabled_db_monitors() -> set[tuple[str, str]]:
-                raw_disabled = settings_manager.get_setting("DATABASE_MONITORING_DISABLED", [])
-                disabled_pairs: set[tuple[str, str]] = set()
-                if isinstance(raw_disabled, str):
-                    raw_disabled = [raw_disabled]
-                if not isinstance(raw_disabled, list):
-                    return disabled_pairs
-                for item in raw_disabled:
-                    value = str(item or "").strip()
-                    if "__" not in value:
-                        continue
-                    backup_type, db_name = value.split("__", 1)
-                    backup_type = backup_type.strip()
-                    db_name = db_name.strip()
-                    if backup_type and db_name:
-                        disabled_pairs.add((backup_type, db_name))
-                return disabled_pairs
+            from extensions.backup_monitor.backup_handlers import _get_disabled_db_monitors
 
             disabled_pairs = _get_disabled_db_monitors()
             stats = backup_bot.get_database_backups_stats_fixed(24)
@@ -1721,17 +1705,16 @@ def _execute_mobile_control_action(action: str):
             ]
             problem_dbs = len(problem_db_rows)
             ok_dbs = len(enabled_db_rows) - problem_dbs
-            menu_options = [
-                {
-                    "label": (
-                        f"⚪ {db_name} ({backup_type}) — мониторинг отключён"
-                        if is_disabled
-                        else f"{'🚨' if status != 'success' else '✅'} {db_name} ({backup_type})"
-                    ),
-                    "action": f"db_detail_{backup_type}__{db_name}",
-                }
-                for backup_type, db_name, status, is_disabled in db_status_rows
-            ]
+            menu_options = []
+            for backup_type, db_name, status, is_disabled in db_status_rows:
+                health_prefix = "🚨" if status != "success" else "✅"
+                monitor_status = "⚪ мониторинг отключён" if is_disabled else "🟢 мониторинг включён"
+                menu_options.append(
+                    {
+                        "label": f"{health_prefix} {db_name} ({backup_type}) • {monitor_status}",
+                        "action": f"db_detail_{backup_type}__{db_name}",
+                    }
+                )
             problem_db_names = [f"{db_name} ({backup_type})" for backup_type, db_name, _ in problem_db_rows]
             preview_limit = 5
             if problem_db_names:
@@ -1762,33 +1745,9 @@ def _execute_mobile_control_action(action: str):
             if not backup_type or not db_name:
                 return False, "Не указан тип или имя базы для переключения мониторинга", "failed", None
 
-            raw_disabled = settings_manager.get_setting("DATABASE_MONITORING_DISABLED", [])
-            if isinstance(raw_disabled, str):
-                raw_disabled = [raw_disabled]
-            if not isinstance(raw_disabled, list):
-                raw_disabled = []
+            from extensions.backup_monitor.backup_handlers import _toggle_database_monitoring
 
-            disabled_pairs: set[tuple[str, str]] = set()
-            for item in raw_disabled:
-                value = str(item or "").strip()
-                if "__" not in value:
-                    continue
-                item_type, item_name = value.split("__", 1)
-                item_type = item_type.strip()
-                item_name = item_name.strip()
-                if item_type and item_name:
-                    disabled_pairs.add((item_type, item_name))
-
-            pair = (backup_type, db_name)
-            if pair in disabled_pairs:
-                disabled_pairs.remove(pair)
-                now_enabled = True
-            else:
-                disabled_pairs.add(pair)
-                now_enabled = False
-
-            serialized = sorted(f"{item_type}__{item_name}" for item_type, item_name in disabled_pairs)
-            settings_manager.set_setting("DATABASE_MONITORING_DISABLED", serialized, "backup", data_type="auto")
+            now_enabled = _toggle_database_monitoring(backup_type, db_name)
             return True, (
                 f"🗃️ {db_name} ({backup_type})\n\n"
                 f"Мониторинг: {'включён' if now_enabled else 'отключён'}."
