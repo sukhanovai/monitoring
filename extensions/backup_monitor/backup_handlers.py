@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v8.45.2
+Server Monitoring System v8.45.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 8.45.2
+Версия: 8.45.3
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов
@@ -34,7 +34,7 @@ def create_main_menu():
     keyboard = []
 
     if extension_manager.is_extension_enabled('backup_monitor'):
-        keyboard.append([InlineKeyboardButton("🖥️ По хостам", callback_data='backup_hosts')])
+        keyboard.append([InlineKeyboardButton("💾 Бэкапы Proxmox", callback_data='backup_proxmox')])
 
     if extension_manager.is_extension_enabled('database_backup_monitor'):
         keyboard.append([InlineKeyboardButton("🗃️ Бэкапы БД", callback_data='backup_databases')])
