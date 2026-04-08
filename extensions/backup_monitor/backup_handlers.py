@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v8.48.10
+Server Monitoring System v8.48.11
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 8.48.10
+Версия: 8.48.11
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов
@@ -136,13 +136,6 @@ def create_hosts_keyboard(
                 row.append(InlineKeyboardButton(display_name, callback_data=f'backup_host_{host_name}'))
         if row:
             keyboard.append(row)
-    
-    # Кнопка проблемных хостов
-    if show_problems_button and problem_count > 0:
-        keyboard.append([InlineKeyboardButton(
-            f"🔍 Показать проблемные ({problem_count})", 
-            callback_data='backup_stale_hosts'
-        )])
     
     keyboard.append([
         InlineKeyboardButton("⚙️ Управление хостами", callback_data='backup_hosts_manage'),
