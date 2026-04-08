@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.48.18
+Server Monitoring System v8.48.19
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.48.18
+Версия: 8.48.19
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -9315,6 +9315,7 @@ def manage_database_categories_handler(update, context):
             [InlineKeyboardButton("✏️ Редактировать категорию", callback_data='settings_db_edit_category')],
             [InlineKeyboardButton("🗑️ Удалить категорию", callback_data='settings_db_delete_category')],
             [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_view_all'),
+             InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
     )
