@@ -116,6 +116,26 @@ private fun resolveMenuOptionAction(option: ru.monitoring.mobile.api.MenuOption)
     }
 }
 
+private fun isDatabaseMonitorDisabled(label: String, action: String): Boolean {
+    if (!action.startsWith("db_detail_")) return false
+    val normalizedLabel = label.lowercase()
+    return label.startsWith("⚪") ||
+        normalizedLabel.contains("мониторинг отключ")
+}
+
+private fun formatDatabaseBackupLabelWithMonitorStatus(label: String, action: String): String {
+    if (!action.startsWith("db_detail_")) return label
+    if (label.contains("мониторинг вкл", ignoreCase = true) || label.contains("мониторинг выкл", ignoreCase = true)) {
+        return label
+    }
+    val monitorLine = if (isDatabaseMonitorDisabled(label, action)) {
+        "⚪ Мониторинг выкл"
+    } else {
+        "🟢 Мониторинг вкл"
+    }
+    return "$label\n$monitorLine"
+}
+
 private fun extractDatabaseBackupLines(message: String): List<String> {
     if (message.isBlank()) return emptyList()
     return message.lineSequence()
@@ -2499,6 +2519,7 @@ private fun MonitoringApp(
                                 val label = option.label?.trim().orEmpty()
                                 val targetAction = resolveMenuOptionAction(option)
                                 if (label.isNotBlank() && targetAction.isNotBlank()) {
+                                    val displayLabel = formatDatabaseBackupLabelWithMonitorStatus(label, targetAction)
                                     Surface(
                                         modifier = Modifier
                                             .weight(1f)
@@ -2528,11 +2549,11 @@ private fun MonitoringApp(
                                         }
                                     ) {
                                         Text(
-                                            text = label,
+                                            text = displayLabel,
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .padding(horizontal = 10.dp, vertical = 8.dp),
-                                            maxLines = 2,
+                                            maxLines = 3,
                                             overflow = TextOverflow.Ellipsis,
                                             color = if (isProblemBackupOption(label, targetAction)) {
                                                 MaterialTheme.colorScheme.onErrorContainer
@@ -2607,6 +2628,7 @@ private fun MonitoringApp(
                                 val label = option.label?.trim().orEmpty()
                                 val targetAction = resolveMenuOptionAction(option)
                                 if (label.isNotBlank() && targetAction.isNotBlank()) {
+                                    val displayLabel = formatDatabaseBackupLabelWithMonitorStatus(label, targetAction)
                                     Surface(
                                         modifier = Modifier
                                             .weight(1f)
@@ -2634,11 +2656,11 @@ private fun MonitoringApp(
                                         }
                                     ) {
                                         Text(
-                                            text = label,
+                                            text = displayLabel,
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .padding(horizontal = 10.dp, vertical = 8.dp),
-                                            maxLines = 2,
+                                            maxLines = 3,
                                             overflow = TextOverflow.Ellipsis,
                                             color = if (isProblemBackupOption(label, targetAction)) {
                                                 MaterialTheme.colorScheme.onErrorContainer

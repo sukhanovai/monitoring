@@ -6,15 +6,15 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.45.1] - 2026-04-08
+## [8.45.2] - 2026-04-08
 
 ### Added / Добавлено
-- EN: In Telegram path `Main menu → DB backups`, added a dedicated `Pattern settings` button that opens DB backup pattern management with actions to edit, delete, and add a new pattern.
-- RU: В Telegram-сценарии `Главное меню → Бэкапы БД` добавлена отдельная кнопка `Настройка паттернов`, которая открывает управление паттернами бэкапов БД с действиями редактирования, удаления и добавления нового паттерна.
+- EN: In Android `Operations Center → DB` tile, each database item in the DB backups list now explicitly shows Telegram-bot monitoring state (`🟢 Monitoring on` / `⚪ Monitoring off`) so enabled/disabled status is visible immediately.
+- RU: В Android `Оперативный центр → плашка БД` в списке бэкапов БД для каждой базы теперь явно отображается состояние мониторинга из Telegram-бота (`🟢 Мониторинг вкл` / `⚪ Мониторинг выкл`), чтобы статус включения/выключения был виден сразу.
 
 ### Changed / Изменено
-- EN: SemVer patch bump to `8.45.1`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.45.1` and `ANDROID_VERSION_CODE=311`, prerelease links aligned to `v8.45.1-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.45.1`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.45.1` и `ANDROID_VERSION_CODE=311`, prerelease-ссылки выровнены на `v8.45.1-develop`.
+- EN: SemVer patch bump to `8.45.2`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.45.2` and `ANDROID_VERSION_CODE=312`, prerelease links aligned to `v8.45.2-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.45.2`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.45.2` и `ANDROID_VERSION_CODE=312`, prerelease-ссылки выровнены на `v8.45.2-develop`.
 
 ## [8.45.0] - 2026-04-08
 
