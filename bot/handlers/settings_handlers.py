@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.46.1
+Server Monitoring System v8.46.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.46.1
+Версия: 8.46.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -2807,8 +2807,6 @@ def show_settings_extensions_menu(update, context):
 
     keyboard = []
 
-    if extension_manager.is_extension_enabled('backup_monitor'):
-        keyboard.append([InlineKeyboardButton("💾 Бэкапы Proxmox", callback_data='settings_ext_backup_proxmox')])
 
     if extension_manager.is_extension_enabled('database_backup_monitor'):
         keyboard.append([InlineKeyboardButton("🗃️ Бэкапы БД", callback_data='settings_ext_backup_db')])
@@ -8065,8 +8063,9 @@ def show_db_patterns_menu_from_backup(update, context):
 
 def show_proxmox_patterns_menu(update, context):
     """Показать паттерны для Proxmox"""
+    back_callback = context.user_data.pop('patterns_back_override', None) or 'settings_ext_backup_proxmox'
     context.user_data['patterns_filter'] = 'proxmox'
-    context.user_data['patterns_back'] = 'settings_ext_backup_proxmox'
+    context.user_data['patterns_back'] = back_callback
     context.user_data['patterns_add'] = 'add_proxmox_pattern'
     context.user_data['patterns_title'] = "🖥️ *Паттерны бэкапов Proxmox*"
     view_patterns_handler(update, context)

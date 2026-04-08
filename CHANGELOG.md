@@ -6,6 +6,20 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.46.2] - 2026-04-08
+
+### Fixed / Исправлено
+- EN: In Telegram path `Main menu → Proxmox backups`, the `Pattern settings` button now opens Proxmox pattern editing immediately (`settings_patterns_proxmox`) without the intermediate submenu.
+- RU: В Telegram-сценарии `Главное меню → Бэкапы Proxmox` кнопка `Настройка паттернов` теперь сразу открывает редактирование паттернов (`settings_patterns_proxmox`) без промежуточного подменю.
+- EN: In Proxmox patterns editing opened from backups flow, the `Back` button now returns to `Proxmox backups` (`backup_proxmox`) instead of the settings extensions screen.
+- RU: В редактировании паттернов Proxmox, открытом из сценария бэкапов, кнопка `Назад` теперь возвращает в `Бэкапы Proxmox` (`backup_proxmox`), а не в экран расширений настроек.
+- EN: In Telegram path `Settings → Extensions`, the `Proxmox backups` section button was removed from the extensions list.
+- RU: В Telegram-сценарии `Настройки → Расширения` кнопка раздела `Бэкапы Proxmox` удалена из списка расширений.
+
+### Changed / Изменено
+- EN: SemVer patch bump to `8.46.2`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.46.2` and `ANDROID_VERSION_CODE=316`, prerelease links aligned to `v8.46.2-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.46.2`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.46.2` и `ANDROID_VERSION_CODE=316`, prerelease-ссылки выровнены на `v8.46.2-develop`.
+
 ## [8.46.1] - 2026-04-08
 
 ### Fixed / Исправлено
