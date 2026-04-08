@@ -6,15 +6,15 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.48.5] - 2026-04-08
+## [8.48.6] - 2026-04-08
 
 ### Fixed / Исправлено
 - EN: In Telegram path `Main menu → DB backups → Manage databases`, dynamic DB category/name values are now escaped before rendering with Markdown, fixing `BadRequest: Can't parse entities` in `settings_callback_handler`.
 - RU: В Telegram-сценарии `Главное меню → Бэкапы БД → Управление базами` динамические значения категорий и имён БД теперь экранируются перед рендерингом Markdown, что устраняет `BadRequest: Can't parse entities` в `settings_callback_handler`.
 
 ### Changed / Изменено
-- EN: SemVer patch bump to `8.48.5`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.48.5` and `ANDROID_VERSION_CODE=322`, prerelease links aligned to `v8.48.5-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.48.5`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.48.5` и `ANDROID_VERSION_CODE=322`, prerelease-ссылки выровнены на `v8.48.5-develop`.
+- EN: SemVer patch bump to `8.48.6`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.48.6` and `ANDROID_VERSION_CODE=323`, prerelease links aligned to `v8.48.6-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.48.6`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.48.6` и `ANDROID_VERSION_CODE=323`, prerelease-ссылки выровнены на `v8.48.6-develop`.
 
 ## [8.48.3] - 2026-04-08
 
