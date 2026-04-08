@@ -6,6 +6,22 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.48.18] - 2026-04-08
+
+### Fixed / Исправлено
+- EN: In `Main menu → DB backups → Manage databases`, fixed a `NameError` when opening a category (`_build_db_toggle_monitor_callback` was undefined) by using the correct callback builder for DB monitoring toggles.
+- RU: В `Главное меню → Бэкапы БД → Управление базами` исправлен `NameError` при открытии категории (`_build_db_toggle_monitor_callback` не был определён): использован корректный builder callback для переключателей мониторинга БД.
+- EN: In `Main menu → DB backups → Manage databases → Manage categories`, adjusted `Back` navigation in category-management flow to return to `Manage databases`.
+- RU: В `Главное меню → Бэкапы БД → Управление базами → Управление категориями` скорректирована навигация `Назад` в потоке управления категориями: возврат ведёт в `Управление базами`.
+
+### Changed / Изменено
+- EN: In `Main menu → DB backups`, made category quick-access list more compact by rendering category buttons in two columns.
+- RU: В `Главное меню → Бэкапы БД` список категорий сделан компактнее: кнопки категорий выводятся в две колонки.
+- EN: In `Main menu → DB backups → Manage databases`, restored per-database monitoring toggle buttons (`✅ Вкл` / `⛔ Выкл`) after selecting a category.
+- RU: В `Главное меню → Бэкапы БД → Управление базами` после выбора категории возвращены кнопки включения/выключения мониторинга БД (`✅ Вкл` / `⛔ Выкл`).
+- EN: SemVer patch bump to `8.48.18`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.48.18` and `ANDROID_VERSION_CODE=334`, prerelease links aligned to `v8.48.18-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.48.18`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.48.18` и `ANDROID_VERSION_CODE=334`, prerelease-ссылки выровнены на `v8.48.18-develop`.
+
 ## [8.48.17] - 2026-04-08
 
 ### Changed / Изменено
