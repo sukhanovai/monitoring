@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.48.5
+Server Monitoring System v8.48.6
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.48.5
+Версия: 8.48.6
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -840,12 +840,14 @@ def show_backup_databases_settings(update, context):
     else:
         message += "*Текущие настройки:*\n\n"
         for category, databases in db_config.items():
-            message += f"📁 *{category.upper()}*\n"
+            safe_category = _escape_pattern_text(str(category).upper())
+            message += f"📁 *{safe_category}*\n"
             message += f"   Количество БД: {len(databases)}\n"
             # Показываем несколько примеров
             sample_dbs = list(databases.values())[:2]
             for db_name in sample_dbs:
-                message += f"   • {db_name}\n"
+                safe_db_name = _escape_pattern_text(db_name)
+                message += f"   • {safe_db_name}\n"
             if len(databases) > 2:
                 message += f"   • ... и еще {len(databases) - 2} БД\n"
             message += "\n"
@@ -9172,9 +9174,11 @@ def view_all_databases_handler(update, context):
         for category, databases in db_config.items():
             if not isinstance(databases, dict):
                 databases = {}
-            message += f"📁 *{category.upper()}* ({len(databases)} БД):\n"
+            safe_category = _escape_pattern_text(str(category).upper())
+            message += f"📁 *{safe_category}* ({len(databases)} БД):\n"
             for db_key, db_name in databases.items():
-                message += f"   • {db_name}\n"
+                safe_db_name = _escape_pattern_text(db_name)
+                message += f"   • {safe_db_name}\n"
                 total_dbs += 1
                 is_disabled = (category, db_key) in disabled_pairs
                 monitor_text = "⚪ Мониторинг выкл" if is_disabled else "🟢 Мониторинг вкл"
@@ -9292,13 +9296,16 @@ def edit_database_category_details(update, context, category):
         )
         return
 
-    message = f"✏️ *Категория {category}*\n\n"
+    safe_category = _escape_pattern_text(category)
+    message = f"✏️ *Категория {safe_category}*\n\n"
     if not databases:
         message += "❌ В этой категории нет баз данных.\n"
     else:
         message += "Список баз данных:\n"
         for db_key, db_name in databases.items():
-            message += f"• {db_name} (`{db_key}`)\n"
+            safe_db_name = _escape_pattern_text(db_name)
+            safe_db_key = _escape_pattern_text(db_key)
+            message += f"• {safe_db_name} (`{safe_db_key}`)\n"
 
     message += "\nВыберите действие:"
 
