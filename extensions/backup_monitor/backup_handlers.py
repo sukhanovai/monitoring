@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v8.44.2
+Server Monitoring System v8.45.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 8.44.2
+Версия: 8.45.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов
@@ -58,14 +58,25 @@ def create_proxmox_menu():
 
     if extension_manager.is_extension_enabled('backup_monitor'):
         keyboard.append([InlineKeyboardButton("🖥️ По хостам", callback_data='backup_hosts')])
-        keyboard.append([InlineKeyboardButton("✏️/🗑️ Редактировать и удалить паттерны", callback_data='settings_patterns_proxmox')])
-        keyboard.append([InlineKeyboardButton("➕ Добавить паттерн", callback_data='add_proxmox_pattern')])
+        keyboard.append([InlineKeyboardButton("⚙️ Настройка паттернов", callback_data='backup_proxmox_patterns')])
 
     keyboard.extend([
         [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
         [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ])
 
+    return InlineKeyboardMarkup(keyboard)
+
+def create_proxmox_patterns_menu():
+    """Создает меню настройки паттернов Proxmox."""
+    keyboard = [
+        [InlineKeyboardButton("✏️ Редактировать паттерны", callback_data='settings_patterns_proxmox')],
+        [InlineKeyboardButton("🗑️ Удалить паттерны", callback_data='settings_patterns_proxmox')],
+        [InlineKeyboardButton("➕ Добавить паттерн", callback_data='add_proxmox_pattern')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='backup_proxmox')],
+        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
+        [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
+    ]
     return InlineKeyboardMarkup(keyboard)
 
 def create_navigation_buttons(back_button='backup_main', refresh_button=None, close=True):
@@ -242,6 +253,15 @@ def show_proxmox_menu(query, backup_bot):
         "💾 *Бэкапы Proxmox*\n\nВыберите опцию:",
         parse_mode='Markdown',
         reply_markup=create_proxmox_menu()
+    )
+
+def show_proxmox_patterns_menu(query):
+    """Показывает меню настройки паттернов Proxmox."""
+    query.edit_message_text(
+        "⚙️ *Настройка паттернов Proxmox*\n\n"
+        "Выберите действие: редактирование, удаление или добавление нового паттерна.",
+        parse_mode='Markdown',
+        reply_markup=create_proxmox_patterns_menu(),
     )
 
 def show_today_status(query, backup_bot):
