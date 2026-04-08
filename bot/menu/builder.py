@@ -1,11 +1,11 @@
 """
 /bot/menu/builder.py
-Server Monitoring System v8.45.2
+Server Monitoring System v8.45.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 The place where keyboards are made.
 Система мониторинга серверов
-Версия: 8.45.2
+Версия: 8.45.3
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Место, где строятся клавиатуры
@@ -26,7 +26,7 @@ def main_menu(extension_manager):
 
     if extension_manager.is_extension_enabled('backup_monitor'):
         keyboard.append(
-            [InlineKeyboardButton("💾 Бэкапы Proxmox", callback_data='backup_hosts')]
+            [InlineKeyboardButton("💾 Бэкапы Proxmox", callback_data='backup_proxmox')]
         )
 
     if extension_manager.is_extension_enabled('database_backup_monitor'):
