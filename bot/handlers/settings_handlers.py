@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.48.17
+Server Monitoring System v8.48.18
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.48.17
+Версия: 8.48.18
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -2780,13 +2780,15 @@ def show_backup_databases_settings(update, context):
 
     keyboard = []
     sorted_categories = sorted(db_config.keys()) if isinstance(db_config, dict) else []
-    for category in sorted_categories[:20]:
-        keyboard.append([
-            InlineKeyboardButton(
-                f"⚙️ {category}",
-                callback_data=_build_db_category_callback(context, "settings_db_edit_", category)
-            )
-        ])
+    category_buttons = [
+        InlineKeyboardButton(
+            f"⚙️ {category}",
+            callback_data=_build_db_category_callback(context, "settings_db_edit_", category)
+        )
+        for category in sorted_categories[:20]
+    ]
+    for idx in range(0, len(category_buttons), 2):
+        keyboard.append(category_buttons[idx:idx + 2])
 
     if len(sorted_categories) > 20:
         message += "\n\nℹ️ Показаны первые 20 категорий. Для полного списка откройте «Управление базами»."
@@ -9442,7 +9444,7 @@ def edit_database_category_details(update, context, category):
     for db_key, db_name in databases.items():
         encoded_backup_type = quote(str(category), safe='')
         encoded_db_name = quote(str(db_key), safe='')
-        toggle_callback = _build_db_toggle_monitor_callback(context, encoded_backup_type, encoded_db_name)
+        toggle_callback = _build_db_monitor_toggle_callback(context, encoded_backup_type, encoded_db_name)
         is_disabled = (category, db_key) in _get_disabled_db_monitors_settings()
         toggle_text = "✅ Вкл" if is_disabled else "⛔ Выкл"
 
@@ -9569,7 +9571,7 @@ def delete_database_entry_confirmation(update, context, category, db_key):
                     context, "settings_db_delete_db_confirm_", category, db_key
                 )
             )],
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_view_all'),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
     )
@@ -9603,7 +9605,7 @@ def delete_database_entry_execute(update, context, category, db_key):
         f"База: `{db_name}`",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_view_all'),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
     )
@@ -9687,7 +9689,7 @@ def delete_database_category_confirmation(update, context, category):
                 "✅ Удалить",
                 callback_data=_build_db_category_callback(context, "settings_db_delete_confirm_", category)
             )],
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_manage_categories')]
         ])
     )
 
@@ -9701,7 +9703,7 @@ def delete_database_category_execute(update, context, category):
         query.edit_message_text(
             "❌ Категория не найдена.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_manage_categories')]
             ])
         )
         return
@@ -9713,7 +9715,7 @@ def delete_database_category_execute(update, context, category):
         f"✅ Категория *{category}* удалена.",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main'),
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_manage_categories'),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
     )
@@ -9774,14 +9776,14 @@ def handle_db_category_input(update, context):
                         "✏️ Добавить БД",
                         callback_data=_build_db_category_callback(context, 'settings_db_edit_', category_name)
                     ),
-                     InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
+                     InlineKeyboardButton("↩️ Назад", callback_data='settings_db_manage_categories')]
                 ])
             )
         else:
             update.message.reply_text(
                 f"❌ Категория '{category_name}' уже существует!",
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_main')]
+                    [InlineKeyboardButton("↩️ Назад", callback_data='settings_db_manage_categories')]
                 ])
             )
     
