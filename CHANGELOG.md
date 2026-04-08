@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.44.2] - 2026-04-08
+
+### Added / Добавлено
+- EN: In Telegram path `Backup Proxmox`, added direct buttons in the main Proxmox backup menu to open pattern edit/delete list and to start adding a new Proxmox pattern (same quick-access style as host management).
+- RU: В Telegram-сценарии `Бэкапы Proxmox` в основное меню добавлены прямые кнопки для перехода к редактированию/удалению паттернов и для запуска добавления нового паттерна Proxmox (в том же формате быстрого доступа, что и управление хостами).
+
+### Changed / Изменено
+- EN: SemVer patch bump to `8.44.2`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.44.2` and `ANDROID_VERSION_CODE=309`, prerelease links aligned to `v8.44.2-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.44.2`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.44.2` и `ANDROID_VERSION_CODE=309`, prerelease-ссылки выровнены на `v8.44.2-develop`.
+
 ## [8.44.1] - 2026-04-08
 
 ### Added / Добавлено
