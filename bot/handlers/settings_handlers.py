@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.48.4
+Server Monitoring System v8.48.5
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.48.4
+Версия: 8.48.5
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -8945,9 +8945,11 @@ def view_all_databases_handler(update, context):
     else:
         total_dbs = 0
         for category, databases in db_config.items():
-            message += f"📁 *{category.upper()}* ({len(databases)} БД):\n"
+            safe_category = _escape_pattern_text(str(category).upper())
+            message += f"📁 *{safe_category}* ({len(databases)} БД):\n"
             for db_key, db_name in databases.items():
-                message += f"   • {db_name}\n"
+                safe_db_name = _escape_pattern_text(db_name)
+                message += f"   • {safe_db_name}\n"
                 total_dbs += 1
             message += "\n"
         
