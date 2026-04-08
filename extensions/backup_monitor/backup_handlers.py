@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v8.48.21
+Server Monitoring System v8.48.22
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 8.48.21
+Версия: 8.48.22
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов
@@ -696,7 +696,7 @@ def show_database_backups_menu(query, backup_bot, page=0):
             message = "🗃️ *Бэкапы баз данных*\n\n❌ Нет данных о бэкапах БД."
             keyboard = [
                 [InlineKeyboardButton("🛠️ Управление базами", callback_data='settings_db_view_all_from_backup')],
-                [InlineKeyboardButton("🗂️ Управление категориями", callback_data='settings_db_manage_categories')],
+                [InlineKeyboardButton("🗂️ Управление категориями", callback_data='settings_db_manage_categories_from_backup')],
                 [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
                 [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')]
             ]
@@ -763,7 +763,7 @@ def show_database_backups_menu(query, backup_bot, page=0):
 
         keyboard.extend([
             [InlineKeyboardButton("🛠️ Управление базами", callback_data='settings_db_view_all_from_backup')],
-            [InlineKeyboardButton("🗂️ Управление категориями", callback_data='settings_db_manage_categories')],
+            [InlineKeyboardButton("🗂️ Управление категориями", callback_data='settings_db_manage_categories_from_backup')],
             [InlineKeyboardButton("⚙️ Настройка паттернов", callback_data='settings_patterns_db_from_backup')],
             [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')],
             [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
