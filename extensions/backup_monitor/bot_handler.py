@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/bot_handler.py
-Server Monitoring System v8.46.1
+Server Monitoring System v8.46.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Monitoring Proxmox backups
 Система мониторинга серверов
-Версия: 8.46.1
+Версия: 8.46.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг бэкапов Proxmox
@@ -666,7 +666,9 @@ def backup_callback(update, context):
             show_hosts_menu(query, backup_bot)
 
         elif data == 'backup_proxmox_patterns':
-            show_proxmox_patterns_menu(query)
+            from bot.handlers.settings_handlers import show_proxmox_patterns_menu as show_settings_proxmox_patterns_menu
+            context.user_data['patterns_back_override'] = 'backup_proxmox'
+            show_settings_proxmox_patterns_menu(update, context)
 
         elif data == 'backup_stale_hosts':
             show_stale_hosts(query, backup_bot)
