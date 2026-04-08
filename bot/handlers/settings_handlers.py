@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.48.8
+Server Monitoring System v8.48.9
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.48.8
+Версия: 8.48.9
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -2686,7 +2686,7 @@ def show_backup_times(update, context):
     )
 
 def show_backup_databases_settings(update, context):
-    """Показать настройки баз данных для бэкапов - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
+    """Показать настройки баз данных для бэкапов без перегруза inline-клавиатуры."""
     query = update.callback_query
     query.answer()
 
@@ -2696,63 +2696,42 @@ def show_backup_databases_settings(update, context):
     context.user_data.pop('db_entry_category', None)
     context.user_data.pop('db_entry_key', None)
     context.user_data['settings_db_toggle_map'] = {}
-    
+
     db_config = settings_manager.get_setting('DATABASE_CONFIG', {})
-    
+
     message = "🗃️ *Настройки баз данных для бэкапов*\n\n"
-    
+
+    disabled_pairs = _get_disabled_db_monitors_settings()
     if not db_config:
         message += "❌ *Базы данных не настроены*\n\n"
     else:
+        total_databases = 0
         for category, databases in db_config.items():
             if not isinstance(databases, dict):
                 databases = {}
-            message += f"*{category.upper()}* ({len(databases)} БД):\n"
-            for db_key in databases.keys():
-                message += f"• `{db_key}`\n"
-            message += "\n"
-    
-    message += "Выберите действие:"
-    
-    disabled_pairs = _get_disabled_db_monitors_settings()
-    keyboard = []
+            total_databases += len(databases)
+            disabled_in_category = sum(1 for db_key in databases if (category, db_key) in disabled_pairs)
+            message += (
+                f"• *{_escape_pattern_text(category.upper())}*: {len(databases)} БД "
+                f"(отключён мониторинг: {disabled_in_category})\n"
+            )
 
-    for category, databases in db_config.items():
-        if not isinstance(databases, dict):
-            databases = {}
-        keyboard.append([InlineKeyboardButton(
-            f"➕ Добавить БД в {category}",
-            callback_data=f"settings_db_add_db_{category}"
-        )])
-        row = []
-        for db_key in databases.keys():
-            row.append(InlineKeyboardButton(
-                f"✏️ {db_key}",
-                callback_data=f"settings_db_edit_db_{category}__{db_key}"
-            ))
-            row.append(InlineKeyboardButton(
-                f"🗑️ {db_key}",
-                callback_data=f"settings_db_delete_db_{category}__{db_key}"
-            ))
-            if len(row) == 2:
-                keyboard.append(row)
-                row = []
-            is_disabled = (category, db_key) in disabled_pairs
-            monitor_text = "⚪ Мониторинг выкл" if is_disabled else "🟢 Мониторинг вкл"
-            encoded_category = quote(category, safe='')
-            encoded_db_key = quote(db_key, safe='')
-            keyboard.append([
-                InlineKeyboardButton(
-                    f"{monitor_text}: {db_key}",
-                    callback_data=_build_db_monitor_toggle_callback(
-                        context,
-                        encoded_category,
-                        encoded_db_key,
-                    )
-                )
-            ])
-        if row:
-            keyboard.append(row)
+        message += f"\nИтого баз: *{total_databases}*\n\n"
+
+    message += "Выберите действие:"
+
+    keyboard = []
+    sorted_categories = sorted(db_config.keys()) if isinstance(db_config, dict) else []
+    for category in sorted_categories[:20]:
+        keyboard.append([
+            InlineKeyboardButton(
+                f"⚙️ {category}",
+                callback_data=f"settings_db_edit_{category}"
+            )
+        ])
+
+    if len(sorted_categories) > 20:
+        message += "\n\nℹ️ Показаны первые 20 категорий. Полный список — через «Просмотр всех БД»."
 
     keyboard.extend([
         [InlineKeyboardButton("📋 Просмотр всех БД", callback_data='settings_db_view_all')],
@@ -2762,7 +2741,7 @@ def show_backup_databases_settings(update, context):
          InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ])
-    
+
     query.edit_message_text(
         message,
         parse_mode='Markdown',
