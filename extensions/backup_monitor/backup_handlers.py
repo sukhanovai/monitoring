@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v8.42.3
+Server Monitoring System v8.42.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 8.42.3
+Версия: 8.42.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов
@@ -602,6 +602,7 @@ def show_database_backups_menu(query, backup_bot):
         if not db_by_type:
             message = "🗃️ *Бэкапы баз данных*\n\n❌ Нет данных о бэкапах БД."
             keyboard = [
+                [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')],
                 [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
                 [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ]
@@ -648,9 +649,14 @@ def show_database_backups_menu(query, backup_bot):
                         callback_data=f'db_detail_{backup_type}__{db_name}'
                     ))
 
-                    if len(current_row) == 2:
-                        keyboard.append(current_row)
-                        current_row = []
+                    quick_toggle_label = "✅ Вкл" if is_disabled else "⛔ Выкл"
+                    current_row.append(InlineKeyboardButton(
+                        quick_toggle_label,
+                        callback_data=f'db_toggle_quick_{backup_type}__{db_name}'
+                    ))
+
+                    keyboard.append(current_row)
+                    current_row = []
                 except Exception as e:
                     logger.error(f"❌ Ошибка обработки БД {backup_type}/{db_name}: {e}")
                     continue
@@ -659,6 +665,7 @@ def show_database_backups_menu(query, backup_bot):
                 keyboard.append(current_row)
 
         keyboard.extend([
+            [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')],
             [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
@@ -1125,6 +1132,7 @@ def toggle_database_monitoring(query, backup_type, db_name):
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("📋 Список БД", callback_data='db_backups_list')],
+                [InlineKeyboardButton("↩️ Назад", callback_data='backup_main')],
                 [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
                 [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
             ])
