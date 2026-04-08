@@ -6,7 +6,19 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.47.0] - 2026-04-08
+## [8.48.1] - 2026-04-08
+
+### Fixed / Исправлено
+- EN: Android `Operations Center → DB` tile now builds the database list from the same settings-DB configuration source as Telegram `DB Backups`, with identical enabled/disabled flags and status calculation, so the visible DB set and health state stay synchronized.
+- RU: Android `Оперативный центр → плашка БД` теперь строит список баз из того же источника конфигурации settings DB, что и Telegram `Бэкапы БД`, с одинаковыми флагами включения/выключения и расчётом статусов, поэтому видимый набор БД и их состояние синхронизированы.
+- EN: `backup_databases` API action for mobile now uses the unified DB snapshot used by Telegram handlers; menu labels and summary counters are aligned with the bot.
+- RU: API-действие `backup_databases` для мобильного клиента теперь использует единый snapshot БД из Telegram-обработчиков; подписи списка и сводные счётчики выровнены с ботом.
+
+### Changed / Изменено
+- EN: SemVer patch bump to `8.48.1`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.48.1` and `ANDROID_VERSION_CODE=318`, prerelease links aligned to `v8.48.1-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.48.1`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.48.1` и `ANDROID_VERSION_CODE=318`, prerelease-ссылки выровнены на `v8.48.1-develop`.
+
+## [8.48.0] - 2026-04-08
 
 ### Added / Добавлено
 - EN: In Telegram path `Main menu → DB backups`, added a direct `Add new DB` button in the DB backups list screen to quickly jump into DB configuration/edit flow.
@@ -19,8 +31,8 @@ The project follows Semantic Versioning (SemVer).
 - RU: В Telegram-сценарии `Главное меню → Бэкапы Proxmox → Настройка паттернов → Редактировать паттерны` кнопка `Назад` теперь возвращает в меню `Бэкапы Proxmox`, а не переводит в список хостов.
 
 ### Changed / Изменено
-- EN: SemVer minor bump to `8.47.0`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.47.0` and `ANDROID_VERSION_CODE=317`, prerelease links aligned to `v8.47.0-develop`.
-- RU: Выполнен SemVer minor-бамп до `8.47.0`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.47.0` и `ANDROID_VERSION_CODE=317`, prerelease-ссылки выровнены на `v8.47.0-develop`.
+- EN: SemVer minor bump to `8.48.0`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.48.0` and `ANDROID_VERSION_CODE=317`, prerelease links aligned to `v8.48.0-develop`.
+- RU: Выполнен SemVer minor-бамп до `8.48.0`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.48.0` и `ANDROID_VERSION_CODE=317`, prerelease-ссылки выровнены на `v8.48.0-develop`.
 
 ## [8.46.2] - 2026-04-08
 

@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v8.47.0
+Server Monitoring System v8.48.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 8.47.0
+Версия: 8.48.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов
@@ -613,65 +613,87 @@ def _toggle_database_monitoring(backup_type: str, db_name: str) -> bool:
     config_manager.set_setting("DATABASE_MONITORING_DISABLED", serialized, "backup", data_type="auto")
     return now_enabled
 
+def get_database_monitor_snapshot(backup_bot):
+    """Возвращает унифицированный список БД и статусов из settings DB + backups DB."""
+    from .db_settings_backup_monitor import DATABASE_BACKUP_CONFIG
+
+    config = DATABASE_BACKUP_CONFIG if isinstance(DATABASE_BACKUP_CONFIG, dict) else {}
+    disabled_pairs = _get_disabled_db_monitors()
+
+    rows = backup_bot.execute_query(
+        """
+        SELECT DISTINCT
+            backup_type,
+            database_name,
+            COALESCE(database_display_name, '')
+        FROM database_backups
+        ORDER BY backup_type, database_name
+        """,
+        ()
+    ) or []
+
+    entries_by_type = {}
+    allowed_by_type = {}
+
+    for category, databases in config.items():
+        if not isinstance(databases, dict):
+            continue
+        backup_type = _normalize_config_backup_type(category)
+        allowed_by_type.setdefault(backup_type, set())
+        bucket = entries_by_type.setdefault(backup_type, {})
+        for db_name, configured_label in databases.items():
+            normalized_key = _normalize_db_key(db_name)
+            allowed_by_type[backup_type].add(normalized_key)
+            if normalized_key not in bucket:
+                bucket[normalized_key] = {
+                    "backup_type": backup_type,
+                    "db_name": str(db_name),
+                    "display_name": str(configured_label or db_name),
+                    "category": category,
+                    "db_key": db_name,
+                }
+
+    for raw_backup_type, raw_db_name, raw_display_name in rows:
+        if not raw_backup_type or not raw_db_name:
+            continue
+        backup_type = _normalize_backup_type(raw_backup_type, raw_db_name)
+        normalized_key = _normalize_db_key(raw_db_name)
+        if backup_type not in allowed_by_type or normalized_key not in allowed_by_type[backup_type]:
+            continue
+
+        bucket = entries_by_type.setdefault(backup_type, {})
+        existing = bucket.get(normalized_key)
+        if existing is None:
+            bucket[normalized_key] = {
+                "backup_type": backup_type,
+                "db_name": str(raw_db_name),
+                "display_name": str(raw_display_name or raw_db_name),
+            }
+            continue
+        if raw_display_name and str(raw_display_name).strip():
+            existing["display_name"] = str(raw_display_name).strip()
+
+    snapshot = []
+    for backup_type in sorted(entries_by_type.keys()):
+        for item in sorted(entries_by_type[backup_type].values(), key=lambda row: row["display_name"].lower()):
+            db_name = item["db_name"]
+            effective_type = _get_latest_backup_type(backup_bot, db_name, hours=48) or backup_type
+            status = backup_bot.get_database_display_status(effective_type, db_name)
+            item["status"] = status
+            item["is_disabled"] = (backup_type, db_name) in disabled_pairs
+            snapshot.append(item)
+
+    return snapshot
+
 def show_database_backups_menu(query, backup_bot):
     """Показывает меню с базами данных (из конфигурации и backups.db)"""
     try:
         logger.info("🧪 BACKUP DB: entering show_database_backups_menu")
 
-        from .db_settings_backup_monitor import DATABASE_BACKUP_CONFIG
-
-        if not isinstance(DATABASE_BACKUP_CONFIG, dict):
-            DATABASE_BACKUP_CONFIG = {}
-
-        rows = backup_bot.execute_query(
-            """
-            SELECT DISTINCT
-                backup_type,
-                database_name,
-                COALESCE(database_display_name, '')
-            FROM database_backups
-            ORDER BY backup_type, database_name
-            """,
-            ()
-        ) or []
-
-        # Группируем БД по типу (берём из конфигурации)
+        snapshot = get_database_monitor_snapshot(backup_bot)
         db_by_type = {}
-        allowed_by_type = {}
-
-        for category, databases in DATABASE_BACKUP_CONFIG.items():
-            if not isinstance(databases, dict):
-                continue
-            backup_type = _normalize_config_backup_type(category)
-            allowed_by_type.setdefault(backup_type, set())
-            for db_name in databases.keys():
-                normalized_key = _normalize_db_key(db_name)
-                allowed_by_type[backup_type].add(normalized_key)
-                db_by_type.setdefault(backup_type, {})
-                if normalized_key not in db_by_type[backup_type]:
-                    db_by_type[backup_type][normalized_key] = {
-                        "db_name": db_name,
-                        "label": db_name,
-                        "category": category,
-                        "db_key": db_name,
-                    }
-
-        for backup_type, db_name, display_name in rows:
-            if not backup_type or not db_name:
-                continue
-
-            backup_type = _normalize_backup_type(backup_type, db_name)
-            normalized_key = _normalize_db_key(db_name)
-            if backup_type not in allowed_by_type:
-                continue
-            if normalized_key not in allowed_by_type[backup_type]:
-                continue
-            db_by_type.setdefault(backup_type, {})
-            if normalized_key not in db_by_type[backup_type]:
-                db_by_type[backup_type][normalized_key] = {
-                    "db_name": db_name,
-                    "label": db_name,
-                }
+        for item in snapshot:
+            db_by_type.setdefault(item["backup_type"], []).append(item)
 
         if not db_by_type:
             message = "🗃️ *Бэкапы баз данных*\n\n❌ Нет данных о бэкапах БД."
@@ -694,7 +716,6 @@ def show_database_backups_menu(query, backup_bot):
                 raise
             return
 
-        disabled_pairs = _get_disabled_db_monitors()
         keyboard = []
         for backup_type in sorted(db_by_type.keys()):
             type_display = formatters.get_type_display(backup_type)
@@ -703,35 +724,25 @@ def show_database_backups_menu(query, backup_bot):
                 callback_data='no_action'
             )])
 
-            current_row = []
-            entries = list(db_by_type[backup_type].values())
-            entries.sort(key=lambda item: item["label"].lower())
-            for entry in entries:
+            for entry in db_by_type[backup_type]:
                 db_name = entry["db_name"]
-                display_name = entry["label"]
+                display_name = entry["display_name"]
                 try:
-                    effective_type = _get_latest_backup_type(backup_bot, db_name, hours=48) or backup_type
-                    status = backup_bot.get_database_display_status(effective_type, db_name)
-                    is_disabled = (backup_type, db_name) in disabled_pairs
+                    status = entry["status"]
+                    is_disabled = entry["is_disabled"]
                     display_btn = (
                         f"⚪ {display_name}"
                         if is_disabled
                         else formatters.get_db_display_name(display_name, status)
                     )
 
-                    current_row.append(InlineKeyboardButton(
+                    keyboard.append([InlineKeyboardButton(
                         display_btn,
                         callback_data=f'db_detail_{backup_type}__{db_name}'
-                    ))
-
-                    quick_toggle_label = "✅ Вкл" if is_disabled else "⛔ Выкл"
-                    current_row.append(InlineKeyboardButton(
-                        quick_toggle_label,
+                    ), InlineKeyboardButton(
+                        "✅ Вкл" if is_disabled else "⛔ Выкл",
                         callback_data=f'db_toggle_quick_{backup_type}__{db_name}'
-                    ))
-
-                    keyboard.append(current_row)
-                    current_row = []
+                    )])
 
                     category = entry.get("category")
                     db_key = entry.get("db_key")
@@ -749,9 +760,6 @@ def show_database_backups_menu(query, backup_bot):
                 except Exception as e:
                     logger.error(f"❌ Ошибка обработки БД {backup_type}/{db_name}: {e}")
                     continue
-
-            if current_row:
-                keyboard.append(current_row)
 
         keyboard.append([InlineKeyboardButton("➕ Добавить новую БД", callback_data='settings_db_edit_category')])
 
