@@ -152,23 +152,35 @@ private fun deriveDatabaseBackupLabelFromAction(action: String): String {
     return fallback.replace('_', ' ')
 }
 
+private fun normalizeDatabaseBackupCategory(category: String): String {
+    val normalized = category.trim()
+    return if (normalized.equals("company database", ignoreCase = true)) {
+        "company"
+    } else {
+        normalized
+    }
+}
+
 private fun formatDatabaseBackupLabelWithMonitorStatus(label: String, action: String): String {
     if (!action.startsWith("db_detail_")) return label
     val monitorMarker = if (isDatabaseMonitorDisabled(label, action)) "⚪" else "🟢"
     val decodedPayload = decodeDatabaseBackupActionPayload(action)
     val fallbackDatabaseName = deriveDatabaseBackupLabelFromAction(action)
-    val categoryName = decodedPayload?.category
-        ?.replace('_', ' ')
-        ?.trim()
-        .orEmpty()
+    val categoryName = normalizeDatabaseBackupCategory(
+        decodedPayload?.category
+            ?.replace('_', ' ')
+            ?.trim()
+            .orEmpty()
+    )
     val sanitizedLines = label.lineSequence()
         .map { it.trim() }
         .map { line ->
-            if (line.startsWith("Категория:", ignoreCase = true)) {
+            val normalizedLine = if (line.startsWith("Категория:", ignoreCase = true)) {
                 line.substringAfter(':').trim()
             } else {
                 line
             }
+            normalizeDatabaseBackupCategory(normalizedLine)
         }
         .filter { line ->
             line.isNotBlank() &&
