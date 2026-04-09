@@ -51,7 +51,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.50.14"
+    private val projectVersion = "8.50.15"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -1480,42 +1480,45 @@ class MainViewModel(
             return
         }
 
+        val normalizedAction = normalizeExtensionsSettingsAction(action.trim())
+        if (normalizedAction.isBlank()) return
+
         if (
-            action in extensionMainMenuActions ||
-            action == "backup_proxmox" ||
-            action == "backup_databases" ||
-            action.startsWith("backup_host_") ||
-            action.startsWith("db_detail_") ||
-            action.startsWith("settings_db_toggle_monitor_") ||
-            action.startsWith("backup_mail") ||
-            action.startsWith("supplier_stock_reports_") ||
-            action.startsWith("supplier_stock_report_source_day|")
+            normalizedAction in extensionMainMenuActions ||
+            normalizedAction == "backup_proxmox" ||
+            normalizedAction == "backup_databases" ||
+            normalizedAction.startsWith("backup_host_") ||
+            normalizedAction.startsWith("db_detail_") ||
+            normalizedAction.startsWith("settings_db_toggle_monitor_") ||
+            normalizedAction.startsWith("backup_mail") ||
+            normalizedAction.startsWith("supplier_stock_reports_") ||
+            normalizedAction.startsWith("supplier_stock_report_source_day|")
         ) {
             viewModelScope.launch {
                 state = state.copy(isLoading = true)
                 if (
-                    action in extensionControlActions ||
-                    action == "backup_databases" ||
-                    action.startsWith("backup_host_") ||
-                    action.startsWith("db_detail_") ||
-                    action.startsWith("settings_db_toggle_monitor_") ||
-                    action.startsWith("backup_mail") ||
-                    action.startsWith("supplier_stock_reports_") ||
-                    action.startsWith("supplier_stock_report_source_day|")
+                    normalizedAction in extensionControlActions ||
+                    normalizedAction == "backup_databases" ||
+                    normalizedAction.startsWith("backup_host_") ||
+                    normalizedAction.startsWith("db_detail_") ||
+                    normalizedAction.startsWith("settings_db_toggle_monitor_") ||
+                    normalizedAction.startsWith("backup_mail") ||
+                    normalizedAction.startsWith("supplier_stock_reports_") ||
+                    normalizedAction.startsWith("supplier_stock_report_source_day|")
                 ) {
-                    runCatching { currentApi().runControlAction(ControlActionRequest(action)) }
+                    runCatching { currentApi().runControlAction(ControlActionRequest(normalizedAction)) }
                         .onSuccess { response ->
-                            val mailHistory = if (action.startsWith("backup_mail")) {
+                            val mailHistory = if (normalizedAction.startsWith("backup_mail")) {
                                 parseMailBackupHistory(resolveControlActionMessage(response))
                             } else {
                                 null
                             }
                             val resolvedMenuOptions = resolveControlActionMenuOptions(response)
                             val monitoredMenuOptions = when {
-                                action == "backup_proxmox" -> resolvedMenuOptions.filterNot { option ->
+                                normalizedAction == "backup_proxmox" -> resolvedMenuOptions.filterNot { option ->
                                     isDisabledProxmoxBackupOption(option)
                                 }
-                                action == "backup_databases" -> resolvedMenuOptions.filter { option ->
+                                normalizedAction == "backup_databases" -> resolvedMenuOptions.filter { option ->
                                     val optionAction = option.action?.trim().orEmpty()
                                     val callbackAction = option.callbackData?.trim().orEmpty()
                                     val callbackActionCamel = option.callbackDataCamel?.trim().orEmpty()
@@ -1533,9 +1536,9 @@ class MainViewModel(
                                 message = resolveControlActionMessage(response).ifBlank { "Команда отправлена" },
                                 messageSource = "global",
                                 extensionMenuOptions = resolvedMenuOptions,
-                                extensionMenuAction = if (action == "backup_databases") action else if (resolvedMenuOptions.isEmpty()) "" else action,
-                                backupProxmoxHasProblemItems = if (action == "backup_proxmox") hasProblemBackups else state.backupProxmoxHasProblemItems,
-                                backupDatabasesHasProblemItems = if (action == "backup_databases") hasProblemBackups else state.backupDatabasesHasProblemItems,
+                                extensionMenuAction = if (normalizedAction == "backup_databases") normalizedAction else if (resolvedMenuOptions.isEmpty()) "" else normalizedAction,
+                                backupProxmoxHasProblemItems = if (normalizedAction == "backup_proxmox") hasProblemBackups else state.backupProxmoxHasProblemItems,
+                                backupDatabasesHasProblemItems = if (normalizedAction == "backup_databases") hasProblemBackups else state.backupDatabasesHasProblemItems,
                                 mailBackupHistoryTitle = mailHistory?.title.orEmpty(),
                                 mailBackupHistoryItems = mailHistory?.items.orEmpty(),
                                 mailBackupLastVolume = mailHistory?.items?.firstOrNull()?.size
@@ -1560,7 +1563,7 @@ class MainViewModel(
                             )
                         }
                 } else {
-                    runCatching { currentApi().runExtensionsAction(ExtensionsActionRequest(action)) }
+                    runCatching { currentApi().runExtensionsAction(ExtensionsActionRequest(normalizedAction)) }
                         .onSuccess { response ->
                             state = state.copy(
                                 isLoading = false,
@@ -1597,21 +1600,21 @@ class MainViewModel(
         viewModelScope.launch {
             state = state.copy(isLoading = true)
             runCatching {
-                if (action == "send_morning_report") {
+                if (normalizedAction == "send_morning_report") {
                     runMorningReportControlAction()
                 } else {
-                    currentApi().runControlAction(ControlActionRequest(action))
+                    currentApi().runControlAction(ControlActionRequest(normalizedAction))
                 }
             }
                 .onSuccess { response ->
                     val actionMessage = response.message ?: response.result ?: "Команда отправлена"
-                    if (action == "send_morning_report") {
+                    if (normalizedAction == "send_morning_report") {
                         saveMorningReport(actionMessage)
                     }
                     state = state.copy(
                         isLoading = false,
                         message = actionMessage,
-                        messageSource = if (action == "send_morning_report") "morning_report" else "global",
+                        messageSource = if (normalizedAction == "send_morning_report") "morning_report" else "global",
                         extensionMenuOptions = emptyList(),
                         extensionMenuAction = "",
                         mailBackupHistoryTitle = "",
@@ -1628,7 +1631,7 @@ class MainViewModel(
                     state = state.copy(
                         isLoading = false,
                         message = userMessage,
-                        messageSource = if (action == "send_morning_report") "morning_report" else "global",
+                        messageSource = if (normalizedAction == "send_morning_report") "morning_report" else "global",
                         extensionMenuOptions = emptyList(),
                         extensionMenuAction = "",
                         mailBackupHistoryTitle = "",
