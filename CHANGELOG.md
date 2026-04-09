@@ -1,3 +1,13 @@
+## [8.50.8] - 2026-04-09
+
+### Fixed / Исправлено
+- EN: In Android app `Operational center → Resources`, the per-server resources details dialog now has a close `×` icon in the header and no longer shows the bottom `Close` text button.
+- RU: В Android-приложении `Оперативный центр → Ресурсы` в окне деталей ресурсов по серверу добавлен крестик `×` в заголовке, а нижняя текстовая кнопка `Закрыть` убрана.
+
+### Changed / Изменено
+- EN: SemVer patch bump to `8.50.8`; synchronized repository version mentions in code/docs, updated Android metadata to `ANDROID_VERSION_NAME=8.50.8` and `ANDROID_VERSION_CODE=357`, and aligned prerelease links to `v8.50.8-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.8`; синхронизированы упоминания версии в коде/документации, Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.8` и `ANDROID_VERSION_CODE=357`, prerelease-ссылки выровнены на `v8.50.8-develop`.
+
 ## [8.50.7] - 2026-04-09
 
 ### Fixed / Исправлено
