@@ -1,8 +1,12 @@
-## [8.50.16] - 2026-04-09
+## [8.50.17] - 2026-04-09
+
+### Fixed / Исправлено
+- EN: In Android app `Operational center → Proxmox`, fixed loading of the Proxmox patterns list from the backup tile gear button: the dialog now reads the patterns menu state from both operational and extension-settings responses, and all refresh actions for this dialog are routed through extension-settings actions.
+- RU: В Android-приложении в `Оперативный центр → Proxmox` исправлена загрузка списка паттернов по кнопке-шестерёнке в плитке бэкапов: диалог теперь читает состояние меню паттернов и из operational, и из extension-settings ответов, а все обновляющие действия этого диалога отправляются через extension-settings actions.
 
 ### Changed / Изменено
-- EN: SemVer patch bump to `8.50.16`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.16` and `ANDROID_VERSION_CODE=365`; aligned prerelease links to `v8.50.16-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.16`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.16` и `ANDROID_VERSION_CODE=365`; prerelease-ссылки выровнены на `v8.50.16-develop`.
+- EN: SemVer patch bump to `8.50.17`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.17` and `ANDROID_VERSION_CODE=366`; aligned prerelease links to `v8.50.17-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.17`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.17` и `ANDROID_VERSION_CODE=366`; prerelease-ссылки выровнены на `v8.50.17-develop`.
 
 ## [8.50.15] - 2026-04-09
 
