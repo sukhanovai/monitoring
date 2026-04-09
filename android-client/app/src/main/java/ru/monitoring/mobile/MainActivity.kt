@@ -155,6 +155,12 @@ private data class DatabasePatternOptionGroup(
     val deleteAction: String
 )
 
+private data class MailPatternOptionGroup(
+    val label: String,
+    val editAction: String,
+    val deleteAction: String
+)
+
 private fun normalizeProxmoxPatternLabel(rawLabel: String): String {
     return rawLabel
         .replaceFirst(Regex("""^[✏️🗑️]+\s*"""), "")
@@ -670,6 +676,11 @@ private fun MonitoringApp(
     var mailPatternInputValue by rememberSaveable { mutableStateOf("") }
     var mailPatternEditAction by rememberSaveable { mutableStateOf("") }
     var mailPatternEditValueInput by rememberSaveable { mutableStateOf("") }
+    var showMailPatternsDialog by rememberSaveable { mutableStateOf(false) }
+    var showMailPatternActionsDialog by rememberSaveable { mutableStateOf(false) }
+    var selectedMailPatternLabel by rememberSaveable { mutableStateOf("") }
+    var selectedMailPatternEditAction by rememberSaveable { mutableStateOf("") }
+    var selectedMailPatternDeleteAction by rememberSaveable { mutableStateOf("") }
     var showDbCategoryAddDialog by rememberSaveable { mutableStateOf(false) }
     var dbCategoryInput by rememberSaveable { mutableStateOf("") }
     var showDbEntryAddDialog by rememberSaveable { mutableStateOf(false) }
@@ -745,6 +756,9 @@ private fun MonitoringApp(
     val databasePatternMenuAction = state.extensionSettingsMenuAction
         .takeIf { it == "settings_patterns_db" || it == "settings_backup_db_patterns" }
         ?: state.extensionMenuAction.takeIf { it == "settings_patterns_db" || it == "settings_backup_db_patterns" }
+    val mailPatternMenuAction = state.extensionSettingsMenuAction
+        .takeIf { it == "settings_patterns_mail" }
+        ?: state.extensionMenuAction.takeIf { it == "settings_patterns_mail" }
     val proxmoxPatternMenuOptions = when {
         proxmoxPatternMenuAction == state.extensionSettingsMenuAction && state.extensionSettingsMenuOptions.isNotEmpty() ->
             state.extensionSettingsMenuOptions
@@ -836,6 +850,56 @@ private fun MonitoringApp(
                 null
             } else {
                 DatabasePatternOptionGroup(
+                    label = label,
+                    editAction = editAction,
+                    deleteAction = deleteAction
+                )
+            }
+        }
+    } else {
+        emptyList()
+    }
+    val mailPatternMenuOptions = when {
+        mailPatternMenuAction == state.extensionSettingsMenuAction && state.extensionSettingsMenuOptions.isNotEmpty() ->
+            state.extensionSettingsMenuOptions
+        mailPatternMenuAction == state.extensionMenuAction && state.extensionMenuOptions.isNotEmpty() ->
+            state.extensionMenuOptions
+        state.extensionSettingsMenuOptions.isNotEmpty() -> state.extensionSettingsMenuOptions
+        else -> state.extensionMenuOptions
+    }
+    val mailPatternOptionGroups = if (mailPatternMenuAction != null) {
+        val grouped = linkedMapOf<String, Pair<String, String>>()
+        mailPatternMenuOptions.forEach { option ->
+            val action = resolveMenuOptionAction(option)
+            val label = option.label?.trim().orEmpty()
+            when {
+                action.startsWith("settings_mail_pattern_edit_") -> {
+                    val patternLabel = normalizeProxmoxPatternLabel(label.ifBlank {
+                        Uri.decode(action.removePrefix("settings_mail_pattern_edit_"))
+                    })
+                    if (patternLabel.isNotBlank()) {
+                        val current = grouped[patternLabel] ?: ("" to "")
+                        grouped[patternLabel] = action to current.second
+                    }
+                }
+                action.startsWith("settings_mail_pattern_delete_") -> {
+                    val patternLabel = normalizeProxmoxPatternLabel(label.ifBlank {
+                        Uri.decode(action.removePrefix("settings_mail_pattern_delete_"))
+                    })
+                    if (patternLabel.isNotBlank()) {
+                        val current = grouped[patternLabel] ?: ("" to "")
+                        grouped[patternLabel] = current.first to action
+                    }
+                }
+            }
+        }
+        grouped.mapNotNull { (label, actions) ->
+            val editAction = actions.first
+            val deleteAction = actions.second
+            if (editAction.isBlank() && deleteAction.isBlank()) {
+                null
+            } else {
+                MailPatternOptionGroup(
                     label = label,
                     editAction = editAction,
                     deleteAction = deleteAction
@@ -1893,16 +1957,17 @@ private fun MonitoringApp(
                                         }
                                     },
                                     confirmButton = {
-                                        TextButton(
-                                            onClick = {
-                                                val actionPayload = "settings_mail_pattern_add|" +
-                                                    Uri.encode(mailPatternInputMode) + "|" +
-                                                    Uri.encode(mailPatternInputValue.trim())
-                                                onExtensionsSettingsAction(actionPayload)
-                                                showMailPatternAddDialog = false
-                                            },
-                                            enabled = mailPatternInputValue.isNotBlank()
-                                        ) {
+                                            TextButton(
+                                                onClick = {
+                                                    val actionPayload = "settings_mail_pattern_add|" +
+                                                        Uri.encode(mailPatternInputMode) + "|" +
+                                                        Uri.encode(mailPatternInputValue.trim())
+                                                    onExtensionsSettingsAction(actionPayload)
+                                                    onExtensionsSettingsAction("settings_patterns_mail")
+                                                    showMailPatternAddDialog = false
+                                                },
+                                                enabled = mailPatternInputValue.isNotBlank()
+                                            ) {
                                             Text("Сохранить")
                                         }
                                     },
@@ -1927,15 +1992,16 @@ private fun MonitoringApp(
                                         )
                                     },
                                     confirmButton = {
-                                        TextButton(
-                                            onClick = {
-                                                val actionPayload = mailPatternEditAction + "|" +
-                                                    Uri.encode(mailPatternEditValueInput.trim())
-                                                onExtensionsSettingsAction(actionPayload)
-                                                showMailPatternEditDialog = false
-                                            },
-                                            enabled = mailPatternEditAction.isNotBlank() &&
-                                                mailPatternEditValueInput.isNotBlank()
+                                            TextButton(
+                                                onClick = {
+                                                    val actionPayload = mailPatternEditAction + "|" +
+                                                        Uri.encode(mailPatternEditValueInput.trim())
+                                                    onExtensionsSettingsAction(actionPayload)
+                                                    onExtensionsSettingsAction("settings_patterns_mail")
+                                                    showMailPatternEditDialog = false
+                                                },
+                                                enabled = mailPatternEditAction.isNotBlank() &&
+                                                    mailPatternEditValueInput.isNotBlank()
                                         ) {
                                             Text("Сохранить")
                                         }
@@ -2732,8 +2798,8 @@ private fun MonitoringApp(
                         IconButton(
                             onClick = {
                                 showMailBackupsDialog = false
-                                isExtensionsSettingsOpened = true
                                 onExtensionsSettingsAction("settings_patterns_mail")
+                                showMailPatternsDialog = true
                             }
                         ) {
                             Icon(
@@ -3334,6 +3400,124 @@ private fun MonitoringApp(
             },
             dismissButton = {
                 TextButton(onClick = { showProxmoxPatternEditDialog = false }) {
+                    Text("Отмена")
+                }
+            }
+        )
+    }
+
+    if (showMailPatternsDialog) {
+        AlertDialog(
+            onDismissRequest = { showMailPatternsDialog = false },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "🔍 Паттерны бэкапов почты",
+                        modifier = Modifier.weight(1f),
+                        fontWeight = FontWeight.Bold
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        IconButton(onClick = {
+                            mailPatternInputMode = "subject"
+                            mailPatternInputValue = ""
+                            showMailPatternAddDialog = true
+                        }) {
+                            Icon(
+                                imageVector = Icons.Filled.Add,
+                                contentDescription = "Добавить паттерн почты"
+                            )
+                        }
+                        IconButton(onClick = { showMailPatternsDialog = false }) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "Закрыть список паттернов почты"
+                            )
+                        }
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (mailPatternMenuAction == null) {
+                        Text("Загружаем список паттернов почтовых бэкапов…")
+                    } else if (mailPatternOptionGroups.isEmpty()) {
+                        Text("Паттерны почты пока не добавлены.")
+                    } else {
+                        mailPatternOptionGroups.forEach { pattern ->
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .clickable {
+                                        selectedMailPatternLabel = pattern.label
+                                        selectedMailPatternEditAction = pattern.editAction
+                                        selectedMailPatternDeleteAction = pattern.deleteAction
+                                        showMailPatternActionsDialog = true
+                                    },
+                                tonalElevation = 2.dp,
+                                shape = RoundedCornerShape(10.dp),
+                                color = MaterialTheme.colorScheme.secondaryContainer
+                            ) {
+                                Text(
+                                    text = pattern.label,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                                    maxLines = 3,
+                                    overflow = TextOverflow.Ellipsis,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    if (showMailPatternActionsDialog) {
+        AlertDialog(
+            onDismissRequest = { showMailPatternActionsDialog = false },
+            title = { Text("Паттерн: ${selectedMailPatternLabel.ifBlank { "без названия" }}") },
+            text = { Text("Выбери действие для паттерна.") },
+            confirmButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(
+                        onClick = {
+                            mailPatternEditAction = selectedMailPatternEditAction
+                            mailPatternEditValueInput = ""
+                            showMailPatternEditDialog = true
+                            showMailPatternActionsDialog = false
+                        },
+                        enabled = selectedMailPatternEditAction.isNotBlank()
+                    ) {
+                        Text("Редактировать")
+                    }
+                    TextButton(
+                        onClick = {
+                            onExtensionsSettingsAction(selectedMailPatternDeleteAction)
+                            onExtensionsSettingsAction("settings_patterns_mail")
+                            showMailPatternActionsDialog = false
+                        },
+                        enabled = selectedMailPatternDeleteAction.isNotBlank()
+                    ) {
+                        Text("Удалить")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showMailPatternActionsDialog = false }) {
                     Text("Отмена")
                 }
             }
