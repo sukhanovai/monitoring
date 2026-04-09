@@ -3152,6 +3152,13 @@ private fun MonitoringApp(
                         label = { Text("Паттерн") },
                         modifier = Modifier.fillMaxWidth()
                     )
+                    if (proxmoxPatternCategoryInput.equals("database", ignoreCase = true)) {
+                        Text(
+                            text = "Подсказка: для БД укажи category=database, type=subject, а в «Паттерн» — часть темы письма с бэкапом (например: my_db_prod).",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             },
             confirmButton = {

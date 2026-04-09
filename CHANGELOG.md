@@ -1,3 +1,13 @@
+## [8.50.21] - 2026-04-09
+
+### Added / Добавлено
+- EN: In Android app `Operational center → DB tile → DB backups → DB backup patterns`, added an inline hint in the `Add pattern` dialog describing the recommended fill format: `category=database`, `type=subject`, and a meaningful DB backup subject fragment in the pattern field.
+- RU: В Android-приложении в `Оперативный центр → плитка БД → Бэкапы БД → Паттерны бэкапов БД` добавлена подсказка в диалог `Добавить паттерн` с рекомендуемым форматом заполнения: `category=database`, `type=subject` и осмысленный фрагмент темы письма с бэкапом в поле паттерна.
+
+### Changed / Изменено
+- EN: SemVer patch bump to `8.50.21`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.21` and `ANDROID_VERSION_CODE=370`; aligned prerelease links to `v8.50.21-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.21`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.21` и `ANDROID_VERSION_CODE=370`; prerelease-ссылки выровнены на `v8.50.21-develop`.
+
 ## [8.50.20] - 2026-04-09
 
 ### Added / Добавлено
