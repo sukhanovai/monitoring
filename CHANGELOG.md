@@ -1,3 +1,13 @@
+## [8.50.6] - 2026-04-09
+
+### Fixed / Исправлено
+- EN: Fixed a Kotlin compile error in Android `MainActivity` by explicitly grouping the `if` expression in the `messageSource` comparison condition for server dialog cards.
+- RU: Исправлена ошибка компиляции Kotlin в Android `MainActivity`: в условии сравнения `messageSource` для карточек серверного диалога явно добавлена группировка `if`-выражения.
+
+### Changed / Изменено
+- EN: SemVer patch bump to `8.50.6`; synchronized repository version mentions in code/docs, updated Android metadata to `ANDROID_VERSION_NAME=8.50.6` and `ANDROID_VERSION_CODE=355`, and aligned prerelease links to `v8.50.6-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.6`; синхронизированы упоминания версии в коде/документации, Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.6` и `ANDROID_VERSION_CODE=355`, prerelease-ссылки выровнены на `v8.50.6-develop`.
+
 ## [8.50.5] - 2026-04-09
 
 - EN: SemVer patch bump to `8.50.5`; synchronized all runtime/config/docs/android version mentions after follow-up review, updated Android metadata to `ANDROID_VERSION_NAME=8.50.5` and `ANDROID_VERSION_CODE=354`, and aligned prerelease links to `v8.50.5-develop`.
