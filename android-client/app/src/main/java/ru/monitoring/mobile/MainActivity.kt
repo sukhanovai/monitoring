@@ -705,9 +705,20 @@ private fun MonitoringApp(
     val enabledExtensionsCount = state.extensions.count { it.enabled }
     val totalExtensionsCount = state.extensions.size
     val enabledManagedServers = state.managedServers.filter { it.enabled != false }
-    val proxmoxPatternOptionGroups = if (state.extensionMenuAction == "settings_patterns_proxmox" || state.extensionMenuAction == "settings_backup_patterns") {
+    val proxmoxPatternMenuAction = state.extensionSettingsMenuAction
+        .takeIf { it == "settings_patterns_proxmox" || it == "settings_backup_patterns" }
+        ?: state.extensionMenuAction.takeIf { it == "settings_patterns_proxmox" || it == "settings_backup_patterns" }
+    val proxmoxPatternMenuOptions = when {
+        proxmoxPatternMenuAction == state.extensionSettingsMenuAction && state.extensionSettingsMenuOptions.isNotEmpty() ->
+            state.extensionSettingsMenuOptions
+        proxmoxPatternMenuAction == state.extensionMenuAction && state.extensionMenuOptions.isNotEmpty() ->
+            state.extensionMenuOptions
+        state.extensionSettingsMenuOptions.isNotEmpty() -> state.extensionSettingsMenuOptions
+        else -> state.extensionMenuOptions
+    }
+    val proxmoxPatternOptionGroups = if (proxmoxPatternMenuAction != null) {
         val grouped = linkedMapOf<String, Pair<String, String>>()
-        state.extensionMenuOptions.forEach { option ->
+        proxmoxPatternMenuOptions.forEach { option ->
             val action = resolveMenuOptionAction(option)
             val label = option.label?.trim().orEmpty()
             when {
@@ -2780,7 +2791,7 @@ private fun MonitoringApp(
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         IconButton(onClick = {
-                            onAction("settings_patterns_proxmox")
+                            onExtensionsSettingsAction("settings_patterns_proxmox")
                             showProxmoxPatternsDialog = true
                         }) {
                             Icon(
@@ -2925,7 +2936,7 @@ private fun MonitoringApp(
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    if (state.extensionMenuAction != "settings_patterns_proxmox" && state.extensionMenuAction != "settings_backup_patterns") {
+                    if (proxmoxPatternMenuAction == null) {
                         Text("Загружаем список паттернов Proxmox…")
                     } else if (proxmoxPatternOptionGroups.isEmpty()) {
                         Text("Паттерны пока не добавлены.")
@@ -2984,7 +2995,7 @@ private fun MonitoringApp(
                     TextButton(
                         onClick = {
                             onExtensionsSettingsAction(selectedProxmoxPatternDeleteAction)
-                            onAction("settings_patterns_proxmox")
+                            onExtensionsSettingsAction("settings_patterns_proxmox")
                             showProxmoxPatternActionsDialog = false
                         },
                         enabled = selectedProxmoxPatternDeleteAction.isNotBlank()
@@ -3035,7 +3046,7 @@ private fun MonitoringApp(
                             Uri.encode(proxmoxPatternTypeInput.trim()) + "|" +
                             Uri.encode(proxmoxPatternValueInput.trim())
                         onExtensionsSettingsAction(actionPayload)
-                        onAction("settings_patterns_proxmox")
+                        onExtensionsSettingsAction("settings_patterns_proxmox")
                         showProxmoxPatternAddDialog = false
                     },
                     enabled = proxmoxPatternCategoryInput.isNotBlank() &&
@@ -3071,7 +3082,7 @@ private fun MonitoringApp(
                         val actionPayload = proxmoxPatternEditAction + "|" +
                             Uri.encode(proxmoxPatternEditValueInput.trim())
                         onExtensionsSettingsAction(actionPayload)
-                        onAction("settings_patterns_proxmox")
+                        onExtensionsSettingsAction("settings_patterns_proxmox")
                         showProxmoxPatternEditDialog = false
                     },
                     enabled = proxmoxPatternEditAction.isNotBlank() &&
