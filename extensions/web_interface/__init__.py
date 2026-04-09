@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.50.18
+Server Monitoring System v8.50.19
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.50.18
+Версия: 8.50.19
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -3199,7 +3199,7 @@ def v1_extensions_actions():
                 lines.append(f"{index}. {marker} [{display_category}/{display_type}] {pattern_value}")
 
         menu_options = []
-        for index, (pattern_id, pattern_type, _, category, enabled) in enumerate(rows, start=1):
+        for index, (pattern_id, pattern_type, pattern_value, category, enabled) in enumerate(rows, start=1):
             display_category = category
             display_type = pattern_type
             if category == "database" and isinstance(pattern_type, str) and pattern_type.startswith("proxmox"):
@@ -3208,7 +3208,7 @@ def v1_extensions_actions():
                 display_type = suffix or "subject"
             toggle_label = "⛔️ Отключить" if bool(enabled) else "✅ Включить"
             menu_options.extend([
-                {"label": f"✏️ {index}. {display_category}:{display_type}", "action": f"settings_proxmox_pattern_edit_{pattern_id}"},
+                {"label": f"✏️ {index}. {display_category}:{display_type} — {pattern_value}", "action": f"settings_proxmox_pattern_edit_{pattern_id}"},
                 {"label": f"🗑️ {index}. {display_category}:{display_type}", "action": f"settings_proxmox_pattern_delete_{pattern_id}"},
                 {"label": f"{toggle_label} {index}. {display_category}:{display_type}", "action": f"settings_proxmox_pattern_toggle_{pattern_id}"},
             ])
@@ -3744,7 +3744,7 @@ def v1_extensions_actions():
             cursor = conn.cursor()
             cursor.execute(
                 """
-                SELECT pattern
+                SELECT pattern_type, pattern
                 FROM backup_patterns
                 WHERE id = ?
                   AND (category = 'proxmox' OR (category = 'database' AND pattern_type LIKE 'proxmox%'))
@@ -3753,17 +3753,19 @@ def v1_extensions_actions():
             )
             row = cursor.fetchone()
             conn.close()
-            current_pattern = row[0] if row and len(row) > 0 else ""
+            current_pattern_type = row[0] if row and len(row) > 0 else ""
+            current_pattern = row[1] if row and len(row) > 1 else ""
             return jsonify({
                 "request_id": request_id,
                 "action": action,
                 "result": "accepted" if current_pattern else "rejected",
                 "message": (
                     "✏️ Редактирование паттерна Proxmox\n\n"
+                    f"Текущий тип: `{current_pattern_type}`\n"
                     f"Текущий паттерн: `{current_pattern}`\n\n"
-                    "Нажмите кнопку ниже, чтобы открыть ввод нового значения.\n"
+                    "Нажмите кнопку ниже, чтобы открыть ввод нового типа и паттерна.\n"
                     "Если клиент не поддерживает окно ввода, отправьте действие в формате:\n"
-                    "`settings_proxmox_pattern_edit_<id>|<новый_паттерн>`"
+                    "`settings_proxmox_pattern_edit_<id>|<новый_тип>|<новый_паттерн>`"
                 ) if current_pattern else (
                     "❌ Паттерн не найден."
                 ),
@@ -3775,7 +3777,12 @@ def v1_extensions_actions():
                 ],
             }), 200
 
-        new_pattern = _decode_action_part("|".join(action_parts[1:]))
+        if len(action_parts) >= 3:
+            new_pattern_type = _decode_action_part(action_parts[1]).lower() or "subject"
+            new_pattern = _decode_action_part("|".join(action_parts[2:]))
+        else:
+            new_pattern_type = ""
+            new_pattern = _decode_action_part("|".join(action_parts[1:]))
         if not new_pattern:
             return jsonify({
                 "request_id": request_id,
@@ -3788,18 +3795,41 @@ def v1_extensions_actions():
                 ],
             }), 200
 
+        if len(action_parts) >= 3 and not new_pattern_type:
+            return jsonify({
+                "request_id": request_id,
+                "action": action,
+                "result": "rejected",
+                "message": "❌ Тип паттерна не может быть пустым.",
+                "menu_options": [
+                    {"label": "↩️ Назад", "action": "settings_patterns_proxmox"},
+                    {"label": "✖️ Закрыть", "action": "close"},
+                ],
+            }), 200
+
         pattern_id = int(pattern_id_raw)
         conn = settings_manager.get_connection()
         cursor = conn.cursor()
-        cursor.execute(
-            """
-            UPDATE backup_patterns
-            SET pattern = ?
-            WHERE id = ?
-              AND (category = 'proxmox' OR (category = 'database' AND pattern_type LIKE 'proxmox%'))
-            """,
-            (new_pattern, pattern_id)
-        )
+        if len(action_parts) >= 3:
+            cursor.execute(
+                """
+                UPDATE backup_patterns
+                SET pattern_type = ?, pattern = ?
+                WHERE id = ?
+                  AND (category = 'proxmox' OR (category = 'database' AND pattern_type LIKE 'proxmox%'))
+                """,
+                (new_pattern_type, new_pattern, pattern_id)
+            )
+        else:
+            cursor.execute(
+                """
+                UPDATE backup_patterns
+                SET pattern = ?
+                WHERE id = ?
+                  AND (category = 'proxmox' OR (category = 'database' AND pattern_type LIKE 'proxmox%'))
+                """,
+                (new_pattern, pattern_id)
+            )
         conn.commit()
         updated = cursor.rowcount > 0
         conn.close()
@@ -4095,10 +4125,10 @@ def v1_extensions_actions():
                 lines.append(f"{index}. {marker} [{pattern_type}] {pattern_value}")
 
         menu_options = []
-        for index, (pattern_id, pattern_type, _, enabled) in enumerate(rows, start=1):
+        for index, (pattern_id, pattern_type, pattern_value, enabled) in enumerate(rows, start=1):
             toggle_label = "⛔️ Отключить" if bool(enabled) else "✅ Включить"
             menu_options.extend([
-                {"label": f"✏️ {index}. {pattern_type}", "action": f"settings_proxmox_pattern_edit_{pattern_id}"},
+                {"label": f"✏️ {index}. {pattern_type} — {pattern_value}", "action": f"settings_proxmox_pattern_edit_{pattern_id}"},
                 {"label": f"🗑️ {index}. {pattern_type}", "action": f"settings_proxmox_pattern_delete_{pattern_id}"},
                 {"label": f"{toggle_label} {index}. {pattern_type}", "action": f"settings_proxmox_pattern_toggle_{pattern_id}"},
             ])
@@ -4142,10 +4172,10 @@ def v1_extensions_actions():
                 lines.append(f"{index}. {marker} [{pattern_type}] {pattern_value}")
 
         menu_options = []
-        for index, (pattern_id, pattern_type, _, enabled) in enumerate(rows, start=1):
+        for index, (pattern_id, pattern_type, pattern_value, enabled) in enumerate(rows, start=1):
             toggle_label = "⛔️ Отключить" if bool(enabled) else "✅ Включить"
             menu_options.extend([
-                {"label": f"✏️ {index}. {pattern_type}", "action": f"settings_proxmox_pattern_edit_{pattern_id}"},
+                {"label": f"✏️ {index}. {pattern_type} — {pattern_value}", "action": f"settings_proxmox_pattern_edit_{pattern_id}"},
                 {"label": f"🗑️ {index}. {pattern_type}", "action": f"settings_proxmox_pattern_delete_{pattern_id}"},
                 {"label": f"{toggle_label} {index}. {pattern_type}", "action": f"settings_proxmox_pattern_toggle_{pattern_id}"},
             ])

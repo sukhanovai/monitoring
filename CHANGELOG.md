@@ -1,3 +1,17 @@
+## [8.50.19] - 2026-04-09
+
+### Fixed / Исправлено
+- EN: In Android app `Operational center → Proxmox`, editing a Proxmox backup pattern now supports changing both fields in one dialog: pattern type and pattern value.
+- RU: В Android-приложении в `Оперативный центр → Proxmox` редактирование паттерна бэкапа теперь позволяет менять сразу оба поля в одном окне: тип паттерна и значение паттерна.
+
+### Changed / Изменено
+- EN: Proxmox/DB/ZFS pattern edit menu labels now include both type and current pattern (`type — pattern`) to prefill Android edit dialog consistently.
+- RU: В меню редактирования паттернов Proxmox/БД/ZFS в label теперь передаются и тип, и текущий паттерн (`тип — паттерн`) для корректного префилла Android-формы.
+- EN: Backend action `settings_proxmox_pattern_edit_<id>` now accepts extended payload `|<new_type>|<new_pattern>` (legacy `|<new_pattern>` remains supported for compatibility).
+- RU: Backend-действие `settings_proxmox_pattern_edit_<id>` теперь принимает расширенный payload `|<новый_тип>|<новый_паттерн>` (старый формат `|<новый_паттерн>` сохранён для совместимости).
+- EN: SemVer patch bump to `8.50.19`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.19` and `ANDROID_VERSION_CODE=368`; aligned prerelease links to `v8.50.19-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.19`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.19` и `ANDROID_VERSION_CODE=368`; prerelease-ссылки выровнены на `v8.50.19-develop`.
+
 ## [8.50.18] - 2026-04-09
 
 ### Fixed / Исправлено

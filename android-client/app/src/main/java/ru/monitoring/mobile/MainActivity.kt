@@ -155,6 +155,26 @@ private fun normalizeProxmoxPatternLabel(rawLabel: String): String {
         .trim()
 }
 
+private data class ProxmoxPatternEditPrefill(
+    val patternType: String,
+    val patternValue: String
+)
+
+private fun parseProxmoxPatternEditPrefill(rawLabel: String): ProxmoxPatternEditPrefill {
+    val normalizedLabel = normalizeProxmoxPatternLabel(rawLabel)
+        .replaceFirst(Regex("""^\d+\.\s*"""), "")
+        .trim()
+    val details = normalizedLabel.substringAfter(". ", normalizedLabel).trim()
+    val separator = " — "
+    val typePart = details.substringBefore(separator, details).trim()
+    val valuePart = details.substringAfter(separator, "").trim()
+    val parsedType = typePart.substringAfter(':', typePart).trim().ifBlank { "subject" }
+    return ProxmoxPatternEditPrefill(
+        patternType = parsedType,
+        patternValue = valuePart
+    )
+}
+
 private fun deriveDatabaseBackupLabelFromAction(action: String): String {
     val payload = decodeDatabaseBackupActionPayload(action) ?: return ""
     val fallback = if (payload.databaseKey.isNotBlank()) {
@@ -635,6 +655,7 @@ private fun MonitoringApp(
     var proxmoxPatternTypeInput by rememberSaveable { mutableStateOf("subject") }
     var proxmoxPatternValueInput by rememberSaveable { mutableStateOf("") }
     var proxmoxPatternEditAction by rememberSaveable { mutableStateOf("") }
+    var proxmoxPatternEditTypeInput by rememberSaveable { mutableStateOf("subject") }
     var proxmoxPatternEditValueInput by rememberSaveable { mutableStateOf("") }
     var showMailPatternAddDialog by rememberSaveable { mutableStateOf(false) }
     var showMailPatternEditDialog by rememberSaveable { mutableStateOf(false) }
@@ -1545,6 +1566,7 @@ private fun MonitoringApp(
                                                 }
                                                 action.startsWith("settings_proxmox_pattern_edit_") -> {
                                                     proxmoxPatternEditAction = action
+                                                    proxmoxPatternEditTypeInput = "subject"
                                                     proxmoxPatternEditValueInput = ""
                                                     showProxmoxPatternEditDialog = true
                                                 }
@@ -1719,22 +1741,32 @@ private fun MonitoringApp(
                                     onDismissRequest = { showProxmoxPatternEditDialog = false },
                                     title = { Text("✏️ Редактировать паттерн") },
                                     text = {
-                                        OutlinedTextField(
-                                            value = proxmoxPatternEditValueInput,
-                                            onValueChange = { proxmoxPatternEditValueInput = it },
-                                            label = { Text("Новый паттерн") },
-                                            modifier = Modifier.fillMaxWidth()
-                                        )
+                                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            OutlinedTextField(
+                                                value = proxmoxPatternEditTypeInput,
+                                                onValueChange = { proxmoxPatternEditTypeInput = it },
+                                                label = { Text("Новый тип") },
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
+                                            OutlinedTextField(
+                                                value = proxmoxPatternEditValueInput,
+                                                onValueChange = { proxmoxPatternEditValueInput = it },
+                                                label = { Text("Новый паттерн") },
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
+                                        }
                                     },
                                     confirmButton = {
                                         TextButton(
                                             onClick = {
                                                 val actionPayload = proxmoxPatternEditAction + "|" +
+                                                    Uri.encode(proxmoxPatternEditTypeInput.trim()) + "|" +
                                                     Uri.encode(proxmoxPatternEditValueInput.trim())
                                                 onExtensionsSettingsAction(actionPayload)
                                                 showProxmoxPatternEditDialog = false
                                             },
                                             enabled = proxmoxPatternEditAction.isNotBlank() &&
+                                                proxmoxPatternEditTypeInput.isNotBlank() &&
                                                 proxmoxPatternEditValueInput.isNotBlank()
                                         ) {
                                             Text("Сохранить")
@@ -2984,7 +3016,9 @@ private fun MonitoringApp(
                     TextButton(
                         onClick = {
                             proxmoxPatternEditAction = selectedProxmoxPatternEditAction
-                            proxmoxPatternEditValueInput = selectedProxmoxPatternLabel
+                            val prefill = parseProxmoxPatternEditPrefill(selectedProxmoxPatternLabel)
+                            proxmoxPatternEditTypeInput = prefill.patternType
+                            proxmoxPatternEditValueInput = prefill.patternValue
                             showProxmoxPatternEditDialog = true
                             showProxmoxPatternActionsDialog = false
                         },
@@ -3069,23 +3103,33 @@ private fun MonitoringApp(
             onDismissRequest = { showProxmoxPatternEditDialog = false },
             title = { Text("✏️ Редактировать паттерн") },
             text = {
-                OutlinedTextField(
-                    value = proxmoxPatternEditValueInput,
-                    onValueChange = { proxmoxPatternEditValueInput = it },
-                    label = { Text("Новый паттерн") },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = proxmoxPatternEditTypeInput,
+                        onValueChange = { proxmoxPatternEditTypeInput = it },
+                        label = { Text("Новый тип") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = proxmoxPatternEditValueInput,
+                        onValueChange = { proxmoxPatternEditValueInput = it },
+                        label = { Text("Новый паттерн") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             },
             confirmButton = {
                 TextButton(
                     onClick = {
                         val actionPayload = proxmoxPatternEditAction + "|" +
+                            Uri.encode(proxmoxPatternEditTypeInput.trim()) + "|" +
                             Uri.encode(proxmoxPatternEditValueInput.trim())
                         onExtensionsSettingsAction(actionPayload)
                         onExtensionsSettingsAction("settings_patterns_proxmox")
                         showProxmoxPatternEditDialog = false
                     },
                     enabled = proxmoxPatternEditAction.isNotBlank() &&
+                        proxmoxPatternEditTypeInput.isNotBlank() &&
                         proxmoxPatternEditValueInput.isNotBlank()
                 ) {
                     Text("Сохранить")
