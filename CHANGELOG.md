@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.48.26] - 2026-04-09
+
+### Fixed / Исправлено
+- EN: In Android app `Operational center → DB tile`, fixed DB backup cards that could show only monitor marker (`🟢/⚪`) without DB name; when label content is empty after sanitization, UI now restores DB name from `db_detail_*` action payload.
+- RU: В Android-приложении `Оперативный центр → плашка БД` исправлены карточки бэкапов, где мог отображаться только маркер мониторинга (`🟢/⚪`) без имени БД; если после очистки label пустой, UI теперь восстанавливает имя базы из payload action `db_detail_*`.
+
+### Changed / Изменено
+- EN: SemVer patch bump to `8.48.26`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.48.26` and `ANDROID_VERSION_CODE=342`, prerelease links aligned to `v8.48.26-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.48.26`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.48.26` и `ANDROID_VERSION_CODE=342`, prerelease-ссылки выровнены на `v8.48.26-develop`.
+
 ## [8.48.25] - 2026-04-09
 
 ### Fixed / Исправлено

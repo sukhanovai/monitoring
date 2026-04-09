@@ -136,6 +136,7 @@ private fun deriveDatabaseBackupLabelFromAction(action: String): String {
 private fun formatDatabaseBackupLabelWithMonitorStatus(label: String, action: String): String {
     if (!action.startsWith("db_detail_")) return label
     val monitorMarker = if (isDatabaseMonitorDisabled(label, action)) "⚪" else "🟢"
+    val fallbackDatabaseName = deriveDatabaseBackupLabelFromAction(action)
     val sanitizedLines = label.lineSequence()
         .map { it.trim() }
         .filter { line ->
@@ -146,6 +147,11 @@ private fun formatDatabaseBackupLabelWithMonitorStatus(label: String, action: St
                 !line.equals("⚪", ignoreCase = true)
         }
         .toMutableList()
+
+    if (sanitizedLines.isEmpty() && fallbackDatabaseName.isNotBlank()) {
+        sanitizedLines += fallbackDatabaseName
+    }
+
     if (sanitizedLines.isEmpty()) return monitorMarker
     sanitizedLines += monitorMarker
     return sanitizedLines.joinToString("\n")
@@ -2685,8 +2691,14 @@ private fun MonitoringApp(
                             state.extensionMenuOptions.forEach { option ->
                                 val label = option.label?.trim().orEmpty()
                                 val targetAction = resolveMenuOptionAction(option)
-                                if (label.isNotBlank() && targetAction.isNotBlank()) {
-                                    val displayLabel = formatDatabaseBackupLabelWithMonitorStatus(label, targetAction)
+                                if (targetAction.isNotBlank()) {
+                                    val baseLabel = if (label.isNotBlank()) {
+                                        label
+                                    } else {
+                                        deriveDatabaseBackupLabelFromAction(targetAction)
+                                    }
+                                    val displayLabel = formatDatabaseBackupLabelWithMonitorStatus(baseLabel, targetAction)
+                                    if (displayLabel.isBlank()) return@forEach
                                     Surface(
                                         modifier = Modifier
                                             .weight(1f)
@@ -2694,7 +2706,7 @@ private fun MonitoringApp(
                                             .combinedClickable(
                                                 onClick = {
                                                     showDatabaseBackupsDialog = false
-                                                    selectedDatabaseBackupLabel = label
+                                                    selectedDatabaseBackupLabel = baseLabel
                                                     selectedProxmoxBackupLabel = ""
                                                     showProxmoxBackupStatsDialog = true
                                                     onAction(targetAction)
@@ -2707,7 +2719,7 @@ private fun MonitoringApp(
                                             ),
                                         tonalElevation = 2.dp,
                                         shape = RoundedCornerShape(10.dp),
-                                        color = if (isProblemBackupOption(label, targetAction)) {
+                                        color = if (isProblemBackupOption(baseLabel, targetAction)) {
                                             MaterialTheme.colorScheme.errorContainer
                                         } else {
                                             MaterialTheme.colorScheme.tertiaryContainer
@@ -2720,7 +2732,7 @@ private fun MonitoringApp(
                                                 .padding(horizontal = 10.dp, vertical = 8.dp),
                                             maxLines = 3,
                                             overflow = TextOverflow.Ellipsis,
-                                            color = if (isProblemBackupOption(label, targetAction)) {
+                                            color = if (isProblemBackupOption(baseLabel, targetAction)) {
                                                 MaterialTheme.colorScheme.onErrorContainer
                                             } else {
                                                 MaterialTheme.colorScheme.onTertiaryContainer
