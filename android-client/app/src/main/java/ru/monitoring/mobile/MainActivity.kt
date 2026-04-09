@@ -1744,6 +1744,17 @@ private fun MonitoringApp(
                                                 label = { Text("Паттерн") },
                                                 modifier = Modifier.fillMaxWidth()
                                             )
+                                            val isDatabasePattern = proxmoxPatternCategoryInput.equals("database", ignoreCase = true)
+                                            val hintText = if (isDatabasePattern) {
+                                                "Подсказка: для БД укажи category=database, type=subject, а в «Паттерн» — часть темы письма с бэкапом (например: my_db_prod)."
+                                            } else {
+                                                "Подсказка: для Proxmox укажи category=proxmox, type=subject, а в «Паттерн» — часть темы письма (например: vzdump backup status)."
+                                            }
+                                            Text(
+                                                text = hintText,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
                                         }
                                     },
                                     confirmButton = {
@@ -3152,13 +3163,17 @@ private fun MonitoringApp(
                         label = { Text("Паттерн") },
                         modifier = Modifier.fillMaxWidth()
                     )
-                    if (proxmoxPatternCategoryInput.equals("database", ignoreCase = true)) {
-                        Text(
-                            text = "Подсказка: для БД укажи category=database, type=subject, а в «Паттерн» — часть темы письма с бэкапом (например: my_db_prod).",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    val isDatabasePattern = proxmoxPatternCategoryInput.equals("database", ignoreCase = true)
+                    val hintText = if (isDatabasePattern) {
+                        "Подсказка: для БД укажи category=database, type=subject, а в «Паттерн» — часть темы письма с бэкапом (например: my_db_prod)."
+                    } else {
+                        "Подсказка: для Proxmox укажи category=proxmox, type=subject, а в «Паттерн» — часть темы письма (например: vzdump backup status)."
                     }
+                    Text(
+                        text = hintText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             },
             confirmButton = {
