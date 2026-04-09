@@ -2732,7 +2732,8 @@ private fun MonitoringApp(
                         IconButton(
                             onClick = {
                                 showMailBackupsDialog = false
-                                onAction("backup_mail_patterns")
+                                isExtensionsSettingsOpened = true
+                                onExtensionsSettingsAction("settings_patterns_mail")
                             }
                         ) {
                             Icon(
