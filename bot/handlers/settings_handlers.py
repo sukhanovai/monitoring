@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.49.0
+Server Monitoring System v8.50.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.49.0
+Версия: 8.50.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -2864,9 +2864,6 @@ def show_settings_extensions_menu(update, context):
     message = "🧩 *Расширения*\n\nВыберите раздел:"
 
     keyboard = []
-
-    if extension_manager.is_extension_enabled('mail_backup_monitor'):
-        keyboard.append([InlineKeyboardButton("📬 Бэкапы почты", callback_data='settings_ext_backup_mail')])
 
     if extension_manager.is_extension_enabled('stock_load_monitor'):
         keyboard.append([InlineKeyboardButton("📦 Загрузка остатков 1С", callback_data='settings_ext_stock_load')])
@@ -8542,6 +8539,7 @@ def show_zfs_status_summary(update, context):
             )
 
     keyboard = [
+        [InlineKeyboardButton("⚙️ Настройка хостов ZFS", callback_data='settings_zfs_list')],
         [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
         [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
