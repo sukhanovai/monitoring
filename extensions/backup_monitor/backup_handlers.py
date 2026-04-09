@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v8.50.0
+Server Monitoring System v8.50.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 8.50.0
+Версия: 8.50.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов
@@ -141,11 +141,11 @@ def create_hosts_keyboard(
         InlineKeyboardButton("⚙️ Настройка паттернов", callback_data='backup_proxmox_patterns'),
     ])
 
-    keyboard.append([
-        InlineKeyboardButton("↩️ Назад", callback_data=back_button),
-        InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
-        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
-    ])
+    navigation_row = [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')]
+    if back_button:
+        navigation_row.insert(0, InlineKeyboardButton("↩️ Назад", callback_data=back_button))
+    navigation_row.append(InlineKeyboardButton("✖️ Закрыть", callback_data='close'))
+    keyboard.append(navigation_row)
     
     return InlineKeyboardMarkup(keyboard)
 
@@ -425,7 +425,7 @@ def show_hosts_menu(query, backup_bot):
             reply_markup=create_hosts_keyboard(
                 hosts,
                 host_statuses,
-                back_button='main_menu',
+                back_button=None,
             )
         )
 
@@ -765,7 +765,6 @@ def show_database_backups_menu(query, backup_bot, page=0):
             [InlineKeyboardButton("🛠️ Управление базами", callback_data='settings_db_view_all_from_backup')],
             [InlineKeyboardButton("🗂️ Управление категориями", callback_data='settings_db_manage_categories_from_backup')],
             [InlineKeyboardButton("⚙️ Настройка паттернов", callback_data='settings_patterns_db_from_backup')],
-            [InlineKeyboardButton("↩️ Назад", callback_data='backup_databases')],
             [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
             [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')]
         ])
@@ -812,7 +811,6 @@ def show_mail_backups(query, backup_bot, hours=72):
                 parse_mode='Markdown',
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("⚙️ Настройка паттернов почты", callback_data='backup_mail_patterns')],
-                    [InlineKeyboardButton("🔄 Обновить", callback_data='backup_mail')],
                     [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
                     [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
                 ])
@@ -829,7 +827,6 @@ def show_mail_backups(query, backup_bot, hours=72):
 
         navigation = [
             [InlineKeyboardButton("⚙️ Настройка паттернов почты", callback_data='backup_mail_patterns')],
-            [InlineKeyboardButton("🔄 Обновить", callback_data='backup_mail')],
             [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
             [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
         ]
@@ -864,7 +861,6 @@ def show_stock_loads(query, backup_bot, hours=24):
                 parse_mode='Markdown',
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("⚙️ Настройка паттернов почты", callback_data='backup_mail_patterns')],
-                    [InlineKeyboardButton("🔄 Обновить", callback_data='backup_mail')],
                     [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
                     [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
                 ])
