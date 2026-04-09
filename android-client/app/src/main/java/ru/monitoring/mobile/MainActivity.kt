@@ -705,7 +705,7 @@ private fun MonitoringApp(
     val enabledExtensionsCount = state.extensions.count { it.enabled }
     val totalExtensionsCount = state.extensions.size
     val enabledManagedServers = state.managedServers.filter { it.enabled != false }
-    val proxmoxPatternOptionGroups = if (state.extensionMenuAction == "settings_patterns_proxmox") {
+    val proxmoxPatternOptionGroups = if (state.extensionMenuAction == "settings_patterns_proxmox" || state.extensionMenuAction == "settings_backup_patterns") {
         val grouped = linkedMapOf<String, Pair<String, String>>()
         state.extensionMenuOptions.forEach { option ->
             val action = resolveMenuOptionAction(option)
@@ -2925,7 +2925,7 @@ private fun MonitoringApp(
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    if (state.extensionMenuAction != "settings_patterns_proxmox") {
+                    if (state.extensionMenuAction != "settings_patterns_proxmox" && state.extensionMenuAction != "settings_backup_patterns") {
                         Text("Загружаем список паттернов Proxmox…")
                     } else if (proxmoxPatternOptionGroups.isEmpty()) {
                         Text("Паттерны пока не добавлены.")
