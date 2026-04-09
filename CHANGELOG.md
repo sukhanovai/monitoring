@@ -1,3 +1,19 @@
+## [8.50.20] - 2026-04-09
+
+### Added / Добавлено
+- EN: In Android app `Operational center → DB backups`, added a gear button in the DB backups tile dialog to open a dedicated DB backup patterns modal overlay.
+- RU: В Android-приложении в `Оперативный центр → Бэкапы БД` добавлена кнопка-шестерёнка в диалоге плитки БД для открытия отдельного модального окна с паттернами бэкапов БД.
+- EN: In DB backup patterns modal overlay, added explicit controls in the header: `+` for adding a new pattern and `×` for closing the modal.
+- RU: В модальном окне паттернов бэкапов БД в заголовок добавлены явные контролы: `+` для добавления нового паттерна и `×` для закрытия окна.
+- EN: Added pattern action modal flow for DB backup patterns: tapping a pattern now opens an overlay with `Edit`/`Delete` choices.
+- RU: Добавлен сценарий выбора действия для паттерна бэкапа БД: по тапу на паттерн открывается отдельное окно с выбором `Редактировать`/`Удалить`.
+
+### Changed / Изменено
+- EN: Reused Android pattern add/edit forms for DB category (`database`) and wired refresh routing to return back to DB patterns list after save/delete actions from DB backup tile flow.
+- RU: Переиспользованы Android-формы добавления/редактирования паттернов для категории БД (`database`) и настроен корректный возврат в список паттернов БД после сохранения/удаления из потока плитки БД.
+- EN: SemVer patch bump to `8.50.20`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.20` and `ANDROID_VERSION_CODE=369`; aligned prerelease links to `v8.50.20-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.20`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.20` и `ANDROID_VERSION_CODE=369`; prerelease-ссылки выровнены на `v8.50.20-develop`.
+
 ## [8.50.19] - 2026-04-09
 
 ### Fixed / Исправлено
