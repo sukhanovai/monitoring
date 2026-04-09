@@ -238,6 +238,17 @@ private enum class ServerCardsSortMode {
     BY_IP
 }
 
+private fun normalizeServerLookupToken(raw: String): String = raw.trim().lowercase()
+
+private fun resolveAvailabilityMarker(statusRaw: String?): String {
+    val normalizedStatus = statusRaw?.trim().orEmpty().lowercase()
+    return when {
+        normalizedStatus == "up" -> "🟢"
+        normalizedStatus in setOf("down", "unreachable", "offline", "error", "critical") -> "🔴"
+        else -> "⚪"
+    }
+}
+
 private val extensionRatioRegex = Regex("""(\d+)\s*/\s*(\d+)""")
 
 private fun buildExtensionDataTile(
@@ -909,6 +920,15 @@ private fun MonitoringApp(
             }
         )
         .toList()
+    val availabilityStatusByToken = state.servers
+        .flatMap { availability ->
+            listOf(
+                normalizeServerLookupToken(availability.id) to availability.status,
+                normalizeServerLookupToken(availability.name) to availability.status
+            )
+        }
+        .filter { (token, _) -> token.isNotBlank() }
+        .toMap()
     val selectedServerForActions = state.managedServers.firstOrNull { managedServer ->
         val key = managedServer.ip.ifBlank { managedServer.name }.trim()
         key == serverActionsTargetKey
@@ -2272,6 +2292,11 @@ private fun MonitoringApp(
                             serverButtonsForDialog.forEach { server ->
                                 val serverTarget = if (server.ip.isNotBlank()) server.ip else server.name
                                 val isServerEnabled = server.enabled == true
+                                val availabilityStatus = listOf(server.ip, server.name)
+                                    .asSequence()
+                                    .map(::normalizeServerLookupToken)
+                                    .firstNotNullOfOrNull { token -> availabilityStatusByToken[token] }
+                                val availabilityMarker = resolveAvailabilityMarker(availabilityStatus)
                                 val serverMessage = if (
                                     state.message.isNotBlank() &&
                                     state.messageSource == "server_availability" &&
@@ -2306,7 +2331,7 @@ private fun MonitoringApp(
                                         verticalArrangement = Arrangement.spacedBy(2.dp)
                                     ) {
                                         Text(
-                                            text = server.name.ifBlank { server.ip },
+                                            text = "$availabilityMarker ${server.name.ifBlank { server.ip }}",
                                             fontSize = 12.sp,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis,
