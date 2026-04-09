@@ -1,3 +1,13 @@
+## [8.50.13] - 2026-04-09
+
+### Fixed / Исправлено
+- EN: In Android app `Operational center → Proxmox`, fixed loading of the Proxmox patterns list: action `settings_patterns_proxmox` is now routed as a control menu action, so pattern options are returned and rendered in the dialog.
+- RU: В Android-приложении в `Оперативный центр → Proxmox` исправлена загрузка списка паттернов: действие `settings_patterns_proxmox` теперь маршрутизируется как control-меню, поэтому список паттернов корректно приходит и отображается в диалоге.
+
+### Changed / Изменено
+- EN: SemVer patch bump to `8.50.13`; synchronized repository version mentions in code/docs, updated Android metadata to `ANDROID_VERSION_NAME=8.50.13` and `ANDROID_VERSION_CODE=362`, and aligned prerelease links to `v8.50.13-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.13`; синхронизированы упоминания версии в коде/документации, Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.13` и `ANDROID_VERSION_CODE=362`, prerelease-ссылки выровнены на `v8.50.13-develop`.
+
 ## [8.50.12] - 2026-04-09
 
 ### Changed / Изменено
