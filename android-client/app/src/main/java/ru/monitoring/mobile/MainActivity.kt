@@ -123,20 +123,44 @@ private fun isDatabaseMonitorDisabled(label: String, action: String): Boolean {
         normalizedLabel.contains("мониторинг отключ")
 }
 
-private fun deriveDatabaseBackupLabelFromAction(action: String): String {
-    if (!action.startsWith("db_detail_")) return ""
+private data class DatabaseBackupActionPayload(
+    val category: String,
+    val databaseKey: String
+)
+
+private fun decodeDatabaseBackupActionPayload(action: String): DatabaseBackupActionPayload? {
+    if (!action.startsWith("db_detail_")) return null
     val encodedPayload = action.removePrefix("db_detail_")
     val payload = Uri.decode(encodedPayload)
     val parts = payload.split("__", limit = 2)
+    val category = parts.firstOrNull()?.trim().orEmpty()
     val databaseKey = parts.getOrNull(1)?.trim().orEmpty()
-    val fallback = if (databaseKey.isNotBlank()) databaseKey else payload.trim()
+    if (category.isBlank() && databaseKey.isBlank()) return null
+    return DatabaseBackupActionPayload(
+        category = category,
+        databaseKey = databaseKey
+    )
+}
+
+private fun deriveDatabaseBackupLabelFromAction(action: String): String {
+    val payload = decodeDatabaseBackupActionPayload(action) ?: return ""
+    val fallback = if (payload.databaseKey.isNotBlank()) {
+        payload.databaseKey
+    } else {
+        payload.category
+    }
     return fallback.replace('_', ' ')
 }
 
 private fun formatDatabaseBackupLabelWithMonitorStatus(label: String, action: String): String {
     if (!action.startsWith("db_detail_")) return label
     val monitorMarker = if (isDatabaseMonitorDisabled(label, action)) "⚪" else "🟢"
+    val decodedPayload = decodeDatabaseBackupActionPayload(action)
     val fallbackDatabaseName = deriveDatabaseBackupLabelFromAction(action)
+    val categoryName = decodedPayload?.category
+        ?.replace('_', ' ')
+        ?.trim()
+        .orEmpty()
     val sanitizedLines = label.lineSequence()
         .map { it.trim() }
         .filter { line ->
@@ -150,6 +174,16 @@ private fun formatDatabaseBackupLabelWithMonitorStatus(label: String, action: St
 
     if (sanitizedLines.isEmpty() && fallbackDatabaseName.isNotBlank()) {
         sanitizedLines += fallbackDatabaseName
+    }
+
+    val normalizedCategory = categoryName.lowercase()
+    val hasCategoryLine = normalizedCategory.isNotBlank() &&
+        sanitizedLines.any { line ->
+            val normalizedLine = line.lowercase()
+            normalizedLine.contains(normalizedCategory) || normalizedLine.contains("категор")
+        }
+    if (categoryName.isNotBlank() && !hasCategoryLine) {
+        sanitizedLines.add(0, "Категория: $categoryName")
     }
 
     if (sanitizedLines.isEmpty()) return monitorMarker
