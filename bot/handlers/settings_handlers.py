@@ -992,6 +992,7 @@ def settings_callback_handler(update, context):
         elif data == 'settings_ext_backup_proxmox':
             show_proxmox_backup_settings(update, context)
         elif data == 'settings_ext_backup_db':
+            context.user_data.pop('settings_db_back', None)
             show_database_backup_settings(update, context)
         elif data == 'settings_ext_backup_mail':
             show_mail_backup_settings(update, context)
@@ -1740,7 +1741,6 @@ def settings_callback_handler(update, context):
         elif data == 'settings_db_delete_category':
             delete_database_category_handler(update, context)
         elif data == 'settings_db_view_all':
-            context.user_data.pop('settings_db_back', None)
             view_all_databases_handler(update, context)
         elif data == 'settings_db_view_all_from_backup':
             context.user_data['settings_db_back'] = 'backup_databases'
@@ -2802,10 +2802,17 @@ def show_backup_databases_settings(update, context):
     if len(sorted_categories) > 20:
         message += "\n\nℹ️ Показаны первые 20 категорий. Для полного списка откройте «Управление базами»."
 
+    back_callback = _get_settings_db_back_callback(context)
+    from_backup = back_callback == 'backup_databases'
+    view_all_callback = 'settings_db_view_all_from_backup' if from_backup else 'settings_db_view_all'
+    manage_categories_callback = (
+        'settings_db_manage_categories_from_backup' if from_backup else 'settings_db_manage_categories'
+    )
+
     keyboard.extend([
-        [InlineKeyboardButton("🛠️ Управление базами", callback_data='settings_db_view_all')],
-        [InlineKeyboardButton("🗂️ Управление категориями", callback_data='settings_db_manage_categories')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_ext_backup_db'),
+        [InlineKeyboardButton("🛠️ Управление базами", callback_data=view_all_callback)],
+        [InlineKeyboardButton("🗂️ Управление категориями", callback_data=manage_categories_callback)],
+        [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
          InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ])
