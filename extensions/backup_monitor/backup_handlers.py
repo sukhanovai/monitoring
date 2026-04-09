@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v8.48.31
+Server Monitoring System v8.49.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 8.48.31
+Версия: 8.49.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов
@@ -822,13 +822,18 @@ def show_mail_backups(query, backup_bot, hours=72):
             path_text = _md(path) if path else "—"
             message += f"{status_icon} {size_text} — {path_text} ({_md(time_ago)})\n"
 
+        navigation = [
+            [InlineKeyboardButton("⚙️ Настройка паттернов почты", callback_data='backup_mail_patterns')],
+            [InlineKeyboardButton("🔄 Обновить", callback_data='backup_mail')],
+            [InlineKeyboardButton("↩️ Назад", callback_data='main_menu')],
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
+            [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
+        ]
+
         query.edit_message_text(
             message,
             parse_mode='Markdown',
-            reply_markup=create_navigation_buttons(
-                back_button='main_menu',
-                refresh_button='backup_mail'
-            )
+            reply_markup=InlineKeyboardMarkup(navigation)
         )
 
     except BadRequest as exc:
