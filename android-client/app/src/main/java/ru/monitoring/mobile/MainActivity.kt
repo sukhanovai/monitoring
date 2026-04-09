@@ -163,6 +163,13 @@ private fun formatDatabaseBackupLabelWithMonitorStatus(label: String, action: St
         .orEmpty()
     val sanitizedLines = label.lineSequence()
         .map { it.trim() }
+        .map { line ->
+            if (line.startsWith("Категория:", ignoreCase = true)) {
+                line.substringAfter(':').trim()
+            } else {
+                line
+            }
+        }
         .filter { line ->
             line.isNotBlank() &&
                 !line.contains("мониторинг вкл", ignoreCase = true) &&
@@ -183,7 +190,7 @@ private fun formatDatabaseBackupLabelWithMonitorStatus(label: String, action: St
             normalizedLine.contains(normalizedCategory) || normalizedLine.contains("категор")
         }
     if (categoryName.isNotBlank() && !hasCategoryLine) {
-        sanitizedLines.add(0, "Категория: $categoryName")
+        sanitizedLines.add(0, categoryName)
     }
 
     if (sanitizedLines.isEmpty()) return monitorMarker
