@@ -1,3 +1,13 @@
+## [8.50.7] - 2026-04-09
+
+### Fixed / Исправлено
+- EN: In Android app `Operational center → Resources`, tapping a server card in the server list now opens an overlay dialog with per-server resource check details (loading state + result text) instead of keeping details only inside the list card.
+- RU: В Android-приложении `Оперативный центр → Ресурсы` тап по карточке сервера в списке теперь открывает наложенное окно с деталями точечной проверки ресурсов (состояние загрузки + текст результата), а не оставляет детали только внутри карточки списка.
+
+### Changed / Изменено
+- EN: SemVer patch bump to `8.50.7`; synchronized repository version mentions in code/docs, updated Android metadata to `ANDROID_VERSION_NAME=8.50.7` and `ANDROID_VERSION_CODE=356`, and aligned prerelease links to `v8.50.7-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.7`; синхронизированы упоминания версии в коде/документации, Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.7` и `ANDROID_VERSION_CODE=356`, prerelease-ссылки выровнены на `v8.50.7-develop`.
+
 ## [8.50.6] - 2026-04-09
 
 ### Fixed / Исправлено

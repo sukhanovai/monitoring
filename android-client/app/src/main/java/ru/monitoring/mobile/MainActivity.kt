@@ -598,6 +598,9 @@ private fun MonitoringApp(
     var serverActionsTargetKey by rememberSaveable { mutableStateOf("") }
     var serverCardsSortMode by rememberSaveable { mutableStateOf(ServerCardsSortMode.BY_NAME.name) }
     var showServerResourcesMenu by rememberSaveable { mutableStateOf(false) }
+    var showServerResourcesDetailsDialog by rememberSaveable { mutableStateOf(false) }
+    var serverResourceDetailsTargetKey by rememberSaveable { mutableStateOf("") }
+    var serverResourceDetailsTitle by rememberSaveable { mutableStateOf("") }
     var areOpsTilesExpanded by rememberSaveable { mutableStateOf(false) }
     var showTileSettingsDialog by rememberSaveable { mutableStateOf(false) }
     var settingsSection by rememberSaveable { mutableStateOf("bff") }
@@ -1001,6 +1004,7 @@ private fun MonitoringApp(
                                     onRefreshData()
                                     showServerAvailabilityDialog = false
                                     showServerResourcesMenu = false
+                                    showServerResourcesDetailsDialog = false
                                 },
                                 verticalArrangement = Arrangement.spacedBy(2.dp)
                             ) {
@@ -2231,6 +2235,7 @@ private fun MonitoringApp(
             onDismissRequest = {
                 showServerAvailabilityDialog = false
                 showServerResourcesMenu = false
+                showServerResourcesDetailsDialog = false
             },
             title = {
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -2252,6 +2257,7 @@ private fun MonitoringApp(
                                 onClick = {
                                     showServerAvailabilityDialog = false
                                     showServerResourcesMenu = false
+                                    showServerResourcesDetailsDialog = false
                                 },
                                 modifier = Modifier
                                     .padding(bottom = 2.dp)
@@ -2334,6 +2340,10 @@ private fun MonitoringApp(
                                         .combinedClickable(
                                             onClick = {
                                                 if (isResourceCheckMode) {
+                                                    val targetTitle = server.name.ifBlank { server.ip }.ifBlank { "Сервер" }
+                                                    serverResourceDetailsTargetKey = serverTarget.trim()
+                                                    serverResourceDetailsTitle = targetTitle
+                                                    showServerResourcesDetailsDialog = true
                                                     onCheckServerResources(server)
                                                 } else {
                                                     onCheckServerAvailability(server)
@@ -2390,6 +2400,59 @@ private fun MonitoringApp(
             confirmButton = {}
         )
     }
+
+
+    if (showServerResourcesDetailsDialog) {
+        val isCurrentServerLoading =
+            state.isLoading &&
+                state.availabilityServerMessageTarget == serverResourceDetailsTargetKey
+        val resourceMessage = if (
+            state.messageSource == "server_resources" &&
+            state.availabilityServerMessageTarget == serverResourceDetailsTargetKey
+        ) {
+            state.message
+        } else {
+            ""
+        }
+        AlertDialog(
+            onDismissRequest = { showServerResourcesDetailsDialog = false },
+            title = {
+                Text(
+                    text = "Ресурсы: $serverResourceDetailsTitle",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 360.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (isCurrentServerLoading) {
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        Text("Запрашиваю данные по ресурсам…")
+                    }
+
+                    if (resourceMessage.isNotBlank()) {
+                        Text(resourceMessage)
+                    } else if (!isCurrentServerLoading) {
+                        Text(
+                            "Тапни по карточке сервера ещё раз, если нужно обновить данные.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showServerResourcesDetailsDialog = false }) {
+                    Text("Закрыть")
+                }
+            }
+        )
+    }
+
 
 
 
