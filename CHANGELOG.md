@@ -1,16 +1,16 @@
-## [8.50.24] - 2026-04-09
+## [8.50.25] - 2026-04-09
 
 ### Fixed / Исправлено
 - EN: In Android app `Operational center → Mail backups`, removed the redundant bottom `Close` button, kept header controls only, and suppressed duplicated raw backup list text so the backups are shown once.
 - RU: В Android-приложении в `Оперативный центр → Бэкапы почты` убрана лишняя нижняя кнопка `Закрыть`, оставлены только контролы в заголовке, а также убрано дублирование «сырого» списка — бэкапы теперь отображаются один раз.
 
 ### Added / Добавлено
-- EN: In Android app `Operational center → Mail backups`, added a gear button in the dialog header to open mail backup pattern settings (`backup_mail_patterns`).
-- RU: В Android-приложении в `Оперативный центр → Бэкапы почты` в заголовок диалога добавлена кнопка-шестерёнка для перехода в настройки паттернов почты (`backup_mail_patterns`).
+- EN: In Android app `Operational center → Mail backups`, updated the gear button in the dialog header to open mail backup pattern settings via extension settings (`settings_patterns_mail`) instead of backup history action.
+- RU: В Android-приложении в `Оперативный центр → Бэкапы почты` в заголовок диалога обновлена кнопка-шестерёнка в заголовке диалога: теперь она открывает настройки паттернов бэкапов почты через меню настроек (`settings_patterns_mail`) вместо вызова действия истории бэкапов.
 
 ### Changed / Изменено
-- EN: SemVer patch bump to `8.50.24`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.24` and `ANDROID_VERSION_CODE=373`; aligned prerelease links to `v8.50.24-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.24`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.24` и `ANDROID_VERSION_CODE=373`; prerelease-ссылки выровнены на `v8.50.24-develop`.
+- EN: SemVer patch bump to `8.50.25`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.25` and `ANDROID_VERSION_CODE=374`; aligned prerelease links to `v8.50.25-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.25`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.25` и `ANDROID_VERSION_CODE=374`; prerelease-ссылки выровнены на `v8.50.25-develop`.
 
 ## [8.50.23] - 2026-04-09
 
