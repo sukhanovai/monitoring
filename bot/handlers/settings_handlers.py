@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.48.31
+Server Monitoring System v8.49.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.48.31
+Версия: 8.49.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -8134,8 +8134,9 @@ def show_zfs_patterns_menu(update, context):
 
 def show_mail_patterns_menu(update, context):
     """Показать паттерны для бэкапов почты"""
+    back_callback = context.user_data.pop('patterns_back_override', None) or 'settings_ext_backup_mail'
     context.user_data['patterns_filter'] = 'mail'
-    context.user_data['patterns_back'] = 'settings_ext_backup_mail'
+    context.user_data['patterns_back'] = back_callback
     context.user_data['patterns_add'] = 'add_mail_pattern'
     context.user_data['patterns_title'] = "📬 *Паттерны бэкапов почты*"
     view_patterns_handler(update, context)

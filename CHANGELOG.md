@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.49.0] - 2026-04-09
+
+### Added / Добавлено
+- EN: In Telegram bot `Main menu → Mail backups`, added a dedicated `⚙️ Mail patterns settings` button that opens a full patterns management menu with actions to edit existing patterns, delete existing patterns, and add a new pattern.
+- RU: В Telegram-боте в `Главное меню → Бэкапы почты` добавлена отдельная кнопка `⚙️ Настройка паттернов почты`, открывающая полноценное меню управления паттернами с действиями редактирования существующих паттернов, удаления существующих паттернов и добавления нового паттерна.
+
+### Changed / Изменено
+- EN: SemVer minor bump to `8.49.0`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.49.0` and `ANDROID_VERSION_CODE=348`, prerelease links aligned to `v8.49.0-develop`.
+- RU: Выполнен SemVer minor-бамп до `8.49.0`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.49.0` и `ANDROID_VERSION_CODE=348`, prerelease-ссылки выровнены на `v8.49.0-develop`.
+
 ## [8.48.31] - 2026-04-09
 
 ### Added / Добавлено
