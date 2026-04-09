@@ -1,11 +1,11 @@
 """
 /bot/menu/handlers.py
-Server Monitoring System v8.50.23
+Server Monitoring System v8.50.24
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Bot menu handlers
 Система мониторинга серверов
-Версия: 8.50.23
+Версия: 8.50.24
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики меню бота

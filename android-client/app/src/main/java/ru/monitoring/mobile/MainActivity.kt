@@ -2728,11 +2728,24 @@ private fun MonitoringApp(
                         modifier = Modifier.weight(1f),
                         fontWeight = FontWeight.Bold
                     )
-                    IconButton(onClick = { showMailBackupsDialog = false }) {
-                        Icon(
-                            imageVector = Icons.Filled.Close,
-                            contentDescription = "Закрыть окно бэкапов почты"
-                        )
+                    Row {
+                        IconButton(
+                            onClick = {
+                                showMailBackupsDialog = false
+                                onAction("backup_mail_patterns")
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Settings,
+                                contentDescription = "Открыть настройки паттернов почты"
+                            )
+                        }
+                        IconButton(onClick = { showMailBackupsDialog = false }) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "Закрыть окно бэкапов почты"
+                            )
+                        }
                     }
                 }
             },
@@ -2781,20 +2794,9 @@ private fun MonitoringApp(
                         Text("Список бэкапов пока пуст.")
                     }
 
-                    if (state.messageSource == "global" && state.message.isNotBlank()) {
-                        Text(
-                            text = state.message,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
                 }
             },
-            confirmButton = {
-                TextButton(onClick = { showMailBackupsDialog = false }) {
-                    Text("Закрыть")
-                }
-            }
+            confirmButton = {}
         )
     }
 
