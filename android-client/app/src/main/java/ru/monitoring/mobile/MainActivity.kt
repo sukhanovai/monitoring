@@ -161,6 +161,37 @@ private data class MailPatternOptionGroup(
     val deleteAction: String
 )
 
+private val mailPatternMessageLineRegex = Regex("""^(\d+)\.\s*(?:🟢|🔴)\s*\[([^\]]+)]\s*(.+)$""")
+private val mailPatternActionLabelRegex = Regex("""^(?:[✏️🗑️✅⛔️]+\s*)?(\d+)\.\s*mail:([^\s]+).*$""")
+
+private fun extractMailPatternDisplayByIndex(message: String): Map<Int, String> {
+    if (message.isBlank()) return emptyMap()
+    return message
+        .lineSequence()
+        .map { line ->
+            line
+                .trim()
+                .replace("\\_", "_")
+                .replace("\\-", "-")
+                .replace("*", "")
+        }
+        .mapNotNull { line ->
+            val match = mailPatternMessageLineRegex.matchEntire(line) ?: return@mapNotNull null
+            val index = match.groupValues[1].toIntOrNull() ?: return@mapNotNull null
+            val patternType = match.groupValues[2].trim()
+            val patternValue = match.groupValues[3].trim()
+            index to "${index}. ${patternType}: ${patternValue}"
+        }
+        .toMap()
+}
+
+private fun extractMailPatternIndexFromLabel(rawLabel: String): Int? {
+    return mailPatternActionLabelRegex.matchEntire(rawLabel.trim())
+        ?.groupValues
+        ?.getOrNull(1)
+        ?.toIntOrNull()
+}
+
 private fun normalizeProxmoxPatternLabel(rawLabel: String): String {
     return rawLabel
         .replaceFirst(Regex("""^[✏️🗑️]+\s*"""), "")
@@ -867,35 +898,49 @@ private fun MonitoringApp(
         state.extensionSettingsMenuOptions.isNotEmpty() -> state.extensionSettingsMenuOptions
         else -> state.extensionMenuOptions
     }
+    val mailPatternDisplayByIndex = if (mailPatternMenuAction == "settings_patterns_mail" &&
+        state.messageSource == "extensions_settings"
+    ) {
+        extractMailPatternDisplayByIndex(state.message)
+    } else {
+        emptyMap()
+    }
     val mailPatternOptionGroups = if (mailPatternMenuAction != null) {
-        val grouped = linkedMapOf<String, Pair<String, String>>()
+        val grouped = linkedMapOf<String, Triple<String, String, String>>()
         mailPatternMenuOptions.forEach { option ->
             val action = resolveMenuOptionAction(option)
             val label = option.label?.trim().orEmpty()
             when {
                 action.startsWith("settings_mail_pattern_edit_") -> {
-                    val patternLabel = normalizeProxmoxPatternLabel(label.ifBlank {
+                    val rawPatternLabel = normalizeProxmoxPatternLabel(label.ifBlank {
                         Uri.decode(action.removePrefix("settings_mail_pattern_edit_"))
                     })
+                    val patternIndex = extractMailPatternIndexFromLabel(rawPatternLabel)
+                    val patternLabel = patternIndex?.let { mailPatternDisplayByIndex[it] } ?: rawPatternLabel
+                    val key = patternIndex?.toString() ?: patternLabel
                     if (patternLabel.isNotBlank()) {
-                        val current = grouped[patternLabel] ?: ("" to "")
-                        grouped[patternLabel] = action to current.second
+                        val current = grouped[key] ?: Triple(patternLabel, "", "")
+                        grouped[key] = Triple(patternLabel, action, current.third)
                     }
                 }
                 action.startsWith("settings_mail_pattern_delete_") -> {
-                    val patternLabel = normalizeProxmoxPatternLabel(label.ifBlank {
+                    val rawPatternLabel = normalizeProxmoxPatternLabel(label.ifBlank {
                         Uri.decode(action.removePrefix("settings_mail_pattern_delete_"))
                     })
+                    val patternIndex = extractMailPatternIndexFromLabel(rawPatternLabel)
+                    val patternLabel = patternIndex?.let { mailPatternDisplayByIndex[it] } ?: rawPatternLabel
+                    val key = patternIndex?.toString() ?: patternLabel
                     if (patternLabel.isNotBlank()) {
-                        val current = grouped[patternLabel] ?: ("" to "")
-                        grouped[patternLabel] = current.first to action
+                        val current = grouped[key] ?: Triple(patternLabel, "", "")
+                        grouped[key] = Triple(patternLabel, current.second, action)
                     }
                 }
             }
         }
-        grouped.mapNotNull { (label, actions) ->
-            val editAction = actions.first
-            val deleteAction = actions.second
+        grouped.mapNotNull { (_, item) ->
+            val label = item.first
+            val editAction = item.second
+            val deleteAction = item.third
             if (editAction.isBlank() && deleteAction.isBlank()) {
                 null
             } else {
@@ -3453,6 +3498,11 @@ private fun MonitoringApp(
                     } else if (mailPatternOptionGroups.isEmpty()) {
                         Text("Паттерны почты пока не добавлены.")
                     } else {
+                        Text(
+                            text = "mail",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                         mailPatternOptionGroups.forEach { pattern ->
                             Surface(
                                 modifier = Modifier

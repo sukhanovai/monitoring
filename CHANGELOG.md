@@ -1,12 +1,12 @@
-## [8.50.27] - 2026-04-09
+## [8.50.28] - 2026-04-09
 
 ### Fixed / Исправлено
-- EN: In mail backup patterns, aligned mobile/web labels with Telegram bot format: action buttons now use `mail:subject` (e.g., `1. mail:subject`) instead of bare `subject`.
-- RU: В паттернах бэкапов почты выровнен формат лейблов mobile/web под Telegram-бота: кнопки действий теперь используют `mail:subject` (например, `1. mail:subject`) вместо голого `subject`.
+- EN: In Android app `Operational center → Mail tile → Mail backup patterns`, mail pattern cards now render full pattern content from backend settings message (`N. <type>: <regex>`), and a `mail` section header is shown above the list to match expected Telegram-style structure.
+- RU: В Android-приложении `Оперативный центр → плитка Почта → Паттерны бэкапов почты` карточки паттернов теперь показывают полный текст паттерна из backend-сообщения настроек (`N. <type>: <regex>`), а над списком добавлен заголовок секции `mail` для соответствия ожидаемой структуре в стиле Telegram.
 
 ### Changed / Изменено
-- EN: SemVer patch bump to `8.50.27`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.27` and `ANDROID_VERSION_CODE=376`; aligned prerelease links to `v8.50.27-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.27`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.27` и `ANDROID_VERSION_CODE=376`; prerelease-ссылки выровнены на `v8.50.27-develop`.
+- EN: SemVer patch bump to `8.50.28`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.28` and `ANDROID_VERSION_CODE=377`; aligned prerelease links to `v8.50.28-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.28`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.28` и `ANDROID_VERSION_CODE=377`; prerelease-ссылки выровнены на `v8.50.28-develop`.
 
 ## [8.50.25] - 2026-04-09
 
