@@ -1,14 +1,12 @@
-## [8.50.22] - 2026-04-09
+## [8.50.23] - 2026-04-09
 
 ### Added / Добавлено
-- EN: In Android app `Operational center → Proxmox tile → Proxmox backups → Proxmox backup patterns`, added an inline hint in the `Add pattern` dialog with an example for Proxmox (`category=proxmox`, `type=subject`, and a meaningful subject fragment in pattern).
-- RU: В Android-приложении в `Оперативный центр → плитка Proxmox → Бэкапы Proxmox → Паттерны бэкапов Proxmox` добавлена inline-подсказка в диалог `Добавить паттерн` с примером для Proxmox (`category=proxmox`, `type=subject` и осмысленный фрагмент темы в паттерне).
-- EN: Added the same dynamic hint behavior for DB patterns in the shared `Add pattern` dialog, so the recommendation now changes by selected category (`database`/`proxmox`) in both settings contexts.
-- RU: В общем диалоге `Добавить паттерн` добавлено такое же динамическое поведение подсказки для БД-паттернов: рекомендация теперь меняется по выбранной категории (`database`/`proxmox`) в обоих контекстах настроек.
+- EN: In Android app `Operational center`, tapping the `Mail` tile now opens a modal overlay window with the latest mail server backup history (status, size, path, and relative time).
+- RU: В Android-приложении в `Оперативном центре` по тапу на плитку `Почта` теперь открывается модальное окно с историей бэкапов почтового сервера (статус, размер, путь и относительное время).
 
 ### Changed / Изменено
-- EN: SemVer patch bump to `8.50.22`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.22` and `ANDROID_VERSION_CODE=371`; aligned prerelease links to `v8.50.22-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.22`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.22` и `ANDROID_VERSION_CODE=371`; prerelease-ссылки выровнены на `v8.50.22-develop`.
+- EN: SemVer patch bump to `8.50.23`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.23` and `ANDROID_VERSION_CODE=372`; aligned prerelease links to `v8.50.23-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.23`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.23` и `ANDROID_VERSION_CODE=372`; prerelease-ссылки выровнены на `v8.50.23-develop`.
 
 ## [8.50.21] - 2026-04-09
 

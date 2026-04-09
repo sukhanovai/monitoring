@@ -702,6 +702,7 @@ private fun MonitoringApp(
     var selectedProxmoxPatternEditAction by rememberSaveable { mutableStateOf("") }
     var selectedProxmoxPatternDeleteAction by rememberSaveable { mutableStateOf("") }
     var showDatabaseBackupsDialog by rememberSaveable { mutableStateOf(false) }
+    var showMailBackupsDialog by rememberSaveable { mutableStateOf(false) }
     var showDatabasePatternsDialog by rememberSaveable { mutableStateOf(false) }
     var showDatabasePatternActionsDialog by rememberSaveable { mutableStateOf(false) }
     var selectedDatabasePatternLabel by rememberSaveable { mutableStateOf("") }
@@ -1053,6 +1054,11 @@ private fun MonitoringApp(
                     selectedProxmoxBackupLabel = ""
                     showProxmoxBackupStatsDialog = false
                     openDatabaseBackupDetails()
+                }
+            } else if (extension.id == "mail_backup_monitor") {
+                {
+                    showMailBackupsDialog = true
+                    onToggleMailBackupMenu()
                 }
             } else if (extension.id == "resource_monitor") {
                 {
@@ -2703,6 +2709,90 @@ private fun MonitoringApp(
                     TextButton(onClick = { showMorningReportDialog = false }) {
                         Text("Закрыть")
                     }
+                }
+            }
+        )
+    }
+
+    if (showMailBackupsDialog) {
+        AlertDialog(
+            onDismissRequest = { showMailBackupsDialog = false },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "📬 Бэкапы почтового сервера",
+                        modifier = Modifier.weight(1f),
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(onClick = { showMailBackupsDialog = false }) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Закрыть окно бэкапов почты"
+                        )
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (state.isLoading && state.mailBackupHistoryItems.isEmpty()) {
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        Text("Загружаем бэкапы почтового сервера…")
+                    } else if (state.mailBackupHistoryItems.isNotEmpty()) {
+                        val title = state.mailBackupHistoryTitle.trim()
+                        if (title.isNotBlank()) {
+                            Text(
+                                text = title,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        state.mailBackupHistoryItems.forEach { item ->
+                            ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                                Column(
+                                    modifier = Modifier.padding(10.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        text = "${item.statusIcon} ${item.size}",
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Text(
+                                        text = item.path,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                    Text(
+                                        text = item.relativeTime,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        Text("Список бэкапов пока пуст.")
+                    }
+
+                    if (state.messageSource == "global" && state.message.isNotBlank()) {
+                        Text(
+                            text = state.message,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showMailBackupsDialog = false }) {
+                    Text("Закрыть")
                 }
             }
         )
