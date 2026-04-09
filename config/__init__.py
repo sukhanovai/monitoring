@@ -1,11 +1,11 @@
 """
 /config/__init__.py
-Server Monitoring System v8.50.27
+Server Monitoring System v8.50.28
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Configuration package
 Система мониторинга серверов
-Версия: 8.50.27
+Версия: 8.50.28
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Пакет конфигурации
