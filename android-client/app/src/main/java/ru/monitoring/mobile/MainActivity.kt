@@ -59,6 +59,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -2288,7 +2289,7 @@ private fun MonitoringApp(
                                 modifier = Modifier.height(30.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Filled.Settings,
+                                    imageVector = Icons.Filled.Add,
                                     contentDescription = "Открыть добавление сервера"
                                 )
                             }
@@ -2724,7 +2725,7 @@ private fun MonitoringApp(
                             showProxmoxServerAddDialog = true
                         }) {
                             Icon(
-                                imageVector = Icons.Filled.Settings,
+                                imageVector = Icons.Filled.Add,
                                 contentDescription = "Добавить новый сервер Proxmox в бэкапы"
                             )
                         }
@@ -2835,7 +2836,7 @@ private fun MonitoringApp(
                             showDbOpsEntryAddDialog = true
                         }) {
                             Icon(
-                                imageVector = Icons.Filled.Settings,
+                                imageVector = Icons.Filled.Add,
                                 contentDescription = "Добавить новую БД в список бэкапов"
                             )
                         }
