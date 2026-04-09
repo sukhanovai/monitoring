@@ -1,3 +1,8 @@
+## [8.50.5] - 2026-04-09
+
+- EN: SemVer patch bump to `8.50.5`; synchronized all runtime/config/docs/android version mentions after follow-up review, updated Android metadata to `ANDROID_VERSION_NAME=8.50.5` and `ANDROID_VERSION_CODE=354`, and aligned prerelease links to `v8.50.5-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.5`; после дополнительной проверки синхронизированы все упоминания версии в runtime/config/docs/android, Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.5` и `ANDROID_VERSION_CODE=354`, prerelease-ссылки выровнены на `v8.50.5-develop`.
+
 # Changelog / История изменений
 
 All notable changes to this project are documented in this file.  
