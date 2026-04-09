@@ -143,6 +143,18 @@ private fun decodeDatabaseBackupActionPayload(action: String): DatabaseBackupAct
     )
 }
 
+private data class ProxmoxPatternOptionGroup(
+    val label: String,
+    val editAction: String,
+    val deleteAction: String
+)
+
+private fun normalizeProxmoxPatternLabel(rawLabel: String): String {
+    return rawLabel
+        .replaceFirst(Regex("""^[✏️🗑️]+\s*"""), "")
+        .trim()
+}
+
 private fun deriveDatabaseBackupLabelFromAction(action: String): String {
     val payload = decodeDatabaseBackupActionPayload(action) ?: return ""
     val fallback = if (payload.databaseKey.isNotBlank()) {
@@ -656,6 +668,11 @@ private fun MonitoringApp(
     var selectedDatabaseBackupLabel by rememberSaveable { mutableStateOf("") }
     var showProxmoxBackupStatsDialog by rememberSaveable { mutableStateOf(false) }
     var showProxmoxBackupsDialog by rememberSaveable { mutableStateOf(false) }
+    var showProxmoxPatternsDialog by rememberSaveable { mutableStateOf(false) }
+    var showProxmoxPatternActionsDialog by rememberSaveable { mutableStateOf(false) }
+    var selectedProxmoxPatternLabel by rememberSaveable { mutableStateOf("") }
+    var selectedProxmoxPatternEditAction by rememberSaveable { mutableStateOf("") }
+    var selectedProxmoxPatternDeleteAction by rememberSaveable { mutableStateOf("") }
     var showDatabaseBackupsDialog by rememberSaveable { mutableStateOf(false) }
     var showProxmoxServerAddDialog by rememberSaveable { mutableStateOf(false) }
     var proxmoxServerNameInput by rememberSaveable { mutableStateOf("") }
@@ -688,6 +705,48 @@ private fun MonitoringApp(
     val enabledExtensionsCount = state.extensions.count { it.enabled }
     val totalExtensionsCount = state.extensions.size
     val enabledManagedServers = state.managedServers.filter { it.enabled != false }
+    val proxmoxPatternOptionGroups = if (state.extensionMenuAction == "settings_patterns_proxmox") {
+        val grouped = linkedMapOf<String, Pair<String, String>>()
+        state.extensionMenuOptions.forEach { option ->
+            val action = resolveMenuOptionAction(option)
+            val label = option.label?.trim().orEmpty()
+            when {
+                action.startsWith("settings_proxmox_pattern_edit_") -> {
+                    val patternLabel = normalizeProxmoxPatternLabel(label.ifBlank {
+                        Uri.decode(action.removePrefix("settings_proxmox_pattern_edit_"))
+                    })
+                    if (patternLabel.isNotBlank()) {
+                        val current = grouped[patternLabel] ?: ("" to "")
+                        grouped[patternLabel] = action to current.second
+                    }
+                }
+                action.startsWith("settings_proxmox_pattern_delete_") -> {
+                    val patternLabel = normalizeProxmoxPatternLabel(label.ifBlank {
+                        Uri.decode(action.removePrefix("settings_proxmox_pattern_delete_"))
+                    })
+                    if (patternLabel.isNotBlank()) {
+                        val current = grouped[patternLabel] ?: ("" to "")
+                        grouped[patternLabel] = current.first to action
+                    }
+                }
+            }
+        }
+        grouped.mapNotNull { (label, actions) ->
+            val editAction = actions.first
+            val deleteAction = actions.second
+            if (editAction.isBlank() && deleteAction.isBlank()) {
+                null
+            } else {
+                ProxmoxPatternOptionGroup(
+                    label = label,
+                    editAction = editAction,
+                    deleteAction = deleteAction
+                )
+            }
+        }
+    } else {
+        emptyList()
+    }
     val enabledManagedTokens = enabledManagedServers
         .flatMap { server -> listOf(server.ip, server.name) }
         .map { it.trim().lowercase() }
@@ -2721,6 +2780,15 @@ private fun MonitoringApp(
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         IconButton(onClick = {
+                            onAction("settings_patterns_proxmox")
+                            showProxmoxPatternsDialog = true
+                        }) {
+                            Icon(
+                                imageVector = Icons.Filled.Settings,
+                                contentDescription = "Открыть паттерны Proxmox"
+                            )
+                        }
+                        IconButton(onClick = {
                             proxmoxServerNameInput = ""
                             showProxmoxServerAddDialog = true
                         }) {
@@ -2811,6 +2879,212 @@ private fun MonitoringApp(
                 }
             },
             confirmButton = {}
+        )
+    }
+
+    if (showProxmoxPatternsDialog) {
+        AlertDialog(
+            onDismissRequest = { showProxmoxPatternsDialog = false },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "🔍 Паттерны Proxmox",
+                        modifier = Modifier.weight(1f),
+                        fontWeight = FontWeight.Bold
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        IconButton(onClick = {
+                            proxmoxPatternCategoryInput = "proxmox"
+                            proxmoxPatternTypeInput = "subject"
+                            proxmoxPatternValueInput = ""
+                            showProxmoxPatternAddDialog = true
+                        }) {
+                            Icon(
+                                imageVector = Icons.Filled.Add,
+                                contentDescription = "Добавить паттерн Proxmox"
+                            )
+                        }
+                        IconButton(onClick = { showProxmoxPatternsDialog = false }) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "Закрыть список паттернов Proxmox"
+                            )
+                        }
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (state.extensionMenuAction != "settings_patterns_proxmox") {
+                        Text("Загружаем список паттернов Proxmox…")
+                    } else if (proxmoxPatternOptionGroups.isEmpty()) {
+                        Text("Паттерны пока не добавлены.")
+                    } else {
+                        proxmoxPatternOptionGroups.forEach { pattern ->
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .clickable {
+                                        selectedProxmoxPatternLabel = pattern.label
+                                        selectedProxmoxPatternEditAction = pattern.editAction
+                                        selectedProxmoxPatternDeleteAction = pattern.deleteAction
+                                        showProxmoxPatternActionsDialog = true
+                                    },
+                                tonalElevation = 2.dp,
+                                shape = RoundedCornerShape(10.dp),
+                                color = MaterialTheme.colorScheme.secondaryContainer
+                            ) {
+                                Text(
+                                    text = pattern.label,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                                    maxLines = 3,
+                                    overflow = TextOverflow.Ellipsis,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    if (showProxmoxPatternActionsDialog) {
+        AlertDialog(
+            onDismissRequest = { showProxmoxPatternActionsDialog = false },
+            title = { Text("Паттерн: ${selectedProxmoxPatternLabel.ifBlank { "без названия" }}") },
+            text = { Text("Выбери действие для паттерна.") },
+            confirmButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(
+                        onClick = {
+                            proxmoxPatternEditAction = selectedProxmoxPatternEditAction
+                            proxmoxPatternEditValueInput = selectedProxmoxPatternLabel
+                            showProxmoxPatternEditDialog = true
+                            showProxmoxPatternActionsDialog = false
+                        },
+                        enabled = selectedProxmoxPatternEditAction.isNotBlank()
+                    ) {
+                        Text("Редактировать")
+                    }
+                    TextButton(
+                        onClick = {
+                            onExtensionsSettingsAction(selectedProxmoxPatternDeleteAction)
+                            onAction("settings_patterns_proxmox")
+                            showProxmoxPatternActionsDialog = false
+                        },
+                        enabled = selectedProxmoxPatternDeleteAction.isNotBlank()
+                    ) {
+                        Text("Удалить")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showProxmoxPatternActionsDialog = false }) {
+                    Text("Отмена")
+                }
+            }
+        )
+    }
+
+    if (showProxmoxPatternAddDialog && settingsSection != "extensions") {
+        AlertDialog(
+            onDismissRequest = { showProxmoxPatternAddDialog = false },
+            title = { Text("➕ Добавить паттерн Proxmox") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = proxmoxPatternCategoryInput,
+                        onValueChange = { proxmoxPatternCategoryInput = it },
+                        label = { Text("Категория (proxmox/database)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = proxmoxPatternTypeInput,
+                        onValueChange = { proxmoxPatternTypeInput = it },
+                        label = { Text("Тип (например subject)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = proxmoxPatternValueInput,
+                        onValueChange = { proxmoxPatternValueInput = it },
+                        label = { Text("Паттерн") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val actionPayload = "settings_proxmox_pattern_add|" +
+                            Uri.encode(proxmoxPatternCategoryInput.trim()) + "|" +
+                            Uri.encode(proxmoxPatternTypeInput.trim()) + "|" +
+                            Uri.encode(proxmoxPatternValueInput.trim())
+                        onExtensionsSettingsAction(actionPayload)
+                        onAction("settings_patterns_proxmox")
+                        showProxmoxPatternAddDialog = false
+                    },
+                    enabled = proxmoxPatternCategoryInput.isNotBlank() &&
+                        proxmoxPatternTypeInput.isNotBlank() &&
+                        proxmoxPatternValueInput.isNotBlank()
+                ) {
+                    Text("Сохранить")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showProxmoxPatternAddDialog = false }) {
+                    Text("Отмена")
+                }
+            }
+        )
+    }
+
+    if (showProxmoxPatternEditDialog && settingsSection != "extensions") {
+        AlertDialog(
+            onDismissRequest = { showProxmoxPatternEditDialog = false },
+            title = { Text("✏️ Редактировать паттерн") },
+            text = {
+                OutlinedTextField(
+                    value = proxmoxPatternEditValueInput,
+                    onValueChange = { proxmoxPatternEditValueInput = it },
+                    label = { Text("Новый паттерн") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val actionPayload = proxmoxPatternEditAction + "|" +
+                            Uri.encode(proxmoxPatternEditValueInput.trim())
+                        onExtensionsSettingsAction(actionPayload)
+                        onAction("settings_patterns_proxmox")
+                        showProxmoxPatternEditDialog = false
+                    },
+                    enabled = proxmoxPatternEditAction.isNotBlank() &&
+                        proxmoxPatternEditValueInput.isNotBlank()
+                ) {
+                    Text("Сохранить")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showProxmoxPatternEditDialog = false }) {
+                    Text("Отмена")
+                }
+            }
         )
     }
 
