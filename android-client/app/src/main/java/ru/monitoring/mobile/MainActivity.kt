@@ -125,15 +125,20 @@ private fun isDatabaseMonitorDisabled(label: String, action: String): Boolean {
 
 private fun formatDatabaseBackupLabelWithMonitorStatus(label: String, action: String): String {
     if (!action.startsWith("db_detail_")) return label
-    if (label.contains("мониторинг вкл", ignoreCase = true) || label.contains("мониторинг выкл", ignoreCase = true)) {
-        return label
-    }
-    val monitorLine = if (isDatabaseMonitorDisabled(label, action)) {
-        "⚪ Мониторинг выкл"
-    } else {
-        "🟢 Мониторинг вкл"
-    }
-    return "$label\n$monitorLine"
+    val monitorMarker = if (isDatabaseMonitorDisabled(label, action)) "⚪" else "🟢"
+    val sanitizedLines = label.lineSequence()
+        .map { it.trim() }
+        .filter { line ->
+            line.isNotBlank() &&
+                !line.contains("мониторинг вкл", ignoreCase = true) &&
+                !line.contains("мониторинг выкл", ignoreCase = true) &&
+                !line.equals("🟢", ignoreCase = true) &&
+                !line.equals("⚪", ignoreCase = true)
+        }
+        .toMutableList()
+    if (sanitizedLines.isEmpty()) return monitorMarker
+    sanitizedLines += monitorMarker
+    return sanitizedLines.joinToString("\n")
 }
 
 private fun extractDatabaseBackupLines(message: String): List<String> {
@@ -1711,7 +1716,21 @@ private fun MonitoringApp(
                             if (showDbCategoryAddDialog) {
                                 AlertDialog(
                                     onDismissRequest = { showDbCategoryAddDialog = false },
-                                    title = { Text("➕ Добавить категорию БД") },
+                                    title = {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text("➕ Добавить категорию БД", modifier = Modifier.weight(1f))
+                                            IconButton(onClick = { showDbCategoryAddDialog = false }) {
+                                                Icon(
+                                                    imageVector = Icons.Filled.Close,
+                                                    contentDescription = "Закрыть окно добавления категории БД"
+                                                )
+                                            }
+                                        }
+                                    },
                                     text = {
                                         OutlinedTextField(
                                             value = dbCategoryInput,
@@ -1739,13 +1758,26 @@ private fun MonitoringApp(
                                 AlertDialog(
                                     onDismissRequest = { showDbEntryAddDialog = false },
                                     title = {
-                                        Text(
-                                            if (dbEntryAddCategory.isNotBlank()) {
-                                                "➕ Добавить БД в ${dbEntryAddCategory.uppercase()}"
-                                            } else {
-                                                "➕ Добавить БД"
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                if (dbEntryAddCategory.isNotBlank()) {
+                                                    "➕ Добавить БД в ${dbEntryAddCategory.uppercase()}"
+                                                } else {
+                                                    "➕ Добавить БД"
+                                                },
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            IconButton(onClick = { showDbEntryAddDialog = false }) {
+                                                Icon(
+                                                    imageVector = Icons.Filled.Close,
+                                                    contentDescription = "Закрыть окно добавления БД"
+                                                )
                                             }
-                                        )
+                                        }
                                     },
                                     text = {
                                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1790,7 +1822,21 @@ private fun MonitoringApp(
                             if (showDbEntryEditDialog) {
                                 AlertDialog(
                                     onDismissRequest = { showDbEntryEditDialog = false },
-                                    title = { Text("✏️ Редактировать БД") },
+                                    title = {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text("✏️ Редактировать БД", modifier = Modifier.weight(1f))
+                                            IconButton(onClick = { showDbEntryEditDialog = false }) {
+                                                Icon(
+                                                    imageVector = Icons.Filled.Close,
+                                                    contentDescription = "Закрыть окно редактирования БД"
+                                                )
+                                            }
+                                        }
+                                    },
                                     text = {
                                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                             Text("Категория: ${dbEntryEditCategory.uppercase()}")
