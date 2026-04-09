@@ -713,6 +713,12 @@ private fun MonitoringApp(
     }
     val openServerSingleCheckDetails = {
         onLoadServersForSingleCheck()
+        showServerResourcesMenu = false
+        showServerAvailabilityDialog = true
+    }
+    val openServerResourcesSingleCheckDetails = {
+        onLoadServersForSingleCheck()
+        showServerResourcesMenu = true
         showServerAvailabilityDialog = true
     }
     val openProxmoxBackupDetails = {
@@ -875,6 +881,10 @@ private fun MonitoringApp(
                     selectedProxmoxBackupLabel = ""
                     showProxmoxBackupStatsDialog = false
                     openDatabaseBackupDetails()
+                }
+            } else if (extension.id == "resource_monitor") {
+                {
+                    openServerResourcesSingleCheckDetails()
                 }
             } else {
                 { isSettingsExpanded = true; settingsSection = "extensions"; isExtensionsSettingsOpened = true }
@@ -2216,8 +2226,12 @@ private fun MonitoringApp(
     }
 
     if (showServerAvailabilityDialog) {
+        val isResourceCheckMode = showServerResourcesMenu
         AlertDialog(
-            onDismissRequest = { showServerAvailabilityDialog = false },
+            onDismissRequest = {
+                showServerAvailabilityDialog = false
+                showServerResourcesMenu = false
+            },
             title = {
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Row(
@@ -2226,12 +2240,19 @@ private fun MonitoringApp(
                         verticalAlignment = Alignment.Top
                     ) {
                         Text(
-                            text = "Точечная проверка серверов",
+                            text = if (isResourceCheckMode) {
+                                "Точечная проверка ресурсов"
+                            } else {
+                                "Точечная проверка серверов"
+                            },
                             modifier = Modifier.weight(1f)
                         )
                         Column(horizontalAlignment = Alignment.End) {
                             IconButton(
-                                onClick = { showServerAvailabilityDialog = false },
+                                onClick = {
+                                    showServerAvailabilityDialog = false
+                                    showServerResourcesMenu = false
+                                },
                                 modifier = Modifier
                                     .padding(bottom = 2.dp)
                                     .height(30.dp)
@@ -2299,7 +2320,7 @@ private fun MonitoringApp(
                                 val availabilityMarker = resolveAvailabilityMarker(availabilityStatus)
                                 val serverMessage = if (
                                     state.message.isNotBlank() &&
-                                    state.messageSource == "server_availability" &&
+                                    state.messageSource == if (isResourceCheckMode) "server_resources" else "server_availability" &&
                                     state.availabilityServerMessageTarget == serverTarget
                                 ) {
                                     state.message
@@ -2311,7 +2332,13 @@ private fun MonitoringApp(
                                         .weight(1f)
                                         .clip(RoundedCornerShape(10.dp))
                                         .combinedClickable(
-                                            onClick = { onCheckServerAvailability(server) },
+                                            onClick = {
+                                                if (isResourceCheckMode) {
+                                                    onCheckServerResources(server)
+                                                } else {
+                                                    onCheckServerAvailability(server)
+                                                }
+                                            },
                                             onLongClick = {
                                                 serverActionsTargetKey = serverTarget.trim()
                                             }
