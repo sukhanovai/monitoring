@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v8.49.0
+Server Monitoring System v8.50.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 8.49.0
+Версия: 8.50.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов
@@ -810,7 +810,12 @@ def show_mail_backups(query, backup_bot, hours=72):
             query.edit_message_text(
                 message,
                 parse_mode='Markdown',
-                reply_markup=create_navigation_buttons(back_button='main_menu')
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("⚙️ Настройка паттернов почты", callback_data='backup_mail_patterns')],
+                    [InlineKeyboardButton("🔄 Обновить", callback_data='backup_mail')],
+                    [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
+                    [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
+                ])
             )
             return
 
@@ -825,7 +830,6 @@ def show_mail_backups(query, backup_bot, hours=72):
         navigation = [
             [InlineKeyboardButton("⚙️ Настройка паттернов почты", callback_data='backup_mail_patterns')],
             [InlineKeyboardButton("🔄 Обновить", callback_data='backup_mail')],
-            [InlineKeyboardButton("↩️ Назад", callback_data='main_menu')],
             [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
             [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
         ]
@@ -858,7 +862,12 @@ def show_stock_loads(query, backup_bot, hours=24):
             query.edit_message_text(
                 message,
                 parse_mode='Markdown',
-                reply_markup=create_navigation_buttons(back_button='main_menu')
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("⚙️ Настройка паттернов почты", callback_data='backup_mail_patterns')],
+                    [InlineKeyboardButton("🔄 Обновить", callback_data='backup_mail')],
+                    [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
+                    [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
+                ])
             )
             return
 

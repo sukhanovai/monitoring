@@ -6,6 +6,20 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.50.0] - 2026-04-09
+
+### Added / Добавлено
+- EN: In Telegram bot `Main menu → ZFS`, added a dedicated `⚙️ ZFS host settings` button that opens the host list management menu with actions to edit, activate/deactivate, delete, and add hosts.
+- RU: В Telegram-боте в `Главное меню → ZFS` добавлена отдельная кнопка `⚙️ Настройка хостов ZFS`, открывающая меню управления списком хостов с действиями редактирования, активации/деактивации, удаления и добавления хостов.
+
+### Changed / Изменено
+- EN: In Telegram bot `Main menu → Mail backups`, removed the `↩️ Back` button from the mail backups screen (including empty-state screen), keeping only patterns, refresh, home, and close actions.
+- RU: В Telegram-боте в `Главное меню → Бэкапы почты` удалена кнопка `↩️ Назад` с экрана почтовых бэкапов (включая экран без данных); оставлены только действия паттернов, обновления, перехода на главную и закрытия.
+- EN: In Telegram bot `Main menu → Settings → Extensions`, removed `📬 Mail backups` from the extensions settings menu.
+- RU: В Telegram-боте в `Главное меню → Настройки → Расширения` убран пункт `📬 Бэкапы почты`.
+- EN: SemVer minor bump to `8.50.0`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.50.0` and `ANDROID_VERSION_CODE=349`, prerelease links aligned to `v8.50.0-develop`.
+- RU: Выполнен SemVer minor-бамп до `8.50.0`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.0` и `ANDROID_VERSION_CODE=349`, prerelease-ссылки выровнены на `v8.50.0-develop`.
+
 ## [8.49.0] - 2026-04-09
 
 ### Added / Добавлено
