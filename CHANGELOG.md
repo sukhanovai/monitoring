@@ -1,12 +1,12 @@
-## [8.50.17] - 2026-04-09
+## [8.50.18] - 2026-04-09
 
 ### Fixed / Исправлено
-- EN: In Android app `Operational center → Proxmox`, fixed loading of the Proxmox patterns list from the backup tile gear button: the dialog now reads the patterns menu state from both operational and extension-settings responses, and all refresh actions for this dialog are routed through extension-settings actions.
-- RU: В Android-приложении в `Оперативный центр → Proxmox` исправлена загрузка списка паттернов по кнопке-шестерёнке в плитке бэкапов: диалог теперь читает состояние меню паттернов и из operational, и из extension-settings ответов, а все обновляющие действия этого диалога отправляются через extension-settings actions.
+- EN: In Android app `Operational center → Proxmox`, fixed loading of Proxmox patterns from the backup tile gear button: `settings_patterns_proxmox` is no longer sent via control API and now correctly goes through extensions-settings API, so the patterns list is returned and rendered instead of staying on the loading state.
+- RU: В Android-приложении в `Оперативный центр → Proxmox` исправлена загрузка паттернов по кнопке-шестерёнке в плитке бэкапов: `settings_patterns_proxmox` больше не отправляется через control API и теперь уходит в extensions-settings API, поэтому список паттернов приходит и отображается, а не зависает в состоянии загрузки.
 
 ### Changed / Изменено
-- EN: SemVer patch bump to `8.50.17`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.17` and `ANDROID_VERSION_CODE=366`; aligned prerelease links to `v8.50.17-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.17`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.17` и `ANDROID_VERSION_CODE=366`; prerelease-ссылки выровнены на `v8.50.17-develop`.
+- EN: SemVer patch bump to `8.50.18`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.18` and `ANDROID_VERSION_CODE=367`; aligned prerelease links to `v8.50.18-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.18`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.18` и `ANDROID_VERSION_CODE=367`; prerelease-ссылки выровнены на `v8.50.18-develop`.
 
 ## [8.50.15] - 2026-04-09
 
