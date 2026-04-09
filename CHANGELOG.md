@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.48.29] - 2026-04-09
+
+### Fixed / Исправлено
+- EN: In Android app `Operational center → DB tile`, removed the `Category:` prefix on DB backup cards and left only the category name in card text.
+- RU: В Android-приложении `Оперативный центр → плашка БД` в карточках списка бэкапов убран префикс `Категория:`, теперь отображается только название категории.
+
+### Changed / Изменено
+- EN: SemVer patch bump to `8.48.29`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.48.29` and `ANDROID_VERSION_CODE=345`, prerelease links aligned to `v8.48.29-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.48.29`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.48.29` и `ANDROID_VERSION_CODE=345`, prerelease-ссылки выровнены на `v8.48.29-develop`.
+
 ## [8.48.28] - 2026-04-09
 
 ### Fixed / Исправлено
