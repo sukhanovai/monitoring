@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.50.26
+Server Monitoring System v8.50.27
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.50.26
+Версия: 8.50.27
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -3252,9 +3252,9 @@ def v1_extensions_actions():
         for index, (pattern_id, pattern_type, _, enabled) in enumerate(rows, start=1):
             toggle_label = "⛔️ Отключить" if bool(enabled) else "✅ Включить"
             menu_options.extend([
-                {"label": f"✏️ {index}. {pattern_type}", "action": f"settings_mail_pattern_edit_{pattern_id}"},
-                {"label": f"🗑️ {index}. {pattern_type}", "action": f"settings_mail_pattern_delete_{pattern_id}"},
-                {"label": f"{toggle_label} {index}. {pattern_type}", "action": f"settings_mail_pattern_toggle_{pattern_id}"},
+                {"label": f"✏️ {index}. mail:{pattern_type}", "action": f"settings_mail_pattern_edit_{pattern_id}"},
+                {"label": f"🗑️ {index}. mail:{pattern_type}", "action": f"settings_mail_pattern_delete_{pattern_id}"},
+                {"label": f"{toggle_label} {index}. mail:{pattern_type}", "action": f"settings_mail_pattern_toggle_{pattern_id}"},
             ])
 
         return jsonify({
