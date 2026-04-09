@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
+## [8.48.31] - 2026-04-09
+
+### Added / Добавлено
+- EN: In Android app `Operational center → Servers` (list opened by long tap), availability markers were added to server cards: `🟢` for `UP`, `🔴` for unavailable statuses (`DOWN/UNREACHABLE/OFFLINE/ERROR/CRITICAL`), and `⚪` for unknown status.
+- RU: В Android-приложении `Оперативный центр → Серверы` (список по долгому тапу) добавлены маркеры доступности на карточки серверов: `🟢` для `UP`, `🔴` для недоступных статусов (`DOWN/UNREACHABLE/OFFLINE/ERROR/CRITICAL`) и `⚪` для неизвестного статуса.
+
+### Changed / Изменено
+- EN: SemVer patch bump to `8.48.31`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.48.31` and `ANDROID_VERSION_CODE=347`, prerelease links aligned to `v8.48.31-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.48.31`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.48.31` и `ANDROID_VERSION_CODE=347`, prerelease-ссылки выровнены на `v8.48.31-develop`.
+
 ## [8.48.30] - 2026-04-09
 
 ### Fixed / Исправлено
