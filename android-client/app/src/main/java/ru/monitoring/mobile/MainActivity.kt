@@ -2417,10 +2417,23 @@ private fun MonitoringApp(
         AlertDialog(
             onDismissRequest = { showServerResourcesDetailsDialog = false },
             title = {
-                Text(
-                    text = "Ресурсы: $serverResourceDetailsTitle",
-                    fontWeight = FontWeight.Bold
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Ресурсы: $serverResourceDetailsTitle",
+                        modifier = Modifier.weight(1f),
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(onClick = { showServerResourcesDetailsDialog = false }) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Закрыть окно ресурсов"
+                        )
+                    }
+                }
             },
             text = {
                 Column(
@@ -2445,11 +2458,7 @@ private fun MonitoringApp(
                     }
                 }
             },
-            confirmButton = {
-                TextButton(onClick = { showServerResourcesDetailsDialog = false }) {
-                    Text("Закрыть")
-                }
-            }
+            confirmButton = {}
         )
     }
 
