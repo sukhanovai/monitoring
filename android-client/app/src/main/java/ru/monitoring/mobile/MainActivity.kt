@@ -772,7 +772,7 @@ private fun MonitoringApp(
     )
     val extensionsById = state.extensions.associateBy { it.id }
     val extensionInfoTiles = buildList {
-        extensionsById["backup_monitor"]?.let { extension ->
+        extensionsById["backup_monitor"]?.takeIf { it.enabled }?.let { extension ->
             add(
                 buildExtensionDataTile(
                     extension = extension.copy(name = "proxmox"),
@@ -781,7 +781,7 @@ private fun MonitoringApp(
                 )
             )
         }
-        extensionsById["database_backup_monitor"]?.let { extension ->
+        extensionsById["database_backup_monitor"]?.takeIf { it.enabled }?.let { extension ->
             add(
                 buildExtensionDataTile(
                     extension = extension.copy(name = "БД"),
@@ -790,7 +790,7 @@ private fun MonitoringApp(
                 )
             )
         }
-        extensionsById["mail_backup_monitor"]?.let { extension ->
+        extensionsById["mail_backup_monitor"]?.takeIf { it.enabled }?.let { extension ->
             val latestIsOk = latestMailBackup?.statusIcon?.let { icon ->
                 icon.contains("✅") || icon.contains("✔")
             }
@@ -811,7 +811,7 @@ private fun MonitoringApp(
                 )
             )
         }
-        extensionsById["stock_load_monitor"]?.let { extension ->
+        extensionsById["stock_load_monitor"]?.takeIf { it.enabled }?.let { extension ->
             add(
                 buildExtensionDataTile(
                     extension = extension.copy(name = "остатки"),
@@ -820,7 +820,7 @@ private fun MonitoringApp(
                 )
             )
         }
-        extensionsById["zfs_monitor"]?.let { extension ->
+        extensionsById["zfs_monitor"]?.takeIf { it.enabled }?.let { extension ->
             add(
                 buildExtensionDataTile(
                     extension = extension.copy(name = "ZFS"),
@@ -829,7 +829,7 @@ private fun MonitoringApp(
                 )
             )
         }
-        extensionsById["supplier_stock_files"]?.let { extension ->
+        extensionsById["supplier_stock_files"]?.takeIf { it.enabled }?.let { extension ->
             add(
                 buildExtensionDataTile(
                     extension = extension.copy(name = "поставщики"),
@@ -838,7 +838,7 @@ private fun MonitoringApp(
                 )
             )
         }
-        extensionsById["resource_monitor"]?.let { extension ->
+        extensionsById["resource_monitor"]?.takeIf { it.enabled }?.let { extension ->
             val hasProblem = isProblemBackupLabel(extension.description)
             add(
                 ExtensionDataTile(
@@ -849,10 +849,10 @@ private fun MonitoringApp(
                 )
             )
         }
-        extensionsById["web_interface"]?.let { extension ->
+        extensionsById["web_interface"]?.takeIf { it.enabled }?.let { extension ->
             add(buildToggleDataTile(label = "web", enabled = extension.enabled))
         }
-        extensionsById["email_processor"]?.let { extension ->
+        extensionsById["email_processor"]?.takeIf { it.enabled }?.let { extension ->
             add(buildToggleDataTile(label = "mail", enabled = extension.enabled))
         }
     }
