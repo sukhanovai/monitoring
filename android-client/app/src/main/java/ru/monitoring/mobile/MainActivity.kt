@@ -123,6 +123,16 @@ private fun isDatabaseMonitorDisabled(label: String, action: String): Boolean {
         normalizedLabel.contains("мониторинг отключ")
 }
 
+private fun deriveDatabaseBackupLabelFromAction(action: String): String {
+    if (!action.startsWith("db_detail_")) return ""
+    val encodedPayload = action.removePrefix("db_detail_")
+    val payload = Uri.decode(encodedPayload)
+    val parts = payload.split("__", limit = 2)
+    val databaseKey = parts.getOrNull(1)?.trim().orEmpty()
+    val fallback = if (databaseKey.isNotBlank()) databaseKey else payload.trim()
+    return fallback.replace('_', ' ')
+}
+
 private fun formatDatabaseBackupLabelWithMonitorStatus(label: String, action: String): String {
     if (!action.startsWith("db_detail_")) return label
     val monitorMarker = if (isDatabaseMonitorDisabled(label, action)) "⚪" else "🟢"
@@ -2562,8 +2572,10 @@ private fun MonitoringApp(
                             maxItemsInEachRow = 2
                         ) {
                             state.extensionMenuOptions.forEach { option ->
-                                val label = option.label?.trim().orEmpty()
                                 val targetAction = resolveMenuOptionAction(option)
+                                val label = option.label?.trim().orEmpty().ifBlank {
+                                    deriveDatabaseBackupLabelFromAction(targetAction)
+                                }
                                 if (label.isNotBlank() && targetAction.isNotBlank()) {
                                     val displayLabel = formatDatabaseBackupLabelWithMonitorStatus(label, targetAction)
                                     Surface(
