@@ -2792,7 +2792,12 @@ private fun MonitoringApp(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(selectedDatabaseForActions.label?.trim().orEmpty())
+                    Text(
+                        text = selectedDatabaseForActions.label?.trim().orEmpty(),
+                        modifier = Modifier.weight(1f),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
                     IconButton(onClick = { databaseActionsTargetAction = "" }) {
                         Icon(
                             imageVector = Icons.Filled.Close,

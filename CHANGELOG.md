@@ -6,15 +6,15 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.48.27] - 2026-04-09
+## [8.48.28] - 2026-04-09
 
 ### Fixed / Исправлено
-- EN: In Android app `Operational center → DB tile`, DB backup cards now always include DB category name (derived from `db_detail_*` payload) when the backend label does not contain it.
-- RU: В Android-приложении `Оперативный центр → плашка БД` карточки бэкапов теперь всегда показывают имя категории БД (берётся из payload `db_detail_*`), если backend не прислал его в label.
+- EN: In Android app `Operational center → DB tile`, the long-press DB actions dialog now keeps a visible close (`✕`) button even for long DB names by constraining the title text and preserving header layout.
+- RU: В Android-приложении `Оперативный центр → плашка БД` в диалоге действий по долгому тапу теперь стабильно виден крестик закрытия (`✕`) даже при длинных именах БД за счёт ограничения заголовка и фиксации layout шапки.
 
 ### Changed / Изменено
-- EN: SemVer patch bump to `8.48.27`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.48.27` and `ANDROID_VERSION_CODE=343`, prerelease links aligned to `v8.48.27-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.48.27`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.48.27` и `ANDROID_VERSION_CODE=343`, prerelease-ссылки выровнены на `v8.48.27-develop`.
+- EN: SemVer patch bump to `8.48.28`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.48.28` and `ANDROID_VERSION_CODE=344`, prerelease links aligned to `v8.48.28-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.48.28`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.48.28` и `ANDROID_VERSION_CODE=344`, prerelease-ссылки выровнены на `v8.48.28-develop`.
 
 ## [8.48.26] - 2026-04-09
 
