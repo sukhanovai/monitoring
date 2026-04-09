@@ -6,7 +6,19 @@ All notable changes to this project are documented in this file.
 The project follows Semantic Versioning (SemVer).  
 Проект использует Semantic Versioning (SemVer).
 
-## [8.50.1] - 2026-04-09
+## [8.50.3] - 2026-04-09
+
+### Fixed / Исправлено
+- EN: In Android app `Operational center`, extension tiles are now shown only for enabled extensions.
+- RU: В Android-приложении `Оперативный центр` плашки расширений теперь отображаются только для включённых расширений.
+- EN: In Android app `Operational center → Tile settings`, extension tiles list now includes only enabled extensions.
+- RU: В Android-приложении `Оперативный центр → Настройка плашек` список плашек расширений теперь включает только включённые расширения.
+
+### Changed / Изменено
+- EN: SemVer patch bump to `8.50.3`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.50.3` and `ANDROID_VERSION_CODE=352`, prerelease links aligned to `v8.50.3-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.3`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.3` и `ANDROID_VERSION_CODE=352`, prerelease-ссылки выровнены на `v8.50.3-develop`.
+
+## [8.50.2] - 2026-04-09
 
 ### Fixed / Исправлено
 - EN: In Telegram bot `Main menu → DB backups`, removed the `↩️ Back` button from the databases backup screen.
@@ -21,8 +33,8 @@ The project follows Semantic Versioning (SemVer).
 - RU: В Telegram-боте в `Главное меню → Доступность сервера` и `Главное меню → Ресурсы сервера` удалены кнопки `🔄 Обновить список` и `🔍 Поиск сервера` из меню выбора серверов.
 
 ### Changed / Изменено
-- EN: SemVer patch bump to `8.50.1`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.50.1` and `ANDROID_VERSION_CODE=350`, prerelease links aligned to `v8.50.1-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.1`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.1` и `ANDROID_VERSION_CODE=350`, prerelease-ссылки выровнены на `v8.50.1-develop`.
+- EN: SemVer patch bump to `8.50.2`; repository version references synchronized; Android metadata updated to `ANDROID_VERSION_NAME=8.50.2` and `ANDROID_VERSION_CODE=351`, prerelease links aligned to `v8.50.2-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.2`; ссылки на версию в репозитории синхронизированы; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.2` и `ANDROID_VERSION_CODE=351`, prerelease-ссылки выровнены на `v8.50.2-develop`.
 ## [8.49.0] - 2026-04-09
 
 ### Added / Добавлено
