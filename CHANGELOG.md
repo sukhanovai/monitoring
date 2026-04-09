@@ -1,3 +1,13 @@
+## [8.50.10] - 2026-04-09
+
+### Fixed / Исправлено
+- EN: In Android app `Operational center`, replaced the gear icon with a plus icon for add actions in: `Servers → targeted server availability checks`, `Proxmox → backups list`, `DB → backups list`, and `Resources → targeted server resource checks`.
+- RU: В Android-приложении в `Оперативном центре` иконка-шестерёнка заменена на плюс для действий добавления в разделах: `Серверы → точечная проверка доступности`, `Proxmox → список бэкапов`, `БД → список бэкапов`, `Ресурсы → точечная проверка ресурсов серверов`.
+
+### Changed / Изменено
+- EN: SemVer patch bump to `8.50.10`; synchronized repository version mentions in code/docs, updated Android metadata to `ANDROID_VERSION_NAME=8.50.10` and `ANDROID_VERSION_CODE=359`, and aligned prerelease links to `v8.50.10-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.10`; синхронизированы упоминания версии в коде/документации, Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.10` и `ANDROID_VERSION_CODE=359`, prerelease-ссылки выровнены на `v8.50.10-develop`.
+
 ## [8.50.9] - 2026-04-09
 
 ### Fixed / Исправлено
