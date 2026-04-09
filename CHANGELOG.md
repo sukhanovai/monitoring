@@ -1,3 +1,13 @@
+## [8.50.9] - 2026-04-09
+
+### Fixed / Исправлено
+- EN: In Android app `Operational center → DB`, in the DB backup list cards the category label `company database` is shortened to `company`.
+- RU: В Android-приложении `Оперативный центр → БД` в карточках списка бэкапов БД отображение категории `company database` сокращено до `company`.
+
+### Changed / Изменено
+- EN: SemVer patch bump to `8.50.9`; synchronized repository version mentions in code/docs, updated Android metadata to `ANDROID_VERSION_NAME=8.50.9` and `ANDROID_VERSION_CODE=358`, and aligned prerelease links to `v8.50.9-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.9`; синхронизированы упоминания версии в коде/документации, Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.9` и `ANDROID_VERSION_CODE=358`, prerelease-ссылки выровнены на `v8.50.9-develop`.
+
 ## [8.50.8] - 2026-04-09
 
 ### Fixed / Исправлено
