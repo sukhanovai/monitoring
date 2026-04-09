@@ -149,6 +149,12 @@ private data class ProxmoxPatternOptionGroup(
     val deleteAction: String
 )
 
+private data class DatabasePatternOptionGroup(
+    val label: String,
+    val editAction: String,
+    val deleteAction: String
+)
+
 private fun normalizeProxmoxPatternLabel(rawLabel: String): String {
     return rawLabel
         .replaceFirst(Regex("""^[✏️🗑️]+\s*"""), "")
@@ -655,6 +661,7 @@ private fun MonitoringApp(
     var proxmoxPatternTypeInput by rememberSaveable { mutableStateOf("subject") }
     var proxmoxPatternValueInput by rememberSaveable { mutableStateOf("") }
     var proxmoxPatternEditAction by rememberSaveable { mutableStateOf("") }
+    var patternDialogReturnAction by rememberSaveable { mutableStateOf("settings_patterns_proxmox") }
     var proxmoxPatternEditTypeInput by rememberSaveable { mutableStateOf("subject") }
     var proxmoxPatternEditValueInput by rememberSaveable { mutableStateOf("") }
     var showMailPatternAddDialog by rememberSaveable { mutableStateOf(false) }
@@ -695,6 +702,11 @@ private fun MonitoringApp(
     var selectedProxmoxPatternEditAction by rememberSaveable { mutableStateOf("") }
     var selectedProxmoxPatternDeleteAction by rememberSaveable { mutableStateOf("") }
     var showDatabaseBackupsDialog by rememberSaveable { mutableStateOf(false) }
+    var showDatabasePatternsDialog by rememberSaveable { mutableStateOf(false) }
+    var showDatabasePatternActionsDialog by rememberSaveable { mutableStateOf(false) }
+    var selectedDatabasePatternLabel by rememberSaveable { mutableStateOf("") }
+    var selectedDatabasePatternEditAction by rememberSaveable { mutableStateOf("") }
+    var selectedDatabasePatternDeleteAction by rememberSaveable { mutableStateOf("") }
     var showProxmoxServerAddDialog by rememberSaveable { mutableStateOf(false) }
     var proxmoxServerNameInput by rememberSaveable { mutableStateOf("") }
     var proxmoxHostActionsTargetKey by rememberSaveable { mutableStateOf("") }
@@ -729,6 +741,9 @@ private fun MonitoringApp(
     val proxmoxPatternMenuAction = state.extensionSettingsMenuAction
         .takeIf { it == "settings_patterns_proxmox" || it == "settings_backup_patterns" }
         ?: state.extensionMenuAction.takeIf { it == "settings_patterns_proxmox" || it == "settings_backup_patterns" }
+    val databasePatternMenuAction = state.extensionSettingsMenuAction
+        .takeIf { it == "settings_patterns_db" || it == "settings_backup_db_patterns" }
+        ?: state.extensionMenuAction.takeIf { it == "settings_patterns_db" || it == "settings_backup_db_patterns" }
     val proxmoxPatternMenuOptions = when {
         proxmoxPatternMenuAction == state.extensionSettingsMenuAction && state.extensionSettingsMenuOptions.isNotEmpty() ->
             state.extensionSettingsMenuOptions
@@ -770,6 +785,56 @@ private fun MonitoringApp(
                 null
             } else {
                 ProxmoxPatternOptionGroup(
+                    label = label,
+                    editAction = editAction,
+                    deleteAction = deleteAction
+                )
+            }
+        }
+    } else {
+        emptyList()
+    }
+    val databasePatternMenuOptions = when {
+        databasePatternMenuAction == state.extensionSettingsMenuAction && state.extensionSettingsMenuOptions.isNotEmpty() ->
+            state.extensionSettingsMenuOptions
+        databasePatternMenuAction == state.extensionMenuAction && state.extensionMenuOptions.isNotEmpty() ->
+            state.extensionMenuOptions
+        state.extensionSettingsMenuOptions.isNotEmpty() -> state.extensionSettingsMenuOptions
+        else -> state.extensionMenuOptions
+    }
+    val databasePatternOptionGroups = if (databasePatternMenuAction != null) {
+        val grouped = linkedMapOf<String, Pair<String, String>>()
+        databasePatternMenuOptions.forEach { option ->
+            val action = resolveMenuOptionAction(option)
+            val label = option.label?.trim().orEmpty()
+            when {
+                action.startsWith("settings_proxmox_pattern_edit_") -> {
+                    val patternLabel = normalizeProxmoxPatternLabel(label.ifBlank {
+                        Uri.decode(action.removePrefix("settings_proxmox_pattern_edit_"))
+                    })
+                    if (patternLabel.isNotBlank()) {
+                        val current = grouped[patternLabel] ?: ("" to "")
+                        grouped[patternLabel] = action to current.second
+                    }
+                }
+                action.startsWith("settings_proxmox_pattern_delete_") -> {
+                    val patternLabel = normalizeProxmoxPatternLabel(label.ifBlank {
+                        Uri.decode(action.removePrefix("settings_proxmox_pattern_delete_"))
+                    })
+                    if (patternLabel.isNotBlank()) {
+                        val current = grouped[patternLabel] ?: ("" to "")
+                        grouped[patternLabel] = current.first to action
+                    }
+                }
+            }
+        }
+        grouped.mapNotNull { (label, actions) ->
+            val editAction = actions.first
+            val deleteAction = actions.second
+            if (editAction.isBlank() && deleteAction.isBlank()) {
+                null
+            } else {
+                DatabasePatternOptionGroup(
                     label = label,
                     editAction = editAction,
                     deleteAction = deleteAction
@@ -1562,12 +1627,19 @@ private fun MonitoringApp(
                                                         ?.takeIf { it.isNotBlank() }
                                                         ?: "subject"
                                                     proxmoxPatternValueInput = parts.getOrNull(3).orEmpty()
+                                                    patternDialogReturnAction =
+                                                        if (proxmoxPatternCategoryInput.equals("database", ignoreCase = true)) {
+                                                            "settings_patterns_db"
+                                                        } else {
+                                                            "settings_patterns_proxmox"
+                                                        }
                                                     showProxmoxPatternAddDialog = true
                                                 }
                                                 action.startsWith("settings_proxmox_pattern_edit_") -> {
                                                     proxmoxPatternEditAction = action
                                                     proxmoxPatternEditTypeInput = "subject"
                                                     proxmoxPatternEditValueInput = ""
+                                                    patternDialogReturnAction = "settings_patterns_proxmox"
                                                     showProxmoxPatternEditDialog = true
                                                 }
                                                 action.startsWith("settings_mail_pattern_add") -> {
@@ -2941,6 +3013,7 @@ private fun MonitoringApp(
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         IconButton(onClick = {
+                            patternDialogReturnAction = "settings_patterns_proxmox"
                             proxmoxPatternCategoryInput = "proxmox"
                             proxmoxPatternTypeInput = "subject"
                             proxmoxPatternValueInput = ""
@@ -3019,6 +3092,7 @@ private fun MonitoringApp(
                             val prefill = parseProxmoxPatternEditPrefill(selectedProxmoxPatternLabel)
                             proxmoxPatternEditTypeInput = prefill.patternType
                             proxmoxPatternEditValueInput = prefill.patternValue
+                            patternDialogReturnAction = "settings_patterns_proxmox"
                             showProxmoxPatternEditDialog = true
                             showProxmoxPatternActionsDialog = false
                         },
@@ -3049,7 +3123,15 @@ private fun MonitoringApp(
     if (showProxmoxPatternAddDialog && settingsSection != "extensions") {
         AlertDialog(
             onDismissRequest = { showProxmoxPatternAddDialog = false },
-            title = { Text("➕ Добавить паттерн Proxmox") },
+            title = {
+                Text(
+                    if (proxmoxPatternCategoryInput.equals("database", ignoreCase = true)) {
+                        "➕ Добавить паттерн БД"
+                    } else {
+                        "➕ Добавить паттерн Proxmox"
+                    }
+                )
+            },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
@@ -3080,7 +3162,7 @@ private fun MonitoringApp(
                             Uri.encode(proxmoxPatternTypeInput.trim()) + "|" +
                             Uri.encode(proxmoxPatternValueInput.trim())
                         onExtensionsSettingsAction(actionPayload)
-                        onExtensionsSettingsAction("settings_patterns_proxmox")
+                        onExtensionsSettingsAction(patternDialogReturnAction)
                         showProxmoxPatternAddDialog = false
                     },
                     enabled = proxmoxPatternCategoryInput.isNotBlank() &&
@@ -3125,7 +3207,7 @@ private fun MonitoringApp(
                             Uri.encode(proxmoxPatternEditTypeInput.trim()) + "|" +
                             Uri.encode(proxmoxPatternEditValueInput.trim())
                         onExtensionsSettingsAction(actionPayload)
-                        onExtensionsSettingsAction("settings_patterns_proxmox")
+                        onExtensionsSettingsAction(patternDialogReturnAction)
                         showProxmoxPatternEditDialog = false
                     },
                     enabled = proxmoxPatternEditAction.isNotBlank() &&
@@ -3158,6 +3240,15 @@ private fun MonitoringApp(
                         fontWeight = FontWeight.Bold
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        IconButton(onClick = {
+                            onExtensionsSettingsAction("settings_patterns_db")
+                            showDatabasePatternsDialog = true
+                        }) {
+                            Icon(
+                                imageVector = Icons.Filled.Settings,
+                                contentDescription = "Открыть паттерны бэкапов БД"
+                            )
+                        }
                         IconButton(onClick = {
                             dbEntryAddCategory = ""
                             dbEntryAddKeyInput = ""
@@ -3253,6 +3344,129 @@ private fun MonitoringApp(
                 }
             },
             confirmButton = {}
+        )
+    }
+
+    if (showDatabasePatternsDialog) {
+        AlertDialog(
+            onDismissRequest = { showDatabasePatternsDialog = false },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "🔍 Паттерны бэкапов БД",
+                        modifier = Modifier.weight(1f),
+                        fontWeight = FontWeight.Bold
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        IconButton(onClick = {
+                            patternDialogReturnAction = "settings_patterns_db"
+                            proxmoxPatternCategoryInput = "database"
+                            proxmoxPatternTypeInput = "subject"
+                            proxmoxPatternValueInput = ""
+                            showProxmoxPatternAddDialog = true
+                        }) {
+                            Icon(
+                                imageVector = Icons.Filled.Add,
+                                contentDescription = "Добавить паттерн бэкапа БД"
+                            )
+                        }
+                        IconButton(onClick = { showDatabasePatternsDialog = false }) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "Закрыть список паттернов бэкапов БД"
+                            )
+                        }
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (databasePatternMenuAction == null) {
+                        Text("Загружаем список паттернов бэкапов БД…")
+                    } else if (databasePatternOptionGroups.isEmpty()) {
+                        Text("Паттерны бэкапов БД пока не добавлены.")
+                    } else {
+                        databasePatternOptionGroups.forEach { pattern ->
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .clickable {
+                                        selectedDatabasePatternLabel = pattern.label
+                                        selectedDatabasePatternEditAction = pattern.editAction
+                                        selectedDatabasePatternDeleteAction = pattern.deleteAction
+                                        showDatabasePatternActionsDialog = true
+                                    },
+                                tonalElevation = 2.dp,
+                                shape = RoundedCornerShape(10.dp),
+                                color = MaterialTheme.colorScheme.secondaryContainer
+                            ) {
+                                Text(
+                                    text = pattern.label,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                                    maxLines = 3,
+                                    overflow = TextOverflow.Ellipsis,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    if (showDatabasePatternActionsDialog) {
+        AlertDialog(
+            onDismissRequest = { showDatabasePatternActionsDialog = false },
+            title = { Text("Паттерн: ${selectedDatabasePatternLabel.ifBlank { "без названия" }}") },
+            text = { Text("Выбери действие для паттерна.") },
+            confirmButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(
+                        onClick = {
+                            proxmoxPatternEditAction = selectedDatabasePatternEditAction
+                            val prefill = parseProxmoxPatternEditPrefill(selectedDatabasePatternLabel)
+                            proxmoxPatternEditTypeInput = prefill.patternType
+                            proxmoxPatternEditValueInput = prefill.patternValue
+                            patternDialogReturnAction = "settings_patterns_db"
+                            showProxmoxPatternEditDialog = true
+                            showDatabasePatternActionsDialog = false
+                        },
+                        enabled = selectedDatabasePatternEditAction.isNotBlank()
+                    ) {
+                        Text("Редактировать")
+                    }
+                    TextButton(
+                        onClick = {
+                            onExtensionsSettingsAction(selectedDatabasePatternDeleteAction)
+                            onExtensionsSettingsAction("settings_patterns_db")
+                            showDatabasePatternActionsDialog = false
+                        },
+                        enabled = selectedDatabasePatternDeleteAction.isNotBlank()
+                    ) {
+                        Text("Удалить")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatabasePatternActionsDialog = false }) {
+                    Text("Отмена")
+                }
+            }
         )
     }
 
