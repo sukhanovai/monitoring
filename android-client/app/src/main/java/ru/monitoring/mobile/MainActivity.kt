@@ -2320,7 +2320,7 @@ private fun MonitoringApp(
                                 val availabilityMarker = resolveAvailabilityMarker(availabilityStatus)
                                 val serverMessage = if (
                                     state.message.isNotBlank() &&
-                                    state.messageSource == if (isResourceCheckMode) "server_resources" else "server_availability" &&
+                                    state.messageSource == (if (isResourceCheckMode) "server_resources" else "server_availability") &&
                                     state.availabilityServerMessageTarget == serverTarget
                                 ) {
                                     state.message
