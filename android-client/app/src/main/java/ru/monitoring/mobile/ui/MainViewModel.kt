@@ -51,7 +51,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.48.22"
+    private val projectVersion = "8.48.23"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -202,6 +202,43 @@ class MainViewModel(
         return BackupTileSummary(
             ratioText = "$okHosts/${enabledOptions.size}",
             hasProblem = problemHosts > 0
+        )
+    }
+
+    private fun isDisabledDatabaseBackupOption(option: MenuOption): Boolean {
+        val label = option.label?.trim().orEmpty()
+        if (label.startsWith("⚪")) return true
+
+        val normalizedLabel = normalizeRussianText(label)
+        return normalizedLabel.contains("мониторинг отключ")
+    }
+
+    private fun buildDatabaseBackupTileSummary(response: ControlActionResult?): BackupTileSummary? {
+        if (response == null) return null
+
+        val options = resolveControlActionMenuOptions(response)
+            .filter { option ->
+                val action = option.action?.trim().orEmpty()
+                val callbackAction = option.callbackData?.trim().orEmpty()
+                val callbackActionCamel = option.callbackDataCamel?.trim().orEmpty()
+                listOf(action, callbackAction, callbackActionCamel).any { it.startsWith("db_detail_") }
+            }
+        if (options.isEmpty()) return buildBackupTileSummary(response)
+
+        val enabledOptions = options.filterNot { option -> isDisabledDatabaseBackupOption(option) }
+        if (enabledOptions.isEmpty()) {
+            return BackupTileSummary(
+                ratioText = "0/0",
+                hasProblem = false
+            )
+        }
+
+        val problemDatabases = enabledOptions.count { option -> isProblemBackupOption(option) }
+        val okDatabases = (enabledOptions.size - problemDatabases).coerceAtLeast(0)
+
+        return BackupTileSummary(
+            ratioText = "$okDatabases/${enabledOptions.size}",
+            hasProblem = problemDatabases > 0
         )
     }
 
@@ -696,7 +733,7 @@ class MainViewModel(
             val servers = result[7] as? ru.monitoring.mobile.api.ServersSettingsResponse
             val extensions = result[8] as? ru.monitoring.mobile.api.ExtensionsSettingsResponse
             val proxmoxBackupSummary = buildProxmoxBackupTileSummary(result[9] as? ControlActionResult)
-            val dbBackupSummary = buildBackupTileSummary(result[10] as? ControlActionResult)
+            val dbBackupSummary = buildDatabaseBackupTileSummary(result[10] as? ControlActionResult)
             val stockLoadSummary = buildBackupTileSummary(result[11] as? ControlActionResult)
             val supplierStockSummary = buildBackupTileSummary(result[12] as? ControlActionResult)
             val mailBackupResponse = result[13] as? ControlActionResult
