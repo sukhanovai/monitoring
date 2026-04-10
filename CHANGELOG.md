@@ -1,3 +1,17 @@
+## [8.50.29] - 2026-04-10
+
+### Fixed / Исправлено
+- EN: In Android app `Operational center → Mail tile → Mail server backups → Mail backup patterns`, fixed add/edit action flow by sending only the primary mail-pattern command from the dialog submit handlers, preventing immediate follow-up command override.
+- RU: В Android-приложении `Оперативный центр → плитка «Почта» → Бэкапы почтового сервера → Паттерны бэкапов почты` исправлен сценарий добавления/редактирования: из диалога теперь отправляется только целевая команда изменения паттерна без мгновенного перезапроса, который перебивал результат.
+
+### Added / Добавлено
+- EN: In Android app mail backup pattern creation dialog, added contextual helper text with examples for both modes (`Subject` and `Fragments`) to simplify new pattern input.
+- RU: В диалоге создания паттерна почтовых бэкапов добавлена контекстная подсказка с примерами для обоих режимов (`Тема письма` и `Фрагменты`) для упрощения заведения нового паттерна.
+
+### Changed / Изменено
+- EN: SemVer patch bump to `8.50.29`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.29` and `ANDROID_VERSION_CODE=378`; aligned prerelease links to `v8.50.29-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.29`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.29` и `ANDROID_VERSION_CODE=378`; prerelease-ссылки выровнены на `v8.50.29-develop`.
+
 ## [8.50.28] - 2026-04-09
 
 ### Fixed / Исправлено

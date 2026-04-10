@@ -1999,6 +1999,15 @@ private fun MonitoringApp(
                                                 label = { Text(if (mailPatternInputMode == "subject") "Тема письма" else "Фрагменты через ; или ,") },
                                                 modifier = Modifier.fillMaxWidth()
                                             )
+                                            Text(
+                                                text = if (mailPatternInputMode == "subject") {
+                                                    "Подсказка: вставь тему реального письма с успешным бэкапом — приложение само соберёт regex (например: Backup completed for mail.example.com 120GB)."
+                                                } else {
+                                                    "Подсказка: укажи 2–4 устойчивых фрагмента через ; или , (например: backup completed;mail.example.com;120GB)."
+                                                },
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
                                         }
                                     },
                                     confirmButton = {
@@ -2008,7 +2017,6 @@ private fun MonitoringApp(
                                                         Uri.encode(mailPatternInputMode) + "|" +
                                                         Uri.encode(mailPatternInputValue.trim())
                                                     onExtensionsSettingsAction(actionPayload)
-                                                    onExtensionsSettingsAction("settings_patterns_mail")
                                                     showMailPatternAddDialog = false
                                                 },
                                                 enabled = mailPatternInputValue.isNotBlank()
@@ -2042,7 +2050,6 @@ private fun MonitoringApp(
                                                     val actionPayload = mailPatternEditAction + "|" +
                                                         Uri.encode(mailPatternEditValueInput.trim())
                                                     onExtensionsSettingsAction(actionPayload)
-                                                    onExtensionsSettingsAction("settings_patterns_mail")
                                                     showMailPatternEditDialog = false
                                                 },
                                                 enabled = mailPatternEditAction.isNotBlank() &&
