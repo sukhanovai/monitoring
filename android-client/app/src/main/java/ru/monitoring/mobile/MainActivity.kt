@@ -712,6 +712,7 @@ private fun MonitoringApp(
     var selectedMailPatternLabel by rememberSaveable { mutableStateOf("") }
     var selectedMailPatternEditAction by rememberSaveable { mutableStateOf("") }
     var selectedMailPatternDeleteAction by rememberSaveable { mutableStateOf("") }
+    var returnToMailPatternsDialog by rememberSaveable { mutableStateOf(false) }
     var showDbCategoryAddDialog by rememberSaveable { mutableStateOf(false) }
     var dbCategoryInput by rememberSaveable { mutableStateOf("") }
     var showDbEntryAddDialog by rememberSaveable { mutableStateOf(false) }
@@ -1763,11 +1764,13 @@ private fun MonitoringApp(
                                                         ?.takeIf { it == "subject" || it == "fragments" }
                                                         ?: "subject"
                                                     mailPatternInputValue = parts.getOrNull(2).orEmpty()
+                                                    returnToMailPatternsDialog = false
                                                     showMailPatternAddDialog = true
                                                 }
                                                 action.startsWith("settings_mail_pattern_edit_") -> {
                                                     mailPatternEditAction = action
                                                     mailPatternEditValueInput = ""
+                                                    returnToMailPatternsDialog = false
                                                     showMailPatternEditDialog = true
                                                 }
                                                 action == "settings_zfs_add" -> {
@@ -2017,6 +2020,11 @@ private fun MonitoringApp(
                                                         Uri.encode(mailPatternInputMode) + "|" +
                                                         Uri.encode(mailPatternInputValue.trim())
                                                     onExtensionsSettingsAction(actionPayload)
+                                                    if (returnToMailPatternsDialog) {
+                                                        onExtensionsSettingsAction("settings_patterns_mail")
+                                                        showMailPatternsDialog = true
+                                                        returnToMailPatternsDialog = false
+                                                    }
                                                     showMailPatternAddDialog = false
                                                 },
                                                 enabled = mailPatternInputValue.isNotBlank()
@@ -2025,7 +2033,13 @@ private fun MonitoringApp(
                                         }
                                     },
                                     dismissButton = {
-                                        TextButton(onClick = { showMailPatternAddDialog = false }) {
+                                        TextButton(onClick = {
+                                            showMailPatternAddDialog = false
+                                            if (returnToMailPatternsDialog) {
+                                                showMailPatternsDialog = true
+                                                returnToMailPatternsDialog = false
+                                            }
+                                        }) {
                                             Text("Отмена")
                                         }
                                     }
@@ -2050,6 +2064,11 @@ private fun MonitoringApp(
                                                     val actionPayload = mailPatternEditAction + "|" +
                                                         Uri.encode(mailPatternEditValueInput.trim())
                                                     onExtensionsSettingsAction(actionPayload)
+                                                    if (returnToMailPatternsDialog) {
+                                                        onExtensionsSettingsAction("settings_patterns_mail")
+                                                        showMailPatternsDialog = true
+                                                        returnToMailPatternsDialog = false
+                                                    }
                                                     showMailPatternEditDialog = false
                                                 },
                                                 enabled = mailPatternEditAction.isNotBlank() &&
@@ -2059,7 +2078,13 @@ private fun MonitoringApp(
                                         }
                                     },
                                     dismissButton = {
-                                        TextButton(onClick = { showMailPatternEditDialog = false }) {
+                                        TextButton(onClick = {
+                                            showMailPatternEditDialog = false
+                                            if (returnToMailPatternsDialog) {
+                                                showMailPatternsDialog = true
+                                                returnToMailPatternsDialog = false
+                                            }
+                                        }) {
                                             Text("Отмена")
                                         }
                                     }
@@ -3476,6 +3501,8 @@ private fun MonitoringApp(
                         IconButton(onClick = {
                             mailPatternInputMode = "subject"
                             mailPatternInputValue = ""
+                            returnToMailPatternsDialog = true
+                            showMailPatternsDialog = false
                             showMailPatternAddDialog = true
                         }) {
                             Icon(
@@ -3554,6 +3581,8 @@ private fun MonitoringApp(
                         onClick = {
                             mailPatternEditAction = selectedMailPatternEditAction
                             mailPatternEditValueInput = ""
+                            returnToMailPatternsDialog = true
+                            showMailPatternsDialog = false
                             showMailPatternEditDialog = true
                             showMailPatternActionsDialog = false
                         },
