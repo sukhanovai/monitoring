@@ -1,16 +1,18 @@
-## [8.50.29] - 2026-04-10
+## [8.50.30] - 2026-04-10
 
 ### Fixed / Исправлено
 - EN: In Android app `Operational center → Mail tile → Mail server backups → Mail backup patterns`, fixed add/edit action flow by sending only the primary mail-pattern command from the dialog submit handlers, preventing immediate follow-up command override.
 - RU: В Android-приложении `Оперативный центр → плитка «Почта» → Бэкапы почтового сервера → Паттерны бэкапов почты` исправлен сценарий добавления/редактирования: из диалога теперь отправляется только целевая команда изменения паттерна без мгновенного перезапроса, который перебивал результат.
+- EN: Backend settings action parser now accepts payload actions that start with `settings_mail_pattern_add|...`, so Android one-step creation (subject/fragments) correctly saves the new mail backup pattern.
+- RU: Парсер backend-действий настроек теперь принимает payload-действия, начинающиеся с `settings_mail_pattern_add|...`, поэтому one-step добавление паттерна (по теме/фрагментам) из Android снова корректно сохраняет запись.
 
 ### Added / Добавлено
 - EN: In Android app mail backup pattern creation dialog, added contextual helper text with examples for both modes (`Subject` and `Fragments`) to simplify new pattern input.
 - RU: В диалоге создания паттерна почтовых бэкапов добавлена контекстная подсказка с примерами для обоих режимов (`Тема письма` и `Фрагменты`) для упрощения заведения нового паттерна.
 
 ### Changed / Изменено
-- EN: SemVer patch bump to `8.50.29`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.29` and `ANDROID_VERSION_CODE=378`; aligned prerelease links to `v8.50.29-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.29`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.29` и `ANDROID_VERSION_CODE=378`; prerelease-ссылки выровнены на `v8.50.29-develop`.
+- EN: SemVer patch bump to `8.50.30`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.30` and `ANDROID_VERSION_CODE=379`; aligned prerelease links to `v8.50.30-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.30`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.30` и `ANDROID_VERSION_CODE=379`; prerelease-ссылки выровнены на `v8.50.30-develop`.
 
 ## [8.50.28] - 2026-04-09
 
