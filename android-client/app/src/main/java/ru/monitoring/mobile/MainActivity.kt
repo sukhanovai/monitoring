@@ -202,6 +202,31 @@ private fun formatZfsMessageForDialog(message: String): String {
         .joinToString("\n")
 }
 
+private data class ZfsStatusCardItem(
+    val hostName: String,
+    val compactStatusLine: String,
+    val action: String,
+    val rawLabel: String,
+    val hasProblem: Boolean
+)
+
+private fun toZfsStatusCardItem(option: ru.monitoring.mobile.api.MenuOption): ZfsStatusCardItem? {
+    val rawLabel = option.label?.trim().orEmpty()
+    val action = resolveMenuOptionAction(option)
+    if (rawLabel.isBlank() || action.isBlank()) return null
+    if (!zfsStatusLineRegex.matches(rawLabel)) return null
+    val hostName = extractHostFromZfsStatusLabel(rawLabel)
+    if (hostName.isBlank()) return null
+    val compactLine = formatZfsOptionLabel(rawLabel)
+    return ZfsStatusCardItem(
+        hostName = hostName,
+        compactStatusLine = compactLine,
+        action = action,
+        rawLabel = rawLabel,
+        hasProblem = isProblemBackupLabel(compactLine)
+    )
+}
+
 private data class ZfsHostOptionGroup(
     val hostName: String,
     val editAction: String,
@@ -3373,47 +3398,79 @@ private fun MonitoringApp(
                             Text(zfsMessage, lineHeight = 16.sp)
                         }
                         if (zfsMenuOptions.isNotEmpty()) {
-                            zfsMenuOptions.forEach { option ->
+                            val statusCards = zfsMenuOptions.mapNotNull { option -> toZfsStatusCardItem(option) }
+                            val otherOptions = zfsMenuOptions.filterNot { option ->
+                                val label = option.label?.trim().orEmpty()
+                                val action = resolveMenuOptionAction(option)
+                                label.isNotBlank() && action.isNotBlank() && zfsStatusLineRegex.matches(label)
+                            }
+
+                            if (statusCards.isNotEmpty()) {
+                                FlowRow(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    maxItemsInEachRow = 2
+                                ) {
+                                    statusCards.forEach { card ->
+                                        ElevatedCard(
+                                            modifier = Modifier
+                                                .fillMaxWidth(0.48f)
+                                                .clip(RoundedCornerShape(12.dp))
+                                                .combinedClickable(
+                                                    onClick = {
+                                                        zfsDetailsHostName = card.hostName
+                                                        zfsStatusDetailsFallbackText = formatZfsMessageForDialog(card.rawLabel)
+                                                        onAction(card.action)
+                                                        showZfsHostDetailsDialog = true
+                                                    },
+                                                    onLongClick = {
+                                                        pendingZfsHostSettingsName = card.hostName
+                                                        onExtensionsSettingsAction("settings_zfs_list")
+                                                    }
+                                                ),
+                                            shape = RoundedCornerShape(12.dp),
+                                            colors = androidx.compose.material3.CardDefaults.elevatedCardColors(
+                                                containerColor = if (card.hasProblem) {
+                                                    MaterialTheme.colorScheme.errorContainer
+                                                } else {
+                                                    MaterialTheme.colorScheme.tertiaryContainer
+                                                }
+                                            )
+                                        ) {
+                                            Column(
+                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                                                verticalArrangement = Arrangement.spacedBy(2.dp)
+                                            ) {
+                                                Text(
+                                                    text = card.hostName,
+                                                    style = MaterialTheme.typography.labelMedium,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                                Text(
+                                                    text = card.compactStatusLine,
+                                                    style = MaterialTheme.typography.bodySmall.copy(lineHeight = 14.sp),
+                                                    maxLines = 2,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            otherOptions.forEach { option ->
                                 val targetAction = resolveMenuOptionAction(option)
                                 val rawLabel = option.label?.trim().orEmpty()
                                 val label = formatZfsOptionLabel(rawLabel)
                                 if (label.isNotBlank()) {
-                                    Surface(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clip(RoundedCornerShape(10.dp))
-                                            .combinedClickable(
-                                                enabled = targetAction.isNotBlank(),
-                                                onClick = {
-                                                    zfsDetailsHostName = extractHostFromZfsStatusLabel(rawLabel)
-                                                    zfsStatusDetailsFallbackText = formatZfsMessageForDialog(rawLabel)
-                                                    onAction(targetAction)
-                                                    showZfsHostDetailsDialog = true
-                                                },
-                                                onLongClick = {
-                                                    val hostName = extractHostFromZfsStatusLabel(rawLabel)
-                                                    if (hostName.isNotBlank()) {
-                                                        pendingZfsHostSettingsName = hostName
-                                                        onExtensionsSettingsAction("settings_zfs_list")
-                                                    }
-                                                }
-                                            ),
-                                        tonalElevation = 2.dp,
-                                        shape = RoundedCornerShape(10.dp),
-                                        color = if (isProblemBackupLabel(label)) {
-                                            MaterialTheme.colorScheme.errorContainer
-                                        } else {
-                                            MaterialTheme.colorScheme.tertiaryContainer
-                                        }
+                                    TextButton(
+                                        onClick = { onAction(targetAction) },
+                                        enabled = targetAction.isNotBlank(),
+                                        modifier = Modifier.fillMaxWidth()
                                     ) {
-                                        Text(
-                                            text = label,
-                                            style = MaterialTheme.typography.bodySmall.copy(lineHeight = 14.sp),
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                            softWrap = false,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                                        )
+                                        Text(label)
                                     }
                                 }
                             }
