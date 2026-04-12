@@ -811,6 +811,7 @@ private fun MonitoringApp(
     var showZfsHostAddDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsHostEditDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsStatusesDialog by rememberSaveable { mutableStateOf(false) }
+    var showZfsHostsSettingsDialog by rememberSaveable { mutableStateOf(false) }
     var zfsHostInput by rememberSaveable { mutableStateOf("") }
     var zfsHostEditAction by rememberSaveable { mutableStateOf("") }
     var zfsHostEditCurrentName by rememberSaveable { mutableStateOf("") }
@@ -3230,6 +3231,7 @@ private fun MonitoringApp(
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         IconButton(onClick = {
+                            showZfsHostsSettingsDialog = true
                             onExtensionsSettingsAction("settings_zfs_list")
                         }) {
                             Icon(
@@ -3302,6 +3304,80 @@ private fun MonitoringApp(
                             }
                         } else if (zfsMessage.isBlank()) {
                             Text("Статусы ZFS пока не получены.")
+                        }
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    if (showZfsHostsSettingsDialog) {
+        AlertDialog(
+            onDismissRequest = { showZfsHostsSettingsDialog = false },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "⚙️ Настройки хостов ZFS",
+                        modifier = Modifier.weight(1f),
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(onClick = { showZfsHostsSettingsDialog = false }) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Закрыть окно настроек хостов ZFS"
+                        )
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 460.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    val zfsSettingsOptions = if (state.extensionSettingsMenuAction == "settings_zfs_list") {
+                        state.extensionSettingsMenuOptions
+                    } else {
+                        emptyList()
+                    }
+
+                    if (state.isLoading && zfsSettingsOptions.isEmpty()) {
+                        Text("Загружаем настройки хостов ZFS…")
+                    } else if (zfsSettingsOptions.isEmpty()) {
+                        Text("Настройки хостов ZFS пока недоступны.")
+                    } else {
+                        zfsSettingsOptions.forEach { option ->
+                            val targetAction = resolveMenuOptionAction(option)
+                            val label = option.label?.trim().orEmpty()
+                            if (label.isBlank() || targetAction.isBlank()) return@forEach
+                            Button(
+                                onClick = {
+                                    when {
+                                        targetAction == "settings_zfs_add" -> {
+                                            zfsHostInput = ""
+                                            showZfsHostAddDialog = true
+                                        }
+                                        targetAction.startsWith("settings_zfs_edit_name_") -> {
+                                            val raw = targetAction.removePrefix("settings_zfs_edit_name_")
+                                            zfsHostEditAction = "settings_zfs_edit_name_$raw"
+                                            zfsHostEditCurrentName = Uri.decode(raw)
+                                            zfsHostEditNewNameInput = zfsHostEditCurrentName
+                                            showZfsHostEditDialog = zfsHostEditCurrentName.isNotBlank()
+                                        }
+                                        else -> onExtensionsSettingsAction(targetAction)
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(label)
+                            }
                         }
                     }
                 }
