@@ -1,3 +1,13 @@
+## [8.50.51] - 2026-04-12
+
+### Changed / Изменено
+- EN: In Android app `Operational center → ZFS tile → gear`, redesigned the ZFS hosts list into host cards; tapping a host card now opens a dedicated overlay with host actions (rename, enable/disable, delete) instead of showing all host controls inline.
+- RU: В Android-приложении в `Оперативный центр → плашка ZFS → шестерёнка` список ZFS-хостов переделан в карточки хостов; по тапу на карточку теперь открывается отдельное окно-оверлей с действиями по хосту (переименовать, включить/выключить, удалить) вместо общего линейного списка кнопок.
+- EN: Added a second gear action in the ZFS statuses dialog to open `ZFS patterns` settings in a dedicated overlay window directly from the same screen.
+- RU: В диалог статусов ZFS добавлена отдельная шестерёнка для открытия настроек `Паттернов ZFS` в отдельном окне-оверлее прямо с этого экрана.
+- EN: SemVer patch bump to `8.50.51`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.51` and `ANDROID_VERSION_CODE=400`; aligned prerelease links to `v8.50.51-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.51`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.51` и `ANDROID_VERSION_CODE=400`; prerelease-ссылки выровнены на `v8.50.51-develop`.
+
 ## [8.50.50] - 2026-04-12
 
 ### Changed / Изменено

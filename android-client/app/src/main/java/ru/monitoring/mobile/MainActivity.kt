@@ -196,6 +196,49 @@ private fun formatZfsMessageForDialog(message: String): String {
         .joinToString("\n")
 }
 
+private data class ZfsHostOptionGroup(
+    val hostName: String,
+    val editAction: String,
+    val deleteAction: String,
+    val toggleAction: String,
+    val toggleLabel: String
+)
+
+private fun extractZfsHostOptionGroups(options: List<Pair<String, String>>): List<ZfsHostOptionGroup> {
+    val groups = mutableListOf<ZfsHostOptionGroup>()
+    var index = 0
+    while (index < options.size) {
+        val (label, action) = options[index]
+        if (!label.startsWith("✏️ ") || !action.startsWith("settings_zfs_edit_name_")) {
+            index += 1
+            continue
+        }
+        val hostName = label.removePrefix("✏️ ").trim()
+        val deleteOption = options.getOrNull(index + 1)
+        val toggleOption = options.getOrNull(index + 2)
+        val hasDelete = deleteOption != null &&
+            deleteOption.first.startsWith("🗑️ ") &&
+            deleteOption.first.removePrefix("🗑️ ").trim() == hostName &&
+            deleteOption.second.startsWith("settings_zfs_delete_")
+        val hasToggle = toggleOption != null &&
+            (toggleOption.first.startsWith("⛔️ ") || toggleOption.first.startsWith("✅ ")) &&
+            toggleOption.second.startsWith("settings_zfs_toggle_")
+        if (hostName.isNotBlank() && hasDelete && hasToggle) {
+            groups += ZfsHostOptionGroup(
+                hostName = hostName,
+                editAction = action,
+                deleteAction = deleteOption.second,
+                toggleAction = toggleOption.second,
+                toggleLabel = toggleOption.first
+            )
+            index += 3
+            continue
+        }
+        index += 1
+    }
+    return groups
+}
+
 private fun isDatabaseMonitorDisabled(label: String, action: String): Boolean {
     if (!action.startsWith("db_detail_")) return false
     val normalizedLabel = label.lowercase()
@@ -821,10 +864,17 @@ private fun MonitoringApp(
     var showZfsHostEditDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsStatusesDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsHostsSettingsDialog by rememberSaveable { mutableStateOf(false) }
+    var showZfsHostActionsDialog by rememberSaveable { mutableStateOf(false) }
+    var showZfsPatternsDialog by rememberSaveable { mutableStateOf(false) }
     var zfsHostInput by rememberSaveable { mutableStateOf("") }
     var zfsHostEditAction by rememberSaveable { mutableStateOf("") }
     var zfsHostEditCurrentName by rememberSaveable { mutableStateOf("") }
     var zfsHostEditNewNameInput by rememberSaveable { mutableStateOf("") }
+    var zfsSelectedHostName by rememberSaveable { mutableStateOf("") }
+    var zfsSelectedHostEditAction by rememberSaveable { mutableStateOf("") }
+    var zfsSelectedHostDeleteAction by rememberSaveable { mutableStateOf("") }
+    var zfsSelectedHostToggleAction by rememberSaveable { mutableStateOf("") }
+    var zfsSelectedHostToggleLabel by rememberSaveable { mutableStateOf("") }
     var showResourceThresholdDialog by rememberSaveable { mutableStateOf(false) }
     var resourceThresholdAction by rememberSaveable { mutableStateOf("") }
     var resourceThresholdLabel by rememberSaveable { mutableStateOf("") }
@@ -3248,6 +3298,15 @@ private fun MonitoringApp(
                                 contentDescription = "Открыть настройки хостов ZFS"
                             )
                         }
+                        IconButton(onClick = {
+                            showZfsPatternsDialog = true
+                            onExtensionsSettingsAction("settings_patterns_zfs")
+                        }) {
+                            Icon(
+                                imageVector = Icons.Filled.Settings,
+                                contentDescription = "Открыть настройки паттернов ZFS"
+                            )
+                        }
                         IconButton(onClick = { showZfsStatusesDialog = false }) {
                             Icon(
                                 imageVector = Icons.Filled.Close,
@@ -3365,30 +3424,246 @@ private fun MonitoringApp(
                     } else if (zfsSettingsOptions.isEmpty()) {
                         Text("Настройки хостов ZFS пока недоступны.")
                     } else {
-                        zfsSettingsOptions.forEach { option ->
-                            val targetAction = resolveMenuOptionAction(option)
-                            val label = option.label?.trim().orEmpty()
-                            if (label.isBlank() || targetAction.isBlank()) return@forEach
+                        val zfsMenuPairs = zfsSettingsOptions
+                            .mapNotNull { option ->
+                                val action = resolveMenuOptionAction(option)
+                                val label = option.label?.trim().orEmpty()
+                                if (label.isBlank() || action.isBlank()) null else label to action
+                            }
+                        val zfsHostGroups = extractZfsHostOptionGroups(zfsMenuPairs)
+                        val hostActions = zfsHostGroups.flatMap { group ->
+                            listOf(group.editAction, group.deleteAction, group.toggleAction)
+                        }.toSet()
+                        val commonActions = zfsMenuPairs.filterNot { (_, action) ->
+                            hostActions.contains(action)
+                        }
+
+                        if (zfsHostGroups.isEmpty()) {
+                            Text("Список хостов пуст.")
+                        } else {
+                            Text(
+                                text = "Хосты",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            zfsHostGroups.forEach { hostGroup ->
+                                ElevatedCard(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .clickable {
+                                            zfsSelectedHostName = hostGroup.hostName
+                                            zfsSelectedHostEditAction = hostGroup.editAction
+                                            zfsSelectedHostDeleteAction = hostGroup.deleteAction
+                                            zfsSelectedHostToggleAction = hostGroup.toggleAction
+                                            zfsSelectedHostToggleLabel = hostGroup.toggleLabel
+                                            showZfsHostActionsDialog = true
+                                        }
+                                ) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                                    ) {
+                                        Text(
+                                            text = hostGroup.hostName,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        Text(
+                                            text = hostGroup.toggleLabel,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = if (hostGroup.toggleLabel.startsWith("✅")) {
+                                                MaterialTheme.colorScheme.primary
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurfaceVariant
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        commonActions.forEach { (label, action) ->
                             Button(
                                 onClick = {
-                                    when {
-                                        targetAction == "settings_zfs_add" -> {
-                                            zfsHostInput = ""
-                                            showZfsHostAddDialog = true
-                                        }
-                                        targetAction.startsWith("settings_zfs_edit_name_") -> {
-                                            val raw = targetAction.removePrefix("settings_zfs_edit_name_")
-                                            zfsHostEditAction = "settings_zfs_edit_name_$raw"
-                                            zfsHostEditCurrentName = Uri.decode(raw)
-                                            zfsHostEditNewNameInput = zfsHostEditCurrentName
-                                            showZfsHostEditDialog = zfsHostEditCurrentName.isNotBlank()
-                                        }
-                                        else -> onExtensionsSettingsAction(targetAction)
+                                    if (action == "settings_zfs_add") {
+                                        zfsHostInput = ""
+                                        showZfsHostAddDialog = true
+                                    } else {
+                                        onExtensionsSettingsAction(action)
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(label)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    if (showZfsHostActionsDialog) {
+        AlertDialog(
+            onDismissRequest = { showZfsHostActionsDialog = false },
+            title = { Text("⚙️ ${zfsSelectedHostName.ifBlank { "Хост ZFS" }}") },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (zfsSelectedHostToggleLabel.isNotBlank()) {
+                        Text(
+                            text = zfsSelectedHostToggleLabel,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Button(
+                        onClick = {
+                            val action = zfsSelectedHostEditAction
+                            if (action.startsWith("settings_zfs_edit_name_")) {
+                                val raw = action.removePrefix("settings_zfs_edit_name_")
+                                zfsHostEditAction = "settings_zfs_edit_name_$raw"
+                                zfsHostEditCurrentName = Uri.decode(raw)
+                                zfsHostEditNewNameInput = zfsHostEditCurrentName
+                                showZfsHostEditDialog = zfsHostEditCurrentName.isNotBlank()
+                            }
+                            showZfsHostActionsDialog = false
+                        },
+                        enabled = zfsSelectedHostEditAction.isNotBlank(),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Filled.Edit, contentDescription = null)
+                        Text("Переименовать", modifier = Modifier.padding(start = 6.dp))
+                    }
+                    Button(
+                        onClick = {
+                            onExtensionsSettingsAction(zfsSelectedHostToggleAction)
+                            onExtensionsSettingsAction("settings_zfs_list")
+                            showZfsHostActionsDialog = false
+                        },
+                        enabled = zfsSelectedHostToggleAction.isNotBlank(),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Filled.PowerSettingsNew, contentDescription = null)
+                        Text(
+                            zfsSelectedHostToggleLabel.ifBlank { "Переключить" },
+                            modifier = Modifier.padding(start = 6.dp)
+                        )
+                    }
+                    Button(
+                        onClick = {
+                            onExtensionsSettingsAction(zfsSelectedHostDeleteAction)
+                            onExtensionsSettingsAction("settings_zfs_list")
+                            showZfsHostActionsDialog = false
+                        },
+                        enabled = zfsSelectedHostDeleteAction.isNotBlank(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Filled.Delete, contentDescription = null)
+                        Text("Удалить", modifier = Modifier.padding(start = 6.dp))
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showZfsHostActionsDialog = false }) {
+                    Text("Закрыть")
+                }
+            }
+        )
+    }
+
+    if (showZfsPatternsDialog) {
+        AlertDialog(
+            onDismissRequest = { showZfsPatternsDialog = false },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "🔍 Паттерны ZFS",
+                        modifier = Modifier.weight(1f),
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(onClick = { showZfsPatternsDialog = false }) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Закрыть окно паттернов ZFS"
+                        )
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 460.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    val zfsPatternOptions = if (state.extensionSettingsMenuAction == "settings_patterns_zfs") {
+                        state.extensionSettingsMenuOptions
+                    } else {
+                        emptyList()
+                    }
+                    val zfsPatternMessage = if (state.extensionSettingsMenuAction == "settings_patterns_zfs") {
+                        state.message.trim()
+                    } else {
+                        ""
+                    }
+
+                    if (state.isLoading && zfsPatternOptions.isEmpty() && zfsPatternMessage.isBlank()) {
+                        Text("Загружаем паттерны ZFS…")
+                    } else {
+                        if (zfsPatternMessage.isNotBlank()) {
+                            Text(zfsPatternMessage, lineHeight = 16.sp)
+                        }
+                        if (zfsPatternOptions.isEmpty()) {
+                            Text("Паттерны ZFS пока недоступны.")
+                        } else {
+                            zfsPatternOptions.forEach { option ->
+                                val targetAction = resolveMenuOptionAction(option)
+                                val label = option.label?.trim().orEmpty()
+                                if (label.isBlank() || targetAction.isBlank()) return@forEach
+                                Button(
+                                    onClick = {
+                                        when {
+                                            targetAction.startsWith("settings_proxmox_pattern_add") -> {
+                                                val parts = targetAction.split("|")
+                                                proxmoxPatternCategoryInput = parts.getOrNull(1)
+                                                    ?.takeIf { it.isNotBlank() }
+                                                    ?: "zfs"
+                                                proxmoxPatternTypeInput = parts.getOrNull(2)
+                                                    ?.takeIf { it.isNotBlank() }
+                                                    ?: "subject"
+                                                proxmoxPatternValueInput = parts.getOrNull(3).orEmpty()
+                                                patternDialogReturnAction = "settings_patterns_zfs"
+                                                showProxmoxPatternAddDialog = true
+                                            }
+                                            targetAction.startsWith("settings_proxmox_pattern_edit_") -> {
+                                                proxmoxPatternEditAction = targetAction
+                                                proxmoxPatternEditTypeInput = "subject"
+                                                proxmoxPatternEditValueInput = ""
+                                                patternDialogReturnAction = "settings_patterns_zfs"
+                                                showProxmoxPatternEditDialog = true
+                                            }
+                                            else -> onExtensionsSettingsAction(targetAction)
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(label)
+                                }
                             }
                         }
                     }
