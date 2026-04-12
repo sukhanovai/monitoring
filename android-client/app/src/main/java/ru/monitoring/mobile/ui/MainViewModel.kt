@@ -51,7 +51,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.50.43"
+    private val projectVersion = "8.50.44"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -249,6 +249,15 @@ class MainViewModel(
     private val zfsSummaryRegex = Regex(
         """(?i)(серверов|пулов)\s*:\s*\d+\s*\(\s*🟢?\s*(\d+)\s*/\s*🔴?\s*(\d+)\s*\)"""
     )
+    private val zfsStatusLineRegex = Regex("""^•\s*(.+?):\s*([A-Za-z_]+)\s*\((.+)\)$""")
+    private val zfsProblemStates = setOf(
+        "DEGRADED",
+        "FAULTED",
+        "OFFLINE",
+        "REMOVED",
+        "UNAVAIL",
+        "SUSPENDED"
+    )
 
     private fun normalizeRussianText(value: String): String {
         return value.lowercase().replace('ё', 'е')
@@ -289,6 +298,23 @@ class MainViewModel(
                     hasProblem = problems > 0 || ok < total
                 )
             }
+        }
+
+        val zfsStatusLines = message.lineSequence()
+            .map { line -> line.trim() }
+            .mapNotNull { line -> zfsStatusLineRegex.matchEntire(line) }
+            .toList()
+        if (zfsStatusLines.isNotEmpty()) {
+            val total = zfsStatusLines.size
+            val problems = zfsStatusLines.count { match ->
+                val state = match.groupValues.getOrNull(2)?.trim().orEmpty().uppercase()
+                zfsProblemStates.contains(state)
+            }
+            val ok = (total - problems).coerceAtLeast(0)
+            return BackupTileSummary(
+                ratioText = "$ok/$total",
+                hasProblem = problems > 0
+            )
         }
 
         val okFromMessage = extractSummaryValue(message, "Без проблем")

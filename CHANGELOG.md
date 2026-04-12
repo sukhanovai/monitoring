@@ -1,3 +1,13 @@
+## [8.50.44] - 2026-04-12
+
+### Fixed / Исправлено
+- EN: In Android app `Operational center → ZFS tile`, fixed false `OK` state when backend returns raw per-pool statuses (`• pool: STATE (timestamp)`): the tile summary now parses such lines and correctly marks non-`ONLINE` pools as problems.
+- RU: В Android-приложении в `Оперативный центр → плашка ZFS` исправлен ложный статус `ОК`, когда backend возвращает «сырые» статусы по пулам (`• pool: STATE (timestamp)`): сводка плашки теперь парсит такие строки и корректно помечает не-`ONLINE` пулы как проблему.
+
+### Changed / Изменено
+- EN: SemVer patch bump to `8.50.44`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.44` and `ANDROID_VERSION_CODE=393`; aligned prerelease links to `v8.50.44-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.44`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.44` и `ANDROID_VERSION_CODE=393`; prerelease-ссылки выровнены на `v8.50.44-develop`.
+
 ## [8.50.43] - 2026-04-12
 
 ### Changed / Изменено
