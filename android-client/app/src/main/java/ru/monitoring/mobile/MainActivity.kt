@@ -27,8 +27,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -204,7 +206,8 @@ private fun formatZfsMessageForDialog(message: String): String {
 
 private data class ZfsStatusCardItem(
     val hostName: String,
-    val statusValue: String,
+    val statusLabel: String,
+    val compactTimestamp: String,
     val action: String,
     val rawLabel: String,
     val hasProblem: Boolean
@@ -220,19 +223,10 @@ private fun toZfsStatusCardItem(option: ru.monitoring.mobile.api.MenuOption): Zf
     val state = match.groupValues.getOrNull(2)?.trim().orEmpty()
     val timestamp = match.groupValues.getOrNull(3)?.trim().orEmpty()
     if (hostName.isBlank() || state.isBlank()) return null
-    val readableState = zfsStateLabel(state)
-    val compactTimestamp = compactZfsTimestamp(timestamp)
-    val statusValue = buildString {
-        append(if (state.equals("ONLINE", ignoreCase = true)) "✅ " else "⚠️ ")
-        append(readableState)
-        if (compactTimestamp.isNotBlank()) {
-            append(' ')
-            append(compactTimestamp)
-        }
-    }.trim()
     return ZfsStatusCardItem(
         hostName = hostName,
-        statusValue = statusValue,
+        statusLabel = zfsStateLabel(state),
+        compactTimestamp = compactZfsTimestamp(timestamp),
         action = action,
         rawLabel = rawLabel,
         hasProblem = !state.equals("ONLINE", ignoreCase = true)
@@ -628,6 +622,76 @@ private fun OpsMetricChip(
                     )
                 }
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun ZfsStatusTile(
+    card: ZfsStatusCardItem,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
+) {
+    val containerColor = if (card.hasProblem) {
+        MaterialTheme.colorScheme.errorContainer
+    } else {
+        MaterialTheme.colorScheme.tertiaryContainer
+    }
+    val contentColor = if (card.hasProblem) {
+        MaterialTheme.colorScheme.onErrorContainer
+    } else {
+        MaterialTheme.colorScheme.onTertiaryContainer
+    }
+    val dotColor = if (card.hasProblem) Color(0xFFD93025) else Color(0xFF7BC043)
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
+        tonalElevation = 2.dp,
+        shape = RoundedCornerShape(10.dp),
+        color = containerColor
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Spacer(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .clip(CircleShape)
+                        .background(dotColor)
+                )
+                Text(
+                    text = card.hostName,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = contentColor
+                )
+            }
+            Text(
+                text = buildString {
+                    append(card.statusLabel)
+                    if (card.compactTimestamp.isNotBlank()) {
+                        append(" • ")
+                        append(card.compactTimestamp)
+                    }
+                },
+                style = MaterialTheme.typography.labelSmall,
+                color = contentColor.copy(alpha = 0.85f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
@@ -3509,10 +3573,8 @@ private fun MonitoringApp(
                                 ) {
                                     statusCards.forEach { card ->
                                         Box(modifier = Modifier.fillMaxWidth(0.48f)) {
-                                            OpsMetricChip(
-                                                label = card.hostName,
-                                                value = card.statusValue,
-                                                hasProblem = card.hasProblem,
+                                            ZfsStatusTile(
+                                                card = card,
                                                 onClick = {
                                                     zfsDetailsHostName = card.hostName
                                                     zfsStatusDetailsFallbackText = formatZfsMessageForDialog(card.rawLabel)

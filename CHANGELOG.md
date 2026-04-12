@@ -1,12 +1,10 @@
-## [8.50.63] - 2026-04-12
+## [8.50.64] - 2026-04-12
 
 ### Changed / Изменено
-- EN: In Android app `Operational center`, removed the settings gear from the `Resources` tile and restored tile appearance to the state before embedding the gear into the tile itself.
-- RU: В Android-приложении в `Оперативном центре` убрана шестерёнка с плашки `Ресурсы`, а внешний вид плашек возвращён к состоянию до встраивания этой кнопки в саму плашку.
-- EN: Added the resources settings gear to the server resources dialog opened from the `Resources` tile tap (`Operational center → Resources → point-check dialog`).
-- RU: Шестерёнка настроек ресурсов перенесена в окно, которое открывается по тапу на плашке `Ресурсы` (`Оперативный центр → Ресурсы → окно точечной проверки`).
-- EN: SemVer patch bump to `8.50.63`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.63` and `ANDROID_VERSION_CODE=412`; aligned prerelease links to `v8.50.63-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.63`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.63` и `ANDROID_VERSION_CODE=412`; prerelease-ссылки выровнены на `v8.50.63-develop`.
+- EN: In Android app `Operational center → ZFS statuses`, switched host state rendering from plain text lines to compact status tiles in the same visual style as Proxmox backup cards (status dot + host + brief state/time).
+- RU: В Android-приложении в `Оперативный центр → статусы ZFS` отображение состояний хостов переведено с текстовых строк на компактные плашки в стиле карточек бэкапов Proxmox (индикатор статуса + хост + краткий state/time).
+- EN: SemVer patch bump to `8.50.64`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.64` and `ANDROID_VERSION_CODE=413`; aligned prerelease links to `v8.50.64-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.64`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.64` и `ANDROID_VERSION_CODE=413`; prerelease-ссылки выровнены на `v8.50.64-develop`.
 
 ## [8.50.60] - 2026-04-12
 
