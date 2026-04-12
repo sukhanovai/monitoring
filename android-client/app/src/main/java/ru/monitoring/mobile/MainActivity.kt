@@ -192,6 +192,19 @@ private fun extractMailPatternIndexFromLabel(rawLabel: String): Int? {
         ?.toIntOrNull()
 }
 
+private fun parseMailPatternEditValue(rawLabel: String): String {
+    val normalizedLabel = normalizeProxmoxPatternLabel(rawLabel)
+        .replaceFirst(Regex("""^\d+\.\s*"""), "")
+        .trim()
+    return when {
+        normalizedLabel.startsWith("mail:", ignoreCase = true) ->
+            normalizedLabel.substringAfter("mail:", "").trim()
+        ':' in normalizedLabel ->
+            normalizedLabel.substringAfter(':', "").trim()
+        else -> normalizedLabel
+    }
+}
+
 private fun normalizeProxmoxPatternLabel(rawLabel: String): String {
     return rawLabel
         .replaceFirst(Regex("""^[✏️🗑️]+\s*"""), "")
@@ -3580,7 +3593,7 @@ private fun MonitoringApp(
                     TextButton(
                         onClick = {
                             mailPatternEditAction = selectedMailPatternEditAction
-                            mailPatternEditValueInput = ""
+                            mailPatternEditValueInput = parseMailPatternEditValue(selectedMailPatternLabel)
                             returnToMailPatternsDialog = true
                             showMailPatternsDialog = false
                             showMailPatternEditDialog = true
@@ -3680,12 +3693,19 @@ private fun MonitoringApp(
             onDismissRequest = { showMailPatternEditDialog = false },
             title = { Text("✏️ Редактировать паттерн почты") },
             text = {
-                OutlinedTextField(
-                    value = mailPatternEditValueInput,
-                    onValueChange = { mailPatternEditValueInput = it },
-                    label = { Text("Новый regex паттерн") },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = mailPatternEditValueInput,
+                        onValueChange = { mailPatternEditValueInput = it },
+                        label = { Text("Новый regex паттерн") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Text(
+                        text = "Подсказка: меняй только текст паттерна, без номера и префикса типа (например, было: 1. subject: backup completed → редактируй только backup completed).",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             },
             confirmButton = {
                 TextButton(
