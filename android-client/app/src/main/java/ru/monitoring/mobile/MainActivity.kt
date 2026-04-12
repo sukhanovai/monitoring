@@ -12,6 +12,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +25,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -586,13 +589,16 @@ private fun OpsMetricChip(
     label: String,
     value: String,
     hasProblem: Boolean = false,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
     onLongClick: (() -> Unit)? = null,
     onSettingsClick: (() -> Unit)? = null
 ) {
     val valueColor = if (hasProblem) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
     Surface(
-        modifier = Modifier
+        modifier = modifier
+            .widthIn(min = 72.dp)
+            .wrapContentWidth()
             .clip(RoundedCornerShape(14.dp))
             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
             .combinedClickable(
@@ -607,7 +613,7 @@ private fun OpsMetricChip(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            Column {
                 Text(value, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = valueColor)
                 Text(label, style = MaterialTheme.typography.labelSmall)
             }
@@ -1681,6 +1687,7 @@ private fun MonitoringApp(
                                     label = tile.label,
                                     value = tile.value,
                                     hasProblem = tile.hasProblem,
+                                    modifier = Modifier.animateContentSize(),
                                     onClick = tile.onClick,
                                     onLongClick = tile.onLongClick,
                                     onSettingsClick = tile.onSettingsClick
