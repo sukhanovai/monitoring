@@ -204,7 +204,7 @@ private fun formatZfsMessageForDialog(message: String): String {
 
 private data class ZfsStatusCardItem(
     val hostName: String,
-    val compactStatusLine: String,
+    val statusValue: String,
     val action: String,
     val rawLabel: String,
     val hasProblem: Boolean
@@ -215,15 +215,27 @@ private fun toZfsStatusCardItem(option: ru.monitoring.mobile.api.MenuOption): Zf
     val action = resolveMenuOptionAction(option)
     if (rawLabel.isBlank() || action.isBlank()) return null
     if (!zfsStatusLineRegex.matches(rawLabel)) return null
-    val hostName = extractHostFromZfsStatusLabel(rawLabel)
-    if (hostName.isBlank()) return null
-    val compactLine = formatZfsOptionLabel(rawLabel)
+    val match = zfsStatusLineRegex.matchEntire(rawLabel) ?: return null
+    val hostName = match.groupValues.getOrNull(1)?.trim().orEmpty()
+    val state = match.groupValues.getOrNull(2)?.trim().orEmpty()
+    val timestamp = match.groupValues.getOrNull(3)?.trim().orEmpty()
+    if (hostName.isBlank() || state.isBlank()) return null
+    val readableState = zfsStateLabel(state)
+    val compactTimestamp = compactZfsTimestamp(timestamp)
+    val statusValue = buildString {
+        append(if (state.equals("ONLINE", ignoreCase = true)) "✅ " else "⚠️ ")
+        append(readableState)
+        if (compactTimestamp.isNotBlank()) {
+            append(' ')
+            append(compactTimestamp)
+        }
+    }.trim()
     return ZfsStatusCardItem(
         hostName = hostName,
-        compactStatusLine = compactLine,
+        statusValue = statusValue,
         action = action,
         rawLabel = rawLabel,
-        hasProblem = isProblemBackupLabel(compactLine)
+        hasProblem = !state.equals("ONLINE", ignoreCase = true)
     )
 }
 
@@ -3489,48 +3501,22 @@ private fun MonitoringApp(
                                     maxItemsInEachRow = 2
                                 ) {
                                     statusCards.forEach { card ->
-                                        ElevatedCard(
-                                            modifier = Modifier
-                                                .fillMaxWidth(0.48f)
-                                                .clip(RoundedCornerShape(12.dp))
-                                                .combinedClickable(
-                                                    onClick = {
-                                                        zfsDetailsHostName = card.hostName
-                                                        zfsStatusDetailsFallbackText = formatZfsMessageForDialog(card.rawLabel)
-                                                        onAction(card.action)
-                                                        showZfsHostDetailsDialog = true
-                                                    },
-                                                    onLongClick = {
-                                                        pendingZfsHostSettingsName = card.hostName
-                                                        onExtensionsSettingsAction("settings_zfs_list")
-                                                    }
-                                                ),
-                                            shape = RoundedCornerShape(12.dp),
-                                            colors = androidx.compose.material3.CardDefaults.elevatedCardColors(
-                                                containerColor = if (card.hasProblem) {
-                                                    MaterialTheme.colorScheme.errorContainer
-                                                } else {
-                                                    MaterialTheme.colorScheme.tertiaryContainer
+                                        Box(modifier = Modifier.fillMaxWidth(0.48f)) {
+                                            OpsMetricChip(
+                                                label = card.hostName,
+                                                value = card.statusValue,
+                                                hasProblem = card.hasProblem,
+                                                onClick = {
+                                                    zfsDetailsHostName = card.hostName
+                                                    zfsStatusDetailsFallbackText = formatZfsMessageForDialog(card.rawLabel)
+                                                    onAction(card.action)
+                                                    showZfsHostDetailsDialog = true
+                                                },
+                                                onLongClick = {
+                                                    pendingZfsHostSettingsName = card.hostName
+                                                    onExtensionsSettingsAction("settings_zfs_list")
                                                 }
                                             )
-                                        ) {
-                                            Column(
-                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-                                                verticalArrangement = Arrangement.spacedBy(2.dp)
-                                            ) {
-                                                Text(
-                                                    text = card.hostName,
-                                                    style = MaterialTheme.typography.labelMedium,
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis
-                                                )
-                                                Text(
-                                                    text = card.compactStatusLine,
-                                                    style = MaterialTheme.typography.bodySmall.copy(lineHeight = 14.sp),
-                                                    maxLines = 2,
-                                                    overflow = TextOverflow.Ellipsis
-                                                )
-                                            }
                                         }
                                     }
                                 }
