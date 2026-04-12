@@ -1,12 +1,12 @@
-## [8.50.61] - 2026-04-12
+## [8.50.62] - 2026-04-12
 
 ### Changed / Изменено
-- EN: In Android app `Operational center → Resources tile`, added a dedicated gear icon on the tile.
-- RU: В Android-приложении в `Оперативный центр → плашка «ресурсы»` добавлена отдельная шестерёнка на самой плашке.
-- EN: Tapping the gear now opens an overlay `Resource check parameters` dialog with quick actions for CPU/RAM/DISK warning and critical thresholds, then opens threshold input.
-- RU: По нажатию на шестерёнку теперь открывается наложением окно `Параметры проверки ресурсов` с быстрыми действиями для warning/critical порогов CPU/RAM/DISK и последующим вводом значения порога.
-- EN: SemVer patch bump to `8.50.61`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.61` and `ANDROID_VERSION_CODE=410`; aligned prerelease links to `v8.50.61-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.61`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.61` и `ANDROID_VERSION_CODE=410`; prerelease-ссылки выровнены на `v8.50.61-develop`.
+- EN: In Android app `Operational center → ZFS tile → tap`, switched ZFS statuses rendering to operational-center style status chips for compact visual scan.
+- RU: В Android-приложении в `Оперативный центр → плашка ZFS → тап` переведено отображение статусов ZFS на формат плашек в стиле оперативного центра.
+- EN: Each ZFS status chip now shows host name as the chip label and compact state/time as the value (`✅/⚠️ + state + timestamp`), while preserving short tap for details and long tap for host settings.
+- RU: Каждая плашка статуса ZFS теперь показывает имя хоста в заголовке и компактное состояние/время в значении (`✅/⚠️ + статус + время`), при этом сохранены короткий тап для деталей и долгий тап для настроек хоста.
+- EN: SemVer patch bump to `8.50.62`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.62` and `ANDROID_VERSION_CODE=411`; aligned prerelease links to `v8.50.62-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.62`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.62` и `ANDROID_VERSION_CODE=411`; prerelease-ссылки выровнены на `v8.50.62-develop`.
 
 ## [8.50.60] - 2026-04-12
 
