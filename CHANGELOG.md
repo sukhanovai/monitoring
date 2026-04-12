@@ -1,3 +1,11 @@
+## [8.50.58] - 2026-04-12
+
+### Changed / Изменено
+- EN: In Android app `Operational center → ZFS tile tap`, converted ZFS host statuses to clickable cards: short tap now opens host data details, long tap opens host settings directly.
+- RU: В Android-приложении в `Оперативный центр → тап по плашке ZFS` статусы ZFS переведены в формат плашек: короткий тап открывает сведения по данным хоста, долгий тап сразу открывает настройки хоста.
+- EN: SemVer patch bump to `8.50.58`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.58` and `ANDROID_VERSION_CODE=407`; aligned prerelease links to `v8.50.58-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.58`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.58` и `ANDROID_VERSION_CODE=407`; prerelease-ссылки выровнены на `v8.50.58-develop`.
+
 ## [8.50.57] - 2026-04-12
 
 ### Changed / Изменено
