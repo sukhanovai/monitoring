@@ -477,7 +477,8 @@ private data class OpsMetricTile(
     val value: String,
     val hasProblem: Boolean = false,
     val onClick: () -> Unit = {},
-    val onLongClick: (() -> Unit)? = null
+    val onLongClick: (() -> Unit)? = null,
+    val onSettingsClick: (() -> Unit)? = null
 )
 
 private data class ExtensionDataTile(
@@ -580,7 +581,8 @@ private fun OpsMetricChip(
     value: String,
     hasProblem: Boolean = false,
     onClick: () -> Unit = {},
-    onLongClick: (() -> Unit)? = null
+    onLongClick: (() -> Unit)? = null,
+    onSettingsClick: (() -> Unit)? = null
 ) {
     val valueColor = if (hasProblem) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
     Surface(
@@ -594,11 +596,26 @@ private fun OpsMetricChip(
         shape = RoundedCornerShape(14.dp),
         tonalElevation = 1.dp
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(value, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = valueColor)
-            Text(label, style = MaterialTheme.typography.labelSmall)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(value, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = valueColor)
+                Text(label, style = MaterialTheme.typography.labelSmall)
+            }
+            if (onSettingsClick != null) {
+                IconButton(
+                    onClick = onSettingsClick,
+                    modifier = Modifier.height(28.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Settings,
+                        contentDescription = "Настройки $label"
+                    )
+                }
+            }
         }
     }
 }
@@ -912,6 +929,7 @@ private fun MonitoringApp(
     var zfsStatusDetailsFallbackText by rememberSaveable { mutableStateOf("") }
     var pendingZfsHostSettingsName by rememberSaveable { mutableStateOf("") }
     var showResourceThresholdDialog by rememberSaveable { mutableStateOf(false) }
+    var showResourceSettingsDialog by rememberSaveable { mutableStateOf(false) }
     var resourceThresholdAction by rememberSaveable { mutableStateOf("") }
     var resourceThresholdLabel by rememberSaveable { mutableStateOf("") }
     var resourceThresholdValueInput by rememberSaveable { mutableStateOf("") }
@@ -1396,6 +1414,17 @@ private fun MonitoringApp(
                     showZfsHostsSettingsDialog = true
                     onExtensionsSettingsAction("settings_zfs_list")
                 }
+            } else if (extension.id == "resource_monitor") {
+                {
+                    showResourceSettingsDialog = true
+                }
+            } else {
+                null
+            },
+            onSettingsClick = if (extension.id == "resource_monitor") {
+                {
+                    showResourceSettingsDialog = true
+                }
             } else {
                 null
             }
@@ -1583,7 +1612,8 @@ private fun MonitoringApp(
                                     value = tile.value,
                                     hasProblem = tile.hasProblem,
                                     onClick = tile.onClick,
-                                    onLongClick = tile.onLongClick
+                                    onLongClick = tile.onLongClick,
+                                    onSettingsClick = tile.onSettingsClick
                                 )
                             }
                         }
@@ -2154,6 +2184,44 @@ private fun MonitoringApp(
                                     dismissButton = {
                                         TextButton(onClick = { showResourceThresholdDialog = false }) {
                                             Text("Отмена")
+                                        }
+                                    }
+                                )
+                            }
+
+                            if (showResourceSettingsDialog) {
+                                AlertDialog(
+                                    onDismissRequest = { showResourceSettingsDialog = false },
+                                    title = { Text("⚙️ Параметры проверки ресурсов") },
+                                    text = {
+                                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            listOf(
+                                                "💻 CPU предупреждение" to "set_cpu_warning",
+                                                "💻 CPU критический" to "set_cpu_critical",
+                                                "🧠 RAM предупреждение" to "set_ram_warning",
+                                                "🧠 RAM критический" to "set_ram_critical",
+                                                "💾 DISK предупреждение" to "set_disk_warning",
+                                                "💾 DISK критический" to "set_disk_critical"
+                                            ).forEach { (label, action) ->
+                                                Button(
+                                                    onClick = {
+                                                        resourceThresholdAction = action
+                                                        resourceThresholdLabel = label
+                                                        resourceThresholdValueInput = ""
+                                                        showResourceThresholdDialog = true
+                                                        showResourceSettingsDialog = false
+                                                    },
+                                                    modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                    Text(label)
+                                                }
+                                            }
+                                        }
+                                    },
+                                    confirmButton = {},
+                                    dismissButton = {
+                                        TextButton(onClick = { showResourceSettingsDialog = false }) {
+                                            Text("Закрыть")
                                         }
                                     }
                                 )
