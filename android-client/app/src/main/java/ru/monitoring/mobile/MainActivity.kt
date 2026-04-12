@@ -3650,18 +3650,9 @@ private fun MonitoringApp(
                     } else {
                         emptyList()
                     }
-                    val zfsMessage = if (state.extensionMenuAction == "zfs_menu") {
-                        formatZfsMessageForDialog(state.message.trim())
-                    } else {
-                        ""
-                    }
-
-                    if (state.isLoading && zfsMenuOptions.isEmpty() && zfsMessage.isBlank()) {
+                    if (state.isLoading && zfsMenuOptions.isEmpty()) {
                         Text("Загружаем статусы ZFS…")
                     } else {
-                        if (zfsMessage.isNotBlank()) {
-                            Text(zfsMessage, lineHeight = 16.sp)
-                        }
                         val statusCardsFromOptions = zfsMenuOptions.mapNotNull { option -> toZfsStatusCardItem(option) }
                         val statusCardsFromMessage = parseZfsStatusCardsFromMessage(state.message)
                         val groupedCards = linkedMapOf<String, MutableList<ZfsPoolStatusItem>>()
@@ -3711,14 +3702,8 @@ private fun MonitoringApp(
                                                             append(pool.poolName)
                                                             append(": ")
                                                             append(pool.statusLabel)
-                                                            if (pool.compactTimestamp.isNotBlank()) {
-                                                                append(" (")
-                                                                append(pool.compactTimestamp)
-                                                                append(")")
-                                                            }
                                                         }
                                                     }
-                                                    card.action?.let { onAction(it) }
                                                     showZfsHostDetailsDialog = true
                                                 },
                                                 onLongClick = {
@@ -3730,7 +3715,7 @@ private fun MonitoringApp(
                                     }
                                 }
                             }
-                        } else if (zfsMessage.isBlank()) {
+                        } else {
                             Text("Статусы ZFS пока не получены.")
                         }
                     }
@@ -3786,16 +3771,11 @@ private fun MonitoringApp(
             onDismissRequest = { showZfsHostDetailsDialog = false },
             title = { Text("ℹ️ ${zfsDetailsHostName.ifBlank { "Данные ZFS" }}") },
             text = {
-                val detailsText = if (state.extensionMenuAction == "zfs_menu") {
-                    formatZfsMessageForDialog(state.message.trim())
-                } else {
-                    ""
-                }
                 Text(
                     text = when {
-                        state.isLoading && detailsText.isBlank() -> "Запрашиваем сведения по хосту…"
-                        detailsText.isNotBlank() -> detailsText
+                        state.isLoading && zfsStatusDetailsFallbackText.isBlank() -> "Запрашиваем сведения по хосту…"
                         zfsStatusDetailsFallbackText.isNotBlank() -> zfsStatusDetailsFallbackText
+                        state.extensionMenuAction == "zfs_menu" && state.message.isNotBlank() -> formatZfsMessageForDialog(state.message.trim())
                         else -> "Данные по хосту пока не получены."
                     },
                     lineHeight = 16.sp

@@ -1,3 +1,15 @@
+## [8.50.69] - 2026-04-12
+
+### Changed / Изменено
+- EN: In Android app `Operational center → ZFS tile → statuses`, removed timestamp rendering from ZFS status tiles; tiles now show host and pool status without time metadata.
+- RU: В Android-приложении в `Оперативный центр → плашка ZFS → статусы` убрано отображение времени на плашках статуса ZFS; теперь на плашках показываются хост и статус пулов без временных меток.
+- EN: In Android app `Operational center → ZFS tile → statuses`, removed the static text list from the dialog and left only interactive status tiles.
+- RU: В Android-приложении в `Оперативный центр → плашка ZFS → статусы` удалён статичный текстовый список, в диалоге оставлены только интерактивные плашки.
+- EN: In Android app `Operational center → ZFS tile → statuses`, short tap on a status tile opens received-data details, and long tap opens ZFS host settings.
+- RU: В Android-приложении в `Оперативный центр → плашка ZFS → статусы` короткий тап по плашке открывает сведения о полученных данных, долгий тап открывает настройки хоста ZFS.
+- EN: SemVer patch bump to `8.50.69`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.69` and `ANDROID_VERSION_CODE=418`; aligned prerelease links to `v8.50.69-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.69`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.69` и `ANDROID_VERSION_CODE=418`; prerelease-ссылки выровнены на `v8.50.69-develop`.
+
 ## [8.50.68] - 2026-04-12
 
 ### Changed / Изменено
