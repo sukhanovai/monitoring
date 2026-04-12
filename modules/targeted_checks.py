@@ -1,11 +1,11 @@
 """
 /app/modules/targeted_checks.py
-Server Monitoring System v8.50.54
+Server Monitoring System v8.50.55
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Server Spot Check Module
 Система мониторинга серверов
-Версия: 8.50.54
+Версия: 8.50.55
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль точечных проверок серверов
@@ -166,6 +166,11 @@ class TargetedChecks:
                     row = []
         
         # Кнопки навигации
+        if action == "check_resources":
+            keyboard.append([
+                InlineKeyboardButton("⚙️ Настройки ресурсов", callback_data="settings_resources")
+            ])
+
         keyboard.append([
             InlineKeyboardButton("🏠 На главную", callback_data="main_menu"),
             InlineKeyboardButton("✖️ Закрыть", callback_data="close")
