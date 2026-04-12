@@ -1433,13 +1433,7 @@ private fun MonitoringApp(
             } else {
                 null
             },
-            onSettingsClick = if (extension.id == "resource_monitor") {
-                {
-                    showResourceSettingsDialog = true
-                }
-            } else {
-                null
-            }
+            onSettingsClick = null
         )
     }
     val allOpsTiles = opsTiles + extensionOpsTiles
@@ -2902,6 +2896,19 @@ private fun MonitoringApp(
                             modifier = Modifier.weight(1f)
                         )
                         Column(horizontalAlignment = Alignment.End) {
+                            if (isResourceCheckMode) {
+                                IconButton(
+                                    onClick = { showResourceSettingsDialog = true },
+                                    modifier = Modifier
+                                        .padding(bottom = 2.dp)
+                                        .height(30.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Settings,
+                                        contentDescription = "Открыть настройки ресурсов"
+                                    )
+                                }
+                            }
                             IconButton(
                                 onClick = {
                                     showServerAvailabilityDialog = false

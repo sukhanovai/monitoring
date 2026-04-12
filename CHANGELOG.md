@@ -1,12 +1,12 @@
-## [8.50.62] - 2026-04-12
+## [8.50.63] - 2026-04-12
 
 ### Changed / Изменено
-- EN: In Android app `Operational center → ZFS tile → tap`, switched ZFS statuses rendering to operational-center style status chips for compact visual scan.
-- RU: В Android-приложении в `Оперативный центр → плашка ZFS → тап` переведено отображение статусов ZFS на формат плашек в стиле оперативного центра.
-- EN: Each ZFS status chip now shows host name as the chip label and compact state/time as the value (`✅/⚠️ + state + timestamp`), while preserving short tap for details and long tap for host settings.
-- RU: Каждая плашка статуса ZFS теперь показывает имя хоста в заголовке и компактное состояние/время в значении (`✅/⚠️ + статус + время`), при этом сохранены короткий тап для деталей и долгий тап для настроек хоста.
-- EN: SemVer patch bump to `8.50.62`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.62` and `ANDROID_VERSION_CODE=411`; aligned prerelease links to `v8.50.62-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.62`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.62` и `ANDROID_VERSION_CODE=411`; prerelease-ссылки выровнены на `v8.50.62-develop`.
+- EN: In Android app `Operational center`, removed the settings gear from the `Resources` tile and restored tile appearance to the state before embedding the gear into the tile itself.
+- RU: В Android-приложении в `Оперативном центре` убрана шестерёнка с плашки `Ресурсы`, а внешний вид плашек возвращён к состоянию до встраивания этой кнопки в саму плашку.
+- EN: Added the resources settings gear to the server resources dialog opened from the `Resources` tile tap (`Operational center → Resources → point-check dialog`).
+- RU: Шестерёнка настроек ресурсов перенесена в окно, которое открывается по тапу на плашке `Ресурсы` (`Оперативный центр → Ресурсы → окно точечной проверки`).
+- EN: SemVer patch bump to `8.50.63`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.63` and `ANDROID_VERSION_CODE=412`; aligned prerelease links to `v8.50.63-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.63`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.63` и `ANDROID_VERSION_CODE=412`; prerelease-ссылки выровнены на `v8.50.63-develop`.
 
 ## [8.50.60] - 2026-04-12
 
