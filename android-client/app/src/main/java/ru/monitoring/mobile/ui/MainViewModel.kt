@@ -51,7 +51,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.50.36"
+    private val projectVersion = "8.50.37"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -1535,7 +1535,16 @@ class MainViewModel(
                                 message = resolveControlActionMessage(response).ifBlank { "Команда отправлена" },
                                 messageSource = "global",
                                 extensionMenuOptions = resolvedMenuOptions,
-                                extensionMenuAction = if (normalizedAction == "backup_databases") normalizedAction else if (resolvedMenuOptions.isEmpty()) "" else normalizedAction,
+                                extensionMenuAction = if (
+                                    normalizedAction == "backup_databases" ||
+                                    normalizedAction == "zfs_menu"
+                                ) {
+                                    normalizedAction
+                                } else if (resolvedMenuOptions.isEmpty()) {
+                                    ""
+                                } else {
+                                    normalizedAction
+                                },
                                 backupProxmoxHasProblemItems = if (normalizedAction == "backup_proxmox") hasProblemBackups else state.backupProxmoxHasProblemItems,
                                 backupDatabasesHasProblemItems = if (normalizedAction == "backup_databases") hasProblemBackups else state.backupDatabasesHasProblemItems,
                                 mailBackupHistoryTitle = mailHistory?.title.orEmpty(),
