@@ -1,10 +1,12 @@
-## [8.50.45] - 2026-04-12
+## [8.50.46] - 2026-04-12
 
 ### Changed / Изменено
 - EN: In Android app `Operational center → ZFS tile`, made the ZFS status output even more compact after tapping the tile: state labels are shortened (`OK/DEG/ERR/OFF/...`), timestamps are condensed (`MM-DD HH:MM` when recognizable), and redundant header/decorative lines are removed to reduce scrolling.
 - RU: В Android-приложении `Оперативный центр → плашка ZFS` вывод статусов после тапа сделан ещё компактнее: сокращены метки состояний (`OK/DEG/ERR/OFF/...`), время ужато (`MM-DD HH:MM`, если формат распознан), лишние заголовки/декоративные строки убраны для уменьшения скролла.
-- EN: SemVer patch bump to `8.50.45`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.45` and `ANDROID_VERSION_CODE=394`; aligned prerelease links to `v8.50.45-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.45`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.45` и `ANDROID_VERSION_CODE=394`; prerelease-ссылки выровнены на `v8.50.45-develop`.
+- EN: In Telegram bot path `Settings → Extensions`, removed the `🧊 ZFS` button from the extensions menu.
+- RU: В Telegram-боте в сценарии `Настройки → Расширения` удалена кнопка `🧊 ZFS` из списка расширений.
+- EN: SemVer patch bump to `8.50.46`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.46` and `ANDROID_VERSION_CODE=395`; aligned prerelease links to `v8.50.46-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.46`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.46` и `ANDROID_VERSION_CODE=395`; prerelease-ссылки выровнены на `v8.50.46-develop`.
 
 ## [8.50.44] - 2026-04-12
 

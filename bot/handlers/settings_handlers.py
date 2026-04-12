@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.50.45
+Server Monitoring System v8.50.46
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.50.45
+Версия: 8.50.46
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -2870,9 +2870,6 @@ def show_settings_extensions_menu(update, context):
 
     if extension_manager.is_extension_enabled(SUPPLIER_STOCK_EXTENSION_ID):
         keyboard.append([InlineKeyboardButton("📦 Остатки поставщиков", callback_data='settings_ext_supplier_stock')])
-
-    if extension_manager.is_extension_enabled('zfs_monitor'):
-        keyboard.append([InlineKeyboardButton("🧊 ZFS", callback_data='settings_zfs')])
 
     if extension_manager.is_extension_enabled('resource_monitor'):
         keyboard.append([InlineKeyboardButton("💻 Ресурсы", callback_data='settings_resources')])
