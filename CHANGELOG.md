@@ -1,3 +1,11 @@
+## [8.50.67] - 2026-04-12
+
+### Changed / Изменено
+- EN: In Android app `Operational center → ZFS tile → statuses`, ZFS status list is now rendered as interactive tiles not only from menu options but also from message-only backend responses, so tapping the ZFS tile always shows clickable status cards when status lines are present.
+- RU: В Android-приложении в `Оперативный центр → плашка ZFS → статусы` список статусов ZFS теперь рендерится интерактивными плашками не только из menu options, но и из message-only ответов backend, поэтому после тапа по ZFS при наличии строк статусов всегда показываются кликабельные карточки.
+- EN: SemVer patch bump to `8.50.67`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.67` and `ANDROID_VERSION_CODE=416`; aligned prerelease links to `v8.50.67-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.67`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.67` и `ANDROID_VERSION_CODE=416`; prerelease-ссылки выровнены на `v8.50.67-develop`.
+
 ## [8.50.66] - 2026-04-12
 
 ### Changed / Изменено

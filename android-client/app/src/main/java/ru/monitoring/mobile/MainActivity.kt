@@ -124,6 +124,21 @@ private fun resolveMenuOptionAction(option: ru.monitoring.mobile.api.MenuOption)
 
 private val zfsStatusLineRegex = Regex("""^•\s*(.+?):\s*([A-Za-z_]+)\s*\((.+)\)$""")
 private val zfsDateTimeRegex = Regex("""(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})(?::\d{2})?""")
+private data class ParsedZfsStatusLine(
+    val hostName: String,
+    val state: String,
+    val timestamp: String
+)
+
+private fun parseZfsStatusLine(label: String): ParsedZfsStatusLine? {
+    val trimmed = label.trim()
+    val match = zfsStatusLineRegex.matchEntire(trimmed) ?: return null
+    val hostName = match.groupValues.getOrNull(1)?.trim().orEmpty()
+    val state = match.groupValues.getOrNull(2)?.trim().orEmpty()
+    val timestamp = match.groupValues.getOrNull(3)?.trim().orEmpty()
+    if (hostName.isBlank() || state.isBlank()) return null
+    return ParsedZfsStatusLine(hostName = hostName, state = state, timestamp = timestamp)
+}
 
 private fun zfsStateLabel(state: String): String {
     return when (state.uppercase()) {
@@ -220,19 +235,28 @@ private fun toZfsStatusCardItem(option: ru.monitoring.mobile.api.MenuOption): Zf
     val rawLabel = option.label?.trim().orEmpty()
     val action = resolveMenuOptionAction(option).ifBlank { null }
     if (rawLabel.isBlank()) return null
-    if (!zfsStatusLineRegex.matches(rawLabel)) return null
-    val match = zfsStatusLineRegex.matchEntire(rawLabel) ?: return null
-    val hostName = match.groupValues.getOrNull(1)?.trim().orEmpty()
-    val state = match.groupValues.getOrNull(2)?.trim().orEmpty()
-    val timestamp = match.groupValues.getOrNull(3)?.trim().orEmpty()
-    if (hostName.isBlank() || state.isBlank()) return null
+    val parsed = parseZfsStatusLine(rawLabel) ?: return null
     return ZfsStatusCardItem(
-        hostName = hostName,
-        statusLabel = zfsStateLabel(state),
-        compactTimestamp = compactZfsTimestamp(timestamp),
+        hostName = parsed.hostName,
+        statusLabel = zfsStateLabel(parsed.state),
+        compactTimestamp = compactZfsTimestamp(parsed.timestamp),
         action = action,
         rawLabel = rawLabel,
-        hasProblem = !state.equals("ONLINE", ignoreCase = true)
+        hasProblem = !parsed.state.equals("ONLINE", ignoreCase = true)
+    )
+}
+
+private fun toZfsStatusCardItem(rawLabel: String, action: String? = null): ZfsStatusCardItem? {
+    val normalizedLabel = rawLabel.trim()
+    if (normalizedLabel.isBlank()) return null
+    val parsed = parseZfsStatusLine(normalizedLabel) ?: return null
+    return ZfsStatusCardItem(
+        hostName = parsed.hostName,
+        statusLabel = zfsStateLabel(parsed.state),
+        compactTimestamp = compactZfsTimestamp(parsed.timestamp),
+        action = action?.takeIf { it.isNotBlank() },
+        rawLabel = normalizedLabel,
+        hasProblem = !parsed.state.equals("ONLINE", ignoreCase = true)
     )
 }
 
@@ -3563,8 +3587,19 @@ private fun MonitoringApp(
                         if (zfsMessage.isNotBlank()) {
                             Text(zfsMessage, lineHeight = 16.sp)
                         }
-                        if (zfsMenuOptions.isNotEmpty()) {
-                            val statusCards = zfsMenuOptions.mapNotNull { option -> toZfsStatusCardItem(option) }
+                        val statusCardsFromOptions = zfsMenuOptions.mapNotNull { option -> toZfsStatusCardItem(option) }
+                        val statusCardsFromMessage = state.message
+                            .lineSequence()
+                            .map { it.trim() }
+                            .mapNotNull { line ->
+                                val normalized = if (line.startsWith("•")) line else "• $line"
+                                toZfsStatusCardItem(rawLabel = normalized)
+                            }
+                            .toList()
+                        val statusCards = (statusCardsFromOptions + statusCardsFromMessage)
+                            .distinctBy { card -> "${card.hostName}|${card.statusLabel}|${card.compactTimestamp}" }
+
+                        if (zfsMenuOptions.isNotEmpty() || statusCards.isNotEmpty()) {
                             val otherOptions = zfsMenuOptions.filterNot { option ->
                                 val label = option.label?.trim().orEmpty()
                                 val action = resolveMenuOptionAction(option)
