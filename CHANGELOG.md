@@ -1,3 +1,11 @@
+## [8.50.50] - 2026-04-12
+
+### Changed / Изменено
+- EN: In Android app `Operational center → ZFS tile`, compacted tapped ZFS status rows further: each host status is forced into a single line, host names are abbreviated when too long, and row paddings are tightened to use dialog space more efficiently.
+- RU: В Android-приложении `Оперативный центр → плашка ZFS` ещё сильнее ужат вывод после тапа: статус каждого хоста принудительно держится в одной строке, длинные имена хостов сокращаются, отступы строк уменьшены для более плотного использования окна.
+- EN: SemVer patch bump to `8.50.50`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.50` and `ANDROID_VERSION_CODE=399`; aligned prerelease links to `v8.50.50-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.50`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.50` и `ANDROID_VERSION_CODE=399`; prerelease-ссылки выровнены на `v8.50.50-develop`.
+
 ## [8.50.49] - 2026-04-12
 
 ### Added / Добавлено
