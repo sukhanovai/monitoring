@@ -1,12 +1,12 @@
-## [8.50.31] - 2026-04-10
+## [8.50.32] - 2026-04-12
 
 ### Fixed / Исправлено
-- EN: In Android app `Operational center → Mail tile → Mail server backups → Mail backup patterns`, fixed the `+` and `Edit` flows: dialogs now open correctly from the pattern list, and add/edit submits reliably apply the selected pattern changes.
-- RU: В Android-приложении `Оперативный центр → плитка «Почта» → Бэкапы почтового сервера → Паттерны бэкапов почты` исправлены сценарии `+` и `Редактировать`: диалоги теперь корректно открываются из списка паттернов, а сохранение стабильно применяет изменения выбранного паттерна.
+- EN: In Android app `Operational center → Mail tile → Mail server backups → Mail backup patterns`, fixed Android Ops Center mail-pattern action flow: tapping a pattern and choosing `Edit` now opens the mail pattern edit dialog instead of only closing the action window; add/edit submits keep returning to the patterns list reliably.
+- RU: В Android-приложении `Оперативный центр → плитка «Почта» → Бэкапы почтового сервера → Паттерны бэкапов почты` исправлен сценарий Android Ops Center для паттернов почты: по тапу на паттерн и выбору `Редактировать` теперь открывается диалог редактирования, а не просто закрывается окно действий; после add/edit список паттернов стабильно перезагружается.
 
 ### Changed / Изменено
-- EN: SemVer patch bump to `8.50.31`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.31` and `ANDROID_VERSION_CODE=380`; aligned prerelease links to `v8.50.31-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.31`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.31` и `ANDROID_VERSION_CODE=380`; prerelease-ссылки выровнены на `v8.50.31-develop`.
+- EN: SemVer patch bump to `8.50.32`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.32` and `ANDROID_VERSION_CODE=381`; aligned prerelease links to `v8.50.32-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.32`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.32` и `ANDROID_VERSION_CODE=381`; prerelease-ссылки выровнены на `v8.50.32-develop`.
 ## [8.50.28] - 2026-04-09
 
 ### Fixed / Исправлено

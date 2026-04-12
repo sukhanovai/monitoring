@@ -3610,6 +3610,116 @@ private fun MonitoringApp(
         )
     }
 
+    if (showMailPatternAddDialog && settingsSection != "extensions") {
+        AlertDialog(
+            onDismissRequest = { showMailPatternAddDialog = false },
+            title = { Text("➕ Добавить паттерн почты") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Режим генерации:")
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = { mailPatternInputMode = "subject" }
+                        ) { Text("Тема письма") }
+                        Button(
+                            onClick = { mailPatternInputMode = "fragments" }
+                        ) { Text("Фрагменты") }
+                    }
+                    OutlinedTextField(
+                        value = mailPatternInputValue,
+                        onValueChange = { mailPatternInputValue = it },
+                        label = { Text(if (mailPatternInputMode == "subject") "Тема письма" else "Фрагменты через ; или ,") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Text(
+                        text = if (mailPatternInputMode == "subject") {
+                            "Подсказка: вставь тему реального письма с успешным бэкапом — приложение само соберёт regex (например: Backup completed for mail.example.com 120GB)."
+                        } else {
+                            "Подсказка: укажи 2–4 устойчивых фрагмента через ; или , (например: backup completed;mail.example.com;120GB)."
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val actionPayload = "settings_mail_pattern_add|" +
+                            Uri.encode(mailPatternInputMode) + "|" +
+                            Uri.encode(mailPatternInputValue.trim())
+                        onExtensionsSettingsAction(actionPayload)
+                        if (returnToMailPatternsDialog) {
+                            onExtensionsSettingsAction("settings_patterns_mail")
+                            showMailPatternsDialog = true
+                            returnToMailPatternsDialog = false
+                        }
+                        showMailPatternAddDialog = false
+                    },
+                    enabled = mailPatternInputValue.isNotBlank()
+                ) {
+                    Text("Сохранить")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showMailPatternAddDialog = false
+                    if (returnToMailPatternsDialog) {
+                        showMailPatternsDialog = true
+                        returnToMailPatternsDialog = false
+                    }
+                }) {
+                    Text("Отмена")
+                }
+            }
+        )
+    }
+
+    if (showMailPatternEditDialog && settingsSection != "extensions") {
+        AlertDialog(
+            onDismissRequest = { showMailPatternEditDialog = false },
+            title = { Text("✏️ Редактировать паттерн почты") },
+            text = {
+                OutlinedTextField(
+                    value = mailPatternEditValueInput,
+                    onValueChange = { mailPatternEditValueInput = it },
+                    label = { Text("Новый regex паттерн") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val actionPayload = mailPatternEditAction + "|" +
+                            Uri.encode(mailPatternEditValueInput.trim())
+                        onExtensionsSettingsAction(actionPayload)
+                        if (returnToMailPatternsDialog) {
+                            onExtensionsSettingsAction("settings_patterns_mail")
+                            showMailPatternsDialog = true
+                            returnToMailPatternsDialog = false
+                        }
+                        showMailPatternEditDialog = false
+                    },
+                    enabled = mailPatternEditAction.isNotBlank() &&
+                        mailPatternEditValueInput.isNotBlank()
+                ) {
+                    Text("Сохранить")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showMailPatternEditDialog = false
+                    if (returnToMailPatternsDialog) {
+                        showMailPatternsDialog = true
+                        returnToMailPatternsDialog = false
+                    }
+                }) {
+                    Text("Отмена")
+                }
+            }
+        )
+    }
+
     if (showDatabaseBackupsDialog) {
         AlertDialog(
             onDismissRequest = { showDatabaseBackupsDialog = false },
