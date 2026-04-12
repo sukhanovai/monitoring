@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.50.33
+Server Monitoring System v8.50.35
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.50.33
+Версия: 8.50.35
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -8526,17 +8526,75 @@ def show_zfs_status_summary(update, context):
         def _md(value: object) -> str:
             return escape_markdown(str(value or ""), version=1)
 
-        message = "📊 *ZFS статусы (последние)*\n\n"
-        current_server = None
+        server_stats: dict[str, dict[str, object]] = {}
+        ok_pools = 0
+        bad_pools = 0
+
         for server_name, pool_name, pool_state, received_at in rows:
-            if server_name != current_server:
-                if current_server is not None:
-                    message += "\n"
-                message += f"*{_md(server_name)}*\n"
-                current_server = server_name
-            message += (
-                f"• {_md(pool_name)}: `{_md(pool_state)}` ({_md(received_at)})\n"
+            state_normalized = str(pool_state).upper()
+            is_ok = state_normalized == "ONLINE"
+
+            if is_ok:
+                ok_pools += 1
+            else:
+                bad_pools += 1
+
+            if server_name not in server_stats:
+                server_stats[server_name] = {
+                    "total": 0,
+                    "ok": 0,
+                    "last": str(received_at),
+                    "problems": []
+                }
+
+            server_entry = server_stats[server_name]
+            server_entry["total"] = int(server_entry["total"]) + 1
+            if is_ok:
+                server_entry["ok"] = int(server_entry["ok"]) + 1
+            else:
+                server_entry["problems"].append((str(pool_name), state_normalized))
+
+            if str(received_at) > str(server_entry["last"]):
+                server_entry["last"] = str(received_at)
+
+        healthy_servers = sum(
+            1 for value in server_stats.values()
+            if int(value["ok"]) == int(value["total"])
+        )
+        problematic_servers = len(server_stats) - healthy_servers
+
+        lines = [
+            "📊 *ZFS статусы (последние)*",
+            "",
+            (
+                f"• Серверов: {len(server_stats)} "
+                f"(🟢 {healthy_servers} / 🔴 {problematic_servers})"
+            ),
+            (
+                f"• Пулов: {len(rows)} "
+                f"(🟢 {ok_pools} / 🔴 {bad_pools})"
+            ),
+            ""
+        ]
+
+        for server_name in sorted(server_stats.keys()):
+            server_entry = server_stats[server_name]
+            total = int(server_entry["total"])
+            ok_total = int(server_entry["ok"])
+            problems = server_entry["problems"]
+            server_icon = "🟢" if not problems else "🔴"
+            lines.append(
+                f"{server_icon} *{_md(server_name)}* · {ok_total}/{total} · {_md(server_entry['last'])}"
             )
+
+            if problems:
+                formatted_problems = ", ".join(
+                    f"{_md(pool_name)}=`{_md(state_name)}`"
+                    for pool_name, state_name in problems
+                )
+                lines.append(f"  └ {formatted_problems}")
+
+        message = "\n".join(lines)
 
     keyboard = [
         [InlineKeyboardButton("⚙️ Настройка хостов ZFS", callback_data='settings_zfs_list')],
