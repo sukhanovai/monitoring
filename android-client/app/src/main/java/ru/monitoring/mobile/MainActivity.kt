@@ -2604,7 +2604,7 @@ private fun MonitoringApp(
 
                             state.managedServers.forEach { server ->
                                 ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                                    Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                         Text("${server.name} (${server.ip})", fontWeight = FontWeight.Bold)
                                         Text("Тип: ${server.type}, timeout: ${server.timeout ?: 30} сек")
                                         Text("Мониторинг: ${if (server.enabled == true) "включен" else "выключен"}")
@@ -3204,13 +3204,21 @@ private fun MonitoringApp(
                         modifier = Modifier.weight(1f),
                         fontWeight = FontWeight.Bold
                     )
-                    IconButton(onClick = {
-                        onExtensionsSettingsAction("settings_zfs_list")
-                    }) {
-                        Icon(
-                            imageVector = Icons.Filled.Settings,
-                            contentDescription = "Открыть настройки хостов ZFS"
-                        )
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        IconButton(onClick = {
+                            onExtensionsSettingsAction("settings_zfs_list")
+                        }) {
+                            Icon(
+                                imageVector = Icons.Filled.Settings,
+                                contentDescription = "Открыть настройки хостов ZFS"
+                            )
+                        }
+                        IconButton(onClick = { showZfsStatusesDialog = false }) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "Закрыть окно статусов ZFS"
+                            )
+                        }
                     }
                 }
             },
@@ -3220,7 +3228,7 @@ private fun MonitoringApp(
                         .fillMaxWidth()
                         .heightIn(max = 520.dp)
                         .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     val zfsMenuOptions = if (state.extensionMenuAction == "zfs_menu") {
                         state.extensionMenuOptions
@@ -3237,7 +3245,7 @@ private fun MonitoringApp(
                         Text("Загружаем статусы ZFS…")
                     } else {
                         if (zfsMessage.isNotBlank()) {
-                            Text(zfsMessage)
+                            Text(zfsMessage, lineHeight = 16.sp)
                         }
                         if (zfsMenuOptions.isNotEmpty()) {
                             zfsMenuOptions.forEach { option ->
@@ -3262,8 +3270,8 @@ private fun MonitoringApp(
                                     ) {
                                         Text(
                                             text = label,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                            style = MaterialTheme.typography.bodySmall.copy(lineHeight = 14.sp),
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                                         )
                                     }
                                 }
