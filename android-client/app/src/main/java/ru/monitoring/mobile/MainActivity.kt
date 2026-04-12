@@ -149,19 +149,22 @@ private fun compactZfsTimestamp(timestamp: String): String {
 private fun formatZfsOptionLabel(label: String): String {
     val trimmed = label.trim()
     val match = zfsStatusLineRegex.matchEntire(trimmed) ?: return trimmed
-    val pool = match.groupValues.getOrNull(1)?.trim().orEmpty()
+    val host = match.groupValues.getOrNull(1)?.trim().orEmpty()
     val state = match.groupValues.getOrNull(2)?.trim().orEmpty()
     val timestamp = match.groupValues.getOrNull(3)?.trim().orEmpty()
-    if (pool.isBlank() || state.isBlank()) return trimmed
+    if (host.isBlank() || state.isBlank()) return trimmed
     val isOk = state.equals("ONLINE", ignoreCase = true)
     val icon = if (isOk) "✅" else "⚠️"
     val readableState = zfsStateLabel(state)
     val compactTimestamp = compactZfsTimestamp(timestamp)
-    return if (compactTimestamp.isBlank()) {
-        "$icon $pool · $readableState"
-    } else {
-        "$icon $pool · $readableState · $compactTimestamp"
+    val tail = buildString {
+        append(readableState)
+        if (compactTimestamp.isNotBlank()) {
+            append(' ')
+            append(compactTimestamp)
+        }
     }
+    return "$icon $host $tail".trim()
 }
 
 private fun formatZfsMessageForDialog(message: String): String {
