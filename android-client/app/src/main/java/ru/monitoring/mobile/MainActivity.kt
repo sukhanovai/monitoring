@@ -117,6 +117,52 @@ private fun resolveMenuOptionAction(option: ru.monitoring.mobile.api.MenuOption)
     }
 }
 
+private val zfsStatusLineRegex = Regex("""^•\s*(.+?):\s*([A-Za-z_]+)\s*\((.+)\)$""")
+
+private fun zfsStateLabel(state: String): String {
+    return when (state.uppercase()) {
+        "ONLINE" -> "Онлайн"
+        "DEGRADED" -> "Деградирован"
+        "FAULTED" -> "Ошибка"
+        "OFFLINE" -> "Оффлайн"
+        "REMOVED" -> "Удалён"
+        "UNAVAIL" -> "Недоступен"
+        "SUSPENDED" -> "Приостановлен"
+        else -> state.uppercase()
+    }
+}
+
+private fun formatZfsOptionLabel(label: String): String {
+    val trimmed = label.trim()
+    val match = zfsStatusLineRegex.matchEntire(trimmed) ?: return trimmed
+    val pool = match.groupValues.getOrNull(1)?.trim().orEmpty()
+    val state = match.groupValues.getOrNull(2)?.trim().orEmpty()
+    val timestamp = match.groupValues.getOrNull(3)?.trim().orEmpty()
+    if (pool.isBlank() || state.isBlank()) return trimmed
+    val isOk = state.equals("ONLINE", ignoreCase = true)
+    val icon = if (isOk) "🟢" else "🔴"
+    val readableState = zfsStateLabel(state)
+    return "$icon $pool — $readableState · $timestamp"
+}
+
+private fun formatZfsMessageForDialog(message: String): String {
+    if (message.isBlank()) return message
+    return message
+        .lineSequence()
+        .map { line ->
+            val trimmed = line.trim()
+            when {
+                trimmed.isBlank() -> ""
+                zfsStatusLineRegex.matches(trimmed) -> formatZfsOptionLabel(trimmed)
+                trimmed == "📊 ZFS статусы (последние)" -> trimmed
+                trimmed.startsWith("📊") || trimmed.startsWith("❌") || trimmed.startsWith("🧊") -> trimmed
+                trimmed.startsWith("•") -> trimmed
+                else -> "🖥️ $trimmed"
+            }
+        }
+        .joinToString("\n")
+}
+
 private fun isDatabaseMonitorDisabled(label: String, action: String): Boolean {
     if (!action.startsWith("db_detail_")) return false
     val normalizedLabel = label.lowercase()
@@ -3158,16 +3204,13 @@ private fun MonitoringApp(
                         modifier = Modifier.weight(1f),
                         fontWeight = FontWeight.Bold
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        TextButton(onClick = { onAction("zfs_menu") }) {
-                            Text("Обновить")
-                        }
-                        IconButton(onClick = { showZfsStatusesDialog = false }) {
-                            Icon(
-                                imageVector = Icons.Filled.Close,
-                                contentDescription = "Закрыть окно статусов ZFS"
-                            )
-                        }
+                    IconButton(onClick = {
+                        onExtensionsSettingsAction("settings_zfs_list")
+                    }) {
+                        Icon(
+                            imageVector = Icons.Filled.Settings,
+                            contentDescription = "Открыть настройки хостов ZFS"
+                        )
                     }
                 }
             },
@@ -3185,7 +3228,7 @@ private fun MonitoringApp(
                         emptyList()
                     }
                     val zfsMessage = if (state.extensionMenuAction == "zfs_menu") {
-                        state.message.trim()
+                        formatZfsMessageForDialog(state.message.trim())
                     } else {
                         ""
                     }
@@ -3199,7 +3242,8 @@ private fun MonitoringApp(
                         if (zfsMenuOptions.isNotEmpty()) {
                             zfsMenuOptions.forEach { option ->
                                 val targetAction = resolveMenuOptionAction(option)
-                                val label = option.label?.trim().orEmpty()
+                                val rawLabel = option.label?.trim().orEmpty()
+                                val label = formatZfsOptionLabel(rawLabel)
                                 if (label.isNotBlank()) {
                                     Surface(
                                         modifier = Modifier
@@ -3227,11 +3271,6 @@ private fun MonitoringApp(
                             Text("Статусы ZFS пока не получены.")
                         }
                     }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showZfsStatusesDialog = false }) {
-                    Text("Закрыть")
                 }
             }
         )
