@@ -1,3 +1,13 @@
+## [8.50.36] - 2026-04-12
+
+### Added / Добавлено
+- EN: In Android app `Operational center`, tapping the `ZFS` tile now opens an overlay dialog that displays current ZFS statuses and allows quick refresh from the same window.
+- RU: В Android-приложении в `Оперативном центре` тап по плашке `ZFS` теперь открывает окно-наложение с текущими статусами ZFS и возможностью быстрого обновления прямо из этого окна.
+
+### Changed / Изменено
+- EN: SemVer patch bump to `8.50.36`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.36` and `ANDROID_VERSION_CODE=385`; aligned prerelease links to `v8.50.36-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.36`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.36` и `ANDROID_VERSION_CODE=385`; prerelease-ссылки выровнены на `v8.50.36-develop`.
+
 ## [8.50.35] - 2026-04-12
 
 ### Fixed / Исправлено
