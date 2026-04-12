@@ -1,12 +1,12 @@
-## [8.50.55] - 2026-04-12
-
-### Added / Добавлено
-- EN: In Telegram bot `Main menu → Server resources`, added a dedicated `⚙️ Resource settings` button directly on the server selection screen for one-tap access to resource thresholds.
-- RU: В Telegram-боте в `Главное меню → Ресурсы сервера` на экране выбора сервера добавлена отдельная кнопка `⚙️ Настройки ресурсов` для быстрого перехода к порогам ресурсов.
+## [8.50.56] - 2026-04-12
 
 ### Changed / Изменено
-- EN: SemVer patch bump to `8.50.55`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.55` and `ANDROID_VERSION_CODE=404`; aligned prerelease links to `v8.50.55-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.55`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.55` и `ANDROID_VERSION_CODE=404`; prerelease-ссылки выровнены на `v8.50.55-develop`.
+- EN: In Android app `Operational center → ZFS tile`, host statuses are now rendered as interactive cards: short tap opens a data-details dialog for the selected host, long tap opens that host's settings actions.
+- RU: В Android-приложении в `Оперативный центр → плашка ZFS` статусы хостов теперь отображаются в виде интерактивных плашек: короткий тап открывает окно с деталями полученных данных по выбранному хосту, долгий тап открывает действия настроек этого хоста.
+- EN: In Android app `Operational center → ZFS tile → gear`, the gear action now opens ZFS pattern settings directly.
+- RU: В Android-приложении в `Оперативный центр → плашка ZFS → шестерёнка` действие шестерёнки теперь сразу открывает настройки паттернов ZFS.
+- EN: SemVer patch bump to `8.50.56`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.56` and `ANDROID_VERSION_CODE=405`; aligned prerelease links to `v8.50.56-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.56`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.56` и `ANDROID_VERSION_CODE=405`; prerelease-ссылки выровнены на `v8.50.56-develop`.
 
 ## [8.50.54] - 2026-04-12
 

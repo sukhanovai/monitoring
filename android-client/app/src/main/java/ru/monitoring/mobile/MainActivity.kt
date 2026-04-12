@@ -176,6 +176,12 @@ private fun formatZfsOptionLabel(label: String): String {
     return "$icon $compactHost $tail".trim()
 }
 
+private fun extractHostFromZfsStatusLabel(label: String): String {
+    val trimmed = label.trim()
+    val match = zfsStatusLineRegex.matchEntire(trimmed) ?: return ""
+    return match.groupValues.getOrNull(1)?.trim().orEmpty()
+}
+
 private fun formatZfsMessageForDialog(message: String): String {
     if (message.isBlank()) return message
     return message
@@ -866,6 +872,7 @@ private fun MonitoringApp(
     var showZfsSettingsDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsHostsSettingsDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsHostActionsDialog by rememberSaveable { mutableStateOf(false) }
+    var showZfsHostDetailsDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsPatternsDialog by rememberSaveable { mutableStateOf(false) }
     var zfsHostInput by rememberSaveable { mutableStateOf("") }
     var zfsHostEditAction by rememberSaveable { mutableStateOf("") }
@@ -876,6 +883,9 @@ private fun MonitoringApp(
     var zfsSelectedHostDeleteAction by rememberSaveable { mutableStateOf("") }
     var zfsSelectedHostToggleAction by rememberSaveable { mutableStateOf("") }
     var zfsSelectedHostToggleLabel by rememberSaveable { mutableStateOf("") }
+    var zfsDetailsHostName by rememberSaveable { mutableStateOf("") }
+    var zfsStatusDetailsFallbackText by rememberSaveable { mutableStateOf("") }
+    var pendingZfsHostSettingsName by rememberSaveable { mutableStateOf("") }
     var showResourceThresholdDialog by rememberSaveable { mutableStateOf(false) }
     var resourceThresholdAction by rememberSaveable { mutableStateOf("") }
     var resourceThresholdLabel by rememberSaveable { mutableStateOf("") }
@@ -901,6 +911,35 @@ private fun MonitoringApp(
     var proxmoxHostActionsTargetKey by rememberSaveable { mutableStateOf("") }
     var databaseActionsTargetAction by rememberSaveable { mutableStateOf("") }
     var showMorningReportDialog by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(
+        pendingZfsHostSettingsName,
+        state.extensionSettingsMenuAction,
+        state.extensionSettingsMenuOptions
+    ) {
+        val pendingHost = pendingZfsHostSettingsName.trim()
+        if (pendingHost.isBlank()) return@LaunchedEffect
+        if (state.extensionSettingsMenuAction != "settings_zfs_list") return@LaunchedEffect
+        if (state.extensionSettingsMenuOptions.isEmpty()) return@LaunchedEffect
+        val zfsMenuPairs = state.extensionSettingsMenuOptions
+            .mapNotNull { option ->
+                val action = resolveMenuOptionAction(option)
+                val label = option.label?.trim().orEmpty()
+                if (label.isBlank() || action.isBlank()) null else label to action
+            }
+        val hostGroup = extractZfsHostOptionGroups(zfsMenuPairs)
+            .firstOrNull { it.hostName.equals(pendingHost, ignoreCase = true) }
+        if (hostGroup != null) {
+            zfsSelectedHostName = hostGroup.hostName
+            zfsSelectedHostEditAction = hostGroup.editAction
+            zfsSelectedHostDeleteAction = hostGroup.deleteAction
+            zfsSelectedHostToggleAction = hostGroup.toggleAction
+            zfsSelectedHostToggleLabel = hostGroup.toggleLabel
+            showZfsHostActionsDialog = true
+            showZfsHostsSettingsDialog = false
+            pendingZfsHostSettingsName = ""
+        }
+    }
 
     val canSaveMonitoring = state.checkIntervalInput.isNotBlank() ||
         state.timeoutInput.isNotBlank() ||
@@ -3290,10 +3329,13 @@ private fun MonitoringApp(
                         fontWeight = FontWeight.Bold
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        IconButton(onClick = { showZfsSettingsDialog = true }) {
+                        IconButton(onClick = {
+                            showZfsPatternsDialog = true
+                            onExtensionsSettingsAction("settings_patterns_zfs")
+                        }) {
                             Icon(
                                 imageVector = Icons.Filled.Settings,
-                                contentDescription = "Открыть настройки ZFS"
+                                contentDescription = "Открыть настройки паттернов ZFS"
                             )
                         }
                         IconButton(onClick = { showZfsStatusesDialog = false }) {
@@ -3340,9 +3382,22 @@ private fun MonitoringApp(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .clip(RoundedCornerShape(10.dp))
-                                            .clickable(enabled = targetAction.isNotBlank()) {
-                                                onAction(targetAction)
-                                            },
+                                            .combinedClickable(
+                                                enabled = targetAction.isNotBlank(),
+                                                onClick = {
+                                                    zfsDetailsHostName = extractHostFromZfsStatusLabel(rawLabel)
+                                                    zfsStatusDetailsFallbackText = formatZfsMessageForDialog(rawLabel)
+                                                    onAction(targetAction)
+                                                    showZfsHostDetailsDialog = true
+                                                },
+                                                onLongClick = {
+                                                    val hostName = extractHostFromZfsStatusLabel(rawLabel)
+                                                    if (hostName.isNotBlank()) {
+                                                        pendingZfsHostSettingsName = hostName
+                                                        onExtensionsSettingsAction("settings_zfs_list")
+                                                    }
+                                                }
+                                            ),
                                         tonalElevation = 2.dp,
                                         shape = RoundedCornerShape(10.dp),
                                         color = if (isProblemBackupLabel(label)) {
@@ -3408,6 +3463,34 @@ private fun MonitoringApp(
             dismissButton = {
                 TextButton(onClick = { showZfsSettingsDialog = false }) {
                     Text("Закрыть")
+                }
+            }
+        )
+    }
+
+    if (showZfsHostDetailsDialog) {
+        AlertDialog(
+            onDismissRequest = { showZfsHostDetailsDialog = false },
+            title = { Text("ℹ️ ${zfsDetailsHostName.ifBlank { "Данные ZFS" }}") },
+            text = {
+                val detailsText = if (state.extensionMenuAction == "zfs_menu") {
+                    formatZfsMessageForDialog(state.message.trim())
+                } else {
+                    ""
+                }
+                Text(
+                    text = when {
+                        state.isLoading && detailsText.isBlank() -> "Запрашиваем сведения по хосту…"
+                        detailsText.isNotBlank() -> detailsText
+                        zfsStatusDetailsFallbackText.isNotBlank() -> zfsStatusDetailsFallbackText
+                        else -> "Данные по хосту пока не получены."
+                    },
+                    lineHeight = 16.sp
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showZfsHostDetailsDialog = false }) {
+                    Text("Ок")
                 }
             }
         )
