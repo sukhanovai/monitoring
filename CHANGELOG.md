@@ -1,5 +1,15 @@
 # Changelog / История изменений
 
+## [8.0.2] - 2026-04-12
+
+### RU
+- Исправлена нормализация имён ZFS-хостов (регистронезависимое сопоставление): проблемы на хостах теперь корректно попадают в сводку и больше не маскируются статусом «OK» из-за различий в регистре имени.
+- Вывод статусов ZFS в сводках теперь приводит имена хостов к конфигурационным, поэтому плашка и детальная страница показывают фактическое состояние по включённым серверам.
+
+### EN
+- Fixed ZFS host name normalization (case-insensitive matching): host issues are now correctly included in summaries and are no longer masked by an “OK” status due to case differences.
+- ZFS status rendering in summaries now maps host names to configured names, so the tile and detailed status page reflect the real state for enabled servers.
+
 ## [8.0.1] - 2026-03-18
 
 ### RU

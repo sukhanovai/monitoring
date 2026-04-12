@@ -1,11 +1,11 @@
 """
 /modules/mail_monitor.py
-Server Monitoring System v8.0.1
+Server Monitoring System v8.0.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Mailbox monitoring
 Система мониторинга серверов
-Версия: 8.0.1
+Версия: 8.0.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг почтового ящика
@@ -711,8 +711,15 @@ class BackupProcessor:
             return None
 
         matched_server = matched_server.strip()
-        if matched_server not in ZFS_SERVERS and matched_server.lower() in ZFS_SERVERS:
-            matched_server = matched_server.lower()
+
+        zfs_servers_lookup = {
+            str(server_name).strip().lower(): server_name
+            for server_name in ZFS_SERVERS.keys()
+            if isinstance(server_name, str)
+        }
+        normalized_server = zfs_servers_lookup.get(matched_server.lower())
+        if normalized_server:
+            matched_server = normalized_server
 
         states = re.findall(r"state:\s*([A-Za-z0-9_-]+)", subject, re.IGNORECASE)
         if not states:
