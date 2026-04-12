@@ -1,11 +1,11 @@
 """
 /core/monitor_core.py
-Server Monitoring System v8.50.48
+Server Monitoring System v8.50.49
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core system
 Система мониторинга серверов
-Версия: 8.50.48
+Версия: 8.50.49
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Ядро системы
@@ -621,6 +621,7 @@ def check_resources_handler(update, context):
         [InlineKeyboardButton("🐧 Linux серверы", callback_data='check_linux')],
         [InlineKeyboardButton("🪟 Windows серверы", callback_data='check_windows')],
         [InlineKeyboardButton("📡 Другие серверы", callback_data='check_other')],
+        [InlineKeyboardButton("⚙️ Настроить параметры проверки", callback_data='settings_resources')],
         [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]

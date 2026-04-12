@@ -1,12 +1,12 @@
-## [8.50.48] - 2026-04-12
+## [8.50.49] - 2026-04-12
 
-### Fixed / Исправлено
-- EN: In Android app `Operational center → ZFS tile → tap ZFS → gear`, the gear action now opens a dedicated overlay dialog with ZFS hosts settings, so host management is available directly from the ZFS statuses flow.
-- RU: В Android-приложении в сценарии `Оперативный центр → плашка ZFS → тап по ZFS → шестерёнка` по шестерёнке теперь открывается отдельное наложенное окно настроек хостов ZFS, чтобы управлять хостами прямо из экрана статусов.
+### Added / Добавлено
+- EN: In Telegram bot `Main menu → Server resources`, added a dedicated `⚙️ Configure check parameters` button that opens resource-threshold settings in one tap.
+- RU: В Telegram-боте в `Главное меню → Ресурсы сервера` добавлена отдельная кнопка `⚙️ Настроить параметры проверки` для быстрого перехода к настройкам порогов ресурсов.
 
 ### Changed / Изменено
-- EN: SemVer patch bump to `8.50.48`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.48` and `ANDROID_VERSION_CODE=397`; aligned prerelease links to `v8.50.48-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.48`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.48` и `ANDROID_VERSION_CODE=397`; prerelease-ссылки выровнены на `v8.50.48-develop`.
+- EN: SemVer patch bump to `8.50.49`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.49` and `ANDROID_VERSION_CODE=398`; aligned prerelease links to `v8.50.49-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.49`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.49` и `ANDROID_VERSION_CODE=398`; prerelease-ссылки выровнены на `v8.50.49-develop`.
 
 ## [8.50.47] - 2026-04-12
 
