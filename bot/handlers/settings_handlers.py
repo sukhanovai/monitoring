@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.50.42
+Server Monitoring System v8.50.43
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.50.42
+Версия: 8.50.43
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -11706,11 +11706,17 @@ def view_patterns_handler(update, context):
         keyboard.append([InlineKeyboardButton("➕ Добавить паттерн", callback_data=add_callback)])
 
     back_callback = context.user_data.get('patterns_back', 'settings_backup')
-    keyboard.append([
-        InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
-        InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
-        InlineKeyboardButton("✖️ Закрыть", callback_data='close')
-    ])
+    if filter_mode == 'zfs':
+        keyboard.append([
+            InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
+            InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+        ])
+    else:
+        keyboard.append([
+            InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
+            InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+            InlineKeyboardButton("✖️ Закрыть", callback_data='close')
+        ])
 
     query.edit_message_text(
         message,
