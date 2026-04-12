@@ -1,5 +1,13 @@
 # Changelog / История изменений
 
+## [8.0.3] - 2026-04-12
+
+### RU
+- В разделе настроек бэкапов для ZFS добавлена отдельная кнопка **«🧊 Паттерны ZFS»** для прямого перехода к управлению паттернами без промежуточного шага через меню ZFS.
+
+### EN
+- Added a dedicated **“🧊 ZFS Patterns”** button in backup settings for direct access to ZFS pattern management without going through the intermediate ZFS menu.
+
 ## [8.0.2] - 2026-04-12
 
 ### RU
