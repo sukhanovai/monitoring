@@ -118,18 +118,32 @@ private fun resolveMenuOptionAction(option: ru.monitoring.mobile.api.MenuOption)
 }
 
 private val zfsStatusLineRegex = Regex("""^•\s*(.+?):\s*([A-Za-z_]+)\s*\((.+)\)$""")
+private val zfsDateTimeRegex = Regex("""(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})(?::\d{2})?""")
 
 private fun zfsStateLabel(state: String): String {
     return when (state.uppercase()) {
-        "ONLINE" -> "Онлайн"
-        "DEGRADED" -> "Деградирован"
-        "FAULTED" -> "Ошибка"
-        "OFFLINE" -> "Оффлайн"
-        "REMOVED" -> "Удалён"
-        "UNAVAIL" -> "Недоступен"
-        "SUSPENDED" -> "Приостановлен"
+        "ONLINE" -> "OK"
+        "DEGRADED" -> "DEG"
+        "FAULTED" -> "ERR"
+        "OFFLINE" -> "OFF"
+        "REMOVED" -> "RM"
+        "UNAVAIL" -> "NA"
+        "SUSPENDED" -> "SUS"
         else -> state.uppercase()
     }
+}
+
+private fun compactZfsTimestamp(timestamp: String): String {
+    val raw = timestamp.trim()
+    if (raw.isBlank()) return ""
+    val dateTimeMatch = zfsDateTimeRegex.find(raw)
+    if (dateTimeMatch != null) {
+        val day = dateTimeMatch.groupValues.getOrNull(1)?.takeLast(5).orEmpty()
+        val time = dateTimeMatch.groupValues.getOrNull(2).orEmpty()
+        return "$day $time".trim()
+    }
+    val token = raw.substringBefore(' ')
+    return token.takeIf { it.isNotBlank() } ?: raw
 }
 
 private fun formatZfsOptionLabel(label: String): String {
@@ -140,9 +154,14 @@ private fun formatZfsOptionLabel(label: String): String {
     val timestamp = match.groupValues.getOrNull(3)?.trim().orEmpty()
     if (pool.isBlank() || state.isBlank()) return trimmed
     val isOk = state.equals("ONLINE", ignoreCase = true)
-    val icon = if (isOk) "🟢" else "🔴"
+    val icon = if (isOk) "✅" else "⚠️"
     val readableState = zfsStateLabel(state)
-    return "$icon $pool · $readableState · ${timestamp.substringBefore(' ')}"
+    val compactTimestamp = compactZfsTimestamp(timestamp)
+    return if (compactTimestamp.isBlank()) {
+        "$icon $pool · $readableState"
+    } else {
+        "$icon $pool · $readableState · $compactTimestamp"
+    }
 }
 
 private fun formatZfsMessageForDialog(message: String): String {
@@ -154,12 +173,14 @@ private fun formatZfsMessageForDialog(message: String): String {
             when {
                 trimmed.isBlank() -> ""
                 zfsStatusLineRegex.matches(trimmed) -> formatZfsOptionLabel(trimmed)
-                trimmed == "📊 ZFS статусы (последние)" -> trimmed
-                trimmed.startsWith("📊") || trimmed.startsWith("❌") || trimmed.startsWith("🧊") -> trimmed
-                trimmed.startsWith("•") -> trimmed
-                else -> "🖥️ $trimmed"
+                trimmed == "📊 ZFS статусы (последние)" -> ""
+                trimmed.startsWith("📊") || trimmed.startsWith("🧊") -> ""
+                trimmed.startsWith("❌") -> "⚠️ ${trimmed.removePrefix("❌").trim()}"
+                trimmed.startsWith("•") -> trimmed.removePrefix("•").trim()
+                else -> trimmed
             }
         }
+        .filter { it.isNotBlank() }
         .joinToString("\n")
 }
 
