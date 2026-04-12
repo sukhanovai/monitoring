@@ -1,11 +1,11 @@
 """
 /bot/menu/builder.py
-Server Monitoring System v8.50.56
+Server Monitoring System v8.50.57
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 The place where keyboards are made.
 Система мониторинга серверов
-Версия: 8.50.56
+Версия: 8.50.57
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Место, где строятся клавиатуры
@@ -23,7 +23,6 @@ def main_menu(extension_manager):
 
     if extension_manager.is_extension_enabled('resource_monitor'):
         keyboard.append([InlineKeyboardButton("📊 Ресурсы сервера", callback_data='check_resources')])
-        keyboard.append([InlineKeyboardButton("⚙️ Настройки ресурсов", callback_data='settings_resources')])
 
     if extension_manager.is_extension_enabled('backup_monitor'):
         keyboard.append(

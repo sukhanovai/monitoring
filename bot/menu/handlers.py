@@ -1,11 +1,11 @@
 """
 /bot/menu/handlers.py
-Server Monitoring System v8.50.56
+Server Monitoring System v8.50.57
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Bot menu handlers
 Система мониторинга серверов
-Версия: 8.50.56
+Версия: 8.50.57
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики меню бота
@@ -167,7 +167,6 @@ def start_command(update, context):
     if extension_manager.is_extension_enabled('resource_monitor'):
         keyboard.insert(1, [InlineKeyboardButton("📊 Проверить все ресурсы", callback_data='check_resources')])
         keyboard.insert(3, [InlineKeyboardButton("📈 Ресурсы одного сервера", callback_data='show_resources_menu')])
-        keyboard.insert(4, [InlineKeyboardButton("⚙️ Настройки ресурсов", callback_data='settings_resources')])
    
     extension_manager = get_extension_manager()
     if (
