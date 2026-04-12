@@ -3272,6 +3272,11 @@ private fun MonitoringApp(
                         }
                     }
                 }
+            },
+            confirmButton = {
+                TextButton(onClick = { showZfsStatusesDialog = false }) {
+                    Text("Закрыть")
+                }
             }
         )
     }
