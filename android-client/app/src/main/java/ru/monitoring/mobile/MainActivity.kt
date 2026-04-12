@@ -142,7 +142,7 @@ private fun formatZfsOptionLabel(label: String): String {
     val isOk = state.equals("ONLINE", ignoreCase = true)
     val icon = if (isOk) "🟢" else "🔴"
     val readableState = zfsStateLabel(state)
-    return "$icon $pool — $readableState · $timestamp"
+    return "$icon $pool · $readableState · ${timestamp.substringBefore(' ')}"
 }
 
 private fun formatZfsMessageForDialog(message: String): String {
@@ -2715,9 +2715,9 @@ private fun MonitoringApp(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 420.dp)
+                        .heightIn(max = 520.dp)
                         .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     if (serverButtonsForDialog.isEmpty()) {
                         Text("Серверы для выбранного фильтра не найдены.")
@@ -2887,9 +2887,9 @@ private fun MonitoringApp(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 420.dp)
+                        .heightIn(max = 520.dp)
                         .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     if (state.morningReportText.isNotBlank()) {
                         Text(state.morningReportText)
@@ -3218,9 +3218,9 @@ private fun MonitoringApp(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 420.dp)
+                        .heightIn(max = 520.dp)
                         .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     val zfsMenuOptions = if (state.extensionMenuAction == "zfs_menu") {
                         state.extensionMenuOptions
@@ -3262,7 +3262,8 @@ private fun MonitoringApp(
                                     ) {
                                         Text(
                                             text = label,
-                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)
+                                            style = MaterialTheme.typography.bodySmall,
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                                         )
                                     }
                                 }
@@ -3273,11 +3274,7 @@ private fun MonitoringApp(
                     }
                 }
             },
-            confirmButton = {
-                TextButton(onClick = { showZfsStatusesDialog = false }) {
-                    Text("Закрыть")
-                }
-            }
+            confirmButton = {}
         )
     }
 
