@@ -1,3 +1,15 @@
+## [8.50.38] - 2026-04-12
+
+### Changed / Изменено
+- EN: In Android app `Operational center → ZFS tile → tap`, ZFS status lines are now rendered in a more readable Telegram-style format (state icons + human-readable state labels + compact timestamp), replacing raw pool state strings.
+- RU: В Android-приложении `Оперативный центр → плитка ZFS → тап` строки статусов ZFS теперь отображаются в более читаемом формате в стиле Telegram (иконки состояния + человекочитаемые статусы + компактное время) вместо сырых строк состояния пулов.
+- EN: In Android ZFS statuses dialog, removed `Refresh` and explicit `Close` controls from the panel to simplify interaction; the dialog is now informational with standard dismiss behavior.
+- RU: В диалоге статусов ZFS Android удалены кнопки `Обновить` и явное `Закрыть` для упрощения взаимодействия; окно теперь информационное со стандартным закрытием.
+- EN: Added a dedicated settings gear button in the Android ZFS statuses dialog title to open ZFS hosts settings (`settings_zfs_list`) directly.
+- RU: В заголовок Android-диалога статусов ZFS добавлена отдельная кнопка-шестерёнка для прямого открытия настроек хостов ZFS (`settings_zfs_list`).
+- EN: SemVer patch bump to `8.50.38`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.38` and `ANDROID_VERSION_CODE=387`; aligned prerelease links to `v8.50.38-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.38`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.38` и `ANDROID_VERSION_CODE=387`; prerelease-ссылки выровнены на `v8.50.38-develop`.
+
 ## [8.50.37] - 2026-04-12
 
 ### Fixed / Исправлено
