@@ -1,4 +1,4 @@
-## [8.50.42] - 2026-04-12
+## [8.50.43] - 2026-04-12
 
 ### Changed / Изменено
 - EN: In Android app `Operational center → ZFS tile`, the ZFS statuses dialog is now denser: reduced inter-item spacing/padding and tighter line-height in status text to minimize scrolling.
@@ -7,8 +7,10 @@
 - RU: В заголовок диалога статусов ZFS добавлена явная кнопка закрытия `✕` для быстрого закрытия в один тап.
 - EN: In Telegram bot `Main menu → ZFS`, added a dedicated `⚙️ ZFS pattern settings` button on the ZFS status screen for one-tap access to ZFS patterns management.
 - RU: В Telegram-боте в `Главное меню → ZFS` на экране статусов добавлена отдельная кнопка `⚙️ Настройка паттернов ZFS` для быстрого перехода к управлению паттернами ZFS.
-- EN: SemVer patch bump to `8.50.42`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.42` and `ANDROID_VERSION_CODE=391`; aligned prerelease links to `v8.50.42-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.42`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.42` и `ANDROID_VERSION_CODE=391`; prerelease-ссылки выровнены на `v8.50.42-develop`.
+- EN: In Telegram bot `Main menu → ZFS → ZFS pattern settings`, removed the `↩️ Back` button from the patterns screen; only `Home` and `Close` controls are kept.
+- RU: В Telegram-боте в `Главное меню → ZFS → Настройка паттернов ZFS` убрана кнопка `↩️ Назад` на экране паттернов; оставлены только `На главную` и `Закрыть`.
+- EN: SemVer patch bump to `8.50.43`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.43` and `ANDROID_VERSION_CODE=392`; aligned prerelease links to `v8.50.43-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.43`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.43` и `ANDROID_VERSION_CODE=392`; prerelease-ссылки выровнены на `v8.50.43-develop`.
 
 ## [8.50.37] - 2026-04-12
 
