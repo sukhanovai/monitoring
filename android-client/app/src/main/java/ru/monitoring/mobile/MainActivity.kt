@@ -740,6 +740,7 @@ private fun MonitoringApp(
     var dbEntryEditNameInput by rememberSaveable { mutableStateOf("") }
     var showZfsHostAddDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsHostEditDialog by rememberSaveable { mutableStateOf(false) }
+    var showZfsStatusesDialog by rememberSaveable { mutableStateOf(false) }
     var zfsHostInput by rememberSaveable { mutableStateOf("") }
     var zfsHostEditAction by rememberSaveable { mutableStateOf("") }
     var zfsHostEditCurrentName by rememberSaveable { mutableStateOf("") }
@@ -1186,6 +1187,11 @@ private fun MonitoringApp(
             } else if (extension.id == "resource_monitor") {
                 {
                     openServerResourcesSingleCheckDetails()
+                }
+            } else if (extension.id == "zfs_monitor") {
+                {
+                    showZfsStatusesDialog = true
+                    onAction("zfs_menu")
                 }
             } else {
                 { isSettingsExpanded = true; settingsSection = "extensions"; isExtensionsSettingsOpened = true }
@@ -3133,6 +3139,99 @@ private fun MonitoringApp(
             dismissButton = {
                 TextButton(onClick = { showDbOpsEntryAddDialog = false }) {
                     Text("Отмена")
+                }
+            }
+        )
+    }
+
+    if (showZfsStatusesDialog) {
+        AlertDialog(
+            onDismissRequest = { showZfsStatusesDialog = false },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "🧊 Статусы ZFS",
+                        modifier = Modifier.weight(1f),
+                        fontWeight = FontWeight.Bold
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        TextButton(onClick = { onAction("zfs_menu") }) {
+                            Text("Обновить")
+                        }
+                        IconButton(onClick = { showZfsStatusesDialog = false }) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "Закрыть окно статусов ZFS"
+                            )
+                        }
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    val zfsMenuOptions = if (state.extensionMenuAction == "zfs_menu") {
+                        state.extensionMenuOptions
+                    } else {
+                        emptyList()
+                    }
+                    val zfsMessage = if (state.extensionMenuAction == "zfs_menu") {
+                        state.message.trim()
+                    } else {
+                        ""
+                    }
+
+                    if (state.isLoading && zfsMenuOptions.isEmpty() && zfsMessage.isBlank()) {
+                        Text("Загружаем статусы ZFS…")
+                    } else {
+                        if (zfsMessage.isNotBlank()) {
+                            Text(zfsMessage)
+                        }
+                        if (zfsMenuOptions.isNotEmpty()) {
+                            zfsMenuOptions.forEach { option ->
+                                val targetAction = resolveMenuOptionAction(option)
+                                val label = option.label?.trim().orEmpty()
+                                if (label.isNotBlank()) {
+                                    Surface(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .clickable(enabled = targetAction.isNotBlank()) {
+                                                onAction(targetAction)
+                                            },
+                                        tonalElevation = 2.dp,
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = if (isProblemBackupLabel(label)) {
+                                            MaterialTheme.colorScheme.errorContainer
+                                        } else {
+                                            MaterialTheme.colorScheme.tertiaryContainer
+                                        }
+                                    ) {
+                                        Text(
+                                            text = label,
+                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        } else if (zfsMessage.isBlank()) {
+                            Text("Статусы ZFS пока не получены.")
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showZfsStatusesDialog = false }) {
+                    Text("Закрыть")
                 }
             }
         )
