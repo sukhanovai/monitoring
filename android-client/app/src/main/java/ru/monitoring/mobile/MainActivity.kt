@@ -146,6 +146,14 @@ private fun compactZfsTimestamp(timestamp: String): String {
     return token.takeIf { it.isNotBlank() } ?: raw
 }
 
+private fun compactZfsHost(host: String, maxLength: Int = 18): String {
+    val normalized = host.trim()
+    if (normalized.length <= maxLength) return normalized
+    val keepStart = 10
+    val keepEnd = 5
+    return "${normalized.take(keepStart)}…${normalized.takeLast(keepEnd)}"
+}
+
 private fun formatZfsOptionLabel(label: String): String {
     val trimmed = label.trim()
     val match = zfsStatusLineRegex.matchEntire(trimmed) ?: return trimmed
@@ -153,6 +161,7 @@ private fun formatZfsOptionLabel(label: String): String {
     val state = match.groupValues.getOrNull(2)?.trim().orEmpty()
     val timestamp = match.groupValues.getOrNull(3)?.trim().orEmpty()
     if (host.isBlank() || state.isBlank()) return trimmed
+    val compactHost = compactZfsHost(host)
     val isOk = state.equals("ONLINE", ignoreCase = true)
     val icon = if (isOk) "✅" else "⚠️"
     val readableState = zfsStateLabel(state)
@@ -164,7 +173,7 @@ private fun formatZfsOptionLabel(label: String): String {
             append(compactTimestamp)
         }
     }
-    return "$icon $host $tail".trim()
+    return "$icon $compactHost $tail".trim()
 }
 
 private fun formatZfsMessageForDialog(message: String): String {
@@ -3297,7 +3306,10 @@ private fun MonitoringApp(
                                         Text(
                                             text = label,
                                             style = MaterialTheme.typography.bodySmall.copy(lineHeight = 14.sp),
-                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            softWrap = false,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                         )
                                     }
                                 }
