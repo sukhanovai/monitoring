@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.0.1
+Server Monitoring System v8.0.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.0.1
+Версия: 8.0.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -2534,6 +2534,11 @@ def show_zfs_status_summary(update, context):
         for name, server_value in zfs_servers.items()
         if not isinstance(server_value, dict) or server_value.get('enabled', True)
     }
+    allowed_servers_map = {
+        str(server_name).strip().lower(): server_name
+        for server_name in allowed_servers
+        if isinstance(server_name, str)
+    }
 
     db_path = BACKUP_DATABASE_CONFIG.get("backups_db")
     if not db_path:
@@ -2584,7 +2589,13 @@ def show_zfs_status_summary(update, context):
         conn.close()
 
     if allowed_servers:
-        rows = [row for row in rows if row[0] in allowed_servers]
+        normalized_rows = []
+        for server_name, pool_name, pool_state, received_at in rows:
+            normalized_server = allowed_servers_map.get(str(server_name).strip().lower())
+            if not normalized_server:
+                continue
+            normalized_rows.append((normalized_server, pool_name, pool_state, received_at))
+        rows = normalized_rows
     else:
         rows = []
 
