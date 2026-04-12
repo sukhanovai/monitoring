@@ -1,16 +1,16 @@
-## [8.50.33] - 2026-04-12
+## [8.50.35] - 2026-04-12
 
 ### Fixed / Исправлено
-- EN: In Android app `Operational center → Mail tile → Mail server backups → Mail backup patterns`, fixed edit flow: tapping a pattern and choosing `Edit` now opens the dialog with the current editable pattern prefilled, so the user sees exactly what is being edited.
-- RU: В Android-приложении `Оперативный центр → плитка «Почта» → Бэкапы почтового сервера → Паттерны бэкапов почты` исправлен сценарий редактирования: по тапу на паттерн и выбору `Редактировать` диалог теперь открывается с уже подставленным редактируемым паттерном, чтобы сразу было видно, что именно меняется.
+- EN: Reworked Telegram ZFS status summary rendering for quick scanning: output is now compact and highlights health at a glance with aggregated counters (`servers`, `pools`) and explicit server-level problem markers.
+- RU: Переработано отображение сводки статусов ZFS в Telegram для быстрого просмотра: вывод стал компактнее и сразу подсвечивает здоровье через агрегированные счётчики (`серверы`, `пулы`) и явные маркеры проблем по серверам.
 
 ### Added / Добавлено
-- EN: Added an inline hint in the mail pattern edit dialog with a concrete example of correct editing format (edit only pattern text, without index/type prefix).
-- RU: В диалоге редактирования паттерна почты добавлена подсказка с примером корректного формата изменения (редактировать только текст паттерна без номера/префикса типа).
+- EN: Added per-server compact lines in Telegram ZFS summary (`ok/total` + latest timestamp) and concise problem details for non-ONLINE pools to reduce noise while preserving diagnostics.
+- RU: Добавлены компактные строки по каждому серверу в Telegram-сводке ZFS (`ok/total` + время последнего статуса) и короткая детализация проблемных пулов (не `ONLINE`) без лишнего шума.
 
 ### Changed / Изменено
-- EN: SemVer patch bump to `8.50.33`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.33` and `ANDROID_VERSION_CODE=382`; aligned prerelease links to `v8.50.33-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.33`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.33` и `ANDROID_VERSION_CODE=382`; prerelease-ссылки выровнены на `v8.50.33-develop`.
+- EN: SemVer patch bump to `8.50.35`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.35` and `ANDROID_VERSION_CODE=384`; aligned prerelease links to `v8.50.35-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.35`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.35` и `ANDROID_VERSION_CODE=384`; prerelease-ссылки выровнены на `v8.50.35-develop`.
 ## [8.50.28] - 2026-04-09
 
 ### Fixed / Исправлено
