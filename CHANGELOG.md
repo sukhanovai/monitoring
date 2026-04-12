@@ -1,11 +1,12 @@
-## [8.50.58] - 2026-04-12
+## [8.50.59] - 2026-04-12
 
 ### Changed / Изменено
-- EN: In Android app `Operational center → ZFS tile tap`, converted ZFS host statuses to clickable cards: short tap now opens host data details, long tap opens host settings directly.
-- RU: В Android-приложении в `Оперативный центр → тап по плашке ZFS` статусы ZFS переведены в формат плашек: короткий тап открывает сведения по данным хоста, долгий тап сразу открывает настройки хоста.
-- EN: SemVer patch bump to `8.50.58`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.58` and `ANDROID_VERSION_CODE=407`; aligned prerelease links to `v8.50.58-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.58`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.58` и `ANDROID_VERSION_CODE=407`; prerelease-ссылки выровнены на `v8.50.58-develop`.
-
+- EN: In Telegram bot `Settings → Extensions`, removed the `💻 Resources` item so resource thresholds are configured only from the server-resources flow.
+- RU: В Telegram-боте в `Настройки → Расширения` удалён пункт `💻 Ресурсы`, чтобы пороги ресурсов настраивались только из сценария ресурсов сервера.
+- EN: In Telegram bot `Main menu → Server resources → Resource settings → any threshold input`, changed the `❌ Cancel` action to return to `Resource settings` instead of the global settings root.
+- RU: В Telegram-боте в `Главное меню → Ресурсы сервера → Настройки ресурсов → ввод любого порога` кнопка `❌ Отмена` теперь возвращает в `Настройки ресурсов`, а не в общий корень настроек.
+- EN: SemVer patch bump to `8.50.59`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.59` and `ANDROID_VERSION_CODE=408`; aligned prerelease links to `v8.50.59-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.59`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.59` и `ANDROID_VERSION_CODE=408`; prerelease-ссылки выровнены на `v8.50.59-develop`.
 ## [8.50.57] - 2026-04-12
 
 ### Changed / Изменено

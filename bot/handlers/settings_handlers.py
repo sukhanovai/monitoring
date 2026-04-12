@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.50.58
+Server Monitoring System v8.50.59
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.50.58
+Версия: 8.50.59
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -2038,11 +2038,15 @@ def handle_setting_input(update, context, setting_key):
     }
     
     message = setting_descriptions.get(setting_key, f'Введите новое значение для {setting_key}:')
-    
+
+    cancel_callback = 'settings_main'
+    if setting_key in {'cpu_warning', 'cpu_critical', 'ram_warning', 'ram_critical', 'disk_warning', 'disk_critical'}:
+        cancel_callback = 'settings_resources'
+
     query.edit_message_text(
         message,
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data='settings_main')]
+            [InlineKeyboardButton("❌ Отмена", callback_data=cancel_callback)]
         ])
     )
 
@@ -2871,9 +2875,6 @@ def show_settings_extensions_menu(update, context):
 
     if extension_manager.is_extension_enabled(SUPPLIER_STOCK_EXTENSION_ID):
         keyboard.append([InlineKeyboardButton("📦 Остатки поставщиков", callback_data='settings_ext_supplier_stock')])
-
-    if extension_manager.is_extension_enabled('resource_monitor'):
-        keyboard.append([InlineKeyboardButton("💻 Ресурсы", callback_data='settings_resources')])
 
     keyboard.extend([
         [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
@@ -8958,11 +8959,15 @@ def handle_setting_input(update, context, setting_key):
     }
     
     message = setting_descriptions.get(setting_key, f'Введите новое значение для {setting_key}:')
-    
+
+    cancel_callback = 'settings_main'
+    if setting_key in {'cpu_warning', 'cpu_critical', 'ram_warning', 'ram_critical', 'disk_warning', 'disk_critical'}:
+        cancel_callback = 'settings_resources'
+
     query.edit_message_text(
         message,
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data='settings_main')]
+            [InlineKeyboardButton("❌ Отмена", callback_data=cancel_callback)]
         ])
     )
 
