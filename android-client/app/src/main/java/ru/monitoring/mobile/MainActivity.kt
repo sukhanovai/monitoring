@@ -211,15 +211,15 @@ private data class ZfsStatusCardItem(
     val hostName: String,
     val statusLabel: String,
     val compactTimestamp: String,
-    val action: String,
+    val action: String?,
     val rawLabel: String,
     val hasProblem: Boolean
 )
 
 private fun toZfsStatusCardItem(option: ru.monitoring.mobile.api.MenuOption): ZfsStatusCardItem? {
     val rawLabel = option.label?.trim().orEmpty()
-    val action = resolveMenuOptionAction(option)
-    if (rawLabel.isBlank() || action.isBlank()) return null
+    val action = resolveMenuOptionAction(option).ifBlank { null }
+    if (rawLabel.isBlank()) return null
     if (!zfsStatusLineRegex.matches(rawLabel)) return null
     val match = zfsStatusLineRegex.matchEntire(rawLabel) ?: return null
     val hostName = match.groupValues.getOrNull(1)?.trim().orEmpty()
@@ -3585,7 +3585,7 @@ private fun MonitoringApp(
                                                 onClick = {
                                                     zfsDetailsHostName = card.hostName
                                                     zfsStatusDetailsFallbackText = formatZfsMessageForDialog(card.rawLabel)
-                                                    onAction(card.action)
+                                                    card.action?.let { onAction(it) }
                                                     showZfsHostDetailsDialog = true
                                                 },
                                                 onLongClick = {

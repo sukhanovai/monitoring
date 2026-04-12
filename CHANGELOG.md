@@ -1,10 +1,12 @@
-## [8.50.65] - 2026-04-12
+## [8.50.66] - 2026-04-12
 
 ### Changed / Изменено
-- EN: In Android app `Operational center`, metric tiles now use content-based width instead of visually equal blocks, so each tile adapts to the amount of data it shows.
-- RU: В Android-приложении в `Оперативном центре` плашки метрик теперь используют ширину по содержимому вместо визуально одинаковых блоков, поэтому каждая плашка подстраивается под объём данных.
-- EN: SemVer patch bump to `8.50.65`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.65` and `ANDROID_VERSION_CODE=414`; aligned prerelease links to `v8.50.65-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.65`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.65` и `ANDROID_VERSION_CODE=414`; prerelease-ссылки выровнены на `v8.50.65-develop`.
+- EN: In Android app `Operational center → ZFS tile → statuses`, all parsed ZFS status items are rendered as interactive tiles even when backend action is absent.
+- RU: В Android-приложении в `Оперативный центр → плашка ZFS → статусы` все распознанные статусы ZFS теперь отображаются интерактивными плашками даже если для пункта не пришёл backend-action.
+- EN: In Android app `Operational center → ZFS tile → statuses`, short tap opens received data details, and long tap opens ZFS host settings.
+- RU: В Android-приложении в `Оперативный центр → плашка ZFS → статусы` короткий тап открывает сведения о полученных данных, долгий тап открывает настройки хостов ZFS.
+- EN: SemVer patch bump to `8.50.66`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.66` and `ANDROID_VERSION_CODE=415`; aligned prerelease links to `v8.50.66-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.66`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.66` и `ANDROID_VERSION_CODE=415`; prerelease-ссылки выровнены на `v8.50.66-develop`.
 
 ## [8.50.60] - 2026-04-12
 
