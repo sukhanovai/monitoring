@@ -1,3 +1,13 @@
+## [8.50.61] - 2026-04-12
+
+### Changed / Изменено
+- EN: In Android app `Operational center → Resources tile`, added a dedicated gear icon on the tile.
+- RU: В Android-приложении в `Оперативный центр → плашка «ресурсы»` добавлена отдельная шестерёнка на самой плашке.
+- EN: Tapping the gear now opens an overlay `Resource check parameters` dialog with quick actions for CPU/RAM/DISK warning and critical thresholds, then opens threshold input.
+- RU: По нажатию на шестерёнку теперь открывается наложением окно `Параметры проверки ресурсов` с быстрыми действиями для warning/critical порогов CPU/RAM/DISK и последующим вводом значения порога.
+- EN: SemVer patch bump to `8.50.61`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.61` and `ANDROID_VERSION_CODE=410`; aligned prerelease links to `v8.50.61-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.61`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.61` и `ANDROID_VERSION_CODE=410`; prerelease-ссылки выровнены на `v8.50.61-develop`.
+
 ## [8.50.60] - 2026-04-12
 
 ### Changed / Изменено
