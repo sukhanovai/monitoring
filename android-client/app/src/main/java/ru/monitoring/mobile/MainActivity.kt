@@ -1390,6 +1390,14 @@ private fun MonitoringApp(
                 }
             } else {
                 { isSettingsExpanded = true; settingsSection = "extensions"; isExtensionsSettingsOpened = true }
+            },
+            onLongClick = if (extension.id == "zfs_monitor") {
+                {
+                    showZfsHostsSettingsDialog = true
+                    onExtensionsSettingsAction("settings_zfs_list")
+                }
+            } else {
+                null
             }
         )
     }
