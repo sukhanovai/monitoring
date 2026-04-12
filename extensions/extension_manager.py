@@ -1,11 +1,11 @@
 """
 /extensions/extension_manager.py
-Server Monitoring System v8.50.45
+Server Monitoring System v8.50.46
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Extension Manager for Monitoring
 Система мониторинга серверов
-Версия: 8.50.45
+Версия: 8.50.46
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Менеджер расширений для мониторинга
