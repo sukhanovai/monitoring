@@ -1,10 +1,12 @@
-## [8.50.39] - 2026-04-12
+## [8.50.40] - 2026-04-12
 
 ### Changed / Изменено
-- EN: Fixed a build-breaking Compose API mismatch in Android ZFS statuses dialog: the `AlertDialog` call now provides a valid `confirmButton` slot, restoring Kotlin compilation for `compactOpsDebug`.
-- RU: Исправлен ломающий сборку Android баг несовместимого вызова Compose API в диалоге статусов ZFS: в `AlertDialog` добавлен корректный слот `confirmButton`, сборка `compactOpsDebug` снова компилируется.
-- EN: SemVer patch bump to `8.50.39`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.39` and `ANDROID_VERSION_CODE=388`; aligned prerelease links to `v8.50.39-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.39`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.39` и `ANDROID_VERSION_CODE=388`; prerelease-ссылки выровнены на `v8.50.39-develop`.
+- EN: In Android app `Operational center → ZFS tile`, the ZFS statuses dialog is now denser: reduced inter-item spacing/padding, smaller status typography, and compact date rendering in each status line to minimize scrolling.
+- RU: В Android-приложении `Оперативный центр → плашка ZFS` диалог статусов сделан более плотным: уменьшены интервалы/отступы, снижен размер типографики статусов и сокращён вывод даты в строке статуса, чтобы меньше скроллить.
+- EN: Removed the explicit `Close` button from the Android ZFS statuses dialog; closing is now done via outside tap/back gesture for cleaner UI.
+- RU: Из Android-диалога статусов ZFS убрана явная кнопка `Закрыть`; закрытие теперь через тап вне окна/системный back для более чистого интерфейса.
+- EN: SemVer patch bump to `8.50.40`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.40` and `ANDROID_VERSION_CODE=389`; aligned prerelease links to `v8.50.40-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.40`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.40` и `ANDROID_VERSION_CODE=389`; prerelease-ссылки выровнены на `v8.50.40-develop`.
 
 ## [8.50.37] - 2026-04-12
 
