@@ -1,13 +1,14 @@
-## [8.50.56] - 2026-04-12
+## [8.50.57] - 2026-04-12
 
 ### Changed / Изменено
-- EN: In Android app `Operational center → ZFS tile`, host statuses are now rendered as interactive cards: short tap opens a data-details dialog for the selected host, long tap opens that host's settings actions.
-- RU: В Android-приложении в `Оперативный центр → плашка ZFS` статусы хостов теперь отображаются в виде интерактивных плашек: короткий тап открывает окно с деталями полученных данных по выбранному хосту, долгий тап открывает действия настроек этого хоста.
-- EN: In Android app `Operational center → ZFS tile → gear`, the gear action now opens ZFS pattern settings directly.
-- RU: В Android-приложении в `Оперативный центр → плашка ZFS → шестерёнка` действие шестерёнки теперь сразу открывает настройки паттернов ZFS.
-- EN: SemVer patch bump to `8.50.56`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.56` and `ANDROID_VERSION_CODE=405`; aligned prerelease links to `v8.50.56-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.56`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.56` и `ANDROID_VERSION_CODE=405`; prerelease-ссылки выровнены на `v8.50.56-develop`.
-
+- EN: In Telegram bot `Main menu`, removed the `⚙️ Resource settings` button to keep resource tuning inside the dedicated resources flow.
+- RU: В Telegram-боте в `Главном меню` удалена кнопка `⚙️ Настройки ресурсов`, чтобы настройки порогов открывались только из сценария проверки ресурсов.
+- EN: In Telegram bot `Server resources → Resource settings`, added a dedicated `🏠 Home` button.
+- RU: В Telegram-боте в `Ресурсы сервера → Настройки ресурсов` добавлена отдельная кнопка `🏠 На главную`.
+- EN: In Telegram bot `Server resources → Resource settings`, changed the `↩️ Back` action to return to `Server resources` instead of the global settings root.
+- RU: В Telegram-боте в `Ресурсы сервера → Настройки ресурсов` кнопка `↩️ Назад` теперь возвращает в `Ресурсы сервера`, а не в корень общих настроек.
+- EN: SemVer patch bump to `8.50.57`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.57` and `ANDROID_VERSION_CODE=406`; aligned prerelease links to `v8.50.57-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.57`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.57` и `ANDROID_VERSION_CODE=406`; prerelease-ссылки выровнены на `v8.50.57-develop`.
 ## [8.50.54] - 2026-04-12
 
 ### Changed / Изменено

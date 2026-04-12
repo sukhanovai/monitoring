@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.50.56
+Server Monitoring System v8.50.57
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.50.56
+Версия: 8.50.57
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -750,7 +750,8 @@ def show_resource_settings(update, context):
         [InlineKeyboardButton("🧠 RAM критический", callback_data='set_ram_critical')],
         [InlineKeyboardButton("💾 Disk предупреждение", callback_data='set_disk_warning')],
         [InlineKeyboardButton("💾 Disk критический", callback_data='set_disk_critical')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
+        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='check_resources'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
     
