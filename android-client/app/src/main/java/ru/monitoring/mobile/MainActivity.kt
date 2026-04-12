@@ -234,6 +234,8 @@ private data class ZfsStatusCardItem(
 private data class ZfsPoolStatusItem(
     val poolName: String,
     val statusLabel: String,
+    val rawState: String,
+    val rawTimestamp: String,
     val compactTimestamp: String,
     val hasProblem: Boolean
 )
@@ -251,6 +253,8 @@ private fun toZfsStatusCardItem(option: ru.monitoring.mobile.api.MenuOption): Zf
             ZfsPoolStatusItem(
                 poolName = "pool",
                 statusLabel = status,
+                rawState = parsed.state.uppercase(),
+                rawTimestamp = parsed.timestamp,
                 compactTimestamp = compactZfsTimestamp(parsed.timestamp),
                 hasProblem = hasProblem
             )
@@ -273,6 +277,8 @@ private fun toZfsStatusCardItem(rawLabel: String, action: String? = null): ZfsSt
             ZfsPoolStatusItem(
                 poolName = "pool",
                 statusLabel = status,
+                rawState = parsed.state.uppercase(),
+                rawTimestamp = parsed.timestamp,
                 compactTimestamp = compactZfsTimestamp(parsed.timestamp),
                 hasProblem = hasProblem
             )
@@ -298,6 +304,8 @@ private fun parseZfsStatusCardsFromMessage(message: String): List<ZfsStatusCardI
             val poolItem = ZfsPoolStatusItem(
                 poolName = parsed.name,
                 statusLabel = zfsStateLabel(parsed.state),
+                rawState = parsed.state.uppercase(),
+                rawTimestamp = parsed.timestamp,
                 compactTimestamp = compactZfsTimestamp(parsed.timestamp),
                 hasProblem = !parsed.state.equals("ONLINE", ignoreCase = true)
             )
@@ -319,6 +327,14 @@ private fun parseZfsStatusCardsFromMessage(message: String): List<ZfsStatusCardI
             hasProblem = pools.any { it.hasProblem }
         )
     }
+}
+
+private fun isZfsMonitoringDisabled(toggleLabel: String): Boolean {
+    val normalized = toggleLabel.lowercase()
+    return normalized.contains("выключ") ||
+        normalized.contains("отключ") ||
+        normalized.contains("disable") ||
+        normalized.contains("off")
 }
 
 private data class ZfsHostOptionGroup(
@@ -775,8 +791,6 @@ private fun ZfsStatusTile(
                     text = buildString {
                         append(if (pool.hasProblem) "🔴 " else "🟢 ")
                         append(pool.poolName)
-                        append(" • ")
-                        append(pool.statusLabel)
                         if (pool.compactTimestamp.isNotBlank()) {
                             append(" • ")
                             append(pool.compactTimestamp)
@@ -1521,7 +1535,7 @@ private fun MonitoringApp(
             add(
                 buildExtensionDataTile(
                     extension = extension.copy(name = "ZFS"),
-                    summaryOverride = state.zfsSummary.ifBlank { if (extension.enabled) "ОК" else "выкл" },
+                    summaryOverride = state.zfsSummary.ifBlank { "—" },
                     hasProblemOverride = state.zfsHasProblemItems
                 )
             )
@@ -1586,6 +1600,7 @@ private fun MonitoringApp(
                 {
                     showZfsStatusesDialog = true
                     onAction("zfs_menu")
+                    onExtensionsSettingsAction("settings_zfs_list")
                 }
             } else {
                 { isSettingsExpanded = true; settingsSection = "extensions"; isExtensionsSettingsOpened = true }
@@ -3650,6 +3665,11 @@ private fun MonitoringApp(
                     } else {
                         emptyList()
                     }
+                    val zfsSettingsOptions = if (state.extensionSettingsMenuAction == "settings_zfs_list") {
+                        state.extensionSettingsMenuOptions
+                    } else {
+                        emptyList()
+                    }
                     if (state.isLoading && zfsMenuOptions.isEmpty()) {
                         Text("Загружаем статусы ZFS…")
                     } else {
@@ -3673,24 +3693,57 @@ private fun MonitoringApp(
                             ZfsStatusCardItem(
                                 hostName = host,
                                 pools = pools.distinctBy { pool ->
-                                    "${pool.poolName}|${pool.statusLabel}|${pool.compactTimestamp}"
+                                    "${pool.poolName}|${pool.rawState}|${pool.rawTimestamp}"
                                 },
                                 action = actionByHost[host],
                                 rawLabel = rawByHost[host].orEmpty(),
                                 hasProblem = pools.any { pool -> pool.hasProblem }
                             )
                         }
+                        val zfsSettingsPairs = zfsSettingsOptions
+                            .mapNotNull { option ->
+                                val action = resolveMenuOptionAction(option)
+                                val label = option.label?.trim().orEmpty()
+                                if (label.isBlank() || action.isBlank()) null else label to action
+                            }
+                        val zfsHostGroups = extractZfsHostOptionGroups(zfsSettingsPairs)
+                        val disabledOrMissingCards = zfsHostGroups
+                            .filterNot { hostGroup ->
+                                statusCards.any { card -> card.hostName.equals(hostGroup.hostName, ignoreCase = true) }
+                            }
+                            .map { hostGroup ->
+                                val isDisabled = isZfsMonitoringDisabled(hostGroup.toggleLabel)
+                                val rawState = if (isDisabled) "DISABLED" else "NO_DATA"
+                                val displayState = if (isDisabled) "выкл" else "нет данных"
+                                ZfsStatusCardItem(
+                                    hostName = hostGroup.hostName,
+                                    pools = listOf(
+                                        ZfsPoolStatusItem(
+                                            poolName = "мониторинг",
+                                            statusLabel = displayState,
+                                            rawState = rawState,
+                                            rawTimestamp = hostGroup.toggleLabel,
+                                            compactTimestamp = "",
+                                            hasProblem = false
+                                        )
+                                    ),
+                                    action = null,
+                                    rawLabel = hostGroup.toggleLabel,
+                                    hasProblem = false
+                                )
+                            }
+                        val allStatusCards = statusCards + disabledOrMissingCards
 
-                        if (zfsMenuOptions.isNotEmpty() || statusCards.isNotEmpty()) {
+                        if (zfsMenuOptions.isNotEmpty() || allStatusCards.isNotEmpty()) {
 
-                            if (statusCards.isNotEmpty()) {
+                            if (allStatusCards.isNotEmpty()) {
                                 FlowRow(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     verticalArrangement = Arrangement.spacedBy(8.dp),
                                     maxItemsInEachRow = 2
                                 ) {
-                                    statusCards.forEach { card ->
+                                    allStatusCards.forEach { card ->
                                         Box(modifier = Modifier.fillMaxWidth(0.48f)) {
                                             ZfsStatusTile(
                                                 card = card,
@@ -3698,10 +3751,15 @@ private fun MonitoringApp(
                                                     zfsDetailsHostName = card.hostName
                                                     zfsStatusDetailsFallbackText = card.pools.joinToString("\n") { pool ->
                                                         buildString {
-                                                            append(if (pool.hasProblem) "⚠️ " else "✅ ")
+                                                            append("• ")
                                                             append(pool.poolName)
                                                             append(": ")
-                                                            append(pool.statusLabel)
+                                                            append(pool.rawState)
+                                                            if (pool.rawTimestamp.isNotBlank()) {
+                                                                append(" (")
+                                                                append(pool.rawTimestamp)
+                                                                append(")")
+                                                            }
                                                         }
                                                     }
                                                     showZfsHostDetailsDialog = true
@@ -3915,11 +3973,77 @@ private fun MonitoringApp(
     if (showZfsHostActionsDialog) {
         AlertDialog(
             onDismissRequest = { showZfsHostActionsDialog = false },
-            title = { Text("⚙️ ${zfsSelectedHostName.ifBlank { "Хост ZFS" }}") },
-            text = {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
+                    Text("⚙️ ${zfsSelectedHostName.ifBlank { "Хост ZFS" }}")
+                    IconButton(onClick = { showZfsHostActionsDialog = false }) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Закрыть"
+                        )
+                    }
+                }
+            },
+            text = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        FilledIconButton(
+                            onClick = {
+                                val action = zfsSelectedHostEditAction
+                                if (action.startsWith("settings_zfs_edit_name_")) {
+                                    val raw = action.removePrefix("settings_zfs_edit_name_")
+                                    zfsHostEditAction = "settings_zfs_edit_name_$raw"
+                                    zfsHostEditCurrentName = Uri.decode(raw)
+                                    zfsHostEditNewNameInput = zfsHostEditCurrentName
+                                    showZfsHostEditDialog = zfsHostEditCurrentName.isNotBlank()
+                                }
+                                showZfsHostActionsDialog = false
+                            },
+                            enabled = zfsSelectedHostEditAction.isNotBlank()
+                        ) {
+                            Icon(Icons.Filled.Edit, contentDescription = "Переименовать")
+                        }
+                        Text("Изм.", style = MaterialTheme.typography.labelSmall)
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        FilledIconButton(
+                            onClick = {
+                                onExtensionsSettingsAction(zfsSelectedHostToggleAction)
+                                onExtensionsSettingsAction("settings_zfs_list")
+                                showZfsHostActionsDialog = false
+                            },
+                            enabled = zfsSelectedHostToggleAction.isNotBlank()
+                        ) {
+                            Icon(Icons.Filled.PowerSettingsNew, contentDescription = "Вкл/выкл")
+                        }
+                        Text("Вкл/выкл", style = MaterialTheme.typography.labelSmall)
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        FilledIconButton(
+                            onClick = {
+                                onExtensionsSettingsAction(zfsSelectedHostDeleteAction)
+                                onExtensionsSettingsAction("settings_zfs_list")
+                                showZfsHostActionsDialog = false
+                            },
+                            enabled = zfsSelectedHostDeleteAction.isNotBlank()
+                        ) {
+                            Icon(Icons.Filled.Delete, contentDescription = "Удалить")
+                        }
+                        Text("Удал.", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                Column(horizontalAlignment = Alignment.End) {
                     if (zfsSelectedHostToggleLabel.isNotBlank()) {
                         Text(
                             text = zfsSelectedHostToggleLabel,
@@ -3927,61 +4051,9 @@ private fun MonitoringApp(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    Button(
-                        onClick = {
-                            val action = zfsSelectedHostEditAction
-                            if (action.startsWith("settings_zfs_edit_name_")) {
-                                val raw = action.removePrefix("settings_zfs_edit_name_")
-                                zfsHostEditAction = "settings_zfs_edit_name_$raw"
-                                zfsHostEditCurrentName = Uri.decode(raw)
-                                zfsHostEditNewNameInput = zfsHostEditCurrentName
-                                showZfsHostEditDialog = zfsHostEditCurrentName.isNotBlank()
-                            }
-                            showZfsHostActionsDialog = false
-                        },
-                        enabled = zfsSelectedHostEditAction.isNotBlank(),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Filled.Edit, contentDescription = null)
-                        Text("Переименовать", modifier = Modifier.padding(start = 6.dp))
+                    TextButton(onClick = { showZfsHostActionsDialog = false }) {
+                        Text("Закрыть")
                     }
-                    Button(
-                        onClick = {
-                            onExtensionsSettingsAction(zfsSelectedHostToggleAction)
-                            onExtensionsSettingsAction("settings_zfs_list")
-                            showZfsHostActionsDialog = false
-                        },
-                        enabled = zfsSelectedHostToggleAction.isNotBlank(),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Filled.PowerSettingsNew, contentDescription = null)
-                        Text(
-                            zfsSelectedHostToggleLabel.ifBlank { "Переключить" },
-                            modifier = Modifier.padding(start = 6.dp)
-                        )
-                    }
-                    Button(
-                        onClick = {
-                            onExtensionsSettingsAction(zfsSelectedHostDeleteAction)
-                            onExtensionsSettingsAction("settings_zfs_list")
-                            showZfsHostActionsDialog = false
-                        },
-                        enabled = zfsSelectedHostDeleteAction.isNotBlank(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error,
-                            contentColor = MaterialTheme.colorScheme.onError
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Filled.Delete, contentDescription = null)
-                        Text("Удалить", modifier = Modifier.padding(start = 6.dp))
-                    }
-                }
-            },
-            confirmButton = {},
-            dismissButton = {
-                TextButton(onClick = { showZfsHostActionsDialog = false }) {
-                    Text("Закрыть")
                 }
             }
         )
