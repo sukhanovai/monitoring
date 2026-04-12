@@ -863,6 +863,7 @@ private fun MonitoringApp(
     var showZfsHostAddDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsHostEditDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsStatusesDialog by rememberSaveable { mutableStateOf(false) }
+    var showZfsSettingsDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsHostsSettingsDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsHostActionsDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsPatternsDialog by rememberSaveable { mutableStateOf(false) }
@@ -3289,22 +3290,10 @@ private fun MonitoringApp(
                         fontWeight = FontWeight.Bold
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        IconButton(onClick = {
-                            showZfsHostsSettingsDialog = true
-                            onExtensionsSettingsAction("settings_zfs_list")
-                        }) {
+                        IconButton(onClick = { showZfsSettingsDialog = true }) {
                             Icon(
                                 imageVector = Icons.Filled.Settings,
-                                contentDescription = "Открыть настройки хостов ZFS"
-                            )
-                        }
-                        IconButton(onClick = {
-                            showZfsPatternsDialog = true
-                            onExtensionsSettingsAction("settings_patterns_zfs")
-                        }) {
-                            Icon(
-                                imageVector = Icons.Filled.Settings,
-                                contentDescription = "Открыть настройки паттернов ZFS"
+                                contentDescription = "Открыть настройки ZFS"
                             )
                         }
                         IconButton(onClick = { showZfsStatusesDialog = false }) {
@@ -3380,6 +3369,47 @@ private fun MonitoringApp(
                 }
             },
             confirmButton = {}
+        )
+    }
+
+    if (showZfsSettingsDialog) {
+        AlertDialog(
+            onDismissRequest = { showZfsSettingsDialog = false },
+            title = { Text("⚙️ Настройки ZFS") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Выбери раздел настроек.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Button(
+                        onClick = {
+                            showZfsSettingsDialog = false
+                            showZfsHostsSettingsDialog = true
+                            onExtensionsSettingsAction("settings_zfs_list")
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Хосты")
+                    }
+                    Button(
+                        onClick = {
+                            showZfsSettingsDialog = false
+                            showZfsPatternsDialog = true
+                            onExtensionsSettingsAction("settings_patterns_zfs")
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Паттерны")
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showZfsSettingsDialog = false }) {
+                    Text("Закрыть")
+                }
+            }
         )
     }
 
