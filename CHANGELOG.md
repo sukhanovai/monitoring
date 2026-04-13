@@ -1,12 +1,12 @@
-## [8.50.76] - 2026-04-13
+## [8.50.77] - 2026-04-13
 
 ### Changed / Изменено
-- EN: In Telegram bot `Main menu → ZFS`, disabled hosts are no longer hidden from the status summary: they remain in the list and now use a neutral disabled indicator (`⚪️`) instead of disappearing.
-- RU: В Telegram-боте в `Главное меню → ZFS` отключённые хосты больше не скрываются из сводки статусов: они остаются в списке и отмечаются нейтральным индикатором отключения (`⚪️`), а не пропадают.
-- EN: In the Telegram confirmation message `✅ Мониторинг сервера <host> отключен.`, the `↩️ Back` button now returns to `Main menu → ZFS` (`zfs_menu`) instead of opening ZFS settings.
-- RU: В Telegram-сообщении подтверждения `✅ Мониторинг сервера <host> отключен.` кнопка `↩️ Назад` теперь ведёт в `Главное меню → ZFS` (`zfs_menu`), а не в меню настроек ZFS.
-- EN: SemVer patch bump to `8.50.76`; synchronized project version mentions across runtime/config/docs/Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.76` and `ANDROID_VERSION_CODE=424`; aligned prerelease links to `v8.50.76-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.76`; синхронизированы упоминания версии в runtime/config/docs/Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.76` и `ANDROID_VERSION_CODE=424`; prerelease-ссылки выровнены на `v8.50.76-develop`.
+- EN: In Android app `Operational center → ZFS tile`, host monitoring enabled/disabled state is now taken from a dedicated cached `settings_zfs_list` snapshot, so state stays synchronized with Telegram `Main menu → ZFS` even after switching between ZFS submenus.
+- RU: В Android-приложении в `Оперативный центр → плашка ZFS` состояние включён/выключен для мониторинга хостов теперь берётся из отдельного кэша снимка `settings_zfs_list`, поэтому синхронизация с Telegram `Главное меню → ZFS` сохраняется даже после переключения между подменю ZFS.
+- EN: Added persistent `zfsHostMenuOptions` state in `MainViewModel`; ZFS status dialog now resolves host monitoring markers from this cached list instead of depending on the currently opened extension settings submenu.
+- RU: В `MainViewModel` добавлено постоянное состояние `zfsHostMenuOptions`; диалог статусов ZFS теперь определяет маркеры мониторинга хостов из этого кэша, а не зависит от того, какое подменю настроек расширений открыто в текущий момент.
+- EN: SemVer patch bump to `8.50.77`; synchronized project version mentions across runtime/config/docs/Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.77` and `ANDROID_VERSION_CODE=425`; aligned prerelease links to `v8.50.77-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.77`; синхронизированы упоминания версии в runtime/config/docs/Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.77` и `ANDROID_VERSION_CODE=425`; prerelease-ссылки выровнены на `v8.50.77-develop`.
 
 ## [8.50.75] - 2026-04-13
 

@@ -51,7 +51,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.50.76"
+    private val projectVersion = "8.50.77"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -1287,12 +1287,17 @@ class MainViewModel(
             }
             actionCall
                 .onSuccess { response ->
+                    val zfsHostMenuOptions = resolveZfsHostMenuOptions(
+                        action = normalizedAction,
+                        nextOptions = response.second
+                    )
                     state = state.copy(
                         isLoading = false,
                         message = response.first,
                         messageSource = "extensions_settings",
                         extensionSettingsMenuOptions = response.second,
-                        extensionSettingsMenuAction = response.third
+                        extensionSettingsMenuAction = response.third,
+                        zfsHostMenuOptions = zfsHostMenuOptions
                     )
                 }
                 .onFailure { error ->
@@ -1325,6 +1330,30 @@ class MainViewModel(
 
     private fun shouldReplaceExtensionSettingsOptions(action: String): Boolean =
         action.startsWith("settings_zfs")
+
+    private fun resolveZfsHostMenuOptions(action: String, nextOptions: List<MenuOption>): List<MenuOption> {
+        val zfsOptions = extractZfsHostMenuOptions(nextOptions)
+        return if (action == "settings_zfs_list") {
+            zfsOptions
+        } else if (zfsOptions.isNotEmpty()) {
+            zfsOptions
+        } else {
+            state.zfsHostMenuOptions
+        }
+    }
+
+    private fun extractZfsHostMenuOptions(options: List<MenuOption>): List<MenuOption> {
+        return options.filter { option ->
+            val action = option.action?.trim().orEmpty()
+            val callbackAction = option.callbackData?.trim().orEmpty()
+            val callbackActionCamel = option.callbackDataCamel?.trim().orEmpty()
+            listOf(action, callbackAction, callbackActionCamel).any { candidate ->
+                candidate.startsWith("settings_zfs_toggle_") ||
+                    candidate.startsWith("settings_zfs_edit_name_") ||
+                    candidate.startsWith("settings_zfs_delete_")
+            }
+        }
+    }
 
     private fun normalizeExtensionsSettingsAction(action: String): String = when (action) {
         "settings_backup_hosts" -> "settings_backup_proxmox"
@@ -2236,6 +2265,7 @@ data class MainUiState(
     val extensionMenuAction: String = "",
     val extensionSettingsMenuOptions: List<MenuOption> = emptyList(),
     val extensionSettingsMenuAction: String = "",
+    val zfsHostMenuOptions: List<MenuOption> = emptyList(),
     val backupProxmoxSummary: String = "",
     val backupDatabasesSummary: String = "",
     val backupStockLoadsSummary: String = "",

@@ -3725,11 +3725,7 @@ private fun MonitoringApp(
                     } else {
                         emptyList()
                     }
-                    val zfsSettingsOptions = if (state.extensionSettingsMenuAction == "settings_zfs_list") {
-                        state.extensionSettingsMenuOptions
-                    } else {
-                        emptyList()
-                    }
+                    val zfsSettingsOptions = state.zfsHostMenuOptions
                     if (state.isLoading && zfsMenuOptions.isEmpty()) {
                         Text("Загружаем статусы ZFS…")
                     } else {
