@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.50.75
+Server Monitoring System v8.50.76
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.50.75
+Версия: 8.50.76
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -8460,10 +8460,9 @@ def show_zfs_status_summary(update, context):
     if not isinstance(zfs_servers, dict):
         zfs_servers = {}
 
-    allowed_servers = {
-        name
+    server_enabled_map = {
+        name: (not isinstance(server_value, dict) or server_value.get('enabled', True))
         for name, server_value in zfs_servers.items()
-        if not isinstance(server_value, dict) or server_value.get('enabled', True)
     }
 
     db_path = BACKUP_DATABASE_CONFIG.get("backups_db")
@@ -8514,10 +8513,7 @@ def show_zfs_status_summary(update, context):
     finally:
         conn.close()
 
-    if allowed_servers:
-        rows = [row for row in rows if row[0] in allowed_servers]
-    else:
-        rows = []
+    rows = [row for row in rows if row[0] in server_enabled_map]
 
     if not rows:
         message = "📊 *ZFS статусы*\n\n❌ Данных нет."
@@ -8581,7 +8577,11 @@ def show_zfs_status_summary(update, context):
             total = int(server_entry["total"])
             ok_total = int(server_entry["ok"])
             problems = server_entry["problems"]
-            server_icon = "🟢" if not problems else "🔴"
+            is_enabled = server_enabled_map.get(server_name, True)
+            if not is_enabled:
+                server_icon = "⚪️"
+            else:
+                server_icon = "🟢" if not problems else "🔴"
             lines.append(
                 f"{server_icon} *{_md(server_name)}* · {ok_total}/{total} · {_md(server_entry['last'])}"
             )
@@ -8882,7 +8882,7 @@ def toggle_zfs_server(update, context, server_name):
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs'),
+            [InlineKeyboardButton("↩️ Назад", callback_data='zfs_menu'),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
     )
