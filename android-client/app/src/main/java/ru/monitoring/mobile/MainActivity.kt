@@ -1660,6 +1660,7 @@ private fun MonitoringApp(
                 {
                     showZfsStatusesDialog = true
                     onAction("zfs_menu")
+                    onExtensionsSettingsAction("settings_zfs_list")
                 }
             } else {
                 { isSettingsExpanded = true; settingsSection = "extensions"; isExtensionsSettingsOpened = true }
@@ -3729,7 +3730,7 @@ private fun MonitoringApp(
                         Text("Загружаем статусы ZFS…")
                     } else {
                         val statusCardsFromOptions = zfsMenuOptions.mapNotNull { option -> toZfsStatusCardItem(option) }
-                        val statusCardsFromMessage = parseZfsStatusCardsFromMessage(state.message)
+                        val statusCardsFromMessage = parseZfsStatusCardsFromMessage(state.zfsStatusMessage)
                         val groupedCards = linkedMapOf<String, MutableList<ZfsPoolStatusItem>>()
                         val actionByHost = linkedMapOf<String, String?>()
                         val rawByHost = linkedMapOf<String, String>()
@@ -3880,7 +3881,7 @@ private fun MonitoringApp(
                     text = when {
                         state.isLoading && zfsStatusDetailsFallbackText.isBlank() -> "Запрашиваем сведения по хосту…"
                         zfsStatusDetailsFallbackText.isNotBlank() -> zfsStatusDetailsFallbackText
-                        state.extensionMenuAction == "zfs_menu" && state.message.isNotBlank() -> formatZfsMessageForDialog(state.message.trim())
+                        state.zfsStatusMessage.isNotBlank() -> formatZfsMessageForDialog(state.zfsStatusMessage.trim())
                         else -> "Данные по хосту пока не получены."
                     },
                     lineHeight = 16.sp
