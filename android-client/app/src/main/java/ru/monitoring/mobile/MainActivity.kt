@@ -228,7 +228,9 @@ private data class ZfsStatusCardItem(
     val pools: List<ZfsPoolStatusItem>,
     val action: String?,
     val rawLabel: String,
-    val hasProblem: Boolean
+    val hasProblem: Boolean,
+    val monitoringEnabled: Boolean? = null,
+    val monitoringLabel: String = ""
 )
 
 private data class ZfsPoolStatusItem(
@@ -327,6 +329,50 @@ private fun parseZfsStatusCardsFromMessage(message: String): List<ZfsStatusCardI
             hasProblem = pools.any { it.hasProblem }
         )
     }
+}
+
+private fun zfsCardReceivedAt(card: ZfsStatusCardItem): String {
+    val latestTimestamp = card.pools
+        .map { it.rawTimestamp.trim() }
+        .filter { it.isNotBlank() }
+        .maxOrNull()
+        .orEmpty()
+    return compactZfsTimestamp(latestTimestamp)
+}
+
+private fun formatZfsHostDetails(card: ZfsStatusCardItem): String {
+    val monitoringStatus = when (card.monitoringEnabled) {
+        true -> "включен"
+        false -> "выключен"
+        null -> "неизвестно"
+    }
+    val poolsCount = card.pools.size
+    val receivedAt = zfsCardReceivedAt(card).ifBlank { "—" }
+    val poolsLines = if (card.pools.isEmpty()) {
+        "• Пулы: данные отсутствуют"
+    } else {
+        card.pools.joinToString("\n") { pool ->
+            buildString {
+                append("• ")
+                append(pool.poolName)
+                append(": ")
+                append(pool.rawState)
+                if (pool.rawTimestamp.isNotBlank()) {
+                    append(" (")
+                    append(pool.rawTimestamp)
+                    append(")")
+                }
+            }
+        }
+    }
+    return buildString {
+        appendLine("Хост: ${card.hostName}")
+        appendLine("Мониторинг: $monitoringStatus")
+        appendLine("Пулов: $poolsCount")
+        appendLine("Время данных: $receivedAt")
+        appendLine()
+        append(poolsLines)
+    }.trim()
 }
 
 private fun isZfsMonitoringDisabled(toggleLabel: String): Boolean {
@@ -750,7 +796,18 @@ private fun ZfsStatusTile(
     } else {
         MaterialTheme.colorScheme.onTertiaryContainer
     }
-    val dotColor = if (card.hasProblem) Color(0xFFD93025) else Color(0xFF7BC043)
+    val poolsDotColor = if (card.hasProblem) Color(0xFFD93025) else Color(0xFF7BC043)
+    val monitoringDotColor = when (card.monitoringEnabled) {
+        true -> Color(0xFF2E7D32)
+        false -> Color(0xFF9E9E9E)
+        null -> Color(0xFFFFB300)
+    }
+    val monitoringText = when (card.monitoringEnabled) {
+        true -> "Мониторинг: вкл"
+        false -> "Мониторинг: выкл"
+        null -> "Мониторинг: ?"
+    }
+    val receivedAt = zfsCardReceivedAt(card).ifBlank { "—" }
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -777,7 +834,7 @@ private fun ZfsStatusTile(
                     modifier = Modifier
                         .size(10.dp)
                         .clip(CircleShape)
-                        .background(dotColor)
+                        .background(poolsDotColor)
                 )
                 Text(
                     text = card.hostName,
@@ -786,31 +843,38 @@ private fun ZfsStatusTile(
                     color = contentColor
                 )
             }
-            card.pools.take(3).forEach { pool ->
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Spacer(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(monitoringDotColor)
+                )
                 Text(
-                    text = buildString {
-                        append(if (pool.hasProblem) "🔴 " else "🟢 ")
-                        append(pool.poolName)
-                        if (pool.compactTimestamp.isNotBlank()) {
-                            append(" • ")
-                            append(pool.compactTimestamp)
-                        }
-                    },
+                    text = monitoringText,
                     style = MaterialTheme.typography.labelSmall,
                     color = contentColor.copy(alpha = 0.9f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            if (card.pools.size > 3) {
-                Text(
-                    text = "…ещё пулов: ${card.pools.size - 3}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = contentColor.copy(alpha = 0.8f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
+            Text(
+                text = "Пулов: ${card.pools.size}",
+                style = MaterialTheme.typography.labelSmall,
+                color = contentColor.copy(alpha = 0.9f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = "Данные: $receivedAt",
+                style = MaterialTheme.typography.labelSmall,
+                color = contentColor.copy(alpha = 0.8f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
@@ -3707,32 +3771,35 @@ private fun MonitoringApp(
                                 if (label.isBlank() || action.isBlank()) null else label to action
                             }
                         val zfsHostGroups = extractZfsHostOptionGroups(zfsSettingsPairs)
+                        val monitoringByHost = zfsHostGroups.associateBy { it.hostName.trim().lowercase() }
                         val disabledOrMissingCards = zfsHostGroups
                             .filterNot { hostGroup ->
                                 statusCards.any { card -> card.hostName.equals(hostGroup.hostName, ignoreCase = true) }
                             }
                             .map { hostGroup ->
                                 val isDisabled = isZfsMonitoringDisabled(hostGroup.toggleLabel)
-                                val rawState = if (isDisabled) "DISABLED" else "NO_DATA"
-                                val displayState = if (isDisabled) "выкл" else "нет данных"
                                 ZfsStatusCardItem(
                                     hostName = hostGroup.hostName,
-                                    pools = listOf(
-                                        ZfsPoolStatusItem(
-                                            poolName = "мониторинг",
-                                            statusLabel = displayState,
-                                            rawState = rawState,
-                                            rawTimestamp = hostGroup.toggleLabel,
-                                            compactTimestamp = "",
-                                            hasProblem = false
-                                        )
-                                    ),
+                                    pools = emptyList(),
                                     action = null,
                                     rawLabel = hostGroup.toggleLabel,
-                                    hasProblem = false
+                                    hasProblem = false,
+                                    monitoringEnabled = !isDisabled,
+                                    monitoringLabel = hostGroup.toggleLabel
                                 )
                             }
-                        val allStatusCards = statusCards + disabledOrMissingCards
+                        val allStatusCards = (statusCards + disabledOrMissingCards).map { card ->
+                            val hostGroup = monitoringByHost[card.hostName.trim().lowercase()]
+                            if (hostGroup == null) {
+                                card
+                            } else {
+                                val monitoringEnabled = !isZfsMonitoringDisabled(hostGroup.toggleLabel)
+                                card.copy(
+                                    monitoringEnabled = monitoringEnabled,
+                                    monitoringLabel = hostGroup.toggleLabel
+                                )
+                            }
+                        }
 
                         if (zfsMenuOptions.isNotEmpty() || allStatusCards.isNotEmpty()) {
 
@@ -3748,20 +3815,9 @@ private fun MonitoringApp(
                                             ZfsStatusTile(
                                                 card = card,
                                                 onClick = {
+                                                    card.action?.let { onAction(it) }
                                                     zfsDetailsHostName = card.hostName
-                                                    zfsStatusDetailsFallbackText = card.pools.joinToString("\n") { pool ->
-                                                        buildString {
-                                                            append("• ")
-                                                            append(pool.poolName)
-                                                            append(": ")
-                                                            append(pool.rawState)
-                                                            if (pool.rawTimestamp.isNotBlank()) {
-                                                                append(" (")
-                                                                append(pool.rawTimestamp)
-                                                                append(")")
-                                                            }
-                                                        }
-                                                    }
+                                                    zfsStatusDetailsFallbackText = formatZfsHostDetails(card)
                                                     showZfsHostDetailsDialog = true
                                                 },
                                                 onLongClick = {

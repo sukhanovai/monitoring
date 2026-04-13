@@ -1,14 +1,16 @@
-## [8.50.70] - 2026-04-12
+## [8.50.71] - 2026-04-12
 
 ### Changed / Изменено
-- EN: In Android app `Operational center → ZFS tile → statuses`, host cards now include all known entries including disabled hosts from ZFS settings (shown as `DISABLED/выкл` when no live status is available).
-- RU: В Android-приложении в `Оперативный центр → плашка ZFS → статусы` карточки теперь включают все известные хосты, включая выключенные из настроек ZFS (показываются как `DISABLED/выкл`, если нет живого статуса).
-- EN: In Android app `Operational center → ZFS tile`, removed text fallbacks like `ОК` from the compact ZFS metric, and removed textual state labels (`OK/DEG/...`) from host pool lines inside status cards.
-- RU: В Android-приложении в `Оперативный центр → плашка ZFS` убран текстовый фолбэк `ОК` у компактной метрики, а в строках пулов на карточках статусов убраны текстовые статусы (`OK/DEG/...`).
-- EN: In Android app `Operational center → ZFS tile → statuses`, short tap now opens full received state details per host/pool (raw state + timestamp), and long-tap host actions were restyled to match the icon-based Proxmox backup action sheet.
-- RU: В Android-приложении в `Оперативный центр → плашка ZFS → статусы` короткий тап теперь открывает полные полученные данные по хосту/пулу (сырой статус + время), а долгий тап переработан под иконки в стиле действий из бэкапов Proxmox.
-- EN: SemVer patch bump to `8.50.70`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.70` and `ANDROID_VERSION_CODE=419`; aligned prerelease links to `v8.50.70-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.70`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.70` и `ANDROID_VERSION_CODE=419`; prerelease-ссылки выровнены на `v8.50.70-develop`.
+- EN: In Android app `Operational center → ZFS tile → statuses`, each host tile now shows a dedicated monitoring-enabled indicator (`on/off/unknown`) sourced from ZFS host settings.
+- RU: В Android-приложении в `Оперативный центр → плашка ZFS → статусы` на каждой карточке хоста добавлен отдельный индикатор включённости мониторинга (`вкл/выкл/неизвестно`) на основе настроек ZFS-хостов.
+- EN: ZFS host tile color is now driven by aggregate pool state on that host: default only when all pools are `ONLINE`, and alert color when at least one pool is not `ONLINE`.
+- RU: Цвет плашки ZFS-хоста теперь определяется суммарным состоянием пулов: стандартный только если все пулы `ONLINE`, и тревожный, если хотя бы один пул не `ONLINE`.
+- EN: Compact ZFS status tiles now show explicit text metadata: host name, pool count, and latest data receive time for the host.
+- RU: Компактные плашки статусов ZFS теперь отображают текстовые метаданные: имя хоста, количество пулов и время получения последних данных по хосту.
+- EN: Short tap on a ZFS status tile now requests host details action (when available) and opens full per-host pool state details.
+- RU: Короткий тап по плашке статуса ZFS теперь выполняет запрос деталей по хосту (если доступно действие) и открывает полное отображение состояний пулов хоста.
+- EN: SemVer patch bump to `8.50.71`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.71` and `ANDROID_VERSION_CODE=420`; aligned prerelease links to `v8.50.71-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.71`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.71` и `ANDROID_VERSION_CODE=420`; prerelease-ссылки выровнены на `v8.50.71-develop`.
 
 ## [8.50.68] - 2026-04-12
 
