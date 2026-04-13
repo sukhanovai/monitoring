@@ -1,13 +1,12 @@
-## [8.50.74] - 2026-04-13
+## [8.50.75] - 2026-04-13
 
 ### Changed / Изменено
-- EN: In Android app `Operational center → ZFS tile`, tap handling for `settings_zfs*` actions now uses the control-action API path so host list and controls are loaded from the same Telegram-bot backend flow as `Main menu → ZFS`.
-- RU: В Android-приложении в `Оперативный центр → плашка ZFS` обработка `settings_zfs*` теперь идёт через control-action API, поэтому список хостов и управление загружаются из того же backend-потока Telegram-бота, что и в `Главное меню → ZFS`.
-- EN: For ZFS settings actions, Android now always replaces local options with the latest backend response (including empty lists), which removes stale UI state after host changes in the bot.
-- RU: Для ZFS-настроек Android теперь всегда подменяет локальные опции свежим ответом backend (включая пустые списки), что убирает «залипшие» данные после изменений хостов в боте.
-- EN: SemVer patch bump to `8.50.74`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.74` and `ANDROID_VERSION_CODE=422`; aligned prerelease links to `v8.50.74-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.74`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.74` и `ANDROID_VERSION_CODE=422`; prerelease-ссылки выровнены на `v8.50.74-develop`.
-
+- EN: In Android app `Operational center → ZFS → host status tile`, parsing of ZFS host settings is now based on callback actions (`settings_zfs_edit_name_*`, `settings_zfs_delete_*`, `settings_zfs_toggle_*`) instead of strict button order, so monitoring status is resolved reliably in details and tiles.
+- RU: В Android-приложении в `Оперативный центр → ZFS → плашка статуса хоста` разбор настроек хостов ZFS переведён на callback-действия (`settings_zfs_edit_name_*`, `settings_zfs_delete_*`, `settings_zfs_toggle_*`) вместо жёсткой зависимости от порядка кнопок, поэтому статус мониторинга теперь корректно определяется и в деталях, и на плашке.
+- EN: Disabled ZFS host monitoring in Telegram bot settings no longer removes host tiles from Android `Operational center → ZFS`; tiles remain visible and only the monitoring indicator color/state changes.
+- RU: При отключении мониторинга ZFS-хоста в Telegram-боте хост больше не пропадает из Android `Оперативный центр → ZFS`; плашка остаётся, меняется только цвет/состояние индикатора мониторинга.
+- EN: SemVer patch bump to `8.50.75`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.75` and `ANDROID_VERSION_CODE=423`; aligned prerelease links to `v8.50.75-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.75`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.75` и `ANDROID_VERSION_CODE=423`; prerelease-ссылки выровнены на `v8.50.75-develop`.
 ## [8.50.73] - 2026-04-13
 
 ### Changed / Изменено

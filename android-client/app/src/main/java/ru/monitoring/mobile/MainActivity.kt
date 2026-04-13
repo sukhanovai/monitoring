@@ -391,39 +391,66 @@ private data class ZfsHostOptionGroup(
     val toggleLabel: String
 )
 
+private fun hostNameFromZfsAction(action: String, prefix: String): String {
+    if (!action.startsWith(prefix)) return ""
+    return Uri.decode(action.removePrefix(prefix)).trim()
+}
+
 private fun extractZfsHostOptionGroups(options: List<Pair<String, String>>): List<ZfsHostOptionGroup> {
-    val groups = mutableListOf<ZfsHostOptionGroup>()
-    var index = 0
-    while (index < options.size) {
-        val (label, action) = options[index]
-        if (!label.startsWith("✏️ ") || !action.startsWith("settings_zfs_edit_name_")) {
-            index += 1
-            continue
+    data class MutableZfsHostOptionGroup(
+        var hostName: String = "",
+        var editAction: String = "",
+        var deleteAction: String = "",
+        var toggleAction: String = "",
+        var toggleLabel: String = ""
+    )
+
+    val groups = linkedMapOf<String, MutableZfsHostOptionGroup>()
+
+    options.forEach { (label, action) ->
+        val editHost = hostNameFromZfsAction(action, "settings_zfs_edit_name_")
+        if (editHost.isNotBlank()) {
+            val group = groups.getOrPut(editHost.lowercase()) { MutableZfsHostOptionGroup() }
+            group.hostName = editHost
+            group.editAction = action
+            if (group.hostName.isBlank()) {
+                group.hostName = label.removePrefix("✏️ ").trim()
+            }
+            return@forEach
         }
-        val hostName = label.removePrefix("✏️ ").trim()
-        val deleteOption = options.getOrNull(index + 1)
-        val toggleOption = options.getOrNull(index + 2)
-        val hasDelete = deleteOption != null &&
-            deleteOption.first.startsWith("🗑️ ") &&
-            deleteOption.first.removePrefix("🗑️ ").trim() == hostName &&
-            deleteOption.second.startsWith("settings_zfs_delete_")
-        val hasToggle = toggleOption != null &&
-            (toggleOption.first.startsWith("⛔️ ") || toggleOption.first.startsWith("✅ ")) &&
-            toggleOption.second.startsWith("settings_zfs_toggle_")
-        if (hostName.isNotBlank() && hasDelete && hasToggle) {
-            groups += ZfsHostOptionGroup(
-                hostName = hostName,
-                editAction = action,
-                deleteAction = deleteOption.second,
-                toggleAction = toggleOption.second,
-                toggleLabel = toggleOption.first
-            )
-            index += 3
-            continue
+
+        val deleteHost = hostNameFromZfsAction(action, "settings_zfs_delete_")
+        if (deleteHost.isNotBlank()) {
+            val group = groups.getOrPut(deleteHost.lowercase()) { MutableZfsHostOptionGroup() }
+            if (group.hostName.isBlank()) group.hostName = deleteHost
+            group.deleteAction = action
+            return@forEach
         }
-        index += 1
+
+        val toggleHost = hostNameFromZfsAction(action, "settings_zfs_toggle_")
+        if (toggleHost.isNotBlank()) {
+            val group = groups.getOrPut(toggleHost.lowercase()) { MutableZfsHostOptionGroup() }
+            if (group.hostName.isBlank()) group.hostName = toggleHost
+            group.toggleAction = action
+            group.toggleLabel = label
+        }
     }
-    return groups
+
+    return groups.values
+        .mapNotNull { group ->
+            val host = group.hostName.trim()
+            if (host.isBlank() || group.toggleAction.isBlank()) {
+                null
+            } else {
+                ZfsHostOptionGroup(
+                    hostName = host,
+                    editAction = group.editAction,
+                    deleteAction = group.deleteAction,
+                    toggleAction = group.toggleAction,
+                    toggleLabel = group.toggleLabel
+                )
+            }
+        }
 }
 
 private fun isDatabaseMonitorDisabled(label: String, action: String): Boolean {
