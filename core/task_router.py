@@ -1,11 +1,11 @@
 """
 /core/task_router.py
-Server Monitoring System v8.50.85
+Server Monitoring System v8.50.86
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Task router helpers
 Система мониторинга серверов
-Версия: 8.50.85
+Версия: 8.50.86
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Хелперы маршрутизации задач
