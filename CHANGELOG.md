@@ -1,3 +1,13 @@
+## [8.50.85] - 2026-04-13
+
+### Fixed / Исправлено
+- EN: In Android app `Operational center → ZFS`, host monitoring state mapping now follows Telegram/bot semantics of toggle labels from `settings_zfs_list`: `Enable`/`Включить` means monitoring is currently disabled, while `Disable`/`Отключить` means monitoring is currently enabled.
+- RU: В Android-приложении в `Оперативный центр → ZFS` маппинг состояния мониторинга хоста теперь соответствует Telegram/боту по семантике кнопок `settings_zfs_list`: `Enable`/`Включить` означает, что мониторинг сейчас выключен, а `Disable`/`Отключить` — что мониторинг сейчас включён.
+
+### Changed / Изменено
+- EN: SemVer patch bump to `8.50.85`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.85` and `ANDROID_VERSION_CODE=433`; prerelease links aligned to `v8.50.85-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.85`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.85` и `ANDROID_VERSION_CODE=433`; prerelease-ссылки выровнены на `v8.50.85-develop`.
+
 ## [8.50.84] - 2026-04-13
 
 ### Fixed / Исправлено
