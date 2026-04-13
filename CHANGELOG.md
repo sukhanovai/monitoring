@@ -1,3 +1,13 @@
+## [8.50.78] - 2026-04-13
+
+### Fixed / Исправлено
+- EN: In Android app `Operational center → ZFS tile`, tap now requests only `zfs_menu` statuses; the extra `settings_zfs_list` request was removed to prevent the status dialog from being overwritten with "Statuses are not received yet" when data is actually available.
+- RU: В Android-приложении в `Оперативный центр → плашка ZFS` тап теперь запрашивает только статусы `zfs_menu`; лишний запрос `settings_zfs_list` убран, чтобы диалог не перетирался в состояние «Статусы ZFS пока не получены», когда данные уже есть.
+
+### Changed / Изменено
+- EN: SemVer patch bump to `8.50.78`; synchronized project version mentions across runtime/config/docs/Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.78` and `ANDROID_VERSION_CODE=426`; aligned prerelease links to `v8.50.78-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.78`; синхронизированы упоминания версии в runtime/config/docs/Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.78` и `ANDROID_VERSION_CODE=426`; prerelease-ссылки выровнены на `v8.50.78-develop`.
+
 ## [8.50.77] - 2026-04-13
 
 ### Changed / Изменено
