@@ -420,10 +420,9 @@ private fun formatZfsHostDetails(card: ZfsStatusCardItem): String {
 
 private fun isZfsMonitoringDisabled(toggleLabel: String): Boolean {
     val normalized = toggleLabel.lowercase()
-    return normalized.contains("выключ") ||
-        normalized.contains("отключ") ||
+    return normalized.contains("включить") ||
         normalized.contains("disable") ||
-        normalized.contains("off")
+        normalized.contains("enable")
 }
 
 private data class ZfsHostOptionGroup(
@@ -1703,6 +1702,7 @@ private fun MonitoringApp(
                 {
                     showZfsStatusesDialog = true
                     onAction("zfs_menu")
+                    onExtensionsSettingsAction("settings_zfs_list")
                 }
             } else {
                 { isSettingsExpanded = true; settingsSection = "extensions"; isExtensionsSettingsOpened = true }

@@ -1,12 +1,14 @@
-## [8.50.83] - 2026-04-13
+## [8.50.84] - 2026-04-13
 
 ### Fixed / Исправлено
-- EN: In Android app `Operational center → ZFS`, tile summary parsing now prioritizes the `Серверов` line from Telegram `zfs_menu`, so host monitoring activity counters stay aligned with bot ZFS statuses and no longer double-count `Пулов`.
-- RU: В Android-приложении в `Оперативный центр → ZFS` разбор summary теперь приоритетно использует строку `Серверов` из Telegram `zfs_menu`, поэтому счётчики активности мониторинга хостов синхронизированы со статусами бота и больше не задваивают `Пулов`.
+- EN: In Android app `Operational center → ZFS`, host monitoring state on tiles is now derived from `settings_zfs_list` toggle semantics (`Enable` means currently disabled, `Disable` means currently enabled), so tiles no longer invert host enabled/disabled state.
+- RU: В Android-приложении в `Оперативный центр → ZFS` состояние мониторинга хоста на плашках теперь определяется по семантике кнопки из `settings_zfs_list` (`Включить` означает «сейчас выключен», `Отключить` — «сейчас включен»), поэтому инверсия статуса включён/выключен устранена.
+- EN: Tap on ZFS tile now refreshes `settings_zfs_list` together with `zfs_menu`, matching Telegram flow `Main menu → ZFS → ZFS host settings` and keeping host status badges up to date.
+- RU: Тап по ZFS-плашке теперь обновляет `settings_zfs_list` вместе с `zfs_menu`, как в Telegram-сценарии `Главное меню → ZFS → Настройки хостов ZFS`, поэтому бейджи статусов хостов всегда актуальны.
 
 ### Changed / Изменено
-- EN: SemVer patch bump to `8.50.83`; synchronized version mentions across project runtime/config/docs and Android client artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.83` and `ANDROID_VERSION_CODE=431`; prerelease links aligned to `v8.50.83-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.83`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.83` и `ANDROID_VERSION_CODE=431`; prerelease-ссылки выровнены на `v8.50.83-develop`.
+- EN: SemVer patch bump to `8.50.84`; synchronized version mentions across project runtime/config/docs and Android client artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.84` and `ANDROID_VERSION_CODE=432`; prerelease links aligned to `v8.50.84-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.84`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.84` и `ANDROID_VERSION_CODE=432`; prerelease-ссылки выровнены на `v8.50.84-develop`.
 
 ## [8.50.81] - 2026-04-13
 
