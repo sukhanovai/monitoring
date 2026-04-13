@@ -51,7 +51,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.50.82"
+    private val projectVersion = "8.50.83"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -247,7 +247,7 @@ class MainViewModel(
     private val backupSummaryStatusLineRegex = Regex("""^\s*([✅✔❌⚠️🚨🟢🟡⚪]).*$""")
     private val backupSuccessRatioRegex = Regex("""(\d+)\s*/\s*(\d+)\s+успеш""", RegexOption.IGNORE_CASE)
     private val zfsSummaryRegex = Regex(
-        """(?i)(серверов|пулов)\s*:\s*\d+\s*\(\s*🟢?\s*(\d+)\s*/\s*🔴?\s*(\d+)\s*\)"""
+        """(?i)(серверов|пулов)\s*:\s*(\d+)\s*\(\s*🟢?\s*(\d+)\s*/\s*🔴?\s*(\d+)\s*\)"""
     )
     private val zfsStatusLineRegex = Regex("""^•\s*(.+?):\s*([A-Za-z_]+)\s*\((.+)\)$""")
     private val zfsProblemStates = setOf(
@@ -289,9 +289,13 @@ class MainViewModel(
 
         val zfsMatches = zfsSummaryRegex.findAll(message).toList()
         if (zfsMatches.isNotEmpty()) {
-            val ok = zfsMatches.sumOf { it.groupValues.getOrNull(2)?.toIntOrNull() ?: 0 }
-            val problems = zfsMatches.sumOf { it.groupValues.getOrNull(3)?.toIntOrNull() ?: 0 }
-            val total = ok + problems
+            val serverMatch = zfsMatches.firstOrNull { match ->
+                normalizeRussianText(match.groupValues.getOrNull(1).orEmpty()) == "серверов"
+            }
+            val selectedMatch = serverMatch ?: zfsMatches.first()
+            val ok = selectedMatch.groupValues.getOrNull(3)?.toIntOrNull() ?: 0
+            val problems = selectedMatch.groupValues.getOrNull(4)?.toIntOrNull() ?: 0
+            val total = selectedMatch.groupValues.getOrNull(2)?.toIntOrNull() ?: (ok + problems)
             if (total > 0) {
                 return BackupTileSummary(
                     ratioText = "$ok/$total",

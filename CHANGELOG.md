@@ -1,8 +1,12 @@
-## [8.50.82] - 2026-04-13
+## [8.50.83] - 2026-04-13
+
+### Fixed / Исправлено
+- EN: In Android app `Operational center → ZFS`, tile summary parsing now prioritizes the `Серверов` line from Telegram `zfs_menu`, so host monitoring activity counters stay aligned with bot ZFS statuses and no longer double-count `Пулов`.
+- RU: В Android-приложении в `Оперативный центр → ZFS` разбор summary теперь приоритетно использует строку `Серверов` из Telegram `zfs_menu`, поэтому счётчики активности мониторинга хостов синхронизированы со статусами бота и больше не задваивают `Пулов`.
 
 ### Changed / Изменено
-- EN: SemVer patch bump to `8.50.82`; synchronized version mentions across project runtime/config/docs and Android client artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.82` and `ANDROID_VERSION_CODE=430`; prerelease links aligned to `v8.50.82-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.82`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.82` и `ANDROID_VERSION_CODE=430`; prerelease-ссылки выровнены на `v8.50.82-develop`.
+- EN: SemVer patch bump to `8.50.83`; synchronized version mentions across project runtime/config/docs and Android client artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.83` and `ANDROID_VERSION_CODE=431`; prerelease links aligned to `v8.50.83-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.83`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.83` и `ANDROID_VERSION_CODE=431`; prerelease-ссылки выровнены на `v8.50.83-develop`.
 
 ## [8.50.81] - 2026-04-13
 
