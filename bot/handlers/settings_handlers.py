@@ -8464,6 +8464,9 @@ def show_zfs_status_summary(update, context):
         name: (not isinstance(server_value, dict) or server_value.get('enabled', True))
         for name, server_value in zfs_servers.items()
     }
+    persisted_enabled_map = _get_zfs_monitoring_state_map()
+    if persisted_enabled_map:
+        server_enabled_map.update(persisted_enabled_map)
 
     db_path = BACKUP_DATABASE_CONFIG.get("backups_db")
     if not db_path:
@@ -8709,6 +8712,7 @@ def delete_zfs_server(update, context, server_name):
 
     zfs_servers.pop(server_name, None)
     settings_manager.set_setting('ZFS_SERVERS', zfs_servers)
+    _delete_zfs_monitoring_state(server_name)
     _delete_zfs_server_statuses(server_name)
 
     query.edit_message_text(
@@ -8750,6 +8754,7 @@ def handle_zfs_server_input(update, context):
             'enabled': True,
         }
         settings_manager.set_setting('ZFS_SERVERS', zfs_servers)
+        _set_zfs_monitoring_state(user_input, True)
 
         update.message.reply_text(
             "✅ Сервер добавлен.\n"
@@ -8831,6 +8836,7 @@ def handle_zfs_server_name_edit_input(update, context):
     zfs_servers[new_name] = server_value
     settings_manager.set_setting('ZFS_SERVERS', zfs_servers)
     _rename_zfs_server_statuses(old_name, new_name)
+    _rename_zfs_monitoring_state(old_name, new_name)
 
     update.message.reply_text(
         f"✅ Сервер обновлён: `{new_name}`",
@@ -8875,6 +8881,7 @@ def toggle_zfs_server(update, context, server_name):
     server_value['enabled'] = not enabled
     zfs_servers[server_name] = server_value
     settings_manager.set_setting('ZFS_SERVERS', zfs_servers)
+    _set_zfs_monitoring_state(server_name, bool(server_value['enabled']))
 
     status_text = "включен" if server_value['enabled'] else "отключен"
     query.edit_message_text(
@@ -8882,7 +8889,7 @@ def toggle_zfs_server(update, context, server_name):
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            [InlineKeyboardButton("↩️ Назад", callback_data='zfs_menu'),
+            [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs_list'),
              InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
         ])
     )
@@ -8926,6 +8933,90 @@ def _rename_zfs_server_statuses(old_name: str, new_name: str) -> None:
             debug_logger(f"⚠️ Не удалось переименовать статусы ZFS сервера: {exc}")
     finally:
         conn.close()
+
+def _ensure_zfs_monitoring_state_table(cursor: sqlite3.Cursor) -> None:
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS zfs_monitoring_state (
+            server_name TEXT PRIMARY KEY,
+            enabled INTEGER NOT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+
+def _get_zfs_monitoring_state_map() -> dict[str, bool]:
+    db_path = BACKUP_DATABASE_CONFIG.get("backups_db")
+    if not db_path:
+        return {}
+
+    conn = sqlite3.connect(str(db_path))
+    try:
+        cursor = conn.cursor()
+        _ensure_zfs_monitoring_state_table(cursor)
+        cursor.execute("SELECT server_name, enabled FROM zfs_monitoring_state")
+        rows = cursor.fetchall()
+        return {
+            str(server_name): bool(int(enabled))
+            for server_name, enabled in rows
+            if str(server_name).strip()
+        }
+    except Exception as exc:
+        debug_logger(f"⚠️ Не удалось прочитать zfs_monitoring_state: {exc}")
+        return {}
+    finally:
+        conn.close()
+
+def _set_zfs_monitoring_state(server_name: str, enabled: bool) -> None:
+    db_path = BACKUP_DATABASE_CONFIG.get("backups_db")
+    if not db_path or not str(server_name).strip():
+        return
+
+    conn = sqlite3.connect(str(db_path))
+    try:
+        cursor = conn.cursor()
+        _ensure_zfs_monitoring_state_table(cursor)
+        cursor.execute(
+            """
+            INSERT INTO zfs_monitoring_state (server_name, enabled, updated_at)
+            VALUES (?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(server_name)
+            DO UPDATE SET enabled = excluded.enabled, updated_at = CURRENT_TIMESTAMP
+            """,
+            (server_name, 1 if enabled else 0),
+        )
+        conn.commit()
+    except Exception as exc:
+        debug_logger(f"⚠️ Не удалось сохранить состояние мониторинга ZFS: {exc}")
+    finally:
+        conn.close()
+
+def _delete_zfs_monitoring_state(server_name: str) -> None:
+    db_path = BACKUP_DATABASE_CONFIG.get("backups_db")
+    if not db_path or not str(server_name).strip():
+        return
+
+    conn = sqlite3.connect(str(db_path))
+    try:
+        cursor = conn.cursor()
+        _ensure_zfs_monitoring_state_table(cursor)
+        cursor.execute("DELETE FROM zfs_monitoring_state WHERE server_name = ?", (server_name,))
+        conn.commit()
+    except Exception as exc:
+        debug_logger(f"⚠️ Не удалось удалить состояние мониторинга ZFS: {exc}")
+    finally:
+        conn.close()
+
+def _rename_zfs_monitoring_state(old_name: str, new_name: str) -> None:
+    if not old_name.strip() or not new_name.strip():
+        return
+
+    state_map = _get_zfs_monitoring_state_map()
+    if old_name not in state_map:
+        return
+
+    _set_zfs_monitoring_state(new_name, state_map[old_name])
+    _delete_zfs_monitoring_state(old_name)
 
 def handle_setting_input(update, context, setting_key):
     """Обработчик ввода значений настроек"""

@@ -1,3 +1,17 @@
+## [8.50.81] - 2026-04-13
+
+### Fixed / Исправлено
+- EN: In Telegram bot ZFS host settings, monitoring state changes are now persisted in backup DB table `zfs_monitoring_state` on add/toggle/rename/delete, so Android `Operational center → ZFS` can stay synchronized with bot state between refreshes.
+- RU: В настройках ZFS-хостов Telegram-бота изменения состояния мониторинга теперь сохраняются в таблицу бэкап-БД `zfs_monitoring_state` при добавлении/переключении/переименовании/удалении, поэтому Android `Оперативный центр → ZFS` держит синхронизацию с ботом между обновлениями.
+- EN: ZFS status summary now merges persisted monitoring state from DB with `ZFS_SERVERS` config, reducing cases where host monitoring was shown as `unknown`.
+- RU: Сводка статусов ZFS теперь объединяет сохранённое в БД состояние мониторинга с конфигом `ZFS_SERVERS`, что снижает случаи, когда мониторинг хоста показывался как `неизвестно`.
+- EN: In Android `Operational center`, tap on ZFS tile now only opens `zfs_menu` statuses and no longer forces `settings_zfs_list`, preventing long-tap host action flow from bouncing to common all-host statuses.
+- RU: В Android `Оперативный центр` тап по плашке ZFS теперь открывает только статусы `zfs_menu` и больше не форсит `settings_zfs_list`, из-за чего long tap по хосту перестал отбрасывать в общие статусы всех хостов.
+
+### Changed / Изменено
+- EN: SemVer patch bump to `8.50.81`; synchronized version mentions across project files; Android metadata updated to `ANDROID_VERSION_NAME=8.50.81` and `ANDROID_VERSION_CODE=429`; prerelease link updated to `v8.50.81-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.81`; синхронизированы упоминания версии по файлам проекта; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.81` и `ANDROID_VERSION_CODE=429`; prerelease-ссылка обновлена на `v8.50.81-develop`.
+
 ## [8.50.80] - 2026-04-13
 
 ### Fixed / Исправлено
