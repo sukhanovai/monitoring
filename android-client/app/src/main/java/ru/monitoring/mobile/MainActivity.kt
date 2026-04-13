@@ -125,6 +125,7 @@ private fun resolveMenuOptionAction(option: ru.monitoring.mobile.api.MenuOption)
 private val zfsStatusLineRegex = Regex("""^•\s*(.+?):\s*([A-Za-z_]+)\s*\((.+)\)$""")
 private val zfsDateTimeRegex = Regex("""(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})(?::\d{2})?""")
 private val zfsHostHeaderRegex = Regex("""^[A-Za-z0-9._:-]+$""")
+private val zfsServerSummaryLineRegex = Regex("""^[⚪🟢🔴]️?\s*\*?`?([^*`·]+?)`?\*?\s*·\s*\d+/\d+\s*·\s*(.+)$""")
 private data class ParsedZfsStatusLine(
     val name: String,
     val state: String,
@@ -293,12 +294,45 @@ private fun toZfsStatusCardItem(rawLabel: String, action: String? = null): ZfsSt
 
 private fun parseZfsStatusCardsFromMessage(message: String): List<ZfsStatusCardItem> {
     if (message.isBlank()) return emptyList()
+    val cards = linkedMapOf<String, ZfsStatusCardItem>()
     val poolsByHost = linkedMapOf<String, MutableList<ZfsPoolStatusItem>>()
     var currentHost = ""
     message.lineSequence().forEach { rawLine ->
         val line = rawLine.trim()
         if (line.isBlank()) return@forEach
         if (line.startsWith("📊") || line.startsWith("🧊") || line.startsWith("❌")) return@forEach
+
+        val serverSummaryMatch = zfsServerSummaryLineRegex.matchEntire(line)
+        if (serverSummaryMatch != null) {
+            val hostName = serverSummaryMatch.groupValues.getOrNull(1)?.trim().orEmpty()
+            val receivedAtRaw = serverSummaryMatch.groupValues.getOrNull(2)?.trim().orEmpty()
+            if (hostName.isNotBlank()) {
+                val isProblem = line.startsWith("🔴")
+                val enabled = !line.startsWith("⚪")
+                cards[hostName.lowercase()] = ZfsStatusCardItem(
+                    hostName = hostName,
+                    pools = emptyList(),
+                    action = null,
+                    rawLabel = line,
+                    hasProblem = isProblem,
+                    monitoringEnabled = enabled
+                )
+                currentHost = hostName
+                if (receivedAtRaw.isNotBlank()) {
+                    val syntheticPool = ZfsPoolStatusItem(
+                        poolName = "pool",
+                        statusLabel = if (isProblem) "С проблемами" else "ONLINE",
+                        rawState = if (isProblem) "DEGRADED" else "ONLINE",
+                        rawTimestamp = receivedAtRaw,
+                        compactTimestamp = compactZfsTimestamp(receivedAtRaw),
+                        hasProblem = isProblem
+                    )
+                    poolsByHost.getOrPut(hostName) { mutableListOf() }.add(syntheticPool)
+                }
+            }
+            return@forEach
+        }
+
         if (line.startsWith("•")) {
             val parsed = parseZfsStatusLine(line) ?: return@forEach
             val hostName = currentHost.ifBlank { parsed.name }
@@ -318,17 +352,26 @@ private fun parseZfsStatusCardsFromMessage(message: String): List<ZfsStatusCardI
             currentHost = line
         }
     }
-    return poolsByHost.map { (hostName, pools) ->
-        ZfsStatusCardItem(
+
+    poolsByHost.forEach { (hostName, pools) ->
+        val cardKey = hostName.lowercase()
+        val existing = cards[cardKey]
+        cards[cardKey] = (existing ?: ZfsStatusCardItem(
             hostName = hostName,
-            pools = pools,
+            pools = emptyList(),
             action = null,
-            rawLabel = pools.joinToString("\n") { pool ->
+            rawLabel = "",
+            hasProblem = false
+        )).copy(
+            pools = pools,
+            hasProblem = pools.any { it.hasProblem },
+            rawLabel = if (pools.isEmpty()) existing?.rawLabel.orEmpty() else pools.joinToString("\n") { pool ->
                 "• ${pool.poolName}: ${pool.statusLabel} (${pool.compactTimestamp})"
-            },
-            hasProblem = pools.any { it.hasProblem }
+            }
         )
     }
+
+    return cards.values.toList()
 }
 
 private fun zfsCardReceivedAt(card: ZfsStatusCardItem): String {
@@ -3813,8 +3856,18 @@ private fun MonitoringApp(
                                                     showZfsHostDetailsDialog = true
                                                 },
                                                 onLongClick = {
-                                                    pendingZfsHostSettingsName = card.hostName
-                                                    onExtensionsSettingsAction("settings_zfs_list")
+                                                    val hostGroup = monitoringByHost[card.hostName.trim().lowercase()]
+                                                    if (hostGroup != null) {
+                                                        zfsSelectedHostName = hostGroup.hostName
+                                                        zfsSelectedHostEditAction = hostGroup.editAction
+                                                        zfsSelectedHostDeleteAction = hostGroup.deleteAction
+                                                        zfsSelectedHostToggleAction = hostGroup.toggleAction
+                                                        zfsSelectedHostToggleLabel = hostGroup.toggleLabel
+                                                        showZfsHostActionsDialog = true
+                                                    } else {
+                                                        pendingZfsHostSettingsName = card.hostName
+                                                        onExtensionsSettingsAction("settings_zfs_list")
+                                                    }
                                                 }
                                             )
                                         }

@@ -1,3 +1,15 @@
+## [8.50.80] - 2026-04-13
+
+### Fixed / Исправлено
+- EN: In Android app `Operational center → ZFS`, parsing now supports current Telegram ZFS summary lines (`🟢/🔴/⚪ host · ok/total · timestamp`), so host cards are built correctly and monitoring state no longer falls back to `unknown`.
+- RU: В Android-приложении в `Оперативный центр → ZFS` разбор теперь поддерживает актуальные summary-строки Telegram (`🟢/🔴/⚪ host · ok/total · timestamp`), поэтому карточки хостов строятся корректно, а статус мониторинга больше не уходит в `неизвестно`.
+- EN: Long tap on a ZFS host tile now opens that host's actions directly from cached `settings_zfs_list` data; fallback request is used only when host actions are missing, so long tap no longer bounces back to common ZFS statuses.
+- RU: Долгий тап по ZFS-плашке хоста теперь сразу открывает действия этого хоста из кэша `settings_zfs_list`; запасной запрос выполняется только если действий нет, поэтому long tap больше не отбрасывает в общие статусы ZFS.
+
+### Changed / Изменено
+- EN: SemVer patch bump to `8.50.80`; synchronized version mentions across project files; Android metadata updated to `ANDROID_VERSION_NAME=8.50.80` and `ANDROID_VERSION_CODE=428`.
+- RU: Выполнен SemVer patch-бамп до `8.50.80`; синхронизированы упоминания версии по файлам проекта; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.80` и `ANDROID_VERSION_CODE=428`.
+
 ## [8.50.79] - 2026-04-13
 
 ### Fixed / Исправлено
