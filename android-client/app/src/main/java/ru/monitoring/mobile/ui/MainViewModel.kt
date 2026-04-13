@@ -51,7 +51,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.50.73"
+    private val projectVersion = "8.50.74"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -1252,7 +1252,8 @@ class MainViewModel(
                         response.menuOptions.orEmpty(),
                         state.extensions
                     )
-                    val nextOptions = if (filteredOptions.isNotEmpty()) {
+                    val shouldUseFreshOptions = shouldReplaceExtensionSettingsOptions(normalizedAction)
+                    val nextOptions = if (filteredOptions.isNotEmpty() || shouldUseFreshOptions) {
                         filteredOptions
                     } else {
                         state.extensionSettingsMenuOptions
@@ -1271,7 +1272,8 @@ class MainViewModel(
                         response.menuOptions.orEmpty(),
                         state.extensions
                     )
-                    val nextOptions = if (filteredOptions.isNotEmpty()) {
+                    val shouldUseFreshOptions = shouldReplaceExtensionSettingsOptions(normalizedAction)
+                    val nextOptions = if (filteredOptions.isNotEmpty() || shouldUseFreshOptions) {
                         filteredOptions
                     } else {
                         state.extensionSettingsMenuOptions
@@ -1310,6 +1312,7 @@ class MainViewModel(
 
     private fun shouldRunExtensionsSettingsViaControlApi(action: String): Boolean =
         action in extensionSettingsControlActions ||
+            action.startsWith("settings_zfs") ||
             action.startsWith("set_cpu_") ||
             action.startsWith("set_ram_") ||
             action.startsWith("set_disk_") ||
@@ -1319,6 +1322,9 @@ class MainViewModel(
             action.startsWith("backup_mail") ||
             action.startsWith("supplier_stock_reports_") ||
             action.startsWith("supplier_stock_report_source_day|")
+
+    private fun shouldReplaceExtensionSettingsOptions(action: String): Boolean =
+        action.startsWith("settings_zfs")
 
     private fun normalizeExtensionsSettingsAction(action: String): String = when (action) {
         "settings_backup_hosts" -> "settings_backup_proxmox"

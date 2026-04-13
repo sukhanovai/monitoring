@@ -1,3 +1,13 @@
+## [8.50.74] - 2026-04-13
+
+### Changed / Изменено
+- EN: In Android app `Operational center → ZFS tile`, tap handling for `settings_zfs*` actions now uses the control-action API path so host list and controls are loaded from the same Telegram-bot backend flow as `Main menu → ZFS`.
+- RU: В Android-приложении в `Оперативный центр → плашка ZFS` обработка `settings_zfs*` теперь идёт через control-action API, поэтому список хостов и управление загружаются из того же backend-потока Telegram-бота, что и в `Главное меню → ZFS`.
+- EN: For ZFS settings actions, Android now always replaces local options with the latest backend response (including empty lists), which removes stale UI state after host changes in the bot.
+- RU: Для ZFS-настроек Android теперь всегда подменяет локальные опции свежим ответом backend (включая пустые списки), что убирает «залипшие» данные после изменений хостов в боте.
+- EN: SemVer patch bump to `8.50.74`; synchronized project version mentions across runtime modules, config, docs, and Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.74` and `ANDROID_VERSION_CODE=422`; aligned prerelease links to `v8.50.74-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.74`; синхронизированы упоминания версии в runtime-модулях, конфиге, документации и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.74` и `ANDROID_VERSION_CODE=422`; prerelease-ссылки выровнены на `v8.50.74-develop`.
+
 ## [8.50.73] - 2026-04-13
 
 ### Changed / Изменено
