@@ -1,11 +1,11 @@
 """
 /core/__init__.py
-Server Monitoring System v8.50.82
+Server Monitoring System v8.50.83
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core system package
 Система мониторинга серверов
-Версия: 8.50.82
+Версия: 8.50.83
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Пакет ядра системы
