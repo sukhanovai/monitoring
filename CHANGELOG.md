@@ -1,3 +1,13 @@
+## [8.50.76] - 2026-04-13
+
+### Changed / Изменено
+- EN: In Telegram bot `Main menu → ZFS`, disabled hosts are no longer hidden from the status summary: they remain in the list and now use a neutral disabled indicator (`⚪️`) instead of disappearing.
+- RU: В Telegram-боте в `Главное меню → ZFS` отключённые хосты больше не скрываются из сводки статусов: они остаются в списке и отмечаются нейтральным индикатором отключения (`⚪️`), а не пропадают.
+- EN: In the Telegram confirmation message `✅ Мониторинг сервера <host> отключен.`, the `↩️ Back` button now returns to `Main menu → ZFS` (`zfs_menu`) instead of opening ZFS settings.
+- RU: В Telegram-сообщении подтверждения `✅ Мониторинг сервера <host> отключен.` кнопка `↩️ Назад` теперь ведёт в `Главное меню → ZFS` (`zfs_menu`), а не в меню настроек ZFS.
+- EN: SemVer patch bump to `8.50.76`; synchronized project version mentions across runtime/config/docs/Android artifacts; updated Android metadata to `ANDROID_VERSION_NAME=8.50.76` and `ANDROID_VERSION_CODE=424`; aligned prerelease links to `v8.50.76-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.76`; синхронизированы упоминания версии в runtime/config/docs/Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.76` и `ANDROID_VERSION_CODE=424`; prerelease-ссылки выровнены на `v8.50.76-develop`.
+
 ## [8.50.75] - 2026-04-13
 
 ### Changed / Изменено
