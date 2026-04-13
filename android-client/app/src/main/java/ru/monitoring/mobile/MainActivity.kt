@@ -796,16 +796,10 @@ private fun ZfsStatusTile(
     } else {
         MaterialTheme.colorScheme.onTertiaryContainer
     }
-    val poolsDotColor = if (card.hasProblem) Color(0xFFD93025) else Color(0xFF7BC043)
     val monitoringDotColor = when (card.monitoringEnabled) {
         true -> Color(0xFF2E7D32)
         false -> Color(0xFF9E9E9E)
         null -> Color(0xFFFFB300)
-    }
-    val monitoringText = when (card.monitoringEnabled) {
-        true -> "Мониторинг: вкл"
-        false -> "Мониторинг: выкл"
-        null -> "Мониторинг: ?"
     }
     val receivedAt = zfsCardReceivedAt(card).ifBlank { "—" }
     Surface(
@@ -834,7 +828,7 @@ private fun ZfsStatusTile(
                     modifier = Modifier
                         .size(10.dp)
                         .clip(CircleShape)
-                        .background(poolsDotColor)
+                        .background(monitoringDotColor)
                 )
                 Text(
                     text = card.hostName,
@@ -843,33 +837,8 @@ private fun ZfsStatusTile(
                     color = contentColor
                 )
             }
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Spacer(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .clip(CircleShape)
-                        .background(monitoringDotColor)
-                )
-                Text(
-                    text = monitoringText,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = contentColor.copy(alpha = 0.9f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
             Text(
-                text = "Пулов: ${card.pools.size}",
-                style = MaterialTheme.typography.labelSmall,
-                color = contentColor.copy(alpha = 0.9f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = "Данные: $receivedAt",
+                text = receivedAt,
                 style = MaterialTheme.typography.labelSmall,
                 color = contentColor.copy(alpha = 0.8f),
                 maxLines = 1,
