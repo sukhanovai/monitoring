@@ -1,10 +1,12 @@
-## [8.50.107] - 2026-04-14
+## [8.50.108] - 2026-04-14
+
+### Fixed / Исправлено
+- EN: In Android app `Operational center → ZFS`, fixed host monitoring status detection in the status cards: labels like `Включить мониторинг` / `Enable monitoring` are no longer interpreted as disabled state.
+- RU: В Android-приложении в `Оперативный центр → ZFS` исправлено определение статуса мониторинга хоста в карточках: метки вида `Включить мониторинг` / `Enable monitoring` больше не трактуются как отключённый мониторинг.
 
 ### Changed / Изменено
-- EN: In Android app `Operational center → ZFS`, the patterns dialog was rebuilt by the same UX model as Proxmox: card list, shared edit/delete actions, and direct add button with ZFS defaults (`category=zfs`, `type=subject`), while still using ZFS pattern data source (`settings_patterns_zfs`).
-- RU: В Android-приложении в `Оперативный центр → ZFS` диалог паттернов переделан по UX-модели Proxmox: карточки, общие действия редактирования/удаления и отдельная кнопка добавления с ZFS-дефолтами (`category=zfs`, `type=subject`), при этом источником данных остаются ZFS-паттерны (`settings_patterns_zfs`).
-- EN: SemVer patch bump to `8.50.107`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.107` and `ANDROID_VERSION_CODE=455`.
-- RU: Выполнен SemVer patch-бамп до `8.50.107`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.107` и `ANDROID_VERSION_CODE=455`.
+- EN: SemVer patch bump to `8.50.108`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.108` and `ANDROID_VERSION_CODE=456`.
+- RU: Выполнен SemVer patch-бамп до `8.50.108`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.108` и `ANDROID_VERSION_CODE=456`.
 
 ## [8.50.105] - 2026-04-14
 
