@@ -1,3 +1,13 @@
+## [8.50.98] - 2026-04-14
+
+### Changed / Изменено
+- EN: Android `Operational center → ZFS` was rebuilt with a new resilient flow: on tile tap app now requests both statuses and host settings, shows a refreshed `ZFS center` layout with host cards + quick actions, and provides explicit refresh controls when payload is empty.
+- RU: Android `Оперативный центр → ZFS` переработан с новой устойчивой логикой: по тапу плашки приложение теперь запрашивает и статусы, и настройки хостов, показывает обновлённый layout `ZFS-центра` с карточками хостов и быстрыми действиями, а при пустом payload даёт явные кнопки обновления.
+- EN: Strengthened ViewModel fallback chain for ZFS loading: after root response app now tries prioritized ZFS actions (including `zfs_menu`) to fetch actual latest statuses instead of stopping at an empty root menu.
+- RU: Усилена fallback-цепочка загрузки ZFS во ViewModel: после корневого ответа приложение теперь пробует приоритетные ZFS-действия (включая `zfs_menu`), чтобы достать актуальные статусы и не останавливаться на пустом root-меню.
+- EN: SemVer patch bump to `8.50.98`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.98` and `ANDROID_VERSION_CODE=446`; prerelease links aligned to `v8.50.98-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.98`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.98` и `ANDROID_VERSION_CODE=446`; prerelease-ссылки выровнены на `v8.50.98-develop`.
+
 ## [8.50.97] - 2026-04-14
 
 ### Added / Добавлено
