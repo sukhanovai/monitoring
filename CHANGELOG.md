@@ -1,4 +1,4 @@
-## [8.50.95] - 2026-04-14
+## [8.50.96] - 2026-04-14
 
 ### Added / Добавлено
 - EN: In Android app `Operational center`, added back the `ZFS` extension tile with Telegram-bot parity behavior: tile is shown when `zfs_monitor` is enabled, opens `zfs` action on tap, and uses ZFS summary/problem state for compact status display.
@@ -9,8 +9,8 @@
 - RU: Восстановлен маппинг ZFS action→extension-id и fallback-пункт настроек (`settings_zfs`) в Android-логике локальной фильтрации меню, чтобы настройки расширения были доступны при включённом `zfs_monitor`.
 
 ### Changed / Изменено
-- EN: SemVer patch bump to `8.50.95`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.95` and `ANDROID_VERSION_CODE=443`; prerelease links aligned to `v8.50.95-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.95`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.95` и `ANDROID_VERSION_CODE=443`; prerelease-ссылки выровнены на `v8.50.95-develop`.
+- EN: SemVer patch bump to `8.50.96`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.96` and `ANDROID_VERSION_CODE=444`; prerelease links aligned to `v8.50.96-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.96`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.96` и `ANDROID_VERSION_CODE=444`; prerelease-ссылки выровнены на `v8.50.96-develop`.
 
 ## [8.50.88] - 2026-04-14
 
