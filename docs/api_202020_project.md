@@ -1,10 +1,10 @@
 /docs/api_202020_project.md
-Server Monitoring System v8.50.95
+Server Monitoring System v8.50.96
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Документ планирования API 202020
 Система мониторинга серверов
-Версия: 8.50.95
+Версия: 8.50.96
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Документ планирования API 202020

@@ -1698,6 +1698,7 @@ private fun MonitoringApp(
                 }
             } else if (extension.id == "zfs_monitor") {
                 {
+                    showZfsStatusesDialog = true
                     onAction("zfs")
                 }
             } else if (extension.id == "resource_monitor") {
