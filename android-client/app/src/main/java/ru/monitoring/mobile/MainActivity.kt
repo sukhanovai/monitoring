@@ -1704,7 +1704,6 @@ private fun MonitoringApp(
                 {
                     showZfsStatusesDialog = true
                     onAction("zfs_menu")
-                    onExtensionsSettingsAction("settings_zfs_list")
                 }
             } else {
                 { isSettingsExpanded = true; settingsSection = "extensions"; isExtensionsSettingsOpened = true }
