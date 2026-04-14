@@ -3803,7 +3803,18 @@ private fun MonitoringApp(
                     val zfsHostGroups = extractZfsHostOptionGroups(zfsSettingsPairs)
                     val monitoringByHost = zfsHostGroups.associateBy { it.hostName.trim().lowercase() }
 
-                    val allStatusCards = groupedCards.entries.map { (host, pools) ->
+                    val allHostsOrdered = linkedSetOf<String>()
+                    groupedCards.keys.forEach { host ->
+                        val normalized = host.trim()
+                        if (normalized.isNotBlank()) allHostsOrdered.add(normalized)
+                    }
+                    zfsHostGroups.forEach { group ->
+                        val normalized = group.hostName.trim()
+                        if (normalized.isNotBlank()) allHostsOrdered.add(normalized)
+                    }
+
+                    val allStatusCards = allHostsOrdered.map { host ->
+                        val pools = groupedCards[host].orEmpty()
                         val hostGroup = monitoringByHost[host.trim().lowercase()]
                         val poolsWithUniqueState = pools.distinctBy { pool ->
                             "${pool.poolName}|${pool.rawState}|${pool.rawTimestamp}"
