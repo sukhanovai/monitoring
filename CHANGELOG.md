@@ -1,12 +1,12 @@
-## [8.50.101] - 2026-04-14
+## [8.50.102] - 2026-04-14
 
 ### Fixed / Исправлено
-- EN: Fixed Android `Operational center → ZFS` action routing: tapping `ZFS`, `Refresh`, and `Via menu` now uses control actions API (`/v1/control/actions`) for `zfs` / `zfs_menu`, preventing HTTP 400 and restoring button behavior in the ZFS status dialog.
-- RU: Исправлена маршрутизация действий Android `Оперативный центр → ZFS`: нажатия `ZFS`, `Обновить` и `Через меню` теперь используют control actions API (`/v1/control/actions`) для `zfs` / `zfs_menu`, из-за чего убран HTTP 400 и восстановлена работа кнопок в диалоге статусов ZFS.
+- EN: In Android app `Operational center → ZFS`, the status dialog now builds host tiles from the union of status payload and `settings_zfs_list`, so disabled hosts remain visible in the list and are no longer dropped when monitoring is inactive.
+- RU: В Android-приложении в `Оперативный центр → ZFS` диалог статусов теперь строит список хостов как объединение payload статусов и `settings_zfs_list`, поэтому отключённые хосты остаются видимыми и больше не пропадают при деактивированном мониторинге.
 
 ### Changed / Изменено
-- EN: SemVer patch bump to `8.50.101`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.101` and `ANDROID_VERSION_CODE=449`; prerelease links aligned to `v8.50.101-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.101`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.101` и `ANDROID_VERSION_CODE=449`; prerelease-ссылки выровнены на `v8.50.101-develop`.
+- EN: SemVer patch bump to `8.50.102`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.102` and `ANDROID_VERSION_CODE=450`; prerelease links aligned to `v8.50.102-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.102`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.102` и `ANDROID_VERSION_CODE=450`; prerelease-ссылки выровнены на `v8.50.102-develop`.
 
 ## [8.50.97] - 2026-04-14
 
