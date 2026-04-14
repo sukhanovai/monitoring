@@ -1,16 +1,12 @@
-## [8.50.99] - 2026-04-14
-
-### Changed / Изменено
-- EN: Android `Operational center → ZFS` was rebuilt with a new resilient flow: on tile tap app now requests both statuses and host settings, shows a refreshed `ZFS center` layout with host cards + quick actions, and provides explicit refresh controls when payload is empty.
-- RU: Android `Оперативный центр → ZFS` переработан с новой устойчивой логикой: по тапу плашки приложение теперь запрашивает и статусы, и настройки хостов, показывает обновлённый layout `ZFS-центра` с карточками хостов и быстрыми действиями, а при пустом payload даёт явные кнопки обновления.
-- EN: Strengthened ViewModel fallback chain for ZFS loading: after root response app now tries prioritized ZFS actions (including `zfs_menu`) to fetch actual latest statuses instead of stopping at an empty root menu.
-- RU: Усилена fallback-цепочка загрузки ZFS во ViewModel: после корневого ответа приложение теперь пробует приоритетные ZFS-действия (включая `zfs_menu`), чтобы достать актуальные статусы и не останавливаться на пустом root-меню.
-- EN: SemVer patch bump to `8.50.99`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.99` and `ANDROID_VERSION_CODE=447`; prerelease links aligned to `v8.50.99-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.99`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.99` и `ANDROID_VERSION_CODE=447`; prerelease-ссылки выровнены на `v8.50.99-develop`.
+## [8.50.100] - 2026-04-14
 
 ### Fixed / Исправлено
-- EN: Android build fixed for `compactOpsDebug`: added missing Material 3 import for `OutlinedButton` in `MainActivity`, resolving Kotlin compile errors `Unresolved reference 'OutlinedButton'` and cascading composable context diagnostics.
-- RU: Исправлена Android-сборка `compactOpsDebug`: добавлен недостающий импорт Material 3 для `OutlinedButton` в `MainActivity`, что устранило Kotlin-ошибки `Unresolved reference 'OutlinedButton'` и каскадные ошибки контекста composable.
+- EN: Fixed Android `Operational center → ZFS` action routing: tapping `ZFS`, `Refresh`, and `Via menu` now goes through extension action flow (`zfs` / `zfs_menu`), so returned menu/options/status payload is processed instead of being dropped by generic control branch.
+- RU: Исправлена маршрутизация действий Android `Оперативный центр → ZFS`: нажатия `ZFS`, `Обновить` и `Через меню` теперь идут через flow действий расширений (`zfs` / `zfs_menu`), поэтому ответ с меню/опциями/статусами больше не теряется в generic-ветке control API.
+
+### Changed / Изменено
+- EN: SemVer patch bump to `8.50.100`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.100` and `ANDROID_VERSION_CODE=448`; prerelease links aligned to `v8.50.100-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.100`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.100` и `ANDROID_VERSION_CODE=448`; prerelease-ссылки выровнены на `v8.50.100-develop`.
 
 ## [8.50.97] - 2026-04-14
 
