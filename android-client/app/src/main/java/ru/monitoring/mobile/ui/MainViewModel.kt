@@ -51,7 +51,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.50.87"
+    private val projectVersion = "8.50.88"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -1572,6 +1572,18 @@ class MainViewModel(
                 ) {
                     runCatching { currentApi().runControlAction(ControlActionRequest(normalizedAction)) }
                         .onSuccess { response ->
+                            val zfsHostMenuOptions = if (normalizedAction == "zfs_menu") {
+                                runCatching {
+                                    currentApi().runControlAction(ControlActionRequest("settings_zfs_list"))
+                                }.getOrNull()?.let { settingsResponse ->
+                                    resolveZfsHostMenuOptions(
+                                        action = "settings_zfs_list",
+                                        nextOptions = settingsResponse.menuOptions.orEmpty()
+                                    )
+                                } ?: state.zfsHostMenuOptions
+                            } else {
+                                state.zfsHostMenuOptions
+                            }
                             val mailHistory = if (normalizedAction.startsWith("backup_mail")) {
                                 parseMailBackupHistory(resolveControlActionMessage(response))
                             } else {
@@ -1619,6 +1631,7 @@ class MainViewModel(
                                 backupDatabasesHasProblemItems = if (normalizedAction == "backup_databases") hasProblemBackups else state.backupDatabasesHasProblemItems,
                                 mailBackupHistoryTitle = mailHistory?.title.orEmpty(),
                                 mailBackupHistoryItems = mailHistory?.items.orEmpty(),
+                                zfsHostMenuOptions = zfsHostMenuOptions,
                                 mailBackupLastVolume = mailHistory?.items?.firstOrNull()?.size
                                     ?: extractMailBackupVolume(resolveControlActionMessage(response))
                                     ?: state.mailBackupLastVolume
