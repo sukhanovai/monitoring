@@ -384,7 +384,8 @@ private fun zfsCardReceivedAt(card: ZfsStatusCardItem): String {
 }
 
 private fun formatZfsHostDetails(card: ZfsStatusCardItem): String {
-    val monitoringStatus = when (card.monitoringEnabled) {
+    val monitoringEnabledResolved = card.monitoringEnabled ?: if (card.pools.isNotEmpty()) true else null
+    val monitoringStatus = when (monitoringEnabledResolved) {
         true -> "включен"
         false -> "выключен"
         null -> "неизвестно"

@@ -1,3 +1,13 @@
+## [8.50.87] - 2026-04-14
+
+### Fixed / Исправлено
+- EN: In Android app `Operational center → ZFS`, host details now infer monitoring as `enabled` when pool telemetry is present but explicit monitoring flag is missing, so tap flow `ZFS tile → host tile` no longer shows `Monitoring: unknown` for active hosts.
+- RU: В Android-приложении в `Оперативный центр → ZFS` детали хоста теперь выводят мониторинг как `включен`, если есть телеметрия по пулам, но отсутствует явный флаг мониторинга, поэтому в сценарии `тап по плашке ZFS → тап по плашке хоста` для активных хостов больше не показывается `Мониторинг: неизвестно`.
+
+### Changed / Изменено
+- EN: SemVer patch bump to `8.50.87`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.87` and `ANDROID_VERSION_CODE=435`; prerelease links aligned to `v8.50.87-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.87`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.87` и `ANDROID_VERSION_CODE=435`; prerelease-ссылки выровнены на `v8.50.87-develop`.
+
 ## [8.50.86] - 2026-04-13
 
 ### Fixed / Исправлено
