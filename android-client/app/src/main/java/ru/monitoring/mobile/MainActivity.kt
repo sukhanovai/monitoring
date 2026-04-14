@@ -1732,7 +1732,7 @@ private fun MonitoringApp(
             } else if (extension.id == "zfs_monitor") {
                 {
                     showZfsStatusesDialog = true
-                    onAction("zfs")
+                    onAction("zfs_menu")
                     onExtensionsSettingsAction("settings_zfs_list")
                 }
             } else if (extension.id == "resource_monitor") {
@@ -3792,7 +3792,7 @@ private fun MonitoringApp(
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    val zfsMenuOptions = if (state.extensionMenuAction == "zfs") {
+                    val zfsMenuOptions = if (state.extensionMenuAction == "zfs_menu") {
                         state.extensionMenuOptions
                     } else {
                         emptyList()
@@ -3869,10 +3869,7 @@ private fun MonitoringApp(
                         Text("Загружаем ZFS-центр…")
                     } else if (!hasAnyData) {
                         Text("Пока нет данных от ZFS. Нажми «Обновить», чтобы запросить статусы.")
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = { onAction("zfs") }) { Text("Обновить") }
-                            OutlinedButton(onClick = { onAction("zfs_menu") }) { Text("Через меню") }
-                        }
+                        Button(onClick = { onAction("zfs_menu") }) { Text("Обновить") }
                     } else {
                         if (allStatusCards.isNotEmpty()) {
                             Text(

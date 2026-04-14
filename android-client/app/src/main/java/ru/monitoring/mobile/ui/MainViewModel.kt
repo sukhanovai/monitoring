@@ -51,7 +51,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.50.105"
+    private val projectVersion = "8.50.106"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -777,7 +777,7 @@ class MainViewModel(
                     currentApi().runControlAction(ControlActionRequest("backup_mail"))
                 }.getOrNull()
                 val zfsSummary = runCatching {
-                    val zfsRoot = currentApi().runControlAction(ControlActionRequest("zfs"))
+                    val zfsRoot = currentApi().runControlAction(ControlActionRequest("zfs_menu"))
                     val latestAction = findZfsLatestStatusesAction(zfsRoot)
                     if (latestAction.isNullOrBlank()) {
                         zfsRoot
@@ -1412,6 +1412,7 @@ class MainViewModel(
     }
 
     private fun normalizeExtensionsSettingsAction(action: String): String = when (action) {
+        "zfs" -> "zfs_menu"
         "settings_backup_hosts" -> "settings_backup_proxmox"
         "settings_backup_patterns" -> "settings_patterns_proxmox"
         "settings_backup_databases" -> "settings_db_main"
@@ -1682,7 +1683,7 @@ class MainViewModel(
                                     normalizedAction == "zfs_menu" ||
                                     normalizedAction == "zfs"
                                 ) {
-                                    if (normalizedAction == "zfs_menu") "zfs" else normalizedAction
+                                    "zfs_menu"
                                 } else if (resolvedMenuOptions.isEmpty()) {
                                     ""
                                 } else {
