@@ -51,7 +51,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.50.91"
+    private val projectVersion = "8.50.92"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -441,6 +441,34 @@ class MainViewModel(
             ?: emptyList()
     }
 
+    private fun resolveMenuOptionAction(option: MenuOption): String {
+        return option.action?.trim().orEmpty()
+            .ifBlank { option.callbackData?.trim().orEmpty() }
+            .ifBlank { option.callbackDataCamel?.trim().orEmpty() }
+    }
+
+    private fun findZfsLatestStatusesAction(response: ControlActionResult): String? {
+        return resolveControlActionMenuOptions(response)
+            .firstOrNull { option ->
+                val normalizedLabel = normalizeRussianText(option.label?.trim().orEmpty())
+                normalizedLabel.contains("zfs") &&
+                    normalizedLabel.contains("статус") &&
+                    normalizedLabel.contains("послед")
+            }
+            ?.let { option -> resolveMenuOptionAction(option) }
+            ?.takeIf { action -> action.isNotBlank() }
+    }
+
+    private suspend fun fetchZfsLatestStatusesResponse(rootResponse: ControlActionResult): Pair<ControlActionResult, ControlActionResult?> {
+        val latestAction = findZfsLatestStatusesAction(rootResponse)
+        if (latestAction.isNullOrBlank()) return Pair(rootResponse, null)
+
+        val latestResponse = runCatching {
+            currentApi().runControlAction(ControlActionRequest(latestAction))
+        }.getOrNull()
+        return Pair(rootResponse, latestResponse)
+    }
+
     private fun resolveUpdateUrl(rawUrl: String): String {
         val candidate = rawUrl.trim()
         if (candidate.isBlank()) return fallbackUpdateUrl
@@ -733,7 +761,15 @@ class MainViewModel(
                     currentApi().runControlAction(ControlActionRequest("backup_mail"))
                 }.getOrNull()
                 val zfsSummary = runCatching {
-                    currentApi().runControlAction(ControlActionRequest("zfs_menu"))
+                    val zfsRoot = currentApi().runControlAction(ControlActionRequest("zfs"))
+                    val latestAction = findZfsLatestStatusesAction(zfsRoot)
+                    if (latestAction.isNullOrBlank()) {
+                        zfsRoot
+                    } else {
+                        runCatching {
+                            currentApi().runControlAction(ControlActionRequest(latestAction))
+                        }.getOrElse { zfsRoot }
+                    }
                 }.getOrNull()
                 listOf(
                     monitoring,
@@ -1578,7 +1614,16 @@ class MainViewModel(
                             } else {
                                 null
                             }
-                            val resolvedMenuOptions = resolveControlActionMenuOptions(response)
+                            val zfsResponseBundle = if (normalizedAction == "zfs" || normalizedAction == "zfs_menu") {
+                                val latestResponse = runCatching { fetchZfsLatestStatusesResponse(response) }
+                                    .getOrElse { Pair(response, null) }
+                                val primaryResponse = latestResponse.second ?: latestResponse.first
+                                Pair(latestResponse.first, primaryResponse)
+                            } else {
+                                Pair(response, response)
+                            }
+                            val zfsPrimaryResponse = zfsResponseBundle.second
+                            val resolvedMenuOptions = resolveControlActionMenuOptions(zfsPrimaryResponse)
                             val monitoredMenuOptions = when {
                                 normalizedAction == "backup_proxmox" -> resolvedMenuOptions.filterNot { option ->
                                     isDisabledProxmoxBackupOption(option)
@@ -1596,21 +1641,27 @@ class MainViewModel(
                             }
                             val hasProblemBackups = monitoredMenuOptions
                                 .any { option -> isProblemBackupOption(option) }
+                            val zfsSummary = if (normalizedAction == "zfs" || normalizedAction == "zfs_menu") {
+                                buildBackupTileSummary(zfsPrimaryResponse)
+                            } else {
+                                null
+                            }
                             state = state.copy(
                                 isLoading = false,
-                                message = resolveControlActionMessage(response).ifBlank { "Команда отправлена" },
+                                message = resolveControlActionMessage(zfsPrimaryResponse).ifBlank { "Команда отправлена" },
                                 messageSource = "global",
-                                zfsStatusMessage = if (normalizedAction == "zfs_menu") {
-                                    resolveControlActionMessage(response)
+                                zfsStatusMessage = if (normalizedAction == "zfs" || normalizedAction == "zfs_menu") {
+                                    resolveControlActionMessage(zfsPrimaryResponse)
                                 } else {
                                     state.zfsStatusMessage
                                 },
                                 extensionMenuOptions = resolvedMenuOptions,
                                 extensionMenuAction = if (
                                     normalizedAction == "backup_databases" ||
-                                    normalizedAction == "zfs_menu"
+                                    normalizedAction == "zfs_menu" ||
+                                    normalizedAction == "zfs"
                                 ) {
-                                    normalizedAction
+                                    if (normalizedAction == "zfs_menu") "zfs" else normalizedAction
                                 } else if (resolvedMenuOptions.isEmpty()) {
                                     ""
                                 } else {
@@ -1621,8 +1672,10 @@ class MainViewModel(
                                 mailBackupHistoryTitle = mailHistory?.title.orEmpty(),
                                 mailBackupHistoryItems = mailHistory?.items.orEmpty(),
                                 zfsHostMenuOptions = zfsHostMenuOptions,
+                                zfsSummary = zfsSummary?.ratioText ?: state.zfsSummary,
+                                zfsHasProblemItems = zfsSummary?.hasProblem ?: state.zfsHasProblemItems,
                                 mailBackupLastVolume = mailHistory?.items?.firstOrNull()?.size
-                                    ?: extractMailBackupVolume(resolveControlActionMessage(response))
+                                    ?: extractMailBackupVolume(resolveControlActionMessage(zfsPrimaryResponse))
                                     ?: state.mailBackupLastVolume
                             )
                         }
