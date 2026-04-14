@@ -1344,6 +1344,9 @@ private fun MonitoringApp(
     val proxmoxPatternMenuAction = state.extensionSettingsMenuAction
         .takeIf { it == "settings_patterns_proxmox" || it == "settings_backup_patterns" }
         ?: state.extensionMenuAction.takeIf { it == "settings_patterns_proxmox" || it == "settings_backup_patterns" }
+    val zfsPatternMenuAction = state.extensionSettingsMenuAction
+        .takeIf { it == "settings_patterns_zfs" }
+        ?: state.extensionMenuAction.takeIf { it == "settings_patterns_zfs" }
     val databasePatternMenuAction = state.extensionSettingsMenuAction
         .takeIf { it == "settings_patterns_db" || it == "settings_backup_db_patterns" }
         ?: state.extensionMenuAction.takeIf { it == "settings_patterns_db" || it == "settings_backup_db_patterns" }
@@ -1361,6 +1364,56 @@ private fun MonitoringApp(
     val proxmoxPatternOptionGroups = if (proxmoxPatternMenuAction != null) {
         val grouped = linkedMapOf<String, Pair<String, String>>()
         proxmoxPatternMenuOptions.forEach { option ->
+            val action = resolveMenuOptionAction(option)
+            val label = option.label?.trim().orEmpty()
+            when {
+                action.startsWith("settings_proxmox_pattern_edit_") -> {
+                    val patternLabel = normalizeProxmoxPatternLabel(label.ifBlank {
+                        Uri.decode(action.removePrefix("settings_proxmox_pattern_edit_"))
+                    })
+                    if (patternLabel.isNotBlank()) {
+                        val current = grouped[patternLabel] ?: ("" to "")
+                        grouped[patternLabel] = action to current.second
+                    }
+                }
+                action.startsWith("settings_proxmox_pattern_delete_") -> {
+                    val patternLabel = normalizeProxmoxPatternLabel(label.ifBlank {
+                        Uri.decode(action.removePrefix("settings_proxmox_pattern_delete_"))
+                    })
+                    if (patternLabel.isNotBlank()) {
+                        val current = grouped[patternLabel] ?: ("" to "")
+                        grouped[patternLabel] = current.first to action
+                    }
+                }
+            }
+        }
+        grouped.mapNotNull { (label, actions) ->
+            val editAction = actions.first
+            val deleteAction = actions.second
+            if (editAction.isBlank() && deleteAction.isBlank()) {
+                null
+            } else {
+                ProxmoxPatternOptionGroup(
+                    label = label,
+                    editAction = editAction,
+                    deleteAction = deleteAction
+                )
+            }
+        }
+    } else {
+        emptyList()
+    }
+    val zfsPatternMenuOptions = when {
+        zfsPatternMenuAction == state.extensionSettingsMenuAction && state.extensionSettingsMenuOptions.isNotEmpty() ->
+            state.extensionSettingsMenuOptions
+        zfsPatternMenuAction == state.extensionMenuAction && state.extensionMenuOptions.isNotEmpty() ->
+            state.extensionMenuOptions
+        state.extensionSettingsMenuOptions.isNotEmpty() -> state.extensionSettingsMenuOptions
+        else -> state.extensionMenuOptions
+    }
+    val zfsPatternOptionGroups = if (zfsPatternMenuAction != null) {
+        val grouped = linkedMapOf<String, Pair<String, String>>()
+        zfsPatternMenuOptions.forEach { option ->
             val action = resolveMenuOptionAction(option)
             val label = option.label?.trim().orEmpty()
             when {
@@ -4229,11 +4282,25 @@ private fun MonitoringApp(
                         modifier = Modifier.weight(1f),
                         fontWeight = FontWeight.Bold
                     )
-                    IconButton(onClick = { showZfsPatternsDialog = false }) {
-                        Icon(
-                            imageVector = Icons.Filled.Close,
-                            contentDescription = "Закрыть окно паттернов ZFS"
-                        )
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        IconButton(onClick = {
+                            patternDialogReturnAction = "settings_patterns_zfs"
+                            proxmoxPatternCategoryInput = "zfs"
+                            proxmoxPatternTypeInput = "subject"
+                            proxmoxPatternValueInput = ""
+                            showProxmoxPatternAddDialog = true
+                        }) {
+                            Icon(
+                                imageVector = Icons.Filled.Add,
+                                contentDescription = "Добавить паттерн ZFS"
+                            )
+                        }
+                        IconButton(onClick = { showZfsPatternsDialog = false }) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "Закрыть список паттернов ZFS"
+                            )
+                        }
                     }
                 }
             },
@@ -4245,59 +4312,36 @@ private fun MonitoringApp(
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    val zfsPatternOptions = if (state.extensionSettingsMenuAction == "settings_patterns_zfs") {
-                        state.extensionSettingsMenuOptions
-                    } else {
-                        emptyList()
-                    }
-                    val zfsPatternMessage = if (state.extensionSettingsMenuAction == "settings_patterns_zfs") {
-                        state.message.trim()
-                    } else {
-                        ""
-                    }
-
-                    if (state.isLoading && zfsPatternOptions.isEmpty() && zfsPatternMessage.isBlank()) {
+                    if (zfsPatternMenuAction == null) {
                         Text("Загружаем паттерны ZFS…")
+                    } else if (zfsPatternOptionGroups.isEmpty()) {
+                        Text("Паттерны пока не добавлены.")
                     } else {
-                        if (zfsPatternMessage.isNotBlank()) {
-                            Text(zfsPatternMessage, lineHeight = 16.sp)
-                        }
-                        if (zfsPatternOptions.isEmpty()) {
-                            Text("Паттерны ZFS пока недоступны.")
-                        } else {
-                            zfsPatternOptions.forEach { option ->
-                                val targetAction = resolveMenuOptionAction(option)
-                                val label = option.label?.trim().orEmpty()
-                                if (label.isBlank() || targetAction.isBlank()) return@forEach
-                                Button(
-                                    onClick = {
-                                        when {
-                                            targetAction.startsWith("settings_proxmox_pattern_add") -> {
-                                                val parts = targetAction.split("|")
-                                                proxmoxPatternCategoryInput = parts.getOrNull(1)
-                                                    ?.takeIf { it.isNotBlank() }
-                                                    ?: "zfs"
-                                                proxmoxPatternTypeInput = parts.getOrNull(2)
-                                                    ?.takeIf { it.isNotBlank() }
-                                                    ?: "subject"
-                                                proxmoxPatternValueInput = parts.getOrNull(3).orEmpty()
-                                                patternDialogReturnAction = "settings_patterns_zfs"
-                                                showProxmoxPatternAddDialog = true
-                                            }
-                                            targetAction.startsWith("settings_proxmox_pattern_edit_") -> {
-                                                proxmoxPatternEditAction = targetAction
-                                                proxmoxPatternEditTypeInput = "subject"
-                                                proxmoxPatternEditValueInput = ""
-                                                patternDialogReturnAction = "settings_patterns_zfs"
-                                                showProxmoxPatternEditDialog = true
-                                            }
-                                            else -> onExtensionsSettingsAction(targetAction)
-                                        }
+                        zfsPatternOptionGroups.forEach { pattern ->
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .clickable {
+                                        patternDialogReturnAction = "settings_patterns_zfs"
+                                        selectedProxmoxPatternLabel = pattern.label
+                                        selectedProxmoxPatternEditAction = pattern.editAction
+                                        selectedProxmoxPatternDeleteAction = pattern.deleteAction
+                                        showProxmoxPatternActionsDialog = true
                                     },
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Text(label)
-                                }
+                                tonalElevation = 2.dp,
+                                shape = RoundedCornerShape(10.dp),
+                                color = MaterialTheme.colorScheme.secondaryContainer
+                            ) {
+                                Text(
+                                    text = pattern.label,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                                    maxLines = 3,
+                                    overflow = TextOverflow.Ellipsis,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
                             }
                         }
                     }
@@ -4324,6 +4368,7 @@ private fun MonitoringApp(
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         IconButton(onClick = {
+                            patternDialogReturnAction = "settings_patterns_proxmox"
                             onExtensionsSettingsAction("settings_patterns_proxmox")
                             showProxmoxPatternsDialog = true
                         }) {
@@ -4521,7 +4566,6 @@ private fun MonitoringApp(
                             val prefill = parseProxmoxPatternEditPrefill(selectedProxmoxPatternLabel)
                             proxmoxPatternEditTypeInput = prefill.patternType
                             proxmoxPatternEditValueInput = prefill.patternValue
-                            patternDialogReturnAction = "settings_patterns_proxmox"
                             showProxmoxPatternEditDialog = true
                             showProxmoxPatternActionsDialog = false
                         },
@@ -4532,7 +4576,7 @@ private fun MonitoringApp(
                     TextButton(
                         onClick = {
                             onExtensionsSettingsAction(selectedProxmoxPatternDeleteAction)
-                            onExtensionsSettingsAction("settings_patterns_proxmox")
+                            onExtensionsSettingsAction(patternDialogReturnAction)
                             showProxmoxPatternActionsDialog = false
                         },
                         enabled = selectedProxmoxPatternDeleteAction.isNotBlank()
