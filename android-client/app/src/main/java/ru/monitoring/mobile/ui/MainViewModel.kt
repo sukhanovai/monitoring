@@ -51,7 +51,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.50.94"
+    private val projectVersion = "8.50.95"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -81,6 +81,7 @@ class MainViewModel(
     private val extensionSettingsControlActions = extensionControlActions + setOf("open_extensions_settings")
     private val extensionActionToIdMatchers = listOf<Pair<(String) -> Boolean, String>>(
         Pair({ action -> action == "check_resources" }, "resource_monitor"),
+        Pair({ action -> action == "zfs" || action == "zfs_menu" || action.startsWith("settings_zfs") }, "zfs_monitor"),
         Pair({ action -> action == "backup_proxmox" || action.startsWith("backup_host_") }, "backup_monitor"),
         Pair({ action -> action == "backup_databases" || action.startsWith("db_detail_") }, "database_backup_monitor"),
         Pair({ action -> action.startsWith("backup_mail") }, "mail_backup_monitor"),
@@ -88,6 +89,7 @@ class MainViewModel(
         Pair({ action -> action == "supplier_stock_reports" || action.startsWith("supplier_stock_reports_") || action.startsWith("supplier_stock_report_source_day|") }, "supplier_stock_files")
     )
     private val extensionSettingsFallbackActions = listOf(
+        Triple("zfs_monitor", "🧊 ZFS", "settings_zfs"),
         Triple("backup_monitor", "💾 Бэкапы Proxmox", "settings_ext_backup_proxmox"),
         Triple("database_backup_monitor", "🗃️ Бэкапы БД", "settings_ext_backup_db"),
         Triple("mail_backup_monitor", "📬 Бэкапы почты", "settings_ext_backup_mail"),
