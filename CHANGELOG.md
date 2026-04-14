@@ -1,10 +1,10 @@
-## [8.50.106] - 2026-04-14
+## [8.50.107] - 2026-04-14
 
 ### Changed / Изменено
-- EN: In Android app `Operational center → ZFS`, all ZFS entry points were switched to Telegram-bot flow: tile open/refresh now uses `zfs_menu`, the dual path (`zfs` vs `zfs_menu`) was removed from the status dialog, and `extensionMenuAction` is normalized to `zfs_menu` for consistent menu rendering.
-- RU: В Android-приложении в `Оперативный центр → ZFS` все точки входа переведены на Telegram-flow: открытие/обновление плашки теперь ходит через `zfs_menu`, из диалога статусов убран двойной путь (`zfs` vs `zfs_menu`), а `extensionMenuAction` нормализуется в `zfs_menu` для консистентного рендера меню.
-- EN: SemVer patch bump to `8.50.106`; synchronized version mentions across project runtime/config and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.106` and `ANDROID_VERSION_CODE=454`.
-- RU: Выполнен SemVer patch-бамп до `8.50.106`; синхронизированы упоминания версии в runtime/config и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.106` и `ANDROID_VERSION_CODE=454`.
+- EN: In Android app `Operational center → ZFS`, the patterns dialog was rebuilt by the same UX model as Proxmox: card list, shared edit/delete actions, and direct add button with ZFS defaults (`category=zfs`, `type=subject`), while still using ZFS pattern data source (`settings_patterns_zfs`).
+- RU: В Android-приложении в `Оперативный центр → ZFS` диалог паттернов переделан по UX-модели Proxmox: карточки, общие действия редактирования/удаления и отдельная кнопка добавления с ZFS-дефолтами (`category=zfs`, `type=subject`), при этом источником данных остаются ZFS-паттерны (`settings_patterns_zfs`).
+- EN: SemVer patch bump to `8.50.107`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.107` and `ANDROID_VERSION_CODE=455`.
+- RU: Выполнен SemVer patch-бамп до `8.50.107`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.107` и `ANDROID_VERSION_CODE=455`.
 
 ## [8.50.105] - 2026-04-14
 
