@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_handlers.py
-Server Monitoring System v8.50.96
+Server Monitoring System v8.50.97
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for the backup bot
 Система мониторинга серверов
-Версия: 8.50.96
+Версия: 8.50.97
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для бота бэкапов

@@ -3848,7 +3848,9 @@ private fun MonitoringApp(
                             }
                         }
 
-                        if (zfsMenuOptions.isNotEmpty() || allStatusCards.isNotEmpty()) {
+                        val hasZfsRawMessage = state.zfsStatusMessage.trim().isNotBlank()
+
+                        if (zfsMenuOptions.isNotEmpty() || allStatusCards.isNotEmpty() || hasZfsRawMessage) {
 
                             if (allStatusCards.isNotEmpty()) {
                                 FlowRow(
@@ -3885,6 +3887,9 @@ private fun MonitoringApp(
                                         }
                                     }
                                 }
+                            }
+                            if (allStatusCards.isEmpty() && hasZfsRawMessage) {
+                                Text(formatZfsMessageForDialog(state.zfsStatusMessage.trim()))
                             }
                         } else {
                             Text("Статусы ZFS пока не получены.")
