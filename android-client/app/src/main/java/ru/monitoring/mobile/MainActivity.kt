@@ -1700,6 +1700,7 @@ private fun MonitoringApp(
                 {
                     showZfsStatusesDialog = true
                     onAction("zfs")
+                    onExtensionsSettingsAction("settings_zfs_list")
                 }
             } else if (extension.id == "resource_monitor") {
                 {
@@ -3764,135 +3765,131 @@ private fun MonitoringApp(
                         emptyList()
                     }
                     val zfsSettingsOptions = state.zfsHostMenuOptions
-                    if (state.isLoading && zfsMenuOptions.isEmpty()) {
-                        Text("Загружаем статусы ZFS…")
+                    val statusCardsFromOptions = zfsMenuOptions.mapNotNull { option -> toZfsStatusCardItem(option) }
+                    val statusCardsFromMessage = parseZfsStatusCardsFromMessage(state.zfsStatusMessage)
+                    val rawMessage = state.zfsStatusMessage.trim()
+
+                    val zfsActions = zfsMenuOptions
+                        .mapNotNull { option ->
+                            val action = resolveMenuOptionAction(option)
+                            val label = option.label?.trim().orEmpty()
+                            if (label.isBlank() || action.isBlank()) return@mapNotNull null
+                            if (action.startsWith("settings_zfs")) return@mapNotNull null
+                            if (toZfsStatusCardItem(option) != null) return@mapNotNull null
+                            label to action
+                        }
+                        .distinctBy { (_, action) -> action }
+
+                    val groupedCards = linkedMapOf<String, MutableList<ZfsPoolStatusItem>>()
+                    val actionByHost = linkedMapOf<String, String?>()
+                    val hasProblemByHost = linkedMapOf<String, Boolean>()
+                    (statusCardsFromMessage + statusCardsFromOptions).forEach { card ->
+                        val host = card.hostName.trim()
+                        if (host.isBlank()) return@forEach
+                        groupedCards.getOrPut(host) { mutableListOf() }.addAll(card.pools)
+                        if (actionByHost[host].isNullOrBlank() && !card.action.isNullOrBlank()) {
+                            actionByHost[host] = card.action
+                        }
+                        hasProblemByHost[host] = hasProblemByHost[host] == true || card.hasProblem || card.pools.any { it.hasProblem }
+                    }
+
+                    val zfsSettingsPairs = zfsSettingsOptions
+                        .mapNotNull { option ->
+                            val action = resolveMenuOptionAction(option)
+                            val label = option.label?.trim().orEmpty()
+                            if (label.isBlank() || action.isBlank()) null else label to action
+                        }
+                    val zfsHostGroups = extractZfsHostOptionGroups(zfsSettingsPairs)
+                    val monitoringByHost = zfsHostGroups.associateBy { it.hostName.trim().lowercase() }
+
+                    val allStatusCards = groupedCards.entries.map { (host, pools) ->
+                        val hostGroup = monitoringByHost[host.trim().lowercase()]
+                        val poolsWithUniqueState = pools.distinctBy { pool ->
+                            "${pool.poolName}|${pool.rawState}|${pool.rawTimestamp}"
+                        }
+                        val monitoringEnabled = hostGroup?.let { !isZfsMonitoringDisabled(it.toggleLabel) }
+                        ZfsStatusCardItem(
+                            hostName = host,
+                            pools = poolsWithUniqueState,
+                            action = actionByHost[host],
+                            rawLabel = hostGroup?.toggleLabel.orEmpty(),
+                            hasProblem = hasProblemByHost[host] == true,
+                            monitoringEnabled = monitoringEnabled,
+                            monitoringLabel = hostGroup?.toggleLabel.orEmpty()
+                        )
+                    }
+
+                    val hasAnyData = allStatusCards.isNotEmpty() || rawMessage.isNotBlank() || zfsActions.isNotEmpty()
+
+                    if (state.isLoading && !hasAnyData) {
+                        Text("Загружаем ZFS-центр…")
+                    } else if (!hasAnyData) {
+                        Text("Пока нет данных от ZFS. Нажми «Обновить», чтобы запросить статусы.")
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = { onAction("zfs") }) { Text("Обновить") }
+                            OutlinedButton(onClick = { onAction("zfs_menu") }) { Text("Через меню") }
+                        }
                     } else {
-                        val statusCardsFromOptions = zfsMenuOptions.mapNotNull { option -> toZfsStatusCardItem(option) }
-                        val statusCardsFromMessage = parseZfsStatusCardsFromMessage(state.zfsStatusMessage)
-                        val groupedCards = linkedMapOf<String, MutableList<ZfsPoolStatusItem>>()
-                        val actionByHost = linkedMapOf<String, String?>()
-                        val rawByHost = linkedMapOf<String, String>()
-                        val monitoringEnabledByHost = linkedMapOf<String, Boolean?>()
-                        val monitoringLabelByHost = linkedMapOf<String, String>()
-                        val hasProblemByHost = linkedMapOf<String, Boolean>()
-                        (statusCardsFromMessage + statusCardsFromOptions).forEach { card ->
-                            val host = card.hostName.trim()
-                            if (host.isBlank()) return@forEach
-                            groupedCards.getOrPut(host) { mutableListOf() }.addAll(card.pools)
-                            if (actionByHost[host].isNullOrBlank() && !card.action.isNullOrBlank()) {
-                                actionByHost[host] = card.action
-                            }
-                            if (!rawByHost.containsKey(host) && card.rawLabel.isNotBlank()) {
-                                rawByHost[host] = card.rawLabel
-                            }
-                            if (!monitoringEnabledByHost.containsKey(host) && card.monitoringEnabled != null) {
-                                monitoringEnabledByHost[host] = card.monitoringEnabled
-                            }
-                            if (!monitoringLabelByHost.containsKey(host) && card.monitoringLabel.isNotBlank()) {
-                                monitoringLabelByHost[host] = card.monitoringLabel
-                            }
-                            if (card.hasProblem) {
-                                hasProblemByHost[host] = true
-                            } else if (!hasProblemByHost.containsKey(host)) {
-                                hasProblemByHost[host] = false
-                            }
-                        }
-                        val statusCards = groupedCards.entries.map { (host, pools) ->
-                            val poolsWithUniqueState = pools.distinctBy { pool ->
-                                "${pool.poolName}|${pool.rawState}|${pool.rawTimestamp}"
-                            }
-                            ZfsStatusCardItem(
-                                hostName = host,
-                                pools = poolsWithUniqueState,
-                                action = actionByHost[host],
-                                rawLabel = rawByHost[host].orEmpty(),
-                                hasProblem = hasProblemByHost[host] == true || poolsWithUniqueState.any { pool -> pool.hasProblem },
-                                monitoringEnabled = monitoringEnabledByHost[host],
-                                monitoringLabel = monitoringLabelByHost[host].orEmpty()
+                        if (allStatusCards.isNotEmpty()) {
+                            Text(
+                                text = "Хосты ZFS: ${allStatusCards.size}",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold
                             )
-                        }
-                        val zfsSettingsPairs = zfsSettingsOptions
-                            .mapNotNull { option ->
-                                val action = resolveMenuOptionAction(option)
-                                val label = option.label?.trim().orEmpty()
-                                if (label.isBlank() || action.isBlank()) null else label to action
-                            }
-                        val zfsHostGroups = extractZfsHostOptionGroups(zfsSettingsPairs)
-                        val monitoringByHost = zfsHostGroups.associateBy { it.hostName.trim().lowercase() }
-                        val disabledOrMissingCards = zfsHostGroups
-                            .filterNot { hostGroup ->
-                                statusCards.any { card -> card.hostName.equals(hostGroup.hostName, ignoreCase = true) }
-                            }
-                            .map { hostGroup ->
-                                val isDisabled = isZfsMonitoringDisabled(hostGroup.toggleLabel)
-                                ZfsStatusCardItem(
-                                    hostName = hostGroup.hostName,
-                                    pools = emptyList(),
-                                    action = null,
-                                    rawLabel = hostGroup.toggleLabel,
-                                    hasProblem = false,
-                                    monitoringEnabled = !isDisabled,
-                                    monitoringLabel = hostGroup.toggleLabel
-                                )
-                            }
-                        val allStatusCards = (statusCards + disabledOrMissingCards).map { card ->
-                            val hostGroup = monitoringByHost[card.hostName.trim().lowercase()]
-                            if (hostGroup == null) {
-                                card
-                            } else {
-                                val monitoringEnabled = !isZfsMonitoringDisabled(hostGroup.toggleLabel)
-                                card.copy(
-                                    monitoringEnabled = monitoringEnabled,
-                                    monitoringLabel = hostGroup.toggleLabel
-                                )
-                            }
-                        }
-
-                        val hasZfsRawMessage = state.zfsStatusMessage.trim().isNotBlank()
-
-                        if (zfsMenuOptions.isNotEmpty() || allStatusCards.isNotEmpty() || hasZfsRawMessage) {
-
-                            if (allStatusCards.isNotEmpty()) {
-                                FlowRow(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                                    maxItemsInEachRow = 2
-                                ) {
-                                    allStatusCards.forEach { card ->
-                                        Box(modifier = Modifier.fillMaxWidth(0.48f)) {
-                                            ZfsStatusTile(
-                                                card = card,
-                                                onClick = {
-                                                    card.action?.let { onAction(it) }
-                                                    zfsDetailsHostName = card.hostName
-                                                    zfsStatusDetailsFallbackText = formatZfsHostDetails(card)
-                                                    showZfsHostDetailsDialog = true
-                                                },
-                                                onLongClick = {
-                                                    val hostGroup = monitoringByHost[card.hostName.trim().lowercase()]
-                                                    if (hostGroup != null) {
-                                                        zfsSelectedHostName = hostGroup.hostName
-                                                        zfsSelectedHostEditAction = hostGroup.editAction
-                                                        zfsSelectedHostDeleteAction = hostGroup.deleteAction
-                                                        zfsSelectedHostToggleAction = hostGroup.toggleAction
-                                                        zfsSelectedHostToggleLabel = hostGroup.toggleLabel
-                                                        showZfsHostActionsDialog = true
-                                                    } else {
-                                                        pendingZfsHostSettingsName = card.hostName
-                                                        onExtensionsSettingsAction("settings_zfs_list")
-                                                    }
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                maxItemsInEachRow = 2
+                            ) {
+                                allStatusCards.forEach { card ->
+                                    Box(modifier = Modifier.fillMaxWidth(0.48f)) {
+                                        ZfsStatusTile(
+                                            card = card,
+                                            onClick = {
+                                                card.action?.let { onAction(it) }
+                                                zfsDetailsHostName = card.hostName
+                                                zfsStatusDetailsFallbackText = formatZfsHostDetails(card)
+                                                showZfsHostDetailsDialog = true
+                                            },
+                                            onLongClick = {
+                                                val hostGroup = monitoringByHost[card.hostName.trim().lowercase()]
+                                                if (hostGroup != null) {
+                                                    zfsSelectedHostName = hostGroup.hostName
+                                                    zfsSelectedHostEditAction = hostGroup.editAction
+                                                    zfsSelectedHostDeleteAction = hostGroup.deleteAction
+                                                    zfsSelectedHostToggleAction = hostGroup.toggleAction
+                                                    zfsSelectedHostToggleLabel = hostGroup.toggleLabel
+                                                    showZfsHostActionsDialog = true
+                                                } else {
+                                                    pendingZfsHostSettingsName = card.hostName
+                                                    onExtensionsSettingsAction("settings_zfs_list")
                                                 }
-                                            )
-                                        }
+                                            }
+                                        )
                                     }
                                 }
                             }
-                            if (allStatusCards.isEmpty() && hasZfsRawMessage) {
-                                Text(formatZfsMessageForDialog(state.zfsStatusMessage.trim()))
+                        }
+
+                        if (zfsActions.isNotEmpty()) {
+                            Text(
+                                text = "Быстрые действия",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            zfsActions.forEach { (label, action) ->
+                                OutlinedButton(
+                                    onClick = { onAction(action) },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(label)
+                                }
                             }
-                        } else {
-                            Text("Статусы ZFS пока не получены.")
+                        }
+
+                        if (rawMessage.isNotBlank() && allStatusCards.isEmpty()) {
+                            Text(formatZfsMessageForDialog(rawMessage))
                         }
                     }
                 }

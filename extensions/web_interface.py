@@ -1,11 +1,11 @@
 """
 /extensions/supplier_stock_files.py
-Server Monitoring System v8.50.97
+Server Monitoring System v8.50.98
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.50.97
+Версия: 8.50.98
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс

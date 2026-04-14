@@ -51,7 +51,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.50.97"
+    private val projectVersion = "8.50.98"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -457,12 +457,22 @@ class MainViewModel(
     }
 
     private suspend fun fetchZfsLatestStatusesResponse(rootResponse: ControlActionResult): Pair<ControlActionResult, ControlActionResult?> {
-        val latestAction = findZfsLatestStatusesAction(rootResponse)
-        if (latestAction.isNullOrBlank()) return Pair(rootResponse, null)
+        val prioritizedActions = buildList {
+            findZfsLatestStatusesAction(rootResponse)?.let { add(it) }
+            addAll(
+                resolveControlActionMenuOptions(rootResponse)
+                    .map { option -> resolveMenuOptionAction(option) }
+                    .filter { action -> action.isNotBlank() }
+                    .filter { action -> action == "zfs_menu" || action.contains("zfs", ignoreCase = true) }
+            )
+            add("zfs_menu")
+        }.distinct()
 
-        val latestResponse = runCatching {
-            currentApi().runControlAction(ControlActionRequest(latestAction))
-        }.getOrNull()
+        val latestResponse = prioritizedActions.firstNotNullOfOrNull { action ->
+            runCatching {
+                currentApi().runControlAction(ControlActionRequest(action))
+            }.getOrNull()
+        }
         return Pair(rootResponse, latestResponse)
     }
 
