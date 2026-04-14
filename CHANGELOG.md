@@ -1,4 +1,4 @@
-## [8.50.90] - 2026-04-14
+## [8.50.91] - 2026-04-14
 
 ### Added / Добавлено
 - EN: Added architecture note describing end-to-end ZFS data flow: ingestion from email, persistence in `zfs_pool_status`, extraction in Telegram `Main menu → ZFS`, and Android `Operational center → ZFS` retrieval/parsing path to simplify discrepancy analysis.
@@ -9,8 +9,8 @@
 - RU: В Android-приложении в `Оперативный центр → ZFS` тап по плашке ZFS теперь использует Proxmox-подобный поток с единственным запросом `zfs_menu` из обработчика плашки; убран параллельный вызов `settings_zfs_list`, чтобы исключить гонки и показ пустых/устаревших данных в диалоге.
 
 ### Changed / Изменено
-- EN: SemVer patch bump to `8.50.90`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.90` and `ANDROID_VERSION_CODE=438`; prerelease links aligned to `v8.50.90-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.90`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.90` и `ANDROID_VERSION_CODE=438`; prerelease-ссылки выровнены на `v8.50.90-develop`.
+- EN: SemVer patch bump to `8.50.91`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.91` and `ANDROID_VERSION_CODE=439`; prerelease links aligned to `v8.50.91-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.91`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.91` и `ANDROID_VERSION_CODE=439`; prerelease-ссылки выровнены на `v8.50.91-develop`.
 
 ## [8.50.88] - 2026-04-14
 
