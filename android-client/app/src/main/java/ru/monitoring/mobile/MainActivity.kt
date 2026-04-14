@@ -1626,6 +1626,15 @@ private fun MonitoringApp(
                 )
             )
         }
+        extensionsById["zfs_monitor"]?.takeIf { it.enabled }?.let { extension ->
+            add(
+                buildExtensionDataTile(
+                    extension = extension.copy(name = "zfs"),
+                    summaryOverride = state.zfsSummary,
+                    hasProblemOverride = state.zfsHasProblemItems
+                )
+            )
+        }
         extensionsById["stock_load_monitor"]?.takeIf { it.enabled }?.let { extension ->
             add(
                 buildExtensionDataTile(
@@ -1686,6 +1695,10 @@ private fun MonitoringApp(
                 {
                     showMailBackupsDialog = true
                     onToggleMailBackupMenu()
+                }
+            } else if (extension.id == "zfs_monitor") {
+                {
+                    onAction("zfs")
                 }
             } else if (extension.id == "resource_monitor") {
                 {

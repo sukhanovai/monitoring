@@ -1,12 +1,16 @@
-## [8.50.94] - 2026-04-14
+## [8.50.95] - 2026-04-14
 
-### Removed / Удалено
-- EN: In Android app, removed ZFS functionality from user flows: `Operational center` no longer renders the `ZFS` tile, and ZFS is excluded from Android extension action routing/fallback settings menus.
-- RU: В Android-приложении удалён пользовательский функционал ZFS: в `Оперативном центре` больше не показывается плашка `ZFS`, а ZFS исключён из Android-маршрутизации extension-экшенов и fallback-меню настроек.
+### Added / Добавлено
+- EN: In Android app `Operational center`, added back the `ZFS` extension tile with Telegram-bot parity behavior: tile is shown when `zfs_monitor` is enabled, opens `zfs` action on tap, and uses ZFS summary/problem state for compact status display.
+- RU: В Android-приложении в `Оперативном центре` возвращена плашка расширения `ZFS` с паритетом поведения с Telegram-ботом: плашка показывается при включённом `zfs_monitor`, по нажатию открывает действие `zfs`, а для компактного статуса использует сводку/проблемность ZFS.
+
+### Fixed / Исправлено
+- EN: Restored ZFS extension action-to-id mapping and fallback settings option (`settings_zfs`) in Android local menu filtering so extension settings stay available when `zfs_monitor` is enabled.
+- RU: Восстановлен маппинг ZFS action→extension-id и fallback-пункт настроек (`settings_zfs`) в Android-логике локальной фильтрации меню, чтобы настройки расширения были доступны при включённом `zfs_monitor`.
 
 ### Changed / Изменено
-- EN: SemVer patch bump to `8.50.94`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.94` and `ANDROID_VERSION_CODE=442`; prerelease links aligned to `v8.50.94-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.94`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.94` и `ANDROID_VERSION_CODE=442`; prerelease-ссылки выровнены на `v8.50.94-develop`.
+- EN: SemVer patch bump to `8.50.95`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.95` and `ANDROID_VERSION_CODE=443`; prerelease links aligned to `v8.50.95-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.95`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.95` и `ANDROID_VERSION_CODE=443`; prerelease-ссылки выровнены на `v8.50.95-develop`.
 
 ## [8.50.88] - 2026-04-14
 
