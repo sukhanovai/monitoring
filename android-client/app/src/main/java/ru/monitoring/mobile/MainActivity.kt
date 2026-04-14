@@ -1635,15 +1635,6 @@ private fun MonitoringApp(
                 )
             )
         }
-        extensionsById["zfs_monitor"]?.takeIf { it.enabled }?.let { extension ->
-            add(
-                buildExtensionDataTile(
-                    extension = extension.copy(name = "ZFS"),
-                    summaryOverride = state.zfsSummary.ifBlank { "—" },
-                    hasProblemOverride = state.zfsHasProblemItems
-                )
-            )
-        }
         extensionsById["supplier_stock_files"]?.takeIf { it.enabled }?.let { extension ->
             add(
                 buildExtensionDataTile(
@@ -1700,20 +1691,10 @@ private fun MonitoringApp(
                 {
                     openServerResourcesSingleCheckDetails()
                 }
-            } else if (extension.id == "zfs_monitor") {
-                {
-                    showZfsStatusesDialog = true
-                    onAction("zfs")
-                }
             } else {
                 { isSettingsExpanded = true; settingsSection = "extensions"; isExtensionsSettingsOpened = true }
             },
-            onLongClick = if (extension.id == "zfs_monitor") {
-                {
-                    showZfsHostsSettingsDialog = true
-                    onExtensionsSettingsAction("settings_zfs_list")
-                }
-            } else if (extension.id == "resource_monitor") {
+            onLongClick = if (extension.id == "resource_monitor") {
                 {
                     showResourceSettingsDialog = true
                 }
