@@ -1,3 +1,13 @@
+## [8.50.105] - 2026-04-14
+
+### Fixed / Исправлено
+- EN: In Android app `Operational center → ZFS`, the host counter now also uses host names from `settings_zfs_list` actions, so configured hosts are counted even when one host is powered off and has no fresh pool status rows.
+- RU: В Android-приложении в `Оперативный центр → ZFS` счётчик хостов теперь дополнительно учитывает имена из действий `settings_zfs_list`, поэтому сконфигурированные хосты считаются даже если один выключен и по нему нет свежих строк статуса пулов.
+
+### Changed / Изменено
+- EN: SemVer patch bump to `8.50.105`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.105` and `ANDROID_VERSION_CODE=453`; prerelease links aligned to `v8.50.105-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.105`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.105` и `ANDROID_VERSION_CODE=453`; prerelease-ссылки выровнены на `v8.50.105-develop`.
+
 ## [8.50.104] - 2026-04-14
 
 ### Fixed / Исправлено

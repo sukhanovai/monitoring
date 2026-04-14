@@ -226,7 +226,11 @@ private fun formatZfsMessageForDialog(message: String): String {
         .joinToString("\n")
 }
 
-private fun resolveZfsHostsCount(statusMessage: String, renderedHostsCount: Int): Int {
+private fun resolveZfsHostsCount(
+    statusMessage: String,
+    renderedHostsCount: Int,
+    settingsOptions: List<ru.monitoring.mobile.api.MenuOption>
+): Int {
     val totalFromMessage = statusMessage
         .lineSequence()
         .map { it.trim() }
@@ -234,7 +238,23 @@ private fun resolveZfsHostsCount(statusMessage: String, renderedHostsCount: Int)
             zfsTotalHostsLineRegex.matchEntire(line)?.groupValues?.getOrNull(1)?.toIntOrNull()
         }
         .firstOrNull()
-    return maxOf(renderedHostsCount, totalFromMessage ?: 0)
+
+    val totalFromSettings = settingsOptions
+        .asSequence()
+        .mapNotNull { option -> resolveMenuOptionAction(option).takeIf { it.isNotBlank() } }
+        .mapNotNull { action ->
+            when {
+                action.startsWith("settings_zfs_toggle_") -> hostNameFromZfsAction(action, "settings_zfs_toggle_")
+                action.startsWith("settings_zfs_edit_name_") -> hostNameFromZfsAction(action, "settings_zfs_edit_name_")
+                action.startsWith("settings_zfs_delete_") -> hostNameFromZfsAction(action, "settings_zfs_delete_")
+                else -> ""
+            }.takeIf { it.isNotBlank() }
+        }
+        .map { it.lowercase() }
+        .toSet()
+        .size
+
+    return maxOf(renderedHostsCount, totalFromMessage ?: 0, totalFromSettings)
 }
 
 private data class ZfsStatusCardItem(
@@ -3856,7 +3876,7 @@ private fun MonitoringApp(
                     } else {
                         if (allStatusCards.isNotEmpty()) {
                             Text(
-                                text = "Хосты ZFS: ${resolveZfsHostsCount(state.zfsStatusMessage, allStatusCards.size)}",
+                                text = "Хосты ZFS: ${resolveZfsHostsCount(state.zfsStatusMessage, allStatusCards.size, zfsSettingsOptions)}",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold
                             )
