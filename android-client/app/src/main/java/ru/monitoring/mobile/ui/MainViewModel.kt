@@ -51,7 +51,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.50.93"
+    private val projectVersion = "8.50.94"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -71,16 +71,12 @@ class MainViewModel(
         "backup_mail",
         "backup_stock_loads",
         "supplier_stock_reports",
-        "zfs",
-        "zfs_menu",
         "settings_patterns_proxmox"
     )
     private val extensionControlActions = setOf(
         "backup_proxmox",
         "backup_stock_loads",
         "supplier_stock_reports",
-        "zfs_menu",
-        "zfs",
     )
     private val extensionSettingsControlActions = extensionControlActions + setOf("open_extensions_settings")
     private val extensionActionToIdMatchers = listOf<Pair<(String) -> Boolean, String>>(
@@ -89,8 +85,7 @@ class MainViewModel(
         Pair({ action -> action == "backup_databases" || action.startsWith("db_detail_") }, "database_backup_monitor"),
         Pair({ action -> action.startsWith("backup_mail") }, "mail_backup_monitor"),
         Pair({ action -> action == "backup_stock_loads" }, "stock_load_monitor"),
-        Pair({ action -> action == "supplier_stock_reports" || action.startsWith("supplier_stock_reports_") || action.startsWith("supplier_stock_report_source_day|") }, "supplier_stock_files"),
-        Pair({ action -> action == "zfs_menu" || action == "zfs" }, "zfs_monitor")
+        Pair({ action -> action == "supplier_stock_reports" || action.startsWith("supplier_stock_reports_") || action.startsWith("supplier_stock_report_source_day|") }, "supplier_stock_files")
     )
     private val extensionSettingsFallbackActions = listOf(
         Triple("backup_monitor", "💾 Бэкапы Proxmox", "settings_ext_backup_proxmox"),
@@ -98,7 +93,6 @@ class MainViewModel(
         Triple("mail_backup_monitor", "📬 Бэкапы почты", "settings_ext_backup_mail"),
         Triple("stock_load_monitor", "📦 Загрузка остатков 1С", "settings_ext_stock_load"),
         Triple("supplier_stock_files", "📦 Остатки поставщиков", "settings_ext_supplier_stock"),
-        Triple("zfs_monitor", "🧊 ZFS", "settings_zfs"),
         Triple("resource_monitor", "💻 Ресурсы", "settings_resources")
     )
     private val localExtensionsSettingsBackAction = "settings_extensions_back_local"
