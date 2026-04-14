@@ -51,7 +51,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.50.102"
+    private val projectVersion = "8.50.103"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -248,7 +248,7 @@ class MainViewModel(
     private val backupSummaryStatusLineRegex = Regex("""^\s*([✅✔❌⚠️🚨🟢🟡⚪]).*$""")
     private val backupSuccessRatioRegex = Regex("""(\d+)\s*/\s*(\d+)\s+успеш""", RegexOption.IGNORE_CASE)
     private val zfsSummaryRegex = Regex(
-        """(?i)(серверов|пулов)\s*:\s*(\d+)\s*\(\s*🟢?\s*(\d+)\s*/\s*🔴?\s*(\d+)\s*\)"""
+        """(?i)(серверов|пулов)\s*:\s*(\d+)\s*\(\s*(?:🟢|✅|✔️?)?\s*(\d+)\s*(?:/|,)\s*(?:🔴|❌|⚠️)?\s*(\d+)\s*\)"""
     )
     private val zfsStatusLineRegex = Regex("""^•\s*(.+?):\s*([A-Za-z_]+)\s*\((.+)\)$""")
     private val zfsProblemStates = setOf(
@@ -478,6 +478,11 @@ class MainViewModel(
             }.getOrNull()
         }
         return Pair(rootResponse, latestResponse)
+    }
+
+    private suspend fun fetchZfsHostSettingsMenuOptions(): List<MenuOption> {
+        val response = currentApi().runControlAction(ControlActionRequest("settings_zfs_list"))
+        return extractZfsHostMenuOptions(resolveControlActionMenuOptions(response))
     }
 
     private fun resolveUpdateUrl(rawUrl: String): String {
@@ -1620,6 +1625,11 @@ class MainViewModel(
                     runCatching { currentApi().runControlAction(ControlActionRequest(normalizedAction)) }
                         .onSuccess { response ->
                             val zfsHostMenuOptions = state.zfsHostMenuOptions
+                            val refreshedZfsHostMenuOptions = if (normalizedAction == "zfs" || normalizedAction == "zfs_menu") {
+                                runCatching { fetchZfsHostSettingsMenuOptions() }.getOrElse { zfsHostMenuOptions }
+                            } else {
+                                zfsHostMenuOptions
+                            }
                             val mailHistory = if (normalizedAction.startsWith("backup_mail")) {
                                 parseMailBackupHistory(resolveControlActionMessage(response))
                             } else {
@@ -1682,7 +1692,7 @@ class MainViewModel(
                                 backupDatabasesHasProblemItems = if (normalizedAction == "backup_databases") hasProblemBackups else state.backupDatabasesHasProblemItems,
                                 mailBackupHistoryTitle = mailHistory?.title.orEmpty(),
                                 mailBackupHistoryItems = mailHistory?.items.orEmpty(),
-                                zfsHostMenuOptions = zfsHostMenuOptions,
+                                zfsHostMenuOptions = refreshedZfsHostMenuOptions,
                                 zfsSummary = zfsSummary?.ratioText ?: state.zfsSummary,
                                 zfsHasProblemItems = zfsSummary?.hasProblem ?: state.zfsHasProblemItems,
                                 mailBackupLastVolume = mailHistory?.items?.firstOrNull()?.size
