@@ -1703,7 +1703,7 @@ private fun MonitoringApp(
             } else if (extension.id == "zfs_monitor") {
                 {
                     showZfsStatusesDialog = true
-                    onAction("zfs_menu")
+                    onAction("zfs")
                 }
             } else {
                 { isSettingsExpanded = true; settingsSection = "extensions"; isExtensionsSettingsOpened = true }
@@ -3763,7 +3763,7 @@ private fun MonitoringApp(
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    val zfsMenuOptions = if (state.extensionMenuAction == "zfs_menu") {
+                    val zfsMenuOptions = if (state.extensionMenuAction == "zfs") {
                         state.extensionMenuOptions
                     } else {
                         emptyList()
