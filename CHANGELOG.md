@@ -1,3 +1,13 @@
+## [8.50.104] - 2026-04-14
+
+### Fixed / Исправлено
+- EN: In Android app `Operational center → ZFS`, the host counter in the status dialog now respects `Всего хостов` from backend payload and no longer drops powered-off hosts from the total number.
+- RU: В Android-приложении в `Оперативный центр → ZFS` счётчик хостов в диалоге статусов теперь учитывает `Всего хостов` из backend-payload и больше не теряет выключенные хосты в общем количестве.
+
+### Changed / Изменено
+- EN: SemVer patch bump to `8.50.104`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.104` and `ANDROID_VERSION_CODE=452`; prerelease links aligned to `v8.50.104-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.104`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.104` и `ANDROID_VERSION_CODE=452`; prerelease-ссылки выровнены на `v8.50.104-develop`.
+
 ## [8.50.103] - 2026-04-14
 
 ### Fixed / Исправлено

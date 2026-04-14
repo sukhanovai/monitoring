@@ -127,6 +127,7 @@ private val zfsStatusLineRegex = Regex("""^•\s*(.+?):\s*([A-Za-z_]+)\s*\((.+)\
 private val zfsDateTimeRegex = Regex("""(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})(?::\d{2})?""")
 private val zfsHostHeaderRegex = Regex("""^[A-Za-z0-9._:-]+$""")
 private val zfsServerSummaryLineRegex = Regex("""^[⚪🟢🔴]️?\s*\*?`?([^*`·]+?)`?\*?\s*·\s*\d+/\d+\s*·\s*(.+)$""")
+private val zfsTotalHostsLineRegex = Regex("""(?i)^\s*всего\s+хостов\s*:\s*(\d+)\s*$""")
 private data class ParsedZfsStatusLine(
     val name: String,
     val state: String,
@@ -223,6 +224,17 @@ private fun formatZfsMessageForDialog(message: String): String {
         }
         .filter { it.isNotBlank() }
         .joinToString("\n")
+}
+
+private fun resolveZfsHostsCount(statusMessage: String, renderedHostsCount: Int): Int {
+    val totalFromMessage = statusMessage
+        .lineSequence()
+        .map { it.trim() }
+        .mapNotNull { line ->
+            zfsTotalHostsLineRegex.matchEntire(line)?.groupValues?.getOrNull(1)?.toIntOrNull()
+        }
+        .firstOrNull()
+    return maxOf(renderedHostsCount, totalFromMessage ?: 0)
 }
 
 private data class ZfsStatusCardItem(
@@ -3844,7 +3856,7 @@ private fun MonitoringApp(
                     } else {
                         if (allStatusCards.isNotEmpty()) {
                             Text(
-                                text = "Хосты ZFS: ${allStatusCards.size}",
+                                text = "Хосты ZFS: ${resolveZfsHostsCount(state.zfsStatusMessage, allStatusCards.size)}",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold
                             )
