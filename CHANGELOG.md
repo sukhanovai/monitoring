@@ -1,3 +1,13 @@
+## [8.50.89] - 2026-04-14
+
+### Added / Добавлено
+- EN: Added architecture note describing end-to-end ZFS data flow: ingestion from email, persistence in `zfs_pool_status`, extraction in Telegram `Main menu → ZFS`, and Android `Operational center → ZFS` retrieval/parsing path to simplify discrepancy analysis.
+- RU: Добавлена архитектурная заметка с полным потоком данных ZFS: получение из email, сохранение в `zfs_pool_status`, извлечение в Telegram `Главное меню → ZFS` и путь запроса/парсинга в Android `Оперативный центр → ZFS` для анализа расхождений.
+
+### Changed / Изменено
+- EN: SemVer patch bump to `8.50.89`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.89` and `ANDROID_VERSION_CODE=437`; prerelease links aligned to `v8.50.89-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.89`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.89` и `ANDROID_VERSION_CODE=437`; prerelease-ссылки выровнены на `v8.50.89-develop`.
+
 ## [8.50.88] - 2026-04-14
 
 ### Fixed / Исправлено
