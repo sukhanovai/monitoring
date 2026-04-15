@@ -1,3 +1,13 @@
+## [8.50.126] - 2026-04-15
+
+### Changed / Изменено
+- EN: In Android app `Operational center → Databases`, swapped header action buttons in the dialog opened from the DB tile: `+` (add database) is now shown before `⚙️` (backup patterns/settings).
+- RU: В Android-приложении в `Оперативный центр → БД` в заголовке диалога после тапа по плашке БД поменяны местами кнопки действий: теперь `+` (добавить БД) отображается раньше `⚙️` (паттерны/настройки бэкапов).
+- EN: In Android app `Operational center → ZFS`, swapped header action buttons in the status dialog opened from the ZFS tile: `+` (add host) is now shown before `⚙️` (ZFS patterns/settings).
+- RU: В Android-приложении в `Оперативный центр → ZFS` в заголовке диалога статусов после тапа по плашке ZFS поменяны местами кнопки действий: теперь `+` (добавить хост) отображается раньше `⚙️` (паттерны/настройки ZFS).
+- EN: SemVer patch bump to `8.50.126`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.126` and `ANDROID_VERSION_CODE=472`; prerelease links aligned to `v8.50.126-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.126`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.126` и `ANDROID_VERSION_CODE=472`; prerelease-ссылки выровнены на `v8.50.126-develop`.
+
 ## [8.50.125] - 2026-04-15
 
 ### Changed / Изменено
