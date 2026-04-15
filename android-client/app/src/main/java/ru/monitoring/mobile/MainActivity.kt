@@ -1817,13 +1817,7 @@ private fun MonitoringApp(
             } else {
                 null
             },
-            onSettingsClick = if (extension.id == "resource_monitor") {
-                {
-                    showResourceSettingsDialog = true
-                }
-            } else {
-                null
-            }
+            onSettingsClick = null
         )
     }
     val allOpsTiles = opsTiles + extensionOpsTiles
@@ -2544,81 +2538,6 @@ private fun MonitoringApp(
                                     dismissButton = {
                                         TextButton(onClick = { showProxmoxPatternAddDialog = false }) {
                                             Text("Отмена")
-                                        }
-                                    }
-                                )
-                            }
-
-                            if (showResourceThresholdDialog) {
-                                AlertDialog(
-                                    onDismissRequest = { showResourceThresholdDialog = false },
-                                    title = { Text(resourceThresholdLabel.ifBlank { "Изменить порог ресурса" }) },
-                                    text = {
-                                        OutlinedTextField(
-                                            value = resourceThresholdValueInput,
-                                            onValueChange = { input ->
-                                                resourceThresholdValueInput = input.filter { it.isDigit() }.take(3)
-                                            },
-                                            label = { Text("Порог в % (0-100)") },
-                                            modifier = Modifier.fillMaxWidth()
-                                        )
-                                    },
-                                    confirmButton = {
-                                        val thresholdValue = resourceThresholdValueInput.toIntOrNull()
-                                        TextButton(
-                                            onClick = {
-                                                val actionPayload = "${resourceThresholdAction}|$thresholdValue"
-                                                onExtensionsSettingsAction(actionPayload)
-                                                showResourceThresholdDialog = false
-                                            },
-                                            enabled = resourceThresholdAction.isNotBlank() &&
-                                                thresholdValue != null &&
-                                                thresholdValue in 0..100
-                                        ) {
-                                            Text("Сохранить")
-                                        }
-                                    },
-                                    dismissButton = {
-                                        TextButton(onClick = { showResourceThresholdDialog = false }) {
-                                            Text("Отмена")
-                                        }
-                                    }
-                                )
-                            }
-
-                            if (showResourceSettingsDialog) {
-                                AlertDialog(
-                                    onDismissRequest = { showResourceSettingsDialog = false },
-                                    title = { Text("⚙️ Параметры проверки ресурсов") },
-                                    text = {
-                                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            listOf(
-                                                "💻 CPU предупреждение" to "set_cpu_warning",
-                                                "💻 CPU критический" to "set_cpu_critical",
-                                                "🧠 RAM предупреждение" to "set_ram_warning",
-                                                "🧠 RAM критический" to "set_ram_critical",
-                                                "💾 DISK предупреждение" to "set_disk_warning",
-                                                "💾 DISK критический" to "set_disk_critical"
-                                            ).forEach { (label, action) ->
-                                                Button(
-                                                    onClick = {
-                                                        resourceThresholdAction = action
-                                                        resourceThresholdLabel = label
-                                                        resourceThresholdValueInput = ""
-                                                        showResourceThresholdDialog = true
-                                                        showResourceSettingsDialog = false
-                                                    },
-                                                    modifier = Modifier.fillMaxWidth()
-                                                ) {
-                                                    Text(label)
-                                                }
-                                            }
-                                        }
-                                    },
-                                    confirmButton = {},
-                                    dismissButton = {
-                                        TextButton(onClick = { showResourceSettingsDialog = false }) {
-                                            Text("Закрыть")
                                         }
                                     }
                                 )
@@ -3475,6 +3394,81 @@ private fun MonitoringApp(
         )
     }
 
+
+    if (showResourceThresholdDialog) {
+        AlertDialog(
+            onDismissRequest = { showResourceThresholdDialog = false },
+            title = { Text(resourceThresholdLabel.ifBlank { "Изменить порог ресурса" }) },
+            text = {
+                OutlinedTextField(
+                    value = resourceThresholdValueInput,
+                    onValueChange = { input ->
+                        resourceThresholdValueInput = input.filter { it.isDigit() }.take(3)
+                    },
+                    label = { Text("Порог в % (0-100)") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                val thresholdValue = resourceThresholdValueInput.toIntOrNull()
+                TextButton(
+                    onClick = {
+                        val actionPayload = "${resourceThresholdAction}|$thresholdValue"
+                        onExtensionsSettingsAction(actionPayload)
+                        showResourceThresholdDialog = false
+                    },
+                    enabled = resourceThresholdAction.isNotBlank() &&
+                        thresholdValue != null &&
+                        thresholdValue in 0..100
+                ) {
+                    Text("Сохранить")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showResourceThresholdDialog = false }) {
+                    Text("Отмена")
+                }
+            }
+        )
+    }
+
+    if (showResourceSettingsDialog) {
+        AlertDialog(
+            onDismissRequest = { showResourceSettingsDialog = false },
+            title = { Text("⚙️ Параметры проверки ресурсов") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(
+                        "💻 CPU предупреждение" to "set_cpu_warning",
+                        "💻 CPU критический" to "set_cpu_critical",
+                        "🧠 RAM предупреждение" to "set_ram_warning",
+                        "🧠 RAM критический" to "set_ram_critical",
+                        "💾 DISK предупреждение" to "set_disk_warning",
+                        "💾 DISK критический" to "set_disk_critical"
+                    ).forEach { (label, action) ->
+                        Button(
+                            onClick = {
+                                resourceThresholdAction = action
+                                resourceThresholdLabel = label
+                                resourceThresholdValueInput = ""
+                                showResourceThresholdDialog = true
+                                showResourceSettingsDialog = false
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(label)
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showResourceSettingsDialog = false }) {
+                    Text("Закрыть")
+                }
+            }
+        )
+    }
 
     if (showServerResourcesDetailsDialog) {
         val isCurrentServerLoading =
