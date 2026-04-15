@@ -3371,6 +3371,12 @@ private fun MonitoringApp(
                                     .map(::normalizeServerLookupToken)
                                     .firstNotNullOfOrNull { token -> availabilityStatusByToken[token] }
                                 val availabilityMarker = resolveAvailabilityMarker(availabilityStatus)
+                                val monitoringMarkerColor = if (isServerEnabled) {
+                                    Color(0xFF2E7D32)
+                                } else {
+                                    Color(0xFF9E9E9E)
+                                }
+                                val isHostUnavailable = availabilityMarker == "🔴"
                                 val serverMessage = if (
                                     state.message.isNotBlank() &&
                                     state.messageSource == (if (isResourceCheckMode) "server_resources" else "server_availability") &&
@@ -3402,10 +3408,10 @@ private fun MonitoringApp(
                                         ),
                                     tonalElevation = 2.dp,
                                     shape = RoundedCornerShape(10.dp),
-                                    color = if (isServerEnabled) {
-                                        MaterialTheme.colorScheme.tertiaryContainer
-                                    } else {
+                                    color = if (isHostUnavailable) {
                                         MaterialTheme.colorScheme.errorContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.tertiaryContainer
                                     }
                                 ) {
                                     Column(
@@ -3414,13 +3420,24 @@ private fun MonitoringApp(
                                             .padding(horizontal = 8.dp, vertical = 6.dp),
                                         verticalArrangement = Arrangement.spacedBy(2.dp)
                                     ) {
-                                        Text(
-                                            text = "$availabilityMarker ${server.name.ifBlank { server.ip }}",
-                                            fontSize = 12.sp,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                            fontWeight = FontWeight.SemiBold
-                                        )
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Spacer(
+                                                modifier = Modifier
+                                                    .size(10.dp)
+                                                    .clip(CircleShape)
+                                                    .background(monitoringMarkerColor)
+                                            )
+                                            Text(
+                                                text = "${server.name.ifBlank { server.ip }}",
+                                                fontSize = 12.sp,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                        }
                                         Text(
                                             text = server.ip,
                                             fontSize = 11.sp,
