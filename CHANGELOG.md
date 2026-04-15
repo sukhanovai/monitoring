@@ -1,3 +1,13 @@
+## [8.50.134] - 2026-04-15
+
+### Changed / Изменено
+- EN: In Android app `Operational center → Resources`, removed the tile gear button from the resources card to keep the entry action focused on the point-check flow.
+- RU: В Android-приложении в `Оперативный центр → Ресурсы` убрана шестерёнка с плашки ресурсов, чтобы основной вход оставался через сценарий точечной проверки.
+- EN: In Android app `Operational center → Resources → point check`, fixed `⚙️` in the dialog header: it now correctly opens the resources settings dialog from the point-check screen.
+- RU: В Android-приложении в `Оперативный центр → Ресурсы → точечная проверка` исправлена `⚙️` в заголовке диалога: теперь она корректно открывает настройки ресурсов прямо из экрана точечной проверки.
+- EN: SemVer patch bump to `8.50.134`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.134` and `ANDROID_VERSION_CODE=480`; prerelease links aligned to `v8.50.134-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.134`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.134` и `ANDROID_VERSION_CODE=480`; prerelease-ссылки выровнены на `v8.50.134-develop`.
+
 ## [8.50.133] - 2026-04-15
 
 ### Changed / Изменено
