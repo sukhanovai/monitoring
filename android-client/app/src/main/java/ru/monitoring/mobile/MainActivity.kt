@@ -130,6 +130,14 @@ private val zfsHostHeaderRegex = Regex("""^[A-Za-z0-9._:-]+$""")
 private val zfsServerSummaryLineRegex = Regex("""^[⚪🟢🔴]️?\s*\*?`?([^*`·]+?)`?\*?\s*·\s*\d+/\d+\s*·\s*(.+)$""")
 private val zfsTotalHostsLineRegex = Regex("""(?i)^\s*всего\s+хостов\s*:\s*(\d+)\s*$""")
 private val resourcePercentRegex = Regex("""(\d{1,3})\s*%""")
+private val resourceThresholdPatterns = mapOf(
+    "set_cpu_warning" to Regex("""(?i)cpu\s+предупреждение\s*:\s*(\d{1,3})\s*%"""),
+    "set_cpu_critical" to Regex("""(?i)cpu\s+критическ(?:ий|ое)\s*:\s*(\d{1,3})\s*%"""),
+    "set_ram_warning" to Regex("""(?i)ram\s+предупреждение\s*:\s*(\d{1,3})\s*%"""),
+    "set_ram_critical" to Regex("""(?i)ram\s+критическ(?:ий|ое)\s*:\s*(\d{1,3})\s*%"""),
+    "set_disk_warning" to Regex("""(?i)disk\s+предупреждение\s*:\s*(\d{1,3})\s*%"""),
+    "set_disk_critical" to Regex("""(?i)disk\s+критическ(?:ий|ое)\s*:\s*(\d{1,3})\s*%""")
+)
 private data class ParsedZfsStatusLine(
     val name: String,
     val state: String,
@@ -143,6 +151,12 @@ private fun extractResourceThresholdValue(
     val option = settingsOptions.firstOrNull { resolveMenuOptionAction(it) == targetAction } ?: return null
     val label = option.label?.trim().orEmpty()
     val parsed = resourcePercentRegex.find(label)?.groupValues?.getOrNull(1)?.toIntOrNull()
+    return parsed?.takeIf { it in 0..100 }
+}
+
+private fun extractResourceThresholdValueFromMessage(message: String, targetAction: String): Int? {
+    val regex = resourceThresholdPatterns[targetAction] ?: return null
+    val parsed = regex.find(message)?.groupValues?.getOrNull(1)?.toIntOrNull()
     return parsed?.takeIf { it in 0..100 }
 }
 
@@ -1292,6 +1306,7 @@ private fun MonitoringApp(
     var resourceThresholdLabel by rememberSaveable { mutableStateOf("") }
     var resourceThresholdValueInput by rememberSaveable { mutableStateOf("") }
     var resourceThresholdCurrentValue by rememberSaveable { mutableStateOf<Int?>(null) }
+    var resourceThresholdOverrides by rememberSaveable { mutableStateOf<Map<String, Int>>(emptyMap()) }
     var selectedProxmoxBackupLabel by rememberSaveable { mutableStateOf("") }
     var selectedDatabaseBackupLabel by rememberSaveable { mutableStateOf("") }
     var showProxmoxBackupStatsDialog by rememberSaveable { mutableStateOf(false) }
@@ -3431,6 +3446,10 @@ private fun MonitoringApp(
                 TextButton(
                     onClick = {
                         val actionPayload = "${resourceThresholdAction}|$thresholdValue"
+                        if (thresholdValue != null && resourceThresholdAction.isNotBlank()) {
+                            resourceThresholdOverrides =
+                                resourceThresholdOverrides + (resourceThresholdAction to thresholdValue)
+                        }
                         onExtensionsSettingsAction(actionPayload)
                         showResourceThresholdDialog = false
                     },
@@ -3455,6 +3474,18 @@ private fun MonitoringApp(
             Triple("RAM", "set_ram_warning", "set_ram_critical"),
             Triple("Disk", "set_disk_warning", "set_disk_critical")
         )
+        fun currentThresholdValue(action: String, defaultValue: Int): Int {
+            return resourceThresholdOverrides[action]
+                ?: extractResourceThresholdValue(state.extensionSettingsMenuOptions, action)
+                ?: extractResourceThresholdValueFromMessage(state.message, action)
+                ?: defaultValue
+        }
+        val cpuWarningValue = currentThresholdValue("set_cpu_warning", 80)
+        val cpuCriticalValue = currentThresholdValue("set_cpu_critical", 90)
+        val ramWarningValue = currentThresholdValue("set_ram_warning", 85)
+        val ramCriticalValue = currentThresholdValue("set_ram_critical", 95)
+        val diskWarningValue = currentThresholdValue("set_disk_warning", 80)
+        val diskCriticalValue = currentThresholdValue("set_disk_critical", 90)
         AlertDialog(
             onDismissRequest = { showResourceSettingsDialog = false },
             title = {
@@ -3478,7 +3509,23 @@ private fun MonitoringApp(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        "Выберите порог и задайте значение в процентах.",
+                        "Текущие параметры:",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = buildString {
+                            append("• CPU предупреждение: ").append(cpuWarningValue).append("%\n")
+                            append("• CPU критический: ").append(cpuCriticalValue).append("%\n")
+                            append("• RAM предупреждение: ").append(ramWarningValue).append("%\n")
+                            append("• RAM критический: ").append(ramCriticalValue).append("%\n")
+                            append("• Disk предупреждение: ").append(diskWarningValue).append("%\n")
+                            append("• Disk критический: ").append(diskCriticalValue).append("%")
+                        },
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        "Выберите параметр и задайте новое значение в процентах.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -3498,17 +3545,25 @@ private fun MonitoringApp(
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.SemiBold
                                 )
-                                val currentWarningValue = extractResourceThresholdValue(
-                                    state.extensionSettingsMenuOptions,
-                                    warningAction
+                                val currentWarningValue = currentThresholdValue(
+                                    warningAction,
+                                    when (warningAction) {
+                                        "set_cpu_warning" -> 80
+                                        "set_ram_warning" -> 85
+                                        else -> 80
+                                    }
                                 )
-                                val currentCriticalValue = extractResourceThresholdValue(
-                                    state.extensionSettingsMenuOptions,
-                                    criticalAction
+                                val currentCriticalValue = currentThresholdValue(
+                                    criticalAction,
+                                    when (criticalAction) {
+                                        "set_cpu_critical" -> 90
+                                        "set_ram_critical" -> 95
+                                        else -> 90
+                                    }
                                 )
                                 Text(
-                                    text = "Текущие: предупреждение ${currentWarningValue?.let { "$it%" } ?: "—"}, " +
-                                        "критический ${currentCriticalValue?.let { "$it%" } ?: "—"}",
+                                    text = "Текущие: предупреждение ${currentWarningValue}%, " +
+                                        "критический ${currentCriticalValue}%",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
