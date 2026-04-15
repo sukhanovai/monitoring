@@ -3947,7 +3947,6 @@ private fun MonitoringApp(
                                         ZfsStatusTile(
                                             card = card,
                                             onClick = {
-                                                card.action?.let { onAction(it) }
                                                 zfsDetailsHostName = card.hostName
                                                 zfsStatusDetailsFallbackText = formatZfsHostDetails(card)
                                                 showZfsHostDetailsDialog = true
