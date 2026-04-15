@@ -1672,7 +1672,7 @@ private fun MonitoringApp(
             label = "Серверы",
             value = "$activeServersCount/$totalServersCount",
             hasProblem = hasServerProblems,
-            onClick = openServersDetails,
+            onClick = openServerSingleCheckDetails,
             onLongClick = openServerSingleCheckDetails
         ),
         OpsMetricTile(

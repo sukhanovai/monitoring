@@ -1,3 +1,11 @@
+## [8.50.115] - 2026-04-15
+
+### Changed / Изменено
+- EN: In Android app dashboard, the `Servers` tile now runs single-server checks on short tap (same behavior that previously required a long tap), reducing interaction steps.
+- RU: В дашборде Android-приложения плашка `Серверы` теперь запускает точечные проверки по короткому тапу (то же поведение, которое раньше было только по долгому тапу), что сокращает количество действий.
+- EN: SemVer patch bump to `8.50.115`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.115` and `ANDROID_VERSION_CODE=462`; prerelease links aligned to `v8.50.115-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.115`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.115` и `ANDROID_VERSION_CODE=462`; prerelease-ссылки выровнены на `v8.50.115-develop`.
+
 ## [8.50.114] - 2026-04-15
 
 ### Fixed / Исправлено
