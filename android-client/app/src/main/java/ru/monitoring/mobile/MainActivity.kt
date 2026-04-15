@@ -4663,6 +4663,8 @@ private fun MonitoringApp(
                                 }
                                 if (label.isNotBlank() && targetAction.isNotBlank()) {
                                     val displayLabel = formatBackupLabelWithMonitorStatus(label, targetAction)
+                                    val isMonitoringDisabled = isBackupMonitorDisabled(label, targetAction)
+                                    val hasProblemForEnabledHost = !isMonitoringDisabled && isProblemBackupOption(label, targetAction)
                                     Surface(
                                         modifier = Modifier
                                             .weight(1f)
@@ -4685,7 +4687,7 @@ private fun MonitoringApp(
                                             ),
                                         tonalElevation = 2.dp,
                                         shape = RoundedCornerShape(10.dp),
-                                        color = if (isProblemBackupOption(label, targetAction)) {
+                                        color = if (hasProblemForEnabledHost) {
                                             MaterialTheme.colorScheme.errorContainer
                                         } else {
                                             MaterialTheme.colorScheme.tertiaryContainer
@@ -4698,7 +4700,7 @@ private fun MonitoringApp(
                                                 .padding(horizontal = 10.dp, vertical = 8.dp),
                                             maxLines = 3,
                                             overflow = TextOverflow.Ellipsis,
-                                            color = if (isProblemBackupOption(label, targetAction)) {
+                                            color = if (hasProblemForEnabledHost) {
                                                 MaterialTheme.colorScheme.onErrorContainer
                                             } else {
                                                 MaterialTheme.colorScheme.onTertiaryContainer

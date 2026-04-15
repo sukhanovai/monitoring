@@ -1,3 +1,11 @@
+## [8.50.140] - 2026-04-15
+
+### Changed / Изменено
+- EN: In Android app `Operational center → Proxmox backups` (dialog opened by tapping the Proxmox tile), host tile background color now reflects incidents only for hosts with monitoring enabled; disabled hosts no longer turn problem-red.
+- RU: В Android-приложении в `Оперативный центр → Бэкапы Proxmox` (диалог после тапа по плашке Proxmox) цвет плашки хоста теперь показывает инцидент только для хостов с включённым мониторингом; отключённые хосты больше не подсвечиваются как проблемные.
+- EN: SemVer patch bump to `8.50.140`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.140` and `ANDROID_VERSION_CODE=486`; prerelease links aligned to `v8.50.140-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.140`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.140` и `ANDROID_VERSION_CODE=486`; prerelease-ссылки выровнены на `v8.50.140-develop`.
+
 ## [8.50.139] - 2026-04-15
 
 ### Changed / Изменено
