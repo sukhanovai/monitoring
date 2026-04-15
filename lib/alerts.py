@@ -1,11 +1,11 @@
 """
 /lib/alerts.py
-Server Monitoring System v8.50.135
+Server Monitoring System v8.50.136
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Unified alert system
 Система мониторинга серверов
-Версия: 8.50.135
+Версия: 8.50.136
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единая система оповещений

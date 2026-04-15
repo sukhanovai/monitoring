@@ -129,11 +129,22 @@ private val zfsDateTimeRegex = Regex("""(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})(?::
 private val zfsHostHeaderRegex = Regex("""^[A-Za-z0-9._:-]+$""")
 private val zfsServerSummaryLineRegex = Regex("""^[⚪🟢🔴]️?\s*\*?`?([^*`·]+?)`?\*?\s*·\s*\d+/\d+\s*·\s*(.+)$""")
 private val zfsTotalHostsLineRegex = Regex("""(?i)^\s*всего\s+хостов\s*:\s*(\d+)\s*$""")
+private val resourcePercentRegex = Regex("""(\d{1,3})\s*%""")
 private data class ParsedZfsStatusLine(
     val name: String,
     val state: String,
     val timestamp: String
 )
+
+private fun extractResourceThresholdValue(
+    settingsOptions: List<ru.monitoring.mobile.api.MenuOption>,
+    targetAction: String
+): Int? {
+    val option = settingsOptions.firstOrNull { resolveMenuOptionAction(it) == targetAction } ?: return null
+    val label = option.label?.trim().orEmpty()
+    val parsed = resourcePercentRegex.find(label)?.groupValues?.getOrNull(1)?.toIntOrNull()
+    return parsed?.takeIf { it in 0..100 }
+}
 
 private fun parseZfsStatusLine(label: String): ParsedZfsStatusLine? {
     val trimmed = label.trim()
@@ -1280,6 +1291,7 @@ private fun MonitoringApp(
     var resourceThresholdAction by rememberSaveable { mutableStateOf("") }
     var resourceThresholdLabel by rememberSaveable { mutableStateOf("") }
     var resourceThresholdValueInput by rememberSaveable { mutableStateOf("") }
+    var resourceThresholdCurrentValue by rememberSaveable { mutableStateOf<Int?>(null) }
     var selectedProxmoxBackupLabel by rememberSaveable { mutableStateOf("") }
     var selectedDatabaseBackupLabel by rememberSaveable { mutableStateOf("") }
     var showProxmoxBackupStatsDialog by rememberSaveable { mutableStateOf(false) }
@@ -3218,7 +3230,10 @@ private fun MonitoringApp(
                             }
                             if (isResourceCheckMode) {
                                 IconButton(
-                                    onClick = { showResourceSettingsDialog = true },
+                                    onClick = {
+                                        onExtensionsSettingsAction("settings_resources")
+                                        showResourceSettingsDialog = true
+                                    },
                                     modifier = Modifier
                                         .padding(bottom = 2.dp)
                                         .height(30.dp)
@@ -3395,14 +3410,21 @@ private fun MonitoringApp(
             onDismissRequest = { showResourceThresholdDialog = false },
             title = { Text(resourceThresholdLabel.ifBlank { "Изменить порог ресурса" }) },
             text = {
-                OutlinedTextField(
-                    value = resourceThresholdValueInput,
-                    onValueChange = { input ->
-                        resourceThresholdValueInput = input.filter { it.isDigit() }.take(3)
-                    },
-                    label = { Text("Порог в % (0-100)") },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Текущее значение: ${resourceThresholdCurrentValue?.let { "$it%" } ?: "не задано"}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    OutlinedTextField(
+                        value = resourceThresholdValueInput,
+                        onValueChange = { input ->
+                            resourceThresholdValueInput = input.filter { it.isDigit() }.take(3)
+                        },
+                        label = { Text("Порог в % (0-100)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             },
             confirmButton = {
                 val thresholdValue = resourceThresholdValueInput.toIntOrNull()
@@ -3435,7 +3457,24 @@ private fun MonitoringApp(
         )
         AlertDialog(
             onDismissRequest = { showResourceSettingsDialog = false },
-            title = { Text("Параметры проверки ресурсов") },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Параметры проверки ресурсов", modifier = Modifier.weight(1f))
+                    IconButton(
+                        onClick = { showResourceSettingsDialog = false },
+                        modifier = Modifier.height(30.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Закрыть параметры проверки ресурсов"
+                        )
+                    }
+                }
+            },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
@@ -3459,6 +3498,20 @@ private fun MonitoringApp(
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.SemiBold
                                 )
+                                val currentWarningValue = extractResourceThresholdValue(
+                                    state.extensionSettingsMenuOptions,
+                                    warningAction
+                                )
+                                val currentCriticalValue = extractResourceThresholdValue(
+                                    state.extensionSettingsMenuOptions,
+                                    criticalAction
+                                )
+                                Text(
+                                    text = "Текущие: предупреждение ${currentWarningValue?.let { "$it%" } ?: "—"}, " +
+                                        "критический ${currentCriticalValue?.let { "$it%" } ?: "—"}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -3468,6 +3521,7 @@ private fun MonitoringApp(
                                             resourceThresholdAction = warningAction
                                             resourceThresholdLabel = "$resourceName: предупреждение"
                                             resourceThresholdValueInput = ""
+                                            resourceThresholdCurrentValue = currentWarningValue
                                             showResourceThresholdDialog = true
                                             showResourceSettingsDialog = false
                                         },
@@ -3480,6 +3534,7 @@ private fun MonitoringApp(
                                             resourceThresholdAction = criticalAction
                                             resourceThresholdLabel = "$resourceName: критический"
                                             resourceThresholdValueInput = ""
+                                            resourceThresholdCurrentValue = currentCriticalValue
                                             showResourceThresholdDialog = true
                                             showResourceSettingsDialog = false
                                         },
@@ -3493,12 +3548,7 @@ private fun MonitoringApp(
                     }
                 }
             },
-            confirmButton = {},
-            dismissButton = {
-                TextButton(onClick = { showResourceSettingsDialog = false }) {
-                    Text("Закрыть")
-                }
-            }
+            confirmButton = {}
         )
     }
 
