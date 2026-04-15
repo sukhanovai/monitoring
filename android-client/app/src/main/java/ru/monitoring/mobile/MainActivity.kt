@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -85,6 +86,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.monitoring.mobile.api.ExtensionItem
 import ru.monitoring.mobile.api.ManagedServer
@@ -1612,6 +1614,14 @@ private fun MonitoringApp(
     val appTitle = "ComDone"
     val contentPadding = if (isCompactOpsHub) 10.dp else 16.dp
     val sectionSpacing = if (isCompactOpsHub) 8.dp else 12.dp
+    val context = LocalContext.current
+    val showLongTapHint: (String) -> Unit = { tileLabel ->
+        Toast.makeText(
+            context,
+            "💡 Для «$tileLabel» доступен долгий тап по плашке",
+            Toast.LENGTH_SHORT
+        ).show()
+    }
 
     val openServersDetails = {
         onRefresh()
@@ -1672,7 +1682,10 @@ private fun MonitoringApp(
             label = "Серверы",
             value = "$activeServersCount/$totalServersCount",
             hasProblem = hasServerProblems,
-            onClick = openServerSingleCheckDetails,
+            onClick = {
+                showLongTapHint("Серверы")
+                openServerSingleCheckDetails()
+            },
             onLongClick = openServerSingleCheckDetails
         ),
         OpsMetricTile(
@@ -1776,6 +1789,7 @@ private fun MonitoringApp(
             hasProblem = extension.hasProblem,
             onClick = if (extension.id == "backup_monitor") {
                 {
+                    showLongTapHint("proxmox")
                     selectedProxmoxBackupLabel = ""
                     selectedDatabaseBackupLabel = ""
                     showProxmoxBackupStatsDialog = false
@@ -1801,6 +1815,7 @@ private fun MonitoringApp(
                 }
             } else if (extension.id == "resource_monitor") {
                 {
+                    showLongTapHint("ресурсы")
                     openServerResourcesSingleCheckDetails()
                 }
             } else {
