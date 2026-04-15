@@ -1,3 +1,11 @@
+## [8.50.138] - 2026-04-15
+
+### Changed / Изменено
+- EN: Completed full project version synchronization after the previous release: all remaining source/doc references were aligned from `8.50.136/8.50.137` to `8.50.138` to avoid mixed-version state in runtime, Android client, and docs.
+- RU: Завершена полная синхронизация версии проекта после прошлого релиза: оставшиеся упоминания `8.50.136/8.50.137` во всех исходниках и документации выровнены до `8.50.138`, чтобы исключить смешанное состояние версий в runtime, Android-клиенте и docs.
+- EN: SemVer patch bump to `8.50.138`; Android metadata updated to `ANDROID_VERSION_NAME=8.50.138` and `ANDROID_VERSION_CODE=484`; prerelease links aligned to `v8.50.138-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.138`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.138` и `ANDROID_VERSION_CODE=484`; prerelease-ссылки выровнены на `v8.50.138-develop`.
+
 ## [8.50.137] - 2026-04-15
 
 ### Changed / Изменено
