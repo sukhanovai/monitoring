@@ -1266,6 +1266,9 @@ private fun MonitoringApp(
     var zfsSelectedHostName by rememberSaveable { mutableStateOf("") }
     var zfsSelectedHostEditAction by rememberSaveable { mutableStateOf("") }
     var zfsSelectedHostDeleteAction by rememberSaveable { mutableStateOf("") }
+    var showZfsHostDeleteConfirmDialog by rememberSaveable { mutableStateOf(false) }
+    var zfsHostDeleteConfirmName by rememberSaveable { mutableStateOf("") }
+    var zfsHostDeleteConfirmAction by rememberSaveable { mutableStateOf("") }
     var zfsSelectedHostToggleAction by rememberSaveable { mutableStateOf("") }
     var zfsDetailsHostName by rememberSaveable { mutableStateOf("") }
     var zfsStatusDetailsFallbackText by rememberSaveable { mutableStateOf("") }
@@ -4308,9 +4311,9 @@ private fun MonitoringApp(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         FilledIconButton(
                             onClick = {
-                                onExtensionsSettingsAction(zfsSelectedHostDeleteAction)
-                                onExtensionsSettingsAction("settings_zfs_list")
-                                showZfsHostActionsDialog = false
+                                zfsHostDeleteConfirmName = zfsSelectedHostName
+                                zfsHostDeleteConfirmAction = zfsSelectedHostDeleteAction
+                                showZfsHostDeleteConfirmDialog = zfsHostDeleteConfirmAction.isNotBlank()
                             },
                             enabled = zfsSelectedHostDeleteAction.isNotBlank()
                         ) {
@@ -4322,6 +4325,38 @@ private fun MonitoringApp(
             },
             confirmButton = {},
             dismissButton = {}
+        )
+    }
+
+    if (showZfsHostDeleteConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showZfsHostDeleteConfirmDialog = false },
+            title = {
+                Text("Удалить хост ZFS")
+            },
+            text = {
+                Text("Подтвердите удаление хоста «${zfsHostDeleteConfirmName.ifBlank { zfsSelectedHostName }}».")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val action = zfsHostDeleteConfirmAction
+                        if (action.isNotBlank()) {
+                            onExtensionsSettingsAction(action)
+                            onExtensionsSettingsAction("settings_zfs_list")
+                        }
+                        showZfsHostDeleteConfirmDialog = false
+                        showZfsHostActionsDialog = false
+                    }
+                ) {
+                    Text("Удалить")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showZfsHostDeleteConfirmDialog = false }) {
+                    Text("Отмена")
+                }
+            }
         )
     }
 
