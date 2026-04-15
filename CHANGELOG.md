@@ -1,12 +1,10 @@
-## [8.50.119] - 2026-04-15
+## [8.50.120] - 2026-04-15
 
 ### Changed / Изменено
-- EN: In Android app `Operational center`, the short-tap hint for tile `Servers` was moved from toast popup to inline helper text above the tiles list (matching the ZFS style).
-- RU: В Android-приложении в `Оперативный центр` подсказка при коротком тапе по плашке `Серверы` перенесена из всплывающего toast в текст над списком плашек (по аналогии с ZFS).
-- EN: The same inline helper hint behavior is now shown on short tap for `proxmox`, `resources`, and `БД` tiles.
-- RU: Такое же поведение с inline-подсказкой по короткому тапу добавлено для плашек `proxmox`, `ресурсы` и `БД`.
-- EN: SemVer patch bump to `8.50.119`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.119` and `ANDROID_VERSION_CODE=466`; prerelease links aligned to `v8.50.119-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.119`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.119` и `ANDROID_VERSION_CODE=466`; prerelease-ссылки выровнены на `v8.50.119-develop`.
+- EN: In Android app `Operational center`, removed the inline long-press hint above the tile list; hints are now left only inside windows opened from tiles.
+- RU: В Android-приложении в `Оперативный центр` убрана inline-подсказка над списком плашек про долгий тап; подсказки оставлены только в окнах, которые открываются из плашек.
+- EN: SemVer patch bump to `8.50.120`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.120` and `ANDROID_VERSION_CODE=467`; prerelease links aligned to `v8.50.120-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.120`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.120` и `ANDROID_VERSION_CODE=467`; prerelease-ссылки выровнены на `v8.50.120-develop`.
 
 ## [8.50.117] - 2026-04-15
 

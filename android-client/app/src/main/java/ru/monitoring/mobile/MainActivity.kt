@@ -1612,11 +1612,6 @@ private fun MonitoringApp(
     val appTitle = "ComDone"
     val contentPadding = if (isCompactOpsHub) 10.dp else 16.dp
     val sectionSpacing = if (isCompactOpsHub) 8.dp else 12.dp
-    var opsTileHintText by rememberSaveable { mutableStateOf("") }
-    val showLongTapHint: (String) -> Unit = { tileLabel ->
-        opsTileHintText = "Долгий тап по плашке «$tileLabel» — настройки."
-    }
-
     val openServersDetails = {
         onRefresh()
         showServerAvailabilityDialog = false
@@ -1677,7 +1672,6 @@ private fun MonitoringApp(
             value = "$activeServersCount/$totalServersCount",
             hasProblem = hasServerProblems,
             onClick = {
-                showLongTapHint("Серверы")
                 openServerSingleCheckDetails()
             },
             onLongClick = openServerSingleCheckDetails
@@ -1783,7 +1777,6 @@ private fun MonitoringApp(
             hasProblem = extension.hasProblem,
             onClick = if (extension.id == "backup_monitor") {
                 {
-                    showLongTapHint("proxmox")
                     selectedProxmoxBackupLabel = ""
                     selectedDatabaseBackupLabel = ""
                     showProxmoxBackupStatsDialog = false
@@ -1791,7 +1784,6 @@ private fun MonitoringApp(
                 }
             } else if (extension.id == "database_backup_monitor") {
                 {
-                    showLongTapHint("бд")
                     selectedDatabaseBackupLabel = ""
                     selectedProxmoxBackupLabel = ""
                     showProxmoxBackupStatsDialog = false
@@ -1810,7 +1802,6 @@ private fun MonitoringApp(
                 }
             } else if (extension.id == "resource_monitor") {
                 {
-                    showLongTapHint("ресурсы")
                     openServerResourcesSingleCheckDetails()
                 }
             } else {
@@ -1995,13 +1986,6 @@ private fun MonitoringApp(
                                     )
                                 }
                             }
-                        }
-                        if (opsTileHintText.isNotBlank()) {
-                            Text(
-                                text = opsTileHintText,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
                         }
                         FlowRow(
                             modifier = Modifier.fillMaxWidth(),
