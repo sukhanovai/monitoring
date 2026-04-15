@@ -1,3 +1,13 @@
+## [8.50.111] - 2026-04-15
+
+### Fixed / Исправлено
+- EN: In Android app `Operational center → ZFS`, a tap on a host tile now opens only the details dialog and no longer sends `POST /v1/control/actions`, preventing 400 errors before a long-press host settings action.
+- RU: В Android-приложении в `Оперативный центр → ZFS` обычный тап по плашке хоста теперь открывает только диалог деталей и больше не отправляет `POST /v1/control/actions`, что убирает 400-ошибку перед долгим тапом на настройки хоста.
+
+### Changed / Изменено
+- EN: SemVer patch bump to `8.50.111`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.111` and `ANDROID_VERSION_CODE=458`.
+- RU: Выполнен SemVer patch-бамп до `8.50.111`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.111` и `ANDROID_VERSION_CODE=458`.
+
 ## [8.50.110] - 2026-04-15
 
 ### Fixed / Исправлено
