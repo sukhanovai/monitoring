@@ -1817,7 +1817,13 @@ private fun MonitoringApp(
             } else {
                 null
             },
-            onSettingsClick = null
+            onSettingsClick = if (extension.id == "resource_monitor") {
+                {
+                    showResourceSettingsDialog = true
+                }
+            } else {
+                null
+            }
         )
     }
     val allOpsTiles = opsTiles + extensionOpsTiles

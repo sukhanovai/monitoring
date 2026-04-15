@@ -1,10 +1,10 @@
-## [8.50.132] - 2026-04-15
+## [8.50.133] - 2026-04-15
 
 ### Changed / Изменено
-- EN: In Telegram bot, synchronized host sources for `Main menu → Server availability`, `Main menu → Server resources`, and `Settings → Servers`: targeted-check host lists now use the same settings source and include paused hosts.
-- RU: В Telegram-боте синхронизированы источники хостов для `Главное меню → Доступность сервера`, `Главное меню → Ресурсы сервера` и `Настройки → Серверы`: списки в точечных проверках теперь берутся из того же источника настроек и включают хосты на паузе.
-- EN: SemVer patch bump to `8.50.132`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.132` and `ANDROID_VERSION_CODE=478`; prerelease links aligned to `v8.50.132-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.132`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.132` и `ANDROID_VERSION_CODE=478`; prerelease-ссылки выровнены на `v8.50.132-develop`.
+- EN: In Android app `Operational center → resources`, fixed the tile gear action: tapping `⚙️` on the resources tile now opens the resources settings dialog (same behavior as long press).
+- RU: В Android-приложении в `Оперативный центр → ресурсы` исправлено действие шестерёнки на плашке: тап по `⚙️` теперь открывает диалог настроек ресурсов (как и долгий тап).
+- EN: SemVer patch bump to `8.50.133`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.133` and `ANDROID_VERSION_CODE=479`; prerelease links aligned to `v8.50.133-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.133`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.133` и `ANDROID_VERSION_CODE=479`; prerelease-ссылки выровнены на `v8.50.133-develop`.
 
 ## [8.50.129] - 2026-04-15
 
