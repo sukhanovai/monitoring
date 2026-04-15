@@ -98,6 +98,7 @@ import ru.monitoring.mobile.ui.MainViewModel
 
 private val PROBLEM_BACKUP_MARKERS = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
 private val PROBLEM_BACKUP_KEYWORDS = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
+private val backupStatusPrefixRegex = Regex("""^[✅❌⚠️🚨🆘⛔🔴🟠🟡🟢⚪✔]+\s*""")
 
 private fun isProblemBackupLabel(label: String): Boolean {
     val normalized = label.lowercase()
@@ -567,11 +568,12 @@ private fun extractZfsHostOptionGroups(options: List<Pair<String, String>>): Lis
         }
 }
 
-private fun isDatabaseMonitorDisabled(label: String, action: String): Boolean {
-    if (!action.startsWith("db_detail_")) return false
+private fun isBackupMonitorDisabled(label: String, action: String): Boolean {
+    if (!action.startsWith("db_detail_") && !action.startsWith("backup_host_")) return false
     val normalizedLabel = label.lowercase()
     return label.startsWith("⚪") ||
-        normalizedLabel.contains("мониторинг отключ")
+        normalizedLabel.contains("мониторинг отключ") ||
+        normalizedLabel.contains("мониторинг выкл")
 }
 
 private data class DatabaseBackupActionPayload(
@@ -700,11 +702,15 @@ private fun normalizeDatabaseBackupCategory(category: String): String {
     }
 }
 
-private fun formatDatabaseBackupLabelWithMonitorStatus(label: String, action: String): String {
-    if (!action.startsWith("db_detail_")) return label
-    val monitorMarker = if (isDatabaseMonitorDisabled(label, action)) "⚪" else "🟢"
+private fun formatBackupLabelWithMonitorStatus(label: String, action: String): String {
+    if (!action.startsWith("db_detail_") && !action.startsWith("backup_host_")) return label
+    val monitorMarker = if (isBackupMonitorDisabled(label, action)) "⚪" else "🟢"
     val decodedPayload = decodeDatabaseBackupActionPayload(action)
-    val fallbackDatabaseName = deriveDatabaseBackupLabelFromAction(action)
+    val fallbackName = if (action.startsWith("db_detail_")) {
+        deriveDatabaseBackupLabelFromAction(action)
+    } else {
+        action.removePrefix("backup_host_").replace('_', ' ').trim()
+    }
     val categoryName = normalizeDatabaseBackupCategory(
         decodedPayload?.category
             ?.replace('_', ' ')
@@ -714,10 +720,11 @@ private fun formatDatabaseBackupLabelWithMonitorStatus(label: String, action: St
     val sanitizedLines = label.lineSequence()
         .map { it.trim() }
         .map { line ->
-            val normalizedLine = if (line.startsWith("Категория:", ignoreCase = true)) {
-                line.substringAfter(':').trim()
+            val lineWithoutStatusPrefix = line.replace(backupStatusPrefixRegex, "").trim()
+            val normalizedLine = if (lineWithoutStatusPrefix.startsWith("Категория:", ignoreCase = true)) {
+                lineWithoutStatusPrefix.substringAfter(':').trim()
             } else {
-                line
+                lineWithoutStatusPrefix
             }
             normalizeDatabaseBackupCategory(normalizedLine)
         }
@@ -730,18 +737,20 @@ private fun formatDatabaseBackupLabelWithMonitorStatus(label: String, action: St
         }
         .toMutableList()
 
-    if (sanitizedLines.isEmpty() && fallbackDatabaseName.isNotBlank()) {
-        sanitizedLines += fallbackDatabaseName
+    if (sanitizedLines.isEmpty() && fallbackName.isNotBlank()) {
+        sanitizedLines += fallbackName
     }
 
-    val normalizedCategory = categoryName.lowercase()
-    val hasCategoryLine = normalizedCategory.isNotBlank() &&
-        sanitizedLines.any { line ->
-            val normalizedLine = line.lowercase()
-            normalizedLine.contains(normalizedCategory) || normalizedLine.contains("категор")
+    if (action.startsWith("db_detail_")) {
+        val normalizedCategory = categoryName.lowercase()
+        val hasCategoryLine = normalizedCategory.isNotBlank() &&
+            sanitizedLines.any { line ->
+                val normalizedLine = line.lowercase()
+                normalizedLine.contains(normalizedCategory) || normalizedLine.contains("категор")
+            }
+        if (categoryName.isNotBlank() && !hasCategoryLine) {
+            sanitizedLines.add(0, categoryName)
         }
-    if (categoryName.isNotBlank() && !hasCategoryLine) {
-        sanitizedLines.add(0, categoryName)
     }
 
     if (sanitizedLines.isEmpty()) return monitorMarker
@@ -4653,7 +4662,7 @@ private fun MonitoringApp(
                                     deriveDatabaseBackupLabelFromAction(targetAction)
                                 }
                                 if (label.isNotBlank() && targetAction.isNotBlank()) {
-                                    val displayLabel = formatDatabaseBackupLabelWithMonitorStatus(label, targetAction)
+                                    val displayLabel = formatBackupLabelWithMonitorStatus(label, targetAction)
                                     Surface(
                                         modifier = Modifier
                                             .weight(1f)
@@ -5263,7 +5272,7 @@ private fun MonitoringApp(
                                     } else {
                                         deriveDatabaseBackupLabelFromAction(targetAction)
                                     }
-                                    val displayLabel = formatDatabaseBackupLabelWithMonitorStatus(baseLabel, targetAction)
+                                    val displayLabel = formatBackupLabelWithMonitorStatus(baseLabel, targetAction)
                                     if (displayLabel.isBlank()) return@forEach
                                     Surface(
                                         modifier = Modifier
