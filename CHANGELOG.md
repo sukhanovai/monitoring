@@ -1,12 +1,10 @@
-## [8.50.122] - 2026-04-15
+## [8.50.124] - 2026-04-15
 
 ### Changed / Изменено
-- EN: In Android app `Operational center`, swapped the order of tiles `Mode` and `Servers` in the main metrics row.
-- RU: В Android-приложении в `Оперативный центр` поменян порядок плашек `Режим` и `Серверы` в основной строке метрик.
-- EN: In Android app `Operational center`, moved the `resources` tile to the first position in the extensions tiles list.
-- RU: В Android-приложении в `Оперативный центр` плашка `ресурсы` перенесена на первое место в списке плашек расширений.
-- EN: SemVer patch bump to `8.50.122`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.122` and `ANDROID_VERSION_CODE=469`; prerelease links aligned to `v8.50.122-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.122`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.122` и `ANDROID_VERSION_CODE=469`; prerelease-ссылки выровнены на `v8.50.122-develop`.
+- EN: In Android app `Operational center → ZFS`, added a `+` button in the ZFS statuses dialog header to quickly open the host-add form right after tapping the ZFS tile.
+- RU: В Android-приложении в `Оперативный центр → ZFS` в заголовок диалога статусов добавлена кнопка `+`, чтобы сразу после тапа по плашке ZFS быстро открывать форму добавления хоста.
+- EN: SemVer patch bump to `8.50.124`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.124` and `ANDROID_VERSION_CODE=470`; prerelease links aligned to `v8.50.124-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.124`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.124` и `ANDROID_VERSION_CODE=470`; prerelease-ссылки выровнены на `v8.50.124-develop`.
 
 ## [8.50.121] - 2026-04-15
 

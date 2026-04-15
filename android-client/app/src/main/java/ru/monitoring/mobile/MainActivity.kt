@@ -3848,6 +3848,15 @@ private fun MonitoringApp(
                                 contentDescription = "Открыть настройки паттернов ZFS"
                             )
                         }
+                        IconButton(onClick = {
+                            zfsHostInput = ""
+                            showZfsHostAddDialog = true
+                        }) {
+                            Icon(
+                                imageVector = Icons.Filled.Add,
+                                contentDescription = "Добавить новый ZFS-хост"
+                            )
+                        }
                         IconButton(onClick = { showZfsStatusesDialog = false }) {
                             Icon(
                                 imageVector = Icons.Filled.Close,
