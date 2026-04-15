@@ -1,10 +1,14 @@
-## [8.50.124] - 2026-04-15
+## [8.50.125] - 2026-04-15
 
 ### Changed / Изменено
-- EN: In Android app `Operational center → ZFS`, added a `+` button in the ZFS statuses dialog header to quickly open the host-add form right after tapping the ZFS tile.
-- RU: В Android-приложении в `Оперативный центр → ZFS` в заголовок диалога статусов добавлена кнопка `+`, чтобы сразу после тапа по плашке ZFS быстро открывать форму добавления хоста.
-- EN: SemVer patch bump to `8.50.124`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.124` and `ANDROID_VERSION_CODE=470`; prerelease links aligned to `v8.50.124-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.124`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.124` и `ANDROID_VERSION_CODE=470`; prerelease-ссылки выровнены на `v8.50.124-develop`.
+- EN: In Android app `Operational center → Proxmox backups`, swapped the header action buttons so `+` (add server) is now shown before `⚙️` (patterns/settings) after tapping the Proxmox tile.
+- RU: В Android-приложении в `Оперативный центр → Бэкапы Proxmox` в заголовке после тапа по плашке Proxmox поменяны местами кнопки действий: теперь `+` (добавить сервер) отображается раньше `⚙️` (паттерны/настройки).
+- EN: In Android app `Operational center → Databases` and `Operational center → ZFS`, short tap on tiles/cards now opens host/database actions (edit / enable-disable / delete) directly, matching the requested quick-access flow.
+- RU: В Android-приложении в `Оперативный центр → БД` и `Оперативный центр → ZFS` короткий тап по плашкам теперь сразу открывает действия по объекту (редактировать / вкл-выкл / удалить) по запросу на быстрый доступ.
+- EN: In Android app `Operational center → Resources (point checks)`, swapped the `⚙️` and `✖` buttons in the dialog header opened from the `resources` tile.
+- RU: В Android-приложении в `Оперативный центр → Ресурсы (точечные проверки)` в заголовке диалога, который открывается с плашки `ресурсы`, поменяны местами кнопки `⚙️` и `✖`.
+- EN: SemVer patch bump to `8.50.125`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.125` and `ANDROID_VERSION_CODE=471`; prerelease links aligned to `v8.50.125-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.125`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.125` и `ANDROID_VERSION_CODE=471`; prerelease-ссылки выровнены на `v8.50.125-develop`.
 
 ## [8.50.121] - 2026-04-15
 

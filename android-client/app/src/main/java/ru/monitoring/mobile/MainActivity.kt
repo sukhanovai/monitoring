@@ -3276,19 +3276,6 @@ private fun MonitoringApp(
                             modifier = Modifier.weight(1f)
                         )
                         Column(horizontalAlignment = Alignment.End) {
-                            if (isResourceCheckMode) {
-                                IconButton(
-                                    onClick = { showResourceSettingsDialog = true },
-                                    modifier = Modifier
-                                        .padding(bottom = 2.dp)
-                                        .height(30.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Settings,
-                                        contentDescription = "Открыть настройки ресурсов"
-                                    )
-                                }
-                            }
                             IconButton(
                                 onClick = {
                                     showServerAvailabilityDialog = false
@@ -3303,6 +3290,19 @@ private fun MonitoringApp(
                                     imageVector = Icons.Filled.Close,
                                     contentDescription = "Закрыть окно точечной проверки"
                                 )
+                            }
+                            if (isResourceCheckMode) {
+                                IconButton(
+                                    onClick = { showResourceSettingsDialog = true },
+                                    modifier = Modifier
+                                        .padding(bottom = 2.dp)
+                                        .height(30.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Settings,
+                                        contentDescription = "Открыть настройки ресурсов"
+                                    )
+                                }
                             }
                             IconButton(
                                 onClick = {
@@ -3980,9 +3980,17 @@ private fun MonitoringApp(
                                         ZfsStatusTile(
                                             card = card,
                                             onClick = {
-                                                zfsDetailsHostName = card.hostName
-                                                zfsStatusDetailsFallbackText = formatZfsHostDetails(card)
-                                                showZfsHostDetailsDialog = true
+                                                val hostGroup = monitoringByHost[card.hostName.trim().lowercase()]
+                                                if (hostGroup != null) {
+                                                    zfsSelectedHostName = hostGroup.hostName
+                                                    zfsSelectedHostEditAction = hostGroup.editAction
+                                                    zfsSelectedHostDeleteAction = hostGroup.deleteAction
+                                                    zfsSelectedHostToggleAction = hostGroup.toggleAction
+                                                    showZfsHostActionsDialog = true
+                                                } else {
+                                                    pendingZfsHostSettingsName = card.hostName
+                                                    onExtensionsSettingsAction("settings_zfs_list")
+                                                }
                                             },
                                             onLongClick = {
                                                 val hostGroup = monitoringByHost[card.hostName.trim().lowercase()]
@@ -4399,6 +4407,15 @@ private fun MonitoringApp(
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         IconButton(onClick = {
+                            proxmoxServerNameInput = ""
+                            showProxmoxServerAddDialog = true
+                        }) {
+                            Icon(
+                                imageVector = Icons.Filled.Add,
+                                contentDescription = "Добавить новый сервер Proxmox в бэкапы"
+                            )
+                        }
+                        IconButton(onClick = {
                             patternDialogReturnAction = "settings_patterns_proxmox"
                             onExtensionsSettingsAction("settings_patterns_proxmox")
                             showProxmoxPatternsDialog = true
@@ -4406,15 +4423,6 @@ private fun MonitoringApp(
                             Icon(
                                 imageVector = Icons.Filled.Settings,
                                 contentDescription = "Открыть паттерны Proxmox"
-                            )
-                        }
-                        IconButton(onClick = {
-                            proxmoxServerNameInput = ""
-                            showProxmoxServerAddDialog = true
-                        }) {
-                            Icon(
-                                imageVector = Icons.Filled.Add,
-                                contentDescription = "Добавить новый сервер Proxmox в бэкапы"
                             )
                         }
                         IconButton(onClick = { showProxmoxBackupsDialog = false }) {
@@ -5072,11 +5080,15 @@ private fun MonitoringApp(
                                             .clip(RoundedCornerShape(10.dp))
                                             .combinedClickable(
                                                 onClick = {
-                                                    showDatabaseBackupsDialog = false
-                                                    selectedDatabaseBackupLabel = baseLabel
-                                                    selectedProxmoxBackupLabel = ""
-                                                    showProxmoxBackupStatsDialog = true
-                                                    onAction(targetAction)
+                                                    if (targetAction.startsWith("db_detail_") && "__" in targetAction) {
+                                                        databaseActionsTargetAction = targetAction
+                                                    } else {
+                                                        showDatabaseBackupsDialog = false
+                                                        selectedDatabaseBackupLabel = baseLabel
+                                                        selectedProxmoxBackupLabel = ""
+                                                        showProxmoxBackupStatsDialog = true
+                                                        onAction(targetAction)
+                                                    }
                                                 },
                                                 onLongClick = {
                                                     if (targetAction.startsWith("db_detail_") && "__" in targetAction) {
