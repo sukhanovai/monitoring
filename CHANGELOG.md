@@ -1,3 +1,13 @@
+## [8.50.127] - 2026-04-15
+
+### Changed / Изменено
+- EN: In Android app `Operational center → Servers`, pressing `Edit` in the host actions dialog (opened by long tap on a host tile) now opens direct host editing instead of navigating to the settings section.
+- RU: В Android-приложении в `Оперативный центр → Серверы` кнопка `Изм.` в диалоге действий хоста (открывается долгим тапом по плашке хоста) теперь открывает прямое редактирование хоста вместо перехода в раздел настроек.
+- EN: In the same dialog flow, add/edit server modal now adapts title and confirm text for edit mode and locks IP field while editing an existing host.
+- RU: В этом же сценарии диалог добавления/редактирования сервера теперь подстраивает заголовок и текст подтверждения для режима редактирования, а поле IP блокируется при правке существующего хоста.
+- EN: SemVer patch bump to `8.50.127`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.127` and `ANDROID_VERSION_CODE=473`; prerelease links aligned to `v8.50.127-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.127`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.127` и `ANDROID_VERSION_CODE=473`; prerelease-ссылки выровнены на `v8.50.127-develop`.
+
 ## [8.50.126] - 2026-04-15
 
 ### Changed / Изменено

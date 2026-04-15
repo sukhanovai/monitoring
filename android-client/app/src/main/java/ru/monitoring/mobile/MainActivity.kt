@@ -5339,14 +5339,15 @@ private fun MonitoringApp(
     if (showServerAddDialog) {
         AlertDialog(
             onDismissRequest = { showServerAddDialog = false },
-            title = { Text("Добавить сервер") },
+            title = { Text(if (state.serverEditIp.isBlank()) "Добавить сервер" else "Редактировать сервер") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     OutlinedTextField(
                         value = state.serverIpInput,
                         onValueChange = onServerIpChanged,
                         label = { Text("IP") },
-                        singleLine = true
+                        singleLine = true,
+                        enabled = state.serverEditIp.isBlank()
                     )
                     OutlinedTextField(
                         value = state.serverNameInput,
@@ -5375,7 +5376,7 @@ private fun MonitoringApp(
                         showServerAddDialog = false
                     }
                 ) {
-                    Text("Сохранить")
+                    Text(if (state.serverEditIp.isBlank()) "Сохранить" else "Применить")
                 }
             },
             dismissButton = {
@@ -5477,8 +5478,7 @@ private fun MonitoringApp(
                         FilledIconButton(
                             onClick = {
                                 onEditServer(selectedServerForActions)
-                                isSettingsExpanded = true
-                                settingsSection = "servers"
+                                showServerAddDialog = true
                                 showServerAvailabilityDialog = false
                                 serverActionsTargetKey = ""
                             }
