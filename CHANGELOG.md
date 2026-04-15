@@ -1,10 +1,10 @@
-## [8.50.131] - 2026-04-15
+## [8.50.132] - 2026-04-15
 
 ### Changed / Изменено
-- EN: In Android app `Operational center → Servers` (dialog opened by tapping the `Servers` tile), in host actions (opened by long tap on a host tile), pressing `Delete` now opens a confirmation dialog before server removal.
-- RU: В Android-приложении в `Оперативный центр → Серверы` (диалог открывается тапом по плашке `Серверы`) в действиях хоста (открываются долгим тапом по плашке хоста) нажатие `Удал.` теперь сначала показывает диалог подтверждения перед удалением сервера.
-- EN: SemVer patch bump to `8.50.131`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.131` and `ANDROID_VERSION_CODE=477`; prerelease links aligned to `v8.50.131-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.131`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.131` и `ANDROID_VERSION_CODE=477`; prerelease-ссылки выровнены на `v8.50.131-develop`.
+- EN: In Telegram bot, synchronized host sources for `Main menu → Server availability`, `Main menu → Server resources`, and `Settings → Servers`: targeted-check host lists now use the same settings source and include paused hosts.
+- RU: В Telegram-боте синхронизированы источники хостов для `Главное меню → Доступность сервера`, `Главное меню → Ресурсы сервера` и `Настройки → Серверы`: списки в точечных проверках теперь берутся из того же источника настроек и включают хосты на паузе.
+- EN: SemVer patch bump to `8.50.132`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.132` and `ANDROID_VERSION_CODE=478`; prerelease links aligned to `v8.50.132-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.132`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.132` и `ANDROID_VERSION_CODE=478`; prerelease-ссылки выровнены на `v8.50.132-develop`.
 
 ## [8.50.129] - 2026-04-15
 
