@@ -1294,6 +1294,7 @@ private fun MonitoringApp(
     var showProxmoxServerAddDialog by rememberSaveable { mutableStateOf(false) }
     var proxmoxServerNameInput by rememberSaveable { mutableStateOf("") }
     var proxmoxHostActionsTargetKey by rememberSaveable { mutableStateOf("") }
+    var proxmoxHostDeleteConfirmTargetKey by rememberSaveable { mutableStateOf("") }
     var databaseActionsTargetAction by rememberSaveable { mutableStateOf("") }
     var showMorningReportDialog by rememberSaveable { mutableStateOf(false) }
 
@@ -5436,8 +5437,7 @@ private fun MonitoringApp(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         FilledIconButton(
                             onClick = {
-                                onExtensionsSettingsAction("settings_proxmox_delete_$proxmoxHostActionsTargetKey")
-                                proxmoxHostActionsTargetKey = ""
+                                proxmoxHostDeleteConfirmTargetKey = proxmoxHostActionsTargetKey
                             }
                         ) {
                             Icon(Icons.Filled.Delete, contentDescription = "Удалить")
@@ -5447,6 +5447,32 @@ private fun MonitoringApp(
                 }
             },
             confirmButton = {}
+        )
+    }
+
+    if (proxmoxHostDeleteConfirmTargetKey.isNotBlank()) {
+        AlertDialog(
+            onDismissRequest = { proxmoxHostDeleteConfirmTargetKey = "" },
+            title = { Text("Подтвердить удаление") },
+            text = {
+                Text("Удалить хост «$proxmoxHostDeleteConfirmTargetKey»?")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onExtensionsSettingsAction("settings_proxmox_delete_$proxmoxHostDeleteConfirmTargetKey")
+                        proxmoxHostDeleteConfirmTargetKey = ""
+                        proxmoxHostActionsTargetKey = ""
+                    }
+                ) {
+                    Text("Удалить")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { proxmoxHostDeleteConfirmTargetKey = "" }) {
+                    Text("Отмена")
+                }
+            }
         )
     }
 

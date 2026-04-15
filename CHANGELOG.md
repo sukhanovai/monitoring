@@ -1,3 +1,11 @@
+## [8.50.128] - 2026-04-15
+
+### Changed / Изменено
+- EN: In Android app `Operational center → Proxmox backups`, in the host actions dialog (opened by long tap on a host tile), pressing `Delete` now opens a confirmation dialog before deleting the host.
+- RU: В Android-приложении в `Оперативный центр → Бэкапы Proxmox` в диалоге действий хоста (открывается долгим тапом по плашке хоста) нажатие `Удал.` теперь сначала открывает диалог подтверждения перед удалением хоста.
+- EN: SemVer patch bump to `8.50.128`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.128` and `ANDROID_VERSION_CODE=474`; prerelease links aligned to `v8.50.128-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.128`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.128` и `ANDROID_VERSION_CODE=474`; prerelease-ссылки выровнены на `v8.50.128-develop`.
+
 ## [8.50.127] - 2026-04-15
 
 ### Changed / Изменено
