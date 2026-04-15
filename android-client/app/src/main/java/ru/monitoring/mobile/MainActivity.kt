@@ -1210,6 +1210,7 @@ private fun MonitoringApp(
     var showServerAvailabilityDialog by rememberSaveable { mutableStateOf(false) }
     var showServerAddDialog by rememberSaveable { mutableStateOf(false) }
     var serverActionsTargetKey by rememberSaveable { mutableStateOf("") }
+    var serverDeleteConfirmTargetKey by rememberSaveable { mutableStateOf("") }
     var serverCardsSortMode by rememberSaveable { mutableStateOf(ServerCardsSortMode.BY_NAME.name) }
     var showServerResourcesMenu by rememberSaveable { mutableStateOf(false) }
     var showServerResourcesDetailsDialog by rememberSaveable { mutableStateOf(false) }
@@ -3235,7 +3236,7 @@ private fun MonitoringApp(
                                                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
                                             ) { Text("Изм.") }
                                             TextButton(
-                                                onClick = { onDeleteServer(server.ip) },
+                                                onClick = { serverDeleteConfirmTargetKey = server.ip },
                                                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
                                             ) { Text("Удал.") }
                                         }
@@ -5585,8 +5586,7 @@ private fun MonitoringApp(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         FilledIconButton(
                             onClick = {
-                                onDeleteServer(selectedServerForActions.ip)
-                                serverActionsTargetKey = ""
+                                serverDeleteConfirmTargetKey = selectedServerForActions.ip
                             }
                         ) {
                             Icon(Icons.Filled.Delete, contentDescription = "Удалить")
@@ -5596,6 +5596,37 @@ private fun MonitoringApp(
                 }
             },
             confirmButton = {}
+        )
+    }
+
+
+    if (serverDeleteConfirmTargetKey.isNotBlank()) {
+        val serverToDelete = state.managedServers.firstOrNull {
+            normalizeServerLookupToken(it.ip) == normalizeServerLookupToken(serverDeleteConfirmTargetKey)
+        }
+        val serverDeleteLabel = serverToDelete?.name?.takeIf { it.isNotBlank() } ?: serverDeleteConfirmTargetKey
+        AlertDialog(
+            onDismissRequest = { serverDeleteConfirmTargetKey = "" },
+            title = { Text("Подтвердить удаление") },
+            text = {
+                Text("Удалить сервер «$serverDeleteLabel»?")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDeleteServer(serverDeleteConfirmTargetKey)
+                        serverDeleteConfirmTargetKey = ""
+                        serverActionsTargetKey = ""
+                    }
+                ) {
+                    Text("Удалить")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { serverDeleteConfirmTargetKey = "" }) {
+                    Text("Отмена")
+                }
+            }
         )
     }
 
