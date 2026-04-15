@@ -1,3 +1,13 @@
+## [8.50.137] - 2026-04-15
+
+### Changed / Изменено
+- EN: In Android app `Resources → gear → Resource check parameters`, added a Telegram-bot-like current-threshold summary with numeric values for CPU/RAM/Disk warning and critical levels (`80/90`, `85/95`, `80/90` defaults) directly in the dialog.
+- RU: В Android-приложении в `Ресурсы → шестерёнка → Параметры проверки ресурсов` добавлено отображение текущих порогов в формате как в Telegram-боте: числовая сводка по CPU/RAM/Disk (предупреждение и критический, с дефолтами `80/90`, `85/95`, `80/90`).
+- EN: Resource threshold values are now reflected immediately after change in the same session (optimistic UI update), so the current-parameters block shows the entered value without extra navigation.
+- RU: Значения порогов ресурсов теперь сразу отражаются после изменения в рамках текущей сессии (optimistic UI), поэтому блок текущих параметров показывает введённое значение без дополнительной навигации.
+- EN: SemVer patch bump to `8.50.137`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.137` and `ANDROID_VERSION_CODE=483`; prerelease links aligned to `v8.50.137-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.137`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.137` и `ANDROID_VERSION_CODE=483`; prerelease-ссылки выровнены на `v8.50.137-develop`.
+
 ## [8.50.136] - 2026-04-15
 
 ### Changed / Изменено
