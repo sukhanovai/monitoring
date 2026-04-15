@@ -1,12 +1,14 @@
-## [8.50.134] - 2026-04-15
+## [8.50.135] - 2026-04-15
 
 ### Changed / Изменено
-- EN: In Android app `Operational center → Resources`, removed the tile gear button from the resources card to keep the entry action focused on the point-check flow.
-- RU: В Android-приложении в `Оперативный центр → Ресурсы` убрана шестерёнка с плашки ресурсов, чтобы основной вход оставался через сценарий точечной проверки.
-- EN: In Android app `Operational center → Resources → point check`, fixed `⚙️` in the dialog header: it now correctly opens the resources settings dialog from the point-check screen.
-- RU: В Android-приложении в `Оперативный центр → Ресурсы → точечная проверка` исправлена `⚙️` в заголовке диалога: теперь она корректно открывает настройки ресурсов прямо из экрана точечной проверки.
-- EN: SemVer patch bump to `8.50.134`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.134` and `ANDROID_VERSION_CODE=480`; prerelease links aligned to `v8.50.134-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.134`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.134` и `ANDROID_VERSION_CODE=480`; prerelease-ссылки выровнены на `v8.50.134-develop`.
+- EN: In Android app `Operational center → Resources`, removed the gear action from the resources tile; tap on the tile now keeps only the point-check entry flow.
+- RU: В Android-приложении в `Оперативный центр → Ресурсы` убрана шестерёнка с плашки ресурсов; тап по плашке теперь оставляет только вход в сценарий точечной проверки.
+- EN: In Android app `Operational center → Resources → point check`, the header gear action opens `Resource check parameters`.
+- RU: В Android-приложении в `Оперативный центр → Ресурсы → точечная проверка` тап по шестерёнке в заголовке открывает `Параметры проверки ресурсов`.
+- EN: Redesigned `Resource check parameters` dialog to native Android Material style (grouped resource cards with warning/critical actions) instead of Telegram-like emoji menu.
+- RU: Диалог `Параметры проверки ресурсов` переработан в нативном Android Material-стиле (группы ресурсов и кнопки порогов `Предупреждение/Критический`) вместо Telegram-подобного списка с эмодзи.
+- EN: SemVer patch bump to `8.50.135`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.135` and `ANDROID_VERSION_CODE=481`; prerelease links aligned to `v8.50.135-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.135`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.135` и `ANDROID_VERSION_CODE=481`; prerelease-ссылки выровнены на `v8.50.135-develop`.
 
 ## [8.50.133] - 2026-04-15
 

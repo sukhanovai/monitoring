@@ -38,6 +38,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.FilterChip
@@ -1810,13 +1811,7 @@ private fun MonitoringApp(
             } else {
                 { isSettingsExpanded = true; settingsSection = "extensions"; isExtensionsSettingsOpened = true }
             },
-            onLongClick = if (extension.id == "resource_monitor") {
-                {
-                    showResourceSettingsDialog = true
-                }
-            } else {
-                null
-            },
+            onLongClick = null,
             onSettingsClick = null
         )
     }
@@ -3433,30 +3428,67 @@ private fun MonitoringApp(
     }
 
     if (showResourceSettingsDialog) {
+        val resourceThresholdGroups = listOf(
+            Triple("CPU", "set_cpu_warning", "set_cpu_critical"),
+            Triple("RAM", "set_ram_warning", "set_ram_critical"),
+            Triple("Disk", "set_disk_warning", "set_disk_critical")
+        )
         AlertDialog(
             onDismissRequest = { showResourceSettingsDialog = false },
-            title = { Text("⚙️ Параметры проверки ресурсов") },
+            title = { Text("Параметры проверки ресурсов") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(
-                        "💻 CPU предупреждение" to "set_cpu_warning",
-                        "💻 CPU критический" to "set_cpu_critical",
-                        "🧠 RAM предупреждение" to "set_ram_warning",
-                        "🧠 RAM критический" to "set_ram_critical",
-                        "💾 DISK предупреждение" to "set_disk_warning",
-                        "💾 DISK критический" to "set_disk_critical"
-                    ).forEach { (label, action) ->
-                        Button(
-                            onClick = {
-                                resourceThresholdAction = action
-                                resourceThresholdLabel = label
-                                resourceThresholdValueInput = ""
-                                showResourceThresholdDialog = true
-                                showResourceSettingsDialog = false
-                            },
-                            modifier = Modifier.fillMaxWidth()
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        "Выберите порог и задайте значение в процентах.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    resourceThresholdGroups.forEach { (resourceName, warningAction, criticalAction) ->
+                        ElevatedCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.elevatedCardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                            )
                         ) {
-                            Text(label)
+                            Column(
+                                modifier = Modifier.padding(10.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = resourceName,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    OutlinedButton(
+                                        onClick = {
+                                            resourceThresholdAction = warningAction
+                                            resourceThresholdLabel = "$resourceName: предупреждение"
+                                            resourceThresholdValueInput = ""
+                                            showResourceThresholdDialog = true
+                                            showResourceSettingsDialog = false
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text("Предупреждение")
+                                    }
+                                    OutlinedButton(
+                                        onClick = {
+                                            resourceThresholdAction = criticalAction
+                                            resourceThresholdLabel = "$resourceName: критический"
+                                            resourceThresholdValueInput = ""
+                                            showResourceThresholdDialog = true
+                                            showResourceSettingsDialog = false
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text("Критический")
+                                    }
+                                }
+                            }
                         }
                     }
                 }
