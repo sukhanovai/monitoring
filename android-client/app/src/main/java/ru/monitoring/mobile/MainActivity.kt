@@ -455,10 +455,20 @@ private fun formatZfsHostDetails(card: ZfsStatusCardItem): String {
 private fun isZfsMonitoringDisabled(toggleLabel: String): Boolean {
     val normalized = toggleLabel.trim().lowercase()
     if (normalized.isBlank()) return false
-    return normalized.contains("выключ") ||
-        normalized.contains("отключ") ||
-        normalized.contains("disable") ||
-        normalized.contains("turn off")
+
+    return when {
+        normalized.contains("включить") ||
+            normalized.contains("enable") ||
+            normalized.contains("turn on") -> true
+
+        normalized.contains("выключить") ||
+            normalized.contains("отключить") ||
+            normalized.contains("disable") ||
+            normalized.contains("turn off") -> false
+
+        normalized.contains("выключ") || normalized.contains("отключ") -> true
+        else -> false
+    }
 }
 
 private data class ZfsHostOptionGroup(

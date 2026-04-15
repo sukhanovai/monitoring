@@ -1,12 +1,12 @@
-## [8.50.112] - 2026-04-15
+## [8.50.113] - 2026-04-15
 
 ### Fixed / Исправлено
-- EN: In Android app `Operational center → ZFS`, `settings_zfs*` host-settings actions now go through `/v1/settings/extensions/actions` instead of `/v1/control/actions`, fixing HTTP 400 during ZFS tile open and long-press host settings flow.
-- RU: В Android-приложении в `Оперативный центр → ZFS` действия настроек хостов `settings_zfs*` теперь отправляются через `/v1/settings/extensions/actions`, а не через `/v1/control/actions`, что убирает HTTP 400 при открытии ZFS-плашки и в long tap-сценарии управления хостом.
+- EN: In Android app `Operational center → ZFS`, host monitoring status on the host tile now matches the real backend state: when monitoring is disabled it is shown as `выключен`, and when enabled as `включен`.
+- RU: В Android-приложении в `Оперативный центр → ZFS` статус мониторинга на плашке хоста теперь соответствует фактическому состоянию backend: при отключённом мониторинге показывается `выключен`, при включённом — `включен`.
 
 ### Changed / Изменено
-- EN: SemVer patch bump to `8.50.112`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.112` and `ANDROID_VERSION_CODE=459`.
-- RU: Выполнен SemVer patch-бамп до `8.50.112`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.112` и `ANDROID_VERSION_CODE=459`.
+- EN: SemVer patch bump to `8.50.113`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.113` and `ANDROID_VERSION_CODE=460`.
+- RU: Выполнен SemVer patch-бамп до `8.50.113`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.113` и `ANDROID_VERSION_CODE=460`.
 
 ## [8.50.110] - 2026-04-15
 
