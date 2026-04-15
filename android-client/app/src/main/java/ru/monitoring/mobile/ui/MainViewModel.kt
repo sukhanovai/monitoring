@@ -51,7 +51,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.50.111"
+    private val projectVersion = "8.50.112"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -1373,7 +1373,6 @@ class MainViewModel(
 
     private fun shouldRunExtensionsSettingsViaControlApi(action: String): Boolean =
         action in extensionSettingsControlActions ||
-            action.startsWith("settings_zfs") ||
             action.startsWith("set_cpu_") ||
             action.startsWith("set_ram_") ||
             action.startsWith("set_disk_") ||
