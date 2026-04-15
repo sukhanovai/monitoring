@@ -3840,21 +3840,21 @@ private fun MonitoringApp(
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         IconButton(onClick = {
-                            showZfsPatternsDialog = true
-                            onExtensionsSettingsAction("settings_patterns_zfs")
-                        }) {
-                            Icon(
-                                imageVector = Icons.Filled.Settings,
-                                contentDescription = "Открыть настройки паттернов ZFS"
-                            )
-                        }
-                        IconButton(onClick = {
                             zfsHostInput = ""
                             showZfsHostAddDialog = true
                         }) {
                             Icon(
                                 imageVector = Icons.Filled.Add,
                                 contentDescription = "Добавить новый ZFS-хост"
+                            )
+                        }
+                        IconButton(onClick = {
+                            showZfsPatternsDialog = true
+                            onExtensionsSettingsAction("settings_patterns_zfs")
+                        }) {
+                            Icon(
+                                imageVector = Icons.Filled.Settings,
+                                contentDescription = "Открыть настройки паттернов ZFS"
                             )
                         }
                         IconButton(onClick = { showZfsStatusesDialog = false }) {
@@ -5013,15 +5013,6 @@ private fun MonitoringApp(
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         IconButton(onClick = {
-                            onExtensionsSettingsAction("settings_patterns_db")
-                            showDatabasePatternsDialog = true
-                        }) {
-                            Icon(
-                                imageVector = Icons.Filled.Settings,
-                                contentDescription = "Открыть паттерны бэкапов БД"
-                            )
-                        }
-                        IconButton(onClick = {
                             dbEntryAddCategory = ""
                             dbEntryAddKeyInput = ""
                             dbEntryAddNameInput = ""
@@ -5030,6 +5021,15 @@ private fun MonitoringApp(
                             Icon(
                                 imageVector = Icons.Filled.Add,
                                 contentDescription = "Добавить новую БД в список бэкапов"
+                            )
+                        }
+                        IconButton(onClick = {
+                            onExtensionsSettingsAction("settings_patterns_db")
+                            showDatabasePatternsDialog = true
+                        }) {
+                            Icon(
+                                imageVector = Icons.Filled.Settings,
+                                contentDescription = "Открыть паттерны бэкапов БД"
                             )
                         }
                         IconButton(onClick = { showDatabaseBackupsDialog = false }) {
