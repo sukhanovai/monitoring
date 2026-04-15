@@ -1267,7 +1267,6 @@ private fun MonitoringApp(
     var zfsSelectedHostEditAction by rememberSaveable { mutableStateOf("") }
     var zfsSelectedHostDeleteAction by rememberSaveable { mutableStateOf("") }
     var zfsSelectedHostToggleAction by rememberSaveable { mutableStateOf("") }
-    var zfsSelectedHostToggleLabel by rememberSaveable { mutableStateOf("") }
     var zfsDetailsHostName by rememberSaveable { mutableStateOf("") }
     var zfsStatusDetailsFallbackText by rememberSaveable { mutableStateOf("") }
     var pendingZfsHostSettingsName by rememberSaveable { mutableStateOf("") }
@@ -1320,7 +1319,6 @@ private fun MonitoringApp(
             zfsSelectedHostEditAction = hostGroup.editAction
             zfsSelectedHostDeleteAction = hostGroup.deleteAction
             zfsSelectedHostToggleAction = hostGroup.toggleAction
-            zfsSelectedHostToggleLabel = hostGroup.toggleLabel
             showZfsHostActionsDialog = true
             showZfsHostsSettingsDialog = false
             pendingZfsHostSettingsName = ""
@@ -3984,7 +3982,6 @@ private fun MonitoringApp(
                                                     zfsSelectedHostEditAction = hostGroup.editAction
                                                     zfsSelectedHostDeleteAction = hostGroup.deleteAction
                                                     zfsSelectedHostToggleAction = hostGroup.toggleAction
-                                                    zfsSelectedHostToggleLabel = hostGroup.toggleLabel
                                                     showZfsHostActionsDialog = true
                                                 } else {
                                                     pendingZfsHostSettingsName = card.hostName
@@ -4167,7 +4164,6 @@ private fun MonitoringApp(
                                                 zfsSelectedHostEditAction = hostGroup.editAction
                                                 zfsSelectedHostDeleteAction = hostGroup.deleteAction
                                                 zfsSelectedHostToggleAction = hostGroup.toggleAction
-                                                zfsSelectedHostToggleLabel = hostGroup.toggleLabel
                                                 showZfsHostActionsDialog = true
                                             }
                                         )
@@ -4290,20 +4286,7 @@ private fun MonitoringApp(
                 }
             },
             confirmButton = {},
-            dismissButton = {
-                Column(horizontalAlignment = Alignment.End) {
-                    if (zfsSelectedHostToggleLabel.isNotBlank()) {
-                        Text(
-                            text = zfsSelectedHostToggleLabel,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    TextButton(onClick = { showZfsHostActionsDialog = false }) {
-                        Text("Закрыть")
-                    }
-                }
-            }
+            dismissButton = {}
         )
     }
 
