@@ -1,11 +1,11 @@
 """
 /app/modules/targeted_checks.py
-Server Monitoring System v8.50.131
+Server Monitoring System v8.50.132
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Server Spot Check Module
 Система мониторинга серверов
-Версия: 8.50.131
+Версия: 8.50.132
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль точечных проверок серверов
@@ -22,11 +22,14 @@ class TargetedChecks:
         self.server_cache = None
     
     def get_all_servers(self):
-        """Получить все серверы с кэшированием"""
-        if self.server_cache is None:
-            from extensions.server_checks import initialize_servers
-            self.server_cache = initialize_servers()
-        return self.server_cache
+        """Получить все серверы из единого источника (настройки)"""
+        from core.config_manager import config_manager
+
+        # include_disabled=True, чтобы список в точечных проверках
+        # совпадал со списком в «Настройки → Серверы».
+        servers = config_manager.get_all_servers(include_disabled=True)
+        self.server_cache = servers
+        return servers
     
     def get_server_by_selection(self, server_id):
         """Получить сервер по ID (ip или name)"""
