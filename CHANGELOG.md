@@ -1,3 +1,11 @@
+## [8.50.129] - 2026-04-15
+
+### Changed / Изменено
+- EN: In Android app `Operational center → Servers` (dialog opened by tapping the `Servers` tile), swapped visual status markers: the circle now reflects monitoring activity (enabled/disabled host), while unavailable hosts are highlighted by card background color.
+- RU: В Android-приложении в `Оперативный центр → Серверы` (диалог после тапа по плашке `Серверы`) поменяли местами визуальные маркеры: кружок теперь показывает активность мониторинга хоста (вкл/выкл), а недоступный хост подсвечивается цветом самой плашки.
+- EN: SemVer patch bump to `8.50.129`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.129` and `ANDROID_VERSION_CODE=475`; prerelease links aligned to `v8.50.129-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.129`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.129` и `ANDROID_VERSION_CODE=475`; prerelease-ссылки выровнены на `v8.50.129-develop`.
+
 ## [8.50.128] - 2026-04-15
 
 ### Changed / Изменено
