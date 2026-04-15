@@ -1,12 +1,12 @@
-## [8.50.108] - 2026-04-14
+## [8.50.110] - 2026-04-15
 
 ### Fixed / Исправлено
-- EN: In Android app `Operational center → ZFS`, fixed host monitoring status detection in the status cards: labels like `Включить мониторинг` / `Enable monitoring` are no longer interpreted as disabled state.
-- RU: В Android-приложении в `Оперативный центр → ZFS` исправлено определение статуса мониторинга хоста в карточках: метки вида `Включить мониторинг` / `Enable monitoring` больше не трактуются как отключённый мониторинг.
+- EN: In Android app `Operational center → ZFS`, a long press on a host tile now opens host settings actions (edit name, enable/disable monitoring, delete), with explicit hints in the status and hosts dialogs.
+- RU: В Android-приложении в `Оперативный центр → ZFS` долгий тап по плашке хоста теперь открывает действия настройки хоста (редактирование имени, вкл/выкл мониторинга, удаление), добавлены явные подсказки в диалогах статусов и списка хостов.
 
 ### Changed / Изменено
-- EN: SemVer patch bump to `8.50.108`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.108` and `ANDROID_VERSION_CODE=456`.
-- RU: Выполнен SemVer patch-бамп до `8.50.108`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.108` и `ANDROID_VERSION_CODE=456`.
+- EN: SemVer patch bump to `8.50.110`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.110` and `ANDROID_VERSION_CODE=457`.
+- RU: Выполнен SemVer patch-бамп до `8.50.110`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.110` и `ANDROID_VERSION_CODE=457`.
 
 ## [8.50.105] - 2026-04-14
 
