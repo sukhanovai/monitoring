@@ -1,3 +1,11 @@
+## [8.50.130] - 2026-04-15
+
+### Changed / Изменено
+- EN: In Android app `Operational center → ZFS`, in the host actions dialog (opened by long tap on a host tile from the hosts settings overlay), pressing `Delete` now opens a confirmation overlay dialog before host removal.
+- RU: В Android-приложении в `Оперативный центр → ZFS` в диалоге действий хоста (открывается долгим тапом по плашке хоста в оверлей-окне настроек хостов) нажатие `Удал.` теперь сначала показывает диалог подтверждения удаления поверх текущего окна.
+- EN: SemVer patch bump to `8.50.130`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.130` and `ANDROID_VERSION_CODE=476`; prerelease links aligned to `v8.50.130-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.130`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.130` и `ANDROID_VERSION_CODE=476`; prerelease-ссылки выровнены на `v8.50.130-develop`.
+
 ## [8.50.129] - 2026-04-15
 
 ### Changed / Изменено
