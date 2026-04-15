@@ -1,12 +1,10 @@
-## [8.50.116] - 2026-04-15
-
-### Fixed / Исправлено
-- EN: In Android app `Operational center → DB backups`, fixed the backups list dialog hanging on the loading state (`Loading DB backups list…`) after tapping the tile: `extensionMenuAction` now preserves `backup_databases` and correctly renders returned DB items.
-- RU: В Android-приложении в `Оперативный центр → Бэкапы БД` исправлено зависание диалога списка в состоянии загрузки (`Загружаем список бэкапов БД…`) после тапа по плашке: `extensionMenuAction` теперь сохраняет `backup_databases` и корректно отображает полученные элементы БД.
+## [8.50.117] - 2026-04-15
 
 ### Changed / Изменено
-- EN: SemVer patch bump to `8.50.116`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.116` and `ANDROID_VERSION_CODE=463`; prerelease links aligned to `v8.50.116-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.116`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.116` и `ANDROID_VERSION_CODE=463`; prerelease-ссылки выровнены на `v8.50.116-develop`.
+- EN: In Android app `Operational center`, short taps on tiles `Servers`, `proxmox`, and `resources` now additionally show a hint that long-press actions are available on each tile.
+- RU: В Android-приложении в `Оперативный центр` короткий тап по плашкам `Серверы`, `proxmox` и `ресурсы` теперь дополнительно показывает подсказку о доступности действий по долгому тапу для каждой плашки.
+- EN: SemVer patch bump to `8.50.117`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.117` and `ANDROID_VERSION_CODE=464`; prerelease links aligned to `v8.50.117-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.117`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.117` и `ANDROID_VERSION_CODE=464`; prerelease-ссылки выровнены на `v8.50.117-develop`.
 
 ## [8.50.115] - 2026-04-15
 
