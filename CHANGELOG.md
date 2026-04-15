@@ -1,10 +1,12 @@
-## [8.50.120] - 2026-04-15
+## [8.50.121] - 2026-04-15
 
 ### Changed / Изменено
-- EN: In Android app `Operational center`, removed the inline long-press hint above the tile list; hints are now left only inside windows opened from tiles.
-- RU: В Android-приложении в `Оперативный центр` убрана inline-подсказка над списком плашек про долгий тап; подсказки оставлены только в окнах, которые открываются из плашек.
-- EN: SemVer patch bump to `8.50.120`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.120` and `ANDROID_VERSION_CODE=467`; prerelease links aligned to `v8.50.120-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.120`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.120` и `ANDROID_VERSION_CODE=467`; prerelease-ссылки выровнены на `v8.50.120-develop`.
+- EN: In Android app `Operational center → ZFS`, removed the bottom status text `enable/disable …` from the host actions dialog opened by long tap on a host tile.
+- RU: В Android-приложении в `Оперативный центр → ZFS` из диалога действий хоста (открывается долгим тапом по плашке хоста) убран нижний статусный текст `включить/отключить …`.
+- EN: In Android app `Operational center → ZFS`, removed the `Close` text button from the same host actions dialog; closing is now done via the top-right icon or outside tap.
+- RU: В Android-приложении в `Оперативный центр → ZFS` в этом же диалоге убрана текстовая кнопка `Закрыть`; закрытие выполняется иконкой в правом верхнем углу или тапом вне окна.
+- EN: SemVer patch bump to `8.50.121`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.121` and `ANDROID_VERSION_CODE=468`; prerelease links aligned to `v8.50.121-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.121`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.121` и `ANDROID_VERSION_CODE=468`; prerelease-ссылки выровнены на `v8.50.121-develop`.
 
 ## [8.50.117] - 2026-04-15
 
