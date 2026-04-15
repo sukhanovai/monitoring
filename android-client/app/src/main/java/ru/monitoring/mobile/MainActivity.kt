@@ -3364,6 +3364,16 @@ private fun MonitoringApp(
                     if (serverButtonsForDialog.isEmpty()) {
                         Text("Серверы для выбранного фильтра не найдены.")
                     } else {
+                        val longTapHint = if (isResourceCheckMode) {
+                            "Долгий тап по плашке хоста — настройки (редактировать / вкл-выкл / удалить)"
+                        } else {
+                            "Долгий тап по плашке хоста - настройки\n(редактировать / вкл-выкл / удалить)"
+                        }
+                        Text(
+                            text = longTapHint,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                         FlowRow(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -4451,6 +4461,11 @@ private fun MonitoringApp(
                     if (state.extensionMenuAction != "backup_proxmox" || state.extensionMenuOptions.isEmpty()) {
                         Text("Загружаем список бэкапов Proxmox…")
                     } else {
+                        Text(
+                            text = "Долгий тап по плашке хоста - настройки\n(редактировать / вкл-выкл / удалить)",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                         FlowRow(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -5053,6 +5068,11 @@ private fun MonitoringApp(
                     if (state.extensionMenuAction != "backup_databases" || state.extensionMenuOptions.isEmpty()) {
                         Text("Загружаем список бэкапов БД…")
                     } else {
+                        Text(
+                            text = "Долгий тап по плашке БД - настройки\n(редактировать / вкл-выкл / удалить)",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                         FlowRow(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
