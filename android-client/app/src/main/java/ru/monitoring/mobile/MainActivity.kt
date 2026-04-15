@@ -1665,6 +1665,12 @@ private fun MonitoringApp(
     }
     val opsTiles = listOf(
         OpsMetricTile(
+            id = "modes",
+            label = "Режим",
+            value = state.silentStatusText,
+            onClick = openModesDetails
+        ),
+        OpsMetricTile(
             id = "servers",
             label = "Серверы",
             value = "$activeServersCount/$totalServersCount",
@@ -1673,16 +1679,21 @@ private fun MonitoringApp(
                 openServerSingleCheckDetails()
             },
             onLongClick = openServerSingleCheckDetails
-        ),
-        OpsMetricTile(
-            id = "modes",
-            label = "Режим",
-            value = state.silentStatusText,
-            onClick = openModesDetails
         )
     )
     val extensionsById = state.extensions.associateBy { it.id }
     val extensionInfoTiles = buildList {
+        extensionsById["resource_monitor"]?.takeIf { it.enabled }?.let { extension ->
+            val hasProblem = isProblemBackupLabel(extension.description)
+            add(
+                ExtensionDataTile(
+                    id = extension.id,
+                    label = "ресурсы",
+                    value = if (hasProblem) "!" else "ОК",
+                    hasProblem = hasProblem
+                )
+            )
+        }
         extensionsById["backup_monitor"]?.takeIf { it.enabled }?.let { extension ->
             add(
                 buildExtensionDataTile(
@@ -1746,17 +1757,6 @@ private fun MonitoringApp(
                     extension = extension.copy(name = "поставщики"),
                     summaryOverride = state.supplierStockSummary,
                     hasProblemOverride = state.supplierStockHasProblemItems
-                )
-            )
-        }
-        extensionsById["resource_monitor"]?.takeIf { it.enabled }?.let { extension ->
-            val hasProblem = isProblemBackupLabel(extension.description)
-            add(
-                ExtensionDataTile(
-                    id = extension.id,
-                    label = "ресурсы",
-                    value = if (hasProblem) "!" else "ОК",
-                    hasProblem = hasProblem
                 )
             )
         }
