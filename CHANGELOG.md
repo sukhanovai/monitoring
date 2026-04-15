@@ -1,12 +1,14 @@
-## [8.50.113] - 2026-04-15
+## [8.50.114] - 2026-04-15
 
 ### Fixed / Исправлено
-- EN: In Android app `Operational center → ZFS`, host monitoring status on the host tile now matches the real backend state: when monitoring is disabled it is shown as `выключен`, and when enabled as `включен`.
-- RU: В Android-приложении в `Оперативный центр → ZFS` статус мониторинга на плашке хоста теперь соответствует фактическому состоянию backend: при отключённом мониторинге показывается `выключен`, при включённом — `включен`.
+- EN: In Android app `Operational center → ZFS`, fixed host activity markers flickering from green to yellow right after opening the host list by preserving known monitoring state when settings payload arrives later.
+- RU: В Android-приложении в `Оперативный центр → ZFS` исправлено мигание маркеров активности хостов из зелёного в жёлтый сразу после открытия списка: теперь сохраняется уже известное состояние мониторинга, даже если payload настроек приходит позже.
+- EN: In Android app `Operational center → ZFS`, fixed stale marker state after long-press host actions (`enable/disable monitoring`): disabled hosts no longer end up incorrectly highlighted as active (green).
+- RU: В Android-приложении в `Оперативный центр → ZFS` исправлено зависание состояния маркеров после действий по долгому тапу (`вкл/выкл мониторинга`): выключенные хосты больше не подсвечиваются ошибочно как активные (зелёным).
 
 ### Changed / Изменено
-- EN: SemVer patch bump to `8.50.113`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.113` and `ANDROID_VERSION_CODE=460`.
-- RU: Выполнен SemVer patch-бамп до `8.50.113`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.113` и `ANDROID_VERSION_CODE=460`.
+- EN: SemVer patch bump to `8.50.114`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.114` and `ANDROID_VERSION_CODE=461`.
+- RU: Выполнен SemVer patch-бамп до `8.50.114`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.114` и `ANDROID_VERSION_CODE=461`.
 
 ## [8.50.110] - 2026-04-15
 

@@ -3880,6 +3880,7 @@ private fun MonitoringApp(
                     val groupedCards = linkedMapOf<String, MutableList<ZfsPoolStatusItem>>()
                     val actionByHost = linkedMapOf<String, String?>()
                     val hasProblemByHost = linkedMapOf<String, Boolean>()
+                    val monitoringEnabledByHost = linkedMapOf<String, Boolean>()
                     (statusCardsFromMessage + statusCardsFromOptions).forEach { card ->
                         val host = card.hostName.trim()
                         if (host.isBlank()) return@forEach
@@ -3888,6 +3889,9 @@ private fun MonitoringApp(
                             actionByHost[host] = card.action
                         }
                         hasProblemByHost[host] = hasProblemByHost[host] == true || card.hasProblem || card.pools.any { it.hasProblem }
+                        if (card.monitoringEnabled != null && !monitoringEnabledByHost.containsKey(host)) {
+                            monitoringEnabledByHost[host] = card.monitoringEnabled
+                        }
                     }
 
                     val zfsSettingsPairs = zfsSettingsOptions
@@ -3916,6 +3920,7 @@ private fun MonitoringApp(
                             "${pool.poolName}|${pool.rawState}|${pool.rawTimestamp}"
                         }
                         val monitoringEnabled = hostGroup?.let { !isZfsMonitoringDisabled(it.toggleLabel) }
+                            ?: monitoringEnabledByHost[host]
                         ZfsStatusCardItem(
                             hostName = host,
                             pools = poolsWithUniqueState,
