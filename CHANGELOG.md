@@ -1,14 +1,14 @@
-## [8.50.135] - 2026-04-15
+## [8.50.136] - 2026-04-15
 
 ### Changed / Изменено
-- EN: In Android app `Operational center → Resources`, removed the gear action from the resources tile; tap on the tile now keeps only the point-check entry flow.
-- RU: В Android-приложении в `Оперативный центр → Ресурсы` убрана шестерёнка с плашки ресурсов; тап по плашке теперь оставляет только вход в сценарий точечной проверки.
-- EN: In Android app `Operational center → Resources → point check`, the header gear action opens `Resource check parameters`.
-- RU: В Android-приложении в `Оперативный центр → Ресурсы → точечная проверка` тап по шестерёнке в заголовке открывает `Параметры проверки ресурсов`.
-- EN: Redesigned `Resource check parameters` dialog to native Android Material style (grouped resource cards with warning/critical actions) instead of Telegram-like emoji menu.
-- RU: Диалог `Параметры проверки ресурсов` переработан в нативном Android Material-стиле (группы ресурсов и кнопки порогов `Предупреждение/Критический`) вместо Telegram-подобного списка с эмодзи.
-- EN: SemVer patch bump to `8.50.135`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.135` and `ANDROID_VERSION_CODE=481`; prerelease links aligned to `v8.50.135-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.135`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.135` и `ANDROID_VERSION_CODE=481`; prerelease-ссылки выровнены на `v8.50.135-develop`.
+- EN: In Android app `Resources → gear → Resource check parameters`, the dialog now displays current values for each threshold (warning/critical for CPU, RAM, Disk), so edits start from visible live settings.
+- RU: В Android-приложении в `Ресурсы → шестерёнка → Параметры проверки ресурсов` диалог теперь показывает текущие значения порогов (предупреждение/критический для CPU, RAM, Disk), чтобы менять параметры от видимого актуального состояния.
+- EN: Added an explicit close icon (`X`) in the `Resource check parameters` dialog header and removed the text button `Close`.
+- RU: В диалог `Параметры проверки ресурсов` добавлен явный крестик (`X`) в заголовке и убрана текстовая кнопка `Закрыть`.
+- EN: In the threshold edit dialog, added a line with the current value before entering a new percentage.
+- RU: В диалоге изменения порога добавлена строка с отображением текущего значения перед вводом нового процента.
+- EN: SemVer patch bump to `8.50.136`; synchronized version mentions across project runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.136` and `ANDROID_VERSION_CODE=482`; prerelease links aligned to `v8.50.136-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.136`; синхронизированы упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.136` и `ANDROID_VERSION_CODE=482`; prerelease-ссылки выровнены на `v8.50.136-develop`.
 
 ## [8.50.133] - 2026-04-15
 
