@@ -3931,6 +3931,11 @@ private fun MonitoringApp(
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold
                             )
+                            Text(
+                                text = "Долгий тап по плашке хоста — настройки (редактировать / вкл-выкл / удалить)",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                             FlowRow(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -4120,19 +4125,27 @@ private fun MonitoringApp(
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold
                             )
+                            Text(
+                                text = "Долгий тап по карточке хоста открывает управление.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                             zfsHostGroups.forEach { hostGroup ->
                                 ElevatedCard(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clip(RoundedCornerShape(12.dp))
-                                        .clickable {
-                                            zfsSelectedHostName = hostGroup.hostName
-                                            zfsSelectedHostEditAction = hostGroup.editAction
-                                            zfsSelectedHostDeleteAction = hostGroup.deleteAction
-                                            zfsSelectedHostToggleAction = hostGroup.toggleAction
-                                            zfsSelectedHostToggleLabel = hostGroup.toggleLabel
-                                            showZfsHostActionsDialog = true
-                                        }
+                                        .combinedClickable(
+                                            onClick = { },
+                                            onLongClick = {
+                                                zfsSelectedHostName = hostGroup.hostName
+                                                zfsSelectedHostEditAction = hostGroup.editAction
+                                                zfsSelectedHostDeleteAction = hostGroup.deleteAction
+                                                zfsSelectedHostToggleAction = hostGroup.toggleAction
+                                                zfsSelectedHostToggleLabel = hostGroup.toggleLabel
+                                                showZfsHostActionsDialog = true
+                                            }
+                                        )
                                 ) {
                                     Column(
                                         modifier = Modifier
