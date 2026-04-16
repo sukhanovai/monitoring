@@ -3878,6 +3878,7 @@ private fun MonitoringApp(
                         val hostName = proxmoxServerNameInput.trim()
                         val actionPayload = "settings_proxmox_add|" + Uri.encode(hostName)
                         onExtensionsSettingsAction(actionPayload)
+                        onExtensionsSettingsAction("settings_backup_proxmox")
                         showProxmoxServerAddDialog = false
                         proxmoxServerNameInput = ""
                     },
@@ -5605,6 +5606,7 @@ private fun MonitoringApp(
                         FilledIconButton(
                             onClick = {
                                 onExtensionsSettingsAction("settings_proxmox_edit_$proxmoxHostActionsTargetKey")
+                                onExtensionsSettingsAction("settings_backup_proxmox")
                                 proxmoxHostActionsTargetKey = ""
                             }
                         ) {
@@ -5616,6 +5618,7 @@ private fun MonitoringApp(
                         FilledIconButton(
                             onClick = {
                                 onExtensionsSettingsAction("settings_proxmox_toggle_$proxmoxHostActionsTargetKey")
+                                onExtensionsSettingsAction("settings_backup_proxmox")
                                 proxmoxHostActionsTargetKey = ""
                             }
                         ) {
@@ -5650,6 +5653,7 @@ private fun MonitoringApp(
                 TextButton(
                     onClick = {
                         onExtensionsSettingsAction("settings_proxmox_delete_$proxmoxHostDeleteConfirmTargetKey")
+                        onExtensionsSettingsAction("settings_backup_proxmox")
                         proxmoxHostDeleteConfirmTargetKey = ""
                         proxmoxHostActionsTargetKey = ""
                     }
