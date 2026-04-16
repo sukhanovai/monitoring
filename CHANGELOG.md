@@ -1,12 +1,10 @@
-## [8.50.141] - 2026-04-16
+## [8.50.142] - 2026-04-16
 
 ### Changed / Изменено
-- EN: In Android app (`Proxmox tile → gear → pattern tap`), pattern action grouping now uses stable action keys (`settings_proxmox_pattern_edit_<id>` / `settings_proxmox_pattern_delete_<id>`), so the `Delete` action is available for the selected pattern.
-- RU: В Android-приложении (`плашка Proxmox → шестерёнка → тап по паттерну`) группировка действий паттернов теперь идёт по стабильным ключам действий (`settings_proxmox_pattern_edit_<id>` / `settings_proxmox_pattern_delete_<id>`), поэтому действие `Удалить` стало доступным для выбранного паттерна.
-- EN: Added explicit confirmation dialog before deleting a Proxmox pattern in Android UI.
-- RU: Перед удалением паттерна Proxmox в Android UI добавлено явное диалоговое подтверждение действия.
-- EN: SemVer patch bump to `8.50.141`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.141` and `ANDROID_VERSION_CODE=487`; prerelease links aligned to `v8.50.141-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.141`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.141` и `ANDROID_VERSION_CODE=487`; prerelease-ссылки выровнены на `v8.50.141-develop`.
+- EN: Fixed Android compile error in `MainActivity.kt`: `buildPatternOptionGroups` now uses the fully qualified `ru.monitoring.mobile.api.MenuOption` type, removing unresolved reference errors (`MenuOption`/`label`) during `:app:compileCompactOpsDebugKotlin`.
+- RU: Исправлена ошибка компиляции Android в `MainActivity.kt`: функция `buildPatternOptionGroups` теперь использует полностью квалифицированный тип `ru.monitoring.mobile.api.MenuOption`, что убирает `Unresolved reference` (`MenuOption`/`label`) на шаге `:app:compileCompactOpsDebugKotlin`.
+- EN: SemVer patch bump to `8.50.142`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.142` and `ANDROID_VERSION_CODE=488`; prerelease links aligned to `v8.50.142-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.142`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.142` и `ANDROID_VERSION_CODE=488`; prerelease-ссылки выровнены на `v8.50.142-develop`.
 
 ## [8.50.140] - 2026-04-15
 
