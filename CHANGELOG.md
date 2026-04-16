@@ -1,10 +1,12 @@
-## [8.50.143] - 2026-04-16
+## [8.50.144] - 2026-04-16
 
 ### Changed / Изменено
+- EN: Fixed Android flow in `Operational center → Proxmox backups → gear → patterns`: when adding a Proxmox pattern from the extensions settings dialog, the app now immediately reopens the corresponding pattern list action (`settings_patterns_proxmox` / `settings_patterns_db`) after save, so the new pattern is persisted and visible right away.
+- RU: Исправлен Android-сценарий в `Оперативный центр → Бэкапы Proxmox → шестерёнка → паттерны`: при добавлении паттерна из диалога настроек расширений приложение теперь сразу повторно вызывает нужный список паттернов (`settings_patterns_proxmox` / `settings_patterns_db`) после сохранения, поэтому новый паттерн сохраняется и сразу отображается.
 - EN: In Android app `Operational center → Proxmox backups` (dialog opened by tapping the Proxmox tile), host list now refreshes immediately after Proxmox host mutations (add/edit/delete/monitoring toggle) by requesting `settings_backup_proxmox` right after the mutation action, so reopening the dialog is no longer required.
 - RU: В Android-приложении в `Оперативный центр → Бэкапы Proxmox` (диалог после тапа по плашке Proxmox) список хостов теперь обновляется сразу после изменений хоста (добавление/редактирование/удаление/переключение мониторинга): после мутации дополнительно запрашивается `settings_backup_proxmox`, поэтому повторно закрывать и открывать диалог больше не нужно.
-- EN: SemVer patch bump to `8.50.143`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.143` and `ANDROID_VERSION_CODE=489`; prerelease links aligned to `v8.50.143-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.143`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.143` и `ANDROID_VERSION_CODE=489`; prerelease-ссылки выровнены на `v8.50.143-develop`.
+- EN: SemVer patch bump to `8.50.144`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.144` and `ANDROID_VERSION_CODE=490`; prerelease links aligned to `v8.50.144-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.144`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.144` и `ANDROID_VERSION_CODE=490`; prerelease-ссылки выровнены на `v8.50.144-develop`.
 
 ## [8.50.142] - 2026-04-16
 
