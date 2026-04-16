@@ -2512,6 +2512,7 @@ private fun MonitoringApp(
                                                     Uri.encode(proxmoxPatternTypeInput.trim()) + "|" +
                                                     Uri.encode(proxmoxPatternValueInput.trim())
                                                 onExtensionsSettingsAction(actionPayload)
+                                                onExtensionsSettingsAction(patternDialogReturnAction)
                                                 showProxmoxPatternAddDialog = false
                                             },
                                             enabled = proxmoxPatternCategoryInput.isNotBlank() &&
