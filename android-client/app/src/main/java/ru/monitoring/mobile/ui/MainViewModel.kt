@@ -51,7 +51,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.50.146"
+    private val projectVersion = "8.50.147"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -1353,8 +1353,8 @@ class MainViewModel(
                             )
                             Triple(
                                 refreshResult.message ?: "Команда отправлена",
-                                if (filteredOptions.isNotEmpty()) filteredOptions else response.second,
-                                if (filteredOptions.isNotEmpty()) "settings_patterns_proxmox" else response.third
+                                filteredOptions,
+                                "settings_patterns_proxmox"
                             )
                         }.getOrNull() ?: response
                     } else {
