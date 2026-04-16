@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.50.145
+Server Monitoring System v8.50.146
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.50.145
+Версия: 8.50.146
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -3642,7 +3642,7 @@ def v1_extensions_actions():
             ],
         }), 200
 
-    if action == "settings_proxmox_pattern_add" or action.startswith("settings_proxmox_pattern_edit_"):
+    if action.startswith("settings_proxmox_pattern_add") or action.startswith("settings_proxmox_pattern_edit_"):
         def _decode_action_part(value: str) -> str:
             return unquote(str(value or "")).strip()
 
@@ -3657,7 +3657,7 @@ def v1_extensions_actions():
 
         action_parts = raw_action.split("|")
 
-        if action == "settings_proxmox_pattern_add":
+        if action.startswith("settings_proxmox_pattern_add"):
             if len(action_parts) < 4:
                 return jsonify({
                     "request_id": request_id,
