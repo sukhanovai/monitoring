@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.50.148
+Server Monitoring System v8.51.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.50.148
+Версия: 8.51.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1512,6 +1512,7 @@ def _execute_mobile_control_action(action: str):
         "supplier_stock_reports",
         "zfs",
         "zfs_menu",
+        "zfs_free_space",
     }
     resource_threshold_settings = {
         "set_cpu_warning": ("CPU_WARNING", "CPU предупреждение"),
@@ -1934,6 +1935,128 @@ def _execute_mobile_control_action(action: str):
 
             return True, "\n".join(lines).strip(), "accepted", None
 
+        def _format_bytes_human(value: int) -> str:
+            units = ["B", "KiB", "MiB", "GiB", "TiB", "PiB"]
+            size = float(max(value, 0))
+            idx = 0
+            while size >= 1024 and idx < len(units) - 1:
+                size /= 1024.0
+                idx += 1
+            return f"{size:.1f} {units[idx]}"
+
+        def _resolve_backup_server_targets() -> list[tuple[str, str]]:
+            proxmox_hosts = settings_manager.get_setting('PROXMOX_HOSTS', {})
+            if not isinstance(proxmox_hosts, dict):
+                proxmox_hosts = {}
+
+            enabled_hosts: list[tuple[str, dict]] = []
+            for host_name, host_value in proxmox_hosts.items():
+                normalized_name = str(host_name).strip()
+                if not normalized_name:
+                    continue
+                payload = host_value if isinstance(host_value, dict) else {}
+                if payload.get("enabled", True):
+                    enabled_hosts.append((normalized_name, payload))
+
+            managed_servers = settings_manager.get_all_servers(include_disabled=True)
+            by_name = {
+                str(server.get("name", "")).strip().lower(): str(server.get("ip", "")).strip()
+                for server in managed_servers
+                if str(server.get("name", "")).strip() and str(server.get("ip", "")).strip()
+            }
+
+            targets: list[tuple[str, str]] = []
+            for host_name, payload in enabled_hosts:
+                address = (
+                    str(payload.get("ip") or payload.get("host") or payload.get("address") or "")
+                    .strip()
+                )
+                if not address:
+                    address = by_name.get(host_name.lower(), "").strip()
+                if not address:
+                    address = host_name
+                targets.append((host_name, address))
+            return targets
+
+        def _build_zfs_free_space_section() -> str:
+            targets = _resolve_backup_server_targets()
+            if not targets:
+                return (
+                    "💽 Свободное место ZFS (PBS)\n\n"
+                    "⚠️ Нет включённых хостов в `PROXMOX_HOSTS`."
+                )
+
+            ssh_username = str(settings_manager.get_setting('SSH_USERNAME', 'root') or 'root').strip() or 'root'
+            ssh_key_path = str(settings_manager.get_setting('SSH_KEY_PATH', '/root/.ssh/id_rsa') or '').strip()
+            ssh_port = int(settings_manager.get_setting('SSH_PORT', 22) or 22)
+
+            section_lines = ["💽 Свободное место ZFS (PBS)", ""]
+            cmd_script = (
+                "zpool list -Hp -o name,size,alloc,free,cap,health 2>/dev/null "
+                "| awk -F '\\t' '$1==\"rpool\" || $1==\"zfs\" {print $0}'"
+            )
+
+            for host_name, address in targets:
+                ssh_cmd = [
+                    "ssh",
+                    "-p",
+                    str(ssh_port),
+                    "-o",
+                    "ConnectTimeout=8",
+                    "-o",
+                    "BatchMode=yes",
+                    "-o",
+                    "StrictHostKeyChecking=no",
+                ]
+                if ssh_key_path:
+                    ssh_cmd.extend(["-i", ssh_key_path])
+                ssh_cmd.append(f"{ssh_username}@{address}")
+                ssh_cmd.append(cmd_script)
+
+                try:
+                    result = subprocess.run(
+                        ssh_cmd,
+                        capture_output=True,
+                        text=True,
+                        timeout=15,
+                    )
+                except Exception as exc:
+                    section_lines.append(f"❌ {host_name} ({address}) — ошибка SSH: {exc}")
+                    continue
+
+                if result.returncode != 0:
+                    error_text = (result.stderr or result.stdout or "unknown error").strip().splitlines()[0]
+                    section_lines.append(f"❌ {host_name} ({address}) — {error_text}")
+                    continue
+
+                pool_rows = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+                if not pool_rows:
+                    section_lines.append(f"⚠️ {host_name} ({address}) — пулы rpool/zfs не найдены")
+                    continue
+
+                section_lines.append(f"🖥 {host_name} ({address})")
+                for row in pool_rows:
+                    parts = row.split('\t')
+                    if len(parts) < 6:
+                        continue
+                    pool_name, total_raw, alloc_raw, free_raw, cap_raw, health_raw = parts[:6]
+                    try:
+                        total = int(float(total_raw))
+                        free = int(float(free_raw))
+                    except Exception:
+                        total = 0
+                        free = 0
+                    section_lines.append(
+                        f"• {pool_name}: {_format_bytes_human(free)} из {_format_bytes_human(total)} "
+                        f"(занято {cap_raw}, {health_raw.upper()})"
+                    )
+                section_lines.append("")
+
+            return "\n".join(section_lines).strip()
+
+        if action == "zfs_free_space":
+            return True, _build_zfs_free_space_section(), "accepted", None
+
         if action == "zfs_menu":
             from core.config_manager import config_manager as settings_manager
             from extensions.backup_monitor.db_settings_backup_monitor import BACKUP_DATABASE_CONFIG
@@ -1950,7 +2073,8 @@ def _execute_mobile_control_action(action: str):
 
             db_path = BACKUP_DATABASE_CONFIG.get("backups_db")
             if not db_path:
-                return True, "🧊 ZFS статусы\n\n❌ База бэкапов не настроена.", "accepted", None
+                status_message = "🧊 ZFS статусы\n\n❌ База бэкапов не настроена."
+                return True, f"{status_message}\n\n{_build_zfs_free_space_section()}", "accepted", None
 
             conn = sqlite3.connect(str(db_path))
             cursor = conn.cursor()
@@ -1973,11 +2097,12 @@ def _execute_mobile_control_action(action: str):
                 rows = cursor.fetchall()
             except Exception as exc:
                 if "no such table: zfs_pool_status" in str(exc):
-                    return True, (
+                    status_message = (
                         "🧊 ZFS статусы\n\n"
                         "❌ Таблица ZFS ещё не создана.\n"
                         "Дождитесь первого письма или перезапустите мониторинг."
-                    ), "accepted", None
+                    )
+                    return True, f"{status_message}\n\n{_build_zfs_free_space_section()}", "accepted", None
                 return False, f"Не удалось получить статусы ZFS: {exc}", "failed", None
             finally:
                 conn.close()
@@ -1988,7 +2113,8 @@ def _execute_mobile_control_action(action: str):
                 rows = []
 
             if not rows:
-                return True, "📊 ZFS статусы\n\n❌ Данных нет.", "accepted", None
+                status_message = "📊 ZFS статусы\n\n❌ Данных нет."
+                return True, f"{status_message}\n\n{_build_zfs_free_space_section()}", "accepted", None
 
             lines = ["📊 ZFS статусы (последние)", ""]
             current_server = None
@@ -2000,7 +2126,8 @@ def _execute_mobile_control_action(action: str):
                     current_server = server_name
                 lines.append(f"• {pool_name}: {pool_state} ({received_at})")
 
-            return True, "\n".join(lines), "accepted", None
+            status_message = "\n".join(lines)
+            return True, f"{status_message}\n\n{_build_zfs_free_space_section()}", "accepted", None
 
         return True, "Команда принята", "accepted", None
 
