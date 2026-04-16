@@ -1,10 +1,10 @@
-## [8.50.148] - 2026-04-16
+## [8.51.0] - 2026-04-16
 
 ### Changed / Изменено
-- EN: Fixed Android Proxmox patterns refresh after delete in `Proxmox tile → gear → Patterns`: after `settings_proxmox_pattern_delete_*` the app now always applies fresh `settings_patterns_proxmox` response (including empty list), so deleted patterns no longer remain visible in Android.
-- RU: Исправлено обновление списка Proxmox-паттернов в Android после удаления в `плашка Proxmox → шестерёнка → Паттерны`: после `settings_proxmox_pattern_delete_*` приложение теперь всегда применяет свежий ответ `settings_patterns_proxmox` (включая пустой список), поэтому удалённые паттерны больше не остаются в UI Android.
-- EN: SemVer patch bump to `8.50.148`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.148` and `ANDROID_VERSION_CODE=494`; prerelease links aligned to `v8.50.148-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.148`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.148` и `ANDROID_VERSION_CODE=494`; prerelease-ссылки выровнены на `v8.50.148-develop`.
+- EN: Added mobile/Telegram extension action `zfs_free_space` and expanded `zfs_menu`: the response now includes live polling of free space on Proxmox Backup Server ZFS pools `rpool`/`zfs` over SSH for enabled backup hosts (`PROXMOX_HOSTS`), with per-host capacity, used percent, and pool health.
+- RU: Добавлено действие расширения `zfs_free_space` для mobile/Telegram и расширен `zfs_menu`: ответ теперь включает живой опрос свободного места на ZFS-пулах `rpool`/`zfs` Proxmox Backup Server по SSH для включённых backup-хостов (`PROXMOX_HOSTS`), с выводом ёмкости, процента занятости и здоровья пула по каждому хосту.
+- EN: SemVer **minor** bump to `8.51.0`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.51.0` and `ANDROID_VERSION_CODE=495`; prerelease links aligned to `v8.51.0-develop`.
+- RU: Выполнен SemVer **minor**-бамп до `8.51.0`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.51.0` и `ANDROID_VERSION_CODE=495`; prerelease-ссылки выровнены на `v8.51.0-develop`.
 ## [8.50.142] - 2026-04-16
 
 ### Changed / Изменено
