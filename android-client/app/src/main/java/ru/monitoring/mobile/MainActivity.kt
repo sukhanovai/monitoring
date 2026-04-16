@@ -601,6 +601,64 @@ private data class ProxmoxPatternOptionGroup(
     val deleteAction: String
 )
 
+private data class PatternActionGroupDraft(
+    var label: String = "",
+    var editAction: String = "",
+    var deleteAction: String = ""
+)
+
+private fun extractPatternGroupKey(action: String, fallbackLabel: String): String {
+    val rawKey = when {
+        action.startsWith("settings_proxmox_pattern_edit_") -> action.removePrefix("settings_proxmox_pattern_edit_")
+        action.startsWith("settings_proxmox_pattern_delete_") -> action.removePrefix("settings_proxmox_pattern_delete_")
+        else -> ""
+    }.substringBefore("|").trim()
+    return if (rawKey.isNotBlank()) {
+        "id:$rawKey"
+    } else {
+        "label:${normalizeProxmoxPatternLabel(fallbackLabel)}"
+    }
+}
+
+private fun buildPatternOptionGroups(options: List<MenuOption>): List<ProxmoxPatternOptionGroup> {
+    val grouped = linkedMapOf<String, PatternActionGroupDraft>()
+    options.forEach { option ->
+        val action = resolveMenuOptionAction(option)
+        val normalizedLabel = normalizeProxmoxPatternLabel(option.label?.trim().orEmpty())
+        when {
+            action.startsWith("settings_proxmox_pattern_edit_") -> {
+                val key = extractPatternGroupKey(action, normalizedLabel)
+                val group = grouped.getOrPut(key) { PatternActionGroupDraft() }
+                group.editAction = action
+                if (normalizedLabel.isNotBlank()) {
+                    group.label = normalizedLabel
+                }
+            }
+
+            action.startsWith("settings_proxmox_pattern_delete_") -> {
+                val key = extractPatternGroupKey(action, normalizedLabel)
+                val group = grouped.getOrPut(key) { PatternActionGroupDraft() }
+                group.deleteAction = action
+                if (group.label.isBlank() && normalizedLabel.isNotBlank()) {
+                    group.label = normalizedLabel
+                }
+            }
+        }
+    }
+
+    return grouped.values.mapNotNull { group ->
+        if (group.editAction.isBlank() && group.deleteAction.isBlank()) {
+            null
+        } else {
+            ProxmoxPatternOptionGroup(
+                label = group.label.ifBlank { "без названия" },
+                editAction = group.editAction,
+                deleteAction = group.deleteAction
+            )
+        }
+    }
+}
+
 private data class DatabasePatternOptionGroup(
     val label: String,
     val editAction: String,
@@ -1325,6 +1383,8 @@ private fun MonitoringApp(
     var selectedProxmoxPatternLabel by rememberSaveable { mutableStateOf("") }
     var selectedProxmoxPatternEditAction by rememberSaveable { mutableStateOf("") }
     var selectedProxmoxPatternDeleteAction by rememberSaveable { mutableStateOf("") }
+    var proxmoxPatternDeleteConfirmLabel by rememberSaveable { mutableStateOf("") }
+    var proxmoxPatternDeleteConfirmAction by rememberSaveable { mutableStateOf("") }
     var showDatabaseBackupsDialog by rememberSaveable { mutableStateOf(false) }
     var showMailBackupsDialog by rememberSaveable { mutableStateOf(false) }
     var showDatabasePatternsDialog by rememberSaveable { mutableStateOf(false) }
@@ -1413,44 +1473,7 @@ private fun MonitoringApp(
         else -> state.extensionMenuOptions
     }
     val proxmoxPatternOptionGroups = if (proxmoxPatternMenuAction != null) {
-        val grouped = linkedMapOf<String, Pair<String, String>>()
-        proxmoxPatternMenuOptions.forEach { option ->
-            val action = resolveMenuOptionAction(option)
-            val label = option.label?.trim().orEmpty()
-            when {
-                action.startsWith("settings_proxmox_pattern_edit_") -> {
-                    val patternLabel = normalizeProxmoxPatternLabel(label.ifBlank {
-                        Uri.decode(action.removePrefix("settings_proxmox_pattern_edit_"))
-                    })
-                    if (patternLabel.isNotBlank()) {
-                        val current = grouped[patternLabel] ?: ("" to "")
-                        grouped[patternLabel] = action to current.second
-                    }
-                }
-                action.startsWith("settings_proxmox_pattern_delete_") -> {
-                    val patternLabel = normalizeProxmoxPatternLabel(label.ifBlank {
-                        Uri.decode(action.removePrefix("settings_proxmox_pattern_delete_"))
-                    })
-                    if (patternLabel.isNotBlank()) {
-                        val current = grouped[patternLabel] ?: ("" to "")
-                        grouped[patternLabel] = current.first to action
-                    }
-                }
-            }
-        }
-        grouped.mapNotNull { (label, actions) ->
-            val editAction = actions.first
-            val deleteAction = actions.second
-            if (editAction.isBlank() && deleteAction.isBlank()) {
-                null
-            } else {
-                ProxmoxPatternOptionGroup(
-                    label = label,
-                    editAction = editAction,
-                    deleteAction = deleteAction
-                )
-            }
-        }
+        buildPatternOptionGroups(proxmoxPatternMenuOptions)
     } else {
         emptyList()
     }
@@ -1463,44 +1486,7 @@ private fun MonitoringApp(
         else -> state.extensionMenuOptions
     }
     val zfsPatternOptionGroups = if (zfsPatternMenuAction != null) {
-        val grouped = linkedMapOf<String, Pair<String, String>>()
-        zfsPatternMenuOptions.forEach { option ->
-            val action = resolveMenuOptionAction(option)
-            val label = option.label?.trim().orEmpty()
-            when {
-                action.startsWith("settings_proxmox_pattern_edit_") -> {
-                    val patternLabel = normalizeProxmoxPatternLabel(label.ifBlank {
-                        Uri.decode(action.removePrefix("settings_proxmox_pattern_edit_"))
-                    })
-                    if (patternLabel.isNotBlank()) {
-                        val current = grouped[patternLabel] ?: ("" to "")
-                        grouped[patternLabel] = action to current.second
-                    }
-                }
-                action.startsWith("settings_proxmox_pattern_delete_") -> {
-                    val patternLabel = normalizeProxmoxPatternLabel(label.ifBlank {
-                        Uri.decode(action.removePrefix("settings_proxmox_pattern_delete_"))
-                    })
-                    if (patternLabel.isNotBlank()) {
-                        val current = grouped[patternLabel] ?: ("" to "")
-                        grouped[patternLabel] = current.first to action
-                    }
-                }
-            }
-        }
-        grouped.mapNotNull { (label, actions) ->
-            val editAction = actions.first
-            val deleteAction = actions.second
-            if (editAction.isBlank() && deleteAction.isBlank()) {
-                null
-            } else {
-                ProxmoxPatternOptionGroup(
-                    label = label,
-                    editAction = editAction,
-                    deleteAction = deleteAction
-                )
-            }
-        }
+        buildPatternOptionGroups(zfsPatternMenuOptions)
     } else {
         emptyList()
     }
@@ -1513,43 +1499,12 @@ private fun MonitoringApp(
         else -> state.extensionMenuOptions
     }
     val databasePatternOptionGroups = if (databasePatternMenuAction != null) {
-        val grouped = linkedMapOf<String, Pair<String, String>>()
-        databasePatternMenuOptions.forEach { option ->
-            val action = resolveMenuOptionAction(option)
-            val label = option.label?.trim().orEmpty()
-            when {
-                action.startsWith("settings_proxmox_pattern_edit_") -> {
-                    val patternLabel = normalizeProxmoxPatternLabel(label.ifBlank {
-                        Uri.decode(action.removePrefix("settings_proxmox_pattern_edit_"))
-                    })
-                    if (patternLabel.isNotBlank()) {
-                        val current = grouped[patternLabel] ?: ("" to "")
-                        grouped[patternLabel] = action to current.second
-                    }
-                }
-                action.startsWith("settings_proxmox_pattern_delete_") -> {
-                    val patternLabel = normalizeProxmoxPatternLabel(label.ifBlank {
-                        Uri.decode(action.removePrefix("settings_proxmox_pattern_delete_"))
-                    })
-                    if (patternLabel.isNotBlank()) {
-                        val current = grouped[patternLabel] ?: ("" to "")
-                        grouped[patternLabel] = current.first to action
-                    }
-                }
-            }
-        }
-        grouped.mapNotNull { (label, actions) ->
-            val editAction = actions.first
-            val deleteAction = actions.second
-            if (editAction.isBlank() && deleteAction.isBlank()) {
-                null
-            } else {
-                DatabasePatternOptionGroup(
-                    label = label,
-                    editAction = editAction,
-                    deleteAction = deleteAction
-                )
-            }
+        buildPatternOptionGroups(databasePatternMenuOptions).map { pattern ->
+            DatabasePatternOptionGroup(
+                label = pattern.label,
+                editAction = pattern.editAction,
+                deleteAction = pattern.deleteAction
+            )
         }
     } else {
         emptyList()
@@ -4821,8 +4776,8 @@ private fun MonitoringApp(
                     }
                     TextButton(
                         onClick = {
-                            onExtensionsSettingsAction(selectedProxmoxPatternDeleteAction)
-                            onExtensionsSettingsAction(patternDialogReturnAction)
+                            proxmoxPatternDeleteConfirmLabel = selectedProxmoxPatternLabel
+                            proxmoxPatternDeleteConfirmAction = selectedProxmoxPatternDeleteAction
                             showProxmoxPatternActionsDialog = false
                         },
                         enabled = selectedProxmoxPatternDeleteAction.isNotBlank()
@@ -4833,6 +4788,39 @@ private fun MonitoringApp(
             },
             dismissButton = {
                 TextButton(onClick = { showProxmoxPatternActionsDialog = false }) {
+                    Text("Отмена")
+                }
+            }
+        )
+    }
+
+    if (proxmoxPatternDeleteConfirmAction.isNotBlank()) {
+        AlertDialog(
+            onDismissRequest = {
+                proxmoxPatternDeleteConfirmAction = ""
+                proxmoxPatternDeleteConfirmLabel = ""
+            },
+            title = { Text("Подтвердить удаление") },
+            text = { Text("Удалить паттерн «${proxmoxPatternDeleteConfirmLabel.ifBlank { "без названия" }}»?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onExtensionsSettingsAction(proxmoxPatternDeleteConfirmAction)
+                        onExtensionsSettingsAction(patternDialogReturnAction)
+                        proxmoxPatternDeleteConfirmAction = ""
+                        proxmoxPatternDeleteConfirmLabel = ""
+                    }
+                ) {
+                    Text("Удалить")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        proxmoxPatternDeleteConfirmAction = ""
+                        proxmoxPatternDeleteConfirmLabel = ""
+                    }
+                ) {
                     Text("Отмена")
                 }
             }
