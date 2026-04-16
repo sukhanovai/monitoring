@@ -4808,7 +4808,9 @@ private fun MonitoringApp(
                 TextButton(
                     onClick = {
                         onExtensionsSettingsAction(proxmoxPatternDeleteConfirmAction)
-                        onExtensionsSettingsAction(patternDialogReturnAction)
+                        if (patternDialogReturnAction != "settings_patterns_proxmox") {
+                            onExtensionsSettingsAction(patternDialogReturnAction)
+                        }
                         proxmoxPatternDeleteConfirmAction = ""
                         proxmoxPatternDeleteConfirmLabel = ""
                     }
@@ -4882,7 +4884,9 @@ private fun MonitoringApp(
                             Uri.encode(proxmoxPatternTypeInput.trim()) + "|" +
                             Uri.encode(proxmoxPatternValueInput.trim())
                         onExtensionsSettingsAction(actionPayload)
-                        onExtensionsSettingsAction(patternDialogReturnAction)
+                        if (patternDialogReturnAction != "settings_patterns_proxmox") {
+                            onExtensionsSettingsAction(patternDialogReturnAction)
+                        }
                         showProxmoxPatternAddDialog = false
                     },
                     enabled = proxmoxPatternCategoryInput.isNotBlank() &&
@@ -4927,7 +4931,9 @@ private fun MonitoringApp(
                             Uri.encode(proxmoxPatternEditTypeInput.trim()) + "|" +
                             Uri.encode(proxmoxPatternEditValueInput.trim())
                         onExtensionsSettingsAction(actionPayload)
-                        onExtensionsSettingsAction(patternDialogReturnAction)
+                        if (patternDialogReturnAction != "settings_patterns_proxmox") {
+                            onExtensionsSettingsAction(patternDialogReturnAction)
+                        }
                         showProxmoxPatternEditDialog = false
                     },
                     enabled = proxmoxPatternEditAction.isNotBlank() &&

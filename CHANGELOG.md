@@ -1,10 +1,10 @@
-## [8.50.147] - 2026-04-16
+## [8.50.148] - 2026-04-16
 
 ### Changed / Изменено
 - EN: Fixed Android Proxmox patterns refresh after delete in `Proxmox tile → gear → Patterns`: after `settings_proxmox_pattern_delete_*` the app now always applies fresh `settings_patterns_proxmox` response (including empty list), so deleted patterns no longer remain visible in Android.
 - RU: Исправлено обновление списка Proxmox-паттернов в Android после удаления в `плашка Proxmox → шестерёнка → Паттерны`: после `settings_proxmox_pattern_delete_*` приложение теперь всегда применяет свежий ответ `settings_patterns_proxmox` (включая пустой список), поэтому удалённые паттерны больше не остаются в UI Android.
-- EN: SemVer patch bump to `8.50.147`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.147` and `ANDROID_VERSION_CODE=493`; prerelease links aligned to `v8.50.147-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.147`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.147` и `ANDROID_VERSION_CODE=493`; prerelease-ссылки выровнены на `v8.50.147-develop`.
+- EN: SemVer patch bump to `8.50.148`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.148` and `ANDROID_VERSION_CODE=494`; prerelease links aligned to `v8.50.148-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.148`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.148` и `ANDROID_VERSION_CODE=494`; prerelease-ссылки выровнены на `v8.50.148-develop`.
 ## [8.50.142] - 2026-04-16
 
 ### Changed / Изменено
