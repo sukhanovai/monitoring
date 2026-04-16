@@ -51,7 +51,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.50.144"
+    private val projectVersion = "8.50.145"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -1343,16 +1343,33 @@ class MainViewModel(
             }
             actionCall
                 .onSuccess { response ->
+                    val refreshedResponse = if (shouldReloadProxmoxPatterns(normalizedAction)) {
+                        runCatching {
+                            currentApi().runExtensionsAction(ExtensionsActionRequest("settings_patterns_proxmox"))
+                        }.map { refreshResult ->
+                            val filteredOptions = filterMenuOptionsByEnabledExtensions(
+                                refreshResult.menuOptions.orEmpty(),
+                                state.extensions
+                            )
+                            Triple(
+                                refreshResult.message ?: "Команда отправлена",
+                                if (filteredOptions.isNotEmpty()) filteredOptions else response.second,
+                                if (filteredOptions.isNotEmpty()) "settings_patterns_proxmox" else response.third
+                            )
+                        }.getOrNull() ?: response
+                    } else {
+                        response
+                    }
                     val zfsHostMenuOptions = resolveZfsHostMenuOptions(
                         action = normalizedAction,
-                        nextOptions = response.second
+                        nextOptions = refreshedResponse.second
                     )
                     state = state.copy(
                         isLoading = false,
-                        message = response.first,
+                        message = refreshedResponse.first,
                         messageSource = "extensions_settings",
-                        extensionSettingsMenuOptions = response.second,
-                        extensionSettingsMenuAction = response.third,
+                        extensionSettingsMenuOptions = refreshedResponse.second,
+                        extensionSettingsMenuAction = refreshedResponse.third,
                         zfsHostMenuOptions = zfsHostMenuOptions
                     )
                 }
@@ -1370,6 +1387,12 @@ class MainViewModel(
                 }
         }
     }
+
+    private fun shouldReloadProxmoxPatterns(action: String): Boolean =
+        action.startsWith("settings_proxmox_pattern_add|") ||
+            action.startsWith("settings_proxmox_pattern_edit_") ||
+            action.startsWith("settings_proxmox_pattern_delete_") ||
+            action.startsWith("settings_proxmox_pattern_toggle_")
 
     private fun shouldRunExtensionsSettingsViaControlApi(action: String): Boolean =
         action in extensionSettingsControlActions ||
