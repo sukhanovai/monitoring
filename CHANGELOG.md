@@ -1,11 +1,12 @@
-## [8.50.145] - 2026-04-16
+## [8.50.146] - 2026-04-16
 
 ### Changed / Изменено
-- EN: Fixed Android flow in `Proxmox tile → gear → patterns`: after create/edit/delete/toggle of a Proxmox pattern, the client now force-refreshes `settings_patterns_proxmox`, so the list state is synchronized with Telegram bot path `Main menu → Proxmox backups → Pattern settings`.
-- RU: Исправлен Android-сценарий `плашка Proxmox → шестерёнка → паттерны`: после создания/редактирования/удаления/переключения Proxmox-паттерна клиент теперь принудительно обновляет `settings_patterns_proxmox`, поэтому состояние списка синхронизировано с веткой Telegram-бота `Главное меню → Бэкапы Proxmox → Настройки паттернов`.
-- EN: SemVer patch bump to `8.50.145`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.145` and `ANDROID_VERSION_CODE=491`; prerelease links aligned to `v8.50.145-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.50.145`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.145` и `ANDROID_VERSION_CODE=491`; prerelease-ссылки выровнены на `v8.50.145-develop`.
-
+- EN: Fixed backend handling of Proxmox pattern creation action payloads: endpoint now accepts `settings_proxmox_pattern_add|<category>|<type>|<pattern>` via prefix matching, so new patterns are actually saved instead of being rejected as invalid edit IDs.
+- RU: Исправлена backend-обработка payload при создании Proxmox-паттернов: endpoint теперь принимает `settings_proxmox_pattern_add|<категория>|<тип>|<паттерн>` по префиксу, поэтому новые паттерны реально сохраняются, а не отклоняются как некорректный ID редактирования.
+- EN: This restores consistency for both flows: Android (`Proxmox tile → gear → +`) and Telegram bot (`Main menu → Proxmox backups → Pattern settings`) now show newly added Proxmox patterns in lists.
+- RU: Это восстанавливает консистентность в обоих сценариях: Android (`плашка Proxmox → шестерёнка → +`) и Telegram-бот (`Главное меню → Бэкапы Proxmox → Настройка паттернов`) теперь показывают добавленные Proxmox-паттерны в списках.
+- EN: SemVer patch bump to `8.50.146`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.50.146` and `ANDROID_VERSION_CODE=492`; prerelease links aligned to `v8.50.146-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.50.146`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.50.146` и `ANDROID_VERSION_CODE=492`; prerelease-ссылки выровнены на `v8.50.146-develop`.
 ## [8.50.142] - 2026-04-16
 
 ### Changed / Изменено
