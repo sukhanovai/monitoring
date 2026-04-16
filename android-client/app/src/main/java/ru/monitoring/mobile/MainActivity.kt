@@ -620,7 +620,7 @@ private fun extractPatternGroupKey(action: String, fallbackLabel: String): Strin
     }
 }
 
-private fun buildPatternOptionGroups(options: List<MenuOption>): List<ProxmoxPatternOptionGroup> {
+private fun buildPatternOptionGroups(options: List<ru.monitoring.mobile.api.MenuOption>): List<ProxmoxPatternOptionGroup> {
     val grouped = linkedMapOf<String, PatternActionGroupDraft>()
     options.forEach { option ->
         val action = resolveMenuOptionAction(option)
