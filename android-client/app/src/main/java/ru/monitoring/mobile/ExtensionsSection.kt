@@ -13,7 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import ru.monitoring.mobile.ui.ExtensionItem
+import ru.monitoring.mobile.api.ExtensionItem
 
 @Composable
 fun ExtensionsSection(
