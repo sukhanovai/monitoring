@@ -66,6 +66,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
@@ -2127,7 +2129,40 @@ private fun MonitoringApp(
                     if (isSettingsExpanded) {
                         AlertDialog(
                             onDismissRequest = { isSettingsExpanded = false },
-                            title = { Text("⚙️ Настройки") },
+                            title = {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("⚙️ Настройки")
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        IconButton(
+                                            onClick = {
+                                                onThemeModeChanged(if (state.themeMode == "light") "dark" else "light")
+                                            }
+                                        ) {
+                                            Icon(
+                                                imageVector = if (state.themeMode == "light") {
+                                                    Icons.Filled.DarkMode
+                                                } else {
+                                                    Icons.Filled.LightMode
+                                                },
+                                                contentDescription = "Переключить тему"
+                                            )
+                                        }
+                                        IconButton(onClick = { isSettingsExpanded = false }) {
+                                            Icon(
+                                                imageVector = Icons.Filled.Close,
+                                                contentDescription = "Закрыть окно настроек"
+                                            )
+                                        }
+                                    }
+                                }
+                            },
                             text = {
                                 Column(
                                     modifier = Modifier
@@ -2167,34 +2202,9 @@ private fun MonitoringApp(
                                             label = { Text("Аутентификация") }
                                         )
                                         FilterChip(
-                                            selected = settingsSection == "servers",
-                                            onClick = { settingsSection = "servers" },
-                                            label = { Text("Серверы") }
-                                        )
-                                        FilterChip(
-                                            selected = settingsSection == "appearance",
-                                            onClick = { settingsSection = "appearance" },
-                                            label = { Text("Тема") }
-                                        )
-                                        FilterChip(
                                             selected = settingsSection == "extensions",
                                             onClick = { settingsSection = "extensions" },
                                             label = { Text("Расширения") }
-                                        )
-                                    }
-                                    FlowRow(
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        FilterChip(
-                                            selected = state.themeMode == "light",
-                                            onClick = { onThemeModeChanged("light") },
-                                            label = { Text("☀️ Светлая") }
-                                        )
-                                        FilterChip(
-                                            selected = state.themeMode == "dark",
-                                            onClick = { onThemeModeChanged("dark") },
-                                            label = { Text("🌙 Тёмная") }
                                         )
                                     }
 
@@ -2322,19 +2332,6 @@ private fun MonitoringApp(
                         Button(onClick = onSaveTime, enabled = canSaveTime) {
                             Text("Сохранить time")
                         }
-                        }
-
-                        if (settingsSection == "appearance") {
-                            Text("Оформление", fontWeight = FontWeight.Bold)
-                            Text("Текущая тема: ${if (state.themeMode == "light") "светлая" else "темная"}")
-                            Button(
-                                onClick = {
-                                    onThemeModeChanged(if (state.themeMode == "light") "dark" else "light")
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text(if (state.themeMode == "light") "Переключить на темную" else "Переключить на светлую")
-                            }
                         }
 
                         if (settingsSection == "extensions") {
@@ -3214,11 +3211,7 @@ private fun MonitoringApp(
                         }
                                 }
                             },
-                            confirmButton = {
-                                TextButton(onClick = { isSettingsExpanded = false }) {
-                                    Text("Закрыть")
-                                }
-                            }
+                            confirmButton = {}
                         )
                     }
                 }
