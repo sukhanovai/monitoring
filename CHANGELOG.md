@@ -1,3 +1,11 @@
+## [8.53.12] - 2026-04-17
+
+### Changed / Изменено
+- EN: Fixed Android `compileCompactOpsDebugKotlin` parse failure in `MainActivity`: added the missing `)` to close the settings `AlertDialog` call and restored closing braces for class scope so `ExtensionsSection` resolves correctly and is no longer treated as a local function.
+- RU: Исправлен parse-сбой Android `compileCompactOpsDebugKotlin` в `MainActivity`: добавлена отсутствующая `)` для закрытия вызова `AlertDialog` в настройках и восстановлены закрывающие фигурные скобки класса, из-за чего `ExtensionsSection` снова корректно резолвится и больше не считается локальной функцией.
+- EN: SemVer patch bump to `8.53.12`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.53.12` and `ANDROID_VERSION_CODE=516`; prerelease links aligned to `v8.53.12-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.53.12`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.53.12` и `ANDROID_VERSION_CODE=516`; prerelease-ссылки выровнены на `v8.53.12-develop`.
+
 ## [8.53.11] - 2026-04-17
 
 ### Changed / Изменено
