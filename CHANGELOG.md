@@ -1,3 +1,11 @@
+## [8.53.10] - 2026-04-17
+
+### Changed / Изменено
+- EN: Fixed `compileCompactOpsDebugKotlin` syntax failure in `MainActivity`: removed a stray `}, confirmButton = {}` fragment after the settings section, restoring valid Compose block structure and eliminating parser/unresolved-reference cascade errors.
+- RU: Исправлен синтаксический сбой `compileCompactOpsDebugKotlin` в `MainActivity`: удалён лишний фрагмент `}, confirmButton = {}` после секции настроек, восстановлена корректная структура Compose-блоков и устранён каскад parser/unresolved-reference ошибок.
+- EN: SemVer patch bump to `8.53.10`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.53.10` and `ANDROID_VERSION_CODE=514`; prerelease links aligned to `v8.53.10-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.53.10`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.53.10` и `ANDROID_VERSION_CODE=514`; prerelease-ссылки выровнены на `v8.53.10-develop`.
+
 ## [8.53.9] - 2026-04-17
 
 ### Changed / Изменено
