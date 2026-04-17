@@ -3211,6 +3211,7 @@ private fun MonitoringApp(
                                     }
                                 }
                             }
+                        }
                                 }
                             },
                             confirmButton = {
