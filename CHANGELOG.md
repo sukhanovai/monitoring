@@ -1,10 +1,10 @@
-## [8.53.19] - 2026-04-17
+## [8.53.20] - 2026-04-17
 
 ### Changed / Изменено
-- EN: Fixed Android `compileCompactOpsDebugKotlin` failure in `ExtensionsSection` by correcting the `ExtensionItem` import to `ru.monitoring.mobile.api.ExtensionItem`, restoring Kotlin symbol resolution for CompactOps build.
-- RU: Исправлен Android-сбой `compileCompactOpsDebugKotlin` в `ExtensionsSection`: импорт `ExtensionItem` переключён на `ru.monitoring.mobile.api.ExtensionItem`, из-за чего восстановился корректный резолв символов при сборке CompactOps.
-- EN: SemVer patch bump to `8.53.19`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.53.19` and `ANDROID_VERSION_CODE=523`; prerelease links aligned to `v8.53.19-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.53.19`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.53.19` и `ANDROID_VERSION_CODE=523`; prerelease-ссылки выровнены на `v8.53.19-develop`.
+- EN: In Android app settings → extensions, removed quick-action buttons for extension sections from the UI; left only the extension enable/disable controls and explanatory text.
+- RU: В Android-приложении в настройках → расширения убраны кнопки быстрых переходов по разделам; оставлены только переключатели включения/выключения расширений и поясняющий текст.
+- EN: SemVer patch bump to `8.53.20`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.53.20` and `ANDROID_VERSION_CODE=524`; prerelease links aligned to `v8.53.20-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.53.20`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.53.20` и `ANDROID_VERSION_CODE=524`; prerelease-ссылки выровнены на `v8.53.20-develop`.
 
 ## [8.53.17] - 2026-04-17
 
