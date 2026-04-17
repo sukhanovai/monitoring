@@ -5946,6 +5946,7 @@ private fun MonitoringApp(
     }
 }
 
+}
 @Composable
 private fun ExtensionsSection(
     items: List<ExtensionItem>,
