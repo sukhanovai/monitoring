@@ -1,12 +1,12 @@
-## [8.51.5] - 2026-04-17
+## [8.51.6] - 2026-04-17
 
 ### Changed / Изменено
-- EN: In Android ZFS host tiles, changed interaction behavior: short tap now opens host details, long tap opens host settings actions (edit / enable-disable / delete).
-- RU: В Android-плашках хостов ZFS изменено поведение: короткий тап теперь открывает сведения по хосту, долгий тап открывает действия настроек хоста (редактировать / вкл-выкл / удалить).
-- EN: Updated helper text in the ZFS section so users can clearly see short-tap vs long-tap behavior.
-- RU: Обновлён текст-подсказка в разделе ZFS, чтобы явно показать поведение короткого и долгого тапа.
-- EN: SemVer patch bump to `8.51.5`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.51.5` and `ANDROID_VERSION_CODE=500`; prerelease links aligned to `v8.51.5-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.51.5`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.51.5` и `ANDROID_VERSION_CODE=500`; prerelease-ссылки выровнены на `v8.51.5-develop`.
+- EN: Restyled action buttons in Android `Settings` sections (save/add/remove/toggle actions) to match the app’s Material 3 visual language.
+- RU: Приведён к единому стилю набор action-кнопок в Android-разделах `Настройки` (сохранение/добавление/удаление/переключатели) под визуальный язык приложения на Material 3.
+- EN: Added reusable composables for settings actions: neutral secondary-container button and destructive error-container button, then applied them to key controls in `BFF`, `Monitoring`, `Bot`, `Time`, and `Auth`.
+- RU: Добавлены переиспользуемые composable-кнопки для действий в настройках: нейтральная (secondary-container) и деструктивная (error-container), после чего применены к ключевым контролам в разделах `BFF`, `Monitoring`, `Bot`, `Time`, `Auth`.
+- EN: SemVer patch bump to `8.51.6`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.51.6` and `ANDROID_VERSION_CODE=501`; prerelease links aligned to `v8.51.6-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.51.6`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.51.6` и `ANDROID_VERSION_CODE=501`; prerelease-ссылки выровнены на `v8.51.6-develop`.
 
 ## [8.51.4] - 2026-04-17
 
