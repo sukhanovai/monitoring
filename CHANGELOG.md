@@ -1,3 +1,11 @@
+## [8.53.11] - 2026-04-17
+
+### Changed / Изменено
+- EN: Fixed Android `compileCompactOpsDebugKotlin` failure in `MainActivity`: removed one extra closing brace in the settings layout block so `PullRefreshIndicator` remains inside the composable scope and parser errors no longer cascade into unresolved references/local-function diagnostics.
+- RU: Исправлен сбой Android `compileCompactOpsDebugKotlin` в `MainActivity`: удалена одна лишняя закрывающая скобка в блоке layout настроек, из-за чего `PullRefreshIndicator` снова находится внутри composable-скоупа и больше не возникает каскад parser/unresolved-reference/local-function ошибок.
+- EN: SemVer patch bump to `8.53.11`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.53.11` and `ANDROID_VERSION_CODE=515`; prerelease links aligned to `v8.53.11-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.53.11`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.53.11` и `ANDROID_VERSION_CODE=515`; prerelease-ссылки выровнены на `v8.53.11-develop`.
+
 ## [8.53.10] - 2026-04-17
 
 ### Changed / Изменено

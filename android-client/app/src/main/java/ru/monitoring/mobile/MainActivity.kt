@@ -3289,7 +3289,6 @@ private fun MonitoringApp(
                             }
                         }
                     }
-                    }
                 }
             }
 
