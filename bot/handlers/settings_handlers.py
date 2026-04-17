@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.53.4
+Server Monitoring System v8.53.6
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.53.4
+Версия: 8.53.6
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -8610,6 +8610,7 @@ def _build_zfs_current_status_lines() -> list[str]:
 
     lines.append("📊 *Текущее состояние пулов*")
     lines.append("")
+    healthy_states = {"ONLINE"}
     current_server = None
     for server_name, pool_name, pool_state, received_at in rows:
         if server_name != current_server:
@@ -8617,8 +8618,11 @@ def _build_zfs_current_status_lines() -> list[str]:
                 lines.append("")
             lines.append(f"🖥 *{escape_markdown(str(server_name), version=1)}*")
             current_server = server_name
+
+        normalized_state = str(pool_state or "").strip().upper()
+        state_marker = "🟢" if normalized_state in healthy_states else "🔴"
         lines.append(
-            f"• `{escape_markdown(str(pool_name), version=1)}`: "
+            f"{state_marker} `{escape_markdown(str(pool_name), version=1)}`: "
             f"`{escape_markdown(str(pool_state), version=1)}` "
             f"({escape_markdown(str(received_at), version=1)})"
         )
