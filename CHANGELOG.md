@@ -1,3 +1,13 @@
+## [8.51.5] - 2026-04-17
+
+### Changed / Изменено
+- EN: In Android ZFS host tiles, changed interaction behavior: short tap now opens host details, long tap opens host settings actions (edit / enable-disable / delete).
+- RU: В Android-плашках хостов ZFS изменено поведение: короткий тап теперь открывает сведения по хосту, долгий тап открывает действия настроек хоста (редактировать / вкл-выкл / удалить).
+- EN: Updated helper text in the ZFS section so users can clearly see short-tap vs long-tap behavior.
+- RU: Обновлён текст-подсказка в разделе ZFS, чтобы явно показать поведение короткого и долгого тапа.
+- EN: SemVer patch bump to `8.51.5`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.51.5` and `ANDROID_VERSION_CODE=500`; prerelease links aligned to `v8.51.5-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.51.5`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.51.5` и `ANDROID_VERSION_CODE=500`; prerelease-ссылки выровнены на `v8.51.5-develop`.
+
 ## [8.51.4] - 2026-04-17
 
 ### Changed / Изменено
