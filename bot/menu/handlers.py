@@ -1,11 +1,11 @@
 """
 /bot/menu/handlers.py
-Server Monitoring System v8.52.0
+Server Monitoring System v8.53.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Bot menu handlers
 Система мониторинга серверов
-Версия: 8.52.0
+Версия: 8.53.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики меню бота
@@ -182,6 +182,8 @@ def start_command(update, context):
 
     if extension_manager.is_extension_enabled('zfs_monitor'):
         keyboard.append([InlineKeyboardButton("🧊 ZFS", callback_data='zfs_menu')])
+    if extension_manager.is_extension_enabled('zfs_pool_free_space_monitor'):
+        keyboard.append([InlineKeyboardButton("💽 Свободное место ZFS пулов", callback_data='zfs_pool_free_space_menu')])
     
     keyboard.extend([
         [InlineKeyboardButton("🛠️ Управление расширениями", callback_data='extensions_menu')],
