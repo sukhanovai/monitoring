@@ -1,3 +1,11 @@
+## [8.51.3] - 2026-04-17
+
+### Changed / Изменено
+- EN: Fixed broken `AlertDialog` composition structure in Android `MainActivity.kt` settings overlay: restored missing block closure so `confirmButton` stays inside the dialog call and settings sections compile correctly (`:app:compileCompactOpsDebugKotlin`).
+- RU: Исправлена сломанная структура композиции `AlertDialog` в Android `MainActivity.kt` (окно настроек): восстановлено пропущенное закрытие блока, из-за чего `confirmButton` снова находится внутри вызова диалога, а секции настроек корректно компилируются (`:app:compileCompactOpsDebugKotlin`).
+- EN: SemVer patch bump to `8.51.3`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.51.3` and `ANDROID_VERSION_CODE=498`; prerelease links aligned to `v8.51.3-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.51.3`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.51.3` и `ANDROID_VERSION_CODE=498`; prerelease-ссылки выровнены на `v8.51.3-develop`.
+
 ## [8.51.2] - 2026-04-17
 
 ### Changed / Изменено
