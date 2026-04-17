@@ -1,10 +1,10 @@
-## [8.53.15] - 2026-04-17
+## [8.53.16] - 2026-04-17
 
 ### Changed / Изменено
-- EN: Fixed Android `compileCompactOpsDebugKotlin` failure in `MainActivity`: removed a stray extra closing brace at file end so `ExtensionsSection` resolves as a top-level composable and Kotlin parser errors are eliminated.
-- RU: Исправлен сбой Android `compileCompactOpsDebugKotlin` в `MainActivity`: удалена лишняя закрывающая фигурная скобка в конце файла, из-за чего `ExtensionsSection` снова корректно резолвится как top-level composable и исчезают parser-ошибки Kotlin.
-- EN: SemVer patch bump to `8.53.15`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.53.15` and `ANDROID_VERSION_CODE=519`; prerelease links aligned to `v8.53.15-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.53.15`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.53.15` и `ANDROID_VERSION_CODE=519`; prerelease-ссылки выровнены на `v8.53.15-develop`.
+- EN: Fixed Android `compileCompactOpsDebugKotlin` failure in `MainActivity`: added the missing closing brace for the main composable scope so `ExtensionsSection` is resolved correctly and Kotlin parser errors are eliminated.
+- RU: Исправлен сбой Android `compileCompactOpsDebugKotlin` в `MainActivity`: добавлена недостающая закрывающая фигурная скобка основного composable-скоупа, из-за чего `ExtensionsSection` снова корректно резолвится и parser-ошибки Kotlin исчезают.
+- EN: SemVer patch bump to `8.53.16`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.53.16` and `ANDROID_VERSION_CODE=520`; prerelease links aligned to `v8.53.16-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.53.16`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.53.16` и `ANDROID_VERSION_CODE=520`; prerelease-ссылки выровнены на `v8.53.16-develop`.
 
 ## [8.53.14] - 2026-04-17
 
