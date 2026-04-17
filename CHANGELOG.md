@@ -1,10 +1,10 @@
-## [8.53.16] - 2026-04-17
+## [8.53.17] - 2026-04-17
 
 ### Changed / Изменено
 - EN: Fixed Android `compileCompactOpsDebugKotlin` failure in `MainActivity`: added the missing closing brace for the main composable scope so `ExtensionsSection` is resolved correctly and Kotlin parser errors are eliminated.
 - RU: Исправлен сбой Android `compileCompactOpsDebugKotlin` в `MainActivity`: добавлена недостающая закрывающая фигурная скобка основного composable-скоупа, из-за чего `ExtensionsSection` снова корректно резолвится и parser-ошибки Kotlin исчезают.
-- EN: SemVer patch bump to `8.53.16`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.53.16` and `ANDROID_VERSION_CODE=520`; prerelease links aligned to `v8.53.16-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.53.16`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.53.16` и `ANDROID_VERSION_CODE=520`; prerelease-ссылки выровнены на `v8.53.16-develop`.
+- EN: SemVer patch bump to `8.53.17`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.53.17` and `ANDROID_VERSION_CODE=521`; prerelease links aligned to `v8.53.17-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.53.17`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.53.17` и `ANDROID_VERSION_CODE=521`; prerelease-ссылки выровнены на `v8.53.17-develop`.
 
 ## [8.53.14] - 2026-04-17
 
