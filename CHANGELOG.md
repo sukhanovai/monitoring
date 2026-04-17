@@ -1,3 +1,13 @@
+## [8.53.4] - 2026-04-17
+
+### Changed / Изменено
+- EN: Updated Telegram `Main menu -> ZFS` screen: it now shows the current ZFS pool status list (latest parsed states from mail monitoring data) directly in the ZFS root screen, while keeping navigation buttons for hosts and patterns.
+- RU: Обновлён экран Telegram `Главное меню -> ZFS`: теперь в корневом экране ZFS показывается текущий список состояний ZFS-пулов (последние статусы из почтового мониторинга), при этом сохранены кнопки перехода к хостам и паттернам.
+- EN: Adjusted `ZFS -> Hosts` presentation and onboarding for mail-based monitoring: host cards no longer display IP/threshold details, and host creation now requires only a host name because matching is done by parsed email patterns.
+- RU: Скорректированы экран `ZFS -> Хосты` и добавление хостов для почтового мониторинга: карточки хостов больше не показывают IP/порог, а при добавлении требуется только имя хоста, так как сопоставление идёт по распарсенным паттернам писем.
+- EN: SemVer patch bump to `8.53.4`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.53.4` and `ANDROID_VERSION_CODE=508`; prerelease links aligned to `v8.53.4-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.53.4`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.53.4` и `ANDROID_VERSION_CODE=508`; prerelease-ссылки выровнены на `v8.53.4-develop`.
+
 ## [8.53.3] - 2026-04-17
 
 ### Changed / Изменено
