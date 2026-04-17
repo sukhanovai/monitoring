@@ -1,3 +1,11 @@
+## [8.53.14] - 2026-04-17
+
+### Changed / Изменено
+- EN: Fixed Android `compileCompactOpsDebugKotlin` failure in `MainActivity`: removed two extra closing braces that broke Compose scope and caused `ExtensionsSection` to be parsed as a local function (`private` modifier error) with follow-up syntax errors.
+- RU: Исправлен сбой Android `compileCompactOpsDebugKotlin` в `MainActivity`: удалены две лишние закрывающие фигурные скобки, которые ломали Compose-скоуп и приводили к тому, что `ExtensionsSection` парсился как локальная функция (ошибка с `private`) с последующими синтаксическими ошибками.
+- EN: SemVer patch bump to `8.53.14`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.53.14` and `ANDROID_VERSION_CODE=518`; prerelease links aligned to `v8.53.14-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.53.14`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.53.14` и `ANDROID_VERSION_CODE=518`; prerelease-ссылки выровнены на `v8.53.14-develop`.
+
 ## [8.53.13] - 2026-04-17
 
 ### Changed / Изменено
