@@ -1792,6 +1792,13 @@ private fun MonitoringApp(
                 )
             )
         }
+        extensionsById["zfs_pool_free_space"]?.takeIf { it.enabled }?.let { extension ->
+            add(
+                buildExtensionDataTile(
+                    extension = extension.copy(name = "zfs пулы")
+                )
+            )
+        }
         extensionsById["stock_load_monitor"]?.takeIf { it.enabled }?.let { extension ->
             add(
                 buildExtensionDataTile(
@@ -1851,6 +1858,10 @@ private fun MonitoringApp(
             } else if (extension.id == "resource_monitor") {
                 {
                     openServerResourcesSingleCheckDetails()
+                }
+            } else if (extension.id == "zfs_pool_free_space") {
+                {
+                    onAction("zfs_pool_free_space_menu")
                 }
             } else {
                 { isSettingsExpanded = true; settingsSection = "extensions" }

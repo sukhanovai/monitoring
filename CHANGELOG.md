@@ -1,3 +1,11 @@
+## [8.54.0] - 2026-04-17
+
+### Changed / Изменено
+- EN: Android compact ops dashboard now includes a dedicated tile for the `💽 Free space of ZFS pools` extension, exposed with a short label `zfs пулы`.
+- RU: В Android compact ops dashboard добавлена отдельная плашка для расширения `💽 Свободное место ZFS пулов`, с коротким названием `zfs пулы`.
+- EN: SemVer minor bump to `8.54.0`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.54.0` and `ANDROID_VERSION_CODE=525`; prerelease links aligned to `v8.54.0-develop`.
+- RU: Выполнен SemVer minor-бамп до `8.54.0`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.54.0` и `ANDROID_VERSION_CODE=525`; prerelease-ссылки выровнены на `v8.54.0-develop`.
+
 ## [8.53.20] - 2026-04-17
 
 ### Changed / Изменено
