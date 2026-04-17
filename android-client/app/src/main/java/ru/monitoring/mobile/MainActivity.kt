@@ -3296,7 +3296,6 @@ private fun MonitoringApp(
                 }
             }
 
-            }
             PullRefreshIndicator(
                 refreshing = state.isLoading,
                 state = pullToRefreshState,

@@ -1,3 +1,11 @@
+## [8.53.9] - 2026-04-17
+
+### Changed / Изменено
+- EN: Fixed Android Compose build failure in `MainActivity`: removed an extra closing brace in the settings dialog block so `PullRefreshIndicator` stays inside the composable layout scope and Kotlin parser errors no longer cascade into unresolved references.
+- RU: Исправлен сбой Android Compose-сборки в `MainActivity`: удалена лишняя закрывающая скобка в блоке диалога настроек, из-за чего `PullRefreshIndicator` снова находится в корректном composable-скоупе, а каскад синтаксических ошибок и `Unresolved reference` больше не возникает.
+- EN: SemVer patch bump to `8.53.9`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.53.9` and `ANDROID_VERSION_CODE=513`; prerelease links aligned to `v8.53.9-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.53.9`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.53.9` и `ANDROID_VERSION_CODE=513`; prerelease-ссылки выровнены на `v8.53.9-develop`.
+
 ## [8.53.8] - 2026-04-17
 
 ### Changed / Изменено
