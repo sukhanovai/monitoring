@@ -2176,6 +2176,7 @@ private fun MonitoringApp(
                     if (isSettingsExpanded) {
                         AlertDialog(
                             onDismissRequest = { isSettingsExpanded = false },
+                            confirmButton = {},
                             title = {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),

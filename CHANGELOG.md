@@ -1,3 +1,11 @@
+## [8.53.8] - 2026-04-17
+
+### Changed / Изменено
+- EN: Fixed Android Compose build failure in `MainActivity`: added mandatory `confirmButton` for the settings `AlertDialog`, which resolves overload selection and removes `@Composable invocations can only happen from the context of a @Composable function` errors in `compileCompactOpsDebugKotlin`.
+- RU: Исправлен сбой Android Compose-сборки в `MainActivity`: для `AlertDialog` окна настроек добавлен обязательный `confirmButton`, что корректно выбирает перегрузку и убирает ошибки `@Composable invocations can only happen from the context of a @Composable function` при `compileCompactOpsDebugKotlin`.
+- EN: SemVer patch bump to `8.53.8`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.53.8` and `ANDROID_VERSION_CODE=512`; prerelease links aligned to `v8.53.8-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.53.8`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.53.8` и `ANDROID_VERSION_CODE=512`; prerelease-ссылки выровнены на `v8.53.8-develop`.
+
 ## [8.53.7] - 2026-04-17
 
 ### Changed / Изменено
