@@ -1,11 +1,11 @@
 """
 /core/monitor_core.py
-Server Monitoring System v8.51.7
+Server Monitoring System v8.52.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core system
 Система мониторинга серверов
-Версия: 8.51.7
+Версия: 8.52.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Ядро системы
@@ -28,6 +28,7 @@ from modules.availability import availability_checker
 from modules.resources import resources_checker
 from modules.morning_report import morning_report
 from modules.targeted_checks import targeted_checks
+from extensions.zfs_free_space_monitor import check_zfs_free_space_alerts
 
 # Старые импорты для совместимости
 import os
@@ -1736,6 +1737,14 @@ def start_monitoring():
 
                 except Exception as e:
                     debug_log(f"❌ Ошибка мониторинга {server['name']}: {e}")
+
+            try:
+                check_zfs_free_space_alerts(
+                    send_alert_func=send_alert,
+                    repeat_interval_seconds=max(int(config.RESOURCE_ALERT_INTERVAL), int(config.CHECK_INTERVAL)),
+                )
+            except Exception as exc:
+                debug_log(f"⚠️ Ошибка плановой проверки ZFS свободного места: {exc}")
 
         time.sleep(config.CHECK_INTERVAL)
 

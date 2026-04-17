@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.51.7
+Server Monitoring System v8.52.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.51.7
+Версия: 8.52.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -23,6 +23,11 @@ from core.config_manager import config_manager as settings_manager
 from config.db_settings import BACKUP_DATABASE_CONFIG
 from config.settings import BACKUP_PATTERNS as DEFAULT_BACKUP_PATTERNS
 from extensions.extension_manager import extension_manager
+from extensions.zfs_free_space_monitor import (
+    build_zfs_free_space_lines,
+    collect_zfs_free_space,
+    get_zfs_servers_config,
+)
 from extensions.supplier_stock_files import (
     SUPPLIER_STOCK_EXTENSION_ID,
     build_supplier_stock_source_stats,
@@ -1717,6 +1722,12 @@ def settings_callback_handler(update, context):
         elif data.startswith('settings_zfs_edit_name_'):
             server_name = data.replace('settings_zfs_edit_name_', '')
             edit_zfs_server_name_handler(update, context, server_name)
+        elif data.startswith('settings_zfs_edit_ip_'):
+            server_name = data.replace('settings_zfs_edit_ip_', '')
+            edit_zfs_server_ip_handler(update, context, server_name)
+        elif data.startswith('settings_zfs_edit_threshold_'):
+            server_name = data.replace('settings_zfs_edit_threshold_', '')
+            edit_zfs_server_threshold_handler(update, context, server_name)
         elif data.startswith('settings_zfs_delete_'):
             server_name = data.replace('settings_zfs_delete_', '')
             delete_zfs_server(update, context, server_name)
@@ -2112,6 +2123,10 @@ def handle_setting_value(update, context):
     # Проверяем, не редактируется ли имя ZFS сервера
     if context.user_data.get('editing_zfs_server_name'):
         return handle_zfs_server_name_edit_input(update, context)
+    if context.user_data.get('editing_zfs_server_ip'):
+        return handle_zfs_server_ip_edit_input(update, context)
+    if context.user_data.get('editing_zfs_server_threshold'):
+        return handle_zfs_server_threshold_edit_input(update, context)
 
     # Проверяем, не добавляется ли база данных
     if context.user_data.get('adding_db_entry'):
@@ -8452,153 +8467,14 @@ def show_zfs_main_menu(update, context):
     )
 
 def show_zfs_status_summary(update, context):
-    """Показать последние статусы ZFS массивов"""
+    """Показать текущий статус ZFS и свободное место по пулам."""
     query = update.callback_query
     query.answer()
-
-    zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
-    if not isinstance(zfs_servers, dict):
-        zfs_servers = {}
-
-    server_enabled_map = {
-        name: (not isinstance(server_value, dict) or server_value.get('enabled', True))
-        for name, server_value in zfs_servers.items()
-    }
-    persisted_enabled_map = _get_zfs_monitoring_state_map()
-    if persisted_enabled_map:
-        server_enabled_map.update(persisted_enabled_map)
-
-    db_path = BACKUP_DATABASE_CONFIG.get("backups_db")
-    if not db_path:
-        query.edit_message_text(
-            "🧊 *ZFS статусы*\n\n❌ База бэкапов не настроена.",
-            parse_mode='Markdown',
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-            ])
-        )
-        return
-
-    conn = sqlite3.connect(str(db_path))
-    cursor = conn.cursor()
-    try:
-        cursor.execute(
-            """
-            SELECT s.server_name, s.pool_name, s.pool_state, s.received_at
-            FROM zfs_pool_status s
-            JOIN (
-                SELECT server_name, pool_name, MAX(received_at) AS last_seen
-                FROM zfs_pool_status
-                GROUP BY server_name, pool_name
-            ) latest
-            ON s.server_name = latest.server_name
-            AND s.pool_name = latest.pool_name
-            AND s.received_at = latest.last_seen
-            ORDER BY s.server_name, s.pool_name
-            """
-        )
-        rows = cursor.fetchall()
-    except Exception as exc:
-        if "no such table: zfs_pool_status" in str(exc):
-            query.edit_message_text(
-                "🧊 *ZFS статусы*\n\n❌ Таблица ZFS ещё не создана.\n"
-                "Дождитесь первого письма или перезапустите мониторинг.",
-                parse_mode='Markdown',
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-                    [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-                ])
-            )
-            conn.close()
-            return
-        raise
-    finally:
-        conn.close()
-
-    rows = [row for row in rows if row[0] in server_enabled_map]
-
-    if not rows:
-        message = "📊 *ZFS статусы*\n\n❌ Данных нет."
-    else:
-        def _md(value: object) -> str:
-            return escape_markdown(str(value or ""), version=1)
-
-        server_stats: dict[str, dict[str, object]] = {}
-        ok_pools = 0
-        bad_pools = 0
-
-        for server_name, pool_name, pool_state, received_at in rows:
-            state_normalized = str(pool_state).upper()
-            is_ok = state_normalized == "ONLINE"
-
-            if is_ok:
-                ok_pools += 1
-            else:
-                bad_pools += 1
-
-            if server_name not in server_stats:
-                server_stats[server_name] = {
-                    "total": 0,
-                    "ok": 0,
-                    "last": str(received_at),
-                    "problems": []
-                }
-
-            server_entry = server_stats[server_name]
-            server_entry["total"] = int(server_entry["total"]) + 1
-            if is_ok:
-                server_entry["ok"] = int(server_entry["ok"]) + 1
-            else:
-                server_entry["problems"].append((str(pool_name), state_normalized))
-
-            if str(received_at) > str(server_entry["last"]):
-                server_entry["last"] = str(received_at)
-
-        healthy_servers = sum(
-            1 for value in server_stats.values()
-            if int(value["ok"]) == int(value["total"])
-        )
-        problematic_servers = len(server_stats) - healthy_servers
-
-        lines = [
-            "📊 *ZFS статусы (последние)*",
-            "",
-            (
-                f"• Серверов: {len(server_stats)} "
-                f"(🟢 {healthy_servers} / 🔴 {problematic_servers})"
-            ),
-            (
-                f"• Пулов: {len(rows)} "
-                f"(🟢 {ok_pools} / 🔴 {bad_pools})"
-            ),
-            ""
-        ]
-
-        for server_name in sorted(server_stats.keys()):
-            server_entry = server_stats[server_name]
-            total = int(server_entry["total"])
-            ok_total = int(server_entry["ok"])
-            problems = server_entry["problems"]
-            is_enabled = server_enabled_map.get(server_name, True)
-            if not is_enabled:
-                server_icon = "⚪️"
-            else:
-                server_icon = "🟢" if not problems else "🔴"
-            lines.append(
-                f"{server_icon} *{_md(server_name)}* · {ok_total}/{total} · {_md(server_entry['last'])}"
-            )
-
-            if problems:
-                formatted_problems = ", ".join(
-                    f"{_md(pool_name)}=`{_md(state_name)}`"
-                    for pool_name, state_name in problems
-                )
-                lines.append(f"  └ {formatted_problems}")
-
-        message = "\n".join(lines)
+    results, errors = collect_zfs_free_space()
+    message = "\n".join(build_zfs_free_space_lines(results, errors))
 
     keyboard = [
+        [InlineKeyboardButton("🔄 Обновить", callback_data='zfs_menu')],
         [InlineKeyboardButton("⚙️ Настройка хостов ZFS", callback_data='settings_zfs_list')],
         [InlineKeyboardButton("⚙️ Настройка паттернов ZFS", callback_data='settings_patterns_zfs')],
         [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
@@ -8616,9 +8492,7 @@ def show_zfs_servers_list(update, context):
     query = update.callback_query
     query.answer()
 
-    zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
-    if not isinstance(zfs_servers, dict):
-        zfs_servers = {}
+    zfs_servers = get_zfs_servers_config()
 
     message = "📋 *ZFS серверы*\n\n"
     if not zfs_servers:
@@ -8626,23 +8500,34 @@ def show_zfs_servers_list(update, context):
     else:
         for server_name in sorted(zfs_servers.keys()):
             server_value = zfs_servers.get(server_name, {})
-            enabled = True
-            if isinstance(server_value, dict):
-                enabled = server_value.get('enabled', True)
+            enabled = bool(server_value.get('enabled', True))
+            ip = str(server_value.get('ip', '')).strip() or "не задан"
+            threshold = int(server_value.get('threshold', 15))
             status_icon = "🟢" if enabled else "🔴"
-            message += f"{status_icon} `{server_name}`\n"
+            message += (
+                f"{status_icon} `{server_name}`\n"
+                f"   └ IP: `{ip}` · Порог: `{threshold}%`\n"
+            )
 
     keyboard = []
     for server_name in sorted(zfs_servers.keys()):
         server_value = zfs_servers.get(server_name, {})
-        enabled = True
-        if isinstance(server_value, dict):
-            enabled = server_value.get('enabled', True)
+        enabled = bool(server_value.get('enabled', True))
         toggle_text = "⛔️ Отключить" if enabled else "✅ Включить"
         keyboard.append([
             InlineKeyboardButton(
-                f"✏️ {server_name}",
+                f"✏️ Имя: {server_name}",
                 callback_data=f"settings_zfs_edit_name_{server_name}"
+            ),
+        ])
+        keyboard.append([
+            InlineKeyboardButton(
+                f"🌐 IP: {server_name}",
+                callback_data=f"settings_zfs_edit_ip_{server_name}"
+            ),
+            InlineKeyboardButton(
+                f"🎯 Порог: {server_name}",
+                callback_data=f"settings_zfs_edit_threshold_{server_name}"
             ),
         ])
         keyboard.append([
@@ -8681,7 +8566,7 @@ def add_zfs_server_handler(update, context):
 
     query.edit_message_text(
         "➕ *Добавление ZFS сервера*\n\n"
-        "Введите имя сервера (как приходит в теме письма):",
+        "Введите имя хоста:",
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
@@ -8695,9 +8580,7 @@ def delete_zfs_server(update, context, server_name):
     query = update.callback_query
     query.answer()
 
-    zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
-    if not isinstance(zfs_servers, dict):
-        zfs_servers = {}
+    zfs_servers = get_zfs_servers_config()
 
     if server_name not in zfs_servers:
         query.edit_message_text(
@@ -8732,33 +8615,72 @@ def handle_zfs_server_input(update, context):
 
     user_input = update.message.text.strip()
     stage = context.user_data.get('zfs_server_stage', 'name')
+    zfs_servers = get_zfs_servers_config()
 
     if stage == 'name':
         if not user_input:
             update.message.reply_text("❌ Имя сервера не может быть пустым. Попробуйте снова:")
             return
 
-        zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
-        if not isinstance(zfs_servers, dict):
-            zfs_servers = {}
-
         if user_input in zfs_servers:
             update.message.reply_text("❌ Такой сервер уже есть. Введите другой:")
             return
 
-        zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
-        if not isinstance(zfs_servers, dict):
-            zfs_servers = {}
+        context.user_data['zfs_new_server_name'] = user_input
+        context.user_data['zfs_server_stage'] = 'ip'
+        update.message.reply_text(
+            "🌐 Введите IP адрес хоста (пример: `192.168.1.10`):",
+            parse_mode='Markdown',
+        )
+        return
 
-        zfs_servers[user_input] = {
+    if stage == 'ip':
+        if not user_input:
+            update.message.reply_text("❌ IP адрес не может быть пустым. Попробуйте снова:")
+            return
+
+        context.user_data['zfs_new_server_ip'] = user_input
+        context.user_data['zfs_server_stage'] = 'threshold'
+        update.message.reply_text(
+            "🎯 Введите порог алерта по свободному месту в % (например, `15`):",
+            parse_mode='Markdown',
+        )
+        return
+
+    if stage == 'threshold':
+        try:
+            threshold = int(user_input)
+        except ValueError:
+            update.message.reply_text("❌ Порог должен быть целым числом. Попробуйте снова:")
+            return
+
+        if threshold < 1 or threshold > 95:
+            update.message.reply_text("❌ Порог должен быть в диапазоне 1..95.")
+            return
+
+        host_name = str(context.user_data.get('zfs_new_server_name', '')).strip()
+        host_ip = str(context.user_data.get('zfs_new_server_ip', '')).strip()
+        if not host_name or not host_ip:
+            update.message.reply_text("❌ Данные хоста потеряны. Начните добавление заново.")
+            context.user_data.pop('adding_zfs_server', None)
+            context.user_data.pop('zfs_server_stage', None)
+            context.user_data.pop('zfs_new_server_name', None)
+            context.user_data.pop('zfs_new_server_ip', None)
+            return
+
+        zfs_servers[host_name] = {
+            'ip': host_ip,
+            'threshold': threshold,
             'enabled': True,
         }
         settings_manager.set_setting('ZFS_SERVERS', zfs_servers)
-        _set_zfs_monitoring_state(user_input, True)
+        _set_zfs_monitoring_state(host_name, True)
 
         update.message.reply_text(
             "✅ Сервер добавлен.\n"
-            f"Имя: `{user_input}`",
+            f"Имя: `{host_name}`\n"
+            f"IP: `{host_ip}`\n"
+            f"Порог: `{threshold}%`",
             parse_mode='Markdown',
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
@@ -8769,15 +8691,15 @@ def handle_zfs_server_input(update, context):
 
         context.user_data.pop('adding_zfs_server', None)
         context.user_data.pop('zfs_server_stage', None)
+        context.user_data.pop('zfs_new_server_name', None)
+        context.user_data.pop('zfs_new_server_ip', None)
 
 def edit_zfs_server_name_handler(update, context, server_name):
     """Начать редактирование имени ZFS сервера"""
     query = update.callback_query
     query.answer()
 
-    zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
-    if not isinstance(zfs_servers, dict):
-        zfs_servers = {}
+    zfs_servers = get_zfs_servers_config()
 
     if server_name not in zfs_servers:
         query.edit_message_text(
@@ -8815,9 +8737,7 @@ def handle_zfs_server_name_edit_input(update, context):
         update.message.reply_text("❌ Имя сервера не может быть пустым. Попробуйте снова:")
         return
 
-    zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
-    if not isinstance(zfs_servers, dict):
-        zfs_servers = {}
+    zfs_servers = get_zfs_servers_config()
 
     old_name = context.user_data.get('editing_zfs_server_old_name')
     if not old_name or old_name not in zfs_servers:
@@ -8832,7 +8752,7 @@ def handle_zfs_server_name_edit_input(update, context):
 
     server_value = zfs_servers.pop(old_name, None)
     if not isinstance(server_value, dict):
-        server_value = {'enabled': True}
+        server_value = {'enabled': True, 'ip': '', 'threshold': 15}
     zfs_servers[new_name] = server_value
     settings_manager.set_setting('ZFS_SERVERS', zfs_servers)
     _rename_zfs_server_statuses(old_name, new_name)
@@ -8851,14 +8771,131 @@ def handle_zfs_server_name_edit_input(update, context):
     context.user_data.pop('editing_zfs_server_name', None)
     context.user_data.pop('editing_zfs_server_old_name', None)
 
+def edit_zfs_server_ip_handler(update, context, server_name):
+    """Начать редактирование IP ZFS сервера."""
+    query = update.callback_query
+    query.answer()
+
+    zfs_servers = get_zfs_servers_config()
+    if server_name not in zfs_servers:
+        query.edit_message_text("❌ Сервер не найден.")
+        return
+
+    context.user_data['editing_zfs_server_ip'] = True
+    context.user_data['editing_zfs_server_ip_name'] = server_name
+    current_ip = str(zfs_servers.get(server_name, {}).get('ip', '')).strip()
+
+    query.edit_message_text(
+        "🌐 *Редактирование IP ZFS сервера*\n\n"
+        f"Хост: `{server_name}`\n"
+        f"Текущий IP: `{current_ip or 'не задан'}`\n\n"
+        "Введите новый IP:",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
+            [InlineKeyboardButton("❌ Отмена", callback_data='settings_zfs_list'),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ])
+    )
+
+def handle_zfs_server_ip_edit_input(update, context):
+    """Обработчик изменения IP ZFS сервера."""
+    if 'editing_zfs_server_ip' not in context.user_data:
+        return
+
+    new_ip = update.message.text.strip()
+    if not new_ip:
+        update.message.reply_text("❌ IP адрес не может быть пустым.")
+        return
+
+    server_name = str(context.user_data.get('editing_zfs_server_ip_name', '')).strip()
+    zfs_servers = get_zfs_servers_config()
+    if server_name not in zfs_servers:
+        update.message.reply_text("❌ Сервер не найден.")
+    else:
+        zfs_servers[server_name]['ip'] = new_ip
+        settings_manager.set_setting('ZFS_SERVERS', zfs_servers)
+        update.message.reply_text(
+            f"✅ IP для `{server_name}` обновлен: `{new_ip}`",
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs_list'),
+                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ])
+        )
+
+    context.user_data.pop('editing_zfs_server_ip', None)
+    context.user_data.pop('editing_zfs_server_ip_name', None)
+
+def edit_zfs_server_threshold_handler(update, context, server_name):
+    """Начать редактирование порога свободного места ZFS сервера."""
+    query = update.callback_query
+    query.answer()
+
+    zfs_servers = get_zfs_servers_config()
+    if server_name not in zfs_servers:
+        query.edit_message_text("❌ Сервер не найден.")
+        return
+
+    threshold = int(zfs_servers.get(server_name, {}).get('threshold', 15))
+    context.user_data['editing_zfs_server_threshold'] = True
+    context.user_data['editing_zfs_server_threshold_name'] = server_name
+
+    query.edit_message_text(
+        "🎯 *Редактирование порога ZFS*\n\n"
+        f"Хост: `{server_name}`\n"
+        f"Текущий порог: `{threshold}%`\n\n"
+        "Введите новый порог (1..95):",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
+            [InlineKeyboardButton("❌ Отмена", callback_data='settings_zfs_list'),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ])
+    )
+
+def handle_zfs_server_threshold_edit_input(update, context):
+    """Обработчик изменения порога ZFS сервера."""
+    if 'editing_zfs_server_threshold' not in context.user_data:
+        return
+
+    try:
+        threshold = int(update.message.text.strip())
+    except ValueError:
+        update.message.reply_text("❌ Порог должен быть целым числом.")
+        return
+
+    if threshold < 1 or threshold > 95:
+        update.message.reply_text("❌ Порог должен быть в диапазоне 1..95.")
+        return
+
+    server_name = str(context.user_data.get('editing_zfs_server_threshold_name', '')).strip()
+    zfs_servers = get_zfs_servers_config()
+    if server_name not in zfs_servers:
+        update.message.reply_text("❌ Сервер не найден.")
+    else:
+        zfs_servers[server_name]['threshold'] = threshold
+        settings_manager.set_setting('ZFS_SERVERS', zfs_servers)
+        update.message.reply_text(
+            f"✅ Порог для `{server_name}` обновлен: `{threshold}%`",
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
+                [InlineKeyboardButton("↩️ Назад", callback_data='settings_zfs_list'),
+                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ])
+        )
+
+    context.user_data.pop('editing_zfs_server_threshold', None)
+    context.user_data.pop('editing_zfs_server_threshold_name', None)
+
 def toggle_zfs_server(update, context, server_name):
     """Включить/отключить мониторинг ZFS сервера"""
     query = update.callback_query
     query.answer()
 
-    zfs_servers = settings_manager.get_setting('ZFS_SERVERS', {})
-    if not isinstance(zfs_servers, dict):
-        zfs_servers = {}
+    zfs_servers = get_zfs_servers_config()
 
     if server_name not in zfs_servers:
         query.edit_message_text(
@@ -8876,7 +8913,7 @@ def toggle_zfs_server(update, context, server_name):
         enabled = server_value.get('enabled', True)
     else:
         enabled = True
-        server_value = {'enabled': True}
+        server_value = {'enabled': True, 'ip': '', 'threshold': 15}
 
     server_value['enabled'] = not enabled
     zfs_servers[server_name] = server_value
