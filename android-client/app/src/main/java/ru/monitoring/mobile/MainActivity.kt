@@ -1342,7 +1342,6 @@ private fun MonitoringApp(
 
     var isManagementExpanded by rememberSaveable { mutableStateOf(false) }
     var isSettingsExpanded by rememberSaveable { mutableStateOf(false) }
-    var isExtensionsSettingsOpened by rememberSaveable { mutableStateOf(false) }
     var isSshAuthExpanded by rememberSaveable { mutableStateOf(false) }
     var isWindowsAuthExpanded by rememberSaveable { mutableStateOf(false) }
     var showWindowsAll by rememberSaveable { mutableStateOf(false) }
@@ -1491,6 +1490,12 @@ private fun MonitoringApp(
         state.windowsUsernameInput.isNotBlank() ||
         state.sshPasswordInput.isNotBlank() ||
         state.windowsPasswordInput.isNotBlank()
+
+    LaunchedEffect(settingsSection) {
+        if (settingsSection == "extensions") {
+            onOpenExtensionsSettingsMenu()
+        }
+    }
 
     val hiddenTransformation = PasswordVisualTransformation()
     val windowsByType = state.windowsCredentials.groupBy { it.serverType ?: "default" }
@@ -1848,7 +1853,7 @@ private fun MonitoringApp(
                     openServerResourcesSingleCheckDetails()
                 }
             } else {
-                { isSettingsExpanded = true; settingsSection = "extensions"; isExtensionsSettingsOpened = true }
+                { isSettingsExpanded = true; settingsSection = "extensions" }
             },
             onLongClick = null,
             onSettingsClick = null
@@ -2376,14 +2381,16 @@ private fun MonitoringApp(
                             label = { Text("metrics_collection_time (HH:mm)") },
                             modifier = Modifier.fillMaxWidth()
                         )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        val notificationsEnabled = state.morningReportNotificationsEnabled
+                        if (notificationsEnabled) {
                             SettingsActionButton(
-                                label = "Уведомления ВКЛ",
-                                onClick = { onMorningNotificationsEnabledChanged(true) }
-                            )
-                            SettingsDangerButton(
-                                label = "Уведомления ВЫКЛ",
+                                label = "Уведомления: включены",
                                 onClick = { onMorningNotificationsEnabledChanged(false) }
+                            )
+                        } else {
+                            SettingsDangerButton(
+                                label = "Уведомления: выключены",
+                                onClick = { onMorningNotificationsEnabledChanged(true) }
                             )
                         }
                         Text("Статус уведомлений: ${if (state.morningReportNotificationsEnabled) "включены" else "выключены"}")
@@ -2398,14 +2405,13 @@ private fun MonitoringApp(
                             Text("🧩 Настройки расширений", fontWeight = FontWeight.Bold)
                             Text("Включай/выключай расширения и открывай настройки активных расширений.")
 
-                            if (isExtensionsSettingsOpened && state.extensionSettingsMenuOptions.isEmpty()) {
+                            if (state.extensionSettingsMenuOptions.isEmpty()) {
                                 Text("Нет доступных настроек для активных расширений.")
                             }
                             if (state.message.isNotBlank() && state.messageSource == "extensions_settings") {
                                 Text(state.message)
                             }
-                            if (isExtensionsSettingsOpened) {
-                                val menuOptions = state.extensionSettingsMenuOptions
+                            val menuOptions = state.extensionSettingsMenuOptions
                                     .mapNotNull { item ->
                                         val optionLabel = item.label?.trim().orEmpty()
                                         val optionAction = item.action?.trim().orEmpty()
@@ -2461,7 +2467,7 @@ private fun MonitoringApp(
                                         onClick = {
                                             when {
                                                 action == "settings_extensions_close_local" -> {
-                                                    isExtensionsSettingsOpened = false
+                                                    isSettingsExpanded = false
                                                 }
                                                 action in setOf(
                                                     "set_cpu_warning",
@@ -2558,24 +2564,16 @@ private fun MonitoringApp(
                                 }
                             }
 
-                            Button(
-                                onClick = {
-                                    if (isExtensionsSettingsOpened) {
-                                        isExtensionsSettingsOpened = false
-                                    } else {
-                                        isExtensionsSettingsOpened = true
-                                        onOpenExtensionsSettingsMenu()
-                                    }
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text(if (isExtensionsSettingsOpened) "⚙️ Скрыть настройки расширений" else "⚙️ Открыть настройки расширений")
-                            }
-
                             Text("🛠️ Управление расширениями (вкл/выкл)", fontWeight = FontWeight.Bold)
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Button(onClick = onEnableAllExtensions) { Text("📊 Включить все") }
-                                Button(onClick = onDisableAllExtensions) { Text("📋 Отключить все") }
+                                SettingsActionButton(
+                                    label = "Включить все",
+                                    onClick = onEnableAllExtensions
+                                )
+                                SettingsDangerButton(
+                                    label = "Отключить все",
+                                    onClick = onDisableAllExtensions
+                                )
                             }
                             ExtensionsSection(items = state.extensions, onToggleExtension = onToggleExtension)
                             Spacer(modifier = Modifier.height(8.dp))
@@ -5970,8 +5968,26 @@ private fun ExtensionsSection(
                         Text(item.description)
                     }
                     Text("Статус: ${if (item.enabled) "Включено" else "Отключено"}")
-                    Button(onClick = { onToggleExtension(item.id, !item.enabled) }) {
-                        Text(if (item.enabled) "🔴 Выключить" else "🟢 Включить")
+                    Button(
+                        onClick = { onToggleExtension(item.id, !item.enabled) },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (item.enabled) {
+                                MaterialTheme.colorScheme.errorContainer
+                            } else {
+                                MaterialTheme.colorScheme.secondaryContainer
+                            },
+                            contentColor = if (item.enabled) {
+                                MaterialTheme.colorScheme.onErrorContainer
+                            } else {
+                                MaterialTheme.colorScheme.onSecondaryContainer
+                            }
+                        )
+                    ) {
+                        Text(
+                            if (item.enabled) "Выключить" else "Включить",
+                            fontWeight = FontWeight.SemiBold
+                        )
                     }
                 }
             }
