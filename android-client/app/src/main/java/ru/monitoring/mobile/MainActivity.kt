@@ -4147,7 +4147,7 @@ private fun MonitoringApp(
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
-                                text = "Долгий тап по плашке хоста — настройки (редактировать / вкл-выкл / удалить)",
+                                text = "Короткий тап по плашке хоста — сведения. Долгий тап — настройки (редактировать / вкл-выкл / удалить)",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -4162,17 +4162,9 @@ private fun MonitoringApp(
                                         ZfsStatusTile(
                                             card = card,
                                             onClick = {
-                                                val hostGroup = monitoringByHost[card.hostName.trim().lowercase()]
-                                                if (hostGroup != null) {
-                                                    zfsSelectedHostName = hostGroup.hostName
-                                                    zfsSelectedHostEditAction = hostGroup.editAction
-                                                    zfsSelectedHostDeleteAction = hostGroup.deleteAction
-                                                    zfsSelectedHostToggleAction = hostGroup.toggleAction
-                                                    showZfsHostActionsDialog = true
-                                                } else {
-                                                    pendingZfsHostSettingsName = card.hostName
-                                                    onExtensionsSettingsAction("settings_zfs_list")
-                                                }
+                                                zfsDetailsHostName = card.hostName
+                                                zfsStatusDetailsFallbackText = formatZfsHostDetails(card)
+                                                showZfsHostDetailsDialog = true
                                             },
                                             onLongClick = {
                                                 val hostGroup = monitoringByHost[card.hostName.trim().lowercase()]
