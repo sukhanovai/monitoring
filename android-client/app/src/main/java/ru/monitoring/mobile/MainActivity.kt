@@ -5945,7 +5945,7 @@ private fun MonitoringApp(
         )
     }
 }
-
+}
 
 @Composable
 private fun ExtensionsSection(
