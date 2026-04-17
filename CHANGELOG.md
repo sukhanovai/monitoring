@@ -1,12 +1,14 @@
-## [8.51.6] - 2026-04-17
+## [8.51.7] - 2026-04-17
 
 ### Changed / Изменено
-- EN: Restyled action buttons in Android `Settings` sections (save/add/remove/toggle actions) to match the app’s Material 3 visual language.
-- RU: Приведён к единому стилю набор action-кнопок в Android-разделах `Настройки` (сохранение/добавление/удаление/переключатели) под визуальный язык приложения на Material 3.
-- EN: Added reusable composables for settings actions: neutral secondary-container button and destructive error-container button, then applied them to key controls in `BFF`, `Monitoring`, `Bot`, `Time`, and `Auth`.
-- RU: Добавлены переиспользуемые composable-кнопки для действий в настройках: нейтральная (secondary-container) и деструктивная (error-container), после чего применены к ключевым контролам в разделах `BFF`, `Monitoring`, `Bot`, `Time`, `Auth`.
-- EN: SemVer patch bump to `8.51.6`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.51.6` and `ANDROID_VERSION_CODE=501`; prerelease links aligned to `v8.51.6-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.51.6`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.51.6` и `ANDROID_VERSION_CODE=501`; prerelease-ссылки выровнены на `v8.51.6-develop`.
+- EN: Android `Settings → Time`: merged `Notifications ON`/`Notifications OFF` into a single toggle-style button that flips state on tap.
+- RU: Android `Настройки → Время`: кнопки `Уведомления ВКЛ` и `Уведомления ВЫКЛ` объединены в одну кнопку-переключатель с инверсией состояния по нажатию.
+- EN: Android `Settings → Extensions`: removed the `Open extension settings` button; extension settings menu now auto-loads when the section is opened.
+- RU: Android `Настройки → Расширения`: удалена кнопка `Открыть настройки расширений`; меню настроек расширений теперь автоматически подгружается при входе в раздел.
+- EN: Restyled extension management actions (`Enable all`/`Disable all` and per-extension toggle) to fit the app’s Material 3 settings style.
+- RU: Кнопки управления расширениями (`Включить все`/`Отключить все` и индивидуальный toggle расширения) визуально приведены к стилю приложения на Material 3.
+- EN: SemVer patch bump to `8.51.7`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.51.7` and `ANDROID_VERSION_CODE=502`; prerelease links aligned to `v8.51.7-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.51.7`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.51.7` и `ANDROID_VERSION_CODE=502`; prerelease-ссылки выровнены на `v8.51.7-develop`.
 
 ## [8.51.4] - 2026-04-17
 
