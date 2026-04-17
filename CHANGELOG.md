@@ -1,3 +1,13 @@
+## [8.53.3] - 2026-04-17
+
+### Changed / Изменено
+- EN: Reverted Telegram `🧊 ZFS` main-menu routing to the original ZFS monitor flow: `zfs_menu` now opens the ZFS monitoring menu (hosts/patterns for mail-based ZFS status parsing) instead of the SSH free-space screen.
+- RU: Возвращена исходная маршрутизация `🧊 ZFS` в главном меню Telegram: `zfs_menu` снова открывает меню мониторинга ZFS (хосты/паттерны для парсинга почтовых статусов ZFS), а не экран SSH-свободного места.
+- EN: Kept backward compatibility for internal ZFS entrypoints by redirecting legacy `show_zfs_status_summary` calls to the ZFS main menu.
+- RU: Сохранена обратная совместимость внутренних точек входа ZFS: устаревший вызов `show_zfs_status_summary` теперь перенаправляется в главное меню ZFS.
+- EN: SemVer patch bump to `8.53.3`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.53.3` and `ANDROID_VERSION_CODE=507`; prerelease links aligned to `v8.53.3-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.53.3`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.53.3` и `ANDROID_VERSION_CODE=507`; prerelease-ссылки выровнены на `v8.53.3-develop`.
+
 ## [8.53.2] - 2026-04-17
 
 ### Changed / Изменено
