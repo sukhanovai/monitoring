@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.53.1
+Server Monitoring System v8.53.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.53.1
+Версия: 8.53.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -8478,7 +8478,6 @@ def show_zfs_status_summary(update, context):
     message = "\n".join(build_zfs_free_space_lines(results, errors))
 
     keyboard = [
-        [InlineKeyboardButton("🔄 Обновить", callback_data='zfs_menu')],
         [InlineKeyboardButton("⚙️ Настройка хостов ZFS", callback_data='settings_zfs_list')],
         [InlineKeyboardButton("⚙️ Настройка паттернов ZFS", callback_data='settings_patterns_zfs')],
         [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],

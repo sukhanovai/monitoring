@@ -1,3 +1,15 @@
+## [8.53.2] - 2026-04-17
+
+### Changed / Изменено
+- EN: Telegram `🧊 ZFS` button behavior fixed: `zfs_menu` now opens live ZFS pool free-space summary for configured hosts instead of opening ZFS settings first.
+- RU: Исправлено поведение кнопки Telegram `🧊 ZFS`: `zfs_menu` теперь открывает сводку по свободному месту ZFS-пулов хостов, а не меню настроек ZFS.
+- EN: ZFS free-space collection switched from `zpool list` to `zfs list` in Telegram ZFS pool reporting modules; pool metrics are now calculated from root dataset (`USED + AVAIL`) to better match practical available space.
+- RU: Сбор данных свободного места ZFS в Telegram-проверках переведён с `zpool list` на `zfs list`; метрики пула теперь считаются по корневому dataset (`USED + AVAIL`), что лучше отражает доступное место.
+- EN: Removed `🔄 Refresh` button from ZFS status/free-space Telegram screens to simplify navigation and avoid redundant controls.
+- RU: Убрана кнопка `🔄 Обновить` из экранов ZFS-статуса/свободного места в Telegram для упрощения навигации и удаления дублирующего действия.
+- EN: SemVer patch bump to `8.53.2`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.53.2` and `ANDROID_VERSION_CODE=506`; prerelease links aligned to `v8.53.2-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.53.2`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.53.2` и `ANDROID_VERSION_CODE=506`; prerelease-ссылки выровнены на `v8.53.2-develop`.
+
 ## [8.53.1] - 2026-04-17
 
 ### Changed / Изменено
