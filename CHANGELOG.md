@@ -1,3 +1,15 @@
+## [8.51.4] - 2026-04-17
+
+### Changed / Изменено
+- EN: In Android settings dialog, replaced the text close button with a header `X` icon to close the window.
+- RU: В Android-диалоге настроек текстовая кнопка закрытия заменена на крестик `X` в заголовке окна.
+- EN: Removed `Servers` and `Theme` section chips from settings sections list and removed dual theme chips from the dialog body.
+- RU: Из списка разделов настроек убраны плашки `Серверы` и `Тема`, а также удалён блок из двух отдельных переключателей темы внутри тела диалога.
+- EN: Added a single icon-only theme toggle button in the settings header and placed it to the left of the close icon; icon now reflects the target mode (`DarkMode`/`LightMode`).
+- RU: Добавлена единая кнопка переключения темы только с иконкой в заголовке настроек; кнопка размещена слева от крестика, а иконка отражает целевой режим (`DarkMode`/`LightMode`).
+- EN: SemVer patch bump to `8.51.4`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.51.4` and `ANDROID_VERSION_CODE=499`; prerelease links aligned to `v8.51.4-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.51.4`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.51.4` и `ANDROID_VERSION_CODE=499`; prerelease-ссылки выровнены на `v8.51.4-develop`.
+
 ## [8.51.3] - 2026-04-17
 
 ### Changed / Изменено
