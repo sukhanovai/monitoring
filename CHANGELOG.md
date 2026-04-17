@@ -1,14 +1,18 @@
-## [8.51.7] - 2026-04-17
+## [8.52.0] - 2026-04-17
 
 ### Changed / Изменено
+- EN: Telegram ZFS extension upgraded to monitor free space on ZFS pools of backup hosts via SSH in the common monitoring loop schedule; alerts now trigger when free space drops below a per-host threshold.
+- RU: Расширение ZFS в Telegram доработано: добавлен мониторинг свободного места на ZFS-пулах backup-хостов по SSH в общем расписании цикла проверок; алерты срабатывают при падении свободного места ниже порога конкретного хоста.
+- EN: Added/updated Telegram UX for ZFS extension: ZFS button in start menu, `zfs_menu` now returns live pool free-space details, and host management now supports add/edit/delete/activate/deactivate with fields `name`, `ip`, and `alert threshold`.
+- RU: Обновлён Telegram UX расширения ZFS: добавлена кнопка ZFS в стартовое меню, по `zfs_menu` теперь выводятся актуальные данные по свободному месту пулов, а управление хостами поддерживает добавление/редактирование/удаление/активацию/деактивацию с полями `имя`, `ip` и `порог алерта`.
 - EN: Android `Settings → Time`: merged `Notifications ON`/`Notifications OFF` into a single toggle-style button that flips state on tap.
 - RU: Android `Настройки → Время`: кнопки `Уведомления ВКЛ` и `Уведомления ВЫКЛ` объединены в одну кнопку-переключатель с инверсией состояния по нажатию.
 - EN: Android `Settings → Extensions`: removed the `Open extension settings` button; extension settings menu now auto-loads when the section is opened.
 - RU: Android `Настройки → Расширения`: удалена кнопка `Открыть настройки расширений`; меню настроек расширений теперь автоматически подгружается при входе в раздел.
 - EN: Restyled extension management actions (`Enable all`/`Disable all` and per-extension toggle) to fit the app’s Material 3 settings style.
 - RU: Кнопки управления расширениями (`Включить все`/`Отключить все` и индивидуальный toggle расширения) визуально приведены к стилю приложения на Material 3.
-- EN: SemVer patch bump to `8.51.7`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.51.7` and `ANDROID_VERSION_CODE=502`; prerelease links aligned to `v8.51.7-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.51.7`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.51.7` и `ANDROID_VERSION_CODE=502`; prerelease-ссылки выровнены на `v8.51.7-develop`.
+- EN: SemVer **minor** bump to `8.52.0`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.52.0` and `ANDROID_VERSION_CODE=503`; prerelease links aligned to `v8.52.0-develop`.
+- RU: Выполнен SemVer **minor**-бамп до `8.52.0`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.52.0` и `ANDROID_VERSION_CODE=503`; prerelease-ссылки выровнены на `v8.52.0-develop`.
 
 ## [8.51.4] - 2026-04-17
 
