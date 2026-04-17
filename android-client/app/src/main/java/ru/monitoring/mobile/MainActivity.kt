@@ -1057,10 +1057,14 @@ private fun ZfsStatusTile(
 }
 
 @Composable
-private fun DashboardActionButton(label: String, onClick: () -> Unit) {
+private fun DashboardActionButton(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Button(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier,
         shape = RoundedCornerShape(14.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -2007,14 +2011,13 @@ private fun MonitoringApp(
                                 Text(if (areOpsTilesExpanded) "Свернуть" else "Развернуть")
                             }
                         }
-                        FlowRow(
+                        Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            maxItemsInEachRow = 2
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             DashboardActionButton(
                                 label = "🌅 Утренний отчёт",
+                                modifier = Modifier.weight(1f),
                                 onClick = {
                                     showMorningReportDialog = true
                                     onAction("send_morning_report")
@@ -2022,6 +2025,7 @@ private fun MonitoringApp(
                             )
                             DashboardActionButton(
                                 label = "⚙️ Общие настройки",
+                                modifier = Modifier.weight(1f),
                                 onClick = { isSettingsExpanded = !isSettingsExpanded }
                             )
                         }
