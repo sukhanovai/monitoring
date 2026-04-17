@@ -1077,6 +1077,48 @@ private fun DashboardActionButton(
     }
 }
 
+@Composable
+private fun SettingsActionButton(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
+) {
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+        )
+    ) {
+        Text(text = label, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+private fun SettingsDangerButton(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
+) {
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer,
+            contentColor = MaterialTheme.colorScheme.onErrorContainer
+        )
+    ) {
+        Text(text = label, fontWeight = FontWeight.SemiBold)
+    }
+}
+
 class MainActivity : ComponentActivity() {
     private var downServersFromNotification by mutableStateOf<List<String>>(emptyList())
 
@@ -2217,7 +2259,7 @@ private fun MonitoringApp(
                             label = { Text("Base URL API") }
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = onSaveBaseUrl) { Text("Сохранить URL") }
+                            SettingsActionButton(label = "Сохранить URL", onClick = onSaveBaseUrl)
                         }
                         OutlinedTextField(
                             value = state.token,
@@ -2232,7 +2274,10 @@ private fun MonitoringApp(
                             }
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = { onSaveToken(state.token) }) { Text("Сохранить токен") }
+                            SettingsActionButton(
+                                label = "Сохранить токен",
+                                onClick = { onSaveToken(state.token) }
+                            )
                         }
                         }
 
@@ -2256,9 +2301,11 @@ private fun MonitoringApp(
                             label = { Text("max_downtime_sec") },
                             modifier = Modifier.fillMaxWidth()
                         )
-                        Button(onClick = onSaveMonitoring, enabled = canSaveMonitoring) {
-                            Text("Сохранить monitoring")
-                        }
+                        SettingsActionButton(
+                            label = "Сохранить monitoring",
+                            onClick = onSaveMonitoring,
+                            enabled = canSaveMonitoring
+                        )
                         }
 
                         if (settingsSection == "bot") {
@@ -2286,7 +2333,10 @@ private fun MonitoringApp(
                             state.telegramChatIds.forEach { chatId ->
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Text(chatId, modifier = Modifier.weight(1f))
-                                    Button(onClick = { onRemoveTelegramChatId(chatId) }) { Text("Удалить") }
+                                    SettingsDangerButton(
+                                        label = "Удалить",
+                                        onClick = { onRemoveTelegramChatId(chatId) }
+                                    )
                                 }
                             }
                         }
@@ -2297,11 +2347,13 @@ private fun MonitoringApp(
                             modifier = Modifier.fillMaxWidth()
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = onAddTelegramChatId) { Text("Добавить chat_id") }
+                            SettingsActionButton(label = "Добавить chat_id", onClick = onAddTelegramChatId)
                         }
-                        Button(onClick = onSaveBot, enabled = canSaveBot) {
-                            Text("Сохранить bot")
-                        }
+                        SettingsActionButton(
+                            label = "Сохранить bot",
+                            onClick = onSaveBot,
+                            enabled = canSaveBot
+                        )
                         }
 
                         if (settingsSection == "time") {
@@ -2325,13 +2377,21 @@ private fun MonitoringApp(
                             modifier = Modifier.fillMaxWidth()
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = { onMorningNotificationsEnabledChanged(true) }) { Text("Уведомления ВКЛ") }
-                            Button(onClick = { onMorningNotificationsEnabledChanged(false) }) { Text("Уведомления ВЫКЛ") }
+                            SettingsActionButton(
+                                label = "Уведомления ВКЛ",
+                                onClick = { onMorningNotificationsEnabledChanged(true) }
+                            )
+                            SettingsDangerButton(
+                                label = "Уведомления ВЫКЛ",
+                                onClick = { onMorningNotificationsEnabledChanged(false) }
+                            )
                         }
                         Text("Статус уведомлений: ${if (state.morningReportNotificationsEnabled) "включены" else "выключены"}")
-                        Button(onClick = onSaveTime, enabled = canSaveTime) {
-                            Text("Сохранить time")
-                        }
+                        SettingsActionButton(
+                            label = "Сохранить time",
+                            onClick = onSaveTime,
+                            enabled = canSaveTime
+                        )
                         }
 
                         if (settingsSection == "extensions") {
@@ -2967,9 +3027,11 @@ private fun MonitoringApp(
                             Text("• Учетных записей: $windowsTotal")
                             Text("• Типов серверов: $windowsTypes")
 
-                            Button(onClick = { isSshAuthExpanded = !isSshAuthExpanded }, modifier = Modifier.fillMaxWidth()) {
-                                Text("👤 SSH аутентификация")
-                            }
+                            SettingsActionButton(
+                                onClick = { isSshAuthExpanded = !isSshAuthExpanded },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = "👤 SSH аутентификация"
+                            )
                             if (isSshAuthExpanded) {
                                 OutlinedTextField(
                                     value = state.sshUsernameInput,
@@ -2983,16 +3045,24 @@ private fun MonitoringApp(
                                     label = { Text("Путь к SSH ключу") },
                                     modifier = Modifier.fillMaxWidth()
                                 )
-                                Button(onClick = onSaveAuth, enabled = canSaveAuth) { Text("Сохранить SSH") }
+                                SettingsActionButton(
+                                    label = "Сохранить SSH",
+                                    onClick = onSaveAuth,
+                                    enabled = canSaveAuth
+                                )
                             }
 
-                            Button(onClick = { isWindowsAuthExpanded = !isWindowsAuthExpanded }, modifier = Modifier.fillMaxWidth()) {
-                                Text("🖥 Windows аутентификация")
-                            }
+                            SettingsActionButton(
+                                onClick = { isWindowsAuthExpanded = !isWindowsAuthExpanded },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = "🖥 Windows аутентификация"
+                            )
                             if (isWindowsAuthExpanded) {
-                                Button(onClick = { showWindowsAll = !showWindowsAll }, modifier = Modifier.fillMaxWidth()) {
-                                    Text("👥 Просмотр всех учетных записей")
-                                }
+                                SettingsActionButton(
+                                    onClick = { showWindowsAll = !showWindowsAll },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    label = "👥 Просмотр всех учетных записей"
+                                )
                                 if (showWindowsAll) {
                                     state.windowsCredentials.forEach { cred ->
                                         ElevatedCard(modifier = Modifier.fillMaxWidth()) {
@@ -3001,7 +3071,10 @@ private fun MonitoringApp(
                                                 Text("Пользователь: ${cred.username ?: "-"}")
                                                 Text("ID: ${cred.id ?: "-"}")
                                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                                    Button(onClick = { onRemoveWindowsCredential(cred.id) }) { Text("Удалить") }
+                                                    SettingsDangerButton(
+                                                        label = "Удалить",
+                                                        onClick = { onRemoveWindowsCredential(cred.id) }
+                                                    )
                                                 }
                                             }
                                         }
@@ -3039,11 +3112,16 @@ private fun MonitoringApp(
                                     label = { Text("Приоритет") },
                                     modifier = Modifier.fillMaxWidth()
                                 )
-                                Button(onClick = onAddWindowsCredential) { Text("Добавить учетную запись") }
+                                SettingsActionButton(
+                                    label = "Добавить учетную запись",
+                                    onClick = onAddWindowsCredential
+                                )
 
-                                Button(onClick = { showWindowsByType = !showWindowsByType }, modifier = Modifier.fillMaxWidth()) {
-                                    Text("📊 Учетные данные по типам")
-                                }
+                                SettingsActionButton(
+                                    onClick = { showWindowsByType = !showWindowsByType },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    label = "📊 Учетные данные по типам"
+                                )
                                 if (showWindowsByType) {
                                     windowsByType.forEach { (serverType, creds) ->
                                         Text("$serverType (${creds.size} учетных записей):", fontWeight = FontWeight.Bold)
@@ -3056,9 +3134,11 @@ private fun MonitoringApp(
                                     }
                                 }
 
-                                Button(onClick = { showWindowsTypeStats = !showWindowsTypeStats }, modifier = Modifier.fillMaxWidth()) {
-                                    Text("⚙️ Управление типами серверов")
-                                }
+                                SettingsActionButton(
+                                    onClick = { showWindowsTypeStats = !showWindowsTypeStats },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    label = "⚙️ Управление типами серверов"
+                                )
                                 if (showWindowsTypeStats) {
                                     Text("Существующие типы:", fontWeight = FontWeight.Bold)
                                     if (state.windowsTypes.isNotEmpty()) {
@@ -3079,7 +3159,7 @@ private fun MonitoringApp(
                                         label = { Text("Имя нового типа") },
                                         modifier = Modifier.fillMaxWidth()
                                     )
-                                    Button(onClick = onCreateWindowsType) { Text("Создать тип") }
+                                    SettingsActionButton(label = "Создать тип", onClick = onCreateWindowsType)
 
                                     Text("Переименовать тип", fontWeight = FontWeight.Bold)
                                     OutlinedTextField(
@@ -3094,7 +3174,7 @@ private fun MonitoringApp(
                                         label = { Text("Новое имя типа") },
                                         modifier = Modifier.fillMaxWidth()
                                     )
-                                    Button(onClick = onRenameWindowsType) { Text("Переименовать") }
+                                    SettingsActionButton(label = "Переименовать", onClick = onRenameWindowsType)
 
                                     Text("Объединить типы", fontWeight = FontWeight.Bold)
                                     OutlinedTextField(
@@ -3109,7 +3189,7 @@ private fun MonitoringApp(
                                         label = { Text("Target type") },
                                         modifier = Modifier.fillMaxWidth()
                                     )
-                                    Button(onClick = onMergeWindowsTypes) { Text("Объединить") }
+                                    SettingsActionButton(label = "Объединить", onClick = onMergeWindowsTypes)
 
                                     Text("Удалить тип", fontWeight = FontWeight.Bold)
                                     OutlinedTextField(
@@ -3124,7 +3204,7 @@ private fun MonitoringApp(
                                         label = { Text("Перенести в тип (target)") },
                                         modifier = Modifier.fillMaxWidth()
                                     )
-                                    Button(onClick = onDeleteWindowsType) { Text("Удалить тип") }
+                                    SettingsDangerButton(label = "Удалить тип", onClick = onDeleteWindowsType)
                                 }
                             }
                         }
