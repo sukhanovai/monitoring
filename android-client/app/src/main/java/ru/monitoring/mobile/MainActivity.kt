@@ -5990,5 +5990,3 @@ private fun ExtensionsSection(
         }
     }
 }
-
-}
