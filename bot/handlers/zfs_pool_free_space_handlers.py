@@ -1,11 +1,11 @@
 """
 /bot/handlers/zfs_pool_free_space_handlers.py
-Server Monitoring System v8.53.1
+Server Monitoring System v8.53.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Telegram handlers for ZFS pool free space extension
 Система мониторинга серверов
-Версия: 8.53.1
+Версия: 8.53.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Telegram-обработчики расширения свободного места ZFS-пулов
@@ -24,7 +24,6 @@ from extensions.zfs_pool_free_space import (
 def _menu_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         [
-            [InlineKeyboardButton("🔄 Обновить", callback_data="zfs_pool_free_space_menu")],
             [InlineKeyboardButton("⚙️ Настройка хостов", callback_data="zfsp_hosts_list")],
             [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
             [InlineKeyboardButton("✖️ Закрыть", callback_data="close")],

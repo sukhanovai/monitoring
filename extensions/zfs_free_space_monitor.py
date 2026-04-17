@@ -1,11 +1,11 @@
 """
 /extensions/zfs_free_space_monitor.py
-Server Monitoring System v8.53.1
+Server Monitoring System v8.53.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 ZFS free space monitoring over SSH
 Система мониторинга серверов
-Версия: 8.53.1
+Версия: 8.53.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг свободного места ZFS по SSH
@@ -86,7 +86,7 @@ def collect_zfs_free_space() -> tuple[list[dict[str, Any]], list[str]]:
             errors.append(f"⚠️ {host_name}: не указан IP")
             continue
 
-        command = "zpool list -H -p -o name,size,alloc,free,health"
+        command = "zfs list -H -p -o name,used,avail"
         success, stdout, stderr = run_ssh_command(host_ip, command, timeout=20)
         if not success:
             error_text = (stderr or "ошибка подключения").strip()
@@ -100,29 +100,33 @@ def collect_zfs_free_space() -> tuple[list[dict[str, Any]], list[str]]:
 
         for row in rows:
             parts = row.split("\t")
-            if len(parts) < 5:
+            if len(parts) < 3:
                 continue
 
-            pool_name, size_raw, alloc_raw, free_raw, health = parts[:5]
+            dataset_name, used_raw, avail_raw = parts[:3]
+            pool_name = dataset_name.split("/", 1)[0].strip()
+            if not pool_name or "/" in dataset_name:
+                continue
+
             try:
-                size_bytes = int(size_raw)
-                alloc_bytes = int(alloc_raw)
-                free_bytes = int(free_raw)
+                used_bytes = int(used_raw)
+                avail_bytes = int(avail_raw)
             except ValueError:
                 continue
 
-            free_percent = (free_bytes * 100.0 / size_bytes) if size_bytes > 0 else 0.0
+            size_bytes = used_bytes + avail_bytes
+            free_percent = (avail_bytes * 100.0 / size_bytes) if size_bytes > 0 else 0.0
             results.append(
                 {
                     "host_name": host_name,
                     "ip": host_ip,
                     "pool": pool_name,
                     "size_bytes": size_bytes,
-                    "alloc_bytes": alloc_bytes,
-                    "free_bytes": free_bytes,
+                    "alloc_bytes": used_bytes,
+                    "free_bytes": avail_bytes,
                     "free_percent": round(free_percent, 1),
                     "threshold": threshold,
-                    "health": str(health or "").upper(),
+                    "health": "N/A",
                     "is_alert": free_percent <= threshold,
                 }
             )
@@ -160,11 +164,10 @@ def build_zfs_free_space_lines(results: list[dict[str, Any]], errors: list[str])
                 lines.append(f"*{host_name}* ({row['ip']})")
 
             icon = "🚨" if row.get("is_alert") else "🟢"
-            health_icon = "✅" if row.get("health") == "ONLINE" else "⚠️"
             lines.append(
                 f"{icon} `{row['pool']}` {row['free_percent']}% free"
                 f" ({_bytes_to_human(int(row['free_bytes']))} / {_bytes_to_human(int(row['size_bytes']))})"
-                f" · threshold {row['threshold']}% · {health_icon} {row['health']}"
+                f" · threshold {row['threshold']}%"
             )
 
         lines.append("")

@@ -1,11 +1,11 @@
 """
 /bot/handlers/callbacks.py
-Server Monitoring System v8.53.1
+Server Monitoring System v8.53.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 A single router for callbacks.
 Система мониторинга серверов
-Версия: 8.53.1
+Версия: 8.53.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единый router callback’ов.
@@ -300,8 +300,8 @@ def callback_router(update, context):
         servers_list_handler(update, context)
 
     elif data == 'zfs_menu':
-        from bot.handlers.settings_handlers import show_zfs_main_menu
-        show_zfs_main_menu(update, context)
+        from bot.handlers.settings_handlers import show_zfs_status_summary
+        show_zfs_status_summary(update, context)
 
     elif data == 'zfs_pool_free_space_menu' or data.startswith('zfsp_'):
         from bot.handlers.zfs_pool_free_space_handlers import handle_callbacks
