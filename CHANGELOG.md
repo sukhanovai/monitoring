@@ -1,3 +1,13 @@
+## [8.51.1] - 2026-04-17
+
+### Changed / Изменено
+- EN: In Android dashboard, action buttons `🌅 Morning report` and `⚙️ General settings` are now forced into a single horizontal row with equal width, preventing vertical wrap and making quick actions more compact.
+- RU: В Android-дашборде кнопки действий `🌅 Утренний отчёт` и `⚙️ Общие настройки` теперь принудительно выстроены в один горизонтальный ряд с равной шириной, без переноса на вторую строку, чтобы быстрые действия выглядели компактнее.
+- EN: Updated `DashboardActionButton` API to accept external `Modifier`, enabling reuse in fixed row layouts and weighted sizing scenarios.
+- RU: Обновлён API `DashboardActionButton`: добавлен внешний `Modifier`, что позволяет переиспользовать кнопку в фиксированных рядах и сценариях с `weight`.
+- EN: SemVer patch bump to `8.51.1`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.51.1` and `ANDROID_VERSION_CODE=496`; prerelease links aligned to `v8.51.1-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.51.1`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.51.1` и `ANDROID_VERSION_CODE=496`; prerelease-ссылки выровнены на `v8.51.1-develop`.
+
 ## [8.51.0] - 2026-04-16
 
 ### Changed / Изменено
