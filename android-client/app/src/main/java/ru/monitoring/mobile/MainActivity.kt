@@ -5947,48 +5947,4 @@ private fun MonitoringApp(
 }
 
 }
-@Composable
-private fun ExtensionsSection(
-    items: List<ExtensionItem>,
-    onToggleExtension: (String, Boolean) -> Unit
-) {
-    if (items.isEmpty()) {
-        Text("Список расширений пуст")
-        return
-    }
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        items.forEach { item ->
-            ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(item.name, fontWeight = FontWeight.Bold)
-                    if (item.description.isNotBlank()) {
-                        Text(item.description)
-                    }
-                    Text("Статус: ${if (item.enabled) "Включено" else "Отключено"}")
-                    Button(
-                        onClick = { onToggleExtension(item.id, !item.enabled) },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (item.enabled) {
-                                MaterialTheme.colorScheme.errorContainer
-                            } else {
-                                MaterialTheme.colorScheme.secondaryContainer
-                            },
-                            contentColor = if (item.enabled) {
-                                MaterialTheme.colorScheme.onErrorContainer
-                            } else {
-                                MaterialTheme.colorScheme.onSecondaryContainer
-                            }
-                        )
-                    ) {
-                        Text(
-                            if (item.enabled) "Выключить" else "Включить",
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
 }

@@ -1,3 +1,11 @@
+## [8.53.18] - 2026-04-17
+
+### Changed / Изменено
+- EN: Fixed Android `compileCompactOpsDebugKotlin` failure in `MainActivity` by extracting `ExtensionsSection` into a dedicated top-level composable file, which removes local-function parsing ambiguity and restores symbol resolution.
+- RU: Исправлен Android-сбой `compileCompactOpsDebugKotlin` в `MainActivity`: `ExtensionsSection` вынесен в отдельный top-level composable-файл, что убрало неоднозначность парсинга локальной функции и восстановило корректный резолв символа.
+- EN: SemVer patch bump to `8.53.18`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.53.18` and `ANDROID_VERSION_CODE=522`; prerelease links aligned to `v8.53.18-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.53.18`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.53.18` и `ANDROID_VERSION_CODE=522`; prerelease-ссылки выровнены на `v8.53.18-develop`.
+
 ## [8.53.17] - 2026-04-17
 
 ### Changed / Изменено
