@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.53.2
+Server Monitoring System v8.53.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.53.2
+Версия: 8.53.3
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -23,11 +23,7 @@ from core.config_manager import config_manager as settings_manager
 from config.db_settings import BACKUP_DATABASE_CONFIG
 from config.settings import BACKUP_PATTERNS as DEFAULT_BACKUP_PATTERNS
 from extensions.extension_manager import extension_manager
-from extensions.zfs_free_space_monitor import (
-    build_zfs_free_space_lines,
-    collect_zfs_free_space,
-    get_zfs_servers_config,
-)
+from extensions.zfs_free_space_monitor import get_zfs_servers_config
 from bot.handlers.zfs_pool_free_space_handlers import handle_text_input as handle_zfsp_text_input
 from extensions.supplier_stock_files import (
     SUPPLIER_STOCK_EXTENSION_ID,
@@ -8471,24 +8467,8 @@ def show_zfs_main_menu(update, context):
     )
 
 def show_zfs_status_summary(update, context):
-    """Показать текущий статус ZFS и свободное место по пулам."""
-    query = update.callback_query
-    query.answer()
-    results, errors = collect_zfs_free_space()
-    message = "\n".join(build_zfs_free_space_lines(results, errors))
-
-    keyboard = [
-        [InlineKeyboardButton("⚙️ Настройка хостов ZFS", callback_data='settings_zfs_list')],
-        [InlineKeyboardButton("⚙️ Настройка паттернов ZFS", callback_data='settings_patterns_zfs')],
-        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-        [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
-    ]
-
-    query.edit_message_text(
-        message,
-        parse_mode='Markdown',
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
+    """Совместимость: перенаправить в меню ZFS-мониторинга по почтовым паттернам."""
+    show_zfs_main_menu(update, context)
 
 def show_zfs_servers_list(update, context):
     """Показать список ZFS серверов"""
