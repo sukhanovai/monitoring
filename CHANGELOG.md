@@ -1,12 +1,12 @@
-## [8.51.1] - 2026-04-17
+## [8.51.2] - 2026-04-17
 
 ### Changed / Изменено
-- EN: In Android dashboard, action buttons `🌅 Morning report` and `⚙️ General settings` are now forced into a single horizontal row with equal width, preventing vertical wrap and making quick actions more compact.
-- RU: В Android-дашборде кнопки действий `🌅 Утренний отчёт` и `⚙️ Общие настройки` теперь принудительно выстроены в один горизонтальный ряд с равной шириной, без переноса на вторую строку, чтобы быстрые действия выглядели компактнее.
-- EN: Updated `DashboardActionButton` API to accept external `Modifier`, enabling reuse in fixed row layouts and weighted sizing scenarios.
-- RU: Обновлён API `DashboardActionButton`: добавлен внешний `Modifier`, что позволяет переиспользовать кнопку в фиксированных рядах и сценариях с `weight`.
-- EN: SemVer patch bump to `8.51.1`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.51.1` and `ANDROID_VERSION_CODE=496`; prerelease links aligned to `v8.51.1-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.51.1`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.51.1` и `ANDROID_VERSION_CODE=496`; prerelease-ссылки выровнены на `v8.51.1-develop`.
+- EN: Renamed Android dashboard action from `⚙️ General settings` to `⚙️ Settings` and changed opening behavior: settings now open as an overlay dialog instead of inline block expansion.
+- RU: Переименован пункт в Android-дашборде с `⚙️ Общие настройки` на `⚙️ Настройки`, а открытие переработано в формат окна с наложением (overlay) вместо разворота инлайнового блока.
+- EN: Inside the settings overlay, section selectors and theme controls were migrated from buttons to `FilterChip` toggle tiles for faster section switching.
+- RU: Внутри окна настроек кнопки выбора разделов и темы заменены на плашки-переключатели (`FilterChip`) для более быстрого переключения.
+- EN: SemVer patch bump to `8.51.2`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.51.2` and `ANDROID_VERSION_CODE=497`; prerelease links aligned to `v8.51.2-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.51.2`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.51.2` и `ANDROID_VERSION_CODE=497`; prerelease-ссылки выровнены на `v8.51.2-develop`.
 
 ## [8.51.0] - 2026-04-16
 

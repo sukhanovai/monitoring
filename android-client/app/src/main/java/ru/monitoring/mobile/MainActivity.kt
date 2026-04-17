@@ -2024,9 +2024,9 @@ private fun MonitoringApp(
                                 }
                             )
                             DashboardActionButton(
-                                label = "⚙️ Общие настройки",
+                                label = "⚙️ Настройки",
                                 modifier = Modifier.weight(1f),
-                                onClick = { isSettingsExpanded = !isSettingsExpanded }
+                                onClick = { isSettingsExpanded = true }
                             )
                         }
                     }
@@ -2100,7 +2100,7 @@ private fun MonitoringApp(
                                 Text("🎛️ Управление")
                             }
                             Button(
-                                onClick = { isSettingsExpanded = !isSettingsExpanded },
+                                onClick = { isSettingsExpanded = true },
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Text("⚙️ Настройки")
@@ -2125,26 +2125,78 @@ private fun MonitoringApp(
                         }
                     }
                     if (isSettingsExpanded) {
-                        Text("Разделы настроек", fontWeight = FontWeight.Bold)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = { settingsSection = "bff" }) { Text("BFF") }
-                            Button(onClick = { settingsSection = "monitoring" }) { Text("Мониторинг") }
-                            Button(onClick = { settingsSection = "bot" }) { Text("Бот") }
-                        }
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Button(onClick = { settingsSection = "time" }) { Text("Время") }
-                            Button(onClick = { settingsSection = "auth" }) { Text("Аутентификация") }
-                            Button(onClick = { settingsSection = "servers" }) { Text("Серверы") }
-                            Button(onClick = { settingsSection = "appearance" }) { Text("Тема") }
-                            Button(onClick = { settingsSection = "extensions" }) { Text("Расширения") }
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = { onThemeModeChanged("light") }) { Text("☀️ Светлая") }
-                            Button(onClick = { onThemeModeChanged("dark") }) { Text("🌙 Тёмная") }
-                        }
+                        AlertDialog(
+                            onDismissRequest = { isSettingsExpanded = false },
+                            title = { Text("⚙️ Настройки") },
+                            text = {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(max = 560.dp)
+                                        .verticalScroll(rememberScrollState()),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text("Разделы настроек", fontWeight = FontWeight.Bold)
+                                    FlowRow(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        FilterChip(
+                                            selected = settingsSection == "bff",
+                                            onClick = { settingsSection = "bff" },
+                                            label = { Text("BFF") }
+                                        )
+                                        FilterChip(
+                                            selected = settingsSection == "monitoring",
+                                            onClick = { settingsSection = "monitoring" },
+                                            label = { Text("Мониторинг") }
+                                        )
+                                        FilterChip(
+                                            selected = settingsSection == "bot",
+                                            onClick = { settingsSection = "bot" },
+                                            label = { Text("Бот") }
+                                        )
+                                        FilterChip(
+                                            selected = settingsSection == "time",
+                                            onClick = { settingsSection = "time" },
+                                            label = { Text("Время") }
+                                        )
+                                        FilterChip(
+                                            selected = settingsSection == "auth",
+                                            onClick = { settingsSection = "auth" },
+                                            label = { Text("Аутентификация") }
+                                        )
+                                        FilterChip(
+                                            selected = settingsSection == "servers",
+                                            onClick = { settingsSection = "servers" },
+                                            label = { Text("Серверы") }
+                                        )
+                                        FilterChip(
+                                            selected = settingsSection == "appearance",
+                                            onClick = { settingsSection = "appearance" },
+                                            label = { Text("Тема") }
+                                        )
+                                        FilterChip(
+                                            selected = settingsSection == "extensions",
+                                            onClick = { settingsSection = "extensions" },
+                                            label = { Text("Расширения") }
+                                        )
+                                    }
+                                    FlowRow(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        FilterChip(
+                                            selected = state.themeMode == "light",
+                                            onClick = { onThemeModeChanged("light") },
+                                            label = { Text("☀️ Светлая") }
+                                        )
+                                        FilterChip(
+                                            selected = state.themeMode == "dark",
+                                            onClick = { onThemeModeChanged("dark") },
+                                            label = { Text("🌙 Тёмная") }
+                                        )
+                                    }
 
                         if (settingsSection == "bff") {
                             Text("Подключение к BFF", fontWeight = FontWeight.Bold)
@@ -3159,7 +3211,14 @@ private fun MonitoringApp(
                                     }
                                 }
                             }
-                        }
+                                }
+                            },
+                            confirmButton = {
+                                TextButton(onClick = { isSettingsExpanded = false }) {
+                                    Text("Закрыть")
+                                }
+                            }
+                        )
                     }
                 }
             }
