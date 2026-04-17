@@ -1,3 +1,17 @@
+## [8.53.0] - 2026-04-17
+
+### Changed / Изменено
+- EN: Restored `🧊 ZFS` behavior in Telegram main menu: `zfs_menu` now opens the original ZFS extension menu (hosts/patterns for mail-based ZFS status monitoring) instead of SSH free-space output.
+- RU: Восстановлено поведение `🧊 ZFS` в главном меню Telegram: `zfs_menu` снова открывает исходное меню расширения ZFS (хосты/паттерны для почтового мониторинга статуса ZFS), а не SSH-вывод свободного места.
+- EN: Added a separate Telegram extension `💽 Free space on ZFS pools` with independent enable/disable toggle in extension management and a dedicated main-menu button.
+- RU: Добавлено отдельное Telegram-расширение `💽 Свободное место ZFS пулов` с независимым включением/выключением в управлении расширениями и отдельной кнопкой в главном меню.
+- EN: Implemented dedicated host management for the new free-space extension (add/edit/delete/activate/deactivate), with required fields `host name`, `IP`, and `alert threshold`; SSH authorization is reused from common SSH settings.
+- RU: Реализовано отдельное управление хостами для нового расширения свободного места (добавить/редактировать/удалить/активировать/деактивировать) с полями `имя хоста`, `IP` и `порог алерта`; SSH-авторизация используется из общих SSH-настроек.
+- EN: Added scheduled polling of ZFS pool free space into the common monitoring loop for the new extension, with threshold alerts and recovery notifications.
+- RU: Добавлен плановый опрос свободного места ZFS-пулов в общий цикл мониторинга для нового расширения, с пороговыми алертами и уведомлениями о восстановлении.
+- EN: SemVer **minor** bump to `8.53.0`; synchronized explicit version mentions in runtime/config/docs and Android metadata to `ANDROID_VERSION_NAME=8.53.0`, `ANDROID_VERSION_CODE=504`.
+- RU: Выполнен SemVer **minor**-бамп до `8.53.0`; синхронизированы явные упоминания версии в runtime/config/docs и Android-метаданных до `ANDROID_VERSION_NAME=8.53.0`, `ANDROID_VERSION_CODE=504`.
+
 ## [8.52.0] - 2026-04-17
 
 ### Changed / Изменено

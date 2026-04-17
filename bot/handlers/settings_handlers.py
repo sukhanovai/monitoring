@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.52.0
+Server Monitoring System v8.53.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.52.0
+Версия: 8.53.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -28,6 +28,7 @@ from extensions.zfs_free_space_monitor import (
     collect_zfs_free_space,
     get_zfs_servers_config,
 )
+from bot.handlers.zfs_pool_free_space_handlers import handle_text_input as handle_zfsp_text_input
 from extensions.supplier_stock_files import (
     SUPPLIER_STOCK_EXTENSION_ID,
     build_supplier_stock_source_stats,
@@ -2063,6 +2064,9 @@ def handle_setting_input(update, context, setting_key):
 
 def handle_setting_value(update, context):
     """Обработчик получения значения настройки - ОБНОВЛЕННАЯ ВЕРСИЯ"""
+    if handle_zfsp_text_input(update, context):
+        return
+
     # Сначала проверяем, не добавляется ли Windows учетная запись
     if context.user_data.get('adding_windows_cred'):
         return handle_windows_credential_input(update, context)
