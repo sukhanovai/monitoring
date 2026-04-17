@@ -1,3 +1,11 @@
+## [8.53.7] - 2026-04-17
+
+### Changed / Изменено
+- EN: Fixed Android Compose build failure in `MainActivity`: corrected `AlertDialog` block structure in settings UI so composable scopes close in the right order, eliminating syntax/composable-context cascade errors during `compileCompactOpsDebugKotlin`.
+- RU: Исправлен падёж Android Compose-сборки в `MainActivity`: восстановлена корректная структура блока `AlertDialog` в UI настроек, чтобы composable-скоупы закрывались в правильном порядке и не вызывали каскад синтаксических/контекстных ошибок при `compileCompactOpsDebugKotlin`.
+- EN: SemVer patch bump to `8.53.7`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.53.7` and `ANDROID_VERSION_CODE=511`; prerelease links aligned to `v8.53.7-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.53.7`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.53.7` и `ANDROID_VERSION_CODE=511`; prerelease-ссылки выровнены на `v8.53.7-develop`.
+
 ## [8.53.6] - 2026-04-17
 
 ### Changed / Изменено

@@ -3287,7 +3287,7 @@ private fun MonitoringApp(
                                 }
                             }
                         }
-                                }
+                    }
                             },
                             confirmButton = {}
                         )
