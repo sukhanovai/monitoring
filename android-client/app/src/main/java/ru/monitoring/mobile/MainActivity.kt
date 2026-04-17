@@ -3289,6 +3289,7 @@ private fun MonitoringApp(
                             }
                         }
                     }
+                    )
                 }
             }
 
@@ -5989,4 +5990,7 @@ private fun ExtensionsSection(
             }
         }
     }
+}
+
+}
 }
