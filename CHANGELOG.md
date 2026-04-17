@@ -1,3 +1,11 @@
+## [8.53.1] - 2026-04-17
+
+### Changed / Изменено
+- EN: Completed SemVer patch bump to `8.53.1` by synchronizing remaining explicit version mentions across runtime/config/docs, including files that still had `8.52.0`/`8.53.0` after the previous release pass.
+- RU: Завершён SemVer patch-бамп до `8.53.1`: синхронизированы оставшиеся явные упоминания версии в runtime/config/docs, включая файлы, где после прошлого релизного прохода ещё оставались `8.52.0`/`8.53.0`.
+- EN: Android metadata updated to `ANDROID_VERSION_NAME=8.53.1` and `ANDROID_VERSION_CODE=505`; prerelease links aligned to `v8.53.1-develop`.
+- RU: Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.53.1` и `ANDROID_VERSION_CODE=505`; prerelease-ссылки выровнены на `v8.53.1-develop`.
+
 ## [8.53.0] - 2026-04-17
 
 ### Changed / Изменено
