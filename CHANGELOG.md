@@ -1,3 +1,11 @@
+## [8.55.22] - 2026-04-18
+
+### Fixed / Исправлено
+- EN: Fixed Android `zfs место` gear action in `💽 Free space of ZFS pools`: settings now run via extension-settings flow (`onExtensionsSettingsAction`) for `zfsp_hosts_list`, so the dialog opens `⚙️ Hosts monitoring free space of ZFS` instead of jumping to `🧊 ZFS statuses`.
+- RU: Исправлено действие шестерёнки в Android-плашке `zfs место` (`💽 Свободное место ZFS пулов`): настройки теперь запускаются через поток настроек расширений (`onExtensionsSettingsAction`) для `zfsp_hosts_list`, поэтому открывается `⚙️ Хосты мониторинга свободного места ZFS`, а не `🧊 Статусы ZFS`.
+- EN: SemVer patch bump to `8.55.22`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.22` and `ANDROID_VERSION_CODE=548`; prerelease links aligned to `v8.55.22-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.55.22`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.22` и `ANDROID_VERSION_CODE=548`; prerelease-ссылки выровнены на `v8.55.22-develop`.
+
 ## [8.55.21] - 2026-04-18
 
 ### Fixed / Исправлено
