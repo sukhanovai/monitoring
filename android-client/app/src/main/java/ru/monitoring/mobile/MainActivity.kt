@@ -1867,7 +1867,7 @@ private fun MonitoringApp(
         zfsPoolFreeSpaceExtension?.takeIf { it.enabled }?.let { extension ->
             add(
                 buildExtensionDataTile(
-                    extension = extension.copy(id = "zfs_pool_free_space_monitor", name = "zfs пулы"),
+                    extension = extension.copy(id = "zfs_pool_free_space_monitor", name = "Свободное место ZFS пулов"),
                     summaryOverride = state.zfsPoolFreeSpaceSummary,
                     hasProblemOverride = state.zfsPoolFreeSpaceHasProblemItems
                 )
@@ -4251,20 +4251,19 @@ private fun MonitoringApp(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "💽 ZFS-пулы",
+                        text = "💽 Свободное место ZFS пулов",
                         modifier = Modifier.weight(1f),
                         fontWeight = FontWeight.Bold
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         IconButton(
                             onClick = {
-                                onExtensionsSettingsAction("settings_zfs_list")
-                                showZfsHostsSettingsDialog = true
+                                onAction("zfs_pool_free_space_menu")
                             }
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.Settings,
-                                contentDescription = "Открыть настройки хостов ZFS-пулов"
+                                contentDescription = "Обновить данные по свободному месту ZFS пулов"
                             )
                         }
                         IconButton(onClick = { showZfsPoolFreeSpaceDialog = false }) {
@@ -4306,7 +4305,7 @@ private fun MonitoringApp(
                     if (state.isLoading && !hasData) {
                         Text("Загружаем данные по ZFS-пулам…")
                     } else if (!hasData) {
-                        Text("Пока нет данных по ZFS-пулам. Потяни список вниз или нажми кнопку синхронизации в оперативном центре.")
+                        Text("Пока нет данных по свободному месту ZFS пулов. Потяни список вниз или нажми кнопку синхронизации в оперативном центре.")
                     } else {
                         if (zfsPoolActions.isNotEmpty()) {
                             FlowRow(
