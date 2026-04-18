@@ -1,11 +1,11 @@
 """
 /app/modules/resources.py
-Server Monitoring System v8.55.27
+Server Monitoring System v8.55.28
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Server resource checking module
 Система мониторинга серверов
-Версия: 8.55.27
+Версия: 8.55.28
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль проверки ресурсов серверов

@@ -82,6 +82,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -111,10 +112,18 @@ private val zfsPoolFreePercentRegex = Regex(
 private fun zfsFreePercentColor(freePercent: Double): Color {
     val normalized = freePercent.coerceIn(0.0, 100.0)
     return when {
-        normalized <= 10.0 -> Color(0xFFFF1744)
-        normalized <= 20.0 -> Color(0xFFFF6D00)
-        normalized <= 35.0 -> Color(0xFFFFAB00)
-        else -> Color(0xFF00C853)
+        normalized <= 15.0 -> {
+            val fraction = (normalized / 15.0).toFloat().coerceIn(0f, 1f)
+            lerp(Color(0xFFD50000), Color(0xFFFF6D00), fraction)
+        }
+        normalized <= 35.0 -> {
+            val fraction = ((normalized - 15.0) / 20.0).toFloat().coerceIn(0f, 1f)
+            lerp(Color(0xFFFF6D00), Color(0xFFFFC107), fraction)
+        }
+        else -> {
+            val fraction = ((normalized - 35.0) / 65.0).toFloat().coerceIn(0f, 1f)
+            lerp(Color(0xFFFFC107), Color(0xFF00C853), fraction)
+        }
     }
 }
 
@@ -125,6 +134,15 @@ private fun zfsFreePercentBackgroundColor(freePercent: Double): Color {
         normalized <= 20.0 -> Color(0xFFFFF3E0)
         normalized <= 35.0 -> Color(0xFFFFF8E1)
         else -> Color(0xFFE8F5E9)
+    }
+}
+
+private fun zfsFreePercentBadgeBackgroundColor(freePercent: Double): Color {
+    val normalized = freePercent.coerceIn(0.0, 100.0)
+    return when {
+        normalized <= 15.0 -> Color(0xFFFFCDD2)
+        normalized <= 35.0 -> Color(0xFFFFE0B2)
+        else -> Color(0xFFC8E6C9)
     }
 }
 
@@ -4403,10 +4421,17 @@ private fun MonitoringApp(
                                                 )
                                                 Text(
                                                     text = row.freePercentText,
-                                                    modifier = Modifier.weight(0.25f),
+                                                    modifier = Modifier
+                                                        .weight(0.25f)
+                                                        .clip(RoundedCornerShape(8.dp))
+                                                        .background(
+                                                            row.freePercent?.let(::zfsFreePercentBadgeBackgroundColor)
+                                                                ?: MaterialTheme.colorScheme.surface
+                                                        )
+                                                        .padding(horizontal = 6.dp, vertical = 4.dp),
                                                     color = row.freePercent?.let(::zfsFreePercentColor)
                                                         ?: MaterialTheme.colorScheme.onSurface,
-                                                    fontWeight = FontWeight.SemiBold,
+                                                    fontWeight = FontWeight.Bold,
                                                     style = MaterialTheme.typography.bodySmall
                                                 )
                                             }
