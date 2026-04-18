@@ -4256,10 +4256,21 @@ private fun MonitoringApp(
                         fontWeight = FontWeight.Bold
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        IconButton(onClick = { showZfsSettingsDialog = true }) {
+                        IconButton(
+                            onClick = {
+                                showZfsHostsSettingsDialog = true
+                                onExtensionsSettingsAction("settings_zfs_list")
+                            }
+                        ) {
                             Icon(
                                 imageVector = Icons.Filled.Settings,
-                                contentDescription = "Открыть настройки ZFS"
+                                contentDescription = "Открыть настройки хостов ZFS"
+                            )
+                        }
+                        IconButton(onClick = { showZfsPoolFreeSpaceDialog = false }) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "Закрыть окно ZFS-пулов"
                             )
                         }
                     }
@@ -4287,24 +4298,13 @@ private fun MonitoringApp(
                             label to action
                         }
                         .distinctBy { (_, action) -> action }
-                    val poolsTotal = extractZfsPoolsTotal(state.message)
-                    val summaryText = if (poolsTotal != null) {
-                        "0/$poolsTotal"
-                    } else {
-                        state.zfsPoolFreeSpaceSummary.ifBlank { "нет данных" }
-                    }
-                    val hasData = zfsPoolActions.isNotEmpty() || state.zfsPoolFreeSpaceSummary.isNotBlank() || poolsTotal != null
+                    val hasData = zfsPoolActions.isNotEmpty() || state.zfsPoolFreeSpaceSummary.isNotBlank() || extractZfsPoolsTotal(state.message) != null
 
                     if (state.isLoading && !hasData) {
                         Text("Загружаем данные по ZFS-пулам…")
                     } else if (!hasData) {
                         Text("Пока нет данных по ZFS-пулам. Потяни список вниз или нажми кнопку синхронизации в оперативном центре.")
                     } else {
-                        Text(
-                            text = "Сводка: $summaryText",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                         if (zfsPoolActions.isNotEmpty()) {
                             FlowRow(
                                 modifier = Modifier.fillMaxWidth(),
