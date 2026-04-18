@@ -1792,10 +1792,14 @@ private fun MonitoringApp(
                 )
             )
         }
-        extensionsById["zfs_pool_free_space"]?.takeIf { it.enabled }?.let { extension ->
+        val zfsPoolFreeSpaceExtension = extensionsById["zfs_pool_free_space_monitor"]
+            ?: extensionsById["zfs_pool_free_space"]
+        zfsPoolFreeSpaceExtension?.takeIf { it.enabled }?.let { extension ->
             add(
                 buildExtensionDataTile(
-                    extension = extension.copy(name = "zfs пулы")
+                    extension = extension.copy(name = "zfs пулы"),
+                    summaryOverride = state.zfsPoolFreeSpaceSummary,
+                    hasProblemOverride = state.zfsPoolFreeSpaceHasProblemItems
                 )
             )
         }
@@ -1859,7 +1863,10 @@ private fun MonitoringApp(
                 {
                     openServerResourcesSingleCheckDetails()
                 }
-            } else if (extension.id == "zfs_pool_free_space") {
+            } else if (
+                extension.id == "zfs_pool_free_space_monitor" ||
+                extension.id == "zfs_pool_free_space"
+            ) {
                 {
                     onAction("zfs_pool_free_space_menu")
                 }
