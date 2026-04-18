@@ -4242,6 +4242,18 @@ private fun MonitoringApp(
     }
 
     if (showZfsPoolFreeSpaceDialog) {
+        val zfsPoolMenuOptions = if (
+            state.extensionMenuAction == "zfs_pool_free_space_menu" ||
+            state.extensionMenuAction.startsWith("zfsp_")
+        ) {
+            state.extensionMenuOptions
+        } else {
+            emptyList()
+        }
+        val zfsPoolHostSettingsAction = zfsPoolMenuOptions
+            .asSequence()
+            .map { option -> resolveMenuOptionAction(option) }
+            .firstOrNull { action -> action == "zfsp_hosts_list" }
         AlertDialog(
             onDismissRequest = { showZfsPoolFreeSpaceDialog = false },
             title = {
@@ -4258,12 +4270,17 @@ private fun MonitoringApp(
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         IconButton(
                             onClick = {
-                                onAction("zfs_pool_free_space_menu")
+                                val hostSettingsAction = zfsPoolHostSettingsAction
+                                if (!hostSettingsAction.isNullOrBlank()) {
+                                    onAction(hostSettingsAction)
+                                } else {
+                                    onAction("zfs_pool_free_space_menu")
+                                }
                             }
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.Settings,
-                                contentDescription = "Обновить данные по свободному месту ZFS пулов"
+                                contentDescription = "Открыть настройки хостов ZFS-пулов"
                             )
                         }
                         IconButton(onClick = { showZfsPoolFreeSpaceDialog = false }) {
@@ -4283,14 +4300,6 @@ private fun MonitoringApp(
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    val zfsPoolMenuOptions = if (
-                        state.extensionMenuAction == "zfs_pool_free_space_menu" ||
-                        state.extensionMenuAction.startsWith("zfsp_")
-                    ) {
-                        state.extensionMenuOptions
-                    } else {
-                        emptyList()
-                    }
                     val zfsPoolActions = zfsPoolMenuOptions
                         .mapNotNull { option ->
                             val action = resolveMenuOptionAction(option)
