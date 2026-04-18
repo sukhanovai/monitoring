@@ -1,11 +1,11 @@
 """
 /bot/handlers/extensions.py
-Server Monitoring System v8.55.7
+Server Monitoring System v8.55.8
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 UI handlers for managing extensions
 Система мониторинга серверов
-Версия: 8.55.7
+Версия: 8.55.8
 Автор: Александр Суханов (c)
 Лицензия: MIT
 UI-обработчики управления расширениями

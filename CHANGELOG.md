@@ -1,12 +1,16 @@
-## [8.55.7] - 2026-04-18
+## [8.55.8] - 2026-04-18
 
 ### Changed / Изменено
-- EN: Fixed Android action `zfs_pool_free_space_menu` in `/v1/settings/extensions/actions`: the API now executes the ZFS pools collector and returns formatted pool data instead of an empty generic response.
-- RU: Исправлено действие Android `zfs_pool_free_space_menu` в `/v1/settings/extensions/actions`: API теперь запускает сборщик ZFS-пулов и возвращает форматированные данные по пулам вместо пустого общего ответа.
-- EN: Added mobile extension guard for `zfs_pool_free_space_monitor` when opening ZFS pools menu from Android actions.
-- RU: Добавлена проверка включенности мобильного расширения `zfs_pool_free_space_monitor` при открытии меню ZFS-пулов из Android-действий.
-- EN: SemVer patch bump to `8.55.7`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.7` and `ANDROID_VERSION_CODE=533`; prerelease links aligned to `v8.55.7-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.55.7`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.7` и `ANDROID_VERSION_CODE=533`; prerelease-ссылки выровнены на `v8.55.7-develop`.
+- EN: Android `ZFS pools` dialog UI updated: removed inline `Refresh` and `Close` action buttons from the dialog content/actions and added a dedicated settings gear in the dialog header.
+- RU: Обновлён UI Android-диалога `ZFS-пулы`: убраны встроенные кнопки `Обновить` и `Закрыть` из действий/контента диалога и добавлена отдельная шестерёнка настроек в заголовок.
+- EN: Fixed ZFS pools summary calculation for pool responses that include explicit `Пулов: N` lines, so the summary no longer falls back to auxiliary menu-action counts (e.g., `0/2`) when there are more actual pools.
+- RU: Исправлен расчёт сводки ZFS-пулов для ответов с явной строкой `Пулов: N`, поэтому сводка больше не скатывается к подсчёту служебных пунктов меню (например, `0/2`) при большем числе реальных пулов.
+- EN: Enhanced visibility of `% free` values in ZFS pool entries: percent values are now highlighted with stronger emphasis and color-coded by free-space level (critical/warning/normal).
+- RU: Улучшена видимость значений `% free` в строках ZFS-пулов: проценты теперь выделяются более ярко и окрашиваются по уровню свободного места (критично/предупреждение/норма).
+- EN: In `Compact Ops`, added a circular sync arrow button to the left of the settings gear for quick manual synchronization.
+- RU: В `Оперативном центре` добавлена кнопка круговой стрелки синхронизации слева от шестерёнки настроек для быстрого ручного обновления.
+- EN: SemVer patch bump to `8.55.8`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.8` and `ANDROID_VERSION_CODE=534`; prerelease links aligned to `v8.55.8-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.55.8`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.8` и `ANDROID_VERSION_CODE=534`; prerelease-ссылки выровнены на `v8.55.8-develop`.
 
 ## [8.55.6] - 2026-04-18
 
