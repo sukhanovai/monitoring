@@ -1,3 +1,15 @@
+## [8.55.11] - 2026-04-18
+
+### Changed / Изменено
+- EN: Updated Android `ZFS pools` dialog UX: removed the `Summary: ...` line from dialog content to keep focus on actionable pool cards and raw backend message.
+- RU: Обновлён UX Android-диалога `ZFS-пулы`: убрана строка `Сводка: ...` из контента окна, чтобы фокус оставался на карточках пулов и сыром ответе backend.
+- EN: Added a dedicated close (`X`) button in the Android `ZFS pools` dialog header for explicit one-tap dismissal.
+- RU: В заголовок Android-диалога `ZFS-пулы` добавлена отдельная кнопка закрытия (`X`) для явного закрытия в один тап.
+- EN: Rewired the `ZFS pools` header gear to open `ZFS host settings` directly (`settings_zfs_list`) instead of generic ZFS settings, matching Telegram bot navigation (`Main menu` → `ZFS pool free space` → `host settings`).
+- RU: Перенастроена шестерёнка в заголовке `ZFS-пулы`: теперь она открывает сразу `настройки хостов ZFS` (`settings_zfs_list`), а не общий экран настроек ZFS, как в Telegram-боте (`Главное меню` → `Свободное место ZFS пулов` → `настройки хостов`).
+- EN: SemVer patch bump to `8.55.11`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.11` and `ANDROID_VERSION_CODE=537`; prerelease links aligned to `v8.55.11-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.55.11`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.11` и `ANDROID_VERSION_CODE=537`; prerelease-ссылки выровнены на `v8.55.11-develop`.
+
 ## [8.55.10] - 2026-04-18
 
 ### Changed / Изменено
