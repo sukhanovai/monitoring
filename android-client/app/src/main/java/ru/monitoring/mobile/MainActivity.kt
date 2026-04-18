@@ -127,7 +127,7 @@ private fun zfsFreePercentBackgroundColor(freePercent: Double): Color {
     val normalized = freePercent.coerceIn(0.0, 100.0) / 100.0
     val danger = Color(0xFFFFCDD2)
     val safe = Color(0xFFC8E6C9)
-    return androidx.compose.ui.graphics.lerp(danger, safe, normalized).copy(alpha = 0.95f)
+    return androidx.compose.ui.graphics.lerp(danger, safe, normalized.toFloat()).copy(alpha = 0.95f)
 }
 
 private fun formatZfsPoolActionLabel(label: String): AnnotatedString {
