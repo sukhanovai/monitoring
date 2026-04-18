@@ -4258,7 +4258,7 @@ private fun MonitoringApp(
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         IconButton(
                             onClick = {
-                                onExtensionsSettingsAction("settings_zfs_list")
+                                onAction("zfsp_hosts_list")
                             }
                         ) {
                             Icon(
