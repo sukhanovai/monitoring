@@ -1,10 +1,10 @@
-## [8.55.15] - 2026-04-18
+## [8.55.16] - 2026-04-18
 
 ### Changed / Изменено
-- EN: Fixed Android `ZFS pools` gear action: tapping settings in `ZFS pools` now calls `zfsp_hosts_list` (Telegram-synced flow `Main menu` → `ZFS pool free space` → `host settings`) instead of unrelated `settings_zfs_list`, so host configuration opens in the correct context.
-- RU: Исправлено действие шестерёнки в Android `ZFS-пулах`: тап по настройкам теперь вызывает `zfsp_hosts_list` (синхронизированный с Telegram путь `Главное меню` → `Свободное место ZFS пулов` → `настройки хостов`) вместо нерелевантного `settings_zfs_list`, поэтому настройки хостов открываются в правильном контексте.
-- EN: SemVer patch bump to `8.55.15`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.15` and `ANDROID_VERSION_CODE=541`; prerelease links aligned to `v8.55.15-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.55.15`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.15` и `ANDROID_VERSION_CODE=541`; prerelease-ссылки выровнены на `v8.55.15-develop`.
+- EN: Fixed Android `ZFS pools` gear action: tapping settings now routes through extension-settings API (`settings_zfs_list`) and opens the host settings dialog, instead of sending `zfsp_hosts_list` to `/v1/control/actions` (which caused `400`).
+- RU: Исправлено действие шестерёнки в Android `ZFS-пулах`: тап по настройкам теперь идёт через API настроек расширений (`settings_zfs_list`) и открывает диалог настроек хостов, вместо отправки `zfsp_hosts_list` в `/v1/control/actions` (из-за этого прилетал `400`).
+- EN: SemVer patch bump to `8.55.16`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.16` and `ANDROID_VERSION_CODE=542`; prerelease links aligned to `v8.55.16-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.55.16`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.16` и `ANDROID_VERSION_CODE=542`; prerelease-ссылки выровнены на `v8.55.16-develop`.
 
 ## [8.55.14] - 2026-04-18
 
