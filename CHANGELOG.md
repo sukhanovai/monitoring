@@ -1,3 +1,11 @@
+## [8.55.25] - 2026-04-18
+
+### Changed / Изменено
+- EN: Android app UI updated: sync/loading circular indicator moved into the top bar (to the left of `ComDone`) and `zfs место` free-percent values in ZFS pool cards are now highlighted brighter with threshold-based colors as free space approaches critical levels.
+- RU: Обновлён UI Android-приложения: круговой индикатор синхронизации/обновления перенесён в верхний заголовок (слева от `ComDone`), а значения процента свободного места в `zfs место` теперь выделяются ярче с пороговой цветовой индикацией по мере приближения к критическим значениям.
+- EN: SemVer patch bump to `8.55.25`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.25` and `ANDROID_VERSION_CODE=551`; prerelease links aligned to `v8.55.25-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.55.25`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.25` и `ANDROID_VERSION_CODE=551`; prerelease-ссылки выровнены на `v8.55.25-develop`.
+
 ## [8.55.24] - 2026-04-18
 
 ### Changed / Изменено
