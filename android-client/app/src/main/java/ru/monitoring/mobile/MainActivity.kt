@@ -4171,7 +4171,7 @@ private fun MonitoringApp(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "💽 ZFS пулы",
+                        text = "💽 ZFS-пулы",
                         modifier = Modifier.weight(1f),
                         fontWeight = FontWeight.Bold
                     )
@@ -4179,13 +4179,13 @@ private fun MonitoringApp(
                         IconButton(onClick = { onAction("zfs_pool_free_space_menu") }) {
                             Icon(
                                 imageVector = Icons.Filled.Refresh,
-                                contentDescription = "Обновить список ZFS пулов"
+                                contentDescription = "Обновить список ZFS-пулов"
                             )
                         }
                         IconButton(onClick = { showZfsPoolFreeSpaceDialog = false }) {
                             Icon(
                                 imageVector = Icons.Filled.Close,
-                                contentDescription = "Закрыть список ZFS пулов"
+                                contentDescription = "Закрыть список ZFS-пулов"
                             )
                         }
                     }
@@ -4215,9 +4215,9 @@ private fun MonitoringApp(
                     val hasData = zfsPoolActions.isNotEmpty() || state.zfsPoolFreeSpaceSummary.isNotBlank()
 
                     if (state.isLoading && !hasData) {
-                        Text("Загружаем данные по ZFS пулам…")
+                        Text("Загружаем данные по ZFS-пулам…")
                     } else if (!hasData) {
-                        Text("Пока нет данных по ZFS пулам. Нажми «Обновить», чтобы запросить статусы.")
+                        Text("Пока нет данных по ZFS-пулам. Нажми «Обновить», чтобы запросить статусы.")
                     } else {
                         Text(
                             text = "Сводка: ${state.zfsPoolFreeSpaceSummary.ifBlank { "нет данных" }}",
