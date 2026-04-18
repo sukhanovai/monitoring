@@ -1,3 +1,11 @@
+## [8.55.9] - 2026-04-18
+
+### Changed / Изменено
+- EN: Android `ZFS pools` free-space percentage highlight was intensified: `% free` values now use stronger contrast (bold + tinted background) and adaptive color by remaining free space level to make threshold approach obvious at a glance.
+- RU: В Android `ZFS-пулах` усилено выделение процента свободного места: значения `% free` теперь показываются с более контрастным акцентом (жирный + подложка) и адаптивным цветом по уровню оставшегося свободного места, чтобы приближение к порогам читалось сразу.
+- EN: SemVer patch bump to `8.55.9`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.9` and `ANDROID_VERSION_CODE=535`; prerelease links aligned to `v8.55.9-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.55.9`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.9` и `ANDROID_VERSION_CODE=535`; prerelease-ссылки выровнены на `v8.55.9-develop`.
+
 ## [8.55.8] - 2026-04-18
 
 ### Changed / Изменено
