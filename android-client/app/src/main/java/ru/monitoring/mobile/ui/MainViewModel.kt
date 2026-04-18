@@ -52,7 +52,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.55.18"
+    private val projectVersion = "8.55.19"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -97,11 +97,11 @@ class MainViewModel(
         Pair({ action -> action == "supplier_stock_reports" || action.startsWith("supplier_stock_reports_") || action.startsWith("supplier_stock_report_source_day|") }, "supplier_stock_files")
     )
     private val extensionSettingsFallbackActions = listOf(
-        Triple("zfs_monitor", "🧊 ZFS", "settings_zfs"),
+        Triple("zfs_monitor", "🧊 zfs статусы", "settings_zfs"),
         Triple("backup_monitor", "💾 Бэкапы Proxmox", "settings_ext_backup_proxmox"),
         Triple("database_backup_monitor", "🗃️ Бэкапы БД", "settings_ext_backup_db"),
         Triple("mail_backup_monitor", "📬 Бэкапы почты", "settings_ext_backup_mail"),
-        Triple("zfs_pool_free_space_monitor", "💽 Свободное место ZFS пулов", "zfs_pool_free_space_menu"),
+        Triple("zfs_pool_free_space_monitor", "💽 zfs место", "zfs_pool_free_space_menu"),
         Triple("stock_load_monitor", "📦 Загрузка остатков 1С", "settings_ext_stock_load"),
         Triple("supplier_stock_files", "📦 Остатки поставщиков", "settings_ext_supplier_stock"),
         Triple("resource_monitor", "💻 Ресурсы", "settings_resources")

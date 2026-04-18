@@ -1856,7 +1856,7 @@ private fun MonitoringApp(
         extensionsById["zfs_monitor"]?.takeIf { it.enabled }?.let { extension ->
             add(
                 buildExtensionDataTile(
-                    extension = extension.copy(id = "zfs_monitor", name = "zfs"),
+                    extension = extension.copy(id = "zfs_monitor", name = "zfs статусы"),
                     summaryOverride = state.zfsSummary,
                     hasProblemOverride = state.zfsHasProblemItems
                 )
@@ -1867,7 +1867,7 @@ private fun MonitoringApp(
         zfsPoolFreeSpaceExtension?.takeIf { it.enabled }?.let { extension ->
             add(
                 buildExtensionDataTile(
-                    extension = extension.copy(id = "zfs_pool_free_space_monitor", name = "Свободное место ZFS пулов"),
+                    extension = extension.copy(id = "zfs_pool_free_space_monitor", name = "zfs место"),
                     summaryOverride = state.zfsPoolFreeSpaceSummary,
                     hasProblemOverride = state.zfsPoolFreeSpaceHasProblemItems
                 )

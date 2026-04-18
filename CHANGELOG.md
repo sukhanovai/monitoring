@@ -1,3 +1,10 @@
+## [8.55.19] - 2026-04-18
+
+- EN: Renamed two Android ZFS tiles for clarity in the Operations Center: `zfs` → `zfs статусы` and `Свободное место ZFS пулов` → `zfs место`.
+- RU: Переименованы две Android-плашки ZFS для более понятного отображения в оперативном центре: `zfs` → `zfs статусы` и `Свободное место ZFS пулов` → `zfs место`.
+- EN: SemVer patch bump to `8.55.19`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.19` and `ANDROID_VERSION_CODE=545`; prerelease links aligned to `v8.55.19-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.55.19`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.19` и `ANDROID_VERSION_CODE=545`; prerelease-ссылки выровнены на `v8.55.19-develop`.
+
 ## [8.55.18] - 2026-04-18
 
 ### Changed / Изменено
