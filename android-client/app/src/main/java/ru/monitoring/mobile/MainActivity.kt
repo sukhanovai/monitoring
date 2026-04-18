@@ -58,7 +58,6 @@ import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material.icons.Icons
@@ -116,18 +115,31 @@ private val zfsPoolFreePercentRegex = Regex(
 private fun zfsFreePercentColor(freePercent: Double): Color {
     val normalized = freePercent.coerceIn(0.0, 100.0)
     return when {
-        normalized <= 10.0 -> Color(0xFFC62828)
-        normalized <= 20.0 -> Color(0xFFE65100)
-        normalized <= 35.0 -> Color(0xFFF9A825)
-        else -> Color(0xFF2E7D32)
+        normalized <= 10.0 -> Color(0xFFFF1744)
+        normalized <= 20.0 -> Color(0xFFFF6D00)
+        normalized <= 35.0 -> Color(0xFFFFAB00)
+        else -> Color(0xFF00C853)
     }
 }
 
 private fun zfsFreePercentBackgroundColor(freePercent: Double): Color {
-    val normalized = freePercent.coerceIn(0.0, 100.0) / 100.0
-    val danger = Color(0xFFFFCDD2)
-    val safe = Color(0xFFC8E6C9)
-    return androidx.compose.ui.graphics.lerp(danger, safe, normalized.toFloat()).copy(alpha = 0.95f)
+    val normalized = freePercent.coerceIn(0.0, 100.0)
+    return when {
+        normalized <= 10.0 -> Color(0xFFFFEBEE)
+        normalized <= 20.0 -> Color(0xFFFFF3E0)
+        normalized <= 35.0 -> Color(0xFFFFF8E1)
+        else -> Color(0xFFE8F5E9)
+    }
+}
+
+private fun zfsPoolCardBackgroundColor(freePercent: Double?): Color {
+    if (freePercent == null) return MaterialTheme.colorScheme.tertiaryContainer
+    return zfsFreePercentBackgroundColor(freePercent)
+}
+
+private fun extractZfsFreePercent(label: String): Double? {
+    val match = zfsPoolFreePercentRegex.find(label.trim()) ?: return null
+    return match.groupValues.getOrNull(1)?.replace(',', '.')?.toDoubleOrNull()
 }
 
 private fun formatZfsPoolActionLabel(label: String): AnnotatedString {
@@ -137,7 +149,7 @@ private fun formatZfsPoolActionLabel(label: String): AnnotatedString {
     val percentRaw = match.groupValues.getOrNull(1)?.replace(',', '.')
     val percent = percentRaw?.toDoubleOrNull() ?: return AnnotatedString(label)
     val start = match.range.first
-    val endExclusive = match.range.first + match.groupValues[1].length
+    val endExclusive = match.range.last + 1
     return buildAnnotatedString {
         append(trimmed.substring(0, start))
         withStyle(
@@ -2007,7 +2019,18 @@ private fun MonitoringApp(
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
-                    Text(appTitle, fontWeight = FontWeight.SemiBold)
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (state.isLoading || state.isSyncInProgress) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.5.dp
+                            )
+                        }
+                        Text(appTitle, fontWeight = FontWeight.SemiBold)
+                    }
                 },
                 actions = {
                     IconButton(onClick = onCloseApp) {
@@ -3248,11 +3271,6 @@ private fun MonitoringApp(
                 }
             }
 
-            PullRefreshIndicator(
-                refreshing = state.isLoading,
-                state = pullToRefreshState,
-                modifier = Modifier.align(Alignment.TopCenter)
-            )
         }
     }
 
@@ -4324,6 +4342,7 @@ private fun MonitoringApp(
                                 maxItemsInEachRow = 2
                             ) {
                                 zfsPoolActions.forEach { (label, action) ->
+                                    val freePercent = extractZfsFreePercent(label)
                                     Surface(
                                         modifier = Modifier
                                             .weight(1f)
@@ -4331,7 +4350,7 @@ private fun MonitoringApp(
                                             .clickable { onAction(action) },
                                         tonalElevation = 2.dp,
                                         shape = RoundedCornerShape(10.dp),
-                                        color = MaterialTheme.colorScheme.tertiaryContainer
+                                        color = zfsPoolCardBackgroundColor(freePercent)
                                     ) {
                                         Text(
                                             text = formatZfsPoolActionLabel(label),
@@ -4340,7 +4359,7 @@ private fun MonitoringApp(
                                                 .padding(horizontal = 10.dp, vertical = 8.dp),
                                             maxLines = 3,
                                             overflow = TextOverflow.Ellipsis,
-                                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                                            color = MaterialTheme.colorScheme.onSurface
                                         )
                                     }
                                 }
