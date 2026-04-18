@@ -1,10 +1,10 @@
-## [8.55.32] - 2026-04-18
+## [8.55.33] - 2026-04-18
 
 ### Fixed / Исправлено
 - EN: Fixed Android `zfs место` tile behavior: tapping the gear on the tile now opens ZFS-pool free-space host settings by running `zfsp_hosts_list` (Telegram-bot parity: `Free space of ZFS pools` → `Host settings`).
 - RU: Исправлено поведение Android-плашки `zfs место`: тап по шестерёнке на плашке теперь открывает настройки хостов свободного места ZFS-пулов через `zfsp_hosts_list` (паритет с Telegram-ботом: `Свободное место ZFS пулов` → `Настройка хостов`).
-- EN: SemVer patch bump to `8.55.32`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.32` and `ANDROID_VERSION_CODE=558`; prerelease links aligned to `v8.55.32-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.55.32`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.32` и `ANDROID_VERSION_CODE=558`; prerelease-ссылки выровнены на `v8.55.32-develop`.
+- EN: SemVer patch bump to `8.55.33`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.33` and `ANDROID_VERSION_CODE=559`; prerelease links aligned to `v8.55.33-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.55.33`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.33` и `ANDROID_VERSION_CODE=559`; prerelease-ссылки выровнены на `v8.55.33-develop`.
 
 ## [8.55.28] - 2026-04-18
 
