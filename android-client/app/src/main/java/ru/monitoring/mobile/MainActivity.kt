@@ -1867,7 +1867,9 @@ private fun MonitoringApp(
                 }
             } else if (
                 extension.id == "zfs_pool_free_space_monitor" ||
-                extension.id == "zfs_pool_free_space"
+                extension.id == "zfs_pool_free_space" ||
+                extension.id.contains("zfs_pool_free_space") ||
+                extension.label.contains("zfs пулы", ignoreCase = true)
             ) {
                 {
                     showZfsPoolFreeSpaceDialog = true
