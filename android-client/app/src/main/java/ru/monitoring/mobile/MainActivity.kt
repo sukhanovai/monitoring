@@ -1903,7 +1903,7 @@ private fun MonitoringApp(
             add(
                 buildExtensionDataTile(
                     extension = extension.copy(id = "zfs_pool_free_space_monitor", name = "zfs место"),
-                    summaryOverride = if (hasProblem) "АЛЕРТ" else "ОК",
+                    summaryOverride = if (hasProblem) "!" else "ОК",
                     hasProblemOverride = hasProblem
                 )
             )

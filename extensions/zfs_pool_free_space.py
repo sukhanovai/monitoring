@@ -1,11 +1,11 @@
 """
 /extensions/zfs_pool_free_space.py
-Server Monitoring System v8.55.29
+Server Monitoring System v8.55.30
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 ZFS pool free space extension over SSH
 Система мониторинга серверов
-Версия: 8.55.29
+Версия: 8.55.30
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Расширение мониторинга свободного места ZFS-пулов по SSH
@@ -69,6 +69,19 @@ def save_hosts_config(hosts: dict[str, dict[str, Any]]) -> None:
     config_manager.set_setting(HOSTS_SETTING_KEY, normalize_hosts(hosts))
 
 
+def _resolve_free_space_alert_threshold(threshold: int) -> float:
+    """Нормализовать порог алерта для свободного места.
+
+    - 1..50: интерпретируется как минимальный % свободного места (legacy).
+    - 51..95: интерпретируется как % заполнения (used),
+      т.е. триггер на free <= (100 - threshold).
+    """
+    normalized = max(1, min(95, int(threshold)))
+    if normalized > 50:
+        return float(100 - normalized)
+    return float(normalized)
+
+
 def collect_zfs_pool_free_space() -> tuple[list[dict[str, Any]], list[str]]:
     if not extension_manager.is_extension_enabled(EXTENSION_ID):
         return [], []
@@ -128,7 +141,7 @@ def collect_zfs_pool_free_space() -> tuple[list[dict[str, Any]], list[str]]:
                     "free_percent": round(free_percent, 1),
                     "threshold": threshold,
                     "health": "N/A",
-                    "is_alert": free_percent <= threshold,
+                    "is_alert": free_percent <= _resolve_free_space_alert_threshold(threshold),
                 }
             )
 
@@ -163,10 +176,16 @@ def build_status_lines(results: list[dict[str, Any]], errors: list[str]) -> list
                 lines.append(f"*{host_name}* ({row['ip']})")
 
             icon = "🚨" if row.get("is_alert") else "🟢"
+            threshold = int(row["threshold"])
+            threshold_text = (
+                f"threshold {threshold}% used / {100 - threshold}% free"
+                if threshold > 50
+                else f"threshold {threshold}% free"
+            )
             lines.append(
                 f"{icon} `{row['pool']}` {row['free_percent']}% free"
                 f" ({_bytes_to_human(int(row['free_bytes']))} / {_bytes_to_human(int(row['size_bytes']))})"
-                f" · threshold {row['threshold']}%"
+                f" · {threshold_text}"
             )
         lines.append("")
 
