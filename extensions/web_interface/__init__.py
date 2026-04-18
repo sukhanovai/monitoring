@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.55.5
+Server Monitoring System v8.55.7
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.55.5
+Версия: 8.55.7
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1513,6 +1513,7 @@ def _execute_mobile_control_action(action: str):
         "zfs",
         "zfs_menu",
         "zfs_free_space",
+        "zfs_pool_free_space_menu",
     }
     resource_threshold_settings = {
         "set_cpu_warning": ("CPU_WARNING", "CPU предупреждение"),
@@ -1590,6 +1591,7 @@ def _execute_mobile_control_action(action: str):
             "supplier_stock_reports": ("supplier_stock_files", "📦 Остатки поставщиков отключены"),
             "zfs": ("zfs_monitor", "🧊 Мониторинг ZFS отключён"),
             "zfs_menu": ("zfs_monitor", "🧊 Мониторинг ZFS отключён"),
+            "zfs_pool_free_space_menu": ("zfs_pool_free_space_monitor", "💽 Мониторинг свободного места ZFS-пулов отключён"),
         }
 
         extension_requirement = extension_requirements.get(action)
@@ -1613,6 +1615,16 @@ def _execute_mobile_control_action(action: str):
 
         if action == "zfs":
             action = "zfs_menu"
+
+        if action == "zfs_pool_free_space_menu":
+            from extensions.zfs_pool_free_space import build_status_lines, collect_zfs_pool_free_space
+
+            results, errors = collect_zfs_pool_free_space()
+            status_message = "\n".join(build_status_lines(results, errors))
+            return True, status_message, "accepted", [
+                {"label": "🔄 Обновить", "action": "zfs_pool_free_space_menu"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ]
 
         if action == "backup_hosts":
             hosts = backup_bot.get_all_hosts(include_disabled=True)
