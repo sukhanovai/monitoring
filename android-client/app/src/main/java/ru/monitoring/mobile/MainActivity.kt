@@ -196,6 +196,16 @@ private fun isAuxiliaryZfsPoolAction(action: String, label: String): Boolean {
         normalizedLabel.contains("закрыть")
 }
 
+private fun isZfsPoolHostSettingsAction(action: String): Boolean {
+    val normalizedAction = action.trim().lowercase()
+    return normalizedAction == "zfsp_hosts_list" ||
+        normalizedAction == "zfsp_add" ||
+        normalizedAction == "zfs_pool_free_space_menu" ||
+        normalizedAction.startsWith("zfsp_edit_") ||
+        normalizedAction.startsWith("zfsp_delete_") ||
+        normalizedAction.startsWith("zfsp_toggle_")
+}
+
 private fun extractZfsPoolsTotal(message: String): Int? {
     if (message.isBlank()) return null
     val poolLineRegex = Regex("""(?i)(?:пулов|pools)\s*[:=]\s*(\d+)""")
@@ -1981,18 +1991,7 @@ private fun MonitoringApp(
                 { isSettingsExpanded = true; settingsSection = "extensions" }
             },
             onLongClick = null,
-            onSettingsClick = if (
-                extension.id == "zfs_pool_free_space_monitor" ||
-                extension.id == "zfs_pool_free_space" ||
-                extension.id.contains("zfs_pool_free_space")
-            ) {
-                {
-                    showZfsPoolFreeSpaceDialog = true
-                    onAction("zfsp_hosts_list")
-                }
-            } else {
-                null
-            }
+            onSettingsClick = null
         )
     }
     val allOpsTiles = opsTiles + extensionOpsTiles
@@ -4302,10 +4301,6 @@ private fun MonitoringApp(
         } else {
             emptyList()
         }
-        val zfsPoolHostSettingsAction = zfsPoolMenuOptions
-            .asSequence()
-            .map { option -> resolveMenuOptionAction(option) }
-            .firstOrNull { action -> action == "zfsp_hosts_list" }
         AlertDialog(
             onDismissRequest = { showZfsPoolFreeSpaceDialog = false },
             title = {
@@ -4322,12 +4317,7 @@ private fun MonitoringApp(
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         IconButton(
                             onClick = {
-                                val hostSettingsAction = zfsPoolHostSettingsAction
-                                if (!hostSettingsAction.isNullOrBlank()) {
-                                    onAction(hostSettingsAction)
-                                } else {
-                                    onAction("zfs_pool_free_space_menu")
-                                }
+                                onAction("zfsp_hosts_list")
                             }
                         ) {
                             Icon(
@@ -4361,6 +4351,9 @@ private fun MonitoringApp(
                             label to action
                         }
                         .distinctBy { (_, action) -> action }
+                    val isZfsPoolHostSettingsMode = zfsPoolActions.any { (_, action) ->
+                        isZfsPoolHostSettingsAction(action)
+                    }
                     val hasData = zfsPoolActions.isNotEmpty() || state.zfsPoolFreeSpaceSummary.isNotBlank() || extractZfsPoolsTotal(state.message) != null
 
                     if (state.isLoading && !hasData) {
@@ -4368,7 +4361,7 @@ private fun MonitoringApp(
                     } else if (!hasData) {
                         Text("Пока нет данных по свободному месту ZFS пулов. Потяни список вниз или нажми кнопку синхронизации в оперативном центре.")
                     } else {
-                        if (zfsPoolActions.isNotEmpty()) {
+                        if (zfsPoolActions.isNotEmpty() && !isZfsPoolHostSettingsMode) {
                             val zfsPoolRows = zfsPoolActions.map { (label, action) ->
                                 parseZfsPoolTableRow(label, action)
                             }
@@ -4449,6 +4442,15 @@ private fun MonitoringApp(
                                             }
                                         }
                                     }
+                                }
+                            }
+                        } else if (zfsPoolActions.isNotEmpty()) {
+                            zfsPoolActions.forEach { (label, action) ->
+                                OutlinedButton(
+                                    onClick = { onAction(action) },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(label)
                                 }
                             }
                         }
