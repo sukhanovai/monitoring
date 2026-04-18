@@ -1395,6 +1395,7 @@ private fun MonitoringApp(
     var showZfsHostAddDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsHostEditDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsStatusesDialog by rememberSaveable { mutableStateOf(false) }
+    var showZfsPoolFreeSpaceDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsSettingsDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsHostsSettingsDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsHostActionsDialog by rememberSaveable { mutableStateOf(false) }
@@ -1868,6 +1869,7 @@ private fun MonitoringApp(
                 extension.id == "zfs_pool_free_space"
             ) {
                 {
+                    showZfsPoolFreeSpaceDialog = true
                     onAction("zfs_pool_free_space_menu")
                 }
             } else {
@@ -4150,6 +4152,113 @@ private fun MonitoringApp(
 
                         if (rawMessage.isNotBlank() && allStatusCards.isEmpty()) {
                             Text(formatZfsMessageForDialog(rawMessage))
+                        }
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    if (showZfsPoolFreeSpaceDialog) {
+        AlertDialog(
+            onDismissRequest = { showZfsPoolFreeSpaceDialog = false },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "💽 ZFS пулы",
+                        modifier = Modifier.weight(1f),
+                        fontWeight = FontWeight.Bold
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        IconButton(onClick = { onAction("zfs_pool_free_space_menu") }) {
+                            Icon(
+                                imageVector = Icons.Filled.Refresh,
+                                contentDescription = "Обновить список ZFS пулов"
+                            )
+                        }
+                        IconButton(onClick = { showZfsPoolFreeSpaceDialog = false }) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "Закрыть список ZFS пулов"
+                            )
+                        }
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    val zfsPoolMenuOptions = if (state.extensionMenuAction == "zfs_pool_free_space_menu") {
+                        state.extensionMenuOptions
+                    } else {
+                        emptyList()
+                    }
+                    val zfsPoolActions = zfsPoolMenuOptions
+                        .mapNotNull { option ->
+                            val action = resolveMenuOptionAction(option)
+                            val label = option.label?.trim().orEmpty()
+                            if (label.isBlank() || action.isBlank()) return@mapNotNull null
+                            label to action
+                        }
+                        .distinctBy { (_, action) -> action }
+                    val hasData = zfsPoolActions.isNotEmpty() || state.zfsPoolFreeSpaceSummary.isNotBlank()
+
+                    if (state.isLoading && !hasData) {
+                        Text("Загружаем данные по ZFS пулам…")
+                    } else if (!hasData) {
+                        Text("Пока нет данных по ZFS пулам. Нажми «Обновить», чтобы запросить статусы.")
+                    } else {
+                        Text(
+                            text = "Сводка: ${state.zfsPoolFreeSpaceSummary.ifBlank { "нет данных" }}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        if (zfsPoolActions.isNotEmpty()) {
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                maxItemsInEachRow = 2
+                            ) {
+                                zfsPoolActions.forEach { (label, action) ->
+                                    Surface(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .clickable { onAction(action) },
+                                        tonalElevation = 2.dp,
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = MaterialTheme.colorScheme.tertiaryContainer
+                                    ) {
+                                        Text(
+                                            text = label,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 10.dp, vertical = 8.dp),
+                                            maxLines = 3,
+                                            overflow = TextOverflow.Ellipsis,
+                                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        if (state.messageSource == "global" && state.message.isNotBlank()) {
+                            Text(
+                                text = state.message,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }

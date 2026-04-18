@@ -1,3 +1,11 @@
+## [8.55.1] - 2026-04-18
+
+### Changed / Изменено
+- EN: Android `Compact Ops` tile `zfs pools` (`💽`) is now wired to full extension interaction flow: tap opens a dedicated dialog, triggers `zfs_pool_free_space_menu`, shows summary, and renders backend action buttons from the extension menu response.
+- RU: В Android `Оперативном центре` плашка `zfs пулы` (`💽`) подключена к полноценному флоу расширения: по тапу открывается отдельный диалог, отправляется `zfs_pool_free_space_menu`, показывается сводка и кнопки действий из ответа меню расширения.
+- EN: SemVer patch bump to `8.55.1`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.1` and `ANDROID_VERSION_CODE=527`.
+- RU: Выполнен SemVer patch-бамп до `8.55.1`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.1` и `ANDROID_VERSION_CODE=527`.
+
 ## [8.55.0] - 2026-04-18
 
 ### Changed / Изменено
