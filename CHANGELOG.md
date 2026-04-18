@@ -1,11 +1,10 @@
-## [8.55.2] - 2026-04-18
+## [8.55.3] - 2026-04-18
 
 ### Changed / Изменено
-- EN: Fixed Android build failure `:app:compileCompactOpsDebugKotlin` in `MainActivity`: added missing Material icon import `androidx.compose.material.icons.filled.Refresh` for the ZFS pools dialog refresh button.
-- RU: Исправлен сбой Android-сборки `:app:compileCompactOpsDebugKotlin` в `MainActivity`: добавлен отсутствующий импорт Material-иконки `androidx.compose.material.icons.filled.Refresh` для кнопки обновления в диалоге ZFS-пулов.
-- EN: SemVer patch bump to `8.55.2`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.2` and `ANDROID_VERSION_CODE=528`.
-- RU: Выполнен SemVer patch-бамп до `8.55.2`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.2` и `ANDROID_VERSION_CODE=528`.
-
+- EN: In Android `Compact Ops` ZFS dialog, unified wording to `ZFS-pools` in the title, button accessibility labels, and empty/loading states for cleaner UI copy.
+- RU: В Android `Оперативный центр` в диалоге ZFS унифицированы формулировки до `ZFS-пулы` в заголовке, accessibility-подписях кнопок и в текстах пустого/загрузочного состояния.
+- EN: SemVer patch bump to `8.55.3`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.3` and `ANDROID_VERSION_CODE=529`; prerelease links aligned to `v8.55.3-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.55.3`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.3` и `ANDROID_VERSION_CODE=529`; prerelease-ссылки выровнены на `v8.55.3-develop`.
 ## [8.55.0] - 2026-04-18
 
 ### Changed / Изменено
