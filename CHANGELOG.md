@@ -1,9 +1,10 @@
-## [8.55.19] - 2026-04-18
+## [8.55.21] - 2026-04-18
 
-- EN: Renamed two Android ZFS tiles for clarity in the Operations Center: `zfs` → `zfs статусы` and `Свободное место ZFS пулов` → `zfs место`.
-- RU: Переименованы две Android-плашки ZFS для более понятного отображения в оперативном центре: `zfs` → `zfs статусы` и `Свободное место ZFS пулов` → `zfs место`.
-- EN: SemVer patch bump to `8.55.19`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.19` and `ANDROID_VERSION_CODE=545`; prerelease links aligned to `v8.55.19-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.55.19`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.19` и `ANDROID_VERSION_CODE=545`; prerelease-ссылки выровнены на `v8.55.19-develop`.
+### Fixed / Исправлено
+- EN: Fixed Android `zfs место` tile settings behavior: the gear button now opens ZFS pool host settings (`zfsp_hosts_list`) when the action is available, with automatic fallback to refresh (`zfs_pool_free_space_menu`) if settings are not yet loaded.
+- RU: Исправлено поведение шестерёнки в Android-плашке `zfs место`: кнопка настроек теперь открывает настройки хостов ZFS-пулов (`zfsp_hosts_list`), а если действие ещё не загружено — автоматически делает обновление (`zfs_pool_free_space_menu`).
+- EN: SemVer patch bump to `8.55.21`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.21` and `ANDROID_VERSION_CODE=547`; prerelease links aligned to `v8.55.21-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.55.21`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.21` и `ANDROID_VERSION_CODE=547`; prerelease-ссылки выровнены на `v8.55.21-develop`.
 
 ## [8.55.18] - 2026-04-18
 
