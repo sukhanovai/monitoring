@@ -132,6 +132,7 @@ private fun zfsFreePercentBackgroundColor(freePercent: Double): Color {
     }
 }
 
+@Composable
 private fun zfsPoolCardBackgroundColor(freePercent: Double?): Color {
     if (freePercent == null) return MaterialTheme.colorScheme.tertiaryContainer
     return zfsFreePercentBackgroundColor(freePercent)
