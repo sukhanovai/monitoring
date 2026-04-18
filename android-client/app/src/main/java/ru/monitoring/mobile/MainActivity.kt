@@ -71,6 +71,7 @@ import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -82,8 +83,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.sp
@@ -102,6 +107,53 @@ import ru.monitoring.mobile.ui.MainViewModel
 private val PROBLEM_BACKUP_MARKERS = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
 private val PROBLEM_BACKUP_KEYWORDS = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
 private val backupStatusPrefixRegex = Regex("""^[✅❌⚠️🚨🆘⛔🔴🟠🟡🟢⚪✔]+\s*""")
+
+private val zfsPoolFreePercentRegex = Regex("""(\d{1,3}(?:[.,]\d+)?)\s*%\s*free""", RegexOption.IGNORE_CASE)
+
+private fun zfsFreePercentColor(freePercent: Double): Color {
+    val normalized = freePercent.coerceIn(0.0, 100.0)
+    return when {
+        normalized <= 10.0 -> Color(0xFFC62828)
+        normalized <= 20.0 -> Color(0xFFE65100)
+        normalized <= 35.0 -> Color(0xFFF9A825)
+        else -> Color(0xFF2E7D32)
+    }
+}
+
+private fun formatZfsPoolActionLabel(label: String): AnnotatedString {
+    val trimmed = label.trim()
+    if (trimmed.isBlank()) return AnnotatedString(label)
+    val match = zfsPoolFreePercentRegex.find(trimmed) ?: return AnnotatedString(label)
+    val percentRaw = match.groupValues.getOrNull(1)?.replace(',', '.')
+    val percent = percentRaw?.toDoubleOrNull() ?: return AnnotatedString(label)
+    val start = match.range.first
+    val endExclusive = match.range.first + match.groupValues[1].length
+    return buildAnnotatedString {
+        append(trimmed.substring(0, start))
+        withStyle(SpanStyle(color = zfsFreePercentColor(percent), fontWeight = FontWeight.ExtraBold)) {
+            append(trimmed.substring(start, endExclusive))
+        }
+        append(trimmed.substring(endExclusive))
+    }
+}
+
+private fun isAuxiliaryZfsPoolAction(action: String, label: String): Boolean {
+    val normalizedAction = action.trim().lowercase()
+    val normalizedLabel = label.trim().lowercase()
+    return normalizedAction == "zfs_pool_free_space_menu" ||
+        normalizedAction == "close" ||
+        normalizedLabel.contains("обновить") ||
+        normalizedLabel.contains("закрыть")
+}
+
+private fun extractZfsPoolsTotal(message: String): Int? {
+    if (message.isBlank()) return null
+    val poolLineRegex = Regex("""(?i)(?:пулов|pools)\s*[:=]\s*(\d+)""")
+    return message.lineSequence()
+        .map { it.trim() }
+        .mapNotNull { line -> poolLineRegex.find(line)?.groupValues?.getOrNull(1)?.toIntOrNull() }
+        .firstOrNull()
+}
 
 private fun isProblemBackupLabel(label: String): Boolean {
     val normalized = label.lowercase()
@@ -2043,6 +2095,17 @@ private fun MonitoringApp(
                                 }
                             }
                             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                IconButton(onClick = {
+                                    onRefreshData()
+                                    showServerAvailabilityDialog = false
+                                    showServerResourcesMenu = false
+                                    showServerResourcesDetailsDialog = false
+                                }) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Sync,
+                                        contentDescription = "Синхронизировать данные"
+                                    )
+                                }
                                 IconButton(onClick = { showTileSettingsDialog = true }) {
                                     Icon(
                                         imageVector = Icons.Filled.Settings,
@@ -4177,16 +4240,10 @@ private fun MonitoringApp(
                         fontWeight = FontWeight.Bold
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        IconButton(onClick = { onAction("zfs_pool_free_space_menu") }) {
+                        IconButton(onClick = { showZfsSettingsDialog = true }) {
                             Icon(
-                                imageVector = Icons.Filled.Refresh,
-                                contentDescription = "Обновить список ZFS-пулов"
-                            )
-                        }
-                        IconButton(onClick = { showZfsPoolFreeSpaceDialog = false }) {
-                            Icon(
-                                imageVector = Icons.Filled.Close,
-                                contentDescription = "Закрыть список ZFS-пулов"
+                                imageVector = Icons.Filled.Settings,
+                                contentDescription = "Открыть настройки ZFS"
                             )
                         }
                     }
@@ -4210,18 +4267,25 @@ private fun MonitoringApp(
                             val action = resolveMenuOptionAction(option)
                             val label = option.label?.trim().orEmpty()
                             if (label.isBlank() || action.isBlank()) return@mapNotNull null
+                            if (isAuxiliaryZfsPoolAction(action, label)) return@mapNotNull null
                             label to action
                         }
                         .distinctBy { (_, action) -> action }
-                    val hasData = zfsPoolActions.isNotEmpty() || state.zfsPoolFreeSpaceSummary.isNotBlank()
+                    val poolsTotal = extractZfsPoolsTotal(state.message)
+                    val summaryText = if (poolsTotal != null) {
+                        "0/$poolsTotal"
+                    } else {
+                        state.zfsPoolFreeSpaceSummary.ifBlank { "нет данных" }
+                    }
+                    val hasData = zfsPoolActions.isNotEmpty() || state.zfsPoolFreeSpaceSummary.isNotBlank() || poolsTotal != null
 
                     if (state.isLoading && !hasData) {
                         Text("Загружаем данные по ZFS-пулам…")
                     } else if (!hasData) {
-                        Text("Пока нет данных по ZFS-пулам. Нажми «Обновить», чтобы запросить статусы.")
+                        Text("Пока нет данных по ZFS-пулам. Потяни список вниз или нажми кнопку синхронизации в оперативном центре.")
                     } else {
                         Text(
-                            text = "Сводка: ${state.zfsPoolFreeSpaceSummary.ifBlank { "нет данных" }}",
+                            text = "Сводка: $summaryText",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -4243,7 +4307,7 @@ private fun MonitoringApp(
                                         color = MaterialTheme.colorScheme.tertiaryContainer
                                     ) {
                                         Text(
-                                            text = label,
+                                            text = formatZfsPoolActionLabel(label),
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .padding(horizontal = 10.dp, vertical = 8.dp),
