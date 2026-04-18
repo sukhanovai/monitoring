@@ -1788,7 +1788,7 @@ private fun MonitoringApp(
         extensionsById["zfs_monitor"]?.takeIf { it.enabled }?.let { extension ->
             add(
                 buildExtensionDataTile(
-                    extension = extension.copy(name = "zfs"),
+                    extension = extension.copy(id = "zfs_monitor", name = "zfs"),
                     summaryOverride = state.zfsSummary,
                     hasProblemOverride = state.zfsHasProblemItems
                 )
@@ -1799,7 +1799,7 @@ private fun MonitoringApp(
         zfsPoolFreeSpaceExtension?.takeIf { it.enabled }?.let { extension ->
             add(
                 buildExtensionDataTile(
-                    extension = extension.copy(name = "zfs пулы"),
+                    extension = extension.copy(id = "zfs_pool_free_space_monitor", name = "zfs пулы"),
                     summaryOverride = state.zfsPoolFreeSpaceSummary,
                     hasProblemOverride = state.zfsPoolFreeSpaceHasProblemItems
                 )
@@ -1868,8 +1868,7 @@ private fun MonitoringApp(
             } else if (
                 extension.id == "zfs_pool_free_space_monitor" ||
                 extension.id == "zfs_pool_free_space" ||
-                extension.id.contains("zfs_pool_free_space") ||
-                extension.label.contains("zfs пулы", ignoreCase = true)
+                extension.id.contains("zfs_pool_free_space")
             ) {
                 {
                     showZfsPoolFreeSpaceDialog = true

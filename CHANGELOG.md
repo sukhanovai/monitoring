@@ -1,10 +1,12 @@
-## [8.55.4] - 2026-04-18
+## [8.55.5] - 2026-04-18
 
 ### Changed / Изменено
-- EN: In Android `Compact Ops`, fixed tap handling for the `zfs pools` tile: now fallback matching by id/label reliably opens `zfs_pool_free_space_menu` even with backend id variants.
-- RU: В Android `Оперативный центр` исправлен тап по плашке `zfs пулы`: добавлен fallback-матчинг по id/label, поэтому `zfs_pool_free_space_menu` стабильно открывается даже при вариантах backend-id.
-- EN: SemVer patch bump to `8.55.4`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.4` and `ANDROID_VERSION_CODE=530`; prerelease links aligned to `v8.55.4-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.55.4`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.4` и `ANDROID_VERSION_CODE=530`; prerelease-ссылки выровнены на `v8.55.4-develop`.
+- EN: In Android `Compact Ops`, separated `zfs` and `zfs pools` actions: the ZFS status loader now ignores `zfs_pool_free_space` actions, so the `zfs` tile no longer opens or shows pool data by mistake.
+- RU: В Android `Оперативный центр` разделены действия `zfs` и `zfs пулы`: загрузчик статусов ZFS теперь игнорирует `zfs_pool_free_space`-действия, поэтому плашка `zfs` больше не открывает и не показывает данные пулов по ошибке.
+- EN: Normalized Android tile ids for `zfs`/`zfs pools` in `Compact Ops` and tightened click routing for `zfs pools` to id-based matching, so `zfs_pool_free_space_menu` opens from the dedicated tile consistently.
+- RU: В `Оперативном центре` нормализованы id плашек `zfs`/`zfs пулы` и ужесточена маршрутизация клика `zfs пулы` по id, поэтому `zfs_pool_free_space_menu` стабильно открывается из своей отдельной плашки.
+- EN: SemVer patch bump to `8.55.5`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.5` and `ANDROID_VERSION_CODE=531`; prerelease links aligned to `v8.55.5-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.55.5`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.5` и `ANDROID_VERSION_CODE=531`; prerelease-ссылки выровнены на `v8.55.5-develop`.
 ## [8.55.0] - 2026-04-18
 
 ### Changed / Изменено
