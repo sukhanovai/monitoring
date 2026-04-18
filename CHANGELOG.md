@@ -1,3 +1,11 @@
+## [8.55.17] - 2026-04-18
+
+### Changed / Изменено
+- EN: Fixed Android ZFS status fetch flow: `zfs` tile now prioritizes real ZFS status actions and ignores `settings_zfs*` actions when selecting the response, so pool states are rendered in the ZFS card/dialog instead of settings placeholders.
+- RU: Исправлен поток загрузки ZFS-статусов в Android: плашка `zfs` теперь приоритизирует реальные действия статусов ZFS и игнорирует `settings_zfs*` при выборе ответа, поэтому в карточке/диалоге ZFS снова отображаются состояния пулов, а не заглушки настроек.
+- EN: SemVer patch bump to `8.55.17`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.17` and `ANDROID_VERSION_CODE=543`; prerelease links aligned to `v8.55.17-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.55.17`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.17` и `ANDROID_VERSION_CODE=543`; prerelease-ссылки выровнены на `v8.55.17-develop`.
+
 ## [8.55.16] - 2026-04-18
 
 ### Changed / Изменено

@@ -52,7 +52,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.55.16"
+    private val projectVersion = "8.55.17"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -494,16 +494,11 @@ class MainViewModel(
             if (action.isBlank()) return false
             if (action == "zfs_menu" || action == "zfs") return true
 
-            if (!action.startsWith("settings_zfs")) return false
-            if (action.startsWith("settings_zfs_pool")) return false
+            if (action.startsWith("settings_zfs")) return false
+            if (action.startsWith("zfsp_")) return false
+            if (action == "zfs_pool_free_space_menu") return false
 
-            return action == "settings_zfs" ||
-                action == "settings_zfs_list" ||
-                action.startsWith("settings_zfs_add") ||
-                action.startsWith("settings_zfs_edit_name_") ||
-                action.startsWith("settings_zfs_toggle_") ||
-                action.startsWith("settings_zfs_delete_") ||
-                action == "settings_patterns_zfs"
+            return action.startsWith("zfs")
         }
 
         val prioritizedActions = buildList {
