@@ -1,3 +1,11 @@
+## [8.55.14] - 2026-04-18
+
+### Changed / Изменено
+- EN: Fixed Android build failure in `MainViewModel`: added a dedicated menu-options resolver overload for `ExtensionsActionResponse`, so `settings_zfs_list` extension responses are handled with the correct type and `compileCompactOpsDebugKotlin` no longer fails on type mismatch.
+- RU: Исправлен падёж Android-сборки в `MainViewModel`: добавлен отдельный overload резолвера menu-options для `ExtensionsActionResponse`, поэтому ответы extension-действия `settings_zfs_list` обрабатываются корректным типом и `compileCompactOpsDebugKotlin` больше не падает из-за type mismatch.
+- EN: SemVer patch bump to `8.55.14`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.14` and `ANDROID_VERSION_CODE=540`; prerelease links aligned to `v8.55.14-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.55.14`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.14` и `ANDROID_VERSION_CODE=540`; prerelease-ссылки выровнены на `v8.55.14-develop`.
+
 ## [8.55.13] - 2026-04-18
 
 ### Changed / Изменено
