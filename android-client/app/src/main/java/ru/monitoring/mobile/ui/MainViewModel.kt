@@ -51,7 +51,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.54.0"
+    private val projectVersion = "8.55.0"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -68,6 +68,7 @@ class MainViewModel(
     private val extensionMainMenuActions = setOf(
         "zfs",
         "zfs_menu",
+        "zfs_pool_free_space_menu",
         "backup_hosts",
         "backup_databases",
         "backup_mail",
@@ -78,6 +79,7 @@ class MainViewModel(
     private val extensionControlActions = setOf(
         "zfs",
         "zfs_menu",
+        "zfs_pool_free_space_menu",
         "backup_proxmox",
         "backup_stock_loads",
         "supplier_stock_reports",
@@ -86,6 +88,7 @@ class MainViewModel(
     private val extensionActionToIdMatchers = listOf<Pair<(String) -> Boolean, String>>(
         Pair({ action -> action == "check_resources" }, "resource_monitor"),
         Pair({ action -> action == "zfs" || action == "zfs_menu" || action.startsWith("settings_zfs") }, "zfs_monitor"),
+        Pair({ action -> action == "zfs_pool_free_space_menu" || action.startsWith("zfsp_") }, "zfs_pool_free_space_monitor"),
         Pair({ action -> action == "backup_proxmox" || action.startsWith("backup_host_") }, "backup_monitor"),
         Pair({ action -> action == "backup_databases" || action.startsWith("db_detail_") }, "database_backup_monitor"),
         Pair({ action -> action.startsWith("backup_mail") }, "mail_backup_monitor"),
@@ -97,6 +100,7 @@ class MainViewModel(
         Triple("backup_monitor", "💾 Бэкапы Proxmox", "settings_ext_backup_proxmox"),
         Triple("database_backup_monitor", "🗃️ Бэкапы БД", "settings_ext_backup_db"),
         Triple("mail_backup_monitor", "📬 Бэкапы почты", "settings_ext_backup_mail"),
+        Triple("zfs_pool_free_space_monitor", "💽 Свободное место ZFS пулов", "zfs_pool_free_space_menu"),
         Triple("stock_load_monitor", "📦 Загрузка остатков 1С", "settings_ext_stock_load"),
         Triple("supplier_stock_files", "📦 Остатки поставщиков", "settings_ext_supplier_stock"),
         Triple("resource_monitor", "💻 Ресурсы", "settings_resources")
@@ -334,7 +338,9 @@ class MainViewModel(
             .map { line -> line.trim() }
             .filter { line -> backupSummaryStatusLineRegex.matches(line) }
             .toList()
-        val okFromStatusLines = statusLines.count { line -> line.startsWith("✅") || line.startsWith("✔") }
+        val okFromStatusLines = statusLines.count { line ->
+            line.startsWith("✅") || line.startsWith("✔") || line.startsWith("🟢")
+        }
         val problemsFromStatusLines = statusLines.size - okFromStatusLines
 
         val total = totalFromMessage
@@ -787,6 +793,9 @@ class MainViewModel(
                         }.getOrElse { zfsRoot }
                     }
                 }.getOrNull()
+                val zfsPoolFreeSpaceSummary = runCatching {
+                    currentApi().runControlAction(ControlActionRequest("zfs_pool_free_space_menu"))
+                }.getOrNull()
                 listOf(
                     monitoring,
                     bot,
@@ -802,7 +811,8 @@ class MainViewModel(
                     stockLoadSummary,
                     supplierStockSummary,
                     mailBackupSummary,
-                    zfsSummary
+                    zfsSummary,
+                    zfsPoolFreeSpaceSummary
                 )
             }
 
@@ -827,6 +837,7 @@ class MainViewModel(
                 ?.size
                 ?: extractMailBackupVolume(mailBackupResponse?.message.orEmpty())
             val zfsSummary = buildBackupTileSummary(result[14] as? ControlActionResult)
+            val zfsPoolFreeSpaceSummary = buildBackupTileSummary(result[15] as? ControlActionResult)
 
             val monitoringData = monitoring?.settings
             val botData = bot?.settings
@@ -888,12 +899,14 @@ class MainViewModel(
                 backupMailSummary = mailBackupSummary?.ratioText ?: state.backupMailSummary,
                 mailBackupLastVolume = mailBackupVolume ?: state.mailBackupLastVolume,
                 zfsSummary = zfsSummary?.ratioText ?: state.zfsSummary,
+                zfsPoolFreeSpaceSummary = zfsPoolFreeSpaceSummary?.ratioText ?: state.zfsPoolFreeSpaceSummary,
                 backupProxmoxHasProblemItems = proxmoxBackupSummary?.hasProblem ?: state.backupProxmoxHasProblemItems,
                 backupDatabasesHasProblemItems = dbBackupSummary?.hasProblem ?: state.backupDatabasesHasProblemItems,
                 backupStockLoadsHasProblemItems = stockLoadSummary?.hasProblem ?: state.backupStockLoadsHasProblemItems,
                 supplierStockHasProblemItems = supplierStockSummary?.hasProblem ?: state.supplierStockHasProblemItems,
                 backupMailHasProblemItems = mailBackupSummary?.hasProblem ?: state.backupMailHasProblemItems,
                 zfsHasProblemItems = zfsSummary?.hasProblem ?: state.zfsHasProblemItems,
+                zfsPoolFreeSpaceHasProblemItems = zfsPoolFreeSpaceSummary?.hasProblem ?: state.zfsPoolFreeSpaceHasProblemItems,
                 monitoringStatusText = when {
                     control?.monitoringActive == true -> "🟢 Активен"
                     control?.monitoringActive == false -> "🔴 Приостановлен"
@@ -1690,6 +1703,11 @@ class MainViewModel(
                             } else {
                                 null
                             }
+                            val zfsPoolFreeSpaceSummary = if (normalizedAction == "zfs_pool_free_space_menu") {
+                                buildBackupTileSummary(response)
+                            } else {
+                                null
+                            }
                             state = state.copy(
                                 isLoading = false,
                                 message = resolveControlActionMessage(zfsPrimaryResponse).ifBlank { "Команда отправлена" },
@@ -1717,6 +1735,9 @@ class MainViewModel(
                                 zfsHostMenuOptions = refreshedZfsHostMenuOptions,
                                 zfsSummary = zfsSummary?.ratioText ?: state.zfsSummary,
                                 zfsHasProblemItems = zfsSummary?.hasProblem ?: state.zfsHasProblemItems,
+                                zfsPoolFreeSpaceSummary = zfsPoolFreeSpaceSummary?.ratioText ?: state.zfsPoolFreeSpaceSummary,
+                                zfsPoolFreeSpaceHasProblemItems = zfsPoolFreeSpaceSummary?.hasProblem
+                                    ?: state.zfsPoolFreeSpaceHasProblemItems,
                                 mailBackupLastVolume = mailHistory?.items?.firstOrNull()?.size
                                     ?: extractMailBackupVolume(resolveControlActionMessage(zfsPrimaryResponse))
                                     ?: state.mailBackupLastVolume
@@ -2380,12 +2401,14 @@ data class MainUiState(
     val backupMailSummary: String = "",
     val mailBackupLastVolume: String = "",
     val zfsSummary: String = "",
+    val zfsPoolFreeSpaceSummary: String = "",
     val backupProxmoxHasProblemItems: Boolean = false,
     val backupDatabasesHasProblemItems: Boolean = false,
     val backupStockLoadsHasProblemItems: Boolean = false,
     val supplierStockHasProblemItems: Boolean = false,
     val backupMailHasProblemItems: Boolean = false,
     val zfsHasProblemItems: Boolean = false,
+    val zfsPoolFreeSpaceHasProblemItems: Boolean = false,
     val mailBackupHistoryTitle: String = "",
     val mailBackupHistoryItems: List<MailBackupHistoryItem> = emptyList(),
     val zfsStatusMessage: String = "",

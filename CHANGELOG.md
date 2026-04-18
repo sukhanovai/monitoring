@@ -1,10 +1,12 @@
-## [8.54.0] - 2026-04-17
+## [8.55.0] - 2026-04-18
 
 ### Changed / Изменено
-- EN: Android compact ops dashboard now includes a dedicated tile for the `💽 Free space of ZFS pools` extension, exposed with a short label `zfs пулы`.
-- RU: В Android compact ops dashboard добавлена отдельная плашка для расширения `💽 Свободное место ZFS пулов`, с коротким названием `zfs пулы`.
-- EN: SemVer minor bump to `8.54.0`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.54.0` and `ANDROID_VERSION_CODE=525`; prerelease links aligned to `v8.54.0-develop`.
-- RU: Выполнен SemVer minor-бамп до `8.54.0`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.54.0` и `ANDROID_VERSION_CODE=525`; prerelease-ссылки выровнены на `v8.54.0-develop`.
+- EN: Android `Compact Ops` now shows a dedicated extension tile for `💽 Free space of ZFS pools` even when backend returns `zfs_pool_free_space_monitor`, and the tile opens `zfs_pool_free_space_menu`.
+- RU: В Android `Оперативный центр` добавлена отдельная плашка расширения `💽 Свободное место ZFS пулов`: теперь учитывается backend-id `zfs_pool_free_space_monitor`, а тап открывает `zfs_pool_free_space_menu`.
+- EN: Added summary and problem-state calculation for `zfs_pool_free_space_menu` so the tile value/alert coloring reflects pool data, and extended status parsing to treat `🟢` as a healthy marker.
+- RU: Добавлен расчёт сводки и аварийности для `zfs_pool_free_space_menu`, чтобы значение/подсветка плашки отражали состояние пулов; парсинг статусов расширен — `🟢` считается нормальным состоянием.
+- EN: SemVer minor bump to `8.55.0`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.0` and `ANDROID_VERSION_CODE=526`; prerelease links aligned to `v8.55.0-develop`.
+- RU: Выполнен SemVer minor-бамп до `8.55.0`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.0` и `ANDROID_VERSION_CODE=526`; prerelease-ссылки выровнены на `v8.55.0-develop`.
 
 ## [8.53.20] - 2026-04-17
 
