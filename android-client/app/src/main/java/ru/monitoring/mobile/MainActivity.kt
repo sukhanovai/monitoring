@@ -4258,13 +4258,12 @@ private fun MonitoringApp(
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         IconButton(
                             onClick = {
-                                showZfsHostsSettingsDialog = true
-                                onExtensionsSettingsAction("settings_zfs_list")
+                                onAction("zfsp_hosts_list")
                             }
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.Settings,
-                                contentDescription = "Открыть настройки хостов ZFS"
+                                contentDescription = "Открыть настройки хостов ZFS-пулов"
                             )
                         }
                         IconButton(onClick = { showZfsPoolFreeSpaceDialog = false }) {
@@ -4284,7 +4283,10 @@ private fun MonitoringApp(
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    val zfsPoolMenuOptions = if (state.extensionMenuAction == "zfs_pool_free_space_menu") {
+                    val zfsPoolMenuOptions = if (
+                        state.extensionMenuAction == "zfs_pool_free_space_menu" ||
+                        state.extensionMenuAction.startsWith("zfsp_")
+                    ) {
                         state.extensionMenuOptions
                     } else {
                         emptyList()
