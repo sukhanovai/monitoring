@@ -52,7 +52,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.55.30"
+    private val projectVersion = "8.55.31"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -1671,6 +1671,7 @@ class MainViewModel(
 
         if (
             normalizedAction in extensionMainMenuActions ||
+            normalizedAction.startsWith("zfsp_") ||
             normalizedAction == "backup_proxmox" ||
             normalizedAction == "backup_databases" ||
             normalizedAction.startsWith("backup_host_") ||
@@ -1684,6 +1685,7 @@ class MainViewModel(
                 state = state.copy(isLoading = true)
                 if (
                     normalizedAction in extensionControlActions ||
+                    normalizedAction.startsWith("zfsp_") ||
                     normalizedAction == "backup_databases" ||
                     normalizedAction.startsWith("backup_host_") ||
                     normalizedAction.startsWith("db_detail_") ||
