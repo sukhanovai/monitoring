@@ -1,12 +1,12 @@
-## [8.55.26] - 2026-04-18
+## [8.55.27] - 2026-04-18
 
 ### Changed / Изменено
 - EN: Fixed Android Compose compile error in `MainActivity`: helper `zfsPoolCardBackgroundColor` is now marked `@Composable`, so `MaterialTheme.colorScheme` is used from a valid composable context.
 - RU: Исправлена ошибка компиляции Android Compose в `MainActivity`: хелпер `zfsPoolCardBackgroundColor` помечен `@Composable`, поэтому `MaterialTheme.colorScheme` вызывается из корректного composable-контекста.
-- EN: Android app UI updated: sync/loading circular indicator moved into the top bar (to the left of `ComDone`) and `zfs место` free-percent values in ZFS pool cards are now highlighted brighter with threshold-based colors as free space approaches critical levels.
-- RU: Обновлён UI Android-приложения: круговой индикатор синхронизации/обновления перенесён в верхний заголовок (слева от `ComDone`), а значения процента свободного места в `zfs место` теперь выделяются ярче с пороговой цветовой индикацией по мере приближения к критическим значениям.
-- EN: SemVer patch bump to `8.55.26`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.26` and `ANDROID_VERSION_CODE=552`; prerelease links aligned to `v8.55.26-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.55.26`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.26` и `ANDROID_VERSION_CODE=552`; prerelease-ссылки выровнены на `v8.55.26-develop`.
+- EN: Android app UI updated: in `zfs место`, pool results are now rendered as a compact table (host / pool / free %) with threshold-aware coloring and tap support on table rows.
+- RU: Обновлён UI Android-приложения: в `zfs место` результаты по пулам теперь отображаются компактной таблицей (хост / пул / свободно %) с пороговой цветовой индикацией и поддержкой тапа по строкам.
+- EN: SemVer patch bump to `8.55.27`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.27` and `ANDROID_VERSION_CODE=553`; prerelease links aligned to `v8.55.27-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.55.27`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.27` и `ANDROID_VERSION_CODE=553`; prerelease-ссылки выровнены на `v8.55.27-develop`.
 
 ## [8.55.24] - 2026-04-18
 
