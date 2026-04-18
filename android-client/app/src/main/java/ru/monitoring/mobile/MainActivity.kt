@@ -1899,11 +1899,12 @@ private fun MonitoringApp(
         val zfsPoolFreeSpaceExtension = extensionsById["zfs_pool_free_space_monitor"]
             ?: extensionsById["zfs_pool_free_space"]
         zfsPoolFreeSpaceExtension?.takeIf { it.enabled }?.let { extension ->
+            val hasProblem = state.zfsPoolFreeSpaceHasProblemItems
             add(
                 buildExtensionDataTile(
                     extension = extension.copy(id = "zfs_pool_free_space_monitor", name = "zfs место"),
-                    summaryOverride = state.zfsPoolFreeSpaceSummary,
-                    hasProblemOverride = state.zfsPoolFreeSpaceHasProblemItems
+                    summaryOverride = if (hasProblem) "АЛЕРТ" else "ОК",
+                    hasProblemOverride = hasProblem
                 )
             )
         }
