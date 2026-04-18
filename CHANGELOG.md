@@ -1,12 +1,14 @@
-## [8.55.30] - 2026-04-18
+## [8.55.31] - 2026-04-18
 
 ### Fixed / Исправлено
+- EN: Fixed Android `zfs место` settings button in `💽 Free space of ZFS pools`: tapping the gear now runs `zfsp_hosts_list` via control actions, and `zfsp_*` actions are handled in the ViewModel so host free-space settings open correctly.
+- RU: Исправлена кнопка настроек в Android `zfs место` (`💽 Свободное место ZFS пулов`): тап по шестерёнке теперь запускает `zfsp_hosts_list` через control-action, а `zfsp_*` действия обрабатываются во ViewModel, поэтому настройки хостов свободного места открываются корректно.
 - EN: ZFS pool free-space alerts now interpret high thresholds (`51..95`) as *used-space* limits (e.g., `95% used` means alert when free space is `<= 5%`), which removes false red states when hosts were configured with used-capacity semantics.
 - RU: Алерты по свободному месту ZFS-пулов теперь корректно трактуют высокие пороги (`51..95`) как пороги *заполнения* (например, `95% used` означает алерт только при свободном месте `<= 5%`), что убирает ложные красные статусы.
 - EN: Android tile `zfs место` now shows `!` instead of `АЛЕРТ` for problem state.
 - RU: Android-плашка `zfs место` теперь показывает `!` вместо `АЛЕРТ` в проблемном состоянии.
-- EN: SemVer patch bump to `8.55.30`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.30` and `ANDROID_VERSION_CODE=556`; prerelease links aligned to `v8.55.30-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.55.30`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.30` и `ANDROID_VERSION_CODE=556`; prerelease-ссылки выровнены на `v8.55.30-develop`.
+- EN: SemVer patch bump to `8.55.31`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.31` and `ANDROID_VERSION_CODE=557`; prerelease links aligned to `v8.55.31-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.55.31`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.31` и `ANDROID_VERSION_CODE=557`; prerelease-ссылки выровнены на `v8.55.31-develop`.
 
 ## [8.55.28] - 2026-04-18
 

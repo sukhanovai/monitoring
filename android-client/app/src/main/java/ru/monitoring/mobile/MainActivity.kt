@@ -4313,7 +4313,7 @@ private fun MonitoringApp(
                             onClick = {
                                 val hostSettingsAction = zfsPoolHostSettingsAction
                                 if (!hostSettingsAction.isNullOrBlank()) {
-                                    onExtensionsSettingsAction(hostSettingsAction)
+                                    onAction(hostSettingsAction)
                                 } else {
                                     onAction("zfs_pool_free_space_menu")
                                 }
