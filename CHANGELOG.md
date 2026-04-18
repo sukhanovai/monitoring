@@ -1,3 +1,11 @@
+## [8.55.29] - 2026-04-18
+
+### Fixed / Исправлено
+- EN: Android tile `zfs место` now shows a binary health state: `ОК` when all ZFS pools are below alert threshold, and `АЛЕРТ` when at least one pool has a problem.
+- RU: В Android-плашке `zfs место` теперь отображается бинарный статус состояния: `ОК`, если все ZFS-пулы ниже порога тревоги, и `АЛЕРТ`, если хотя бы один пул проблемный.
+- EN: SemVer patch bump to `8.55.29`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.29` and `ANDROID_VERSION_CODE=555`; prerelease links aligned to `v8.55.29-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.55.29`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.29` и `ANDROID_VERSION_CODE=555`; prerelease-ссылки выровнены на `v8.55.29-develop`.
+
 ## [8.55.28] - 2026-04-18
 
 ### Changed / Изменено
