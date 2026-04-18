@@ -1,3 +1,11 @@
+## [8.55.6] - 2026-04-18
+
+### Changed / Изменено
+- EN: Fixed Android `Compact Ops` ZFS status loader: `zfs` now follows only dedicated ZFS actions (`zfs_menu`, `settings_zfs*` for hosts/patterns) and explicitly ignores `settings_zfs_pool*`, so the `zfs` tile is no longer linked to ZFS pools actions.
+- RU: Исправлен загрузчик статусов ZFS в Android `Оперативном центре`: `zfs` теперь следует только профильным действиям ZFS (`zfs_menu`, `settings_zfs*` для хостов/паттернов) и явно игнорирует `settings_zfs_pool*`, поэтому плашка `zfs` больше не связана с действиями ZFS-пулов.
+- EN: SemVer patch bump to `8.55.6`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.6` and `ANDROID_VERSION_CODE=532`; prerelease links aligned to `v8.55.6-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.55.6`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.6` и `ANDROID_VERSION_CODE=532`; prerelease-ссылки выровнены на `v8.55.6-develop`.
+
 ## [8.55.5] - 2026-04-18
 
 ### Changed / Изменено
