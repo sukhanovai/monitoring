@@ -1,12 +1,12 @@
-## [8.55.12] - 2026-04-18
+## [8.55.13] - 2026-04-18
 
 ### Changed / Изменено
-- EN: Fixed Android `ZFS pools` gear action: it now opens host settings from the same flow as Telegram (`Main menu` → `ZFS pool free space` → `host settings`) via `zfsp_hosts_list`.
-- RU: Исправлено действие шестерёнки в Android `ZFS-пулах`: теперь открываются настройки хостов из того же контура, что и в Telegram (`Главное меню` → `Свободное место ZFS пулов` → `настройки хостов`) через `zfsp_hosts_list`.
+- EN: Fixed Android `ZFS pools` gear action: it now opens host settings from the same flow as Telegram (`Main menu` → `ZFS pool free space` → `host settings`) via `settings_zfs_list`.
+- RU: Исправлено действие шестерёнки в Android `ZFS-пулах`: теперь открываются настройки хостов из того же контура, что и в Telegram (`Главное меню` → `Свободное место ZFS пулов` → `настройки хостов`) через `settings_zfs_list`.
 - EN: Updated Android `ZFS pools` dialog data source to keep rendering extension options for both `zfs_pool_free_space_menu` and nested `zfsp_*` actions, so host-settings screens are shown in-app correctly.
 - RU: Обновлён источник данных в Android-диалоге `ZFS-пулы`: теперь экран продолжает рендерить опции расширения и для `zfs_pool_free_space_menu`, и для вложенных `zfsp_*` действий, поэтому настройки хостов корректно отображаются в приложении.
-- EN: SemVer patch bump to `8.55.12`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.12` and `ANDROID_VERSION_CODE=538`; prerelease links aligned to `v8.55.12-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.55.12`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.12` и `ANDROID_VERSION_CODE=538`; prerelease-ссылки выровнены на `v8.55.12-develop`.
+- EN: SemVer patch bump to `8.55.13`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.13` and `ANDROID_VERSION_CODE=539`; prerelease links aligned to `v8.55.13-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.55.13`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.13` и `ANDROID_VERSION_CODE=539`; prerelease-ссылки выровнены на `v8.55.13-develop`.
 
 ## [8.55.10] - 2026-04-18
 
