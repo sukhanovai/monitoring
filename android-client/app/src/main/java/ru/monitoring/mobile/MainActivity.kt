@@ -82,12 +82,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.sp
@@ -143,27 +139,34 @@ private fun extractZfsFreePercent(label: String): Double? {
     return match.groupValues.getOrNull(1)?.replace(',', '.')?.toDoubleOrNull()
 }
 
-private fun formatZfsPoolActionLabel(label: String): AnnotatedString {
+private data class ZfsPoolTableRow(
+    val host: String,
+    val pool: String,
+    val freePercentText: String,
+    val freePercent: Double?,
+    val action: String
+)
+
+private fun parseZfsPoolTableRow(label: String, action: String): ZfsPoolTableRow {
     val trimmed = label.trim()
-    if (trimmed.isBlank()) return AnnotatedString(label)
-    val match = zfsPoolFreePercentRegex.find(trimmed) ?: return AnnotatedString(label)
-    val percentRaw = match.groupValues.getOrNull(1)?.replace(',', '.')
-    val percent = percentRaw?.toDoubleOrNull() ?: return AnnotatedString(label)
-    val start = match.range.first
-    val endExclusive = match.range.last + 1
-    return buildAnnotatedString {
-        append(trimmed.substring(0, start))
-        withStyle(
-            SpanStyle(
-                color = zfsFreePercentColor(percent),
-                fontWeight = FontWeight.ExtraBold,
-                background = zfsFreePercentBackgroundColor(percent)
-            )
-        ) {
-            append(trimmed.substring(start, endExclusive))
-        }
-        append(trimmed.substring(endExclusive))
+    val freePercent = extractZfsFreePercent(trimmed)
+    val freePercentText = freePercent?.let { "${it}%"} ?: "—"
+    val withoutStatusEmoji = trimmed.replace(Regex("""^[✅❌⚠️🚨🆘⛔🔴🟠🟡🟢⚪✔]+\s*"""), "")
+    val poolName = Regex("""`([^`]+)`""").find(withoutStatusEmoji)?.groupValues?.getOrNull(1).orEmpty()
+    val hostRaw = if (poolName.isNotBlank()) {
+        withoutStatusEmoji.substringBefore("`").trim()
+    } else {
+        withoutStatusEmoji.substringBefore("·").trim()
     }
+    val host = hostRaw.ifBlank { "—" }
+    val pool = poolName.ifBlank { withoutStatusEmoji.ifBlank { "—" } }
+    return ZfsPoolTableRow(
+        host = host,
+        pool = pool,
+        freePercentText = freePercentText,
+        freePercent = freePercent,
+        action = action
+    )
 }
 
 private fun isAuxiliaryZfsPoolAction(action: String, label: String): Boolean {
@@ -4336,32 +4339,78 @@ private fun MonitoringApp(
                         Text("Пока нет данных по свободному месту ZFS пулов. Потяни список вниз или нажми кнопку синхронизации в оперативном центре.")
                     } else {
                         if (zfsPoolActions.isNotEmpty()) {
-                            FlowRow(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                                maxItemsInEachRow = 2
+                            val zfsPoolRows = zfsPoolActions.map { (label, action) ->
+                                parseZfsPoolTableRow(label, action)
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                tonalElevation = 1.dp,
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
                             ) {
-                                zfsPoolActions.forEach { (label, action) ->
-                                    val freePercent = extractZfsFreePercent(label)
-                                    Surface(
+                                Column(modifier = Modifier.fillMaxWidth()) {
+                                    Row(
                                         modifier = Modifier
-                                            .weight(1f)
-                                            .clip(RoundedCornerShape(10.dp))
-                                            .clickable { onAction(action) },
-                                        tonalElevation = 2.dp,
-                                        shape = RoundedCornerShape(10.dp),
-                                        color = zfsPoolCardBackgroundColor(freePercent)
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
-                                            text = formatZfsPoolActionLabel(label),
+                                            text = "Хост",
+                                            modifier = Modifier.weight(0.35f),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = "Пул",
+                                            modifier = Modifier.weight(0.4f),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = "Свободно",
+                                            modifier = Modifier.weight(0.25f),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                    zfsPoolRows.forEach { row ->
+                                        Surface(
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .padding(horizontal = 10.dp, vertical = 8.dp),
-                                            maxLines = 3,
-                                            overflow = TextOverflow.Ellipsis,
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
+                                                .clickable { onAction(row.action) },
+                                            color = zfsPoolCardBackgroundColor(row.freePercent),
+                                            tonalElevation = 1.dp
+                                        ) {
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Text(
+                                                    text = row.host,
+                                                    modifier = Modifier.weight(0.35f),
+                                                    maxLines = 2,
+                                                    overflow = TextOverflow.Ellipsis,
+                                                    style = MaterialTheme.typography.bodySmall
+                                                )
+                                                Text(
+                                                    text = row.pool,
+                                                    modifier = Modifier.weight(0.4f),
+                                                    maxLines = 2,
+                                                    overflow = TextOverflow.Ellipsis,
+                                                    style = MaterialTheme.typography.bodySmall
+                                                )
+                                                Text(
+                                                    text = row.freePercentText,
+                                                    modifier = Modifier.weight(0.25f),
+                                                    color = row.freePercent?.let(::zfsFreePercentColor)
+                                                        ?: MaterialTheme.colorScheme.onSurface,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    style = MaterialTheme.typography.bodySmall
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }
