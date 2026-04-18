@@ -30,6 +30,7 @@ import ru.monitoring.mobile.api.ControlActionResult
 import ru.monitoring.mobile.api.ExtensionItem
 import ru.monitoring.mobile.api.ExtensionUpdateRequest
 import ru.monitoring.mobile.api.ExtensionsActionRequest
+import ru.monitoring.mobile.api.ExtensionsActionResponse
 import ru.monitoring.mobile.api.MergeWindowsTypesRequest
 import ru.monitoring.mobile.api.MenuOption
 import ru.monitoring.mobile.api.ManagedServer
@@ -51,7 +52,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.55.13"
+    private val projectVersion = "8.55.14"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -464,6 +465,10 @@ class MainViewModel(
             ?.takeIf { it.isNotEmpty() }
             ?: response.menuOptionsCamel
             ?: emptyList()
+    }
+
+    private fun resolveControlActionMenuOptions(response: ExtensionsActionResponse): List<MenuOption> {
+        return response.menuOptions ?: emptyList()
     }
 
     private fun resolveMenuOptionAction(option: MenuOption): String {
