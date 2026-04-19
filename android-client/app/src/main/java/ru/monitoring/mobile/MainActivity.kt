@@ -1571,6 +1571,7 @@ private fun MonitoringApp(
     var showZfsHostsSettingsDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsHostActionsDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsPoolHostActionsDialog by rememberSaveable { mutableStateOf(false) }
+    var showZfsPoolHostAddDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsHostDetailsDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsPatternsDialog by rememberSaveable { mutableStateOf(false) }
     var zfsHostInput by rememberSaveable { mutableStateOf("") }
@@ -1588,6 +1589,9 @@ private fun MonitoringApp(
     var zfsPoolSelectedHostEditAction by rememberSaveable { mutableStateOf("") }
     var zfsPoolSelectedHostDeleteAction by rememberSaveable { mutableStateOf("") }
     var zfsPoolSelectedHostToggleAction by rememberSaveable { mutableStateOf("") }
+    var zfsPoolHostNameInput by rememberSaveable { mutableStateOf("") }
+    var zfsPoolHostIpInput by rememberSaveable { mutableStateOf("") }
+    var zfsPoolHostThresholdInput by rememberSaveable { mutableStateOf("20") }
     var zfsDetailsHostName by rememberSaveable { mutableStateOf("") }
     var zfsStatusDetailsFallbackText by rememberSaveable { mutableStateOf("") }
     var pendingZfsHostSettingsName by rememberSaveable { mutableStateOf("") }
@@ -2070,7 +2074,12 @@ private fun MonitoringApp(
                 extension.id == "zfs_pool_free_space" ||
                 extension.id.contains("zfs_pool_free_space")
             ) {
-                null
+                {
+                    zfsPoolHostNameInput = ""
+                    zfsPoolHostIpInput = ""
+                    zfsPoolHostThresholdInput = "20"
+                    showZfsPoolHostAddDialog = true
+                }
             } else {
                 null
             }
@@ -2913,6 +2922,59 @@ private fun MonitoringApp(
                                     },
                                     dismissButton = {
                                         TextButton(onClick = { showZfsHostAddDialog = false }) {
+                                            Text("Отмена")
+                                        }
+                                    }
+                                )
+                            }
+
+                            if (showZfsPoolHostAddDialog) {
+                                AlertDialog(
+                                    onDismissRequest = { showZfsPoolHostAddDialog = false },
+                                    title = { Text("➕ Добавить хост ZFS-пулов") },
+                                    text = {
+                                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            OutlinedTextField(
+                                                value = zfsPoolHostNameInput,
+                                                onValueChange = { zfsPoolHostNameInput = it },
+                                                label = { Text("Имя хоста") },
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
+                                            OutlinedTextField(
+                                                value = zfsPoolHostIpInput,
+                                                onValueChange = { zfsPoolHostIpInput = it },
+                                                label = { Text("IP адрес") },
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
+                                            OutlinedTextField(
+                                                value = zfsPoolHostThresholdInput,
+                                                onValueChange = { value ->
+                                                    zfsPoolHostThresholdInput = value.filter { it.isDigit() }
+                                                },
+                                                label = { Text("Порог, % (1-95)") },
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
+                                        }
+                                    },
+                                    confirmButton = {
+                                        val thresholdValue = zfsPoolHostThresholdInput.toIntOrNull()
+                                        TextButton(
+                                            onClick = {
+                                                val actionPayload = "zfsp_add|${Uri.encode(zfsPoolHostNameInput.trim())}|" +
+                                                    "${Uri.encode(zfsPoolHostIpInput.trim())}|$thresholdValue"
+                                                onAction(actionPayload)
+                                                onAction("zfsp_hosts_list")
+                                                showZfsPoolHostAddDialog = false
+                                                showZfsPoolFreeSpaceDialog = true
+                                            },
+                                            enabled = zfsPoolHostNameInput.isNotBlank() &&
+                                                zfsPoolHostIpInput.isNotBlank() &&
+                                                thresholdValue != null &&
+                                                thresholdValue in 1..95
+                                        ) { Text("Добавить") }
+                                    },
+                                    dismissButton = {
+                                        TextButton(onClick = { showZfsPoolHostAddDialog = false }) {
                                             Text("Отмена")
                                         }
                                     }
