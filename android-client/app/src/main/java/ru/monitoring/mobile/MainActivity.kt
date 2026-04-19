@@ -4655,10 +4655,7 @@ private fun MonitoringApp(
                                                     zfsPoolSelectedHostEditThresholdAction = group.editThresholdAction
                                                     zfsPoolSelectedHostDeleteAction = group.deleteAction
                                                     zfsPoolSelectedHostToggleAction = group.toggleAction
-                                                    zfsPoolHostEditNameInput = group.hostName
-                                                    zfsPoolHostEditIpInput = ""
-                                                    zfsPoolHostEditThresholdInput = ""
-                                                    showZfsPoolHostEditDialog = true
+                                                    showZfsPoolHostActionsDialog = true
                                                 },
                                                 onLongClick = {
                                                     zfsPoolSelectedHostName = group.hostName
@@ -4690,7 +4687,7 @@ private fun MonitoringApp(
                                 commonActions.forEach { (label, action) ->
                                     OutlinedButton(
                                         onClick = {
-                                            if (action == "zfsp_add") {
+                                            if (action == "zfsp_add" || action.startsWith("zfsp_add|")) {
                                                 zfsPoolHostNameInput = ""
                                                 zfsPoolHostIpInput = ""
                                                 zfsPoolHostThresholdInput = "20"
