@@ -2065,7 +2065,18 @@ private fun MonitoringApp(
             } else {
                 null
             },
-            onSettingsClick = null
+            onSettingsClick = if (
+                extension.id == "zfs_pool_free_space_monitor" ||
+                extension.id == "zfs_pool_free_space" ||
+                extension.id.contains("zfs_pool_free_space")
+            ) {
+                {
+                    onExtensionsSettingsAction("zfsp_hosts_list")
+                    showZfsPoolFreeSpaceDialog = true
+                }
+            } else {
+                null
+            }
         )
     }
     val allOpsTiles = opsTiles + extensionOpsTiles
