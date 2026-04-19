@@ -4459,6 +4459,10 @@ private fun MonitoringApp(
             val action = resolveMenuOptionAction(option)
             action.isNotBlank() && isZfsPoolHostSettingsAction(action)
         }
+        val canAddZfsPoolHost = zfsPoolMenuOptions.any { option ->
+            val action = resolveMenuOptionAction(option).trim().lowercase()
+            action == "zfsp_add" || action.startsWith("zfsp_add|")
+        }
         AlertDialog(
             onDismissRequest = {
                 showZfsPoolFreeSpaceDialog = false
@@ -4503,7 +4507,7 @@ private fun MonitoringApp(
                                 zfsPoolHostIpInput = ""
                                 zfsPoolHostThresholdInput = "20"
                                 showZfsPoolHostAddDialog = true
-                            }) {
+                            }, enabled = canAddZfsPoolHost) {
                                 Icon(
                                     imageVector = Icons.Filled.Add,
                                     contentDescription = "Добавить хост ZFS-пулов"
@@ -4638,17 +4642,6 @@ private fun MonitoringApp(
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.SemiBold
                                 )
-                                OutlinedButton(
-                                    onClick = {
-                                        zfsPoolHostNameInput = ""
-                                        zfsPoolHostIpInput = ""
-                                        zfsPoolHostThresholdInput = "20"
-                                        showZfsPoolHostAddDialog = true
-                                    },
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Text("➕ Добавить хост")
-                                }
                                 hostSettingsGroups.forEach { group ->
                                     ElevatedCard(
                                         modifier = Modifier
@@ -4691,16 +4684,10 @@ private fun MonitoringApp(
                             }
                             if (commonActions.isNotEmpty()) {
                                 commonActions.forEach { (label, action) ->
+                                    if (action == "zfsp_add" || action.startsWith("zfsp_add|")) return@forEach
                                     OutlinedButton(
                                         onClick = {
-                                            if (action == "zfsp_add" || action.startsWith("zfsp_add|")) {
-                                                zfsPoolHostNameInput = ""
-                                                zfsPoolHostIpInput = ""
-                                                zfsPoolHostThresholdInput = "20"
-                                                showZfsPoolHostAddDialog = true
-                                            } else {
-                                                onAction(action)
-                                            }
+                                            onAction(action)
                                         },
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
