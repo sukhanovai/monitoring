@@ -1,3 +1,13 @@
+## [8.56.1] - 2026-04-19
+
+### Fixed / Исправлено
+- EN: In Android `💽 Free space of ZFS pools` host settings (tile `zfs место` → gear), removed text buttons labeled `Add host` from the dialog body; host creation is now done via the `+` icon in the dialog header.
+- RU: В Android `💽 Свободное место ZFS пулов` в настройках хостов (плашка `zfs место` → шестерёнка) убраны текстовые кнопки с надписью `Добавить хост` из тела диалога; добавление хоста теперь выполняется через кнопку `+` в заголовке диалога.
+- EN: The `+` icon in ZFS-pools host settings is now enabled only when backend provides `zfsp_add`, preventing dead taps when add action is unavailable.
+- RU: Кнопка `+` в настройках хостов ZFS-пулов теперь активна только при наличии backend-действия `zfsp_add`, чтобы исключить «пустые» нажатия при недоступном добавлении.
+- EN: SemVer patch bump to `8.56.1`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.56.1` and `ANDROID_VERSION_CODE=579`; prerelease links aligned to `v8.56.1-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.56.1`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.1` и `ANDROID_VERSION_CODE=579`; prerelease-ссылки выровнены на `v8.56.1-develop`.
+
 ## [8.56.0] - 2026-04-19
 
 ### Changed / Изменено
