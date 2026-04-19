@@ -4459,10 +4459,6 @@ private fun MonitoringApp(
             val action = resolveMenuOptionAction(option)
             action.isNotBlank() && isZfsPoolHostSettingsAction(action)
         }
-        val canAddZfsPoolHost = zfsPoolMenuOptions.any { option ->
-            val action = resolveMenuOptionAction(option).trim().lowercase()
-            action == "zfsp_add" || action.startsWith("zfsp_add|")
-        }
         AlertDialog(
             onDismissRequest = {
                 showZfsPoolFreeSpaceDialog = false
@@ -4507,7 +4503,7 @@ private fun MonitoringApp(
                                 zfsPoolHostIpInput = ""
                                 zfsPoolHostThresholdInput = "20"
                                 showZfsPoolHostAddDialog = true
-                            }, enabled = canAddZfsPoolHost) {
+                            }) {
                                 Icon(
                                     imageVector = Icons.Filled.Add,
                                     contentDescription = "Добавить хост ZFS-пулов"
