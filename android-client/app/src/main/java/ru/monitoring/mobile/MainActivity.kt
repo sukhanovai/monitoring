@@ -628,7 +628,9 @@ private fun hostNameFromZfsAction(action: String, prefix: String): String {
 
 private data class ZfsPoolHostSettingsGroup(
     val hostName: String,
-    val editAction: String,
+    val editNameAction: String,
+    val editIpAction: String,
+    val editThresholdAction: String,
     val deleteAction: String,
     val toggleAction: String
 )
@@ -636,7 +638,9 @@ private data class ZfsPoolHostSettingsGroup(
 private fun extractZfsPoolHostSettingsGroups(options: List<Pair<String, String>>): List<ZfsPoolHostSettingsGroup> {
     data class MutableZfsPoolHostSettingsGroup(
         var hostName: String = "",
-        var editAction: String = "",
+        var editNameAction: String = "",
+        var editIpAction: String = "",
+        var editThresholdAction: String = "",
         var deleteAction: String = "",
         var toggleAction: String = ""
     )
@@ -663,7 +667,9 @@ private fun extractZfsPoolHostSettingsGroups(options: List<Pair<String, String>>
         if (group.hostName.isBlank()) group.hostName = host
 
         when {
-            normalizedAction.startsWith("zfsp_edit_") -> group.editAction = normalizedAction
+            normalizedAction.startsWith("zfsp_edit_name_") -> group.editNameAction = normalizedAction
+            normalizedAction.startsWith("zfsp_edit_ip_") -> group.editIpAction = normalizedAction
+            normalizedAction.startsWith("zfsp_edit_threshold_") -> group.editThresholdAction = normalizedAction
             normalizedAction.startsWith("zfsp_delete_") -> group.deleteAction = normalizedAction
             normalizedAction.startsWith("zfsp_toggle_") -> group.toggleAction = normalizedAction
         }
@@ -676,7 +682,9 @@ private fun extractZfsPoolHostSettingsGroups(options: List<Pair<String, String>>
         } else {
             ZfsPoolHostSettingsGroup(
                 hostName = host,
-                editAction = group.editAction,
+                editNameAction = group.editNameAction,
+                editIpAction = group.editIpAction,
+                editThresholdAction = group.editThresholdAction,
                 deleteAction = group.deleteAction,
                 toggleAction = group.toggleAction
             )
@@ -1572,6 +1580,7 @@ private fun MonitoringApp(
     var showZfsHostActionsDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsPoolHostActionsDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsPoolHostAddDialog by rememberSaveable { mutableStateOf(false) }
+    var showZfsPoolHostEditDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsHostDetailsDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsPatternsDialog by rememberSaveable { mutableStateOf(false) }
     var zfsHostInput by rememberSaveable { mutableStateOf("") }
@@ -1586,12 +1595,17 @@ private fun MonitoringApp(
     var zfsHostDeleteConfirmAction by rememberSaveable { mutableStateOf("") }
     var zfsSelectedHostToggleAction by rememberSaveable { mutableStateOf("") }
     var zfsPoolSelectedHostName by rememberSaveable { mutableStateOf("") }
-    var zfsPoolSelectedHostEditAction by rememberSaveable { mutableStateOf("") }
+    var zfsPoolSelectedHostEditNameAction by rememberSaveable { mutableStateOf("") }
+    var zfsPoolSelectedHostEditIpAction by rememberSaveable { mutableStateOf("") }
+    var zfsPoolSelectedHostEditThresholdAction by rememberSaveable { mutableStateOf("") }
     var zfsPoolSelectedHostDeleteAction by rememberSaveable { mutableStateOf("") }
     var zfsPoolSelectedHostToggleAction by rememberSaveable { mutableStateOf("") }
     var zfsPoolHostNameInput by rememberSaveable { mutableStateOf("") }
     var zfsPoolHostIpInput by rememberSaveable { mutableStateOf("") }
     var zfsPoolHostThresholdInput by rememberSaveable { mutableStateOf("20") }
+    var zfsPoolHostEditNameInput by rememberSaveable { mutableStateOf("") }
+    var zfsPoolHostEditIpInput by rememberSaveable { mutableStateOf("") }
+    var zfsPoolHostEditThresholdInput by rememberSaveable { mutableStateOf("") }
     var zfsDetailsHostName by rememberSaveable { mutableStateOf("") }
     var zfsStatusDetailsFallbackText by rememberSaveable { mutableStateOf("") }
     var pendingZfsHostSettingsName by rememberSaveable { mutableStateOf("") }
@@ -2056,7 +2070,6 @@ private fun MonitoringApp(
                     zfsPoolHostNameInput = ""
                     zfsPoolHostIpInput = ""
                     zfsPoolHostThresholdInput = "20"
-                    showZfsPoolHostAddDialog = true
                 }
             } else {
                 { isSettingsExpanded = true; settingsSection = "extensions" }
@@ -4436,6 +4449,10 @@ private fun MonitoringApp(
         } else {
             emptyList()
         }
+        val isZfsPoolHostSettingsMode = zfsPoolMenuOptions.any { option ->
+            val action = resolveMenuOptionAction(option)
+            action.isNotBlank() && isZfsPoolHostSettingsAction(action)
+        }
         AlertDialog(
             onDismissRequest = { showZfsPoolFreeSpaceDialog = false },
             title = {
@@ -4466,6 +4483,19 @@ private fun MonitoringApp(
                                 imageVector = Icons.Filled.Settings,
                                 contentDescription = "Настройки хостов ZFS-пулов"
                             )
+                        }
+                        if (isZfsPoolHostSettingsMode) {
+                            IconButton(onClick = {
+                                zfsPoolHostNameInput = ""
+                                zfsPoolHostIpInput = ""
+                                zfsPoolHostThresholdInput = "20"
+                                showZfsPoolHostAddDialog = true
+                            }) {
+                                Icon(
+                                    imageVector = Icons.Filled.Add,
+                                    contentDescription = "Добавить хост ZFS-пулов"
+                                )
+                            }
                         }
                     }
                 }
@@ -4597,7 +4627,7 @@ private fun MonitoringApp(
                                     fontWeight = FontWeight.SemiBold
                                 )
                                 Text(
-                                    text = "Долгий тап по плашке хоста — редактирование, вкл/выкл, удаление",
+                                    text = "Тап по плашке — редактирование. Долгий тап — быстрые действия.",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -4608,14 +4638,21 @@ private fun MonitoringApp(
                                             .combinedClickable(
                                                 onClick = {
                                                     zfsPoolSelectedHostName = group.hostName
-                                                    zfsPoolSelectedHostEditAction = group.editAction
+                                                    zfsPoolSelectedHostEditNameAction = group.editNameAction
+                                                    zfsPoolSelectedHostEditIpAction = group.editIpAction
+                                                    zfsPoolSelectedHostEditThresholdAction = group.editThresholdAction
                                                     zfsPoolSelectedHostDeleteAction = group.deleteAction
                                                     zfsPoolSelectedHostToggleAction = group.toggleAction
-                                                    showZfsPoolHostActionsDialog = true
+                                                    zfsPoolHostEditNameInput = group.hostName
+                                                    zfsPoolHostEditIpInput = ""
+                                                    zfsPoolHostEditThresholdInput = ""
+                                                    showZfsPoolHostEditDialog = true
                                                 },
                                                 onLongClick = {
                                                     zfsPoolSelectedHostName = group.hostName
-                                                    zfsPoolSelectedHostEditAction = group.editAction
+                                                    zfsPoolSelectedHostEditNameAction = group.editNameAction
+                                                    zfsPoolSelectedHostEditIpAction = group.editIpAction
+                                                    zfsPoolSelectedHostEditThresholdAction = group.editThresholdAction
                                                     zfsPoolSelectedHostDeleteAction = group.deleteAction
                                                     zfsPoolSelectedHostToggleAction = group.toggleAction
                                                     showZfsPoolHostActionsDialog = true
@@ -4965,13 +5002,15 @@ private fun MonitoringApp(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         FilledIconButton(
                             onClick = {
-                                if (zfsPoolSelectedHostEditAction.isNotBlank()) {
-                                    onAction(zfsPoolSelectedHostEditAction)
-                                    onAction("zfsp_hosts_list")
-                                }
+                                zfsPoolHostEditNameInput = zfsPoolSelectedHostName
+                                zfsPoolHostEditIpInput = ""
+                                zfsPoolHostEditThresholdInput = ""
+                                showZfsPoolHostEditDialog = true
                                 showZfsPoolHostActionsDialog = false
                             },
-                            enabled = zfsPoolSelectedHostEditAction.isNotBlank()
+                            enabled = zfsPoolSelectedHostEditNameAction.isNotBlank() ||
+                                zfsPoolSelectedHostEditIpAction.isNotBlank() ||
+                                zfsPoolSelectedHostEditThresholdAction.isNotBlank()
                         ) {
                             Icon(Icons.Filled.Edit, contentDescription = "Редактировать")
                         }
@@ -5011,6 +5050,73 @@ private fun MonitoringApp(
             },
             confirmButton = {},
             dismissButton = {}
+        )
+    }
+
+    if (showZfsPoolHostEditDialog) {
+        AlertDialog(
+            onDismissRequest = { showZfsPoolHostEditDialog = false },
+            title = { Text("✏️ Редактирование хоста ZFS-пулов") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = zfsPoolHostEditNameInput,
+                        onValueChange = { zfsPoolHostEditNameInput = it },
+                        label = { Text("Имя хоста") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = zfsPoolHostEditIpInput,
+                        onValueChange = { zfsPoolHostEditIpInput = it },
+                        label = { Text("Новый IP (опционально)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = zfsPoolHostEditThresholdInput,
+                        onValueChange = { value ->
+                            zfsPoolHostEditThresholdInput = value.filter { it.isDigit() }
+                        },
+                        label = { Text("Новый порог, % (1-95, опционально)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                val thresholdValue = zfsPoolHostEditThresholdInput.toIntOrNull()
+                val hasNameChange = zfsPoolSelectedHostEditNameAction.isNotBlank() &&
+                    zfsPoolHostEditNameInput.trim().isNotBlank() &&
+                    zfsPoolHostEditNameInput.trim() != zfsPoolSelectedHostName
+                val hasIpChange = zfsPoolSelectedHostEditIpAction.isNotBlank() &&
+                    zfsPoolHostEditIpInput.trim().isNotBlank()
+                val hasThresholdChange = zfsPoolSelectedHostEditThresholdAction.isNotBlank() &&
+                    zfsPoolHostEditThresholdInput.trim().isNotBlank() &&
+                    thresholdValue != null &&
+                    thresholdValue in 1..95
+                TextButton(
+                    onClick = {
+                        if (hasNameChange) {
+                            val actionPayload = "${zfsPoolSelectedHostEditNameAction}|${Uri.encode(zfsPoolHostEditNameInput.trim())}"
+                            onAction(actionPayload)
+                        }
+                        if (hasIpChange) {
+                            val actionPayload = "${zfsPoolSelectedHostEditIpAction}|${Uri.encode(zfsPoolHostEditIpInput.trim())}"
+                            onAction(actionPayload)
+                        }
+                        if (hasThresholdChange) {
+                            val actionPayload = "${zfsPoolSelectedHostEditThresholdAction}|$thresholdValue"
+                            onAction(actionPayload)
+                        }
+                        onAction("zfsp_hosts_list")
+                        showZfsPoolHostEditDialog = false
+                    },
+                    enabled = hasNameChange || hasIpChange || hasThresholdChange
+                ) { Text("Сохранить") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showZfsPoolHostEditDialog = false }) {
+                    Text("Отмена")
+                }
+            }
         )
     }
 
