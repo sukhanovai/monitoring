@@ -4398,11 +4398,12 @@ private fun MonitoringApp(
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         IconButton(onClick = {
+                            onAction("zfsp_add")
                             onAction("zfsp_hosts_list")
                         }) {
                             Icon(
-                                imageVector = Icons.Filled.Settings,
-                                contentDescription = "Открыть настройки хостов ZFS-пулов"
+                                imageVector = Icons.Filled.Add,
+                                contentDescription = "Добавить хост ZFS-пулов"
                             )
                         }
                         IconButton(onClick = { showZfsPoolFreeSpaceDialog = false }) {
@@ -4541,20 +4542,13 @@ private fun MonitoringApp(
                                     ElevatedCard(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .combinedClickable(
-                                                onClick = {
-                                                    if (group.toggleAction.isNotBlank()) {
-                                                        onAction(group.toggleAction)
-                                                    }
-                                                },
-                                                onLongClick = {
-                                                    zfsPoolSelectedHostName = group.hostName
-                                                    zfsPoolSelectedHostEditAction = group.editAction
-                                                    zfsPoolSelectedHostDeleteAction = group.deleteAction
-                                                    zfsPoolSelectedHostToggleAction = group.toggleAction
-                                                    showZfsPoolHostActionsDialog = true
-                                                }
-                                            )
+                                            .clickable {
+                                                zfsPoolSelectedHostName = group.hostName
+                                                zfsPoolSelectedHostEditAction = group.editAction
+                                                zfsPoolSelectedHostDeleteAction = group.deleteAction
+                                                zfsPoolSelectedHostToggleAction = group.toggleAction
+                                                showZfsPoolHostActionsDialog = true
+                                            }
                                     ) {
                                         Column(
                                             modifier = Modifier
@@ -4568,7 +4562,7 @@ private fun MonitoringApp(
                                                 fontWeight = FontWeight.SemiBold
                                             )
                                             Text(
-                                                text = "Долгий тап: настройки хоста",
+                                                text = "Тап: редактирование, вкл/выкл, удаление",
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )

@@ -1,10 +1,12 @@
-## [8.55.38] - 2026-04-19
+## [8.55.39] - 2026-04-19
 
 ### Fixed / Исправлено
-- EN: Fixed Android `zfs место` settings flow: tapping the gear in `💽 Free space of ZFS pools` now correctly runs extension action `zfsp_hosts_list`, so host settings are shown instead of an empty settings list.
-- RU: Исправлен сценарий настроек Android `zfs место`: тап по шестерёнке в `💽 Свободное место ZFS пулов` теперь корректно запускает extension-action `zfsp_hosts_list`, поэтому открывается список настроек хостов вместо пустого экрана.
-- EN: SemVer patch bump to `8.55.38`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.38` and `ANDROID_VERSION_CODE=564`; prerelease links aligned to `v8.55.38-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.55.38`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.38` и `ANDROID_VERSION_CODE=564`; prerelease-ссылки выровнены на `v8.55.38-develop`.
+- EN: Android `zfs место` host settings in `💽 Free space of ZFS pools` were unified to one card per host; tapping a host card now opens the actions menu (edit, enable/disable, delete).
+- RU: В Android `zfs место` настройки хостов в `💽 Свободное место ZFS пулов` объединены в одну плашку на хост; тап по плашке открывает меню действий (редактирование, вкл/выкл, удаление).
+- EN: Removed the gear button from the ZFS-pools dialog header and moved host creation to a `+` button placed to the left of the close (`×`) button.
+- RU: Убрана шестерёнка из заголовка окна ZFS-пулов, добавление хоста перенесено в кнопку `+` слева от кнопки закрытия (`×`).
+- EN: SemVer patch bump to `8.55.39`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.39` and `ANDROID_VERSION_CODE=565`; prerelease links aligned to `v8.55.39-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.55.39`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.39` и `ANDROID_VERSION_CODE=565`; prerelease-ссылки выровнены на `v8.55.39-develop`.
 
 ## [8.55.37] - 2026-04-19
 
