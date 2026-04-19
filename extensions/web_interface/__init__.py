@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.55.33
+Server Monitoring System v8.55.34
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.55.33
+Версия: 8.55.34
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1578,6 +1578,7 @@ def _execute_mobile_control_action(action: str):
     if (
         action in menu_actions
         or action.startswith("backup_host_")
+        or action.startswith("zfsp_")
         or action.startswith("db_detail_")
         or action.startswith("settings_db_toggle_monitor_")
     ):
@@ -1595,6 +1596,8 @@ def _execute_mobile_control_action(action: str):
         }
 
         extension_requirement = extension_requirements.get(action)
+        if extension_requirement is None and action.startswith("zfsp_"):
+            extension_requirement = ("zfs_pool_free_space_monitor", "💽 Мониторинг свободного места ZFS-пулов отключён")
         if extension_requirement is None and action.startswith("db_detail_"):
             extension_requirement = ("database_backup_monitor", "🗃️ Мониторинг бэкапов БД отключён")
         if extension_requirement is None and action.startswith("settings_db_toggle_monitor_"):
@@ -1625,6 +1628,155 @@ def _execute_mobile_control_action(action: str):
                 {"label": "🔄 Обновить", "action": "zfs_pool_free_space_menu"},
                 {"label": "✖️ Закрыть", "action": "close"},
             ]
+
+        if action == "zfsp_hosts_list" or action.startswith("zfsp_"):
+            from extensions.zfs_pool_free_space import get_hosts_config, save_hosts_config
+
+            def _build_zfsp_hosts_response(message_prefix: str | None = None):
+                hosts = get_hosts_config()
+                lines = ["⚙️ Хосты мониторинга свободного места ZFS", ""]
+                if message_prefix:
+                    lines.append(message_prefix)
+                    lines.append("")
+
+                if not hosts:
+                    lines.append("❌ Хосты не настроены.")
+                else:
+                    for host_name in sorted(hosts.keys()):
+                        host_cfg = hosts.get(host_name) or {}
+                        status = "🟢" if host_cfg.get("enabled", True) else "🔴"
+                        ip = str(host_cfg.get("ip", "")).strip() or "не задан"
+                        threshold = int(host_cfg.get("threshold", 15))
+                        lines.append(f"{status} {host_name}")
+                        lines.append(f"   └ IP: {ip} · Порог: {threshold}%")
+
+                menu_options = []
+                for host_name in sorted(hosts.keys()):
+                    host_cfg = hosts.get(host_name) or {}
+                    enabled = bool(host_cfg.get("enabled", True))
+                    toggle_text = "⛔️ Отключить" if enabled else "✅ Включить"
+                    menu_options.extend(
+                        [
+                            {"label": f"✏️ Имя: {host_name}", "action": f"zfsp_edit_name_{host_name}"},
+                            {"label": f"🌐 IP: {host_name}", "action": f"zfsp_edit_ip_{host_name}"},
+                            {"label": f"🎚 Порог: {host_name}", "action": f"zfsp_edit_threshold_{host_name}"},
+                            {"label": f"🗑 Удалить: {host_name}", "action": f"zfsp_delete_{host_name}"},
+                            {"label": f"{toggle_text}: {host_name}", "action": f"zfsp_toggle_{host_name}"},
+                        ]
+                    )
+
+                menu_options.extend(
+                    [
+                        {"label": "➕ Добавить хост", "action": "zfsp_add"},
+                        {"label": "↩️ Назад", "action": "zfs_pool_free_space_menu"},
+                    ]
+                )
+                return True, "\n".join(lines), "accepted", menu_options
+
+            if action == "zfsp_hosts_list":
+                return _build_zfsp_hosts_response()
+
+            if action.startswith("zfsp_toggle_"):
+                host_name = action.replace("zfsp_toggle_", "", 1).strip()
+                hosts = get_hosts_config()
+                if host_name in hosts:
+                    hosts[host_name]["enabled"] = not bool(hosts[host_name].get("enabled", True))
+                    save_hosts_config(hosts)
+                    return _build_zfsp_hosts_response(f"✅ Обновлён статус хоста: {host_name}")
+                return _build_zfsp_hosts_response(f"⚠️ Хост не найден: {host_name}")
+
+            if action.startswith("zfsp_delete_"):
+                host_name = action.replace("zfsp_delete_", "", 1).strip()
+                hosts = get_hosts_config()
+                if host_name in hosts:
+                    hosts.pop(host_name, None)
+                    save_hosts_config(hosts)
+                    return _build_zfsp_hosts_response(f"✅ Хост удалён: {host_name}")
+                return _build_zfsp_hosts_response(f"⚠️ Хост не найден: {host_name}")
+
+            if action == "zfsp_add":
+                return _build_zfsp_hosts_response(
+                    "ℹ️ Добавление хоста из Android пока в формате действия:\n"
+                    "zfsp_add|<name>|<ip>|<threshold 1-95>"
+                )
+
+            if action.startswith("zfsp_add|"):
+                parts = action.split("|", 3)
+                if len(parts) < 4:
+                    return _build_zfsp_hosts_response("❌ Неверный формат. Используй zfsp_add|<name>|<ip>|<threshold>")
+                _, host_name, host_ip, threshold_raw = parts
+                host_name = host_name.strip()
+                host_ip = host_ip.strip()
+                try:
+                    threshold = int(threshold_raw.strip())
+                except ValueError:
+                    return _build_zfsp_hosts_response("❌ Порог должен быть целым числом 1-95.")
+                if not host_name or not host_ip or threshold < 1 or threshold > 95:
+                    return _build_zfsp_hosts_response("❌ Проверь name/ip/threshold (threshold: 1-95).")
+                hosts = get_hosts_config()
+                hosts[host_name] = {"ip": host_ip, "threshold": threshold, "enabled": True}
+                save_hosts_config(hosts)
+                return _build_zfsp_hosts_response(f"✅ Хост добавлен: {host_name}")
+
+            if action.startswith("zfsp_edit_name_"):
+                host_and_new = action.replace("zfsp_edit_name_", "", 1)
+                if "|" not in host_and_new:
+                    return _build_zfsp_hosts_response(
+                        "ℹ️ Переименование из Android: zfsp_edit_name_<old>|<new_name>"
+                    )
+                old_name, new_name = host_and_new.split("|", 1)
+                old_name = old_name.strip()
+                new_name = new_name.strip()
+                hosts = get_hosts_config()
+                if not old_name or not new_name:
+                    return _build_zfsp_hosts_response("❌ Имена не должны быть пустыми.")
+                if old_name not in hosts:
+                    return _build_zfsp_hosts_response(f"⚠️ Хост не найден: {old_name}")
+                if new_name in hosts and new_name != old_name:
+                    return _build_zfsp_hosts_response(f"❌ Хост уже существует: {new_name}")
+                host_data = dict(hosts.pop(old_name))
+                hosts[new_name] = host_data
+                save_hosts_config(hosts)
+                return _build_zfsp_hosts_response(f"✅ Имя хоста обновлено: {old_name} → {new_name}")
+
+            if action.startswith("zfsp_edit_ip_"):
+                host_and_ip = action.replace("zfsp_edit_ip_", "", 1)
+                if "|" not in host_and_ip:
+                    return _build_zfsp_hosts_response(
+                        "ℹ️ Изменение IP из Android: zfsp_edit_ip_<name>|<new_ip>"
+                    )
+                host_name, new_ip = host_and_ip.split("|", 1)
+                host_name = host_name.strip()
+                new_ip = new_ip.strip()
+                hosts = get_hosts_config()
+                if host_name not in hosts or not new_ip:
+                    return _build_zfsp_hosts_response("❌ Хост не найден или новый IP пустой.")
+                hosts[host_name]["ip"] = new_ip
+                save_hosts_config(hosts)
+                return _build_zfsp_hosts_response(f"✅ IP обновлён: {host_name}")
+
+            if action.startswith("zfsp_edit_threshold_"):
+                host_and_threshold = action.replace("zfsp_edit_threshold_", "", 1)
+                if "|" not in host_and_threshold:
+                    return _build_zfsp_hosts_response(
+                        "ℹ️ Изменение порога из Android: zfsp_edit_threshold_<name>|<1-95>"
+                    )
+                host_name, threshold_raw = host_and_threshold.split("|", 1)
+                host_name = host_name.strip()
+                try:
+                    threshold = int(threshold_raw.strip())
+                except ValueError:
+                    return _build_zfsp_hosts_response("❌ Порог должен быть числом 1-95.")
+                hosts = get_hosts_config()
+                if host_name not in hosts:
+                    return _build_zfsp_hosts_response(f"⚠️ Хост не найден: {host_name}")
+                if threshold < 1 or threshold > 95:
+                    return _build_zfsp_hosts_response("❌ Порог должен быть в диапазоне 1-95.")
+                hosts[host_name]["threshold"] = threshold
+                save_hosts_config(hosts)
+                return _build_zfsp_hosts_response(f"✅ Порог обновлён: {host_name}")
+
+            return _build_zfsp_hosts_response("⚠️ Действие пока не поддерживается в Android UI.")
 
         if action == "backup_hosts":
             hosts = backup_bot.get_all_hosts(include_disabled=True)
