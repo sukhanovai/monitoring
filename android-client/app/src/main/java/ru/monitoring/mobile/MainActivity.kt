@@ -4467,17 +4467,6 @@ private fun MonitoringApp(
                                 contentDescription = "Настройки хостов ZFS-пулов"
                             )
                         }
-                        IconButton(onClick = {
-                            zfsPoolHostNameInput = ""
-                            zfsPoolHostIpInput = ""
-                            zfsPoolHostThresholdInput = "20"
-                            showZfsPoolHostAddDialog = true
-                        }) {
-                            Icon(
-                                imageVector = Icons.Filled.Add,
-                                contentDescription = "Добавить хост ZFS-пулов"
-                            )
-                        }
                     }
                 }
             },
@@ -4598,7 +4587,8 @@ private fun MonitoringApp(
                                     action.startsWith("zfsp_edit_ip_") ||
                                     action.startsWith("zfsp_edit_threshold_") ||
                                     action.startsWith("zfsp_delete_") ||
-                                    action.startsWith("zfsp_toggle_")
+                                    action.startsWith("zfsp_toggle_") ||
+                                    action == "zfsp_add"
                             }
                             if (hostSettingsGroups.isNotEmpty()) {
                                 Text(
@@ -4606,17 +4596,31 @@ private fun MonitoringApp(
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.SemiBold
                                 )
+                                Text(
+                                    text = "Долгий тап по плашке хоста — редактирование, вкл/выкл, удаление",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                                 hostSettingsGroups.forEach { group ->
                                     ElevatedCard(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .clickable {
-                                                zfsPoolSelectedHostName = group.hostName
-                                                zfsPoolSelectedHostEditAction = group.editAction
-                                                zfsPoolSelectedHostDeleteAction = group.deleteAction
-                                                zfsPoolSelectedHostToggleAction = group.toggleAction
-                                                showZfsPoolHostActionsDialog = true
-                                            }
+                                            .combinedClickable(
+                                                onClick = {
+                                                    zfsPoolSelectedHostName = group.hostName
+                                                    zfsPoolSelectedHostEditAction = group.editAction
+                                                    zfsPoolSelectedHostDeleteAction = group.deleteAction
+                                                    zfsPoolSelectedHostToggleAction = group.toggleAction
+                                                    showZfsPoolHostActionsDialog = true
+                                                },
+                                                onLongClick = {
+                                                    zfsPoolSelectedHostName = group.hostName
+                                                    zfsPoolSelectedHostEditAction = group.editAction
+                                                    zfsPoolSelectedHostDeleteAction = group.deleteAction
+                                                    zfsPoolSelectedHostToggleAction = group.toggleAction
+                                                    showZfsPoolHostActionsDialog = true
+                                                }
+                                            )
                                     ) {
                                         Column(
                                             modifier = Modifier
@@ -4628,11 +4632,6 @@ private fun MonitoringApp(
                                                 text = group.hostName,
                                                 style = MaterialTheme.typography.titleSmall,
                                                 fontWeight = FontWeight.SemiBold
-                                            )
-                                            Text(
-                                                text = "Тап: редактирование, вкл/выкл, удаление",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }
                                     }
@@ -4801,7 +4800,13 @@ private fun MonitoringApp(
                                         .fillMaxWidth()
                                         .clip(RoundedCornerShape(12.dp))
                                         .combinedClickable(
-                                            onClick = { },
+                                            onClick = {
+                                                zfsSelectedHostName = hostGroup.hostName
+                                                zfsSelectedHostEditAction = hostGroup.editAction
+                                                zfsSelectedHostDeleteAction = hostGroup.deleteAction
+                                                zfsSelectedHostToggleAction = hostGroup.toggleAction
+                                                showZfsHostActionsDialog = true
+                                            },
                                             onLongClick = {
                                                 zfsSelectedHostName = hostGroup.hostName
                                                 zfsSelectedHostEditAction = hostGroup.editAction
