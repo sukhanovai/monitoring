@@ -4491,6 +4491,10 @@ private fun MonitoringApp(
                         IconButton(onClick = {
                             zfsPoolSettingsRequestedByUser = true
                             onAction("zfsp_hosts_list")
+                            zfsPoolHostNameInput = ""
+                            zfsPoolHostIpInput = ""
+                            zfsPoolHostThresholdInput = "20"
+                            showZfsPoolHostAddDialog = true
                         }) {
                             Icon(
                                 imageVector = Icons.Filled.Settings,
