@@ -1581,6 +1581,7 @@ private fun MonitoringApp(
     var showZfsPoolHostActionsDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsPoolHostAddDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsPoolHostEditDialog by rememberSaveable { mutableStateOf(false) }
+    var zfsPoolSettingsRequestedByUser by rememberSaveable { mutableStateOf(false) }
     var showZfsHostDetailsDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsPatternsDialog by rememberSaveable { mutableStateOf(false) }
     var zfsHostInput by rememberSaveable { mutableStateOf("") }
@@ -2066,6 +2067,7 @@ private fun MonitoringApp(
             ) {
                 {
                     showZfsPoolFreeSpaceDialog = true
+                    zfsPoolSettingsRequestedByUser = false
                     onAction("zfs_pool_free_space_menu")
                     zfsPoolHostNameInput = ""
                     zfsPoolHostIpInput = ""
@@ -2081,6 +2083,7 @@ private fun MonitoringApp(
             ) {
                 {
                     showZfsPoolFreeSpaceDialog = true
+                    zfsPoolSettingsRequestedByUser = true
                     onAction("zfsp_hosts_list")
                 }
             } else {
@@ -2970,6 +2973,7 @@ private fun MonitoringApp(
                                                 onAction("zfsp_hosts_list")
                                                 showZfsPoolHostAddDialog = false
                                                 showZfsPoolFreeSpaceDialog = true
+                                                zfsPoolSettingsRequestedByUser = true
                                             },
                                             enabled = zfsPoolHostNameInput.isNotBlank() &&
                                                 zfsPoolHostIpInput.isNotBlank() &&
@@ -2978,7 +2982,9 @@ private fun MonitoringApp(
                                         ) { Text("Добавить") }
                                     },
                                     dismissButton = {
-                                        TextButton(onClick = { showZfsPoolHostAddDialog = false }) {
+                                        TextButton(onClick = {
+                                            showZfsPoolHostAddDialog = false
+                                        }) {
                                             Text("Отмена")
                                         }
                                     }
@@ -4454,7 +4460,10 @@ private fun MonitoringApp(
             action.isNotBlank() && isZfsPoolHostSettingsAction(action)
         }
         AlertDialog(
-            onDismissRequest = { showZfsPoolFreeSpaceDialog = false },
+            onDismissRequest = {
+                showZfsPoolFreeSpaceDialog = false
+                zfsPoolSettingsRequestedByUser = false
+            },
             title = {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -4470,13 +4479,17 @@ private fun MonitoringApp(
                         verticalArrangement = Arrangement.spacedBy(2.dp),
                         horizontalAlignment = Alignment.End
                     ) {
-                        IconButton(onClick = { showZfsPoolFreeSpaceDialog = false }) {
+                        IconButton(onClick = {
+                            showZfsPoolFreeSpaceDialog = false
+                            zfsPoolSettingsRequestedByUser = false
+                        }) {
                             Icon(
                                 imageVector = Icons.Filled.Close,
                                 contentDescription = "Закрыть окно ZFS-пулов"
                             )
                         }
                         IconButton(onClick = {
+                            zfsPoolSettingsRequestedByUser = true
                             onAction("zfsp_hosts_list")
                         }) {
                             Icon(
@@ -4484,7 +4497,7 @@ private fun MonitoringApp(
                                 contentDescription = "Настройки хостов ZFS-пулов"
                             )
                         }
-                        if (isZfsPoolHostSettingsMode) {
+                        if (zfsPoolSettingsRequestedByUser && isZfsPoolHostSettingsMode) {
                             IconButton(onClick = {
                                 zfsPoolHostNameInput = ""
                                 zfsPoolHostIpInput = ""

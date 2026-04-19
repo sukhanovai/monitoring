@@ -1,4 +1,4 @@
-## [8.55.45] - 2026-04-19
+## [8.55.47] - 2026-04-19
 
 ### Fixed / Исправлено
 - EN: In Telegram bot path `Main menu → Free space of ZFS pools → Host settings`, added a `✖️ Close` button in the hosts list screen.
@@ -9,8 +9,8 @@
 - RU: В `💽 Свободное место ZFS пулов` тап по шестерёнке открывает настройки хостов (`zfsp_hosts_list`), а в режиме настроек в заголовке появляется кнопка `+`, открывающая форму добавления хоста (имя, IP, порог 1–95).
 - EN: Tap on a host card in ZFS pool host settings now opens a dedicated edit form and submits `zfsp_edit_name_*|...`, `zfsp_edit_ip_*|...`, `zfsp_edit_threshold_*|...`; long tap keeps opening quick actions (edit / enable-disable / delete).
 - RU: Тап по плашке хоста в настройках ZFS-пулов теперь открывает отдельную форму редактирования и отправляет `zfsp_edit_name_*|...`, `zfsp_edit_ip_*|...`, `zfsp_edit_threshold_*|...`; долгий тап сохраняет быстрые действия (редактирование / вкл-выкл / удаление).
-- EN: SemVer patch bump to `8.55.45`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.45` and `ANDROID_VERSION_CODE=571`; prerelease links aligned to `v8.55.45-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.55.45`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.45` и `ANDROID_VERSION_CODE=571`; prerelease-ссылки выровнены на `v8.55.45-develop`.
+- EN: SemVer patch bump to `8.55.47`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.47` and `ANDROID_VERSION_CODE=572`; prerelease links aligned to `v8.55.47-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.55.47`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.47` и `ANDROID_VERSION_CODE=572`; prerelease-ссылки выровнены на `v8.55.47-develop`.
 
 ## [8.55.37] - 2026-04-19
 
