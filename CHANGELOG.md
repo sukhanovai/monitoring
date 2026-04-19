@@ -1,3 +1,11 @@
+## [8.55.49] - 2026-04-19
+
+### Fixed / Исправлено
+- EN: Fixed Android `zfs место` host-settings flow in `💽 Free space of ZFS pools`: tapping the `+` action now opens the add-host dialog instead of sending a no-op `zfsp_add` action without payload.
+- RU: Исправлен сценарий настроек хостов Android-плашки `zfs место` в `💽 Свободное место ZFS пулов`: тап по действию `+` теперь открывает форму добавления хоста, а не отправляет пустой `zfsp_add` без параметров.
+- EN: SemVer patch bump to `8.55.49`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.49` and `ANDROID_VERSION_CODE=574`; prerelease links aligned to `v8.55.49-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.55.49`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.49` и `ANDROID_VERSION_CODE=574`; prerelease-ссылки выровнены на `v8.55.49-develop`.
+
 ## [8.55.48] - 2026-04-19
 
 ### Fixed / Исправлено

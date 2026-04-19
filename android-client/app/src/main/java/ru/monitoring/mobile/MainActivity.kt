@@ -4634,8 +4634,7 @@ private fun MonitoringApp(
                                     action.startsWith("zfsp_edit_ip_") ||
                                     action.startsWith("zfsp_edit_threshold_") ||
                                     action.startsWith("zfsp_delete_") ||
-                                    action.startsWith("zfsp_toggle_") ||
-                                    action == "zfsp_add"
+                                    action.startsWith("zfsp_toggle_")
                             }
                             if (hostSettingsGroups.isNotEmpty()) {
                                 Text(
@@ -4694,7 +4693,16 @@ private fun MonitoringApp(
                             if (commonActions.isNotEmpty()) {
                                 commonActions.forEach { (label, action) ->
                                     OutlinedButton(
-                                        onClick = { onAction(action) },
+                                        onClick = {
+                                            if (action == "zfsp_add") {
+                                                zfsPoolHostNameInput = ""
+                                                zfsPoolHostIpInput = ""
+                                                zfsPoolHostThresholdInput = "20"
+                                                showZfsPoolHostAddDialog = true
+                                            } else {
+                                                onAction(action)
+                                            }
+                                        },
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
                                         Text(label)
