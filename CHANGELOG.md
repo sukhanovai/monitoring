@@ -1,10 +1,12 @@
-## [8.55.51] - 2026-04-19
+## [8.55.52] - 2026-04-19
 
 ### Fixed / Исправлено
+- EN: In Android `💽 Free space of ZFS pools` host cards in the settings list now run quick actions on regular tap as well (same behavior as long tap: edit / enable-disable / delete).
+- RU: В Android `💽 Свободное место ZFS пулов` плашки хостов в списке настроек теперь по обычному тапу запускают быстрые действия (как и долгий тап: редактировать / вкл-выкл / удалить).
 - EN: In Android `💽 Free space of ZFS pools`, after opening host settings by tapping the gear, the `+` action is now always available and opens the add-host parameters form (host name, IP, threshold).
 - RU: В Android `💽 Свободное место ZFS пулов` после открытия настроек хостов через шестерёнку действие `+` теперь всегда доступно и открывает форму параметров добавляемого хоста (имя, IP, порог).
-- EN: SemVer patch bump to `8.55.51`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.51` and `ANDROID_VERSION_CODE=576`; prerelease links aligned to `v8.55.51-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.55.51`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.51` и `ANDROID_VERSION_CODE=576`; prerelease-ссылки выровнены на `v8.55.51-develop`.
+- EN: SemVer patch bump to `8.55.52`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.52` and `ANDROID_VERSION_CODE=577`; prerelease links aligned to `v8.55.52-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.55.52`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.52` и `ANDROID_VERSION_CODE=577`; prerelease-ссылки выровнены на `v8.55.52-develop`.
 
 ## [8.55.50] - 2026-04-19
 
