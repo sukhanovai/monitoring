@@ -1,3 +1,13 @@
+## [8.56.0] - 2026-04-19
+
+### Changed / Изменено
+- EN: In Android `💽 Free space of ZFS pools` (`zfs место`) host settings (tap tile → tap gear), removed the hint text `Tap on a host card...` from the dialog body.
+- RU: В Android `💽 Свободное место ZFS пулов` (`zfs место`) в настройках хостов (тап по плашке → тап по шестерёнке) убрана подсказка `Тап по плашке...` из тела диалога.
+- EN: Added an explicit `➕ Add host` action inside the host-settings content area (in addition to toolbar actions), matching Telegram bot flow `Main menu → Free space of ZFS pools → Host settings → Add host`.
+- RU: Добавлено явное действие `➕ Добавить хост` прямо в области настроек хостов (дополнительно к действиям в тулбаре), что выравнивает поведение с Telegram-ботом по пути `Главное меню → Свободное место ZFS пулов → Настройка хостов → Добавить хост`.
+- EN: SemVer minor bump to `8.56.0`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.56.0` and `ANDROID_VERSION_CODE=578`; prerelease links aligned to `v8.56.0-develop`.
+- RU: Выполнен SemVer minor-бамп до `8.56.0`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.0` и `ANDROID_VERSION_CODE=578`; prerelease-ссылки выровнены на `v8.56.0-develop`.
+
 ## [8.55.52] - 2026-04-19
 
 ### Fixed / Исправлено

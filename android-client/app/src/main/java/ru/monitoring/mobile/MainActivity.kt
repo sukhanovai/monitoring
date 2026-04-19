@@ -4638,11 +4638,17 @@ private fun MonitoringApp(
                                     style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.SemiBold
                                 )
-                                Text(
-                                    text = "Тап по плашке — редактирование. Долгий тап — быстрые действия.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                OutlinedButton(
+                                    onClick = {
+                                        zfsPoolHostNameInput = ""
+                                        zfsPoolHostIpInput = ""
+                                        zfsPoolHostThresholdInput = "20"
+                                        showZfsPoolHostAddDialog = true
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("➕ Добавить хост")
+                                }
                                 hostSettingsGroups.forEach { group ->
                                     ElevatedCard(
                                         modifier = Modifier
