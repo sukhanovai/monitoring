@@ -641,31 +641,31 @@ private fun extractZfsPoolHostSettingsGroups(options: List<Pair<String, String>>
         var toggleAction: String = ""
     )
 
+    fun extractHostForZfsPoolAction(action: String): String {
+        return when {
+            action.startsWith("zfsp_edit_name_") -> hostNameFromZfsAction(action, "zfsp_edit_name_")
+            action.startsWith("zfsp_edit_ip_") -> hostNameFromZfsAction(action, "zfsp_edit_ip_")
+            action.startsWith("zfsp_edit_threshold_") -> hostNameFromZfsAction(action, "zfsp_edit_threshold_")
+            action.startsWith("zfsp_delete_") -> hostNameFromZfsAction(action, "zfsp_delete_")
+            action.startsWith("zfsp_toggle_") -> hostNameFromZfsAction(action, "zfsp_toggle_")
+            else -> ""
+        }
+    }
+
     val groups = linkedMapOf<String, MutableZfsPoolHostSettingsGroup>()
 
     options.forEach { (_, action) ->
         val normalizedAction = action.trim()
-        val editHost = hostNameFromZfsAction(normalizedAction, "zfsp_edit_")
-        if (editHost.isNotBlank()) {
-            val group = groups.getOrPut(editHost.lowercase()) { MutableZfsPoolHostSettingsGroup() }
-            group.hostName = editHost
-            group.editAction = normalizedAction
-            return@forEach
-        }
+        val host = extractHostForZfsPoolAction(normalizedAction)
+        if (host.isBlank()) return@forEach
 
-        val deleteHost = hostNameFromZfsAction(normalizedAction, "zfsp_delete_")
-        if (deleteHost.isNotBlank()) {
-            val group = groups.getOrPut(deleteHost.lowercase()) { MutableZfsPoolHostSettingsGroup() }
-            if (group.hostName.isBlank()) group.hostName = deleteHost
-            group.deleteAction = normalizedAction
-            return@forEach
-        }
+        val group = groups.getOrPut(host.lowercase()) { MutableZfsPoolHostSettingsGroup() }
+        if (group.hostName.isBlank()) group.hostName = host
 
-        val toggleHost = hostNameFromZfsAction(normalizedAction, "zfsp_toggle_")
-        if (toggleHost.isNotBlank()) {
-            val group = groups.getOrPut(toggleHost.lowercase()) { MutableZfsPoolHostSettingsGroup() }
-            if (group.hostName.isBlank()) group.hostName = toggleHost
-            group.toggleAction = normalizedAction
+        when {
+            normalizedAction.startsWith("zfsp_edit_") -> group.editAction = normalizedAction
+            normalizedAction.startsWith("zfsp_delete_") -> group.deleteAction = normalizedAction
+            normalizedAction.startsWith("zfsp_toggle_") -> group.toggleAction = normalizedAction
         }
     }
 
@@ -4449,16 +4449,14 @@ private fun MonitoringApp(
                         modifier = Modifier.weight(1f),
                         fontWeight = FontWeight.Bold
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        IconButton(onClick = {
-                            zfsPoolHostNameInput = ""
-                            zfsPoolHostIpInput = ""
-                            zfsPoolHostThresholdInput = "20"
-                            showZfsPoolHostAddDialog = true
-                        }) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                        horizontalAlignment = Alignment.End
+                    ) {
+                        IconButton(onClick = { showZfsPoolFreeSpaceDialog = false }) {
                             Icon(
-                                imageVector = Icons.Filled.Add,
-                                contentDescription = "Добавить хост ZFS-пулов"
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "Закрыть окно ZFS-пулов"
                             )
                         }
                         IconButton(onClick = {
@@ -4469,10 +4467,15 @@ private fun MonitoringApp(
                                 contentDescription = "Настройки хостов ZFS-пулов"
                             )
                         }
-                        IconButton(onClick = { showZfsPoolFreeSpaceDialog = false }) {
+                        IconButton(onClick = {
+                            zfsPoolHostNameInput = ""
+                            zfsPoolHostIpInput = ""
+                            zfsPoolHostThresholdInput = "20"
+                            showZfsPoolHostAddDialog = true
+                        }) {
                             Icon(
-                                imageVector = Icons.Filled.Close,
-                                contentDescription = "Закрыть окно ZFS-пулов"
+                                imageVector = Icons.Filled.Add,
+                                contentDescription = "Добавить хост ZFS-пулов"
                             )
                         }
                     }
@@ -4591,7 +4594,9 @@ private fun MonitoringApp(
                         } else if (zfsPoolActions.isNotEmpty()) {
                             val hostSettingsGroups = extractZfsPoolHostSettingsGroups(zfsPoolActions)
                             val commonActions = zfsPoolActions.filterNot { (_, action) ->
-                                action.startsWith("zfsp_edit_") ||
+                                action.startsWith("zfsp_edit_name_") ||
+                                    action.startsWith("zfsp_edit_ip_") ||
+                                    action.startsWith("zfsp_edit_threshold_") ||
                                     action.startsWith("zfsp_delete_") ||
                                     action.startsWith("zfsp_toggle_")
                             }

@@ -1,12 +1,14 @@
-## [8.55.41] - 2026-04-19
+## [8.55.42] - 2026-04-19
 
 ### Changed / Изменено
 - EN: Android tile `zfs место` tap now opens `💽 Free space of ZFS pools` and immediately shows the host-add form (name, IP, threshold 1–95) instead of redirecting to settings tiles.
 - RU: Тап по Android-плашке `zfs место` теперь открывает `💽 Свободное место ZFS пулов` и сразу показывает форму добавления хоста (имя, IP, порог 1–95), вместо перехода в список плашек настроек.
-- EN: The settings gear was moved from the `zfs место` tile into the `💽 Free space of ZFS pools` dialog header; gear tap now opens host settings list via `zfsp_hosts_list`.
-- RU: Шестерёнка настроек перенесена с плашки `zfs место` в заголовок окна `💽 Свободное место ZFS пулов`; тап по шестерёнке теперь открывает список настроек хостов через `zfsp_hosts_list`.
-- EN: SemVer patch bump to `8.55.41`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.41` and `ANDROID_VERSION_CODE=567`; prerelease links aligned to `v8.55.41-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.55.41`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.41` и `ANDROID_VERSION_CODE=567`; prerelease-ссылки выровнены на `v8.55.41-develop`.
+- EN: In `💽 Free space of ZFS pools`, the close (`✖`), settings (`⚙️`), and add (`➕`) actions are now arranged vertically in the dialog header; gear tap opens host settings list via `zfsp_hosts_list`.
+- RU: В `💽 Свободное место ZFS пулов` действия закрытия (`✖`), настроек (`⚙️`) и добавления (`➕`) размещены вертикально в заголовке окна; тап по шестерёнке открывает список настроек хостов через `zfsp_hosts_list`.
+- EN: In host settings mode, actions `zfsp_edit_name_*`, `zfsp_edit_ip_*`, `zfsp_edit_threshold_*`, `zfsp_delete_*`, and `zfsp_toggle_*` are now grouped by real host name, so `name_pbs`/`ip_pbs`/`threshold_pbs`/`pbs` no longer appear as separate cards.
+- RU: В режиме настроек хостов действия `zfsp_edit_name_*`, `zfsp_edit_ip_*`, `zfsp_edit_threshold_*`, `zfsp_delete_*` и `zfsp_toggle_*` теперь группируются по реальному имени хоста, поэтому `name_pbs`/`ip_pbs`/`threshold_pbs`/`pbs` больше не распадаются на отдельные карточки.
+- EN: SemVer patch bump to `8.55.42`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.42` and `ANDROID_VERSION_CODE=568`; prerelease links aligned to `v8.55.42-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.55.42`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.42` и `ANDROID_VERSION_CODE=568`; prerelease-ссылки выровнены на `v8.55.42-develop`.
 ## [8.55.37] - 2026-04-19
 
 ### Fixed / Исправлено
