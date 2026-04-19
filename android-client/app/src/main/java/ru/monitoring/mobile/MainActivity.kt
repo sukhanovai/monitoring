@@ -4398,7 +4398,7 @@ private fun MonitoringApp(
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         IconButton(onClick = {
-                            onExtensionsSettingsAction("zfsp_hosts_list")
+                            onAction("zfsp_hosts_list")
                         }) {
                             Icon(
                                 imageVector = Icons.Filled.Settings,
