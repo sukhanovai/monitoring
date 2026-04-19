@@ -1,3 +1,13 @@
+## [8.55.35] - 2026-04-19
+
+### Changed / Изменено
+- EN: Android `zfs место` card flow was simplified: removed the gear button from the `💽 Free space of ZFS pools` dialog header; regular tap on the tile opens pool free-space data, long tap opens host settings (`zfsp_hosts_list`).
+- RU: Упрощён сценарий карточки Android `zfs место`: убрана шестерёнка из заголовка диалога `💽 Свободное место ZFS пулов`; обычный тап по плашке открывает данные по свободному месту, долгий тап открывает настройки хостов (`zfsp_hosts_list`).
+- EN: ZFS-pool host settings UI now uses host cards; long tap on a host card opens an actions window (edit, enable/disable, delete).
+- RU: UI настроек хостов ZFS-пулов переведён на карточки хостов; долгий тап по карточке открывает окно действий (редактирование, вкл/выкл, удаление).
+- EN: SemVer patch bump to `8.55.35`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.35` and `ANDROID_VERSION_CODE=561`; prerelease links aligned to `v8.55.35-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.55.35`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.35` и `ANDROID_VERSION_CODE=561`; prerelease-ссылки выровнены на `v8.55.35-develop`.
+
 ## [8.55.34] - 2026-04-18
 
 ### Fixed / Исправлено

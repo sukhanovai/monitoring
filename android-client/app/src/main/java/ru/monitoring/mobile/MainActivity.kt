@@ -626,6 +626,64 @@ private fun hostNameFromZfsAction(action: String, prefix: String): String {
     return Uri.decode(action.removePrefix(prefix)).trim()
 }
 
+private data class ZfsPoolHostSettingsGroup(
+    val hostName: String,
+    val editAction: String,
+    val deleteAction: String,
+    val toggleAction: String
+)
+
+private fun extractZfsPoolHostSettingsGroups(options: List<Pair<String, String>>): List<ZfsPoolHostSettingsGroup> {
+    data class MutableZfsPoolHostSettingsGroup(
+        var hostName: String = "",
+        var editAction: String = "",
+        var deleteAction: String = "",
+        var toggleAction: String = ""
+    )
+
+    val groups = linkedMapOf<String, MutableZfsPoolHostSettingsGroup>()
+
+    options.forEach { (_, action) ->
+        val normalizedAction = action.trim()
+        val editHost = hostNameFromZfsAction(normalizedAction, "zfsp_edit_")
+        if (editHost.isNotBlank()) {
+            val group = groups.getOrPut(editHost.lowercase()) { MutableZfsPoolHostSettingsGroup() }
+            group.hostName = editHost
+            group.editAction = normalizedAction
+            return@forEach
+        }
+
+        val deleteHost = hostNameFromZfsAction(normalizedAction, "zfsp_delete_")
+        if (deleteHost.isNotBlank()) {
+            val group = groups.getOrPut(deleteHost.lowercase()) { MutableZfsPoolHostSettingsGroup() }
+            if (group.hostName.isBlank()) group.hostName = deleteHost
+            group.deleteAction = normalizedAction
+            return@forEach
+        }
+
+        val toggleHost = hostNameFromZfsAction(normalizedAction, "zfsp_toggle_")
+        if (toggleHost.isNotBlank()) {
+            val group = groups.getOrPut(toggleHost.lowercase()) { MutableZfsPoolHostSettingsGroup() }
+            if (group.hostName.isBlank()) group.hostName = toggleHost
+            group.toggleAction = normalizedAction
+        }
+    }
+
+    return groups.values.mapNotNull { group ->
+        val host = group.hostName.trim()
+        if (host.isBlank()) {
+            null
+        } else {
+            ZfsPoolHostSettingsGroup(
+                hostName = host,
+                editAction = group.editAction,
+                deleteAction = group.deleteAction,
+                toggleAction = group.toggleAction
+            )
+        }
+    }
+}
+
 private fun extractZfsHostOptionGroups(options: List<Pair<String, String>>): List<ZfsHostOptionGroup> {
     data class MutableZfsHostOptionGroup(
         var hostName: String = "",
@@ -1512,6 +1570,7 @@ private fun MonitoringApp(
     var showZfsSettingsDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsHostsSettingsDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsHostActionsDialog by rememberSaveable { mutableStateOf(false) }
+    var showZfsPoolHostActionsDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsHostDetailsDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsPatternsDialog by rememberSaveable { mutableStateOf(false) }
     var zfsHostInput by rememberSaveable { mutableStateOf("") }
@@ -1525,6 +1584,10 @@ private fun MonitoringApp(
     var zfsHostDeleteConfirmName by rememberSaveable { mutableStateOf("") }
     var zfsHostDeleteConfirmAction by rememberSaveable { mutableStateOf("") }
     var zfsSelectedHostToggleAction by rememberSaveable { mutableStateOf("") }
+    var zfsPoolSelectedHostName by rememberSaveable { mutableStateOf("") }
+    var zfsPoolSelectedHostEditAction by rememberSaveable { mutableStateOf("") }
+    var zfsPoolSelectedHostDeleteAction by rememberSaveable { mutableStateOf("") }
+    var zfsPoolSelectedHostToggleAction by rememberSaveable { mutableStateOf("") }
     var zfsDetailsHostName by rememberSaveable { mutableStateOf("") }
     var zfsStatusDetailsFallbackText by rememberSaveable { mutableStateOf("") }
     var pendingZfsHostSettingsName by rememberSaveable { mutableStateOf("") }
@@ -1990,7 +2053,18 @@ private fun MonitoringApp(
             } else {
                 { isSettingsExpanded = true; settingsSection = "extensions" }
             },
-            onLongClick = null,
+            onLongClick = if (
+                extension.id == "zfs_pool_free_space_monitor" ||
+                extension.id == "zfs_pool_free_space" ||
+                extension.id.contains("zfs_pool_free_space")
+            ) {
+                {
+                    showZfsPoolFreeSpaceDialog = true
+                    onAction("zfsp_hosts_list")
+                }
+            } else {
+                null
+            },
             onSettingsClick = null
         )
     }
@@ -4314,23 +4388,11 @@ private fun MonitoringApp(
                         modifier = Modifier.weight(1f),
                         fontWeight = FontWeight.Bold
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        IconButton(
-                            onClick = {
-                                onAction("zfsp_hosts_list")
-                            }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Settings,
-                                contentDescription = "Открыть настройки хостов ZFS-пулов"
-                            )
-                        }
-                        IconButton(onClick = { showZfsPoolFreeSpaceDialog = false }) {
-                            Icon(
-                                imageVector = Icons.Filled.Close,
-                                contentDescription = "Закрыть окно ZFS-пулов"
-                            )
-                        }
+                    IconButton(onClick = { showZfsPoolFreeSpaceDialog = false }) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Закрыть окно ZFS-пулов"
+                        )
                     }
                 }
             },
@@ -4445,12 +4507,65 @@ private fun MonitoringApp(
                                 }
                             }
                         } else if (zfsPoolActions.isNotEmpty()) {
-                            zfsPoolActions.forEach { (label, action) ->
-                                OutlinedButton(
-                                    onClick = { onAction(action) },
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Text(label)
+                            val hostSettingsGroups = extractZfsPoolHostSettingsGroups(zfsPoolActions)
+                            val commonActions = zfsPoolActions.filterNot { (_, action) ->
+                                action.startsWith("zfsp_edit_") ||
+                                    action.startsWith("zfsp_delete_") ||
+                                    action.startsWith("zfsp_toggle_")
+                            }
+                            if (hostSettingsGroups.isNotEmpty()) {
+                                Text(
+                                    text = "Хосты",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                hostSettingsGroups.forEach { group ->
+                                    ElevatedCard(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .combinedClickable(
+                                                onClick = {
+                                                    if (group.toggleAction.isNotBlank()) {
+                                                        onAction(group.toggleAction)
+                                                    }
+                                                },
+                                                onLongClick = {
+                                                    zfsPoolSelectedHostName = group.hostName
+                                                    zfsPoolSelectedHostEditAction = group.editAction
+                                                    zfsPoolSelectedHostDeleteAction = group.deleteAction
+                                                    zfsPoolSelectedHostToggleAction = group.toggleAction
+                                                    showZfsPoolHostActionsDialog = true
+                                                }
+                                            )
+                                    ) {
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Text(
+                                                text = group.hostName,
+                                                style = MaterialTheme.typography.titleSmall,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                            Text(
+                                                text = "Долгий тап: настройки хоста",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            if (commonActions.isNotEmpty()) {
+                                commonActions.forEach { (label, action) ->
+                                    OutlinedButton(
+                                        onClick = { onAction(action) },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text(label)
+                                    }
                                 }
                             }
                         }
@@ -4726,6 +4841,82 @@ private fun MonitoringApp(
                                 showZfsHostDeleteConfirmDialog = zfsHostDeleteConfirmAction.isNotBlank()
                             },
                             enabled = zfsSelectedHostDeleteAction.isNotBlank()
+                        ) {
+                            Icon(Icons.Filled.Delete, contentDescription = "Удалить")
+                        }
+                        Text("Удал.", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {}
+        )
+    }
+
+    if (showZfsPoolHostActionsDialog) {
+        AlertDialog(
+            onDismissRequest = { showZfsPoolHostActionsDialog = false },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("⚙️ ${zfsPoolSelectedHostName.ifBlank { "Хост ZFS-пулов" }}")
+                    IconButton(onClick = { showZfsPoolHostActionsDialog = false }) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Закрыть"
+                        )
+                    }
+                }
+            },
+            text = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        FilledIconButton(
+                            onClick = {
+                                if (zfsPoolSelectedHostEditAction.isNotBlank()) {
+                                    onAction(zfsPoolSelectedHostEditAction)
+                                    onAction("zfsp_hosts_list")
+                                }
+                                showZfsPoolHostActionsDialog = false
+                            },
+                            enabled = zfsPoolSelectedHostEditAction.isNotBlank()
+                        ) {
+                            Icon(Icons.Filled.Edit, contentDescription = "Редактировать")
+                        }
+                        Text("Изм.", style = MaterialTheme.typography.labelSmall)
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        FilledIconButton(
+                            onClick = {
+                                if (zfsPoolSelectedHostToggleAction.isNotBlank()) {
+                                    onAction(zfsPoolSelectedHostToggleAction)
+                                    onAction("zfsp_hosts_list")
+                                }
+                                showZfsPoolHostActionsDialog = false
+                            },
+                            enabled = zfsPoolSelectedHostToggleAction.isNotBlank()
+                        ) {
+                            Icon(Icons.Filled.PowerSettingsNew, contentDescription = "Вкл/выкл")
+                        }
+                        Text("Вкл/выкл", style = MaterialTheme.typography.labelSmall)
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        FilledIconButton(
+                            onClick = {
+                                if (zfsPoolSelectedHostDeleteAction.isNotBlank()) {
+                                    onAction(zfsPoolSelectedHostDeleteAction)
+                                    onAction("zfsp_hosts_list")
+                                }
+                                showZfsPoolHostActionsDialog = false
+                            },
+                            enabled = zfsPoolSelectedHostDeleteAction.isNotBlank()
                         ) {
                             Icon(Icons.Filled.Delete, contentDescription = "Удалить")
                         }
