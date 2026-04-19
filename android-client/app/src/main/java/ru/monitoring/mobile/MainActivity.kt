@@ -4497,7 +4497,7 @@ private fun MonitoringApp(
                                 contentDescription = "Настройки хостов ZFS-пулов"
                             )
                         }
-                        if (zfsPoolSettingsRequestedByUser && isZfsPoolHostSettingsMode) {
+                        if (zfsPoolSettingsRequestedByUser) {
                             IconButton(onClick = {
                                 zfsPoolHostNameInput = ""
                                 zfsPoolHostIpInput = ""
