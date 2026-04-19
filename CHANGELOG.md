@@ -1,10 +1,10 @@
-## [8.55.36] - 2026-04-19
+## [8.55.37] - 2026-04-19
 
 ### Fixed / Исправлено
-- EN: Restored the settings gear for the Android `zfs место` tile in Ops chips: tapping the gear now opens ZFS-pool host settings via `zfsp_hosts_list`, while regular tile tap keeps opening free-space data.
-- RU: Возвращена шестерёнка настроек для Android-плашки `zfs место` в Ops-чипах: тап по шестерёнке снова открывает настройки хостов ZFS-пулов через `zfsp_hosts_list`, а обычный тап по плашке по-прежнему открывает данные по свободному месту.
-- EN: SemVer patch bump to `8.55.36`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.36` and `ANDROID_VERSION_CODE=562`; prerelease links aligned to `v8.55.36-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.55.36`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.36` и `ANDROID_VERSION_CODE=562`; prerelease-ссылки выровнены на `v8.55.36-develop`.
+- EN: Android `zfs место` tile now opens the free-space dialog without a tile-level gear; host settings were moved into the opened `💽 Free space of ZFS pools` dialog header and still run `zfsp_hosts_list`.
+- RU: Для Android-плашки `zfs место` убрана шестерёнка на самой плашке; настройки хостов перенесены в заголовок открываемого окна `💽 Свободное место ZFS пулов` и по-прежнему запускают `zfsp_hosts_list`.
+- EN: SemVer patch bump to `8.55.37`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.37` and `ANDROID_VERSION_CODE=563`; prerelease links aligned to `v8.55.37-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.55.37`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.37` и `ANDROID_VERSION_CODE=563`; prerelease-ссылки выровнены на `v8.55.37-develop`.
 
 ## [8.55.35] - 2026-04-19
 
