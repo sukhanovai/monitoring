@@ -2070,10 +2070,7 @@ private fun MonitoringApp(
                 extension.id == "zfs_pool_free_space" ||
                 extension.id.contains("zfs_pool_free_space")
             ) {
-                {
-                    onExtensionsSettingsAction("zfsp_hosts_list")
-                    showZfsPoolFreeSpaceDialog = true
-                }
+                null
             } else {
                 null
             }
@@ -4399,11 +4396,21 @@ private fun MonitoringApp(
                         modifier = Modifier.weight(1f),
                         fontWeight = FontWeight.Bold
                     )
-                    IconButton(onClick = { showZfsPoolFreeSpaceDialog = false }) {
-                        Icon(
-                            imageVector = Icons.Filled.Close,
-                            contentDescription = "Закрыть окно ZFS-пулов"
-                        )
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        IconButton(onClick = {
+                            onExtensionsSettingsAction("zfsp_hosts_list")
+                        }) {
+                            Icon(
+                                imageVector = Icons.Filled.Settings,
+                                contentDescription = "Открыть настройки хостов ZFS-пулов"
+                            )
+                        }
+                        IconButton(onClick = { showZfsPoolFreeSpaceDialog = false }) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "Закрыть окно ZFS-пулов"
+                            )
+                        }
                     }
                 }
             },
