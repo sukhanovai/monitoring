@@ -2053,6 +2053,10 @@ private fun MonitoringApp(
                 {
                     showZfsPoolFreeSpaceDialog = true
                     onAction("zfs_pool_free_space_menu")
+                    zfsPoolHostNameInput = ""
+                    zfsPoolHostIpInput = ""
+                    zfsPoolHostThresholdInput = "20"
+                    showZfsPoolHostAddDialog = true
                 }
             } else {
                 { isSettingsExpanded = true; settingsSection = "extensions" }
@@ -2069,20 +2073,7 @@ private fun MonitoringApp(
             } else {
                 null
             },
-            onSettingsClick = if (
-                extension.id == "zfs_pool_free_space_monitor" ||
-                extension.id == "zfs_pool_free_space" ||
-                extension.id.contains("zfs_pool_free_space")
-            ) {
-                {
-                    zfsPoolHostNameInput = ""
-                    zfsPoolHostIpInput = ""
-                    zfsPoolHostThresholdInput = "20"
-                    showZfsPoolHostAddDialog = true
-                }
-            } else {
-                null
-            }
+            onSettingsClick = null
         )
     }
     val allOpsTiles = opsTiles + extensionOpsTiles
@@ -4460,12 +4451,22 @@ private fun MonitoringApp(
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         IconButton(onClick = {
-                            onAction("zfsp_add")
-                            onAction("zfsp_hosts_list")
+                            zfsPoolHostNameInput = ""
+                            zfsPoolHostIpInput = ""
+                            zfsPoolHostThresholdInput = "20"
+                            showZfsPoolHostAddDialog = true
                         }) {
                             Icon(
                                 imageVector = Icons.Filled.Add,
                                 contentDescription = "Добавить хост ZFS-пулов"
+                            )
+                        }
+                        IconButton(onClick = {
+                            onAction("zfsp_hosts_list")
+                        }) {
+                            Icon(
+                                imageVector = Icons.Filled.Settings,
+                                contentDescription = "Настройки хостов ZFS-пулов"
                             )
                         }
                         IconButton(onClick = { showZfsPoolFreeSpaceDialog = false }) {

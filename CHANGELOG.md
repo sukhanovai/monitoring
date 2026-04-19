@@ -1,10 +1,12 @@
-## [8.55.40] - 2026-04-19
+## [8.55.41] - 2026-04-19
 
 ### Changed / Изменено
-- EN: Android tile `zfs место` now shows a settings gear on the tile itself; tapping the gear opens a dedicated host-add form for ZFS-pool monitoring (name, IP, threshold 1-95) and sends `zfsp_add|<name>|<ip>|<threshold>`.
-- RU: Android-плашка `zfs место` теперь показывает шестерёнку настроек прямо на плашке; тап по ней открывает отдельную форму добавления хоста для мониторинга ZFS-пулов (имя, IP, порог 1-95) и отправляет `zfsp_add|<name>|<ip>|<threshold>`.
-- EN: SemVer patch bump to `8.55.40`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.40` and `ANDROID_VERSION_CODE=566`; prerelease links aligned to `v8.55.40-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.55.40`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.40` и `ANDROID_VERSION_CODE=566`; prerelease-ссылки выровнены на `v8.55.40-develop`.
+- EN: Android tile `zfs место` tap now opens `💽 Free space of ZFS pools` and immediately shows the host-add form (name, IP, threshold 1–95) instead of redirecting to settings tiles.
+- RU: Тап по Android-плашке `zfs место` теперь открывает `💽 Свободное место ZFS пулов` и сразу показывает форму добавления хоста (имя, IP, порог 1–95), вместо перехода в список плашек настроек.
+- EN: The settings gear was moved from the `zfs место` tile into the `💽 Free space of ZFS pools` dialog header; gear tap now opens host settings list via `zfsp_hosts_list`.
+- RU: Шестерёнка настроек перенесена с плашки `zfs место` в заголовок окна `💽 Свободное место ZFS пулов`; тап по шестерёнке теперь открывает список настроек хостов через `zfsp_hosts_list`.
+- EN: SemVer patch bump to `8.55.41`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.55.41` and `ANDROID_VERSION_CODE=567`; prerelease links aligned to `v8.55.41-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.55.41`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.55.41` и `ANDROID_VERSION_CODE=567`; prerelease-ссылки выровнены на `v8.55.41-develop`.
 ## [8.55.37] - 2026-04-19
 
 ### Fixed / Исправлено
