@@ -1,3 +1,10 @@
+## [8.56.5] - 2026-04-20
+
+- EN: Fixed Android ZFS pool free-space host management: add/edit actions now send plain values from dialog payloads, and backend `zfsp_*` handlers decode URL-encoded payload parts for compatibility before validation/saving.
+- RU: Исправлено управление хостами свободного места ZFS-пулов в Android: действия добавления/редактирования теперь отправляют из диалога обычные значения, а backend-обработчики `zfsp_*` декодируют URL-кодированные части payload перед валидацией и сохранением.
+- EN: SemVer patch bump to `8.56.5`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.56.5` and `ANDROID_VERSION_CODE=583`; prerelease links aligned to `v8.56.5-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.56.5`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.5` и `ANDROID_VERSION_CODE=583`; prerelease-ссылки выровнены на `v8.56.5-develop`.
+
 ## [8.56.4] - 2026-04-20
 
 ### Fixed / Исправлено

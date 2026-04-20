@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.56.4
+Server Monitoring System v8.56.5
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.56.4
+Версия: 8.56.5
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1705,8 +1705,8 @@ def _execute_mobile_control_action(action: str):
                 if len(parts) < 4:
                     return _build_zfsp_hosts_response("❌ Неверный формат. Используй zfsp_add|<name>|<ip>|<threshold>")
                 _, host_name, host_ip, threshold_raw = parts
-                host_name = host_name.strip()
-                host_ip = host_ip.strip()
+                host_name = unquote(host_name).strip()
+                host_ip = unquote(host_ip).strip()
                 try:
                     threshold = int(threshold_raw.strip())
                 except ValueError:
@@ -1725,8 +1725,8 @@ def _execute_mobile_control_action(action: str):
                         "ℹ️ Переименование из Android: zfsp_edit_name_<old>|<new_name>"
                     )
                 old_name, new_name = host_and_new.split("|", 1)
-                old_name = old_name.strip()
-                new_name = new_name.strip()
+                old_name = unquote(old_name).strip()
+                new_name = unquote(new_name).strip()
                 hosts = get_hosts_config()
                 if not old_name or not new_name:
                     return _build_zfsp_hosts_response("❌ Имена не должны быть пустыми.")
@@ -1746,8 +1746,8 @@ def _execute_mobile_control_action(action: str):
                         "ℹ️ Изменение IP из Android: zfsp_edit_ip_<name>|<new_ip>"
                     )
                 host_name, new_ip = host_and_ip.split("|", 1)
-                host_name = host_name.strip()
-                new_ip = new_ip.strip()
+                host_name = unquote(host_name).strip()
+                new_ip = unquote(new_ip).strip()
                 hosts = get_hosts_config()
                 if host_name not in hosts or not new_ip:
                     return _build_zfsp_hosts_response("❌ Хост не найден или новый IP пустой.")
