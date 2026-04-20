@@ -1,10 +1,10 @@
-## [8.56.15] - 2026-04-20
+## [8.56.16] - 2026-04-20
 
 ### Fixed / Исправлено
-- EN: Fixed Android flow `zfs место` → gear (`⚙️ Хосты свободного места ZFS`): host add dialog now opens immediately from this screen and no longer depends on opening General Settings from the Ops Hub.
-- RU: Исправлен Android-сценарий `zfs место` → шестерёнка (`⚙️ Хосты свободного места ZFS`): диалог добавления хоста теперь открывается сразу из этого экрана и больше не зависит от перехода в «Общие настройки» из оперативного центра.
-- EN: SemVer patch bump to `8.56.15`; synchronized explicit version mentions across project files and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.56.15` and `ANDROID_VERSION_CODE=593`; prerelease links aligned to `v8.56.15-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.56.15`; синхронизированы явные упоминания версии в файлах проекта и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.15` и `ANDROID_VERSION_CODE=593`; prerelease-ссылки выровнены на `v8.56.15-develop`.
+- EN: Fixed Android flow `zfs место` → gear (`⚙️ Хосты свободного места ZFS`): host add dialog now closes the free-space screen first, so no extra underlying window appears during host creation.
+- RU: Исправлен Android-сценарий `zfs место` → шестерёнка (`⚙️ Хосты свободного места ZFS`): диалог добавления хоста теперь сначала закрывает экран свободного места, поэтому при создании хоста не появляется лишнее окно под формой добавления.
+- EN: SemVer patch bump to `8.56.16`; synchronized explicit version mentions across project files and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.56.16` and `ANDROID_VERSION_CODE=594`; prerelease links aligned to `v8.56.16-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.56.16`; синхронизированы явные упоминания версии в файлах проекта и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.16` и `ANDROID_VERSION_CODE=594`; prerelease-ссылки выровнены на `v8.56.16-develop`.
 
 ## [8.56.11] - 2026-04-20
 
