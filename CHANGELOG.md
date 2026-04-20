@@ -1,10 +1,10 @@
-## [8.56.14] - 2026-04-20
+## [8.56.15] - 2026-04-20
 
 ### Fixed / Исправлено
-- EN: Android `zfs статусы` tile parsing now recognizes Telegram-style ZFS status lines (emoji + pool/state format), so the tile calculates totals from backup DB data instead of falling back to a dash.
-- RU: Парсинг плашки Android `zfs статусы` теперь понимает Telegram-формат строк статусов ZFS (emoji + формат pool/state), поэтому плашка считает сводку по данным backup DB вместо прочерка.
-- EN: SemVer patch bump to `8.56.14`; synchronized explicit version mentions across project files and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.56.14` and `ANDROID_VERSION_CODE=592`; prerelease links aligned to `v8.56.14-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.56.14`; синхронизированы явные упоминания версии в файлах проекта и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.14` и `ANDROID_VERSION_CODE=592`; prerelease-ссылки выровнены на `v8.56.14-develop`.
+- EN: Fixed Android flow `zfs место` → gear (`⚙️ Хосты свободного места ZFS`): host add dialog now opens immediately from this screen and no longer depends on opening General Settings from the Ops Hub.
+- RU: Исправлен Android-сценарий `zfs место` → шестерёнка (`⚙️ Хосты свободного места ZFS`): диалог добавления хоста теперь открывается сразу из этого экрана и больше не зависит от перехода в «Общие настройки» из оперативного центра.
+- EN: SemVer patch bump to `8.56.15`; synchronized explicit version mentions across project files and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.56.15` and `ANDROID_VERSION_CODE=593`; prerelease links aligned to `v8.56.15-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.56.15`; синхронизированы явные упоминания версии в файлах проекта и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.15` и `ANDROID_VERSION_CODE=593`; prerelease-ссылки выровнены на `v8.56.15-develop`.
 
 ## [8.56.11] - 2026-04-20
 
