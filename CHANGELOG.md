@@ -1,14 +1,12 @@
-## [8.56.12] - 2026-04-20
+## [8.56.13] - 2026-04-20
 
 ### Fixed / Исправлено
-- EN: Android compact-ops tile `zfs статусы` no longer shows a gear button on the tile itself; settings remain available inside the dialog opened by tapping the tile.
-- RU: В Android compact-ops плашке `zfs статусы` убрана шестерёнка с самой плашки; настройки остаются доступными внутри окна, открываемого тапом по плашке.
-- EN: Improved ZFS summary preload in Android sync: `zfs статусы` tile now reuses the full latest-statuses fetch sequence (with root fallback), reducing cases where a dash was shown instead of computed data.
-- RU: Улучшена предзагрузка сводки ZFS в Android-синхронизации: плашка `zfs статусы` теперь использует полный сценарий получения последних статусов (с fallback на корневой ответ), что снижает случаи показа прочерка вместо расчётных данных.
-- EN: In Android `zfs место` dialog (opened by tapping the tile), added a direct `+` action in the header to open host creation via `zfsp_hosts_list` → `zfsp_add*` without extra navigation to settings.
-- RU: В Android-окне `zfs место` (открывается тапом по плашке) добавлено прямое действие `+` в заголовке для запуска добавления хоста через `zfsp_hosts_list` → `zfsp_add*` без лишней навигации в настройки.
-- EN: SemVer patch bump to `8.56.12`; synchronized explicit version mentions across project files and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.56.12` and `ANDROID_VERSION_CODE=590`; prerelease links aligned to `v8.56.12-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.56.12`; синхронизированы явные упоминания версии в файлах проекта и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.12` и `ANDROID_VERSION_CODE=590`; prerelease-ссылки выровнены на `v8.56.12-develop`.
+- EN: Android `zfs статусы` tile parsing now recognizes Telegram-style ZFS status lines (emoji + pool/state format), so the tile calculates totals from backup DB data instead of falling back to a dash.
+- RU: Парсинг плашки Android `zfs статусы` теперь понимает Telegram-формат строк статусов ZFS (emoji + формат pool/state), поэтому плашка считает сводку по данным backup DB вместо прочерка.
+- EN: Android `zfs место` host creation now always sends canonical `zfsp_add|...` action and URL-encodes host/IP payload values, fixing failed host add flows from the tile dialog.
+- RU: Добавление хоста в Android `zfs место` теперь всегда отправляет каноническое действие `zfsp_add|...` и URL-кодирует payload (host/IP), что исправляет нерабочий сценарий добавления из диалога плашки.
+- EN: SemVer patch bump to `8.56.13`; synchronized explicit version mentions across project files and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.56.13` and `ANDROID_VERSION_CODE=591`; prerelease links aligned to `v8.56.13-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.56.13`; синхронизированы явные упоминания версии в файлах проекта и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.13` и `ANDROID_VERSION_CODE=591`; prerelease-ссылки выровнены на `v8.56.13-develop`.
 
 ## [8.56.11] - 2026-04-20
 
