@@ -2981,63 +2981,6 @@ private fun MonitoringApp(
                                 )
                             }
 
-                            if (showZfsPoolHostAddDialog) {
-                                AlertDialog(
-                                    onDismissRequest = { showZfsPoolHostAddDialog = false },
-                                    title = { Text("➕ Добавить хост ZFS-пулов") },
-                                    text = {
-                                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            OutlinedTextField(
-                                                value = zfsPoolHostNameInput,
-                                                onValueChange = { zfsPoolHostNameInput = it },
-                                                label = { Text("Имя хоста") },
-                                                modifier = Modifier.fillMaxWidth()
-                                            )
-                                            OutlinedTextField(
-                                                value = zfsPoolHostIpInput,
-                                                onValueChange = { zfsPoolHostIpInput = it },
-                                                label = { Text("IP адрес") },
-                                                modifier = Modifier.fillMaxWidth()
-                                            )
-                                            OutlinedTextField(
-                                                value = zfsPoolHostThresholdInput,
-                                                onValueChange = { value ->
-                                                    zfsPoolHostThresholdInput = value.filter { it.isDigit() }
-                                                },
-                                                label = { Text("Порог, % (1-95)") },
-                                                modifier = Modifier.fillMaxWidth()
-                                            )
-                                        }
-                                    },
-                                    confirmButton = {
-                                        val thresholdValue = zfsPoolHostThresholdInput.toIntOrNull()
-                                        TextButton(
-                                            onClick = {
-                                                val addAction = zfsPoolHostAddAction.substringBefore("|").ifBlank { "zfsp_add" }
-                                                val encodedHostName = Uri.encode(zfsPoolHostNameInput.trim())
-                                                val encodedHostIp = Uri.encode(zfsPoolHostIpInput.trim())
-                                                val actionPayload = "$addAction|$encodedHostName|$encodedHostIp|$thresholdValue"
-                                                onAction(actionPayload)
-                                                onAction("zfsp_hosts_list")
-                                                showZfsPoolHostAddDialog = false
-                                                showZfsPoolHostsSettingsDialog = true
-                                            },
-                                            enabled = zfsPoolHostNameInput.isNotBlank() &&
-                                                zfsPoolHostIpInput.isNotBlank() &&
-                                                thresholdValue != null &&
-                                                thresholdValue in 1..95
-                                        ) { Text("Добавить") }
-                                    },
-                                    dismissButton = {
-                                        TextButton(onClick = {
-                                            showZfsPoolHostAddDialog = false
-                                        }) {
-                                            Text("Отмена")
-                                        }
-                                    }
-                                )
-                            }
-
                             if (showZfsHostEditDialog) {
                                 AlertDialog(
                                     onDismissRequest = { showZfsHostEditDialog = false },
@@ -5171,6 +5114,63 @@ private fun MonitoringApp(
             },
             confirmButton = {},
             dismissButton = {}
+        )
+    }
+
+    if (showZfsPoolHostAddDialog) {
+        AlertDialog(
+            onDismissRequest = { showZfsPoolHostAddDialog = false },
+            title = { Text("➕ Добавить хост ZFS-пулов") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = zfsPoolHostNameInput,
+                        onValueChange = { zfsPoolHostNameInput = it },
+                        label = { Text("Имя хоста") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = zfsPoolHostIpInput,
+                        onValueChange = { zfsPoolHostIpInput = it },
+                        label = { Text("IP адрес") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = zfsPoolHostThresholdInput,
+                        onValueChange = { value ->
+                            zfsPoolHostThresholdInput = value.filter { it.isDigit() }
+                        },
+                        label = { Text("Порог, % (1-95)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                val thresholdValue = zfsPoolHostThresholdInput.toIntOrNull()
+                TextButton(
+                    onClick = {
+                        val addAction = zfsPoolHostAddAction.substringBefore("|").ifBlank { "zfsp_add" }
+                        val encodedHostName = Uri.encode(zfsPoolHostNameInput.trim())
+                        val encodedHostIp = Uri.encode(zfsPoolHostIpInput.trim())
+                        val actionPayload = "$addAction|$encodedHostName|$encodedHostIp|$thresholdValue"
+                        onAction(actionPayload)
+                        onAction("zfsp_hosts_list")
+                        showZfsPoolHostAddDialog = false
+                        showZfsPoolHostsSettingsDialog = true
+                    },
+                    enabled = zfsPoolHostNameInput.isNotBlank() &&
+                        zfsPoolHostIpInput.isNotBlank() &&
+                        thresholdValue != null &&
+                        thresholdValue in 1..95
+                ) { Text("Добавить") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showZfsPoolHostAddDialog = false
+                }) {
+                    Text("Отмена")
+                }
+            }
         )
     }
 
