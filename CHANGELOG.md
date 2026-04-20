@@ -1,12 +1,12 @@
-## [8.56.6] - 2026-04-20
+## [8.56.7] - 2026-04-20
 
 ### Fixed / Исправлено
-- EN: In Android `💽 Free space of ZFS pools` (`zfs место`) dialog, removed the extra gear button in the header (settings mode is now entered through the existing flow without duplicate control inside the same window).
-- RU: В Android-диалоге `💽 Свободное место ZFS пулов` (`zfs место`) убрана лишняя шестерёнка в заголовке (вход в режим настроек теперь идёт по текущему сценарию без дублирующего элемента в самом окне).
-- EN: In the same dialog, tapping `+` now always opens host creation immediately and prepares `zfsp_add*` action payload, so adding a host is available consistently.
-- RU: В этом же диалоге тап по `+` теперь всегда сразу открывает добавление хоста и подготавливает payload действия `zfsp_add*`, поэтому добавление хоста стабильно доступно.
-- EN: SemVer patch bump to `8.56.6`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.56.6` and `ANDROID_VERSION_CODE=584`; prerelease links aligned to `v8.56.6-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.56.6`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.6` и `ANDROID_VERSION_CODE=584`; prerelease-ссылки выровнены на `v8.56.6-develop`.
+- EN: In Android tile `💽 zfs место`, restored the gear button on the tile itself; tapping the tile now opens only the free-space summary window.
+- RU: В Android на плашке `💽 zfs место` возвращена шестерёнка на самой плашке; тап по плашке теперь открывает только окно сводки по свободному месту.
+- EN: Removed `+` from the free-space summary window header and separated ZFS free-space host settings into a dedicated overlay opened by the gear button.
+- RU: Из заголовка окна сводки по свободному месту убрана кнопка `+`, а настройки хостов свободного места ZFS вынесены в отдельное наложенное окно, открываемое по шестерёнке.
+- EN: SemVer patch bump to `8.56.7`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.56.7` and `ANDROID_VERSION_CODE=585`; prerelease links aligned to `v8.56.7-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.56.7`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.7` и `ANDROID_VERSION_CODE=585`; prerelease-ссылки выровнены на `v8.56.7-develop`.
 
 ## [8.56.5] - 2026-04-20
 
