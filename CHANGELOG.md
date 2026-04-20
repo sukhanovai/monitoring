@@ -1,17 +1,5 @@
 # Changelog / История изменений
 
-## [8.0.4] - 2026-04-20
-
-### RU
-- Добавлена совместимая строка `Поставщиков` в сводку загрузки остатков, чтобы мобильные плашки снова корректно показывали значение по поставщикам.
-- В ZFS-сводку добавлены дополнительные совместимые строки `ZFS статусы` и `ZFS место`, чтобы Android-клиент снова заполнял соответствующие плашки без прочерков.
-- Расширена маршрутизация callback-данных в обработчике кнопок: все `stock_pattern_*`, `zfs_pattern_*`, `proxmox_pattern_*`, `mail_pattern_*` теперь гарантированно уходят в `settings_handlers`, чтобы исключить открытие чужого диалога.
-
-### EN
-- Added a backward-compatible `Suppliers` line to stock-load summary so mobile tiles can correctly display supplier metrics again.
-- Added backward-compatible `ZFS statuses` and `ZFS space` lines in ZFS summary so the Android client can populate related tiles instead of showing dashes.
-- Expanded callback routing in button handler: all `stock_pattern_*`, `zfs_pattern_*`, `proxmox_pattern_*`, and `mail_pattern_*` callbacks are now always routed to `settings_handlers` to prevent opening a wrong dialog.
-
 ## [8.0.3] - 2026-04-12
 
 ### RU
