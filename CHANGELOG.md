@@ -1,12 +1,12 @@
-## [8.56.8] - 2026-04-20
+## [8.56.9] - 2026-04-20
 
 ### Fixed / Исправлено
-- EN: In Android tile `💽 zfs место`, removed the gear icon from the tile itself; host settings are now opened only from the free-space summary window.
-- RU: В Android на плашке `💽 zfs место` убрана шестерёнка с самой плашки; настройки хостов теперь открываются только из окна сводки по свободному месту.
-- EN: In `💽 Free space of ZFS pools`, moved the gear below the close (`✖`) button and changed it to close the summary dialog before opening host settings, so only one dialog remains visible.
-- RU: В окне `💽 Свободное место ZFS пулов` шестерёнка перенесена вертикально под крестик (`✖`) и теперь перед открытием настроек закрывает сводку, чтобы не было двух диалогов одновременно.
-- EN: SemVer patch bump to `8.56.8`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.56.8` and `ANDROID_VERSION_CODE=586`; prerelease links aligned to `v8.56.8-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.56.8`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.8` и `ANDROID_VERSION_CODE=586`; prerelease-ссылки выровнены на `v8.56.8-develop`.
+- EN: Fixed Android compact-ops tiles so `zfs статусы`, `поставщики`, and `zfs место` again show calculated summaries instead of fallback dashes when backend IDs use legacy aliases.
+- RU: Исправлены Android-плашки compact-ops: `zfs статусы`, `поставщики` и `zfs место` снова показывают расчётные сводки вместо прочерков при legacy-алиасах ID на backend.
+- EN: Fixed tap routing for tile `поставщики`: tap now opens supplier reports action (`supplier_stock_reports`) and no longer routes into ZFS free-space host settings flow.
+- RU: Исправлена маршрутизация тапа по плашке `поставщики`: тап теперь открывает отчёты поставщиков (`supplier_stock_reports`) и больше не уводит в поток настроек хостов ZFS-свободного места.
+- EN: SemVer patch bump to `8.56.9`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.56.9` and `ANDROID_VERSION_CODE=587`; prerelease links aligned to `v8.56.9-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.56.9`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.9` и `ANDROID_VERSION_CODE=587`; prerelease-ссылки выровнены на `v8.56.9-develop`.
 
 ## [8.56.5] - 2026-04-20
 
