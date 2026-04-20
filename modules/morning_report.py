@@ -1,11 +1,11 @@
 """
 /app/modules/morning_report.py
-Server Monitoring System v8.0.3
+Server Monitoring System v8.0.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Morning Report Module
 Система мониторинга серверов
-Версия: 8.0.3
+Версия: 8.0.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль утреннего отчета
@@ -348,6 +348,8 @@ class MorningReport:
             summary = (
                 f"• Серверов: {servers_count} (🟢 {servers_ok} / 🔴 {servers_problem})\n"
                 f"• Пулов: {total_pools} (🟢 {ok_pools} / 🔴 {bad_pools})\n"
+                f"• ZFS статусы: {ok_pools}/{total_pools}\n"
+                "• ZFS место: н/д\n"
             )
 
             has_issues = servers_problem > 0 or bad_pools > 0 or bool(stale_servers)
