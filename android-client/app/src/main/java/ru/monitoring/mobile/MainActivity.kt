@@ -1085,6 +1085,20 @@ private fun buildToggleDataTile(label: String, enabled: Boolean): ExtensionDataT
     )
 }
 
+private fun findExtensionByIds(
+    extensionsById: Map<String, ExtensionItem>,
+    vararg ids: String
+): ExtensionItem? {
+    if (ids.isEmpty()) return null
+    val normalizedMap = extensionsById.entries.associateBy { (id, _) ->
+        id.trim().lowercase().replace('-', '_')
+    }
+    return ids.asSequence()
+        .map { it.trim().lowercase().replace('-', '_') }
+        .mapNotNull { normalizedId -> normalizedMap[normalizedId]?.value }
+        .firstOrNull()
+}
+
 private fun extractMailBackupVolumeFromMorningReport(report: String): String? {
     if (report.isBlank()) return null
     val normalizedReport = report
@@ -1980,7 +1994,7 @@ private fun MonitoringApp(
                 )
             )
         }
-        extensionsById["zfs_monitor"]?.takeIf { it.enabled }?.let { extension ->
+        findExtensionByIds(extensionsById, "zfs_monitor", "zfs")?.takeIf { it.enabled }?.let { extension ->
             add(
                 buildExtensionDataTile(
                     extension = extension.copy(id = "zfs_monitor", name = "zfs статусы"),
@@ -1989,14 +2003,18 @@ private fun MonitoringApp(
                 )
             )
         }
-        val zfsPoolFreeSpaceExtension = extensionsById["zfs_pool_free_space_monitor"]
-            ?: extensionsById["zfs_pool_free_space"]
+        val zfsPoolFreeSpaceExtension = findExtensionByIds(
+            extensionsById,
+            "zfs_pool_free_space_monitor",
+            "zfs_pool_free_space",
+            "zfs_free_space_monitor"
+        )
         zfsPoolFreeSpaceExtension?.takeIf { it.enabled }?.let { extension ->
             val hasProblem = state.zfsPoolFreeSpaceHasProblemItems
             add(
                 buildExtensionDataTile(
                     extension = extension.copy(id = "zfs_pool_free_space_monitor", name = "zfs место"),
-                    summaryOverride = if (hasProblem) "!" else "ОК",
+                    summaryOverride = state.zfsPoolFreeSpaceSummary,
                     hasProblemOverride = hasProblem
                 )
             )
@@ -2010,10 +2028,12 @@ private fun MonitoringApp(
                 )
             )
         }
-        extensionsById["supplier_stock_files"]?.takeIf { it.enabled }?.let { extension ->
+        findExtensionByIds(extensionsById, "supplier_stock_files", "supplier_stock_reports")
+            ?.takeIf { it.enabled }
+            ?.let { extension ->
             add(
                 buildExtensionDataTile(
-                    extension = extension.copy(name = "поставщики"),
+                    extension = extension.copy(id = "supplier_stock_files", name = "поставщики"),
                     summaryOverride = state.supplierStockSummary,
                     hasProblemOverride = state.supplierStockHasProblemItems
                 )
@@ -2050,6 +2070,10 @@ private fun MonitoringApp(
                 {
                     showMailBackupsDialog = true
                     onToggleMailBackupMenu()
+                }
+            } else if (extension.id == "supplier_stock_files") {
+                {
+                    onAction("supplier_stock_reports")
                 }
             } else if (extension.id == "zfs_monitor") {
                 {
