@@ -2101,7 +2101,7 @@ private fun MonitoringApp(
             } else if (extension.id == "zfs_monitor") {
                 {
                     showZfsStatusesDialog = true
-                    onAction("zfs_menu")
+                    onAction("zfs")
                     onExtensionsSettingsAction("settings_zfs_list")
                 }
             } else if (extension.id == "resource_monitor") {
@@ -4363,7 +4363,7 @@ private fun MonitoringApp(
                         Text("Загружаем ZFS-центр…")
                     } else if (!hasAnyData) {
                         Text("Пока нет данных от ZFS. Нажми «Обновить», чтобы запросить статусы.")
-                        Button(onClick = { onAction("zfs_menu") }) { Text("Обновить") }
+                        Button(onClick = { onAction("zfs") }) { Text("Обновить") }
                     } else {
                         if (allStatusCards.isNotEmpty()) {
                             Text(
