@@ -4463,6 +4463,7 @@ private fun MonitoringApp(
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         IconButton(onClick = {
                             pendingZfsPoolHostAddFromFreeSpaceDialog = true
+                            showZfsPoolFreeSpaceDialog = false
                             onAction("zfsp_hosts_list")
                         }) {
                             Icon(
