@@ -4462,16 +4462,6 @@ private fun MonitoringApp(
                     )
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         IconButton(onClick = {
-                            pendingZfsPoolHostAddFromFreeSpaceDialog = true
-                            showZfsPoolFreeSpaceDialog = false
-                            onAction("zfsp_hosts_list")
-                        }) {
-                            Icon(
-                                imageVector = Icons.Filled.Add,
-                                contentDescription = "Добавить хост ZFS-пулов"
-                            )
-                        }
-                        IconButton(onClick = {
                             showZfsPoolFreeSpaceDialog = false
                         }) {
                             Icon(
@@ -4680,7 +4670,13 @@ private fun MonitoringApp(
                         modifier = Modifier.weight(1f),
                         fontWeight = FontWeight.Bold
                     )
-                    Row {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        IconButton(onClick = { showZfsPoolHostsSettingsDialog = false }) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "Закрыть окно хостов ZFS-пулов"
+                            )
+                        }
                         if (zfsPoolAddAction != null) {
                             IconButton(
                                 onClick = {
@@ -4696,12 +4692,6 @@ private fun MonitoringApp(
                                     contentDescription = "Добавить хост ZFS-пулов"
                                 )
                             }
-                        }
-                        IconButton(onClick = { showZfsPoolHostsSettingsDialog = false }) {
-                            Icon(
-                                imageVector = Icons.Filled.Close,
-                                contentDescription = "Закрыть окно хостов ZFS-пулов"
-                            )
                         }
                     }
                 }
@@ -4721,12 +4711,18 @@ private fun MonitoringApp(
                             if (label.isBlank() || action.isBlank()) null else label to action
                         }
                     val hostSettingsGroups = extractZfsPoolHostSettingsGroups(zfsPoolActions)
-                    val commonActions = zfsPoolActions.filterNot { (_, action) ->
+                    val commonActions = zfsPoolActions.filterNot { (label, action) ->
                         action.startsWith("zfsp_edit_name_") ||
                             action.startsWith("zfsp_edit_ip_") ||
                             action.startsWith("zfsp_edit_threshold_") ||
                             action.startsWith("zfsp_delete_") ||
-                            action.startsWith("zfsp_toggle_")
+                            action.startsWith("zfsp_toggle_") ||
+                            action == "zfsp_add" ||
+                            action.startsWith("zfsp_add|") ||
+                            action == "zfs_pool_free_space_menu" ||
+                            action == "back" ||
+                            label.trim().lowercase() == "добавить хост" ||
+                            label.trim().lowercase() == "назад"
                     }
 
                     if (state.isLoading && zfsPoolActions.isEmpty()) {
@@ -4776,26 +4772,11 @@ private fun MonitoringApp(
                         }
 
                         commonActions.forEach { (label, action) ->
-                            if (action == "zfsp_add" || action.startsWith("zfsp_add|")) {
-                                Button(
-                                    onClick = {
-                                        zfsPoolHostAddAction = action
-                                        zfsPoolHostNameInput = ""
-                                        zfsPoolHostIpInput = ""
-                                        zfsPoolHostThresholdInput = "20"
-                                        showZfsPoolHostAddDialog = true
-                                    },
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Text(label)
-                                }
-                            } else {
-                                OutlinedButton(
-                                    onClick = { onAction(action) },
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Text(label)
-                                }
+                            OutlinedButton(
+                                onClick = { onAction(action) },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(label)
                             }
                         }
                     }
