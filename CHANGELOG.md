@@ -1,3 +1,11 @@
+## [8.56.11] - 2026-04-20
+
+### Changed / Изменено
+- EN: SemVer patch bump to `8.56.11`; synchronized project version mentions across backend headers/config, Android client constants, and docs prerelease links.
+- RU: Выполнен SemVer patch-бамп до `8.56.11`; синхронизированы упоминания версии проекта в заголовках/конфигах backend, константах Android-клиента и prerelease-ссылках в документации.
+- EN: Android metadata updated to `ANDROID_VERSION_NAME=8.56.11` and `ANDROID_VERSION_CODE=589`.
+- RU: Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.11` и `ANDROID_VERSION_CODE=589`.
+
 ## [8.56.10] - 2026-04-20
 
 ### Fixed / Исправлено
