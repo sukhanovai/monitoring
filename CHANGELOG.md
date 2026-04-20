@@ -1,3 +1,15 @@
+## [8.56.17] - 2026-04-20
+
+### Fixed / Исправлено
+- EN: In Android `zfs место` (`💽 Free space of ZFS pools`), removed the `+` button from the main free-space dialog header; host creation is now available only in host settings opened via the gear icon.
+- RU: В Android `zfs место` (`💽 Свободное место ZFS пулов`) убрана кнопка `+` из заголовка основного окна свободного места; добавление хоста теперь доступно только в настройках, открываемых по шестерёнке.
+- EN: In Android host settings for ZFS pool free-space (`⚙️ Хосты свободного места ZFS`), arranged close (`✖`) and add (`+`) actions vertically in the dialog header.
+- RU: В Android-настройках хостов свободного места ZFS (`⚙️ Хосты свободного места ZFS`) действия закрытия (`✖`) и добавления (`+`) расположены вертикально в заголовке диалога.
+- EN: In the same host settings dialog, removed body buttons labeled `Добавить хост` and `Назад`; host add remains in the header `+`, while navigation back is handled by closing the dialog.
+- RU: В том же диалоге настроек хостов удалены кнопки в теле с надписями `Добавить хост` и `Назад`; добавление хоста остаётся в `+` заголовка, возврат выполняется через закрытие диалога.
+- EN: SemVer patch bump to `8.56.17`; synchronized explicit version mentions across project files and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.56.17` and `ANDROID_VERSION_CODE=595`; prerelease links aligned to `v8.56.17-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.56.17`; синхронизированы явные упоминания версии в файлах проекта и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.17` и `ANDROID_VERSION_CODE=595`; prerelease-ссылки выровнены на `v8.56.17-develop`.
+
 ## [8.56.16] - 2026-04-20
 
 ### Fixed / Исправлено
