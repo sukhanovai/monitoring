@@ -4491,31 +4491,22 @@ private fun MonitoringApp(
                         IconButton(onClick = {
                             zfsPoolSettingsRequestedByUser = true
                             onAction("zfsp_hosts_list")
+                            zfsPoolHostAddAction = zfsPoolMenuOptions
+                                .mapNotNull { option ->
+                                    resolveMenuOptionAction(option)
+                                        .takeIf { action -> action.trim().lowercase().startsWith("zfsp_add") }
+                                }
+                                .firstOrNull()
+                                ?: "zfsp_add"
+                            zfsPoolHostNameInput = ""
+                            zfsPoolHostIpInput = ""
+                            zfsPoolHostThresholdInput = "20"
+                            showZfsPoolHostAddDialog = true
                         }) {
                             Icon(
-                                imageVector = Icons.Filled.Settings,
-                                contentDescription = "Настройки хостов ZFS-пулов"
+                                imageVector = Icons.Filled.Add,
+                                contentDescription = "Добавить хост ZFS-пулов"
                             )
-                        }
-                        if (zfsPoolSettingsRequestedByUser) {
-                            IconButton(onClick = {
-                                zfsPoolHostAddAction = zfsPoolMenuOptions
-                                    .mapNotNull { option ->
-                                        resolveMenuOptionAction(option)
-                                            .takeIf { action -> action.trim().lowercase().startsWith("zfsp_add") }
-                                    }
-                                    .firstOrNull()
-                                    ?: "zfsp_add"
-                                zfsPoolHostNameInput = ""
-                                zfsPoolHostIpInput = ""
-                                zfsPoolHostThresholdInput = "20"
-                                showZfsPoolHostAddDialog = true
-                            }) {
-                                Icon(
-                                    imageVector = Icons.Filled.Add,
-                                    contentDescription = "Добавить хост ZFS-пулов"
-                                )
-                            }
                         }
                     }
                 }
