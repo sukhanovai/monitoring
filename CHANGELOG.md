@@ -1,3 +1,13 @@
+## [8.56.10] - 2026-04-20
+
+### Fixed / Исправлено
+- EN: Fixed compact-ops tile `zfs статусы`: added dedicated tile gear action that opens the ZFS settings chooser (hosts/patterns) directly from the tile.
+- RU: Исправлена compact-ops плашка `zfs статусы`: добавлено отдельное действие по шестерёнке плашки для прямого открытия выбора настроек ZFS (хосты/паттерны).
+- EN: In Android flow `zfs место` → gear (`⚙️ Хосты свободного места ZFS`), added explicit `+` icon in the dialog header to open host creation immediately using current backend `zfsp_add*` action.
+- RU: В Android-сценарии `zfs место` → шестерёнка (`⚙️ Хосты свободного места ZFS`) добавлена явная иконка `+` в заголовок диалога для мгновенного открытия добавления хоста через актуальное backend-действие `zfsp_add*`.
+- EN: SemVer patch bump to `8.56.10`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.56.10` and `ANDROID_VERSION_CODE=588`; prerelease links aligned to `v8.56.10-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.56.10`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.10` и `ANDROID_VERSION_CODE=588`; prerelease-ссылки выровнены на `v8.56.10-develop`.
+
 ## [8.56.9] - 2026-04-20
 
 ### Fixed / Исправлено

@@ -2112,7 +2112,13 @@ private fun MonitoringApp(
             } else {
                 null
             },
-            onSettingsClick = null
+            onSettingsClick = if (extension.id == "zfs_monitor") {
+                {
+                    showZfsSettingsDialog = true
+                }
+            } else {
+                null
+            }
         )
     }
     val allOpsTiles = opsTiles + extensionOpsTiles
@@ -4682,6 +4688,11 @@ private fun MonitoringApp(
         } else {
             emptyList()
         }
+        val zfsPoolAddAction = zfsPoolSettingsOptions
+            .mapNotNull { option ->
+                resolveMenuOptionAction(option).trim().takeIf { it.isNotBlank() }
+            }
+            .firstOrNull { action -> action == "zfsp_add" || action.startsWith("zfsp_add|") }
         AlertDialog(
             onDismissRequest = { showZfsPoolHostsSettingsDialog = false },
             title = {
@@ -4695,11 +4706,29 @@ private fun MonitoringApp(
                         modifier = Modifier.weight(1f),
                         fontWeight = FontWeight.Bold
                     )
-                    IconButton(onClick = { showZfsPoolHostsSettingsDialog = false }) {
-                        Icon(
-                            imageVector = Icons.Filled.Close,
-                            contentDescription = "Закрыть окно хостов ZFS-пулов"
-                        )
+                    Row {
+                        if (zfsPoolAddAction != null) {
+                            IconButton(
+                                onClick = {
+                                    zfsPoolHostAddAction = zfsPoolAddAction
+                                    zfsPoolHostNameInput = ""
+                                    zfsPoolHostIpInput = ""
+                                    zfsPoolHostThresholdInput = "20"
+                                    showZfsPoolHostAddDialog = true
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Add,
+                                    contentDescription = "Добавить хост ZFS-пулов"
+                                )
+                            }
+                        }
+                        IconButton(onClick = { showZfsPoolHostsSettingsDialog = false }) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "Закрыть окно хостов ZFS-пулов"
+                            )
+                        }
                     }
                 }
             },
