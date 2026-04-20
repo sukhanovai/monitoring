@@ -1,10 +1,10 @@
-## [8.56.19] - 2026-04-20
+## [8.56.20] - 2026-04-20
 
 ### Fixed / Исправлено
-- EN: Improved readability in Android `💽 zfs место`: global free-space message lines are now displayed in a structured block, and free-space percentages (the value before `free/свободно`) are highlighted with severity color.
-- RU: Улучшена читаемость в Android `💽 zfs место`: строки глобального сообщения о свободном месте теперь показываются в структурированном блоке, а проценты свободного места (значение перед `free/свободно`) подсвечиваются цветом по уровню риска.
-- EN: SemVer patch bump to `8.56.19`; synchronized explicit version mentions across project files and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.56.19` and `ANDROID_VERSION_CODE=597`; prerelease links aligned to `v8.56.19-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.56.19`; синхронизированы явные упоминания версии в файлах проекта и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.19` и `ANDROID_VERSION_CODE=597`; prerelease-ссылки выровнены на `v8.56.19-develop`.
+- EN: In Android flow `💽 zfs место` → gear (`⚙️ Хосты свободного места ZFS`), added a color status marker on each host card: green for enabled host monitoring, red for disabled.
+- RU: В Android-сценарии `💽 zfs место` → шестерёнка (`⚙️ Хосты свободного места ZFS`) на каждую карточку хоста добавлен цветовой маркер состояния: зелёный для включенного мониторинга хоста, красный для выключенного.
+- EN: SemVer patch bump to `8.56.20`; synchronized explicit version mentions across project files and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.56.20` and `ANDROID_VERSION_CODE=598`; prerelease links aligned to `v8.56.20-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.56.20`; синхронизированы явные упоминания версии в файлах проекта и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.20` и `ANDROID_VERSION_CODE=598`; prerelease-ссылки выровнены на `v8.56.20-develop`.
 
 ## [8.56.17] - 2026-04-20
 

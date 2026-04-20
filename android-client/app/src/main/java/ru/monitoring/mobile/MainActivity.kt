@@ -658,7 +658,8 @@ private data class ZfsPoolHostSettingsGroup(
     val editIpAction: String,
     val editThresholdAction: String,
     val deleteAction: String,
-    val toggleAction: String
+    val toggleAction: String,
+    val toggleLabel: String
 )
 
 private fun extractZfsPoolHostSettingsGroups(options: List<Pair<String, String>>): List<ZfsPoolHostSettingsGroup> {
@@ -668,7 +669,8 @@ private fun extractZfsPoolHostSettingsGroups(options: List<Pair<String, String>>
         var editIpAction: String = "",
         var editThresholdAction: String = "",
         var deleteAction: String = "",
-        var toggleAction: String = ""
+        var toggleAction: String = "",
+        var toggleLabel: String = ""
     )
 
     fun extractHostForZfsPoolAction(action: String): String {
@@ -684,7 +686,7 @@ private fun extractZfsPoolHostSettingsGroups(options: List<Pair<String, String>>
 
     val groups = linkedMapOf<String, MutableZfsPoolHostSettingsGroup>()
 
-    options.forEach { (_, action) ->
+    options.forEach { (label, action) ->
         val normalizedAction = action.trim()
         val host = extractHostForZfsPoolAction(normalizedAction)
         if (host.isBlank()) return@forEach
@@ -697,7 +699,10 @@ private fun extractZfsPoolHostSettingsGroups(options: List<Pair<String, String>>
             normalizedAction.startsWith("zfsp_edit_ip_") -> group.editIpAction = normalizedAction
             normalizedAction.startsWith("zfsp_edit_threshold_") -> group.editThresholdAction = normalizedAction
             normalizedAction.startsWith("zfsp_delete_") -> group.deleteAction = normalizedAction
-            normalizedAction.startsWith("zfsp_toggle_") -> group.toggleAction = normalizedAction
+            normalizedAction.startsWith("zfsp_toggle_") -> {
+                group.toggleAction = normalizedAction
+                group.toggleLabel = label
+            }
         }
     }
 
@@ -712,7 +717,8 @@ private fun extractZfsPoolHostSettingsGroups(options: List<Pair<String, String>>
                 editIpAction = group.editIpAction,
                 editThresholdAction = group.editThresholdAction,
                 deleteAction = group.deleteAction,
-                toggleAction = group.toggleAction
+                toggleAction = group.toggleAction,
+                toggleLabel = group.toggleLabel
             )
         }
     }
@@ -4782,6 +4788,14 @@ private fun MonitoringApp(
                                 fontWeight = FontWeight.SemiBold
                             )
                             hostSettingsGroups.forEach { group ->
+                                val monitoringEnabled = !isZfsMonitoringDisabled(group.toggleLabel)
+                                val markerColor = if (monitoringEnabled) {
+                                    Color(0xFF2E7D32)
+                                } else {
+                                    Color(0xFFC62828)
+                                }
+                                val markerLabel = if (monitoringEnabled) "Включен" else "Выключен"
+
                                 ElevatedCard(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -4806,12 +4820,35 @@ private fun MonitoringApp(
                                             }
                                         )
                                 ) {
-                                    Text(
-                                        text = group.hostName,
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                                        style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(10.dp)
+                                                .clip(CircleShape)
+                                                .background(markerColor)
+                                        )
+                                        Column(
+                                            modifier = Modifier.weight(1f),
+                                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                                        ) {
+                                            Text(
+                                                text = group.hostName,
+                                                style = MaterialTheme.typography.titleSmall,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                            Text(
+                                                text = markerLabel,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
