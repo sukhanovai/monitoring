@@ -52,7 +52,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.56.11"
+    private val projectVersion = "8.56.12"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -816,16 +816,9 @@ class MainViewModel(
                 val mailBackupSummary = runCatching {
                     currentApi().runControlAction(ControlActionRequest("backup_mail"))
                 }.getOrNull()
-                val zfsSummary = runCatching {
+                val zfsSummaryBundle = runCatching {
                     val zfsRoot = currentApi().runControlAction(ControlActionRequest("zfs_menu"))
-                    val latestAction = findZfsLatestStatusesAction(zfsRoot)
-                    if (latestAction.isNullOrBlank()) {
-                        zfsRoot
-                    } else {
-                        runCatching {
-                            currentApi().runControlAction(ControlActionRequest(latestAction))
-                        }.getOrElse { zfsRoot }
-                    }
+                    fetchZfsLatestStatusesResponse(zfsRoot)
                 }.getOrNull()
                 val zfsPoolFreeSpaceSummary = runCatching {
                     currentApi().runControlAction(ControlActionRequest("zfs_pool_free_space_menu"))
@@ -845,7 +838,7 @@ class MainViewModel(
                     stockLoadSummary,
                     supplierStockSummary,
                     mailBackupSummary,
-                    zfsSummary,
+                    zfsSummaryBundle,
                     zfsPoolFreeSpaceSummary
                 )
             }
@@ -870,7 +863,11 @@ class MainViewModel(
                 ?.firstOrNull()
                 ?.size
                 ?: extractMailBackupVolume(mailBackupResponse?.message.orEmpty())
-            val zfsSummary = buildBackupTileSummary(result[14] as? ControlActionResult)
+            val zfsSummaryBundle = result[14] as? Pair<*, *>
+            val zfsSummaryRootResponse = zfsSummaryBundle?.first as? ControlActionResult
+            val zfsSummaryLatestResponse = zfsSummaryBundle?.second as? ControlActionResult
+            val zfsSummary = buildBackupTileSummary(zfsSummaryLatestResponse)
+                ?: buildBackupTileSummary(zfsSummaryRootResponse)
             val zfsPoolFreeSpaceSummary = buildBackupTileSummary(result[15] as? ControlActionResult)
 
             val monitoringData = monitoring?.settings

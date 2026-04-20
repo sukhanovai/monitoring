@@ -1,3 +1,15 @@
+## [8.56.12] - 2026-04-20
+
+### Fixed / Исправлено
+- EN: Android compact-ops tile `zfs статусы` no longer shows a gear button on the tile itself; settings remain available inside the dialog opened by tapping the tile.
+- RU: В Android compact-ops плашке `zfs статусы` убрана шестерёнка с самой плашки; настройки остаются доступными внутри окна, открываемого тапом по плашке.
+- EN: Improved ZFS summary preload in Android sync: `zfs статусы` tile now reuses the full latest-statuses fetch sequence (with root fallback), reducing cases where a dash was shown instead of computed data.
+- RU: Улучшена предзагрузка сводки ZFS в Android-синхронизации: плашка `zfs статусы` теперь использует полный сценарий получения последних статусов (с fallback на корневой ответ), что снижает случаи показа прочерка вместо расчётных данных.
+- EN: In Android `zfs место` dialog (opened by tapping the tile), added a direct `+` action in the header to open host creation via `zfsp_hosts_list` → `zfsp_add*` without extra navigation to settings.
+- RU: В Android-окне `zfs место` (открывается тапом по плашке) добавлено прямое действие `+` в заголовке для запуска добавления хоста через `zfsp_hosts_list` → `zfsp_add*` без лишней навигации в настройки.
+- EN: SemVer patch bump to `8.56.12`; synchronized explicit version mentions across project files and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.56.12` and `ANDROID_VERSION_CODE=590`; prerelease links aligned to `v8.56.12-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.56.12`; синхронизированы явные упоминания версии в файлах проекта и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.12` и `ANDROID_VERSION_CODE=590`; prerelease-ссылки выровнены на `v8.56.12-develop`.
+
 ## [8.56.11] - 2026-04-20
 
 ### Changed / Изменено

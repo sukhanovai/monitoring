@@ -1597,6 +1597,7 @@ private fun MonitoringApp(
     var showZfsPoolHostAddDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsPoolHostEditDialog by rememberSaveable { mutableStateOf(false) }
     var zfsPoolHostAddAction by rememberSaveable { mutableStateOf("zfsp_add") }
+    var pendingZfsPoolHostAddFromFreeSpaceDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsHostDetailsDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsPatternsDialog by rememberSaveable { mutableStateOf(false) }
     var zfsHostInput by rememberSaveable { mutableStateOf("") }
@@ -1683,6 +1684,28 @@ private fun MonitoringApp(
             showZfsHostsSettingsDialog = false
             pendingZfsHostSettingsName = ""
         }
+    }
+
+    LaunchedEffect(
+        pendingZfsPoolHostAddFromFreeSpaceDialog,
+        state.extensionMenuAction,
+        state.extensionMenuOptions
+    ) {
+        if (!pendingZfsPoolHostAddFromFreeSpaceDialog) return@LaunchedEffect
+        if (!state.extensionMenuAction.startsWith("zfsp_")) return@LaunchedEffect
+        if (state.extensionMenuOptions.isEmpty()) return@LaunchedEffect
+        val addAction = state.extensionMenuOptions
+            .mapNotNull { option ->
+                resolveMenuOptionAction(option).trim().takeIf { it.isNotBlank() }
+            }
+            .firstOrNull { action -> action == "zfsp_add" || action.startsWith("zfsp_add|") }
+            ?: return@LaunchedEffect
+        zfsPoolHostAddAction = addAction
+        zfsPoolHostNameInput = ""
+        zfsPoolHostIpInput = ""
+        zfsPoolHostThresholdInput = "20"
+        showZfsPoolHostAddDialog = true
+        pendingZfsPoolHostAddFromFreeSpaceDialog = false
     }
 
     val canSaveMonitoring = state.checkIntervalInput.isNotBlank() ||
@@ -2112,13 +2135,7 @@ private fun MonitoringApp(
             } else {
                 null
             },
-            onSettingsClick = if (extension.id == "zfs_monitor") {
-                {
-                    showZfsSettingsDialog = true
-                }
-            } else {
-                null
-            }
+            onSettingsClick = null
         )
     }
     val allOpsTiles = opsTiles + extensionOpsTiles
@@ -4499,6 +4516,15 @@ private fun MonitoringApp(
                     )
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         IconButton(onClick = {
+                            pendingZfsPoolHostAddFromFreeSpaceDialog = true
+                            onAction("zfsp_hosts_list")
+                        }) {
+                            Icon(
+                                imageVector = Icons.Filled.Add,
+                                contentDescription = "Добавить хост ZFS-пулов"
+                            )
+                        }
+                        IconButton(onClick = {
                             showZfsPoolFreeSpaceDialog = false
                         }) {
                             Icon(
@@ -4510,6 +4536,7 @@ private fun MonitoringApp(
                             showZfsPoolFreeSpaceDialog = false
                             showZfsPoolHostsSettingsDialog = true
                             onAction("zfsp_hosts_list")
+                            pendingZfsPoolHostAddFromFreeSpaceDialog = false
                         }) {
                             Icon(
                                 imageVector = Icons.Filled.Settings,
