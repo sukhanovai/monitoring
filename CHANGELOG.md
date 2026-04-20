@@ -1,10 +1,10 @@
-## [8.56.18] - 2026-04-20
+## [8.56.19] - 2026-04-20
 
 ### Fixed / Исправлено
-- EN: Fixed Android `zfs статусы` tile refresh: tap now triggers the direct `zfs` action, so dialog/status data is reloaded from fresh backend response.
-- RU: Исправлено обновление Android-плашки `zfs статусы`: тап теперь запускает прямое действие `zfs`, поэтому диалог/статусы перезагружаются по свежему ответу backend.
-- EN: SemVer patch bump to `8.56.18`; synchronized explicit version mentions across project files and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.56.18` and `ANDROID_VERSION_CODE=596`; prerelease links aligned to `v8.56.18-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.56.18`; синхронизированы явные упоминания версии в файлах проекта и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.18` и `ANDROID_VERSION_CODE=596`; prerelease-ссылки выровнены на `v8.56.18-develop`.
+- EN: Improved readability in Android `💽 zfs место`: global free-space message lines are now displayed in a structured block, and free-space percentages (the value before `free/свободно`) are highlighted with severity color.
+- RU: Улучшена читаемость в Android `💽 zfs место`: строки глобального сообщения о свободном месте теперь показываются в структурированном блоке, а проценты свободного места (значение перед `free/свободно`) подсвечиваются цветом по уровню риска.
+- EN: SemVer patch bump to `8.56.19`; synchronized explicit version mentions across project files and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.56.19` and `ANDROID_VERSION_CODE=597`; prerelease links aligned to `v8.56.19-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.56.19`; синхронизированы явные упоминания версии в файлах проекта и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.19` и `ANDROID_VERSION_CODE=597`; prerelease-ссылки выровнены на `v8.56.19-develop`.
 
 ## [8.56.17] - 2026-04-20
 
