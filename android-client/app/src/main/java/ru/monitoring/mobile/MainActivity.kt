@@ -1575,6 +1575,7 @@ private fun MonitoringApp(
     var showZfsHostEditDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsStatusesDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsPoolFreeSpaceDialog by rememberSaveable { mutableStateOf(false) }
+    var showZfsPoolHostsSettingsDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsSettingsDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsHostsSettingsDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsHostActionsDialog by rememberSaveable { mutableStateOf(false) }
@@ -1582,7 +1583,6 @@ private fun MonitoringApp(
     var showZfsPoolHostAddDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsPoolHostEditDialog by rememberSaveable { mutableStateOf(false) }
     var zfsPoolHostAddAction by rememberSaveable { mutableStateOf("zfsp_add") }
-    var zfsPoolSettingsRequestedByUser by rememberSaveable { mutableStateOf(false) }
     var showZfsHostDetailsDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsPatternsDialog by rememberSaveable { mutableStateOf(false) }
     var zfsHostInput by rememberSaveable { mutableStateOf("") }
@@ -2068,7 +2068,6 @@ private fun MonitoringApp(
             ) {
                 {
                     showZfsPoolFreeSpaceDialog = true
-                    zfsPoolSettingsRequestedByUser = false
                     onAction("zfs_pool_free_space_menu")
                     zfsPoolHostNameInput = ""
                     zfsPoolHostIpInput = ""
@@ -2083,14 +2082,24 @@ private fun MonitoringApp(
                 extension.id.contains("zfs_pool_free_space")
             ) {
                 {
-                    showZfsPoolFreeSpaceDialog = true
-                    zfsPoolSettingsRequestedByUser = true
+                    showZfsPoolHostsSettingsDialog = true
                     onAction("zfsp_hosts_list")
                 }
             } else {
                 null
             },
-            onSettingsClick = null
+            onSettingsClick = if (
+                extension.id == "zfs_pool_free_space_monitor" ||
+                extension.id == "zfs_pool_free_space" ||
+                extension.id.contains("zfs_pool_free_space")
+            ) {
+                {
+                    showZfsPoolHostsSettingsDialog = true
+                    onAction("zfsp_hosts_list")
+                }
+            } else {
+                null
+            }
         )
     }
     val allOpsTiles = opsTiles + extensionOpsTiles
@@ -2972,8 +2981,7 @@ private fun MonitoringApp(
                                                 onAction(actionPayload)
                                                 onAction("zfsp_hosts_list")
                                                 showZfsPoolHostAddDialog = false
-                                                showZfsPoolFreeSpaceDialog = true
-                                                zfsPoolSettingsRequestedByUser = true
+                                                showZfsPoolHostsSettingsDialog = true
                                             },
                                             enabled = zfsPoolHostNameInput.isNotBlank() &&
                                                 zfsPoolHostIpInput.isNotBlank() &&
@@ -4455,14 +4463,9 @@ private fun MonitoringApp(
         } else {
             emptyList()
         }
-        val isZfsPoolHostSettingsMode = zfsPoolMenuOptions.any { option ->
-            val action = resolveMenuOptionAction(option)
-            action.isNotBlank() && isZfsPoolHostSettingsAction(action)
-        }
         AlertDialog(
             onDismissRequest = {
                 showZfsPoolFreeSpaceDialog = false
-                zfsPoolSettingsRequestedByUser = false
             },
             title = {
                 Row(
@@ -4475,37 +4478,22 @@ private fun MonitoringApp(
                         modifier = Modifier.weight(1f),
                         fontWeight = FontWeight.Bold
                     )
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
-                        horizontalAlignment = Alignment.End
-                    ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                        IconButton(onClick = {
+                            showZfsPoolHostsSettingsDialog = true
+                            onAction("zfsp_hosts_list")
+                        }) {
+                            Icon(
+                                imageVector = Icons.Filled.Settings,
+                                contentDescription = "Настройки хостов ZFS-пулов"
+                            )
+                        }
                         IconButton(onClick = {
                             showZfsPoolFreeSpaceDialog = false
-                            zfsPoolSettingsRequestedByUser = false
                         }) {
                             Icon(
                                 imageVector = Icons.Filled.Close,
                                 contentDescription = "Закрыть окно ZFS-пулов"
-                            )
-                        }
-                        IconButton(onClick = {
-                            zfsPoolSettingsRequestedByUser = true
-                            onAction("zfsp_hosts_list")
-                            zfsPoolHostAddAction = zfsPoolMenuOptions
-                                .mapNotNull { option ->
-                                    resolveMenuOptionAction(option)
-                                        .takeIf { action -> action.trim().lowercase().startsWith("zfsp_add") }
-                                }
-                                .firstOrNull()
-                                ?: "zfsp_add"
-                            zfsPoolHostNameInput = ""
-                            zfsPoolHostIpInput = ""
-                            zfsPoolHostThresholdInput = "20"
-                            showZfsPoolHostAddDialog = true
-                        }) {
-                            Icon(
-                                imageVector = Icons.Filled.Add,
-                                contentDescription = "Добавить хост ZFS-пулов"
                             )
                         }
                     }
@@ -4528,9 +4516,6 @@ private fun MonitoringApp(
                             label to action
                         }
                         .distinctBy { (_, action) -> action }
-                    val isZfsPoolHostSettingsMode = zfsPoolActions.any { (_, action) ->
-                        isZfsPoolHostSettingsAction(action)
-                    }
                     val hasData = zfsPoolActions.isNotEmpty() || state.zfsPoolFreeSpaceSummary.isNotBlank() || extractZfsPoolsTotal(state.message) != null
 
                     if (state.isLoading && !hasData) {
@@ -4538,7 +4523,7 @@ private fun MonitoringApp(
                     } else if (!hasData) {
                         Text("Пока нет данных по свободному месту ZFS пулов. Потяни список вниз или нажми кнопку синхронизации в оперативном центре.")
                     } else {
-                        if (zfsPoolActions.isNotEmpty() && !isZfsPoolHostSettingsMode) {
+                        if (zfsPoolActions.isNotEmpty()) {
                             val zfsPoolRows = zfsPoolActions.map { (label, action) ->
                                 parseZfsPoolTableRow(label, action)
                             }
@@ -4621,88 +4606,6 @@ private fun MonitoringApp(
                                     }
                                 }
                             }
-                        } else if (zfsPoolActions.isNotEmpty()) {
-                            val hostSettingsGroups = extractZfsPoolHostSettingsGroups(zfsPoolActions)
-                            val commonActions = zfsPoolActions.filterNot { (_, action) ->
-                                action.startsWith("zfsp_edit_name_") ||
-                                    action.startsWith("zfsp_edit_ip_") ||
-                                    action.startsWith("zfsp_edit_threshold_") ||
-                                    action.startsWith("zfsp_delete_") ||
-                                    action.startsWith("zfsp_toggle_")
-                            }
-                            if (hostSettingsGroups.isNotEmpty()) {
-                                Text(
-                                    text = "Хосты",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                hostSettingsGroups.forEach { group ->
-                                    ElevatedCard(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .combinedClickable(
-                                                onClick = {
-                                                    zfsPoolSelectedHostName = group.hostName
-                                                    zfsPoolSelectedHostEditNameAction = group.editNameAction
-                                                    zfsPoolSelectedHostEditIpAction = group.editIpAction
-                                                    zfsPoolSelectedHostEditThresholdAction = group.editThresholdAction
-                                                    zfsPoolSelectedHostDeleteAction = group.deleteAction
-                                                    zfsPoolSelectedHostToggleAction = group.toggleAction
-                                                    showZfsPoolHostActionsDialog = true
-                                                },
-                                                onLongClick = {
-                                                    zfsPoolSelectedHostName = group.hostName
-                                                    zfsPoolSelectedHostEditNameAction = group.editNameAction
-                                                    zfsPoolSelectedHostEditIpAction = group.editIpAction
-                                                    zfsPoolSelectedHostEditThresholdAction = group.editThresholdAction
-                                                    zfsPoolSelectedHostDeleteAction = group.deleteAction
-                                                    zfsPoolSelectedHostToggleAction = group.toggleAction
-                                                    showZfsPoolHostActionsDialog = true
-                                                }
-                                            )
-                                    ) {
-                                        Column(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(horizontal = 12.dp, vertical = 10.dp),
-                                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                                        ) {
-                                            Text(
-                                                text = group.hostName,
-                                                style = MaterialTheme.typography.titleSmall,
-                                                fontWeight = FontWeight.SemiBold
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                            if (commonActions.isNotEmpty()) {
-                                commonActions.forEach { (label, action) ->
-                                    if (action == "zfsp_add" || action.startsWith("zfsp_add|")) {
-                                        OutlinedButton(
-                                            onClick = {
-                                                zfsPoolHostAddAction = action
-                                                zfsPoolHostNameInput = ""
-                                                zfsPoolHostIpInput = ""
-                                                zfsPoolHostThresholdInput = "20"
-                                                showZfsPoolHostAddDialog = true
-                                            },
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            Text(label)
-                                        }
-                                    } else {
-                                        OutlinedButton(
-                                            onClick = {
-                                                onAction(action)
-                                            },
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            Text(label)
-                                        }
-                                    }
-                                }
-                            }
                         }
                         if (state.messageSource == "global" && state.message.isNotBlank()) {
                             Text(
@@ -4756,6 +4659,132 @@ private fun MonitoringApp(
                     Text("Закрыть")
                 }
             }
+        )
+    }
+
+    if (showZfsPoolHostsSettingsDialog) {
+        val zfsPoolSettingsOptions = if (state.extensionMenuAction.startsWith("zfsp_")) {
+            state.extensionMenuOptions
+        } else {
+            emptyList()
+        }
+        AlertDialog(
+            onDismissRequest = { showZfsPoolHostsSettingsDialog = false },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "⚙️ Хосты свободного места ZFS",
+                        modifier = Modifier.weight(1f),
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(onClick = { showZfsPoolHostsSettingsDialog = false }) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Закрыть окно хостов ZFS-пулов"
+                        )
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 460.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    val zfsPoolActions = zfsPoolSettingsOptions
+                        .mapNotNull { option ->
+                            val action = resolveMenuOptionAction(option)
+                            val label = option.label?.trim().orEmpty()
+                            if (label.isBlank() || action.isBlank()) null else label to action
+                        }
+                    val hostSettingsGroups = extractZfsPoolHostSettingsGroups(zfsPoolActions)
+                    val commonActions = zfsPoolActions.filterNot { (_, action) ->
+                        action.startsWith("zfsp_edit_name_") ||
+                            action.startsWith("zfsp_edit_ip_") ||
+                            action.startsWith("zfsp_edit_threshold_") ||
+                            action.startsWith("zfsp_delete_") ||
+                            action.startsWith("zfsp_toggle_")
+                    }
+
+                    if (state.isLoading && zfsPoolActions.isEmpty()) {
+                        Text("Загружаем настройки хостов ZFS-пулов…")
+                    } else if (zfsPoolActions.isEmpty()) {
+                        Text("Настройки хостов ZFS-пулов пока недоступны.")
+                    } else {
+                        if (hostSettingsGroups.isNotEmpty()) {
+                            Text(
+                                text = "Хосты",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            hostSettingsGroups.forEach { group ->
+                                ElevatedCard(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .combinedClickable(
+                                            onClick = {
+                                                zfsPoolSelectedHostName = group.hostName
+                                                zfsPoolSelectedHostEditNameAction = group.editNameAction
+                                                zfsPoolSelectedHostEditIpAction = group.editIpAction
+                                                zfsPoolSelectedHostEditThresholdAction = group.editThresholdAction
+                                                zfsPoolSelectedHostDeleteAction = group.deleteAction
+                                                zfsPoolSelectedHostToggleAction = group.toggleAction
+                                                showZfsPoolHostActionsDialog = true
+                                            },
+                                            onLongClick = {
+                                                zfsPoolSelectedHostName = group.hostName
+                                                zfsPoolSelectedHostEditNameAction = group.editNameAction
+                                                zfsPoolSelectedHostEditIpAction = group.editIpAction
+                                                zfsPoolSelectedHostEditThresholdAction = group.editThresholdAction
+                                                zfsPoolSelectedHostDeleteAction = group.deleteAction
+                                                zfsPoolSelectedHostToggleAction = group.toggleAction
+                                                showZfsPoolHostActionsDialog = true
+                                            }
+                                        )
+                                ) {
+                                    Text(
+                                        text = group.hostName,
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                            }
+                        }
+
+                        commonActions.forEach { (label, action) ->
+                            if (action == "zfsp_add" || action.startsWith("zfsp_add|")) {
+                                Button(
+                                    onClick = {
+                                        zfsPoolHostAddAction = action
+                                        zfsPoolHostNameInput = ""
+                                        zfsPoolHostIpInput = ""
+                                        zfsPoolHostThresholdInput = "20"
+                                        showZfsPoolHostAddDialog = true
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(label)
+                                }
+                            } else {
+                                OutlinedButton(
+                                    onClick = { onAction(action) },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(label)
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {}
         )
     }
 
