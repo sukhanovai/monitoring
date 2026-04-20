@@ -52,7 +52,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.56.12"
+    private val projectVersion = "8.56.13"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -255,7 +255,8 @@ class MainViewModel(
     private val zfsSummaryRegex = Regex(
         """(?i)(серверов|пулов)\s*:\s*(\d+)\s*\(\s*(?:🟢|✅|✔️?)?\s*(\d+)\s*(?:/|,)\s*(?:🔴|❌|⚠️)?\s*(\d+)\s*\)"""
     )
-    private val zfsStatusLineRegex = Regex("""^•\s*(.+?):\s*([A-Za-z_]+)\s*\((.+)\)$""")
+    private val zfsStatusLineRegex = Regex("""^•\s*(.+?):\s*([^()]+?)\s*\((.+)\)$""")
+    private val zfsStatusEmojiLineRegex = Regex("""^[🟢🟡🔴❌⚠️✅✔️]\s+`?([^`]+?)`?\s*:\s*`?([^`()]+?)`?\s*\((.+)\)$""")
     private val zfsPoolsTotalLineRegex = Regex("""(?i)(?:пулов|pools)\s*[:=]\s*(\d+)""")
     private val zfsProblemStates = setOf(
         "DEGRADED",
@@ -332,11 +333,16 @@ class MainViewModel(
             .map { line -> line.trim() }
             .mapNotNull { line -> zfsStatusLineRegex.matchEntire(line) }
             .toList()
-        if (zfsStatusLines.isNotEmpty()) {
-            val total = zfsStatusLines.size
-            val problems = zfsStatusLines.count { match ->
+        val zfsStatusEmojiLines = message.lineSequence()
+            .map { line -> line.trim() }
+            .mapNotNull { line -> zfsStatusEmojiLineRegex.matchEntire(line) }
+            .toList()
+        val resolvedZfsStatusLines = if (zfsStatusLines.isNotEmpty()) zfsStatusLines else zfsStatusEmojiLines
+        if (resolvedZfsStatusLines.isNotEmpty()) {
+            val total = resolvedZfsStatusLines.size
+            val problems = resolvedZfsStatusLines.count { match ->
                 val state = match.groupValues.getOrNull(2)?.trim().orEmpty().uppercase()
-                zfsProblemStates.contains(state)
+                zfsProblemStates.contains(state) || state !in setOf("ONLINE", "HEALTHY", "OK")
             }
             val ok = (total - problems).coerceAtLeast(0)
             return BackupTileSummary(

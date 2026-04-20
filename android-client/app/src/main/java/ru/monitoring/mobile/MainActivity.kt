@@ -3013,7 +3013,10 @@ private fun MonitoringApp(
                                         val thresholdValue = zfsPoolHostThresholdInput.toIntOrNull()
                                         TextButton(
                                             onClick = {
-                                                val actionPayload = "$zfsPoolHostAddAction|${zfsPoolHostNameInput.trim()}|${zfsPoolHostIpInput.trim()}|$thresholdValue"
+                                                val addAction = zfsPoolHostAddAction.substringBefore("|").ifBlank { "zfsp_add" }
+                                                val encodedHostName = Uri.encode(zfsPoolHostNameInput.trim())
+                                                val encodedHostIp = Uri.encode(zfsPoolHostIpInput.trim())
+                                                val actionPayload = "$addAction|$encodedHostName|$encodedHostIp|$thresholdValue"
                                                 onAction(actionPayload)
                                                 onAction("zfsp_hosts_list")
                                                 showZfsPoolHostAddDialog = false
