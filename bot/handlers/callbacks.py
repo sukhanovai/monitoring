@@ -1,11 +1,11 @@
 """
 /bot/handlers/callbacks.py
-Server Monitoring System v8.0.4
+Server Monitoring System v8.0.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 A single router for callbacks.
 Система мониторинга серверов
-Версия: 8.0.4
+Версия: 8.0.3
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единый router callback’ов.
@@ -319,15 +319,7 @@ def callback_router(update, context):
     # ------------------------------------------------
     # НАСТРОЙКИ БЭКАПОВ (settings_handlers)
     # ------------------------------------------------
-    elif data in BACKUP_SETTINGS_CALLBACKS or data.startswith((
-        'delete_pattern_',
-        'edit_pattern_',
-        'db_default_',
-        'stock_pattern_',
-        'zfs_pattern_',
-        'proxmox_pattern_',
-        'mail_pattern_',
-    )):
+    elif data in BACKUP_SETTINGS_CALLBACKS or data.startswith(('delete_pattern_', 'edit_pattern_', 'db_default_', 'stock_pattern_select_')):
         settings_callback_handler(update, context)
 
     # ------------------------------------------------

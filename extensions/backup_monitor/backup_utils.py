@@ -1,11 +1,11 @@
 """
 /extensions/backup_monitor/backup_utils.py
-Server Monitoring System v8.0.4
+Server Monitoring System v8.0.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Utilities for working with backups
 Система мониторинга серверов
-Версия: 8.0.4
+Версия: 8.0.3
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Утилиты для работы с бэкапами
@@ -489,21 +489,12 @@ def get_stock_load_summary(period_hours=16) -> str:
             return "❌ Нет свежих данных о загрузке остатков\n"
 
         total = len(rows)
-        unique_suppliers = len(
-            {
-                (str(row[0]).strip().lower() if row[0] else "неизвестно")
-                for row in rows
-            }
-        )
         success_count = len([row for row in rows if row[1] == "success"])
         warning_count = len([row for row in rows if row[1] == "warning"])
         failed_count = len([row for row in rows if row[1] == "failed"])
         unknown_count = total - success_count - warning_count - failed_count
 
-        summary = (
-            f"• Поставщиков: {unique_suppliers}\n"
-            f"• Файлов: {total}, ✅ {success_count} успешно"
-        )
+        summary = f"• Файлов: {total}, ✅ {success_count} успешно"
         if warning_count:
             summary += f", ⚠️ {warning_count} с ошибками"
         if failed_count:
