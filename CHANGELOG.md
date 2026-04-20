@@ -1,10 +1,10 @@
-## [8.56.3] - 2026-04-19
+## [8.56.4] - 2026-04-20
 
 ### Fixed / Исправлено
 - EN: In Android flow `zfs место` → `💽 Free space of ZFS pools` → gear, tapping `+` now always opens new-host creation with payload based on the current backend add action (`zfsp_add*`), then submits host name, IP, and threshold.
 - RU: В Android-сценарии `zfs место` → `💽 Свободное место ZFS пулов` → шестерёнка, тап по `+` теперь всегда открывает добавление нового хоста с payload на основе актуального backend-действия добавления (`zfsp_add*`), а затем отправляет имя хоста, IP и порог.
-- EN: SemVer patch bump to `8.56.3`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.56.3` and `ANDROID_VERSION_CODE=581`; prerelease links aligned to `v8.56.3-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.56.3`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.3` и `ANDROID_VERSION_CODE=581`; prerelease-ссылки выровнены на `v8.56.3-develop`.
+- EN: SemVer patch bump to `8.56.4`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.56.4` and `ANDROID_VERSION_CODE=582`; prerelease links aligned to `v8.56.4-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.56.4`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.4` и `ANDROID_VERSION_CODE=582`; prerelease-ссылки выровнены на `v8.56.4-develop`.
 
 ## [8.56.2] - 2026-04-19
 

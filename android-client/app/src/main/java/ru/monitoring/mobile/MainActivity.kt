@@ -4688,14 +4688,28 @@ private fun MonitoringApp(
                             }
                             if (commonActions.isNotEmpty()) {
                                 commonActions.forEach { (label, action) ->
-                                    if (action == "zfsp_add" || action.startsWith("zfsp_add|")) return@forEach
-                                    OutlinedButton(
-                                        onClick = {
-                                            onAction(action)
-                                        },
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Text(label)
+                                    if (action == "zfsp_add" || action.startsWith("zfsp_add|")) {
+                                        OutlinedButton(
+                                            onClick = {
+                                                zfsPoolHostAddAction = action
+                                                zfsPoolHostNameInput = ""
+                                                zfsPoolHostIpInput = ""
+                                                zfsPoolHostThresholdInput = "20"
+                                                showZfsPoolHostAddDialog = true
+                                            },
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text(label)
+                                        }
+                                    } else {
+                                        OutlinedButton(
+                                            onClick = {
+                                                onAction(action)
+                                            },
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text(label)
+                                        }
                                     }
                                 }
                             }
