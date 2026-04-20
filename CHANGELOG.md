@@ -1,3 +1,13 @@
+## [8.56.6] - 2026-04-20
+
+### Fixed / Исправлено
+- EN: In Android `💽 Free space of ZFS pools` (`zfs место`) dialog, removed the extra gear button in the header (settings mode is now entered through the existing flow without duplicate control inside the same window).
+- RU: В Android-диалоге `💽 Свободное место ZFS пулов` (`zfs место`) убрана лишняя шестерёнка в заголовке (вход в режим настроек теперь идёт по текущему сценарию без дублирующего элемента в самом окне).
+- EN: In the same dialog, tapping `+` now always opens host creation immediately and prepares `zfsp_add*` action payload, so adding a host is available consistently.
+- RU: В этом же диалоге тап по `+` теперь всегда сразу открывает добавление хоста и подготавливает payload действия `zfsp_add*`, поэтому добавление хоста стабильно доступно.
+- EN: SemVer patch bump to `8.56.6`; synchronized explicit version mentions across runtime/config/docs and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.56.6` and `ANDROID_VERSION_CODE=584`; prerelease links aligned to `v8.56.6-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.56.6`; синхронизированы явные упоминания версии в runtime/config/docs и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.6` и `ANDROID_VERSION_CODE=584`; prerelease-ссылки выровнены на `v8.56.6-develop`.
+
 ## [8.56.5] - 2026-04-20
 
 - EN: Fixed Android ZFS pool free-space host management: add/edit actions now send plain values from dialog payloads, and backend `zfsp_*` handlers decode URL-encoded payload parts for compatibility before validation/saving.
