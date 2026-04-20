@@ -83,6 +83,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -155,6 +157,30 @@ private fun zfsPoolCardBackgroundColor(freePercent: Double?): Color {
 private fun extractZfsFreePercent(label: String): Double? {
     val match = zfsPoolFreePercentRegex.find(label.trim()) ?: return null
     return match.groupValues.getOrNull(1)?.replace(',', '.')?.toDoubleOrNull()
+}
+
+private fun buildReadableZfsPoolLine(line: String) = buildAnnotatedString {
+    val match = zfsPoolFreePercentRegex.find(line)
+    if (match == null) {
+        append(line)
+        return@buildAnnotatedString
+    }
+    val percentText = match.value
+    val freePercent = match.groupValues.getOrNull(1)?.replace(',', '.')?.toDoubleOrNull()
+    append(line.substring(0, match.range.first))
+    if (freePercent == null) {
+        append(percentText)
+    } else {
+        pushStyle(
+            SpanStyle(
+                color = zfsFreePercentColor(freePercent),
+                fontWeight = FontWeight.Bold
+            )
+        )
+        append(percentText)
+        pop()
+    }
+    append(line.substring(match.range.last + 1))
 }
 
 private data class ZfsPoolTableRow(
@@ -4592,11 +4618,30 @@ private fun MonitoringApp(
                             }
                         }
                         if (state.messageSource == "global" && state.message.isNotBlank()) {
-                            Text(
-                                text = state.message,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                tonalElevation = 1.dp,
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    state.message
+                                        .lineSequence()
+                                        .map { it.trim() }
+                                        .filter { it.isNotBlank() }
+                                        .forEach { line ->
+                                            Text(
+                                                text = buildReadableZfsPoolLine(line),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                }
+                            }
                         }
                     }
                 }
