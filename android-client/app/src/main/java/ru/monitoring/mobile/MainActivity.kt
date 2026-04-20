@@ -1581,6 +1581,7 @@ private fun MonitoringApp(
     var showZfsPoolHostActionsDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsPoolHostAddDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsPoolHostEditDialog by rememberSaveable { mutableStateOf(false) }
+    var zfsPoolHostAddAction by rememberSaveable { mutableStateOf("zfsp_add") }
     var zfsPoolSettingsRequestedByUser by rememberSaveable { mutableStateOf(false) }
     var showZfsHostDetailsDialog by rememberSaveable { mutableStateOf(false) }
     var showZfsPatternsDialog by rememberSaveable { mutableStateOf(false) }
@@ -2967,7 +2968,7 @@ private fun MonitoringApp(
                                         val thresholdValue = zfsPoolHostThresholdInput.toIntOrNull()
                                         TextButton(
                                             onClick = {
-                                                val actionPayload = "zfsp_add|${Uri.encode(zfsPoolHostNameInput.trim())}|" +
+                                                val actionPayload = "$zfsPoolHostAddAction|${Uri.encode(zfsPoolHostNameInput.trim())}|" +
                                                     "${Uri.encode(zfsPoolHostIpInput.trim())}|$thresholdValue"
                                                 onAction(actionPayload)
                                                 onAction("zfsp_hosts_list")
@@ -4499,6 +4500,13 @@ private fun MonitoringApp(
                         }
                         if (zfsPoolSettingsRequestedByUser) {
                             IconButton(onClick = {
+                                zfsPoolHostAddAction = zfsPoolMenuOptions
+                                    .mapNotNull { option ->
+                                        resolveMenuOptionAction(option)
+                                            .takeIf { action -> action.trim().lowercase().startsWith("zfsp_add") }
+                                    }
+                                    .firstOrNull()
+                                    ?: "zfsp_add"
                                 zfsPoolHostNameInput = ""
                                 zfsPoolHostIpInput = ""
                                 zfsPoolHostThresholdInput = "20"
