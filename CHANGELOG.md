@@ -1,3 +1,11 @@
+## [8.56.18] - 2026-04-20
+
+### Fixed / Исправлено
+- EN: Fixed Android `zfs статусы` tile refresh: tap now triggers the direct `zfs` action, so dialog/status data is reloaded from fresh backend response.
+- RU: Исправлено обновление Android-плашки `zfs статусы`: тап теперь запускает прямое действие `zfs`, поэтому диалог/статусы перезагружаются по свежему ответу backend.
+- EN: SemVer patch bump to `8.56.18`; synchronized explicit version mentions across project files and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.56.18` and `ANDROID_VERSION_CODE=596`; prerelease links aligned to `v8.56.18-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.56.18`; синхронизированы явные упоминания версии в файлах проекта и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.18` и `ANDROID_VERSION_CODE=596`; prerelease-ссылки выровнены на `v8.56.18-develop`.
+
 ## [8.56.17] - 2026-04-20
 
 ### Fixed / Исправлено
