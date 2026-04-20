@@ -2968,8 +2968,7 @@ private fun MonitoringApp(
                                         val thresholdValue = zfsPoolHostThresholdInput.toIntOrNull()
                                         TextButton(
                                             onClick = {
-                                                val actionPayload = "$zfsPoolHostAddAction|${Uri.encode(zfsPoolHostNameInput.trim())}|" +
-                                                    "${Uri.encode(zfsPoolHostIpInput.trim())}|$thresholdValue"
+                                                val actionPayload = "$zfsPoolHostAddAction|${zfsPoolHostNameInput.trim()}|${zfsPoolHostIpInput.trim()}|$thresholdValue"
                                                 onAction(actionPayload)
                                                 onAction("zfsp_hosts_list")
                                                 showZfsPoolHostAddDialog = false
@@ -5124,11 +5123,11 @@ private fun MonitoringApp(
                 TextButton(
                     onClick = {
                         if (hasNameChange) {
-                            val actionPayload = "${zfsPoolSelectedHostEditNameAction}|${Uri.encode(zfsPoolHostEditNameInput.trim())}"
+                            val actionPayload = "${zfsPoolSelectedHostEditNameAction}|${zfsPoolHostEditNameInput.trim()}"
                             onAction(actionPayload)
                         }
                         if (hasIpChange) {
-                            val actionPayload = "${zfsPoolSelectedHostEditIpAction}|${Uri.encode(zfsPoolHostEditIpInput.trim())}"
+                            val actionPayload = "${zfsPoolSelectedHostEditIpAction}|${zfsPoolHostEditIpInput.trim()}"
                             onAction(actionPayload)
                         }
                         if (hasThresholdChange) {
