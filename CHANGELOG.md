@@ -1,10 +1,12 @@
-## [8.56.26] - 2026-04-21
+## [8.56.27] - 2026-04-21
 
-### Changed / Изменено
-- EN: SemVer patch bump to `8.56.26`; synchronized all explicit current-version mentions across backend modules, config, docs, scripts, and Android client artifacts to remove version drift.
-- RU: Выполнен SemVer patch-бамп до `8.56.26`; синхронизированы все явные упоминания текущей версии в backend-модулях, конфигурации, документации, скриптах и Android-артефактах, чтобы убрать рассинхрон версии.
-- EN: Android metadata updated to `ANDROID_VERSION_NAME=8.56.26` and `ANDROID_VERSION_CODE=604`; prerelease links aligned to `v8.56.26-develop`.
-- RU: Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.26` и `ANDROID_VERSION_CODE=604`; prerelease-ссылки выровнены на `v8.56.26-develop`.
+### Fixed / Исправлено
+- EN: Fixed Kotlin syntax in Android `MainActivity`: added missing closing braces for nested `item { ... }`, `LazyColumn`, `Box`, and `Scaffold` scopes, resolving `Expecting '}'` on `:app:compileCompactOpsDebugKotlin`.
+- RU: Исправлен синтаксис Kotlin в Android `MainActivity`: добавлены недостающие закрывающие фигурные скобки для вложенных scope `item { ... }`, `LazyColumn`, `Box` и `Scaffold`, что убрало ошибку `Expecting '}'` на `:app:compileCompactOpsDebugKotlin`.
+- EN: SemVer patch bump to `8.56.27`; synchronized all explicit current-version mentions across backend modules, config, docs, scripts, and Android client artifacts to remove version drift.
+- RU: Выполнен SemVer patch-бамп до `8.56.27`; синхронизированы все явные упоминания текущей версии в backend-модулях, конфигурации, документации, скриптах и Android-артефактах, чтобы убрать рассинхрон версии.
+- EN: Android metadata updated to `ANDROID_VERSION_NAME=8.56.27` and `ANDROID_VERSION_CODE=605`; prerelease links aligned to `v8.56.27-develop`.
+- RU: Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.27` и `ANDROID_VERSION_CODE=605`; prerelease-ссылки выровнены на `v8.56.27-develop`.
 
 ## [8.56.25] - 2026-04-21
 
