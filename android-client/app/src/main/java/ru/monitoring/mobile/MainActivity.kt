@@ -3476,7 +3476,6 @@ private fun MonitoringApp(
                         }
                     }
                 }
-            }
 
         )
     }
