@@ -1,3 +1,13 @@
+## [8.56.29] - 2026-04-21
+
+### Fixed / Исправлено
+- EN: In Android dialogs opened from tiles `💾 Бэкапы Proxmox`, `🗃️ Бэкапы БД`, `📬 Почта`, and `🧊 zfs статусы`, header action buttons are now arranged vertically in the exact order: close (`✖`), help (`?`), settings (`⚙️`), add (`+`).
+- RU: В Android-диалогах, открываемых из плашек `💾 Бэкапы Proxmox`, `🗃️ Бэкапы БД`, `📬 Почта` и `🧊 zfs статусы`, кнопки в заголовке теперь расположены вертикально и в точном порядке: закрыть (`✖`), справка (`?`), настройки (`⚙️`), добавить (`+`).
+- EN: For the `📬 Почта` tile dialog, added a dedicated `+` action in the header to open mail-pattern creation directly.
+- RU: Для диалога плашки `📬 Почта` добавлено отдельное действие `+` в заголовке для прямого открытия создания нового паттерна почты.
+- EN: SemVer patch bump to `8.56.29`; synchronized explicit current-version mentions across backend modules, config, docs, scripts, and Android artifacts. Android metadata updated to `ANDROID_VERSION_NAME=8.56.29` and `ANDROID_VERSION_CODE=607`.
+- RU: Выполнен SemVer patch-бамп до `8.56.29`; синхронизированы явные упоминания текущей версии в backend-модулях, конфигурации, документации, скриптах и Android-артефактах. Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.29` и `ANDROID_VERSION_CODE=607`.
+
 ## [8.56.28] - 2026-04-21
 
 ### Fixed / Исправлено
