@@ -2750,7 +2750,6 @@ private fun MonitoringApp(
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            }
 
                             Text("🛠️ Управление расширениями (вкл/выкл)", fontWeight = FontWeight.Bold)
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
