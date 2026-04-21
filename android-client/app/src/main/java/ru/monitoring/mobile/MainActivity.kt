@@ -1207,6 +1207,7 @@ private fun OpsMetricChip(
                     Icon(
                         imageVector = Icons.Filled.Settings,
                         contentDescription = "Настройки $label"
+                    )
                 }
             }
         }
@@ -6690,7 +6691,4 @@ private fun MonitoringApp(
             confirmButton = {}
         )
     }
-}
-
-}
 }
