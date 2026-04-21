@@ -1,10 +1,10 @@
-## [8.56.23] - 2026-04-21
+## [8.56.24] - 2026-04-21
 
 ### Fixed / Исправлено
-- EN: Fixed Kotlin syntax in Android `MainActivity`: closed the `Icon(...)` call in the compact-ops tile settings button and removed two stray trailing braces at file end, which restored valid Compose scope and removed the cascade of `@Composable invocations can only happen...` errors during `:app:compileCompactOpsDebugKotlin`.
-- RU: Исправлен синтаксис Kotlin в Android `MainActivity`: закрыт вызов `Icon(...)` в кнопке настроек compact-ops плашки и удалены две лишние закрывающие скобки в конце файла, что восстановило корректный Compose-scope и убрало каскад ошибок `@Composable invocations can only happen...` на `:app:compileCompactOpsDebugKotlin`.
-- EN: SemVer patch bump to `8.56.23`; synchronized explicit version mentions across project files and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.56.23` and `ANDROID_VERSION_CODE=601`; prerelease links aligned to `v8.56.23-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.56.23`; синхронизированы явные упоминания версии в файлах проекта и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.23` и `ANDROID_VERSION_CODE=601`; prerelease-ссылки выровнены на `v8.56.23-develop`.
+- EN: Fixed Kotlin syntax in Android `MainActivity`: replaced a stray closing brace with the missing `)` to correctly close the settings `AlertDialog(...)` call, restoring valid Compose scope and removing the cascade of `@Composable invocations can only happen...` errors during `:app:compileCompactOpsDebugKotlin`.
+- RU: Исправлен синтаксис Kotlin в Android `MainActivity`: лишняя закрывающая фигурная скобка заменена на недостающую `)` для корректного закрытия вызова `AlertDialog(...)` в настройках, что восстановило корректный Compose-scope и убрало каскад ошибок `@Composable invocations can only happen...` на `:app:compileCompactOpsDebugKotlin`.
+- EN: SemVer patch bump to `8.56.24`; synchronized explicit version mentions across project files and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.56.24` and `ANDROID_VERSION_CODE=602`; prerelease links aligned to `v8.56.24-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.56.24`; синхронизированы явные упоминания версии в файлах проекта и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.24` и `ANDROID_VERSION_CODE=602`; prerelease-ссылки выровнены на `v8.56.24-develop`.
 
 ## [8.56.22] - 2026-04-21
 

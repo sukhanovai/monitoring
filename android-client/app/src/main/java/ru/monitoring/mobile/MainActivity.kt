@@ -3478,7 +3478,7 @@ private fun MonitoringApp(
                 }
             }
 
-        }
+        )
     }
 
     if (showServerAvailabilityDialog) {
