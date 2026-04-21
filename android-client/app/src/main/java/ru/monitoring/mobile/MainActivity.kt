@@ -1579,6 +1579,9 @@ private fun MonitoringApp(
     var serverCardsSortMode by rememberSaveable { mutableStateOf(ServerCardsSortMode.BY_NAME.name) }
     var showServerResourcesMenu by rememberSaveable { mutableStateOf(false) }
     var showServerResourcesDetailsDialog by rememberSaveable { mutableStateOf(false) }
+    var showTileHelpDialog by rememberSaveable { mutableStateOf(false) }
+    var tileHelpTitle by rememberSaveable { mutableStateOf("") }
+    var tileHelpDescription by rememberSaveable { mutableStateOf("") }
     var serverResourceDetailsTargetKey by rememberSaveable { mutableStateOf("") }
     var serverResourceDetailsTitle by rememberSaveable { mutableStateOf("") }
     var areOpsTilesExpanded by rememberSaveable { mutableStateOf(false) }
@@ -1950,6 +1953,11 @@ private fun MonitoringApp(
         selectedProxmoxBackupLabel = ""
         showProxmoxBackupStatsDialog = false
         showDatabaseBackupsDialog = true
+    }
+    val openTileHelpDialog = { title: String, description: String ->
+        tileHelpTitle = title
+        tileHelpDescription = description
+        showTileHelpDialog = true
     }
     val selectedProxmoxHostForActions = state.extensionMenuOptions.firstOrNull { option ->
         val targetAction = resolveMenuOptionAction(option)
@@ -3519,6 +3527,31 @@ private fun MonitoringApp(
                                     contentDescription = "Закрыть окно точечной проверки"
                                 )
                             }
+                            IconButton(
+                                onClick = {
+                                    val helpTitle = if (isResourceCheckMode) {
+                                        "Справка: плашка «ресурсы»"
+                                    } else {
+                                        "Справка: плашка «серверы»"
+                                    }
+                                    val helpDescription = if (isResourceCheckMode) {
+                                        "Плашка показывает точечную проверку ресурсов по выбранным серверам. " +
+                                            "Внутри можно открыть карточку хоста и увидеть нагрузку CPU/RAM/дисков, " +
+                                            "а затем перейти в настройки порогов ресурса. " +
+                                            "Настройка делается через кнопку ⚙️ в этом окне и редактирование порогов."
+                                    } else {
+                                        "Плашка отвечает за точечную проверку доступности серверов. " +
+                                            "Внутри выполняется ручной ping/check по каждому хосту и показывается текущий статус. " +
+                                            "Настройка списка делается через долгий тап по плашке хоста (редактировать/вкл-выкл/удалить) и кнопку ➕."
+                                    }
+                                    openTileHelpDialog(helpTitle, helpDescription)
+                                },
+                                modifier = Modifier
+                                    .padding(bottom = 2.dp)
+                                    .height(30.dp)
+                            ) {
+                                Text("?", fontWeight = FontWeight.Bold)
+                            }
                             if (isResourceCheckMode) {
                                 IconButton(
                                     onClick = {
@@ -3991,6 +4024,24 @@ private fun MonitoringApp(
         )
     }
 
+    if (showTileHelpDialog) {
+        AlertDialog(
+            onDismissRequest = { showTileHelpDialog = false },
+            title = {
+                Text(
+                    text = tileHelpTitle.ifBlank { "Справка по плашке" },
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = { Text(tileHelpDescription.ifBlank { "Описание для этой плашки пока не задано." }) },
+            confirmButton = {
+                TextButton(onClick = { showTileHelpDialog = false }) {
+                    Text("Понятно")
+                }
+            }
+        )
+    }
+
     if (showMailBackupsDialog) {
         AlertDialog(
             onDismissRequest = { showMailBackupsDialog = false },
@@ -4006,6 +4057,16 @@ private fun MonitoringApp(
                         fontWeight = FontWeight.Bold
                     )
                     Row {
+                        IconButton(onClick = {
+                            openTileHelpDialog(
+                                "Справка: плашка «почта»",
+                                "Плашка показывает историю почтовых бэкапов и их статус. " +
+                                    "Внутри отображаются размер, путь и свежесть каждого бэкапа. " +
+                                    "Настройка делается через кнопку ⚙️: там редактируются паттерны, по которым приложение находит успешные письма о бэкапе."
+                            )
+                        }) {
+                            Text("?", fontWeight = FontWeight.Bold)
+                        }
                         IconButton(
                             onClick = {
                                 showMailBackupsDialog = false
@@ -4276,6 +4337,16 @@ private fun MonitoringApp(
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         IconButton(onClick = {
+                            openTileHelpDialog(
+                                "Справка: плашка «zfs статусы»",
+                                "Плашка отвечает за состояние ZFS на хостах: показывает статусы пулов и проблемные места. " +
+                                    "Короткий тап по плашке хоста открывает детали, долгий — действия по хосту. " +
+                                    "Настройка выполняется через ➕ (добавление хоста) и ⚙️ (паттерны/правила распознавания)."
+                            )
+                        }) {
+                            Text("?", fontWeight = FontWeight.Bold)
+                        }
+                        IconButton(onClick = {
                             zfsHostInput = ""
                             showZfsHostAddDialog = true
                         }) {
@@ -4497,6 +4568,16 @@ private fun MonitoringApp(
                                 imageVector = Icons.Filled.Close,
                                 contentDescription = "Закрыть окно ZFS-пулов"
                             )
+                        }
+                        IconButton(onClick = {
+                            openTileHelpDialog(
+                                "Справка: плашка «zfs место»",
+                                "Плашка показывает свободное место по ZFS-пулам на подключённых хостах. " +
+                                    "Внутри отображается таблица хост/пул/процент свободного пространства с цветовой индикацией риска. " +
+                                    "Настройка выполняется через ⚙️ — список хостов и пороги свободного места для предупреждений."
+                            )
+                        }) {
+                            Text("?", fontWeight = FontWeight.Bold)
                         }
                         IconButton(onClick = {
                             showZfsPoolFreeSpaceDialog = false
@@ -5434,6 +5515,16 @@ private fun MonitoringApp(
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         IconButton(onClick = {
+                            openTileHelpDialog(
+                                "Справка: плашка «proxmox»",
+                                "Плашка отвечает за мониторинг бэкапов Proxmox по хостам. " +
+                                    "Внутри показываются карточки хостов; тап открывает статистику выбранного бэкапа, долгий тап — действия по хосту. " +
+                                    "Настройка делается через ➕ (добавить хост) и ⚙️ (паттерны, по которым парсятся письма/статусы)."
+                            )
+                        }) {
+                            Text("?", fontWeight = FontWeight.Bold)
+                        }
+                        IconButton(onClick = {
                             proxmoxServerNameInput = ""
                             showProxmoxServerAddDialog = true
                         }) {
@@ -6080,6 +6171,16 @@ private fun MonitoringApp(
                         fontWeight = FontWeight.Bold
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        IconButton(onClick = {
+                            openTileHelpDialog(
+                                "Справка: плашка «БД»",
+                                "Плашка отвечает за мониторинг бэкапов баз данных. " +
+                                    "Внутри отображаются карточки БД/хостов, откуда можно открыть статистику или карточку действий. " +
+                                    "Настройка делается через ➕ (добавить запись БД) и ⚙️ (паттерны распознавания бэкапов БД)."
+                            )
+                        }) {
+                            Text("?", fontWeight = FontWeight.Bold)
+                        }
                         IconButton(onClick = {
                             dbEntryAddCategory = ""
                             dbEntryAddKeyInput = ""

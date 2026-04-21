@@ -1,12 +1,12 @@
-## [8.56.27] - 2026-04-21
+## [8.56.28] - 2026-04-21
 
 ### Fixed / Исправлено
-- EN: Fixed Kotlin syntax in Android `MainActivity`: added missing closing braces for nested `item { ... }`, `LazyColumn`, `Box`, and `Scaffold` scopes, resolving `Expecting '}'` on `:app:compileCompactOpsDebugKotlin`.
-- RU: Исправлен синтаксис Kotlin в Android `MainActivity`: добавлены недостающие закрывающие фигурные скобки для вложенных scope `item { ... }`, `LazyColumn`, `Box` и `Scaffold`, что убрало ошибку `Expecting '}'` на `:app:compileCompactOpsDebugKotlin`.
-- EN: SemVer patch bump to `8.56.27`; synchronized all explicit current-version mentions across backend modules, config, docs, scripts, and Android client artifacts to remove version drift.
-- RU: Выполнен SemVer patch-бамп до `8.56.27`; синхронизированы все явные упоминания текущей версии в backend-модулях, конфигурации, документации, скриптах и Android-артефактах, чтобы убрать рассинхрон версии.
-- EN: Android metadata updated to `ANDROID_VERSION_NAME=8.56.27` and `ANDROID_VERSION_CODE=605`; prerelease links aligned to `v8.56.27-develop`.
-- RU: Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.27` и `ANDROID_VERSION_CODE=605`; prerelease-ссылки выровнены на `v8.56.27-develop`.
+- EN: Added a contextual `?` help button near the close icon in each key Android Ops tile dialog (servers/resources, mail backups, ZFS statuses, ZFS free space, Proxmox backups, DB backups) with in-app explanations of purpose, behavior, and setup flow.
+- RU: Добавлена контекстная кнопка `?` рядом с крестиком закрытия в ключевых Android-диалогах плашек оперативного центра (серверы/ресурсы, бэкапы почты, статусы ZFS, свободное место ZFS, бэкапы Proxmox, бэкапы БД) с пояснениями: за что отвечает плашка, что в ней происходит и как её настраивать.
+- EN: SemVer patch bump to `8.56.28`; synchronized all explicit current-version mentions across backend modules, config, docs, scripts, and Android client artifacts to remove version drift.
+- RU: Выполнен SemVer patch-бамп до `8.56.28`; синхронизированы все явные упоминания текущей версии в backend-модулях, конфигурации, документации, скриптах и Android-артефактах, чтобы убрать рассинхрон версии.
+- EN: Android metadata updated to `ANDROID_VERSION_NAME=8.56.28` and `ANDROID_VERSION_CODE=606`; prerelease links aligned to `v8.56.28-develop`.
+- RU: Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.28` и `ANDROID_VERSION_CODE=606`; prerelease-ссылки выровнены на `v8.56.28-develop`.
 
 ## [8.56.25] - 2026-04-21
 
