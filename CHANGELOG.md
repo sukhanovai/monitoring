@@ -1,12 +1,10 @@
-## [8.56.21] - 2026-04-21
+## [8.56.22] - 2026-04-21
 
 ### Fixed / Исправлено
-- EN: Fixed Android settings tabs: the Extensions management block is now rendered only inside the `Расширения` tab, so it no longer remains visible after switching to other tabs.
-- RU: Исправлены вкладки настроек Android: блок управления расширениями теперь рендерится только внутри вкладки `Расширения` и больше не остаётся видимым после перехода на другие вкладки.
-- EN: Restored Authentication tab layout in Android settings by removing leaked Extensions content from this section.
-- RU: Восстановлен внешний вид вкладки аутентификации в Android-настройках: из раздела убран протёкший контент расширений.
-- EN: SemVer patch bump to `8.56.21`; synchronized explicit version mentions across project files and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.56.21` and `ANDROID_VERSION_CODE=599`; prerelease links aligned to `v8.56.21-develop`.
-- RU: Выполнен SemVer patch-бамп до `8.56.21`; синхронизированы явные упоминания версии в файлах проекта и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.21` и `ANDROID_VERSION_CODE=599`; prerelease-ссылки выровнены на `v8.56.21-develop`.
+- EN: Fixed Kotlin syntax in Android `MainActivity`: removed an extra closing parenthesis in the ZFS host settings dialog block, restoring valid Compose scope and removing the cascade of `@Composable invocations can only happen...` build errors.
+- RU: Исправлена синтаксическая ошибка Kotlin в Android `MainActivity`: удалена лишняя закрывающая скобка в блоке диалога настроек ZFS-хостов, что восстановило корректный Compose-scope и убрало каскад ошибок сборки `@Composable invocations can only happen...`.
+- EN: SemVer patch bump to `8.56.22`; synchronized explicit version mentions across project files and Android artifacts; Android metadata updated to `ANDROID_VERSION_NAME=8.56.22` and `ANDROID_VERSION_CODE=600`; prerelease links aligned to `v8.56.22-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.56.22`; синхронизированы явные упоминания версии в файлах проекта и Android-артефактах; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.22` и `ANDROID_VERSION_CODE=600`; prerelease-ссылки выровнены на `v8.56.22-develop`.
 
 ## [8.56.20] - 2026-04-20
 
