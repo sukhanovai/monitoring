@@ -1,3 +1,11 @@
+## [8.56.30] - 2026-04-22
+
+### Improved / Улучшено
+- EN: In Android dialogs for `💾 Бэкапы Proxmox` and `🗃️ Бэкапы БД`, header controls (`✖`, `⚙️`, `?`, `+`) were regrouped into a compact horizontal action cluster with subtle background and tighter spacing, making the layout visually cleaner and more consistent with Material UI.
+- RU: В Android-диалогах `💾 Бэкапы Proxmox` и `🗃️ Бэкапы БД` кнопки заголовка (`✖`, `⚙️`, `?`, `+`) перегруппированы в компактный горизонтальный блок с мягкой подложкой и аккуратными отступами — интерфейс стал визуально чище и гармоничнее в стиле Material UI.
+- EN: SemVer patch bump to `8.56.30`; Android metadata updated to `ANDROID_VERSION_NAME=8.56.30` and `ANDROID_VERSION_CODE=608`.
+- RU: Выполнен SemVer patch-бамп до `8.56.30`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.30` и `ANDROID_VERSION_CODE=608`.
+
 ## [8.56.29] - 2026-04-21
 
 ### Fixed / Исправлено
