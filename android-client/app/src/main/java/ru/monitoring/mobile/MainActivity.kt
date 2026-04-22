@@ -5532,40 +5532,56 @@ private fun MonitoringApp(
                         modifier = Modifier.weight(1f),
                         fontWeight = FontWeight.Bold
                     )
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
-                        horizontalAlignment = Alignment.End
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f))
+                            .padding(horizontal = 2.dp, vertical = 2.dp),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        IconButton(onClick = { showProxmoxBackupsDialog = false }) {
+                        FilledIconButton(
+                            modifier = Modifier.size(34.dp),
+                            onClick = { showProxmoxBackupsDialog = false }
+                        ) {
                             Icon(
                                 imageVector = Icons.Filled.Close,
                                 contentDescription = "Закрыть выбор бэкапа Proxmox"
                             )
                         }
-                        IconButton(onClick = {
-                            openTileHelpDialog(
-                                "Справка: плашка «proxmox»",
-                                "Плашка отвечает за мониторинг бэкапов Proxmox по хостам. " +
-                                    "Внутри показываются карточки хостов; тап открывает статистику выбранного бэкапа, долгий тап — действия по хосту. " +
-                                    "Настройка делается через ➕ (добавить хост) и ⚙️ (паттерны, по которым парсятся письма/статусы)."
-                            )
-                        }) {
+                        FilledIconButton(
+                            modifier = Modifier.size(34.dp),
+                            onClick = {
+                                openTileHelpDialog(
+                                    "Справка: плашка «proxmox»",
+                                    "Плашка отвечает за мониторинг бэкапов Proxmox по хостам. " +
+                                        "Внутри показываются карточки хостов; тап открывает статистику выбранного бэкапа, долгий тап — действия по хосту. " +
+                                        "Настройка делается через ➕ (добавить хост) и ⚙️ (паттерны, по которым парсятся письма/статусы)."
+                                )
+                            }
+                        ) {
                             Text("?", fontWeight = FontWeight.Bold)
                         }
-                        IconButton(onClick = {
-                            patternDialogReturnAction = "settings_patterns_proxmox"
-                            onExtensionsSettingsAction("settings_patterns_proxmox")
-                            showProxmoxPatternsDialog = true
-                        }) {
+                        FilledIconButton(
+                            modifier = Modifier.size(34.dp),
+                            onClick = {
+                                patternDialogReturnAction = "settings_patterns_proxmox"
+                                onExtensionsSettingsAction("settings_patterns_proxmox")
+                                showProxmoxPatternsDialog = true
+                            }
+                        ) {
                             Icon(
                                 imageVector = Icons.Filled.Settings,
                                 contentDescription = "Открыть паттерны Proxmox"
                             )
                         }
-                        IconButton(onClick = {
-                            proxmoxServerNameInput = ""
-                            showProxmoxServerAddDialog = true
-                        }) {
+                        FilledIconButton(
+                            modifier = Modifier.size(34.dp),
+                            onClick = {
+                                proxmoxServerNameInput = ""
+                                showProxmoxServerAddDialog = true
+                            }
+                        ) {
                             Icon(
                                 imageVector = Icons.Filled.Add,
                                 contentDescription = "Добавить новый сервер Proxmox в бэкапы"
@@ -6192,41 +6208,57 @@ private fun MonitoringApp(
                         modifier = Modifier.weight(1f),
                         fontWeight = FontWeight.Bold
                     )
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
-                        horizontalAlignment = Alignment.End
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f))
+                            .padding(horizontal = 2.dp, vertical = 2.dp),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        IconButton(onClick = { showDatabaseBackupsDialog = false }) {
+                        FilledIconButton(
+                            modifier = Modifier.size(34.dp),
+                            onClick = { showDatabaseBackupsDialog = false }
+                        ) {
                             Icon(
                                 imageVector = Icons.Filled.Close,
                                 contentDescription = "Закрыть список бэкапов БД"
                             )
                         }
-                        IconButton(onClick = {
-                            openTileHelpDialog(
-                                "Справка: плашка «БД»",
-                                "Плашка отвечает за мониторинг бэкапов баз данных. " +
-                                    "Внутри отображаются карточки БД/хостов, откуда можно открыть статистику или карточку действий. " +
-                                    "Настройка делается через ➕ (добавить запись БД) и ⚙️ (паттерны распознавания бэкапов БД)."
-                            )
-                        }) {
+                        FilledIconButton(
+                            modifier = Modifier.size(34.dp),
+                            onClick = {
+                                openTileHelpDialog(
+                                    "Справка: плашка «БД»",
+                                    "Плашка отвечает за мониторинг бэкапов баз данных. " +
+                                        "Внутри отображаются карточки БД/хостов, откуда можно открыть статистику или карточку действий. " +
+                                        "Настройка делается через ➕ (добавить запись БД) и ⚙️ (паттерны распознавания бэкапов БД)."
+                                )
+                            }
+                        ) {
                             Text("?", fontWeight = FontWeight.Bold)
                         }
-                        IconButton(onClick = {
-                            onExtensionsSettingsAction("settings_patterns_db")
-                            showDatabasePatternsDialog = true
-                        }) {
+                        FilledIconButton(
+                            modifier = Modifier.size(34.dp),
+                            onClick = {
+                                onExtensionsSettingsAction("settings_patterns_db")
+                                showDatabasePatternsDialog = true
+                            }
+                        ) {
                             Icon(
                                 imageVector = Icons.Filled.Settings,
                                 contentDescription = "Открыть паттерны бэкапов БД"
                             )
                         }
-                        IconButton(onClick = {
-                            dbEntryAddCategory = ""
-                            dbEntryAddKeyInput = ""
-                            dbEntryAddNameInput = ""
-                            showDbOpsEntryAddDialog = true
-                        }) {
+                        FilledIconButton(
+                            modifier = Modifier.size(34.dp),
+                            onClick = {
+                                dbEntryAddCategory = ""
+                                dbEntryAddKeyInput = ""
+                                dbEntryAddNameInput = ""
+                                showDbOpsEntryAddDialog = true
+                            }
+                        ) {
                             Icon(
                                 imageVector = Icons.Filled.Add,
                                 contentDescription = "Добавить новую БД в список бэкапов"
