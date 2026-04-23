@@ -1,3 +1,13 @@
+## [8.56.43] - 2026-04-23
+
+### Improved / Улучшено
+- EN: Unified header actions for Android dialogs (`✖`, `?`, `⚙️`, `+`) to a single compact style: all controls now use consistent icon buttons with aligned visuals and spacing.
+- RU: Кнопки заголовков Android-диалогов (`✖`, `?`, `⚙️`, `+`) приведены к единому компактному стилю: теперь используется единый тип иконок с выровненной визуалкой и отступами.
+- EN: Applied the unified compact actions in tiles/dialogs where these controls are used (`📬`, `🧊`, `💽`, `💾`, `🗃️`), including replacement of textual `?` with a consistent help icon.
+- RU: Единый компактный стиль применён в плашках/диалогах, где используются эти действия (`📬`, `🧊`, `💽`, `💾`, `🗃️`), включая замену текстового `?` на стандартную иконку справки.
+- EN: SemVer patch bump to `8.56.43`; synchronized explicit current-version mentions across project files and Android metadata (`ANDROID_VERSION_CODE=621`).
+- RU: Выполнен SemVer patch-бамп до `8.56.43`; синхронизированы явные упоминания текущей версии в файлах проекта и Android-метаданные (`ANDROID_VERSION_CODE=621`).
+
 ## [8.56.42] - 2026-04-23
 
 ### Fixed / Исправлено

@@ -44,6 +44,7 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
@@ -71,6 +72,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -1369,6 +1371,27 @@ private fun SettingsDangerButton(
         )
     ) {
         Text(text = label, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+private fun CompactHeaderIconButton(
+    onClick: () -> Unit,
+    contentDescription: String,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    FilledIconButton(
+        onClick = onClick,
+        modifier = modifier.size(30.dp),
+        colors = IconButtonDefaults.filledIconButtonColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            content()
+        }
     }
 }
 
@@ -4116,40 +4139,44 @@ private fun MonitoringApp(
                         fontWeight = FontWeight.Bold
                     )
                     Column(
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
                         horizontalAlignment = Alignment.End
                     ) {
-                        IconButton(onClick = { showMailBackupsDialog = false }) {
-                            Text("✖", fontWeight = FontWeight.Bold)
+                        CompactHeaderIconButton(
+                            onClick = { showMailBackupsDialog = false },
+                            contentDescription = "Закрыть окно бэкапов почты"
+                        ) {
+                            Icon(Icons.Filled.Close, contentDescription = null)
                         }
-                        IconButton(onClick = {
+                        CompactHeaderIconButton(onClick = {
                             openTileHelpDialog(
                                 "Справка: плашка «почта»",
                                 "Плашка показывает историю почтовых бэкапов и их статус. " +
                                     "Внутри отображаются размер, путь и свежесть каждого бэкапа. " +
                                     "Настройка делается через кнопку ⚙️: там редактируются паттерны, по которым приложение находит успешные письма о бэкапе."
                             )
-                        }) {
-                            Text("?", fontWeight = FontWeight.Bold)
+                        }, contentDescription = "Справка по плашке почты") {
+                            Icon(Icons.Filled.HelpOutline, contentDescription = null)
                         }
-                        IconButton(
+                        CompactHeaderIconButton(
                             onClick = {
                                 showMailBackupsDialog = false
                                 onExtensionsSettingsAction("settings_patterns_mail")
                                 showMailPatternsDialog = true
-                            }
+                            },
+                            contentDescription = "Открыть паттерны почтовых бэкапов"
                         ) {
-                            Text("⚙", fontWeight = FontWeight.Bold)
+                            Icon(Icons.Filled.Settings, contentDescription = null)
                         }
-                        IconButton(onClick = {
+                        CompactHeaderIconButton(onClick = {
                             mailPatternInputMode = "subject"
                             mailPatternInputValue = ""
                             returnToMailPatternsDialog = false
                             showMailBackupsDialog = false
                             onExtensionsSettingsAction("settings_patterns_mail")
                             showMailPatternAddDialog = true
-                        }) {
-                            Text("+", fontWeight = FontWeight.Bold)
+                        }, contentDescription = "Добавить паттерн почты") {
+                            Icon(Icons.Filled.Add, contentDescription = null)
                         }
                     }
                 }
@@ -4402,16 +4429,22 @@ private fun MonitoringApp(
                         fontWeight = FontWeight.Bold
                     )
                     Column(
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
                         horizontalAlignment = Alignment.End
                     ) {
-                        IconButton(onClick = { showZfsStatusesDialog = false }) {
-                            Text("✖", fontWeight = FontWeight.Bold)
+                        CompactHeaderIconButton(
+                            onClick = { showZfsStatusesDialog = false },
+                            contentDescription = "Закрыть окно статусов ZFS"
+                        ) {
+                            Icon(Icons.Filled.Close, contentDescription = null)
                         }
-                        IconButton(onClick = { onAction("zfs_menu") }) {
-                            Text("⟳", fontWeight = FontWeight.Bold)
+                        CompactHeaderIconButton(
+                            onClick = { onAction("zfs_menu") },
+                            contentDescription = "Обновить статусы ZFS"
+                        ) {
+                            Icon(Icons.Filled.Refresh, contentDescription = null)
                         }
-                        IconButton(onClick = {
+                        CompactHeaderIconButton(onClick = {
                             openTileHelpDialog(
                                 "Справка: плашка «zfs статусы»",
                                 "Плашка отвечает за состояние ZFS на хостах: показывает статусы пулов и проблемные места. " +
@@ -4419,20 +4452,20 @@ private fun MonitoringApp(
                                     "Настройка выполняется через ➕ (добавление хоста) и ⚙️ (паттерны/правила распознавания). " +
                                     "Пример статусов: ONLINE (норма), DEGRADED (внимание), FAULTED/OFFLINE (критично)."
                             )
-                        }) {
-                            Text("?", fontWeight = FontWeight.Bold)
+                        }, contentDescription = "Справка по статусам ZFS") {
+                            Icon(Icons.Filled.HelpOutline, contentDescription = null)
                         }
-                        IconButton(onClick = {
+                        CompactHeaderIconButton(onClick = {
                             showZfsPatternsDialog = true
                             onExtensionsSettingsAction("settings_patterns_zfs")
-                        }) {
-                            Text("⚙", fontWeight = FontWeight.Bold)
+                        }, contentDescription = "Открыть паттерны ZFS") {
+                            Icon(Icons.Filled.Settings, contentDescription = null)
                         }
-                        IconButton(onClick = {
+                        CompactHeaderIconButton(onClick = {
                             zfsHostInput = ""
                             showZfsHostAddDialog = true
-                        }) {
-                            Text("+", fontWeight = FontWeight.Bold)
+                        }, contentDescription = "Добавить хост ZFS") {
+                            Icon(Icons.Filled.Add, contentDescription = null)
                         }
                     }
                 }
@@ -4630,34 +4663,34 @@ private fun MonitoringApp(
                         modifier = Modifier.weight(1f),
                         fontWeight = FontWeight.Bold
                     )
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        IconButton(onClick = {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        CompactHeaderIconButton(onClick = {
                             showZfsPoolFreeSpaceDialog = false
-                        }) {
+                        }, contentDescription = "Закрыть окно ZFS-пулов") {
                             Icon(
                                 imageVector = Icons.Filled.Close,
-                                contentDescription = "Закрыть окно ZFS-пулов"
+                                contentDescription = null
                             )
                         }
-                        IconButton(onClick = {
+                        CompactHeaderIconButton(onClick = {
                             openTileHelpDialog(
                                 "Справка: плашка «zfs место»",
                                 "Плашка показывает свободное место по ZFS-пулам на подключённых хостах. " +
                                     "Внутри отображается таблица хост/пул/процент свободного пространства с цветовой индикацией риска. " +
                                     "Настройка выполняется через ⚙️ — список хостов и пороги свободного места для предупреждений."
                             )
-                        }) {
-                            Text("?", fontWeight = FontWeight.Bold)
+                        }, contentDescription = "Справка по ZFS-пулам") {
+                            Icon(Icons.Filled.HelpOutline, contentDescription = null)
                         }
-                        IconButton(onClick = {
+                        CompactHeaderIconButton(onClick = {
                             showZfsPoolFreeSpaceDialog = false
                             showZfsPoolHostsSettingsDialog = true
                             onAction("zfsp_hosts_list")
                             pendingZfsPoolHostAddFromFreeSpaceDialog = false
-                        }) {
+                        }, contentDescription = "Настройки хостов ZFS-пулов") {
                             Icon(
                                 imageVector = Icons.Filled.Settings,
-                                contentDescription = "Настройки хостов ZFS-пулов"
+                                contentDescription = null
                             )
                         }
                     }
@@ -5587,20 +5620,19 @@ private fun MonitoringApp(
                         horizontalArrangement = Arrangement.spacedBy(2.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        IconButton(
-                            modifier = Modifier.size(34.dp),
+                        CompactHeaderIconButton(
                             onClick = {
                                 proxmoxServerNameInput = ""
                                 showProxmoxServerAddDialog = true
-                            }
+                            },
+                            contentDescription = "Добавить хост Proxmox"
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.Add,
-                                contentDescription = "Добавить хост Proxmox"
+                                contentDescription = null
                             )
                         }
-                        IconButton(
-                            modifier = Modifier.size(34.dp),
+                        CompactHeaderIconButton(
                             onClick = {
                                 openTileHelpDialog(
                                     "Справка: плашка «proxmox»",
@@ -5608,30 +5640,31 @@ private fun MonitoringApp(
                                         "Внутри показываются карточки хостов; тап открывает карточку действий по хосту. " +
                                         "Настройка делается через ➕ (добавить хост) и ⚙️ (паттерны, по которым парсятся письма/статусы)."
                                 )
-                            }
+                            },
+                            contentDescription = "Справка по бэкапам Proxmox"
                         ) {
-                            Text("?", fontWeight = FontWeight.Bold)
+                            Icon(Icons.Filled.HelpOutline, contentDescription = null)
                         }
-                        IconButton(
-                            modifier = Modifier.size(34.dp),
+                        CompactHeaderIconButton(
                             onClick = {
                                 patternDialogReturnAction = "settings_patterns_proxmox"
                                 onExtensionsSettingsAction("settings_patterns_proxmox")
                                 showProxmoxPatternsDialog = true
-                            }
+                            },
+                            contentDescription = "Открыть паттерны Proxmox"
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.Settings,
-                                contentDescription = "Открыть паттерны Proxmox"
+                                contentDescription = null
                             )
                         }
-                        IconButton(
-                            modifier = Modifier.size(34.dp),
-                            onClick = { showProxmoxBackupsDialog = false }
+                        CompactHeaderIconButton(
+                            onClick = { showProxmoxBackupsDialog = false },
+                            contentDescription = "Закрыть бэкапы Proxmox"
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.Close,
-                                contentDescription = "Закрыть бэкапы Proxmox"
+                                contentDescription = null
                             )
                         }
                     }
@@ -6261,22 +6294,21 @@ private fun MonitoringApp(
                         horizontalArrangement = Arrangement.spacedBy(2.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        IconButton(
-                            modifier = Modifier.size(34.dp),
+                        CompactHeaderIconButton(
                             onClick = {
                                 dbEntryAddCategory = ""
                                 dbEntryAddKeyInput = ""
                                 dbEntryAddNameInput = ""
                                 showDbOpsEntryAddDialog = true
-                            }
+                            },
+                            contentDescription = "Добавить запись БД"
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.Add,
-                                contentDescription = "Добавить запись БД"
+                                contentDescription = null
                             )
                         }
-                        IconButton(
-                            modifier = Modifier.size(34.dp),
+                        CompactHeaderIconButton(
                             onClick = {
                                 openTileHelpDialog(
                                     "Справка: плашка «БД»",
@@ -6284,29 +6316,30 @@ private fun MonitoringApp(
                                         "Внутри отображаются карточки БД/хостов, откуда можно открыть статистику или карточку действий. " +
                                         "Настройка делается через ➕ (добавить запись БД) и ⚙️ (паттерны распознавания бэкапов БД)."
                                 )
-                            }
+                            },
+                            contentDescription = "Справка по бэкапам БД"
                         ) {
-                            Text("?", fontWeight = FontWeight.Bold)
+                            Icon(Icons.Filled.HelpOutline, contentDescription = null)
                         }
-                        IconButton(
-                            modifier = Modifier.size(34.dp),
+                        CompactHeaderIconButton(
                             onClick = {
                                 onExtensionsSettingsAction("settings_patterns_db")
                                 showDatabasePatternsDialog = true
-                            }
+                            },
+                            contentDescription = "Открыть паттерны бэкапов БД"
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.Settings,
-                                contentDescription = "Открыть паттерны БД"
+                                contentDescription = null
                             )
                         }
-                        IconButton(
-                            modifier = Modifier.size(34.dp),
-                            onClick = { showDatabaseBackupsDialog = false }
+                        CompactHeaderIconButton(
+                            onClick = { showDatabaseBackupsDialog = false },
+                            contentDescription = "Закрыть бэкапы БД"
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.Close,
-                                contentDescription = "Закрыть бэкапы БД"
+                                contentDescription = null
                             )
                         }
                     }
