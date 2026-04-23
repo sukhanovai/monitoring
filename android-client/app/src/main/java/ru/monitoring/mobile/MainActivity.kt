@@ -1381,11 +1381,10 @@ private fun CompactHeaderIconButton(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
-    FilledIconButton(
+    IconButton(
         onClick = onClick,
         modifier = modifier.size(30.dp),
-        colors = IconButtonDefaults.filledIconButtonColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        colors = IconButtonDefaults.iconButtonColors(
             contentColor = MaterialTheme.colorScheme.onSurfaceVariant
         )
     ) {

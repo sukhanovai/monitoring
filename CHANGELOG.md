@@ -1,3 +1,11 @@
+## [8.56.44] - 2026-04-23
+
+### Fixed / Исправлено
+- EN: In Android extension dialogs, removed the background substrate under header action controls (`✖`, `⚙️`, `?`, `+`) during taps by switching compact header actions to transparent icon buttons.
+- RU: В Android-диалогах расширений убран фон под кнопками действий в заголовках (`✖`, `⚙️`, `?`, `+`) при тапах: компактные кнопки переведены на прозрачные icon buttons.
+- EN: SemVer patch bump to `8.56.44`; synchronized explicit current-version mentions across project files and Android metadata (`ANDROID_VERSION_CODE=622`).
+- RU: Выполнен SemVer patch-бамп до `8.56.44`; синхронизированы явные упоминания текущей версии в файлах проекта и Android-метаданные (`ANDROID_VERSION_CODE=622`).
+
 ## [8.56.43] - 2026-04-23
 
 ### Improved / Улучшено
