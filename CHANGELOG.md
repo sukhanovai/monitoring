@@ -1,3 +1,11 @@
+## [8.56.35] - 2026-04-23
+
+### Fixed / Исправлено
+- EN: In Android dialogs for `💾 Бэкапы Proxmox` and `🗃️ Бэкапы БД`, swapped header actions `✖` and `+` (add action is now first, close action moved to the last position in the row).
+- RU: В Android-диалогах `💾 Бэкапы Proxmox` и `🗃️ Бэкапы БД` кнопки `✖` и `+` в заголовке поменяны местами (`+` теперь первая, `✖` перенесена в конец ряда).
+- EN: SemVer patch bump to `8.56.35`; synchronized explicit current-version mentions across backend modules/config/docs/scripts and Android metadata (`ANDROID_VERSION_CODE=613`).
+- RU: Выполнен SemVer patch-бамп до `8.56.35`; синхронизированы явные упоминания текущей версии в backend-модулях/конфигурации/документации/скриптах и Android-метаданные (`ANDROID_VERSION_CODE=613`).
+
 ## [8.56.34] - 2026-04-23
 
 ### Improved / Улучшено
