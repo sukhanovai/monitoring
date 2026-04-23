@@ -52,7 +52,7 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.56.36"
+    private val projectVersion = "8.56.38"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -1716,14 +1716,14 @@ class MainViewModel(
                                 null
                             }
                             val zfsResponseBundle = if (normalizedAction == "zfs" || normalizedAction == "zfs_menu") {
-                                val latestResponse = runCatching { fetchZfsLatestStatusesResponse(response) }
+                                runCatching { fetchZfsLatestStatusesResponse(response) }
                                     .getOrElse { Pair(response, null) }
-                                val primaryResponse = latestResponse.second ?: latestResponse.first
-                                Pair(latestResponse.first, primaryResponse)
                             } else {
                                 Pair(response, response)
                             }
-                            val zfsPrimaryResponse = zfsResponseBundle.second
+                            val zfsRootResponse = zfsResponseBundle.first
+                            val zfsLatestResponse = zfsResponseBundle.second
+                            val zfsPrimaryResponse = zfsLatestResponse ?: zfsRootResponse
                             val resolvedMenuOptions = resolveControlActionMenuOptions(zfsPrimaryResponse)
                             val monitoredMenuOptions = when {
                                 normalizedAction == "backup_proxmox" -> resolvedMenuOptions.filterNot { option ->
@@ -1743,7 +1743,8 @@ class MainViewModel(
                             val hasProblemBackups = monitoredMenuOptions
                                 .any { option -> isProblemBackupOption(option) }
                             val zfsSummary = if (normalizedAction == "zfs" || normalizedAction == "zfs_menu") {
-                                buildBackupTileSummary(zfsPrimaryResponse)
+                                buildBackupTileSummary(zfsLatestResponse)
+                                    ?: buildBackupTileSummary(zfsRootResponse)
                             } else {
                                 null
                             }
