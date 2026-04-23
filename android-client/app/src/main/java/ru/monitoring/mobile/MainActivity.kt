@@ -2193,7 +2193,32 @@ private fun MonitoringApp(
     val effectivePinnedTileIds = if (orderedPinnedTileIds.isEmpty()) defaultPinnedTileIds else orderedPinnedTileIds
     val pinnedTiles = allOpsTiles.filter { it.id in effectivePinnedTileIds }
     val hiddenTiles = allOpsTiles.filterNot { it.id in effectivePinnedTileIds }
-    val visibleTiles = if (areOpsTilesExpanded) pinnedTiles + hiddenTiles else pinnedTiles
+    val autoFillPriorityTileIds = listOf(
+        "extension_zfs_pool_free_space_monitor",
+        "extension_zfs_monitor",
+        "extension_resource_monitor"
+    )
+    val autoFillTiles = buildList {
+        autoFillPriorityTileIds.forEach { tileId ->
+            hiddenTiles.firstOrNull { it.id == tileId }?.let { add(it) }
+        }
+        hiddenTiles.forEach { tile ->
+            if (none { it.id == tile.id }) {
+                add(tile)
+            }
+        }
+    }
+    val minVisibleTilesInCollapsedState = 4
+    val autoFillTilesToShow = if (pinnedTiles.size >= minVisibleTilesInCollapsedState) {
+        emptyList()
+    } else {
+        autoFillTiles.take(minVisibleTilesInCollapsedState - pinnedTiles.size)
+    }
+    val visibleTiles = if (areOpsTilesExpanded) {
+        pinnedTiles + hiddenTiles
+    } else {
+        pinnedTiles + autoFillTilesToShow
+    }
     val isSynchronized = state.isDataSynchronized
     val synchronizationTimeSuffix = state.lastSyncTime
         .takeIf { it.isNotBlank() }

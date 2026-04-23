@@ -1,3 +1,11 @@
+## [8.56.36] - 2026-04-23
+
+### Improved / Улучшено
+- EN: In Android `⚡ Оперативный центр`, collapsed tiles now auto-fill free space up to four visible chips: hidden metrics are temporarily surfaced automatically, with priority for `zfs место`.
+- RU: В Android `⚡ Оперативный центр` в свернутом режиме добавлено автозаполнение свободного места до четырёх видимых плашек: скрытые метрики подставляются автоматически, с приоритетом для `zfs место`.
+- EN: SemVer patch bump to `8.56.36`; synchronized explicit current-version mentions across backend modules/config/docs/scripts and Android metadata (`ANDROID_VERSION_CODE=614`).
+- RU: Выполнен SemVer patch-бамп до `8.56.36`; синхронизированы явные упоминания текущей версии в backend-модулях/конфигурации/документации/скриптах и Android-метаданные (`ANDROID_VERSION_CODE=614`).
+
 ## [8.56.35] - 2026-04-23
 
 ### Fixed / Исправлено
