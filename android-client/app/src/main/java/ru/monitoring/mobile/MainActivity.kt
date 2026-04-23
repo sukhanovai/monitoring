@@ -72,7 +72,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -4155,7 +4154,7 @@ private fun MonitoringApp(
                                     "Настройка делается через кнопку ⚙️: там редактируются паттерны, по которым приложение находит успешные письма о бэкапе."
                             )
                         }, contentDescription = "Справка по плашке почты") {
-                            Icon(Icons.Filled.HelpOutline, contentDescription = null)
+                            Text("?", fontWeight = FontWeight.Bold)
                         }
                         CompactHeaderIconButton(
                             onClick = {
@@ -4452,7 +4451,7 @@ private fun MonitoringApp(
                                     "Пример статусов: ONLINE (норма), DEGRADED (внимание), FAULTED/OFFLINE (критично)."
                             )
                         }, contentDescription = "Справка по статусам ZFS") {
-                            Icon(Icons.Filled.HelpOutline, contentDescription = null)
+                            Text("?", fontWeight = FontWeight.Bold)
                         }
                         CompactHeaderIconButton(onClick = {
                             showZfsPatternsDialog = true
@@ -4679,7 +4678,7 @@ private fun MonitoringApp(
                                     "Настройка выполняется через ⚙️ — список хостов и пороги свободного места для предупреждений."
                             )
                         }, contentDescription = "Справка по ZFS-пулам") {
-                            Icon(Icons.Filled.HelpOutline, contentDescription = null)
+                            Text("?", fontWeight = FontWeight.Bold)
                         }
                         CompactHeaderIconButton(onClick = {
                             showZfsPoolFreeSpaceDialog = false
@@ -5642,7 +5641,7 @@ private fun MonitoringApp(
                             },
                             contentDescription = "Справка по бэкапам Proxmox"
                         ) {
-                            Icon(Icons.Filled.HelpOutline, contentDescription = null)
+                            Text("?", fontWeight = FontWeight.Bold)
                         }
                         CompactHeaderIconButton(
                             onClick = {
@@ -6318,7 +6317,7 @@ private fun MonitoringApp(
                             },
                             contentDescription = "Справка по бэкапам БД"
                         ) {
-                            Icon(Icons.Filled.HelpOutline, contentDescription = null)
+                            Text("?", fontWeight = FontWeight.Bold)
                         }
                         CompactHeaderIconButton(
                             onClick = {
