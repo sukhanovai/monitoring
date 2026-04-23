@@ -5521,11 +5521,14 @@ private fun MonitoringApp(
                     ) {
                         IconButton(
                             modifier = Modifier.size(34.dp),
-                            onClick = { showProxmoxBackupsDialog = false }
+                            onClick = {
+                                proxmoxServerNameInput = ""
+                                showProxmoxServerAddDialog = true
+                            }
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.Close,
-                                contentDescription = "Закрыть бэкапы Proxmox"
+                                imageVector = Icons.Filled.Add,
+                                contentDescription = "Добавить хост Proxmox"
                             )
                         }
                         IconButton(
@@ -5556,14 +5559,11 @@ private fun MonitoringApp(
                         }
                         IconButton(
                             modifier = Modifier.size(34.dp),
-                            onClick = {
-                                proxmoxServerNameInput = ""
-                                showProxmoxServerAddDialog = true
-                            }
+                            onClick = { showProxmoxBackupsDialog = false }
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.Add,
-                                contentDescription = "Добавить хост Proxmox"
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "Закрыть бэкапы Proxmox"
                             )
                         }
                     }
@@ -6195,11 +6195,16 @@ private fun MonitoringApp(
                     ) {
                         IconButton(
                             modifier = Modifier.size(34.dp),
-                            onClick = { showDatabaseBackupsDialog = false }
+                            onClick = {
+                                dbEntryAddCategory = ""
+                                dbEntryAddKeyInput = ""
+                                dbEntryAddNameInput = ""
+                                showDbOpsEntryAddDialog = true
+                            }
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.Close,
-                                contentDescription = "Закрыть бэкапы БД"
+                                imageVector = Icons.Filled.Add,
+                                contentDescription = "Добавить запись БД"
                             )
                         }
                         IconButton(
@@ -6229,16 +6234,11 @@ private fun MonitoringApp(
                         }
                         IconButton(
                             modifier = Modifier.size(34.dp),
-                            onClick = {
-                                dbEntryAddCategory = ""
-                                dbEntryAddKeyInput = ""
-                                dbEntryAddNameInput = ""
-                                showDbOpsEntryAddDialog = true
-                            }
+                            onClick = { showDatabaseBackupsDialog = false }
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.Add,
-                                contentDescription = "Добавить запись БД"
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "Закрыть бэкапы БД"
                             )
                         }
                     }
