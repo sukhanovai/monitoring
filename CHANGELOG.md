@@ -1,12 +1,10 @@
-## [8.56.39] - 2026-04-23
+## [8.56.41] - 2026-04-23
 
 ### Fixed / Исправлено
-- EN: Fixed Android `🧊 zfs статусы` data refresh: opening the ZFS statuses dialog now always triggers `zfs_menu`, so the card content is re-fetched each time the dialog is shown.
-- RU: Исправлено обновление данных в Android-плашке `🧊 zfs статусы`: при открытии диалога статусов теперь всегда вызывается `zfs_menu`, поэтому данные заново подтягиваются при каждом открытии.
-- EN: Added explicit manual refresh action (`⟳`) in the ZFS statuses dialog header, so users can force-fetch fresh data without closing the dialog.
-- RU: Добавлено явное ручное обновление (`⟳`) в заголовке диалога ZFS-статусов, чтобы можно было принудительно подтянуть свежие данные без закрытия окна.
-- EN: SemVer patch bump to `8.56.39`; synchronized explicit current-version mentions across backend modules/config/docs/scripts and Android metadata (`ANDROID_VERSION_CODE=617`).
-- RU: Выполнен SemVer patch-бамп до `8.56.39`; синхронизированы явные упоминания текущей версии в backend-модулях/конфигурации/документации/скриптах и Android-метаданные (`ANDROID_VERSION_CODE=617`).
+- EN: Fixed parsing of ZFS status data in Android dialog/cards for the updated backend format (`🖥 *host*` + emoji pool lines). ZFS status cards now correctly render host and pool states instead of showing placeholders.
+- RU: Исправлен парсинг данных ZFS в Android-диалоге/плашках под обновлённый формат backend (`🖥 *host*` + строки пулов с emoji). Теперь карточки ZFS корректно показывают хосты и статусы пулов вместо прочерков.
+- EN: SemVer patch bump to `8.56.41`; synchronized explicit current-version mentions across project files and Android metadata (`ANDROID_VERSION_CODE=619`).
+- RU: Выполнен SemVer patch-бамп до `8.56.41`; синхронизированы явные упоминания текущей версии в файлах проекта и Android-метаданные (`ANDROID_VERSION_CODE=619`).
 
 ## [8.56.35] - 2026-04-23
 
