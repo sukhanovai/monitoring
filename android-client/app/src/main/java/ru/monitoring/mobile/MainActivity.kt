@@ -3613,7 +3613,7 @@ private fun MonitoringApp(
                         val longTapHint = if (isResourceCheckMode) {
                             "Долгий тап по плашке хоста — настройки (редактировать / вкл-выкл / удалить)"
                         } else {
-                            "Долгий тап по плашке хоста - настройки\n(редактировать / вкл-выкл / удалить)"
+                            "Тап по плашке хоста — карточка действий\n(редактировать / вкл-выкл / удалить)"
                         }
                         Text(
                             text = longTapHint,
@@ -5516,10 +5516,6 @@ private fun MonitoringApp(
                         fontWeight = FontWeight.Bold
                     )
                     Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f))
-                            .padding(horizontal = 2.dp, vertical = 2.dp),
                         horizontalArrangement = Arrangement.spacedBy(2.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -5538,7 +5534,7 @@ private fun MonitoringApp(
                                 openTileHelpDialog(
                                     "Справка: плашка «proxmox»",
                                     "Плашка отвечает за мониторинг бэкапов Proxmox по хостам. " +
-                                        "Внутри показываются карточки хостов; тап открывает статистику выбранного бэкапа, долгий тап — действия по хосту. " +
+                                        "Внутри показываются карточки хостов; тап открывает карточку действий по хосту. " +
                                         "Настройка делается через ➕ (добавить хост) и ⚙️ (паттерны, по которым парсятся письма/статусы)."
                                 )
                             }
@@ -5585,7 +5581,7 @@ private fun MonitoringApp(
                         Text("Загружаем список бэкапов Proxmox…")
                     } else {
                         Text(
-                            text = "Долгий тап по плашке хоста - настройки\n(редактировать / вкл-выкл / удалить)",
+                            text = "Тап по плашке хоста — карточка действий\n(редактировать / вкл-выкл / удалить)",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -5610,10 +5606,12 @@ private fun MonitoringApp(
                                             .clip(RoundedCornerShape(10.dp))
                                             .combinedClickable(
                                                 onClick = {
-                                                    showProxmoxBackupsDialog = false
-                                                    selectedProxmoxBackupLabel = label
-                                                    showProxmoxBackupStatsDialog = true
-                                                    onAction(targetAction)
+                                                    val hostName = targetAction
+                                                        .removePrefix("backup_host_")
+                                                        .trim()
+                                                    if (hostName.isNotBlank()) {
+                                                        proxmoxHostActionsTargetKey = hostName
+                                                    }
                                                 },
                                                 onLongClick = {
                                                     val hostName = targetAction
@@ -6192,10 +6190,6 @@ private fun MonitoringApp(
                         fontWeight = FontWeight.Bold
                     )
                     Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f))
-                            .padding(horizontal = 2.dp, vertical = 2.dp),
                         horizontalArrangement = Arrangement.spacedBy(2.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -6262,7 +6256,7 @@ private fun MonitoringApp(
                         Text("Загружаем список бэкапов БД…")
                     } else {
                         Text(
-                            text = "Долгий тап по плашке БД - настройки\n(редактировать / вкл-выкл / удалить)",
+                            text = "Тап по плашке БД — карточка действий\n(редактировать / вкл-выкл / удалить)",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
