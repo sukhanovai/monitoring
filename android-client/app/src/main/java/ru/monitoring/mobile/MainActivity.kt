@@ -2041,11 +2041,17 @@ private fun MonitoringApp(
         }
         onAction(nextModeAction)
     }
+    val silentModeShortStatus = when {
+        state.silentStatusText.contains("Принудительно тих", ignoreCase = true) -> "тихо"
+        state.silentStatusText.contains("Принудительно громк", ignoreCase = true) -> "громко"
+        state.silentStatusText.contains("авто", ignoreCase = true) -> "авто"
+        else -> "..."
+    }
     val opsTiles = listOf(
         OpsMetricTile(
             id = "modes",
             label = "Режим",
-            value = state.silentStatusText,
+            value = silentModeShortStatus,
             onClick = openModesDetails
         ),
         OpsMetricTile(
@@ -2397,6 +2403,11 @@ private fun MonitoringApp(
                                     synchronizationText,
                                     style = MaterialTheme.typography.labelSmall,
                                     color = synchronizationColor
+                                )
+                                Text(
+                                    "Сейчас: ${state.silentStatusText}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 if (state.isSyncInProgress) {
                                     Spacer(modifier = Modifier.height(6.dp))
