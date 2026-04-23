@@ -1721,6 +1721,12 @@ private fun MonitoringApp(
         }
     }
 
+    LaunchedEffect(showZfsStatusesDialog) {
+        if (showZfsStatusesDialog) {
+            onAction("zfs_menu")
+        }
+    }
+
     LaunchedEffect(
         pendingZfsPoolHostAddFromFreeSpaceDialog,
         state.extensionMenuAction,
@@ -4373,6 +4379,9 @@ private fun MonitoringApp(
                     ) {
                         IconButton(onClick = { showZfsStatusesDialog = false }) {
                             Text("✖", fontWeight = FontWeight.Bold)
+                        }
+                        IconButton(onClick = { onAction("zfs_menu") }) {
+                            Text("⟳", fontWeight = FontWeight.Bold)
                         }
                         IconButton(onClick = {
                             openTileHelpDialog(
