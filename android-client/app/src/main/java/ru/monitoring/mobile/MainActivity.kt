@@ -1209,7 +1209,6 @@ private fun OpsMetricChip(
     Surface(
         modifier = modifier
             .widthIn(min = 72.dp)
-            .wrapContentWidth()
             .clip(RoundedCornerShape(14.dp))
             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
             .combinedClickable(
@@ -2461,7 +2460,9 @@ private fun MonitoringApp(
                                     label = tile.label,
                                     value = tile.value,
                                     hasProblem = tile.hasProblem,
-                                    modifier = Modifier.animateContentSize(),
+                                    modifier = Modifier
+                                    .weight(1f)
+                                    .animateContentSize(),
                                     onClick = tile.onClick,
                                     onLongClick = tile.onLongClick,
                                     onSettingsClick = tile.onSettingsClick
