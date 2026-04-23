@@ -1,11 +1,10 @@
-## [8.56.36] - 2026-04-23
+## [8.56.38] - 2026-04-23
 
-### Improved / Улучшено
-- EN: In Android `⚡ Оперативный центр`, collapsed tiles now auto-fill free space up to four visible chips: hidden metrics are temporarily surfaced automatically, with priority for `zfs место`.
-- RU: В Android `⚡ Оперативный центр` в свернутом режиме добавлено автозаполнение свободного места до четырёх видимых плашек: скрытые метрики подставляются автоматически, с приоритетом для `zfs место`.
-- EN: SemVer patch bump to `8.56.36`; synchronized explicit current-version mentions across backend modules/config/docs/scripts and Android metadata (`ANDROID_VERSION_CODE=614`).
-- RU: Выполнен SemVer patch-бамп до `8.56.36`; синхронизированы явные упоминания текущей версии в backend-модулях/конфигурации/документации/скриптах и Android-метаданные (`ANDROID_VERSION_CODE=614`).
-
+### Fixed / Исправлено
+- EN: Fixed Android `🧊 zfs статусы` tile refresh: when opening `zfs/zfs_menu`, the app now builds the tile summary with fallback from the latest-status response to the root ZFS response, preventing stale cached counters when one response format is not parseable.
+- RU: Исправлено обновление Android-плашки `🧊 zfs статусы`: при открытии `zfs/zfs_menu` сводка теперь строится с fallback от ответа «последние статусы» к корневому ответу ZFS, поэтому кэшированные счётчики больше не «зависают», если один из форматов ответа не распарсился.
+- EN: SemVer patch bump to `8.56.38`; synchronized explicit current-version mentions across backend modules/config/docs/scripts and Android metadata (`ANDROID_VERSION_CODE=616`).
+- RU: Выполнен SemVer patch-бамп до `8.56.38`; синхронизированы явные упоминания текущей версии в backend-модулях/конфигурации/документации/скриптах и Android-метаданные (`ANDROID_VERSION_CODE=616`).
 ## [8.56.35] - 2026-04-23
 
 ### Fixed / Исправлено
