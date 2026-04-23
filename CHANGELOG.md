@@ -1,10 +1,12 @@
-## [8.56.46] - 2026-04-23
+## [8.56.47] - 2026-04-23
 
 ### Improved / Улучшено
-- EN: In Android Ops Center, metric tiles now stretch to fill available row width (including landscape orientation), reducing empty horizontal gaps after screen rotation.
-- RU: В Android Оперативном центре плашки метрик теперь растягиваются на всю доступную ширину строки (включая ландшафтную ориентацию), поэтому после поворота экрана не остаются пустые горизонтальные зоны.
-- EN: SemVer patch bump to `8.56.46`; synchronized explicit current-version mentions across project files and Android metadata (`ANDROID_VERSION_CODE=624`).
-- RU: Выполнен SemVer patch-бамп до `8.56.46`; синхронизированы явные упоминания текущей версии в файлах проекта и Android-метаданные (`ANDROID_VERSION_CODE=624`).
+- EN: In Android Ops Center, the current mode state is now shown directly under the `⚡ Ops Center` title (for example, `Now: quiet mode`).
+- RU: В Android Оперативном центре текущее состояние режима теперь показывается сразу под заголовком `⚡ Оперативный центр` (например, `Сейчас: тихий режим`).
+- EN: The mode-switch tile now displays only a short status (`auto` / `quiet` / `loud` / `...`) instead of full verbose text.
+- RU: Плашка-переключатель режима теперь показывает только короткий статус (`авто` / `тихо` / `громко` / `...`) вместо длинного текста.
+- EN: SemVer patch bump to `8.56.47`; synchronized explicit current-version mentions across project files and Android metadata (`ANDROID_VERSION_CODE=625`).
+- RU: Выполнен SemVer patch-бамп до `8.56.47`; синхронизированы явные упоминания текущей версии в файлах проекта и Android-метаданные (`ANDROID_VERSION_CODE=625`).
 
 ## [8.56.45] - 2026-04-23
 
