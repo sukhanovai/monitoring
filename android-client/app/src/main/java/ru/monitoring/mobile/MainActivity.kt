@@ -4552,8 +4552,14 @@ private fun MonitoringApp(
                                             card = card,
                                             onClick = {
                                                 zfsDetailsHostName = card.hostName
-                                                zfsStatusDetailsFallbackText = formatZfsHostDetails(card)
+                                                zfsStatusDetailsFallbackText = ""
                                                 showZfsHostDetailsDialog = true
+                                                val detailsAction = card.action?.trim().orEmpty()
+                                                if (detailsAction.isNotBlank()) {
+                                                    onAction(detailsAction)
+                                                } else {
+                                                    zfsStatusDetailsFallbackText = formatZfsHostDetails(card)
+                                                }
                                             },
                                             onLongClick = {
                                                 val hostGroup = monitoringByHost[card.hostName.trim().lowercase()]
