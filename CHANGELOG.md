@@ -1,3 +1,11 @@
+## [8.56.46] - 2026-04-23
+
+### Improved / Улучшено
+- EN: In Android Ops Center, metric tiles now stretch to fill available row width (including landscape orientation), reducing empty horizontal gaps after screen rotation.
+- RU: В Android Оперативном центре плашки метрик теперь растягиваются на всю доступную ширину строки (включая ландшафтную ориентацию), поэтому после поворота экрана не остаются пустые горизонтальные зоны.
+- EN: SemVer patch bump to `8.56.46`; synchronized explicit current-version mentions across project files and Android metadata (`ANDROID_VERSION_CODE=624`).
+- RU: Выполнен SemVer patch-бамп до `8.56.46`; синхронизированы явные упоминания текущей версии в файлах проекта и Android-метаданные (`ANDROID_VERSION_CODE=624`).
+
 ## [8.56.45] - 2026-04-23
 
 ### Fixed / Исправлено
