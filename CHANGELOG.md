@@ -1,3 +1,11 @@
+## [8.56.42] - 2026-04-23
+
+### Fixed / Исправлено
+- EN: Fixed Android Ops Center tile `🧊 Статусы ZFS`: host-card tap now requests host details using the host action from menu options, so dialog data is fetched from DB/backend instead of showing only local fallback text.
+- RU: Исправлена плашка `🧊 Статусы ZFS` в Android Оперативном центре: тап по карточке хоста теперь отправляет action хоста из menu options и подтягивает данные из БД/backend, а не показывает только локальный fallback-текст.
+- EN: SemVer patch bump to `8.56.42`; synchronized explicit current-version mentions across project files and Android metadata (`ANDROID_VERSION_CODE=620`).
+- RU: Выполнен SemVer patch-бамп до `8.56.42`; синхронизированы явные упоминания текущей версии в файлах проекта и Android-метаданные (`ANDROID_VERSION_CODE=620`).
+
 ## [8.56.41] - 2026-04-23
 
 ### Fixed / Исправлено
