@@ -1,10 +1,12 @@
-## [8.56.33] - 2026-04-22
+## [8.56.34] - 2026-04-23
 
 ### Improved / Улучшено
-- EN: In Android dialogs for `💾 Бэкапы Proxmox` and `🗃️ Бэкапы БД`, header controls (`✖`, `⚙️`, `?`, `+`) were restyled to match the visual behavior of the `ресурсы` tile: icon-based close/settings/add buttons and unified compact action group.
-- RU: В Android-диалогах `💾 Бэкапы Proxmox` и `🗃️ Бэкапы БД` кнопки заголовка (`✖`, `⚙️`, `?`, `+`) переработаны под стиль плашки `ресурсы`: иконки для закрытия/настроек/добавления и единая компактная группа действий.
-- EN: SemVer patch bump to `8.56.33`; synchronized explicit current-version mentions across backend modules/config/docs/scripts and Android metadata (`ANDROID_VERSION_CODE=611`).
-- RU: Выполнен SemVer patch-бамп до `8.56.33`; синхронизированы явные упоминания текущей версии в backend-модулях/конфигурации/документации/скриптах и Android-метаданные (`ANDROID_VERSION_CODE=611`).
+- EN: In Android dialogs for `💾 Бэкапы Proxmox` and `🗃️ Бэкапы БД`, tap behavior on backup tiles was aligned toward quick actions: Proxmox host cards now open the host action sheet directly on tap.
+- RU: В Android-диалогах `💾 Бэкапы Proxmox` и `🗃️ Бэкапы БД` выровнено поведение тапа по плашкам: карточки Proxmox-хостов теперь открывают карточку действий сразу по тапу.
+- EN: Removed the background substrate under header controls (`✖`, `⚙️`, `?`, `+`) in both dialogs to make icon actions visually cleaner.
+- RU: Убрана подложка под кнопками заголовка (`✖`, `⚙️`, `?`, `+`) в обоих диалогах, чтобы иконки выглядели чище.
+- EN: SemVer patch bump to `8.56.34`; synchronized explicit current-version mentions across backend modules/config/docs/scripts and Android metadata (`ANDROID_VERSION_CODE=612`).
+- RU: Выполнен SemVer patch-бамп до `8.56.34`; синхронизированы явные упоминания текущей версии в backend-модулях/конфигурации/документации/скриптах и Android-метаданные (`ANDROID_VERSION_CODE=612`).
 
 ## [8.56.31] - 2026-04-22
 
