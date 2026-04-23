@@ -1,12 +1,10 @@
-## [8.56.32] - 2026-04-22
+## [8.56.33] - 2026-04-22
 
-### Fixed / Исправлено
-- EN: Restored explicit header controls in Android backup dialogs (`✖`, `⚙`, `?`, `+`) so they are displayed with the same symbol style as before for Proxmox, DB, and Mail backup flows.
-- RU: В Android-диалогах бэкапов восстановлены явные кнопки заголовка (`✖`, `⚙`, `?`, `+`) в прежнем символьном стиле для сценариев Proxmox, БД и почты.
-- EN: In the Android `🧊 zfs статусы` help text, added concrete status examples (`ONLINE`, `DEGRADED`, `FAULTED`/`OFFLINE`) to clarify expected states.
-- RU: В справке Android-диалога `🧊 zfs статусы` добавлены конкретные примеры состояний (`ONLINE`, `DEGRADED`, `FAULTED`/`OFFLINE`) для более понятной интерпретации статусов.
-- EN: SemVer patch bump to `8.56.32`; synchronized explicit current-version mentions across backend modules/config/docs/scripts and Android metadata (`ANDROID_VERSION_CODE=610`).
-- RU: Выполнен SemVer patch-бамп до `8.56.32`; синхронизированы явные упоминания текущей версии в backend-модулях/конфигурации/документации/скриптах и Android-метаданные (`ANDROID_VERSION_CODE=610`).
+### Improved / Улучшено
+- EN: In Android dialogs for `💾 Бэкапы Proxmox` and `🗃️ Бэкапы БД`, header controls (`✖`, `⚙️`, `?`, `+`) were restyled to match the visual behavior of the `ресурсы` tile: icon-based close/settings/add buttons and unified compact action group.
+- RU: В Android-диалогах `💾 Бэкапы Proxmox` и `🗃️ Бэкапы БД` кнопки заголовка (`✖`, `⚙️`, `?`, `+`) переработаны под стиль плашки `ресурсы`: иконки для закрытия/настроек/добавления и единая компактная группа действий.
+- EN: SemVer patch bump to `8.56.33`; synchronized explicit current-version mentions across backend modules/config/docs/scripts and Android metadata (`ANDROID_VERSION_CODE=611`).
+- RU: Выполнен SemVer patch-бамп до `8.56.33`; синхронизированы явные упоминания текущей версии в backend-модулях/конфигурации/документации/скриптах и Android-метаданные (`ANDROID_VERSION_CODE=611`).
 
 ## [8.56.31] - 2026-04-22
 

@@ -5523,13 +5523,16 @@ private fun MonitoringApp(
                         horizontalArrangement = Arrangement.spacedBy(2.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        FilledIconButton(
+                        IconButton(
                             modifier = Modifier.size(34.dp),
                             onClick = { showProxmoxBackupsDialog = false }
                         ) {
-                            Text("✖", fontWeight = FontWeight.Bold)
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "Закрыть бэкапы Proxmox"
+                            )
                         }
-                        FilledIconButton(
+                        IconButton(
                             modifier = Modifier.size(34.dp),
                             onClick = {
                                 openTileHelpDialog(
@@ -5542,7 +5545,7 @@ private fun MonitoringApp(
                         ) {
                             Text("?", fontWeight = FontWeight.Bold)
                         }
-                        FilledIconButton(
+                        IconButton(
                             modifier = Modifier.size(34.dp),
                             onClick = {
                                 patternDialogReturnAction = "settings_patterns_proxmox"
@@ -5550,16 +5553,22 @@ private fun MonitoringApp(
                                 showProxmoxPatternsDialog = true
                             }
                         ) {
-                            Text("⚙", fontWeight = FontWeight.Bold)
+                            Icon(
+                                imageVector = Icons.Filled.Settings,
+                                contentDescription = "Открыть паттерны Proxmox"
+                            )
                         }
-                        FilledIconButton(
+                        IconButton(
                             modifier = Modifier.size(34.dp),
                             onClick = {
                                 proxmoxServerNameInput = ""
                                 showProxmoxServerAddDialog = true
                             }
                         ) {
-                            Text("+", fontWeight = FontWeight.Bold)
+                            Icon(
+                                imageVector = Icons.Filled.Add,
+                                contentDescription = "Добавить хост Proxmox"
+                            )
                         }
                     }
                 }
@@ -6190,13 +6199,16 @@ private fun MonitoringApp(
                         horizontalArrangement = Arrangement.spacedBy(2.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        FilledIconButton(
+                        IconButton(
                             modifier = Modifier.size(34.dp),
                             onClick = { showDatabaseBackupsDialog = false }
                         ) {
-                            Text("✖", fontWeight = FontWeight.Bold)
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "Закрыть бэкапы БД"
+                            )
                         }
-                        FilledIconButton(
+                        IconButton(
                             modifier = Modifier.size(34.dp),
                             onClick = {
                                 openTileHelpDialog(
@@ -6209,16 +6221,19 @@ private fun MonitoringApp(
                         ) {
                             Text("?", fontWeight = FontWeight.Bold)
                         }
-                        FilledIconButton(
+                        IconButton(
                             modifier = Modifier.size(34.dp),
                             onClick = {
                                 onExtensionsSettingsAction("settings_patterns_db")
                                 showDatabasePatternsDialog = true
                             }
                         ) {
-                            Text("⚙", fontWeight = FontWeight.Bold)
+                            Icon(
+                                imageVector = Icons.Filled.Settings,
+                                contentDescription = "Открыть паттерны БД"
+                            )
                         }
-                        FilledIconButton(
+                        IconButton(
                             modifier = Modifier.size(34.dp),
                             onClick = {
                                 dbEntryAddCategory = ""
@@ -6227,7 +6242,10 @@ private fun MonitoringApp(
                                 showDbOpsEntryAddDialog = true
                             }
                         ) {
-                            Text("+", fontWeight = FontWeight.Bold)
+                            Icon(
+                                imageVector = Icons.Filled.Add,
+                                contentDescription = "Добавить запись БД"
+                            )
                         }
                     }
                 }
