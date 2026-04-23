@@ -267,8 +267,10 @@ private fun resolveMenuOptionAction(option: ru.monitoring.mobile.api.MenuOption)
 }
 
 private val zfsStatusLineRegex = Regex("""^•\s*(.+?):\s*([A-Za-z_]+)\s*\((.+)\)$""")
+private val zfsStatusEmojiPoolLineRegex = Regex("""^[🟢🟡🔴⚪❌⚠️✅✔️]\s*`?([^`]+?)`?\s*:\s*`?([^`()]+?)`?\s*\((.+)\)$""")
 private val zfsDateTimeRegex = Regex("""(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})(?::\d{2})?""")
 private val zfsHostHeaderRegex = Regex("""^[A-Za-z0-9._:-]+$""")
+private val zfsHostHeaderMarkdownRegex = Regex("""^[🖥💻]\s*\*([^*]+)\*\s*$""")
 private val zfsServerSummaryLineRegex = Regex("""^[⚪🟢🔴]️?\s*\*?`?([^*`·]+?)`?\*?\s*·\s*\d+/\d+\s*·\s*(.+)$""")
 private val zfsTotalHostsLineRegex = Regex("""(?i)^\s*всего\s+хостов\s*:\s*(\d+)\s*$""")
 private val resourcePercentRegex = Regex("""(\d{1,3})\s*%""")
@@ -503,6 +505,12 @@ private fun parseZfsStatusCardsFromMessage(message: String): List<ZfsStatusCardI
         if (line.isBlank()) return@forEach
         if (line.startsWith("📊") || line.startsWith("🧊") || line.startsWith("❌")) return@forEach
 
+        val markdownHostHeaderMatch = zfsHostHeaderMarkdownRegex.matchEntire(line)
+        if (markdownHostHeaderMatch != null) {
+            currentHost = markdownHostHeaderMatch.groupValues.getOrNull(1)?.trim().orEmpty()
+            return@forEach
+        }
+
         val serverSummaryMatch = zfsServerSummaryLineRegex.matchEntire(line)
         if (serverSummaryMatch != null) {
             val hostName = serverSummaryMatch.groupValues.getOrNull(1)?.trim().orEmpty()
@@ -549,6 +557,26 @@ private fun parseZfsStatusCardsFromMessage(message: String): List<ZfsStatusCardI
             poolsByHost.getOrPut(hostName) { mutableListOf() }.add(poolItem)
             return@forEach
         }
+
+        val emojiPoolMatch = zfsStatusEmojiPoolLineRegex.matchEntire(line)
+        if (emojiPoolMatch != null) {
+            val poolName = emojiPoolMatch.groupValues.getOrNull(1)?.trim().orEmpty()
+            val state = emojiPoolMatch.groupValues.getOrNull(2)?.trim().orEmpty()
+            val timestamp = emojiPoolMatch.groupValues.getOrNull(3)?.trim().orEmpty()
+            val hostName = currentHost
+            if (poolName.isBlank() || state.isBlank() || hostName.isBlank()) return@forEach
+            val poolItem = ZfsPoolStatusItem(
+                poolName = poolName,
+                statusLabel = zfsStateLabel(state),
+                rawState = state.uppercase(),
+                rawTimestamp = timestamp,
+                compactTimestamp = compactZfsTimestamp(timestamp),
+                hasProblem = !state.equals("ONLINE", ignoreCase = true)
+            )
+            poolsByHost.getOrPut(hostName) { mutableListOf() }.add(poolItem)
+            return@forEach
+        }
+
         if (zfsHostHeaderRegex.matches(line)) {
             currentHost = line
         }
