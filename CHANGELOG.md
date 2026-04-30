@@ -1,3 +1,8 @@
+## [8.56.69] - 2026-04-30
+
+- EN: SemVer patch bump to `8.56.69`; synchronized explicit current-version mentions across project files and updated Android metadata to `ANDROID_VERSION_NAME=8.56.69` and `ANDROID_VERSION_CODE=644`.
+- RU: Выполнен SemVer patch-бамп до `8.56.69`; синхронизированы явные упоминания текущей версии во всех файлах проекта и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.56.69` и `ANDROID_VERSION_CODE=644`.
+
 ## [8.56.68] - 2026-04-30
 - EN: Fixed snapshot-transfer parsing fallback in mail monitor: if user-defined patterns miss a valid subject, parser now retries with built-in generic pattern `snapshots transfer <host> <status>` and no longer drops valid `STARTED` notifications.
 - RU: Исправлен fallback парсинга snapshot-transfer в mail monitor: если пользовательские паттерны не совпали с валидной темой, парсер повторяет проверку встроенным универсальным паттерном `snapshots transfer <host> <status>` и больше не теряет валидные уведомления `STARTED`.
