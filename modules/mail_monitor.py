@@ -933,6 +933,11 @@ class BackupProcessor:
             match = re.search(pattern, subject, re.IGNORECASE)
             if match:
                 break
+
+        if not match:
+            fallback_pattern = r"^snapshots transfer (?P<host>[\w.-]+) (?P<status>STARTED|SUCCESS|SKIPPED|ERROR|BUSY)$"
+            match = re.search(fallback_pattern, subject, re.IGNORECASE)
+
         if not match:
             return None
 
