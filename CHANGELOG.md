@@ -1,10 +1,16 @@
-## [8.56.55] - 2026-04-30
+## [8.56.56] - 2026-04-30
 
-- EN: Fixed snapshot transfer settings callbacks: restored missing `set_setting_handler`, added dedicated snapshot-transfer pattern filtering and wiring for “Add pattern” so it saves into `snapshot_transfer` category.
-- RU: Исправлены callback-обработчики настроек передач снэпшотов: восстановлен отсутствующий `set_setting_handler`, добавлена отдельная фильтрация паттернов и корректная обработка кнопки «Добавить паттерн» с сохранением в категорию `snapshot_transfer`.
+- EN: Snapshot Transfer settings menu updated: removed global start-time item and removed back button from the Snapshot Transfer patterns screen.
+- RU: Обновлено меню «Передачи снэпшотов»: убран общий пункт времени старта и удалена кнопка «Назад» на экране паттернов передачи.
+- EN: Snapshot Transfer hosts screen now shows host list and management buttons (edit, enable/disable, delete, per-host start time).
+- RU: Экран хостов передач снэпшотов теперь показывает список хостов и кнопки управления (редактирование, вкл/выкл, удаление, индивидуальное время старта).
+- EN: Fixed non-working “Add pattern” button for Snapshot Transfer patterns by adding callback routing.
+- RU: Исправлена неработающая кнопка «Добавить паттерн» в паттернах передач снэпшотов за счёт корректной маршрутизации callback.
+- EN: Removed “📸 Snapshot Transfers” entry from Settings → Extensions section.
+- RU: Удалена кнопка «📸 Передачи снэпшотов» из раздела «Настройки → Расширения».
 
-- EN: Synchronized explicit current-version mentions to `8.56.55` across project files; Android metadata updated to `ANDROID_VERSION_NAME=8.56.55` and `ANDROID_VERSION_CODE=630`.
-- RU: Синхронизированы явные упоминания текущей версии до `8.56.55` во всех файлах проекта; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.55` и `ANDROID_VERSION_CODE=630`.
+- EN: SemVer patch bump to `8.56.56`; synchronized explicit current-version mentions across project files; Android metadata updated to `ANDROID_VERSION_NAME=8.56.56` and `ANDROID_VERSION_CODE=631`.
+- RU: Выполнен SemVer patch-бамп до `8.56.56`; синхронизированы явные упоминания текущей версии во всех файлах проекта; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.56` и `ANDROID_VERSION_CODE=631`.
 
 ## [8.56.54] - 2026-04-30
 
