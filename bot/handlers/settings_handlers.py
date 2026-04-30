@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.56.71
+Server Monitoring System v8.56.72
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.56.71
+Версия: 8.56.72
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -3133,7 +3133,7 @@ def show_snapshot_transfer_settings(update, context):
 
     if snapshot_patterns:
         for idx, pattern in enumerate(snapshot_patterns, 1):
-            message += f"{idx}. subject: `{_escape_markdown(pattern)}`\n"
+            message += f"{idx}. subject: `{escape_markdown(pattern)}`\n"
     else:
         message += "Паттерны пока не добавлены.\n"
 
@@ -3144,8 +3144,8 @@ def show_snapshot_transfer_settings(update, context):
             start_time = cfg.get('start_time', '00:00')
             status = "🟢" if enabled else "🔴"
             message += (
-                f"{idx}. {status} `{_escape_markdown(host_name)}` "
-                f"(старт: `{_escape_markdown(start_time)}`)\n"
+                f"{idx}. {status} `{escape_markdown(host_name)}` "
+                f"(старт: `{escape_markdown(start_time)}`)\n"
             )
     else:
         message += "Список хостов пуст.\n"
