@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.56.53
+Server Monitoring System v8.56.54
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.56.53
+Версия: 8.56.54
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -1003,6 +1003,8 @@ def settings_callback_handler(update, context):
             show_stock_load_settings(update, context)
         elif data == 'settings_ext_supplier_stock':
             show_supplier_stock_settings(update, context)
+        elif data == 'settings_snapshot_menu':
+            show_snapshot_transfer_settings(update, context)
         elif data == 'settings_patterns_db':
             show_db_patterns_menu(update, context)
         elif data == 'settings_patterns_db_from_backup':
@@ -1015,6 +1017,16 @@ def settings_callback_handler(update, context):
             show_mail_patterns_menu(update, context)
         elif data == 'settings_patterns_stock':
             show_stock_load_patterns_menu(update, context)
+        elif data == 'settings_snapshot_hosts':
+            set_setting_handler(update, context, 'SNAPSHOT_TRANSFER_HOSTS')
+        elif data == 'settings_snapshot_patterns':
+            context.user_data['patterns_filter'] = 'snapshot_transfer'
+            context.user_data['patterns_back'] = 'settings_snapshot_menu'
+            context.user_data['patterns_add'] = 'add_snapshot_pattern'
+            context.user_data['patterns_title'] = "📸 *Паттерны передач снэпшотов*"
+            view_patterns_handler(update, context)
+        elif data == 'settings_snapshot_start_time':
+            set_setting_handler(update, context, 'BACKUP_START_TIME')
         elif data == 'settings_web':
             show_web_settings(update, context)
         elif data == 'settings_view_all':
@@ -2891,6 +2903,9 @@ def show_settings_extensions_menu(update, context):
     if extension_manager.is_extension_enabled(SUPPLIER_STOCK_EXTENSION_ID):
         keyboard.append([InlineKeyboardButton("📦 Остатки поставщиков", callback_data='settings_ext_supplier_stock')])
 
+    if extension_manager.is_extension_enabled('snapshot_transfer_monitor'):
+        keyboard.append([InlineKeyboardButton("📸 Передачи снэпшотов", callback_data='settings_snapshot_menu')])
+
     keyboard.extend([
         [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
@@ -2902,6 +2917,33 @@ def show_settings_extensions_menu(update, context):
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
+def show_snapshot_transfer_settings(update, context):
+    """Показать настройки мониторинга передач снэпшотов"""
+    query = update.callback_query
+    query.answer()
+
+    message = (
+        "📸 *Передачи снэпшотов*\n\n"
+        "Здесь настраивается мониторинг передач снэпшотов: список хостов, "
+        "паттерны писем и время старта проверки."
+    )
+
+    keyboard = [
+        [InlineKeyboardButton("📋 Хосты", callback_data='settings_snapshot_hosts')],
+        [InlineKeyboardButton("🔍 Паттерны", callback_data='settings_snapshot_patterns')],
+        [InlineKeyboardButton("⏰ Время старта", callback_data='settings_snapshot_start_time')],
+        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_extensions'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
+    ]
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
 
 def show_extensions_settings_menu(update, context):
     """Показать управление расширениями с возвратом в настройки"""
