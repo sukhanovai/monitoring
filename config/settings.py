@@ -1,11 +1,11 @@
 """
 /config/settings.py
-Server Monitoring System v8.56.47
+Server Monitoring System v8.56.49
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Application settings - default values
 Система мониторинга серверов
-Версия: 8.56.47
+Версия: 8.56.49
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Настройки приложения - значения по умолчанию
@@ -22,10 +22,10 @@ from lib.utils import is_proxmox_server
 DEBUG_MODE = False
 
 # Версия приложения
-APP_VERSION = "8.56.47"
-ANDROID_APP_VERSION = "8.56.47"
-ANDROID_MIN_SUPPORTED_VERSION = "8.56.47"
-ANDROID_LATEST_VERSION = "8.56.47"
+APP_VERSION = "8.56.49"
+ANDROID_APP_VERSION = "8.56.49"
+ANDROID_MIN_SUPPORTED_VERSION = "8.56.49"
+ANDROID_LATEST_VERSION = "8.56.49"
 ANDROID_APK_DOWNLOAD_URL = os.environ.get(
     "ANDROID_APK_DOWNLOAD_URL",
     "https://github.com/sukhanovai/monitoring/releases/latest",
@@ -169,6 +169,11 @@ BACKUP_PATTERNS: Dict[str, Dict[str, List[str]]] = {
             r"^\s*бэкап\s+zimbra\s*-\s*"
             r"(?P<size>\d+(?:[.,]\d+)?\s*[TGMK]?(?:i?B)?)\s+"
             r"(?P<path>/\S+)\s*$"
+        ]
+    },
+    "snapshot_transfer": {
+        "subject": [
+            r"^snapshots transfer (?P<host>[\w.-]+) (?P<status>STARTED|SUCCESS|SKIPPED|ERROR|BUSY)$"
         ]
     },
     "stock_load": {

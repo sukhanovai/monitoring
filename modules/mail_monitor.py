@@ -1,11 +1,11 @@
 """
 /modules/mail_monitor.py
-Server Monitoring System v8.56.47
+Server Monitoring System v8.56.49
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Mailbox monitoring
 Система мониторинга серверов
-Версия: 8.56.47
+Версия: 8.56.49
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг почтового ящика
@@ -144,6 +144,31 @@ def get_zfs_patterns_from_config() -> list[str]:
 
     except Exception as exc:
         logger.error(f"❌ Ошибка извлечения ZFS паттернов: {exc}")
+        return []
+
+
+def get_snapshot_transfer_patterns_from_config() -> list[str]:
+    """Извлекает паттерны для писем о передаче снэпшотов."""
+    try:
+        patterns = config_manager.get_backup_patterns()
+        transfer_patterns = patterns.get("snapshot_transfer", {})
+        subject_patterns: list[str] = []
+
+        if isinstance(transfer_patterns, dict):
+            subject_patterns = transfer_patterns.get("subject", [])
+        elif isinstance(transfer_patterns, list):
+            subject_patterns = transfer_patterns
+
+        if not subject_patterns:
+            fallback = BACKUP_PATTERNS.get("snapshot_transfer", {})
+            if isinstance(fallback, dict):
+                subject_patterns = fallback.get("subject", [])
+            elif isinstance(fallback, list):
+                subject_patterns = fallback
+
+        return [pattern for pattern in subject_patterns if isinstance(pattern, str)]
+    except Exception as exc:
+        logger.error(f"❌ Ошибка извлечения паттернов передачи снэпшотов: {exc}")
         return []
 
 
@@ -382,6 +407,31 @@ class BackupProcessor:
                 """
                 CREATE INDEX IF NOT EXISTS idx_zfs_server_date
                 ON zfs_pool_status(server_name, received_at)
+            """
+            )
+
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS snapshot_transfers (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    host_name TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    snapshot_name TEXT,
+                    method TEXT,
+                    start_snapshot TEXT,
+                    size_text TEXT,
+                    started_at_text TEXT,
+                    completed_at_text TEXT,
+                    duration_text TEXT,
+                    email_subject TEXT,
+                    received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """
+            )
+            cursor.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_snapshot_transfers_host_date
+                ON snapshot_transfers(host_name, received_at)
             """
             )
 
@@ -842,6 +892,90 @@ class BackupProcessor:
             "total_size": size,
             "backup_path": path,
         }
+
+    def parse_snapshot_transfer(self, subject: str, body: str) -> dict | None:
+        """Парсит статус передачи ZFS-снэпшотов из темы и тела письма."""
+        if not extension_manager.is_extension_enabled("snapshot_transfer_monitor"):
+            return None
+
+        patterns = get_snapshot_transfer_patterns_from_config()
+        if not patterns:
+            return None
+
+        match = None
+        for pattern in patterns:
+            match = re.search(pattern, subject, re.IGNORECASE)
+            if match:
+                break
+        if not match:
+            return None
+
+        host_name = (match.groupdict().get("host") or match.group(1) if match.lastindex else "").strip()
+        status = (match.groupdict().get("status") or "").upper().strip()
+        if not host_name or not status:
+            return None
+
+        def _extract(pattern: str) -> str | None:
+            local = re.search(pattern, body, re.IGNORECASE | re.MULTILINE)
+            if not local:
+                return None
+            value = local.group(1).strip()
+            return value or None
+
+        return {
+            "host_name": host_name,
+            "status": status,
+            "snapshot_name": _extract(r"Снапшот:\s*(.+)"),
+            "method": _extract(r"Метод:\s*(.+)"),
+            "start_snapshot": _extract(r"Старт:\s*(.+)"),
+            "size_text": _extract(r"Размер:\s*(.+)"),
+            "started_at_text": _extract(r"Начало:\s*(.+)"),
+            "completed_at_text": _extract(r"Завершено:\s*(.+)"),
+            "duration_text": _extract(r"Длительность:\s*(.+)"),
+        }
+
+    def save_snapshot_transfer(
+        self,
+        transfer_info: dict,
+        subject: str,
+        email_date: datetime | None = None,
+    ) -> None:
+        """Сохраняет статус передачи снэпшотов в БД."""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            received_at = (
+                email_date.strftime("%Y-%m-%d %H:%M:%S")
+                if email_date
+                else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            )
+            cursor.execute(
+                """
+                INSERT INTO snapshot_transfers
+                (host_name, status, snapshot_name, method, start_snapshot, size_text,
+                 started_at_text, completed_at_text, duration_text, email_subject, received_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    transfer_info["host_name"],
+                    transfer_info["status"],
+                    transfer_info.get("snapshot_name"),
+                    transfer_info.get("method"),
+                    transfer_info.get("start_snapshot"),
+                    transfer_info.get("size_text"),
+                    transfer_info.get("started_at_text"),
+                    transfer_info.get("completed_at_text"),
+                    transfer_info.get("duration_text"),
+                    subject[:500],
+                    received_at,
+                ),
+            )
+            conn.commit()
+        except Exception as exc:
+            logger.error(f"❌ Ошибка сохранения статуса передачи снэпшотов: {exc}")
+        finally:
+            if "conn" in locals():
+                conn.close()
 
     def save_mail_backup(
         self,
@@ -1641,6 +1775,11 @@ class BackupProcessor:
             if zfs_entries:
                 self.save_zfs_status(zfs_entries, subject, email_date)
                 return {"zfs_entries": zfs_entries}
+
+            snapshot_transfer = self.parse_snapshot_transfer(subject, self.get_email_body(msg))
+            if snapshot_transfer:
+                self.save_snapshot_transfer(snapshot_transfer, subject, email_date)
+                return {"snapshot_transfer": snapshot_transfer}
 
             mail_backup_info = self.parse_mail_backup(subject)
             if mail_backup_info:
