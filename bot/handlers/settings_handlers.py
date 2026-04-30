@@ -1030,6 +1030,7 @@ def settings_callback_handler(update, context):
             context.user_data['patterns_title'] = "📸 *Паттерны передач снэпшотов*"
             view_patterns_handler(update, context)
         elif data == 'add_snapshot_pattern':
+            _clear_snapshot_host_input_state(context)
             add_snapshot_pattern_handler(update, context)
         elif data == 'settings_web':
             show_web_settings(update, context)
@@ -1802,8 +1803,10 @@ def settings_callback_handler(update, context):
         elif data == 'add_mail_pattern':
             add_mail_pattern_handler(update, context)
         elif data == 'add_snapshot_pattern':
+            _clear_snapshot_host_input_state(context)
             add_snapshot_pattern_handler(update, context)
         elif data == 'snapshot_host_add':
+            _clear_snapshot_host_input_state(context)
             context.user_data['adding_snapshot_host'] = True
             context.user_data['snapshot_add_back_callback'] = 'settings_snapshot_hosts'
             query.edit_message_text(
@@ -1814,6 +1817,7 @@ def settings_callback_handler(update, context):
             )
         elif data.startswith('snapshot_host_edit|'):
             _, host_name = data.split('|', 1)
+            _clear_snapshot_host_input_state(context)
             context.user_data['editing_snapshot_host_name'] = host_name
             context.user_data['snapshot_add_back_callback'] = 'settings_snapshot_hosts'
             query.edit_message_text(
@@ -1831,6 +1835,7 @@ def settings_callback_handler(update, context):
             show_snapshot_hosts_menu(update, context)
         elif data.startswith('snapshot_host_start|'):
             _, host_name = data.split('|', 1)
+            _clear_snapshot_host_input_state(context)
             context.user_data['editing_snapshot_start_time'] = host_name
             context.user_data['snapshot_add_back_callback'] = 'settings_snapshot_hosts'
             query.edit_message_text(
@@ -2188,6 +2193,13 @@ def delete_snapshot_host_handler(update, context, host_name: str) -> None:
         _save_snapshot_hosts_config(hosts)
 
 
+
+
+def _clear_snapshot_host_input_state(context) -> None:
+    """Сбросить флаги текстового ввода для хостов/времени снэпшотов."""
+    for key in ('adding_snapshot_host', 'editing_snapshot_host_name', 'editing_snapshot_start_time'):
+        context.user_data.pop(key, None)
+
 def handle_snapshot_host_text_input(update, context) -> bool:
     text = (update.message.text or '').strip()
     if context.user_data.get('adding_snapshot_host'):
@@ -2200,7 +2212,7 @@ def handle_snapshot_host_text_input(update, context) -> bool:
             return True
         hosts[text] = {'enabled': True, 'start_time': '03:00'}
         _save_snapshot_hosts_config(hosts)
-        context.user_data.pop('adding_snapshot_host', None)
+        _clear_snapshot_host_input_state(context)
         update.message.reply_text('✅ Хост добавлен.')
         return True
 
@@ -2220,7 +2232,7 @@ def handle_snapshot_host_text_input(update, context) -> bool:
             return True
         hosts[new_name] = hosts.pop(old_name)
         _save_snapshot_hosts_config(hosts)
-        context.user_data.pop('editing_snapshot_host_name', None)
+        _clear_snapshot_host_input_state(context)
         update.message.reply_text('✅ Имя хоста обновлено.')
         return True
 
@@ -2238,7 +2250,7 @@ def handle_snapshot_host_text_input(update, context) -> bool:
         host_cfg['start_time'] = text
         hosts[edit_start] = host_cfg
         _save_snapshot_hosts_config(hosts)
-        context.user_data.pop('editing_snapshot_start_time', None)
+        _clear_snapshot_host_input_state(context)
         update.message.reply_text('✅ Время старта обновлено.')
         return True
 

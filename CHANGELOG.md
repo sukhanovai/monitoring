@@ -1,3 +1,9 @@
+## [8.56.59] - 2026-04-30
+- EN: Fixed snapshot-transfer Telegram settings flow: host start-time input no longer leaks into host rename and pattern-add flows; conflicting snapshot host input states are reset before entering each action.
+- RU: Исправлен поток Telegram-настроек передач снэпшотов: ввод времени старта больше не перехватывает переименование хоста и добавление паттерна; конфликтующие состояния ввода сбрасываются перед запуском каждого действия.
+- EN: SemVer patch bump to `8.56.59`; synchronized current version mentions and Android metadata updated to `ANDROID_VERSION_NAME=8.56.59` and `ANDROID_VERSION_CODE=634`.
+- RU: Выполнен SemVer patch-бамп до `8.56.59`; синхронизированы упоминания текущей версии и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.56.59` и `ANDROID_VERSION_CODE=634`.
+
 ## [8.56.58] - 2026-04-30
 
 - EN: Snapshot Transfer settings menu updated: removed global start-time item and removed back button from the Snapshot Transfer patterns screen.
