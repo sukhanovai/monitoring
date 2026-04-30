@@ -1,11 +1,11 @@
 """
 /bot/handlers/callbacks.py
-Server Monitoring System v8.56.51
+Server Monitoring System v8.56.52
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 A single router for callbacks.
 Система мониторинга серверов
-Версия: 8.56.51
+Версия: 8.56.52
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единый router callback’ов.
@@ -310,14 +310,9 @@ def callback_router(update, context):
         if not extension_manager.is_extension_enabled("snapshot_transfer_monitor"):
             query.edit_message_text("📸 Мониторинг передачи снэпшотов отключён")
             return
-        query.edit_message_text(
-            "📸 Мониторинг передачи снэпшотов включён.\n\n"
-            "Управление доступно в разделе «🛠️ Расширения».",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🛠️ Расширения", callback_data='extensions_menu')],
-                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-            ]),
-        )
+        from bot.handlers.settings_handlers import show_zfs_main_menu
+        show_zfs_main_menu(update, context)
+
 
     elif data in ('full_report', 'daily_report'):
         # в monitor_core это один и тот же handler в старом меню
