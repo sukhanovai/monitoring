@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.56.55
+Server Monitoring System v8.56.56
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.56.55
+Версия: 8.56.56
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -49,6 +49,7 @@ BACKUP_SETTINGS_CALLBACKS = {
     'add_proxmox_pattern',
     'add_mail_pattern',
     'add_stock_pattern',
+    'add_snapshot_pattern',
     'edit_mail_default_pattern',
     'mail_pattern_confirm',
     'mail_pattern_retry',
@@ -1018,15 +1019,13 @@ def settings_callback_handler(update, context):
         elif data == 'settings_patterns_stock':
             show_stock_load_patterns_menu(update, context)
         elif data == 'settings_snapshot_hosts':
-            set_setting_handler(update, context, 'SNAPSHOT_TRANSFER_HOSTS')
+            show_snapshot_hosts_menu(update, context)
         elif data == 'settings_snapshot_patterns':
             context.user_data['patterns_filter'] = 'snapshot_transfer'
             context.user_data['patterns_back'] = 'settings_snapshot_menu'
             context.user_data['patterns_add'] = 'add_snapshot_pattern'
             context.user_data['patterns_title'] = "📸 *Паттерны передач снэпшотов*"
             view_patterns_handler(update, context)
-        elif data == 'settings_snapshot_start_time':
-            set_setting_handler(update, context, 'BACKUP_START_TIME')
         elif data == 'add_snapshot_pattern':
             add_snapshot_pattern_handler(update, context)
         elif data == 'settings_web':
@@ -2088,6 +2087,44 @@ def set_setting_handler(update, context, setting_key):
     normalized_key = key_map.get(setting_key, str(setting_key or '').lower())
     handle_setting_input(update, context, normalized_key)
 
+def show_snapshot_hosts_menu(update, context):
+    """Показать список и управление хостами передачи снэпшотов."""
+    query = update.callback_query
+    query.answer()
+
+    hosts = settings_manager.get_setting('SNAPSHOT_TRANSFER_HOSTS', {}) or {}
+    if not isinstance(hosts, dict):
+        hosts = {}
+
+    message = "📋 *Хосты передач снэпшотов*\n\n"
+    if not hosts:
+        message += "❌ Список хостов пуст."
+    else:
+        for idx, (host_name, host_cfg) in enumerate(sorted(hosts.items()), start=1):
+            host_cfg = host_cfg if isinstance(host_cfg, dict) else {}
+            enabled = bool(host_cfg.get('enabled', True))
+            start_time = host_cfg.get('start_time', 'не задано')
+            message += f"{idx}. {'🟢' if enabled else '🔴'} `{host_name}` (старт: `{start_time}`)\n"
+
+    keyboard = []
+    for host_name, host_cfg in sorted(hosts.items()):
+        host_cfg = host_cfg if isinstance(host_cfg, dict) else {}
+        enabled = bool(host_cfg.get('enabled', True))
+        keyboard.append([InlineKeyboardButton(f"✏️ {host_name}", callback_data=f"snapshot_host_edit|{host_name}")])
+        keyboard.append([
+            InlineKeyboardButton("🔴 Выключить" if enabled else "🟢 Включить", callback_data=f"snapshot_host_toggle|{host_name}"),
+            InlineKeyboardButton("🗑️ Удалить", callback_data=f"snapshot_host_delete|{host_name}")
+        ])
+        keyboard.append([InlineKeyboardButton("⏰ Время старта", callback_data=f"snapshot_host_start|{host_name}")])
+
+    keyboard.extend([
+        [InlineKeyboardButton("➕ Добавить хост", callback_data='snapshot_host_add')],
+        [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_snapshot_menu'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ])
+    query.edit_message_text(message, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+
 def handle_setting_value(update, context):
     """Обработчик получения значения настройки - ОБНОВЛЕННАЯ ВЕРСИЯ"""
     if handle_zfsp_text_input(update, context):
@@ -2921,9 +2958,6 @@ def show_settings_extensions_menu(update, context):
     if extension_manager.is_extension_enabled(SUPPLIER_STOCK_EXTENSION_ID):
         keyboard.append([InlineKeyboardButton("📦 Остатки поставщиков", callback_data='settings_ext_supplier_stock')])
 
-    if extension_manager.is_extension_enabled('snapshot_transfer_monitor'):
-        keyboard.append([InlineKeyboardButton("📸 Передачи снэпшотов", callback_data='settings_snapshot_menu')])
-
     keyboard.extend([
         [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
@@ -2943,17 +2977,15 @@ def show_snapshot_transfer_settings(update, context):
 
     message = (
         "📸 *Передачи снэпшотов*\n\n"
-        "Здесь настраивается мониторинг передач снэпшотов: список хостов, "
-        "паттерны писем и время старта проверки."
+        "Здесь настраивается мониторинг передач снэпшотов: список хостов "
+        "и паттерны писем."
     )
 
     keyboard = [
         [InlineKeyboardButton("📋 Хосты", callback_data='settings_snapshot_hosts')],
         [InlineKeyboardButton("🔍 Паттерны", callback_data='settings_snapshot_patterns')],
-        [InlineKeyboardButton("⏰ Время старта", callback_data='settings_snapshot_start_time')],
         [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
-        [InlineKeyboardButton("↩️ Назад", callback_data='settings_extensions'),
-         InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
+        [InlineKeyboardButton("✖️ Закрыть", callback_data='close')],
     ]
 
     query.edit_message_text(
@@ -12004,7 +12036,7 @@ def view_patterns_handler(update, context):
         keyboard.append([InlineKeyboardButton("➕ Добавить паттерн", callback_data=add_callback)])
 
     back_callback = context.user_data.get('patterns_back', 'settings_backup')
-    if filter_mode == 'zfs':
+    if filter_mode in {'zfs', 'snapshot_transfer'}:
         keyboard.append([
             InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
             InlineKeyboardButton("✖️ Закрыть", callback_data='close')
