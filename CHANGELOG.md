@@ -1,3 +1,9 @@
+## [8.56.68] - 2026-04-30
+- EN: Fixed snapshot-transfer parsing fallback in mail monitor: if user-defined patterns miss a valid subject, parser now retries with built-in generic pattern `snapshots transfer <host> <status>` and no longer drops valid `STARTED` notifications.
+- RU: Исправлен fallback парсинга snapshot-transfer в mail monitor: если пользовательские паттерны не совпали с валидной темой, парсер повторяет проверку встроенным универсальным паттерном `snapshots transfer <host> <status>` и больше не теряет валидные уведомления `STARTED`.
+- EN: SemVer patch bump to `8.56.68`; synchronized project version mentions and Android metadata updated to `ANDROID_VERSION_NAME=8.56.68` and `ANDROID_VERSION_CODE=643`.
+- RU: Выполнен SemVer patch-бамп до `8.56.68`; синхронизированы упоминания версии в проекте и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.56.68` и `ANDROID_VERSION_CODE=643`.
+
 ## [8.56.67] - 2026-04-30
 - EN: Clarified mail monitor skip log text to explicitly include snapshot transfers (`передачи снэпшотов`) in the checked categories, reducing confusion when unrelated emails are skipped after snapshot-transfer parsing attempts.
 - RU: Уточнён текст skip-лога mail monitor: в список проверяемых категорий явно добавлены передачи снэпшотов (`передачи снэпшотов`), чтобы убрать путаницу при пропуске нерелевантных писем после попытки snapshot-transfer парсинга.
