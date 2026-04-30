@@ -1,11 +1,11 @@
 """
 /modules/mail_monitor.py
-Server Monitoring System v8.56.62
+Server Monitoring System v8.56.63
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Mailbox monitoring
 Система мониторинга серверов
-Версия: 8.56.62
+Версия: 8.56.63
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг почтового ящика
@@ -159,14 +159,24 @@ def get_snapshot_transfer_patterns_from_config() -> list[str]:
         elif isinstance(transfer_patterns, list):
             subject_patterns = transfer_patterns
 
-        if not subject_patterns:
-            fallback = BACKUP_PATTERNS.get("snapshot_transfer", {})
-            if isinstance(fallback, dict):
-                subject_patterns = fallback.get("subject", [])
-            elif isinstance(fallback, list):
-                subject_patterns = fallback
+        fallback = BACKUP_PATTERNS.get("snapshot_transfer", {})
+        fallback_patterns: list[str] = []
+        if isinstance(fallback, dict):
+            fallback_patterns = fallback.get("subject", [])
+        elif isinstance(fallback, list):
+            fallback_patterns = fallback
 
-        return [pattern for pattern in subject_patterns if isinstance(pattern, str)]
+        normalized = [pattern for pattern in subject_patterns if isinstance(pattern, str)]
+        normalized_fallback = [pattern for pattern in fallback_patterns if isinstance(pattern, str)]
+
+        if not normalized:
+            return normalized_fallback
+
+        for fallback_pattern in normalized_fallback:
+            if fallback_pattern not in normalized:
+                normalized.append(fallback_pattern)
+
+        return normalized
     except Exception as exc:
         logger.error(f"❌ Ошибка извлечения паттернов передачи снэпшотов: {exc}")
         return []

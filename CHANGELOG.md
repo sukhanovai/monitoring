@@ -1,9 +1,11 @@
-## [8.56.62] - 2026-04-30
+## [8.56.63] - 2026-04-30
 
 - EN: Mail monitor now parses and stores `snapshots transfer <host> <status>` emails even when the Snapshot Transfer extension is disabled, preventing false "Не удалось обработать письмо" warnings for valid transfer notifications.
 - RU: Монитор почты теперь парсит и сохраняет письма вида `snapshots transfer <host> <status>` даже при выключенном расширении Snapshot Transfer, что убирает ложные предупреждения "Не удалось обработать письмо" для валидных уведомлений о передаче.
-- EN: SemVer patch bump to `8.56.62`; synchronized explicit current-version mentions across project files and updated Android metadata to `ANDROID_VERSION_NAME=8.56.62` and `ANDROID_VERSION_CODE=637`.
-- RU: Выполнен SemVer patch-бамп до `8.56.62`; синхронизированы явные упоминания текущей версии во всех файлах проекта и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.56.62` и `ANDROID_VERSION_CODE=637`.
+- EN: Snapshot-transfer parsing now always appends built-in default subject regex patterns to custom `snapshot_transfer.subject` rules from settings, preventing misses when custom rules are too narrow (for example, `SUCCESS`-only).
+- RU: Парсинг snapshot-transfer теперь всегда добавляет встроенные дефолтные subject-regex паттерны к кастомным правилам `snapshot_transfer.subject` из настроек, что предотвращает пропуски при слишком узких шаблонах (например, только `SUCCESS`).
+- EN: SemVer patch bump to `8.56.63`; synchronized explicit current-version mentions across project files and updated Android metadata to `ANDROID_VERSION_NAME=8.56.63` and `ANDROID_VERSION_CODE=638`.
+- RU: Выполнен SemVer patch-бамп до `8.56.63`; синхронизированы явные упоминания текущей версии во всех файлах проекта и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.56.63` и `ANDROID_VERSION_CODE=638`.
 
 ## [8.56.59] - 2026-04-30
 - EN: Fixed snapshot-transfer Telegram settings flow: host start-time input no longer leaks into host rename and pattern-add flows; conflicting snapshot host input states are reset before entering each action.
