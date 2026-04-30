@@ -1,24 +1,14 @@
-## [8.56.52] - 2026-04-30
+## [8.56.53] - 2026-04-30
 
 ### Improved / Улучшено
-- EN: SemVer patch bump to `8.56.52`; synchronized all explicit current-version mentions across project files (backend, modules, extensions, scripts, docs, and bot handlers).
-- RU: Выполнен SemVer patch-бамп до `8.56.52`; синхронизированы все явные упоминания текущей версии во всех файлах проекта (backend, модули, расширения, скрипты, документация и обработчики бота).
-- EN: Android metadata updated to `ANDROID_VERSION_NAME=8.56.52` and `ANDROID_VERSION_CODE=628`; prerelease links aligned to `v8.56.52-develop`.
-- RU: Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.52` и `ANDROID_VERSION_CODE=628`; prerelease-ссылки выровнены на `v8.56.52-develop`.
+- EN: SemVer patch bump to `8.56.53`; synchronized all explicit current-version mentions across project files (backend, modules, extensions, scripts, docs, and bot handlers).
+- RU: Выполнен SemVer patch-бамп до `8.56.53`; синхронизированы все явные упоминания текущей версии во всех файлах проекта (backend, модули, расширения, скрипты, документация и обработчики бота).
+- EN: Android metadata updated to `ANDROID_VERSION_NAME=8.56.53` and `ANDROID_VERSION_CODE=628`; prerelease links aligned to `v8.56.53-develop`.
+- RU: Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.53` и `ANDROID_VERSION_CODE=628`; prerelease-ссылки выровнены на `v8.56.53-develop`.
 - EN: In Telegram bot menu `📸 Snapshot Transfers`, opened direct settings menu with required actions: `Hosts`, `Patterns`, and `Start time`.
 - RU: В меню Telegram-бота `📸 Передачи снэпшотов` открыто прямое меню настроек с нужными действиями: `Хосты`, `Паттерны` и `Время старта`.
 - EN: Removed redundant redirect to Extensions from `📸 Snapshot Transfers`; now users manage snapshot-transfer flow immediately from the snapshot menu.
 - RU: Убрана лишняя переадресация в «Расширения» из `📸 Передачи снэпшотов`; теперь управление идёт сразу из меню снэпшотов.
-
-## [8.56.50] - 2026-04-30
-
-### Improved / Улучшено
-- EN: Added a `📸 Snapshot Transfers` button to the main bot menu; it is shown only when extension `snapshot_transfer_monitor` is enabled via the Extensions menu.
-- RU: В главное меню бота добавлена кнопка `📸 Передачи снэпшотов`; она отображается только когда расширение `snapshot_transfer_monitor` включено через меню «Расширения».
-- EN: Synchronized project version to `8.56.50` across all files where current version is referenced (backend modules, bot handlers, config files, docs, scripts, and Android client metadata).
-- RU: Синхронизирована версия проекта до `8.56.50` во всех файлах, где указывается текущая версия (backend-модули, обработчики бота, конфиги, документация, скрипты и Android-метаданные).
-- EN: Added changelog record for full version alignment after snapshot-transfer monitoring update.
-- RU: Добавлена запись в changelog о полном выравнивании версий после обновления мониторинга передачи снэпшотов.
 
 ## [8.56.48] - 2026-04-30
 - EN: Added snapshot-transfer monitoring for emails with statuses `STARTED`, `SUCCESS`, `SKIPPED`, `ERROR`, `BUSY`; parser now stores transfer details (host, snapshot, method, size, timing, duration) in new DB table `snapshot_transfers`.
