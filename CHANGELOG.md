@@ -1,7 +1,9 @@
-## [8.56.60] - 2026-04-30
+## [8.56.61] - 2026-04-30
 
-- EN: SemVer patch bump to `8.56.60`; synchronized explicit current-version mentions across project files and updated Android metadata to `ANDROID_VERSION_NAME=8.56.60` and `ANDROID_VERSION_CODE=635`.
-- RU: Выполнен SemVer patch-бамп до `8.56.60`; синхронизированы явные упоминания текущей версии во всех файлах проекта и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.56.60` и `ANDROID_VERSION_CODE=635`.
+- EN: Mail monitor now parses and stores `snapshots transfer <host> <status>` emails even when the Snapshot Transfer extension is disabled, preventing false "Не удалось обработать письмо" warnings for valid transfer notifications.
+- RU: Монитор почты теперь парсит и сохраняет письма вида `snapshots transfer <host> <status>` даже при выключенном расширении Snapshot Transfer, что убирает ложные предупреждения "Не удалось обработать письмо" для валидных уведомлений о передаче.
+- EN: SemVer patch bump to `8.56.61`; synchronized explicit current-version mentions across project files and updated Android metadata to `ANDROID_VERSION_NAME=8.56.61` and `ANDROID_VERSION_CODE=636`.
+- RU: Выполнен SemVer patch-бамп до `8.56.61`; синхронизированы явные упоминания текущей версии во всех файлах проекта и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.56.61` и `ANDROID_VERSION_CODE=636`.
 
 ## [8.56.59] - 2026-04-30
 - EN: Fixed snapshot-transfer Telegram settings flow: host start-time input no longer leaks into host rename and pattern-add flows; conflicting snapshot host input states are reset before entering each action.

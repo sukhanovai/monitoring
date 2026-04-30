@@ -1,11 +1,11 @@
 """
 /modules/mail_monitor.py
-Server Monitoring System v8.56.60
+Server Monitoring System v8.56.61
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Mailbox monitoring
 Система мониторинга серверов
-Версия: 8.56.60
+Версия: 8.56.61
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг почтового ящика
@@ -895,9 +895,6 @@ class BackupProcessor:
 
     def parse_snapshot_transfer(self, subject: str, body: str) -> dict | None:
         """Парсит статус передачи ZFS-снэпшотов из темы и тела письма."""
-        if not extension_manager.is_extension_enabled("snapshot_transfer_monitor"):
-            return None
-
         patterns = get_snapshot_transfer_patterns_from_config()
         if not patterns:
             return None
