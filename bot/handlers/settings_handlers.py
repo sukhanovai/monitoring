@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.56.57
+Server Monitoring System v8.56.58
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.56.57
+Версия: 8.56.58
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -1804,8 +1804,8 @@ def settings_callback_handler(update, context):
         elif data == 'add_snapshot_pattern':
             add_snapshot_pattern_handler(update, context)
         elif data == 'snapshot_host_add':
-            context.user_data['adding_zfsp_host'] = True
-            context.user_data['zfsp_add_back_callback'] = 'settings_snapshot_hosts'
+            context.user_data['adding_snapshot_host'] = True
+            context.user_data['snapshot_add_back_callback'] = 'settings_snapshot_hosts'
             query.edit_message_text(
                 "➕ *Добавление хоста передачи снэпшотов*\n\n"
                 "Введите имя хоста (например: `sr-srv1`)",
@@ -1814,8 +1814,8 @@ def settings_callback_handler(update, context):
             )
         elif data.startswith('snapshot_host_edit|'):
             _, host_name = data.split('|', 1)
-            context.user_data['editing_zfsp_host_name'] = host_name
-            context.user_data['zfsp_add_back_callback'] = 'settings_snapshot_hosts'
+            context.user_data['editing_snapshot_host_name'] = host_name
+            context.user_data['snapshot_add_back_callback'] = 'settings_snapshot_hosts'
             query.edit_message_text(
                 f"✏️ *Переименование хоста*\n\nТекущий: `{escape_markdown(host_name, version=1)}`\nВведите новое имя:",
                 parse_mode='Markdown',
@@ -1823,16 +1823,16 @@ def settings_callback_handler(update, context):
             )
         elif data.startswith('snapshot_host_toggle|'):
             _, host_name = data.split('|', 1)
-            toggle_zfsp_host_handler(update, context, host_name)
+            toggle_snapshot_host_handler(update, context, host_name)
             show_snapshot_hosts_menu(update, context)
         elif data.startswith('snapshot_host_delete|'):
             _, host_name = data.split('|', 1)
-            delete_zfsp_host_handler(update, context, host_name)
+            delete_snapshot_host_handler(update, context, host_name)
             show_snapshot_hosts_menu(update, context)
         elif data.startswith('snapshot_host_start|'):
             _, host_name = data.split('|', 1)
-            context.user_data['editing_zfsp_start_time'] = host_name
-            context.user_data['zfsp_add_back_callback'] = 'settings_snapshot_hosts'
+            context.user_data['editing_snapshot_start_time'] = host_name
+            context.user_data['snapshot_add_back_callback'] = 'settings_snapshot_hosts'
             query.edit_message_text(
                 f"⏰ *Время старта для `{escape_markdown(host_name, version=1)}`*\n\nВведите время в формате HH:MM",
                 parse_mode='Markdown',
@@ -2148,23 +2148,108 @@ def show_snapshot_hosts_menu(update, context):
     for host_name, host_cfg in sorted(hosts.items()):
         host_cfg = host_cfg if isinstance(host_cfg, dict) else {}
         enabled = bool(host_cfg.get('enabled', True))
-        keyboard.append([InlineKeyboardButton(f"✏️ {host_name}", callback_data=f"zfsp_edit_name_{host_name}")])
+        keyboard.append([InlineKeyboardButton(f"✏️ {host_name}", callback_data=f"snapshot_host_edit|{host_name}")])
         keyboard.append([
-            InlineKeyboardButton("🔴 Выключить" if enabled else "🟢 Включить", callback_data=f"zfsp_toggle_{host_name}"),
-            InlineKeyboardButton("🗑️ Удалить", callback_data=f"zfsp_delete_{host_name}")
+            InlineKeyboardButton("🔴 Выключить" if enabled else "🟢 Включить", callback_data=f"snapshot_host_toggle|{host_name}"),
+            InlineKeyboardButton("🗑️ Удалить", callback_data=f"snapshot_host_delete|{host_name}")
         ])
-        keyboard.append([InlineKeyboardButton("⏰ Время старта", callback_data=f"zfsp_edit_threshold_{host_name}")])
+        keyboard.append([InlineKeyboardButton("⏰ Время старта", callback_data=f"snapshot_host_start|{host_name}")])
 
     keyboard.extend([
-        [InlineKeyboardButton("➕ Добавить хост", callback_data='zfsp_add')],
+        [InlineKeyboardButton("➕ Добавить хост", callback_data='snapshot_host_add')],
         [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_snapshot_menu'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ])
     query.edit_message_text(message, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
 
+def _get_snapshot_hosts_config() -> dict:
+    hosts = settings_manager.get_setting('SNAPSHOT_TRANSFER_HOSTS', {}) or {}
+    return hosts if isinstance(hosts, dict) else {}
+
+
+def _save_snapshot_hosts_config(hosts: dict) -> None:
+    settings_manager.set_setting('SNAPSHOT_TRANSFER_HOSTS', hosts, 'snapshot_transfer_hosts')
+
+
+def toggle_snapshot_host_handler(update, context, host_name: str) -> None:
+    hosts = _get_snapshot_hosts_config()
+    if host_name in hosts:
+        host_cfg = hosts.get(host_name) if isinstance(hosts.get(host_name), dict) else {}
+        host_cfg['enabled'] = not bool(host_cfg.get('enabled', True))
+        hosts[host_name] = host_cfg
+        _save_snapshot_hosts_config(hosts)
+
+
+def delete_snapshot_host_handler(update, context, host_name: str) -> None:
+    hosts = _get_snapshot_hosts_config()
+    if host_name in hosts:
+        hosts.pop(host_name, None)
+        _save_snapshot_hosts_config(hosts)
+
+
+def handle_snapshot_host_text_input(update, context) -> bool:
+    text = (update.message.text or '').strip()
+    if context.user_data.get('adding_snapshot_host'):
+        if not text:
+            update.message.reply_text('❌ Имя хоста не может быть пустым.')
+            return True
+        hosts = _get_snapshot_hosts_config()
+        if text in hosts:
+            update.message.reply_text('❌ Такой хост уже существует.')
+            return True
+        hosts[text] = {'enabled': True, 'start_time': '03:00'}
+        _save_snapshot_hosts_config(hosts)
+        context.user_data.pop('adding_snapshot_host', None)
+        update.message.reply_text('✅ Хост добавлен.')
+        return True
+
+    old_name = context.user_data.get('editing_snapshot_host_name')
+    if old_name is not None:
+        new_name = text
+        hosts = _get_snapshot_hosts_config()
+        if not new_name:
+            update.message.reply_text('❌ Имя хоста не может быть пустым.')
+            return True
+        if old_name not in hosts:
+            context.user_data.pop('editing_snapshot_host_name', None)
+            update.message.reply_text('❌ Хост не найден.')
+            return True
+        if new_name != old_name and new_name in hosts:
+            update.message.reply_text('❌ Такой хост уже существует.')
+            return True
+        hosts[new_name] = hosts.pop(old_name)
+        _save_snapshot_hosts_config(hosts)
+        context.user_data.pop('editing_snapshot_host_name', None)
+        update.message.reply_text('✅ Имя хоста обновлено.')
+        return True
+
+    edit_start = context.user_data.get('editing_snapshot_start_time')
+    if edit_start is not None:
+        if not re.match(r'^([01]\d|2[0-3]):[0-5]\d$', text):
+            update.message.reply_text('❌ Время должно быть в формате HH:MM.')
+            return True
+        hosts = _get_snapshot_hosts_config()
+        if edit_start not in hosts:
+            context.user_data.pop('editing_snapshot_start_time', None)
+            update.message.reply_text('❌ Хост не найден.')
+            return True
+        host_cfg = hosts.get(edit_start) if isinstance(hosts.get(edit_start), dict) else {}
+        host_cfg['start_time'] = text
+        hosts[edit_start] = host_cfg
+        _save_snapshot_hosts_config(hosts)
+        context.user_data.pop('editing_snapshot_start_time', None)
+        update.message.reply_text('✅ Время старта обновлено.')
+        return True
+
+    return False
+
+
 def handle_setting_value(update, context):
     """Обработчик получения значения настройки - ОБНОВЛЕННАЯ ВЕРСИЯ"""
+    if handle_snapshot_host_text_input(update, context):
+        return
+
     if handle_zfsp_text_input(update, context):
         return
 
