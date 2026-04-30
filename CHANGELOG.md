@@ -1,9 +1,11 @@
-## [8.56.74] - 2026-04-30
+## [8.56.75] - 2026-04-30
 
+- EN: Snapshot transfer menu in Telegram now shows parsed results per host (latest status from `snapshot_transfers`) alongside configured start time.
+- RU: В Telegram-меню передач снэпшотов теперь показываются распарсенные результаты по каждому хосту (последний статус из `snapshot_transfers`) вместе с настроенным временем старта.
 - EN: Fixed Telegram runtime error in snapshot-transfer settings: replaced undefined `_escape_markdown` with valid `escape_markdown`, so the menu renders subject patterns and hosts without crashing.
 - RU: Исправлена runtime-ошибка Telegram в настройках передач снэпшотов: неопределённый `_escape_markdown` заменён на корректный `escape_markdown`, поэтому меню снова отображает subject-паттерны и хосты без падения.
-- EN: SemVer patch bump to `8.56.74`; synchronized explicit current-version mentions across project files and updated Android metadata to `ANDROID_VERSION_NAME=8.56.74` and `ANDROID_VERSION_CODE=649`.
-- RU: Выполнен SemVer patch-бамп до `8.56.74`; синхронизированы явные упоминания текущей версии во всех файлах проекта и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.56.74` и `ANDROID_VERSION_CODE=649`.
+- EN: SemVer patch bump to `8.56.75`; synchronized explicit current-version mentions across project files and updated Android metadata to `ANDROID_VERSION_NAME=8.56.75` and `ANDROID_VERSION_CODE=650`.
+- RU: Выполнен SemVer patch-бамп до `8.56.75`; синхронизированы явные упоминания текущей версии во всех файлах проекта и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.56.75` и `ANDROID_VERSION_CODE=650`.
 - EN: Snapshot transfer subject patterns now normalize escaped wildcard fragments (for example, `snapshots.\*transfer.\*STARTED`) and whitespace, so emails like `snapshots transfer pve-rubicon STARTED/SUCCESS` are matched reliably.
 - RU: Паттерны темы для передач снэпшотов теперь нормализуют экранированные wildcard-фрагменты (например, `snapshots.\*transfer.\*STARTED`) и пробелы, поэтому письма вида `snapshots transfer pve-rubicon STARTED/SUCCESS` стабильно распознаются.
 
