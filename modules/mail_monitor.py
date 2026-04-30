@@ -1,11 +1,11 @@
 """
 /modules/mail_monitor.py
-Server Monitoring System v8.56.69
+Server Monitoring System v8.56.70
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Mailbox monitoring
 Система мониторинга серверов
-Версия: 8.56.69
+Версия: 8.56.70
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг почтового ящика
@@ -938,11 +938,23 @@ class BackupProcessor:
             fallback_pattern = r"^snapshots transfer (?P<host>[\w.-]+) (?P<status>STARTED|SUCCESS|SKIPPED|ERROR|BUSY)$"
             match = re.search(fallback_pattern, subject, re.IGNORECASE)
 
-        if not match:
-            return None
+        host_name = ""
+        status = ""
 
-        host_name = (match.groupdict().get("host") or match.group(1) if match.lastindex else "").strip()
-        status = (match.groupdict().get("status") or "").upper().strip()
+        if match:
+            host_name = (match.groupdict().get("host") or match.group(1) if match.lastindex else "").strip()
+            status = (match.groupdict().get("status") or "").upper().strip()
+
+        if not host_name or not status:
+            token_match = re.search(
+                r"\bsnapshots\s+transfer\s+(?P<host>[\w.-]+)\s+(?P<status>STARTED|SUCCESS|SKIPPED|ERROR|BUSY)\b",
+                subject,
+                re.IGNORECASE,
+            )
+            if token_match:
+                host_name = (token_match.groupdict().get("host") or "").strip()
+                status = (token_match.groupdict().get("status") or "").upper().strip()
+
         if not host_name or not status:
             return None
 
