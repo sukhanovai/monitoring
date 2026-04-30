@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.56.70
+Server Monitoring System v8.56.71
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.56.70
+Версия: 8.56.71
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -3110,11 +3110,45 @@ def show_snapshot_transfer_settings(update, context):
     query = update.callback_query
     query.answer()
 
-    message = (
-        "📸 *Передачи снэпшотов*\n\n"
-        "Здесь настраивается мониторинг передач снэпшотов: список хостов "
-        "и паттерны писем."
-    )
+    patterns_data = settings_manager.get_backup_patterns()
+    if isinstance(patterns_data, str):
+        try:
+            patterns_data = json.loads(patterns_data)
+        except json.JSONDecodeError:
+            patterns_data = {}
+
+    snapshot_patterns: list[str] = []
+    if isinstance(patterns_data, dict):
+        raw_snapshot = patterns_data.get("snapshot_transfer", {})
+        if isinstance(raw_snapshot, dict):
+            snapshot_patterns = [p for p in raw_snapshot.get("subject", []) if isinstance(p, str)]
+        elif isinstance(raw_snapshot, list):
+            snapshot_patterns = [p for p in raw_snapshot if isinstance(p, str)]
+
+    hosts = _get_snapshot_hosts_config()
+
+    message = "📸 *Передачи снэпшотов*\n\n"
+    message += "здесь должны отображаться результаты парсинга писем согласно паттернам\n\n"
+    message += "📸 *Паттерны передач снэпшотов*\n\n"
+
+    if snapshot_patterns:
+        for idx, pattern in enumerate(snapshot_patterns, 1):
+            message += f"{idx}. subject: `{_escape_markdown(pattern)}`\n"
+    else:
+        message += "Паттерны пока не добавлены.\n"
+
+    message += "\n📋 *Хосты передач снэпшотов*\n\n"
+    if hosts:
+        for idx, (host_name, cfg) in enumerate(hosts.items(), 1):
+            enabled = cfg.get('enabled', True)
+            start_time = cfg.get('start_time', '00:00')
+            status = "🟢" if enabled else "🔴"
+            message += (
+                f"{idx}. {status} `{_escape_markdown(host_name)}` "
+                f"(старт: `{_escape_markdown(start_time)}`)\n"
+            )
+    else:
+        message += "Список хостов пуст.\n"
 
     keyboard = [
         [InlineKeyboardButton("📋 Хосты", callback_data='settings_snapshot_hosts')],
