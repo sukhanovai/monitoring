@@ -1,3 +1,8 @@
+## [8.56.55] - 2026-04-30
+
+- EN: Fixed snapshot transfer settings callbacks: restored missing `set_setting_handler`, added dedicated snapshot-transfer pattern filtering and wiring for “Add pattern” so it saves into `snapshot_transfer` category.
+- RU: Исправлены callback-обработчики настроек передач снэпшотов: восстановлен отсутствующий `set_setting_handler`, добавлена отдельная фильтрация паттернов и корректная обработка кнопки «Добавить паттерн» с сохранением в категорию `snapshot_transfer`.
+
 ## [8.56.54] - 2026-04-30
 
 - EN: Added full Telegram settings flow for `📸 Snapshot Transfers`: from main menu it now opens dedicated snapshot-transfer settings with direct actions for hosts, patterns, and start time.
