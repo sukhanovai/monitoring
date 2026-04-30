@@ -1822,7 +1822,7 @@ class BackupProcessor:
 
             if not self.is_proxmox_backup_email(subject):
                 logger.info(
-                    "Пропускаем не-Proxmox/БД/ZFS/почта/остатки письмо: %s...",
+                    "Пропускаем не-Proxmox/БД/ZFS/передачи снэпшотов/почта/остатки письмо: %s...",
                     subject[:50],
                 )
                 return None
