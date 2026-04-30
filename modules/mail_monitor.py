@@ -151,6 +151,14 @@ def get_snapshot_transfer_patterns_from_config() -> list[str]:
     """Извлекает паттерны для писем о передаче снэпшотов."""
     try:
         patterns = config_manager.get_backup_patterns()
+        if isinstance(patterns, str):
+            try:
+                patterns = json.loads(patterns)
+            except Exception:
+                patterns = {}
+        if not isinstance(patterns, dict):
+            patterns = {}
+
         transfer_patterns = patterns.get("snapshot_transfer", {})
         subject_patterns: list[str] = []
 
@@ -159,7 +167,16 @@ def get_snapshot_transfer_patterns_from_config() -> list[str]:
         elif isinstance(transfer_patterns, list):
             subject_patterns = transfer_patterns
 
-        fallback = BACKUP_PATTERNS.get("snapshot_transfer", {})
+        fallback_source = BACKUP_PATTERNS
+        if isinstance(fallback_source, str):
+            try:
+                fallback_source = json.loads(fallback_source)
+            except Exception:
+                fallback_source = {}
+        if not isinstance(fallback_source, dict):
+            fallback_source = {}
+
+        fallback = fallback_source.get("snapshot_transfer", {})
         fallback_patterns: list[str] = []
         if isinstance(fallback, dict):
             fallback_patterns = fallback.get("subject", [])
