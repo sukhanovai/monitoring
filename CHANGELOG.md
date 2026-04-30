@@ -1,3 +1,10 @@
+## [8.56.65] - 2026-04-30
+
+- EN: SemVer patch bump to `8.56.65`; synchronized explicit current-version mentions across project files to remove version drift.
+- RU: Выполнен SemVer patch-бамп до `8.56.65`; синхронизированы явные упоминания текущей версии во всех файлах проекта для устранения рассинхрона.
+- EN: Android metadata updated to `ANDROID_VERSION_NAME=8.56.65` and `ANDROID_VERSION_CODE=640`; prerelease APK links aligned to `v8.56.65-develop`.
+- RU: Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.65` и `ANDROID_VERSION_CODE=640`; ссылки на prerelease APK выровнены на `v8.56.65-develop`.
+
 ## [8.56.64] - 2026-04-30
 
 - EN: Fixed snapshot-transfer pattern loading in mail monitor when backup patterns are stored as a JSON string; config and fallback patterns are now safely normalized before reading `snapshot_transfer.subject`.
