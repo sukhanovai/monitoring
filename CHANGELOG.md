@@ -1,10 +1,19 @@
+## [8.56.54] - 2026-04-30
+
+- EN: Added full Telegram settings flow for `📸 Snapshot Transfers`: from main menu it now opens dedicated snapshot-transfer settings with direct actions for hosts, patterns, and start time.
+- RU: Добавлен полноценный сценарий настроек Telegram для `📸 Передачи снэпшотов`: из главного меню теперь открывается отдельный экран настроек передачи снэпшотов с прямыми действиями для хостов, паттернов и времени старта.
+- EN: Added snapshot-transfer section to Settings → Extensions for faster access to related configuration.
+- RU: Добавлен раздел передачи снэпшотов в Настройки → Расширения для быстрого доступа к связанным параметрам.
+- EN: SemVer patch bump to `8.56.54`; synchronized explicit version mentions and Android metadata (`ANDROID_VERSION_NAME=8.56.54`, `ANDROID_VERSION_CODE=629`), prerelease links aligned to `v8.56.54-develop`.
+- RU: Выполнен SemVer patch-бамп до `8.56.54`; синхронизированы явные упоминания версии и Android-метаданные (`ANDROID_VERSION_NAME=8.56.54`, `ANDROID_VERSION_CODE=629`), prerelease-ссылки выровнены на `v8.56.54-develop`.
+
 ## [8.56.53] - 2026-04-30
 
 ### Improved / Улучшено
-- EN: SemVer patch bump to `8.56.53`; synchronized all explicit current-version mentions across project files (backend, modules, extensions, scripts, docs, and bot handlers).
-- RU: Выполнен SemVer patch-бамп до `8.56.53`; синхронизированы все явные упоминания текущей версии во всех файлах проекта (backend, модули, расширения, скрипты, документация и обработчики бота).
-- EN: Android metadata updated to `ANDROID_VERSION_NAME=8.56.53` and `ANDROID_VERSION_CODE=628`; prerelease links aligned to `v8.56.53-develop`.
-- RU: Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.53` и `ANDROID_VERSION_CODE=628`; prerelease-ссылки выровнены на `v8.56.53-develop`.
+- EN: SemVer patch bump to `8.56.54`; synchronized all explicit current-version mentions across project files (backend, modules, extensions, scripts, docs, and bot handlers).
+- RU: Выполнен SemVer patch-бамп до `8.56.54`; синхронизированы все явные упоминания текущей версии во всех файлах проекта (backend, модули, расширения, скрипты, документация и обработчики бота).
+- EN: Android metadata updated to `ANDROID_VERSION_NAME=8.56.54` and `ANDROID_VERSION_CODE=629`; prerelease links aligned to `v8.56.54-develop`.
+- RU: Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.54` и `ANDROID_VERSION_CODE=629`; prerelease-ссылки выровнены на `v8.56.54-develop`.
 - EN: In Telegram bot menu `📸 Snapshot Transfers`, opened direct settings menu with required actions: `Hosts`, `Patterns`, and `Start time`.
 - RU: В меню Telegram-бота `📸 Передачи снэпшотов` открыто прямое меню настроек с нужными действиями: `Хосты`, `Паттерны` и `Время старта`.
 - EN: Removed redundant redirect to Extensions from `📸 Snapshot Transfers`; now users manage snapshot-transfer flow immediately from the snapshot menu.
