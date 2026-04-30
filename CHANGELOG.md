@@ -1,8 +1,10 @@
-## [8.56.49] - 2026-04-30
+## [8.56.50] - 2026-04-30
 
 ### Improved / Улучшено
-- EN: Synchronized project version to `8.56.49` across all files where current version is referenced (backend modules, bot handlers, config files, docs, scripts, and Android client metadata).
-- RU: Синхронизирована версия проекта до `8.56.49` во всех файлах, где указывается текущая версия (backend-модули, обработчики бота, конфиги, документация, скрипты и Android-метаданные).
+- EN: Added a `📸 Snapshot Transfers` button to the main bot menu; it is shown only when extension `snapshot_transfer_monitor` is enabled via the Extensions menu.
+- RU: В главное меню бота добавлена кнопка `📸 Передачи снэпшотов`; она отображается только когда расширение `snapshot_transfer_monitor` включено через меню «Расширения».
+- EN: Synchronized project version to `8.56.50` across all files where current version is referenced (backend modules, bot handlers, config files, docs, scripts, and Android client metadata).
+- RU: Синхронизирована версия проекта до `8.56.50` во всех файлах, где указывается текущая версия (backend-модули, обработчики бота, конфиги, документация, скрипты и Android-метаданные).
 - EN: Added changelog record for full version alignment after snapshot-transfer monitoring update.
 - RU: Добавлена запись в changelog о полном выравнивании версий после обновления мониторинга передачи снэпшотов.
 
