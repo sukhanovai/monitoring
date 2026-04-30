@@ -1,9 +1,9 @@
-## [8.56.70] - 2026-04-30
+## [8.56.71] - 2026-04-30
 
-- EN: Fixed snapshot-transfer subject parsing resilience in `mail_monitor`: after regex-pattern attempts, parser now performs a token-based fallback for `snapshots transfer <host> <status>` to keep valid `STARTED/SUCCESS/ERROR` events from being dropped.
-- RU: Повышена устойчивость парсинга темы snapshot-transfer в `mail_monitor`: после попыток regex-паттернов добавлен token-based fallback для `snapshots transfer <host> <status>`, чтобы валидные события `STARTED/SUCCESS/ERROR` не терялись.
-- EN: SemVer patch bump to `8.56.70`; synchronized explicit current-version mentions across project files and updated Android metadata to `ANDROID_VERSION_NAME=8.56.70` and `ANDROID_VERSION_CODE=645`.
-- RU: Выполнен SemVer patch-бамп до `8.56.70`; синхронизированы явные упоминания текущей версии во всех файлах проекта и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.56.70` и `ANDROID_VERSION_CODE=645`.
+- EN: Updated Telegram snapshot-transfer screen: the menu now renders configured subject patterns and current host list (with enabled status and start time) directly in `show_snapshot_transfer_settings`.
+- RU: Обновлён экран передач снэпшотов в Telegram: меню теперь сразу отображает настроенные subject-паттерны и актуальный список хостов (со статусом включения и временем старта) в `show_snapshot_transfer_settings`.
+- EN: SemVer patch bump to `8.56.71`; synchronized explicit current-version mentions across project files and updated Android metadata to `ANDROID_VERSION_NAME=8.56.71` and `ANDROID_VERSION_CODE=646`.
+- RU: Выполнен SemVer patch-бамп до `8.56.71`; синхронизированы явные упоминания текущей версии во всех файлах проекта и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.56.71` и `ANDROID_VERSION_CODE=646`.
 
 ## [8.56.68] - 2026-04-30
 - EN: Fixed snapshot-transfer parsing fallback in mail monitor: if user-defined patterns miss a valid subject, parser now retries with built-in generic pattern `snapshots transfer <host> <status>` and no longer drops valid `STARTED` notifications.
