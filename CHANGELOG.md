@@ -3,6 +3,9 @@
 - EN: Fixed snapshot transfer settings callbacks: restored missing `set_setting_handler`, added dedicated snapshot-transfer pattern filtering and wiring for “Add pattern” so it saves into `snapshot_transfer` category.
 - RU: Исправлены callback-обработчики настроек передач снэпшотов: восстановлен отсутствующий `set_setting_handler`, добавлена отдельная фильтрация паттернов и корректная обработка кнопки «Добавить паттерн» с сохранением в категорию `snapshot_transfer`.
 
+- EN: Synchronized explicit current-version mentions to `8.56.55` across project files; Android metadata updated to `ANDROID_VERSION_NAME=8.56.55` and `ANDROID_VERSION_CODE=630`.
+- RU: Синхронизированы явные упоминания текущей версии до `8.56.55` во всех файлах проекта; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.55` и `ANDROID_VERSION_CODE=630`.
+
 ## [8.56.54] - 2026-04-30
 
 - EN: Added full Telegram settings flow for `📸 Snapshot Transfers`: from main menu it now opens dedicated snapshot-transfer settings with direct actions for hosts, patterns, and start time.
