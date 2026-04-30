@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.56.56
+Server Monitoring System v8.56.57
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.56.56
+Версия: 8.56.57
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -61,8 +61,11 @@ BACKUP_SETTINGS_CALLBACKS = {
     'db_pattern_retry',
     'proxmox_pattern_confirm',
     'proxmox_pattern_retry',
+    'snapshot_pattern_confirm',
+    'snapshot_pattern_retry',
     'settings_patterns_db_from_backup',
 }
+
 
 debug_logger = debug_log
 
@@ -1800,6 +1803,41 @@ def settings_callback_handler(update, context):
             add_mail_pattern_handler(update, context)
         elif data == 'add_snapshot_pattern':
             add_snapshot_pattern_handler(update, context)
+        elif data == 'snapshot_host_add':
+            context.user_data['adding_zfsp_host'] = True
+            context.user_data['zfsp_add_back_callback'] = 'settings_snapshot_hosts'
+            query.edit_message_text(
+                "➕ *Добавление хоста передачи снэпшотов*\n\n"
+                "Введите имя хоста (например: `sr-srv1`)",
+                parse_mode='Markdown',
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("↩️ Назад", callback_data='settings_snapshot_hosts')]])
+            )
+        elif data.startswith('snapshot_host_edit|'):
+            _, host_name = data.split('|', 1)
+            context.user_data['editing_zfsp_host_name'] = host_name
+            context.user_data['zfsp_add_back_callback'] = 'settings_snapshot_hosts'
+            query.edit_message_text(
+                f"✏️ *Переименование хоста*\n\nТекущий: `{escape_markdown(host_name, version=1)}`\nВведите новое имя:",
+                parse_mode='Markdown',
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("↩️ Назад", callback_data='settings_snapshot_hosts')]])
+            )
+        elif data.startswith('snapshot_host_toggle|'):
+            _, host_name = data.split('|', 1)
+            toggle_zfsp_host_handler(update, context, host_name)
+            show_snapshot_hosts_menu(update, context)
+        elif data.startswith('snapshot_host_delete|'):
+            _, host_name = data.split('|', 1)
+            delete_zfsp_host_handler(update, context, host_name)
+            show_snapshot_hosts_menu(update, context)
+        elif data.startswith('snapshot_host_start|'):
+            _, host_name = data.split('|', 1)
+            context.user_data['editing_zfsp_start_time'] = host_name
+            context.user_data['zfsp_add_back_callback'] = 'settings_snapshot_hosts'
+            query.edit_message_text(
+                f"⏰ *Время старта для `{escape_markdown(host_name, version=1)}`*\n\nВведите время в формате HH:MM",
+                parse_mode='Markdown',
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("↩️ Назад", callback_data='settings_snapshot_hosts')]])
+            )
         elif data == 'add_stock_pattern':
             show_stock_pattern_type_menu(update, context)
         elif data == 'edit_mail_default_pattern':
@@ -2110,15 +2148,15 @@ def show_snapshot_hosts_menu(update, context):
     for host_name, host_cfg in sorted(hosts.items()):
         host_cfg = host_cfg if isinstance(host_cfg, dict) else {}
         enabled = bool(host_cfg.get('enabled', True))
-        keyboard.append([InlineKeyboardButton(f"✏️ {host_name}", callback_data=f"snapshot_host_edit|{host_name}")])
+        keyboard.append([InlineKeyboardButton(f"✏️ {host_name}", callback_data=f"zfsp_edit_name_{host_name}")])
         keyboard.append([
-            InlineKeyboardButton("🔴 Выключить" if enabled else "🟢 Включить", callback_data=f"snapshot_host_toggle|{host_name}"),
-            InlineKeyboardButton("🗑️ Удалить", callback_data=f"snapshot_host_delete|{host_name}")
+            InlineKeyboardButton("🔴 Выключить" if enabled else "🟢 Включить", callback_data=f"zfsp_toggle_{host_name}"),
+            InlineKeyboardButton("🗑️ Удалить", callback_data=f"zfsp_delete_{host_name}")
         ])
-        keyboard.append([InlineKeyboardButton("⏰ Время старта", callback_data=f"snapshot_host_start|{host_name}")])
+        keyboard.append([InlineKeyboardButton("⏰ Время старта", callback_data=f"zfsp_edit_threshold_{host_name}")])
 
     keyboard.extend([
-        [InlineKeyboardButton("➕ Добавить хост", callback_data='snapshot_host_add')],
+        [InlineKeyboardButton("➕ Добавить хост", callback_data='zfsp_add')],
         [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_snapshot_menu'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]

@@ -1,4 +1,4 @@
-## [8.56.56] - 2026-04-30
+## [8.56.57] - 2026-04-30
 
 - EN: Snapshot Transfer settings menu updated: removed global start-time item and removed back button from the Snapshot Transfer patterns screen.
 - RU: Обновлено меню «Передачи снэпшотов»: убран общий пункт времени старта и удалена кнопка «Назад» на экране паттернов передачи.
@@ -9,8 +9,8 @@
 - EN: Removed “📸 Snapshot Transfers” entry from Settings → Extensions section.
 - RU: Удалена кнопка «📸 Передачи снэпшотов» из раздела «Настройки → Расширения».
 
-- EN: SemVer patch bump to `8.56.56`; synchronized explicit current-version mentions across project files; Android metadata updated to `ANDROID_VERSION_NAME=8.56.56` and `ANDROID_VERSION_CODE=631`.
-- RU: Выполнен SemVer patch-бамп до `8.56.56`; синхронизированы явные упоминания текущей версии во всех файлах проекта; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.56` и `ANDROID_VERSION_CODE=631`.
+- EN: SemVer patch bump to `8.56.57`; synchronized explicit current-version mentions across project files; Android metadata updated to `ANDROID_VERSION_NAME=8.56.57` and `ANDROID_VERSION_CODE=632`.
+- RU: Выполнен SemVer patch-бамп до `8.56.57`; синхронизированы явные упоминания текущей версии во всех файлах проекта; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.57` и `ANDROID_VERSION_CODE=632`.
 
 ## [8.56.54] - 2026-04-30
 
