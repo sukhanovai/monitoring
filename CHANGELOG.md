@@ -1,3 +1,12 @@
+## [8.56.64] - 2026-04-30
+
+- EN: Fixed snapshot-transfer pattern loading in mail monitor when backup patterns are stored as a JSON string; config and fallback patterns are now safely normalized before reading `snapshot_transfer.subject`.
+- RU: Исправлена загрузка паттернов snapshot-transfer в mail monitor, когда backup patterns хранятся JSON-строкой; конфигурация и fallback-паттерны теперь безопасно нормализуются перед чтением `snapshot_transfer.subject`.
+- EN: This prevents runtime error `'str' object has no attribute 'get'` during processing of subjects like `snapshots transfer <host> STARTED`.
+- RU: Это устраняет runtime-ошибку `'str' object has no attribute 'get'` при обработке тем вида `snapshots transfer <host> STARTED`.
+- EN: SemVer patch bump to `8.56.64`; synchronized project version mentions and Android metadata updated to `ANDROID_VERSION_NAME=8.56.64` and `ANDROID_VERSION_CODE=639`.
+- RU: Выполнен SemVer patch-бамп до `8.56.64`; синхронизированы упоминания версии в проекте и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.56.64` и `ANDROID_VERSION_CODE=639`.
+
 ## [8.56.63] - 2026-04-30
 
 - EN: Mail monitor now parses and stores `snapshots transfer <host> <status>` emails even when the Snapshot Transfer extension is disabled, preventing false "Не удалось обработать письмо" warnings for valid transfer notifications.
