@@ -1,3 +1,8 @@
+## [8.56.60] - 2026-04-30
+
+- EN: SemVer patch bump to `8.56.60`; synchronized explicit current-version mentions across project files and updated Android metadata to `ANDROID_VERSION_NAME=8.56.60` and `ANDROID_VERSION_CODE=635`.
+- RU: Выполнен SemVer patch-бамп до `8.56.60`; синхронизированы явные упоминания текущей версии во всех файлах проекта и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.56.60` и `ANDROID_VERSION_CODE=635`.
+
 ## [8.56.59] - 2026-04-30
 - EN: Fixed snapshot-transfer Telegram settings flow: host start-time input no longer leaks into host rename and pattern-add flows; conflicting snapshot host input states are reset before entering each action.
 - RU: Исправлен поток Telegram-настроек передач снэпшотов: ввод времени старта больше не перехватывает переименование хоста и добавление паттерна; конфликтующие состояния ввода сбрасываются перед запуском каждого действия.
