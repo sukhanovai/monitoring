@@ -1,11 +1,11 @@
 """
 /modules/mail_monitor.py
-Server Monitoring System v8.56.73
+Server Monitoring System v8.56.74
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Mailbox monitoring
 Система мониторинга серверов
-Версия: 8.56.73
+Версия: 8.56.74
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг почтового ящика
@@ -155,7 +155,7 @@ def _normalize_snapshot_pattern(pattern: str) -> str:
 
     normalized = normalized.replace('.*', '__WILDCARD__')
     normalized = normalized.replace('.\*', '__WILDCARD__')
-    normalized = re.sub(r"\s+", r"\s+", normalized)
+    normalized = re.sub(r"\s+", r"\\s+", normalized)
     normalized = normalized.replace('__WILDCARD__', r'.*')
     return normalized
 
