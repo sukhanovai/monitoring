@@ -1,3 +1,9 @@
+## [8.56.66] - 2026-04-30
+- EN: Clarified mail monitor skip log text to explicitly include snapshot transfers (`передачи снэпшотов`) in the checked categories, reducing confusion when unrelated emails are skipped after snapshot-transfer parsing attempts.
+- RU: Уточнён текст skip-лога mail monitor: в список проверяемых категорий явно добавлены передачи снэпшотов (`передачи снэпшотов`), чтобы убрать путаницу при пропуске нерелевантных писем после попытки snapshot-transfer парсинга.
+- EN: SemVer patch bump to `8.56.66`; synchronized project version mentions and Android metadata updated to `ANDROID_VERSION_NAME=8.56.66` and `ANDROID_VERSION_CODE=641`.
+- RU: Выполнен SemVer patch-бамп до `8.56.66`; синхронизированы упоминания версии в проекте и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.56.66` и `ANDROID_VERSION_CODE=641`.
+
 ## [8.56.65] - 2026-04-30
 
 - EN: SemVer patch bump to `8.56.65`; synchronized explicit current-version mentions across project files to remove version drift.
