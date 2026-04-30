@@ -1,11 +1,11 @@
 """
 /modules/mail_monitor.py
-Server Monitoring System v8.56.72
+Server Monitoring System v8.56.73
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Mailbox monitoring
 Система мониторинга серверов
-Версия: 8.56.72
+Версия: 8.56.73
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг почтового ящика
@@ -147,6 +147,19 @@ def get_zfs_patterns_from_config() -> list[str]:
         return []
 
 
+def _normalize_snapshot_pattern(pattern: str) -> str:
+    """Нормализует шаблон передачи снэпшотов для пользовательского ввода."""
+    normalized = str(pattern or "").strip()
+    if not normalized:
+        return ""
+
+    normalized = normalized.replace('.*', '__WILDCARD__')
+    normalized = normalized.replace('.\*', '__WILDCARD__')
+    normalized = re.sub(r"\s+", r"\s+", normalized)
+    normalized = normalized.replace('__WILDCARD__', r'.*')
+    return normalized
+
+
 def get_snapshot_transfer_patterns_from_config() -> list[str]:
     """Извлекает паттерны для писем о передаче снэпшотов."""
     try:
@@ -183,8 +196,8 @@ def get_snapshot_transfer_patterns_from_config() -> list[str]:
         elif isinstance(fallback, list):
             fallback_patterns = fallback
 
-        normalized = [pattern for pattern in subject_patterns if isinstance(pattern, str)]
-        normalized_fallback = [pattern for pattern in fallback_patterns if isinstance(pattern, str)]
+        normalized = [_normalize_snapshot_pattern(pattern) for pattern in subject_patterns if isinstance(pattern, str)]
+        normalized_fallback = [_normalize_snapshot_pattern(pattern) for pattern in fallback_patterns if isinstance(pattern, str)]
 
         if not normalized:
             return normalized_fallback
