@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.56.74
+Server Monitoring System v8.56.75
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.56.74
+Версия: 8.56.75
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -3128,7 +3128,7 @@ def show_snapshot_transfer_settings(update, context):
     hosts = _get_snapshot_hosts_config()
 
     message = "📸 *Передачи снэпшотов*\n\n"
-    message += "здесь должны отображаться результаты парсинга писем согласно паттернам\n\n"
+    message += "здесь отображаются последние результаты парсинга писем согласно паттернам\n\n"
     message += "📸 *Паттерны передач снэпшотов*\n\n"
 
     if snapshot_patterns:
@@ -3137,15 +3137,52 @@ def show_snapshot_transfer_settings(update, context):
     else:
         message += "Паттерны пока не добавлены.\n"
 
+    transfer_rows: dict[str, dict[str, str]] = {}
+    try:
+        conn = sqlite3.connect(BACKUP_DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT host_name, status, received_at
+            FROM snapshot_transfers
+            ORDER BY datetime(received_at) DESC, id DESC
+            """
+        )
+        for host_name, transfer_status, received_at in cursor.fetchall():
+            if not host_name or host_name in transfer_rows:
+                continue
+            transfer_rows[host_name] = {
+                "status": str(transfer_status or "").upper(),
+                "received_at": str(received_at or ""),
+            }
+    except Exception as exc:
+        logger.warning("⚠️ Не удалось загрузить результаты передач снэпшотов: %s", exc)
+    finally:
+        if "conn" in locals():
+            conn.close()
+
     message += "\n📋 *Хосты передач снэпшотов*\n\n"
     if hosts:
         for idx, (host_name, cfg) in enumerate(hosts.items(), 1):
             enabled = cfg.get('enabled', True)
             start_time = cfg.get('start_time', '00:00')
-            status = "🟢" if enabled else "🔴"
+            host_state = "🟢" if enabled else "🔴"
+
+            latest = transfer_rows.get(host_name, {})
+            latest_status = str(latest.get("status") or "—")
+            if latest_status in {"SUCCESS", "SKIPPED"}:
+                transfer_state = "🟢"
+            elif latest_status in {"STARTED", "BUSY"}:
+                transfer_state = "🟡"
+            elif latest_status == "ERROR":
+                transfer_state = "🔴"
+            else:
+                transfer_state = "⚪️"
+
             message += (
-                f"{idx}. {status} `{escape_markdown(host_name)}` "
-                f"(старт: `{escape_markdown(start_time)}`)\n"
+                f"{idx}. {host_state} `{escape_markdown(host_name)}` "
+                f"(старт: `{escape_markdown(start_time)}`, "
+                f"статус: {transfer_state} `{escape_markdown(latest_status)}`)\n"
             )
     else:
         message += "Список хостов пуст.\n"
