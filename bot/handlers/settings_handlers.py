@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.56.54
+Server Monitoring System v8.56.55
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.56.54
+Версия: 8.56.55
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -1027,6 +1027,8 @@ def settings_callback_handler(update, context):
             view_patterns_handler(update, context)
         elif data == 'settings_snapshot_start_time':
             set_setting_handler(update, context, 'BACKUP_START_TIME')
+        elif data == 'add_snapshot_pattern':
+            add_snapshot_pattern_handler(update, context)
         elif data == 'settings_web':
             show_web_settings(update, context)
         elif data == 'settings_view_all':
@@ -1797,6 +1799,8 @@ def settings_callback_handler(update, context):
             add_proxmox_pattern_handler(update, context)
         elif data == 'add_mail_pattern':
             add_mail_pattern_handler(update, context)
+        elif data == 'add_snapshot_pattern':
+            add_snapshot_pattern_handler(update, context)
         elif data == 'add_stock_pattern':
             show_stock_pattern_type_menu(update, context)
         elif data == 'edit_mail_default_pattern':
@@ -1837,6 +1841,10 @@ def settings_callback_handler(update, context):
             mail_pattern_confirm_handler(update, context)
         elif data == 'mail_pattern_retry':
             mail_pattern_retry_handler(update, context)
+        elif data == 'snapshot_pattern_confirm':
+            snapshot_pattern_confirm_handler(update, context)
+        elif data == 'snapshot_pattern_retry':
+            add_snapshot_pattern_handler(update, context)
         elif data == 'settings_ext_enable_all':
             _enable_all_extensions_settings(query)
             show_extensions_settings_menu(update, context)
@@ -2069,6 +2077,16 @@ def handle_setting_input(update, context, setting_key):
             [InlineKeyboardButton("❌ Отмена", callback_data=cancel_callback)]
         ])
     )
+
+
+def set_setting_handler(update, context, setting_key):
+    """Совместимость для callback'ов с полными ключами настроек."""
+    key_map = {
+        'SNAPSHOT_TRANSFER_HOSTS': 'snapshot_transfer_hosts',
+        'BACKUP_START_TIME': 'backup_start_time',
+    }
+    normalized_key = key_map.get(setting_key, str(setting_key or '').lower())
+    handle_setting_input(update, context, normalized_key)
 
 def handle_setting_value(update, context):
     """Обработчик получения значения настройки - ОБНОВЛЕННАЯ ВЕРСИЯ"""
@@ -11030,6 +11048,32 @@ def add_mail_pattern_handler(update, context):
         ])
     )
 
+
+def add_snapshot_pattern_handler(update, context):
+    """Добавить паттерн для передачи снэпшотов."""
+    query = update.callback_query
+    query.answer()
+
+    context.user_data['adding_backup_pattern'] = True
+    context.user_data['backup_pattern_stage'] = 'mail_input'
+    context.user_data['backup_pattern_mode'] = 'snapshot_transfer_wizard'
+    context.user_data.pop('backup_pattern_generated', None)
+    context.user_data.pop('backup_pattern_source', None)
+
+    query.edit_message_text(
+        "🧙 *Мастер добавления паттерна передачи снэпшотов*\n\n"
+        "Введите тему письма целиком или обязательные фрагменты через `;`/`,`.\n"
+        "Фрагменты учитываются в указанном порядке.\n\n"
+        "Пример темы:\n"
+        "`zfs sr-srv1 STARTED snapshot transfer`",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
+            [InlineKeyboardButton("❌ Отмена", callback_data=context.user_data.get('patterns_back', 'settings_snapshot_menu')),
+             InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+        ])
+    )
+
 def show_stock_pattern_type_menu(update, context):
     """Показать выбор типа паттерна для остатков."""
     query = update.callback_query
@@ -11290,6 +11334,63 @@ def mail_pattern_confirm_handler(update, context):
         query.edit_message_text(
             "✅ *Паттерн добавлен!*\n\n"
             "Категория: *mail*\n"
+            "Тип: *subject*\n"
+            f"Источник: *{source_label}*\n"
+            f"Паттерн: `{pattern}`",
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu')],
+                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ])
+        )
+    except Exception as e:
+        query.edit_message_text(f"❌ Ошибка сохранения: {e}")
+    finally:
+        context.user_data.pop('adding_backup_pattern', None)
+        context.user_data.pop('backup_pattern_stage', None)
+        context.user_data.pop('backup_pattern_category', None)
+        context.user_data.pop('backup_pattern_type', None)
+        context.user_data.pop('backup_pattern_subject', None)
+        context.user_data.pop('backup_pattern_mode', None)
+        context.user_data.pop('backup_pattern_generated', None)
+        context.user_data.pop('backup_pattern_source', None)
+
+
+def snapshot_pattern_confirm_handler(update, context):
+    """Подтвердить сохранение паттерна передачи снэпшотов."""
+    query = update.callback_query
+    query.answer()
+
+    pattern = context.user_data.get('backup_pattern_generated')
+    back_callback = context.user_data.get('patterns_back', 'settings_snapshot_menu')
+
+    if not pattern:
+        query.edit_message_text(
+            "❌ Паттерн не найден. Начните добавление заново.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback)],
+                [InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ])
+        )
+        return
+
+    try:
+        conn = settings_manager.get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO backup_patterns (pattern_type, pattern, category, enabled)
+            VALUES (?, ?, ?, 1)
+            """,
+            ("subject", pattern, "snapshot_transfer")
+        )
+        conn.commit()
+
+        source_label = context.user_data.get('backup_pattern_source', 'мастер')
+        query.edit_message_text(
+            "✅ *Паттерн добавлен!*\n\n"
+            "Категория: *snapshot_transfer*\n"
             "Тип: *subject*\n"
             f"Источник: *{source_label}*\n"
             f"Паттерн: `{pattern}`",
@@ -11758,6 +11859,15 @@ def view_patterns_handler(update, context):
             ORDER BY category, pattern_type, id
             """
         )
+    elif filter_mode == 'snapshot_transfer':
+        cursor.execute(
+            """
+            SELECT id, pattern_type, pattern, category
+            FROM backup_patterns
+            WHERE enabled = 1 AND category = 'snapshot_transfer'
+            ORDER BY category, pattern_type, id
+            """
+        )
     else:
         cursor.execute(
             """
@@ -12200,6 +12310,39 @@ def handle_backup_pattern_input(update, context):
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("✅ Сохранить", callback_data='mail_pattern_confirm')],
                 [InlineKeyboardButton("✏️ Ввести заново", callback_data='mail_pattern_retry')],
+                [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
+                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ])
+        )
+        return
+
+    if mode == 'snapshot_transfer_wizard':
+        if stage != 'mail_input':
+            update.message.reply_text("❌ Неверный шаг мастера. Попробуйте снова.")
+            return
+        if not user_input:
+            update.message.reply_text("❌ Ввод не может быть пустым. Попробуйте снова:")
+            return
+        fragments = [chunk.strip() for chunk in re.split(r"[;,\n]+", user_input)]
+        fragments = [fragment for fragment in fragments if fragment]
+        pattern = _build_mail_pattern_from_fragments(fragments) if len(fragments) > 1 else _build_mail_pattern_from_subject(user_input)
+        source_label = "фрагменты" if len(fragments) > 1 else "тема письма"
+        if not pattern:
+            update.message.reply_text("❌ Не удалось собрать паттерн. Попробуйте снова:")
+            return
+        context.user_data['backup_pattern_generated'] = pattern
+        context.user_data['backup_pattern_source'] = source_label
+        context.user_data['backup_pattern_stage'] = 'snapshot_confirm'
+        back_callback = context.user_data.get('patterns_back', 'settings_snapshot_menu')
+        update.message.reply_text(
+            "✅ *Черновик паттерна готов!*\n\n"
+            f"Источник: *{source_label}*\n"
+            f"Паттерн: `{pattern}`\n\n"
+            "Сохранить?",
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("✅ Сохранить", callback_data='snapshot_pattern_confirm')],
+                [InlineKeyboardButton("✏️ Ввести заново", callback_data='snapshot_pattern_retry')],
                 [InlineKeyboardButton("↩️ Назад", callback_data=back_callback),
                  InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
             ])
