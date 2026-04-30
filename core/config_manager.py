@@ -1,11 +1,11 @@
 """
 /core/config_manager.py
-Server Monitoring System v8.56.47
+Server Monitoring System v8.56.50
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Configuration Manager
 Система мониторинга серверов
-Версия: 8.56.47
+Версия: 8.56.50
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Менеджер конфигурации
@@ -189,6 +189,7 @@ class ConfigManager:
             ('BACKUP_STALE_HOURS', '36', 'backup', 'Часы для устаревших бэкапов', 'int'),
             ('ZFS_SERVERS', '{}', 'backup', 'Список ZFS серверов и массивов', 'dict'),
             ('ZFS_POOL_FREE_SPACE_HOSTS', '{}', 'monitoring', 'Хосты для мониторинга свободного места ZFS-пулов', 'dict'),
+            ('SNAPSHOT_TRANSFER_HOSTS', '{}', 'backup', 'Хосты/пулы/время старта для мониторинга передачи снэпшотов', 'dict'),
             
             # Веб-интерфейс
             ('WEB_PORT', '5000', 'web', 'Порт веб-интерфейса', 'int'),

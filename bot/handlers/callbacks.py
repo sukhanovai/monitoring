@@ -1,17 +1,18 @@
 """
 /bot/handlers/callbacks.py
-Server Monitoring System v8.56.47
+Server Monitoring System v8.56.50
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 A single router for callbacks.
 Система мониторинга серверов
-Версия: 8.56.47
+Версия: 8.56.50
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единый router callback’ов.
 """
 
 import traceback
+import sqlite3
 
 from telegram.error import BadRequest
 
@@ -35,6 +36,7 @@ from bot.handlers.extensions import (
 )
 
 from lib.logging import debug_log
+from config.settings import BACKUP_DB_FILE
 
 
 def _safe_answer(query, **kwargs):
@@ -64,6 +66,54 @@ def _server_result_keyboard(server_ip: str) -> InlineKeyboardMarkup:
             InlineKeyboardButton("✖️ Закрыть", callback_data="close"),
         ],
     ])
+
+
+def _show_snapshot_transfer_menu(update):
+    query = update.callback_query
+    if not extension_manager.is_extension_enabled("snapshot_transfer_monitor"):
+        query.edit_message_text("📸 Мониторинг передач снэпшотов отключён")
+        return
+
+    try:
+        conn = sqlite3.connect(str(BACKUP_DB_FILE))
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT host_name, status, snapshot_name, received_at
+            FROM snapshot_transfers
+            ORDER BY received_at DESC
+            LIMIT 10
+            """
+        )
+        rows = cursor.fetchall()
+    except Exception as exc:
+        debug_log(f"❌ Ошибка чтения snapshot_transfers: {exc}")
+        rows = []
+    finally:
+        if "conn" in locals():
+            conn.close()
+
+    lines = ["📸 *Передачи снэпшотов (последние 10)*", ""]
+    if not rows:
+        lines.append("Пока нет данных.")
+    else:
+        for host_name, status, snapshot_name, received_at in rows:
+            icon = "✅" if status == "SUCCESS" else "🟡" if status in {"STARTED", "BUSY", "SKIPPED"} else "❌"
+            lines.append(f"{icon} `{host_name}` • *{status}*")
+            if snapshot_name:
+                lines.append(f"   Снапшот: `{snapshot_name}`")
+            lines.append(f"   Время: {received_at}")
+
+    query.edit_message_text(
+        "\n".join(lines),
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("🏠 На главную", callback_data="main_menu")],
+                [InlineKeyboardButton("✖️ Закрыть", callback_data="close")],
+            ]
+        ),
+    )
 
 
 def handle_check_single_callback(update, context, server_ip):
@@ -393,6 +443,9 @@ def callback_router(update, context):
 
         from extensions.backup_monitor.bot_handler import backup_callback
         backup_callback(update, context)
+        return
+    elif data == "snapshot_transfer_menu":
+        _show_snapshot_transfer_menu(update)
         return
 
     # ------------------------------------------------

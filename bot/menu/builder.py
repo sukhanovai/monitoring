@@ -1,11 +1,11 @@
 """
 /bot/menu/builder.py
-Server Monitoring System v8.56.47
+Server Monitoring System v8.56.50
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 The place where keyboards are made.
 Система мониторинга серверов
-Версия: 8.56.47
+Версия: 8.56.50
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Место, где строятся клавиатуры
@@ -56,6 +56,10 @@ def main_menu(extension_manager):
     if extension_manager.is_extension_enabled('zfs_pool_free_space_monitor'):
         keyboard.append(
             [InlineKeyboardButton("💽 Свободное место ZFS пулов", callback_data='zfs_pool_free_space_menu')]
+        )
+    if extension_manager.is_extension_enabled('snapshot_transfer_monitor'):
+        keyboard.append(
+            [InlineKeyboardButton("📸 Передачи снэпшотов", callback_data='snapshot_transfer_menu')]
         )
 
     keyboard.extend([

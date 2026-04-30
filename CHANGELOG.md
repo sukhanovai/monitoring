@@ -1,3 +1,27 @@
+## [8.56.50] - 2026-04-30
+
+### Improved / Улучшено
+- EN: Added a dedicated `📸 Snapshot Transfers` button to the bot main menu when `snapshot_transfer_monitor` is enabled in Extensions.
+- RU: Добавлена отдельная кнопка `📸 Передачи снэпшотов` в главное меню бота, если расширение `snapshot_transfer_monitor` включено через «Расширения».
+- EN: Implemented `snapshot_transfer_menu` callback to show the latest 10 snapshot-transfer records from DB with status icons and quick navigation.
+- RU: Реализован callback `snapshot_transfer_menu` с выводом последних 10 записей передач снэпшотов из БД со статус-иконками и быстрыми кнопками навигации.
+- EN: SemVer patch bump to `8.56.50`; synchronized current version references across project files.
+- RU: Выполнен SemVer patch-бамп до `8.56.50`; синхронизированы актуальные упоминания версии по файлам проекта.
+
+## [8.56.49] - 2026-04-30
+
+### Improved / Улучшено
+- EN: Synchronized project version to `8.56.50` across all files where current version is referenced (backend modules, bot handlers, config files, docs, scripts, and Android client metadata).
+- RU: Синхронизирована версия проекта до `8.56.50` во всех файлах, где указывается текущая версия (backend-модули, обработчики бота, конфиги, документация, скрипты и Android-метаданные).
+- EN: Added changelog record for full version alignment after snapshot-transfer monitoring update.
+- RU: Добавлена запись в changelog о полном выравнивании версий после обновления мониторинга передачи снэпшотов.
+
+## [8.56.48] - 2026-04-30
+- EN: Added snapshot-transfer monitoring for emails with statuses `STARTED`, `SUCCESS`, `SKIPPED`, `ERROR`, `BUSY`; parser now stores transfer details (host, snapshot, method, size, timing, duration) in new DB table `snapshot_transfers`.
+- RU: Добавлен мониторинг передачи снэпшотов по письмам со статусами `STARTED`, `SUCCESS`, `SKIPPED`, `ERROR`, `BUSY`; парсер теперь сохраняет детали передачи (хост, снэпшот, метод, размер, время старта/завершения, длительность) в новую таблицу `snapshot_transfers`.
+- EN: Added extension toggle `snapshot_transfer_monitor`, default regex patterns `snapshot_transfer.subject`, and default setting `SNAPSHOT_TRANSFER_HOSTS` for host/pool/schedule configuration.
+- RU: Добавлен переключатель расширения `snapshot_transfer_monitor`, дефолтные regex-паттерны `snapshot_transfer.subject` и настройка `SNAPSHOT_TRANSFER_HOSTS` для конфигурации хостов/пулов/расписания.
+
 ## [8.56.47] - 2026-04-23
 
 ### Improved / Улучшено
