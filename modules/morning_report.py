@@ -1,11 +1,11 @@
 """
 /app/modules/morning_report.py
-Server Monitoring System v8.56.82
+Server Monitoring System v8.56.83
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Morning Report Module
 Система мониторинга серверов
-Версия: 8.56.82
+Версия: 8.56.83
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль утреннего отчета
@@ -15,7 +15,6 @@ import threading
 import time
 from datetime import datetime, timedelta, timezone
 import sqlite3
-from config.db_settings import DATA_COLLECTION_TIME
 from lib.logging import debug_log
 
 class MorningReport:
@@ -494,6 +493,39 @@ class MorningReport:
         bad_count = total - ok_count
         return f"за 24ч: {total} (🟢 {ok_count} / 🔴 {bad_count})", bad_count > 0
 
+
+    def _get_collection_time(self):
+        """Возвращает актуальное время автосбора из настроек."""
+        default_time = None
+        try:
+            from config.db_settings import DATA_COLLECTION_TIME as runtime_default
+            default_time = runtime_default
+        except Exception:
+            pass
+
+        try:
+            from core.config_manager import config_manager as settings_manager
+            raw_value = settings_manager.get_setting('DATA_COLLECTION_TIME', default_time, use_cache=False)
+        except Exception:
+            raw_value = default_time
+
+        if isinstance(raw_value, str):
+            value = raw_value.strip()
+            if ':' in value:
+                try:
+                    hours, minutes = value.split(':', 1)
+                    return datetime.strptime(f"{int(hours):02d}:{int(minutes):02d}", "%H:%M").time()
+                except Exception:
+                    pass
+        if hasattr(raw_value, 'hour') and hasattr(raw_value, 'minute'):
+            return raw_value
+
+        try:
+            from config.settings import DATA_COLLECTION_TIME as static_default
+            return static_default
+        except Exception:
+            return datetime.now().time().replace(second=0, microsecond=0)
+
     def send_report(self, manual_call=False):
         """Отправка отчета"""
         try:
@@ -522,8 +554,9 @@ class MorningReport:
             current_time_time = current_time.time()
             
             # Проверяем время сбора данных
-            if (current_time_time.hour == DATA_COLLECTION_TIME.hour and
-                current_time_time.minute == DATA_COLLECTION_TIME.minute):
+            collection_time = self._get_collection_time()
+            if (current_time_time.hour == collection_time.hour and
+                current_time_time.minute == collection_time.minute):
                 
                 # Проверяем, что сегодня еще не отправляли отчет
                 today = current_time.date()
