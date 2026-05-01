@@ -1,11 +1,11 @@
 """
 /core/monitor.py
-Server Monitoring System v8.56.99
+Server Monitoring System v8.57.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core monitoring module
 Система мониторинга серверов
-Версия: 8.56.99
+Версия: 8.57.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль мониторинга
@@ -345,7 +345,10 @@ class Monitor:
             f"last_report_date={self.last_report_date}"
         )
 
-        if current_time >= scheduled_collection_dt and self.last_report_date != today:
+        trigger_window_start = scheduled_collection_dt
+        trigger_window_end = scheduled_collection_dt.replace(second=59, microsecond=999999)
+
+        if trigger_window_start <= current_time <= trigger_window_end and self.last_report_date != today:
             debug_log(
                 f"🚀 Триггер автозапуска утреннего отчета: "
                 f"now={current_time.strftime('%Y-%m-%d %H:%M:%S')} "
@@ -374,14 +377,27 @@ class Monitor:
 
             # Отправляем отчет
             debug_log(f"[{current_time}] 📊 Отправка утреннего отчета...")
-            report_text = morning_report.generate_report_message()
-            send_alert(report_text, force=True)
+            sent_ok = morning_report.send_report(manual_call=False)
+            if not sent_ok:
+                info_log(
+                    "[MORNING_REPORT_SCHEDULE] send_failed "
+                    f"now={current_time.strftime('%Y-%m-%d %H:%M:%S')} "
+                    f"plan={collection_time.strftime('%H:%M')}"
+                )
+                return
 
             self.last_report_date = today
             debug_log("✅ Утренний отчет отправлен")
 
             # Короткая пауза, чтобы не запускать повторно в ту же секунду
             time.sleep(2)
+        elif current_time > trigger_window_end and self.last_report_date != today:
+            info_log(
+                "[MORNING_REPORT_SCHEDULE] waiting_next_day "
+                f"now={current_time.strftime('%Y-%m-%d %H:%M:%S')} "
+                f"plan={collection_time.strftime('%H:%M')} "
+                "reason=window_missed_or_service_restarted"
+            )
     
     def start(self) -> None:
         """Запускает основной цикл мониторинга"""
