@@ -1,11 +1,11 @@
-## [8.56.84] - 2026-05-01
+## [8.56.86] - 2026-05-01
 
 - EN: Fixed automatic morning report dispatch logic: report generation now triggers once per day immediately after data collection when current time reaches or passes `DATA_COLLECTION_TIME`, even if the main loop missed the exact minute boundary.
 - RU: Исправлена логика авто-отправки утреннего отчёта: формирование запускается один раз в день сразу после сбора данных при достижении или превышении `DATA_COLLECTION_TIME`, даже если основной цикл не попал ровно в минуту старта.
-- EN: SemVer patch bump to `8.56.84`; synchronized explicit current-version mentions across project files and updated Android metadata to `ANDROID_VERSION_NAME=8.56.84` and `ANDROID_VERSION_CODE=659`.
-- RU: Выполнен SemVer patch-бамп до `8.56.84`; синхронизированы явные упоминания текущей версии во всех файлах проекта и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.56.84` и `ANDROID_VERSION_CODE=659`.
+- EN: SemVer patch bump to `8.56.86`; synchronized explicit current-version mentions across project files and updated Android metadata to `ANDROID_VERSION_NAME=8.56.86` and `ANDROID_VERSION_CODE=660`.
+- RU: Выполнен SemVer patch-бамп до `8.56.86`; синхронизированы явные упоминания текущей версии во всех файлах проекта и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.56.86` и `ANDROID_VERSION_CODE=660`.
 
-## [8.56.83] - 2026-05-01
+## [8.56.85] - 2026-05-01
 
 - EN: Fixed Telegram time-setting input flow: `SILENT_START` and `SILENT_END` now accept both hour-only (`21`) and `HH:MM` format (`21:00`) without `invalid literal for int()` errors.
 - RU: Исправлен ввод временных настроек в Telegram: `SILENT_START` и `SILENT_END` теперь принимают как только час (`21`), так и формат `HH:MM` (`21:00`) без ошибки `invalid literal for int()`.
@@ -21,8 +21,8 @@
 - RU: В Telegram-меню передач снэпшотов теперь показываются распарсенные результаты по каждому хосту (последний статус из `snapshot_transfers`) вместе с настроенным временем старта.
 - EN: Fixed Telegram runtime error in snapshot-transfer settings: replaced undefined `_escape_markdown` with valid `escape_markdown`, so the menu renders subject patterns and hosts without crashing.
 - RU: Исправлена runtime-ошибка Telegram в настройках передач снэпшотов: неопределённый `_escape_markdown` заменён на корректный `escape_markdown`, поэтому меню снова отображает subject-паттерны и хосты без падения.
-- EN: SemVer patch bump to `8.56.83`; synchronized explicit current-version mentions across project files and updated Android metadata to `ANDROID_VERSION_NAME=8.56.83` and `ANDROID_VERSION_CODE=658`.
-- RU: Выполнен SemVer patch-бамп до `8.56.83`; синхронизированы явные упоминания текущей версии во всех файлах проекта и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.56.83` и `ANDROID_VERSION_CODE=658`.
+- EN: SemVer patch bump to `8.56.85`; synchronized explicit current-version mentions across project files and updated Android metadata to `ANDROID_VERSION_NAME=8.56.85` and `ANDROID_VERSION_CODE=658`.
+- RU: Выполнен SemVer patch-бамп до `8.56.85`; синхронизированы явные упоминания текущей версии во всех файлах проекта и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.56.85` и `ANDROID_VERSION_CODE=658`.
 - EN: Fixed Telegram snapshot-transfer settings crash by importing `BACKUP_DB_FILE` and replacing undefined `logger` usage with `debug_logger` in error handling.
 - RU: Исправлено падение Telegram в настройках передач снэпшотов: добавлен импорт `BACKUP_DB_FILE`, а в обработке ошибок неопределённый `logger` заменён на `debug_logger`.
 - EN: Snapshot transfer subject patterns now normalize escaped wildcard fragments (for example, `snapshots.\*transfer.\*STARTED`) and whitespace, so emails like `snapshots transfer pve-rubicon STARTED/SUCCESS` are matched reliably.
