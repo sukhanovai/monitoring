@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.56.81
+Server Monitoring System v8.56.82
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.56.81
+Версия: 8.56.82
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -2366,7 +2366,23 @@ def handle_setting_value(update, context):
             'backup_alert_hours': 'int', 'backup_stale_hours': 'int'
         }
         
-        if setting_key in setting_types and setting_types[setting_key] == 'int':
+        if setting_key in {'silent_start', 'silent_end'}:
+            normalized = str(new_value).strip()
+            if ':' in normalized:
+                hour_part, minute_part = normalized.split(':', 1)
+                if not minute_part.isdigit() or len(minute_part) != 2:
+                    raise ValueError("Неверный формат времени. Используйте HH:MM")
+                hour_value = int(hour_part)
+                minute_value = int(minute_part)
+                if not (0 <= hour_value <= 23 and 0 <= minute_value <= 59):
+                    raise ValueError("Время должно быть в диапазоне 00:00-23:59")
+                new_value = hour_value
+            else:
+                hour_value = int(normalized)
+                if not (0 <= hour_value <= 23):
+                    raise ValueError("Час должен быть в диапазоне 0-23")
+                new_value = hour_value
+        elif setting_key in setting_types and setting_types[setting_key] == 'int':
             new_value = int(new_value)
         elif setting_key == 'data_collection':
             # Проверяем формат времени
@@ -2389,6 +2405,7 @@ def handle_setting_value(update, context):
         
         special_db_keys = {
             'telegram_token': 'TELEGRAM_TOKEN',
+            'data_collection': 'DATA_COLLECTION_TIME',
         }
         db_key = special_db_keys.get(setting_key, setting_key.upper())
         category = category_map.get(setting_key, 'general')

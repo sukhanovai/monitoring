@@ -709,7 +709,7 @@ android-client/app/build/outputs/apk/debug/app-debug.apk
 
 1. **В git-репозиторий не коммитить бинарник APK напрямую** (история раздувается).
 2. Публиковать APK как **GitHub Release Asset** (например, `monitoring-android.apk`).
-   - Актуальный prerelease APK: <!-- ANDROID_PRERELEASE_APK_LINK_START -->https://github.com/sukhanovai/monitoring/releases/download/v8.56.81-develop/monitoring-android-8.56.81-develop-debug.apk<!-- ANDROID_PRERELEASE_APK_LINK_END -->
+   - Актуальный prerelease APK: <!-- ANDROID_PRERELEASE_APK_LINK_START -->https://github.com/sukhanovai/monitoring/releases/download/v8.56.82-develop/monitoring-android-8.56.82-develop-debug.apk<!-- ANDROID_PRERELEASE_APK_LINK_END -->
 3. В backend держать ссылку `ANDROID_APK_DOWNLOAD_URL` на этот release asset.
 4. Android при старте ходит в `GET /v1/mobile/version` и, если нужно обновление, ведёт пользователя по этой ссылке.
    - Скрипт prerelease по умолчанию публикует `debug` APK (для максимальной installability); `release` можно выбрать через `-BuildType release`.
