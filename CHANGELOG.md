@@ -1,3 +1,10 @@
+## [8.56.97] - 2026-05-01
+
+- EN: SemVer patch bump to `8.56.97`; synchronized explicit current-version mentions across project files.
+- RU: Выполнен SemVer patch-бамп до `8.56.97`; синхронизированы явные упоминания текущей версии во всех файлах проекта.
+- EN: Android metadata updated to `ANDROID_VERSION_NAME=8.56.97` and `ANDROID_VERSION_CODE=669`; prerelease APK links aligned to `v8.56.97-develop`.
+- RU: Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.97` и `ANDROID_VERSION_CODE=669`; ссылки на prerelease APK выровнены на `v8.56.97-develop`.
+
 ## [8.56.96] - 2026-05-01
 
 - EN: Fixed scheduled morning report delivery by not marking a day as sent when Telegram delivery fails; report now retries automatically on next monitoring loop tick.
