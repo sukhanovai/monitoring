@@ -1,11 +1,11 @@
 """
 /core/monitor.py
-Server Monitoring System v8.56.93
+Server Monitoring System v8.56.94
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core monitoring module
 Система мониторинга серверов
-Версия: 8.56.93
+Версия: 8.56.94
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль мониторинга
@@ -344,6 +344,11 @@ class Monitor:
                 f"🚀 Триггер автозапуска утреннего отчета: "
                 f"now={current_time.strftime('%Y-%m-%d %H:%M:%S')} "
                 f"plan={collection_time.strftime('%H:%M')}"
+            )
+            debug_log(
+                "🗓️ Автозапуск утреннего отчета выполнен по расписанию из меню: "
+                "Главное меню → Настройки → Временные настройки → Время сбора данных "
+                f"({collection_time.strftime('%H:%M')})"
             )
             debug_log(
                 f"[{current_time}] 🔍 Собираем данные для утреннего отчета "
