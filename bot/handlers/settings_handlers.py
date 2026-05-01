@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.56.86
+Server Monitoring System v8.56.87
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.56.86
+Версия: 8.56.87
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -2385,10 +2385,17 @@ def handle_setting_value(update, context):
         elif setting_key in setting_types and setting_types[setting_key] == 'int':
             new_value = int(new_value)
         elif setting_key == 'data_collection':
-            # Проверяем формат времени
+            # Проверяем и нормализуем формат времени HH:MM
             import re
-            if not re.match(r'^\d{1,2}:\d{2}$', new_value):
+            normalized = str(new_value).strip()
+            if not re.match(r'^\d{1,2}:\d{2}$', normalized):
                 raise ValueError("Неверный формат времени. Используйте HH:MM")
+            hour_part, minute_part = normalized.split(':', 1)
+            hour_value = int(hour_part)
+            minute_value = int(minute_part)
+            if not (0 <= hour_value <= 23 and 0 <= minute_value <= 59):
+                raise ValueError("Время должно быть в диапазоне 00:00-23:59")
+            new_value = f"{hour_value:02d}:{minute_value:02d}"
         
         # Сохраняем настройку
         category_map = {

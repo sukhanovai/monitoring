@@ -1,9 +1,9 @@
-## [8.56.86] - 2026-05-01
+## [8.56.87] - 2026-05-01
 
-- EN: Fixed automatic morning report dispatch logic: report generation now triggers once per day immediately after data collection when current time reaches or passes `DATA_COLLECTION_TIME`, even if the main loop missed the exact minute boundary.
-- RU: Исправлена логика авто-отправки утреннего отчёта: формирование запускается один раз в день сразу после сбора данных при достижении или превышении `DATA_COLLECTION_TIME`, даже если основной цикл не попал ровно в минуту старта.
-- EN: SemVer patch bump to `8.56.86`; synchronized explicit current-version mentions across project files and updated Android metadata to `ANDROID_VERSION_NAME=8.56.86` and `ANDROID_VERSION_CODE=660`.
-- RU: Выполнен SemVer patch-бамп до `8.56.86`; синхронизированы явные упоминания текущей версии во всех файлах проекта и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.56.86` и `ANDROID_VERSION_CODE=660`.
+- EN: Fixed Telegram time input validation for `DATA_COLLECTION_TIME`: the bot now enforces valid `HH:MM` ranges and normalizes saved values, preventing fallback to default schedule when invalid times were entered.
+- RU: Исправлена валидация ввода времени `DATA_COLLECTION_TIME` в Telegram: бот теперь проверяет диапазон `HH:MM` и сохраняет нормализованное значение, чтобы отчёт не откатывался к дефолтному расписанию при некорректном времени.
+- EN: SemVer patch bump to `8.56.87`; synchronized explicit current-version mentions across project files and updated Android metadata to `ANDROID_VERSION_NAME=8.56.87` and `ANDROID_VERSION_CODE=661`.
+- RU: Выполнен SemVer patch-бамп до `8.56.87`; синхронизированы явные упоминания текущей версии во всех файлах проекта и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.56.87` и `ANDROID_VERSION_CODE=661`.
 
 ## [8.56.85] - 2026-05-01
 
