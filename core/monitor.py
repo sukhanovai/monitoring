@@ -1,11 +1,11 @@
 """
 /core/monitor.py
-Server Monitoring System v8.56.94
+Server Monitoring System v8.56.95
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core monitoring module
 Система мониторинга серверов
-Версия: 8.56.94
+Версия: 8.56.95
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль мониторинга
@@ -16,7 +16,7 @@ import threading
 from datetime import datetime
 from typing import Dict, List
 
-from lib.logging import debug_log
+from lib.logging import debug_log, info_log
 from lib.alerts import send_alert, is_silent_time as alerts_is_silent_time
 from config import (
     CHECK_INTERVAL,
@@ -338,6 +338,12 @@ class Monitor:
             f"план={scheduled_collection_dt.strftime('%H:%M')} "
             f"последний_отчет={self.last_report_date}"
         )
+        info_log(
+            "[MORNING_REPORT_SCHEDULE] heartbeat "
+            f"now={current_time.strftime('%Y-%m-%d %H:%M:%S')} "
+            f"plan={scheduled_collection_dt.strftime('%Y-%m-%d %H:%M')} "
+            f"last_report_date={self.last_report_date}"
+        )
 
         if current_time >= scheduled_collection_dt and self.last_report_date != today:
             debug_log(
@@ -349,6 +355,11 @@ class Monitor:
                 "🗓️ Автозапуск утреннего отчета выполнен по расписанию из меню: "
                 "Главное меню → Настройки → Временные настройки → Время сбора данных "
                 f"({collection_time.strftime('%H:%M')})"
+            )
+            info_log(
+                "[MORNING_REPORT_SCHEDULE] trigger_from_menu "
+                "path='Главное меню → Настройки → Временные настройки → Время сбора данных' "
+                f"collection_time={collection_time.strftime('%H:%M')}"
             )
             debug_log(
                 f"[{current_time}] 🔍 Собираем данные для утреннего отчета "
