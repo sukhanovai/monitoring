@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.56.75
+Server Monitoring System v8.56.77
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.56.75
+Версия: 8.56.77
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -21,7 +21,7 @@ from telegram.utils.helpers import escape_markdown
 from telegram.ext import CommandHandler, CallbackQueryHandler, MessageHandler, Filters
 from core.config_manager import config_manager as settings_manager
 from config.db_settings import BACKUP_DATABASE_CONFIG
-from config.settings import BACKUP_PATTERNS as DEFAULT_BACKUP_PATTERNS
+from config.settings import BACKUP_PATTERNS as DEFAULT_BACKUP_PATTERNS, BACKUP_DB_FILE
 from extensions.extension_manager import extension_manager
 from extensions.zfs_free_space_monitor import get_zfs_servers_config
 from bot.handlers.zfs_pool_free_space_handlers import handle_text_input as handle_zfsp_text_input
@@ -3156,7 +3156,7 @@ def show_snapshot_transfer_settings(update, context):
                 "received_at": str(received_at or ""),
             }
     except Exception as exc:
-        logger.warning("⚠️ Не удалось загрузить результаты передач снэпшотов: %s", exc)
+        debug_logger(f"⚠️ Не удалось загрузить результаты передач снэпшотов: {exc}")
     finally:
         if "conn" in locals():
             conn.close()
