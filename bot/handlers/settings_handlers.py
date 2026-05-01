@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.56.79
+Server Monitoring System v8.56.80
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.56.79
+Версия: 8.56.80
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -3138,6 +3138,7 @@ def show_snapshot_transfer_settings(update, context):
         message += "Паттерны пока не добавлены.\n"
 
     transfer_rows: dict[str, dict[str, str]] = {}
+    recent_transfers: list[dict[str, str]] = []
     try:
         conn = sqlite3.connect(BACKUP_DB_FILE)
         cursor = conn.cursor()
@@ -3149,12 +3150,24 @@ def show_snapshot_transfer_settings(update, context):
             """
         )
         for host_name, transfer_status, received_at in cursor.fetchall():
-            if not host_name or host_name in transfer_rows:
+            host = str(host_name or "").strip()
+            status = str(transfer_status or "").upper().strip()
+            received = str(received_at or "").strip()
+            if not host:
                 continue
-            transfer_rows[host_name] = {
-                "status": str(transfer_status or "").upper(),
-                "received_at": str(received_at or ""),
-            }
+
+            if host not in transfer_rows:
+                transfer_rows[host] = {
+                    "status": status,
+                    "received_at": received,
+                }
+
+            if len(recent_transfers) < 8:
+                recent_transfers.append({
+                    "host_name": host,
+                    "status": status or "—",
+                    "received_at": received or "—",
+                })
     except Exception as exc:
         debug_logger(f"⚠️ Не удалось загрузить результаты передач снэпшотов: {exc}")
     finally:
@@ -3186,6 +3199,27 @@ def show_snapshot_transfer_settings(update, context):
             )
     else:
         message += "Список хостов пуст.\n"
+
+    message += "\n🧾 *Последние распарсенные письма*\n\n"
+    if recent_transfers:
+        for idx, transfer in enumerate(recent_transfers, 1):
+            status = transfer.get("status", "—")
+            if status in {"SUCCESS", "SKIPPED"}:
+                state = "🟢"
+            elif status in {"STARTED", "BUSY"}:
+                state = "🟡"
+            elif status == "ERROR":
+                state = "🔴"
+            else:
+                state = "⚪️"
+
+            message += (
+                f"{idx}. `{escape_markdown(transfer.get('host_name', '—'))}` — "
+                f"{state} `{escape_markdown(status)}` "
+                f"({escape_markdown(transfer.get('received_at', '—'))})\n"
+            )
+    else:
+        message += "Пока нет данных о распарсенных письмах.\n"
 
     keyboard = [
         [InlineKeyboardButton("📋 Хосты", callback_data='settings_snapshot_hosts')],
