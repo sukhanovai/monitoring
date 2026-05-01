@@ -1,11 +1,11 @@
 """
 /core/monitor_core.py
-Server Monitoring System v8.56.95
+Server Monitoring System v8.56.96
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core system
 Система мониторинга серверов
-Версия: 8.56.95
+Версия: 8.56.96
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Ядро системы
@@ -1689,6 +1689,11 @@ def start_monitoring():
             last_collection_schedule_time = collection_time
 
         scheduled_collection_dt = datetime.combine(today, collection_time)
+        debug_log(
+            f"🕒 План отчета: now={current_time.strftime('%Y-%m-%d %H:%M:%S')} | "
+            f"scheduled={scheduled_collection_dt.strftime('%Y-%m-%d %H:%M:%S')} | "
+            f"last_report_date={last_report_date}"
+        )
 
         # Отчет должен отправляться один раз в день сразу после завершения
         # сбора, запущенного в запланированное время, даже если цикл
@@ -1712,9 +1717,12 @@ def start_monitoring():
 
             # СРАЗУ отправляем отчет после сбора данных
             debug_log(f"[{current_time}] 📊 Отправка утреннего отчета...")
-            send_morning_report(manual_call=False)  # Автоматический вызов
-            last_report_date = today
-            debug_log("✅ Утренний отчет отправлен")
+            sent_ok = send_morning_report(manual_call=False)  # Автоматический вызов
+            if sent_ok:
+                last_report_date = today
+                debug_log("✅ Утренний отчет отправлен")
+            else:
+                debug_log("❌ Утренний отчет НЕ отправлен, повторим на следующем цикле")
 
             # Короткая пауза, чтобы не дёргать ветку повторно в ту же секунду
             time.sleep(2)
@@ -2178,8 +2186,16 @@ def send_morning_report(manual_call=False):
         message += f"\n⏰ *Отчет отправлен:* {datetime.now().strftime('%H:%M:%S')}"
 
     # Отправляем отчет принудительно, даже в тихом режиме
-    send_alert(message, force=True)
-    debug_log(f"✅ {report_type} отправлен: {up_count}/{total_servers} доступно")
+    debug_log(
+        f"📨 Подготовлен {report_type}: длина={len(message)} символов, "
+        f"время_сбора={collection_time.strftime('%Y-%m-%d %H:%M:%S')}"
+    )
+    sent_ok = send_alert(message, force=True)
+    if sent_ok:
+        debug_log(f"✅ {report_type} отправлен: {up_count}/{total_servers} доступно")
+    else:
+        error_log(f"❌ {report_type} не доставлен во все чаты (или не доставлен вообще)")
+    return sent_ok
 
 def get_backup_summary_for_report(period_hours=16, include_mail=False):
     """Получает сводку по бэкапам за указанный период

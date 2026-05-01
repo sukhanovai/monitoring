@@ -224,9 +224,14 @@ def send_alert(
     sent = False
     errors = []
     
+    debug_log(
+        f"🔔 send_alert старт | type={alert_type} force={force} chats={len(_chat_ids) if _chat_ids else 0} len={len(full_message)}"
+    )
+
     # Telegram
     if _telegram_bot and _chat_ids:
         telegram_sent = _send_telegram_alert(full_message, alert_type)
+        debug_log(f"📬 Результат Telegram отправки: {'успех' if telegram_sent else 'ошибка'}")
         if telegram_sent:
             sent = True
         else:
@@ -296,7 +301,10 @@ def _send_telegram_alert(message: str, alert_type: str) -> bool:
                 success_count += 1
 
     success_rate = success_count / total_chats if total_chats > 0 else 0
-    debug_log(f"Telegram алерт отправлен: {success_count}/{total_chats} успешно ({success_rate:.0%})")
+    debug_log(
+        f"Telegram алерт отправлен: {success_count}/{total_chats} успешно ({success_rate:.0%}) | "
+        f"чаты={_chat_ids}"
+    )
 
     # Для мониторинга считаем успехом только доставку во все чаты
     return success_count == total_chats and total_chats > 0

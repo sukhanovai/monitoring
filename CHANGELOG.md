@@ -1,3 +1,10 @@
+## [8.56.96] - 2026-05-01
+
+- EN: Fixed scheduled morning report delivery by not marking a day as sent when Telegram delivery fails; report now retries automatically on next monitoring loop tick.
+- RU: Исправлена отправка утреннего отчёта по расписанию: день больше не помечается как отправленный при неуспешной доставке в Telegram; добавлен автоповтор на следующем тике цикла мониторинга.
+- EN: Expanded diagnostics for schedule and delivery pipeline (`send_morning_report` / `send_alert`), including planned time, report length, recipient count, and per-channel result.
+- RU: Расширена диагностика цепочки расписания и доставки (`send_morning_report` / `send_alert`): добавлены логи планового времени, длины отчёта, числа получателей и результата канала доставки.
+
 ## [8.56.95] - 2026-05-01
 
 ### Changed
