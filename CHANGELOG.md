@@ -1,5 +1,7 @@
-## [8.56.80] - 2026-05-01
+## [8.56.81] - 2026-05-01
 
+- EN: Morning and manual monitoring reports now include ZFS pool free-space summary and snapshot-transfer summary for the last 24 hours.
+- RU: В утренний и ручной отчёты мониторинга добавлены сводки по свободному месту ZFS-пулов и передачам снэпшотов за последние 24 часа.
 - EN: Snapshot-transfer Telegram screen now includes a dedicated "Latest parsed emails" section with recent records from `snapshot_transfers` (host, status, timestamp), making successful parsing visible immediately after mail processing.
 - RU: Экран Telegram «Передачи снэпшотов» теперь содержит отдельный блок «Последние распарсенные письма» с недавними записями из `snapshot_transfers` (хост, статус, время), чтобы результат разбора писем был виден сразу после обработки почты.
 - EN: Hardened snapshot-transfer parsing in `mail_monitor`: subject whitespace is normalized before regex matching, and successful matches now log whether a custom pattern or fallback pattern was used.
@@ -8,8 +10,8 @@
 - RU: В Telegram-меню передач снэпшотов теперь показываются распарсенные результаты по каждому хосту (последний статус из `snapshot_transfers`) вместе с настроенным временем старта.
 - EN: Fixed Telegram runtime error in snapshot-transfer settings: replaced undefined `_escape_markdown` with valid `escape_markdown`, so the menu renders subject patterns and hosts without crashing.
 - RU: Исправлена runtime-ошибка Telegram в настройках передач снэпшотов: неопределённый `_escape_markdown` заменён на корректный `escape_markdown`, поэтому меню снова отображает subject-паттерны и хосты без падения.
-- EN: SemVer patch bump to `8.56.80`; synchronized explicit current-version mentions across project files and updated Android metadata to `ANDROID_VERSION_NAME=8.56.80` and `ANDROID_VERSION_CODE=655`.
-- RU: Выполнен SemVer patch-бамп до `8.56.80`; синхронизированы явные упоминания текущей версии во всех файлах проекта и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.56.80` и `ANDROID_VERSION_CODE=655`.
+- EN: SemVer patch bump to `8.56.81`; synchronized explicit current-version mentions across project files and updated Android metadata to `ANDROID_VERSION_NAME=8.56.81` and `ANDROID_VERSION_CODE=656`.
+- RU: Выполнен SemVer patch-бамп до `8.56.81`; синхронизированы явные упоминания текущей версии во всех файлах проекта и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.56.81` и `ANDROID_VERSION_CODE=656`.
 - EN: Fixed Telegram snapshot-transfer settings crash by importing `BACKUP_DB_FILE` and replacing undefined `logger` usage with `debug_logger` in error handling.
 - RU: Исправлено падение Telegram в настройках передач снэпшотов: добавлен импорт `BACKUP_DB_FILE`, а в обработке ошибок неопределённый `logger` заменён на `debug_logger`.
 - EN: Snapshot transfer subject patterns now normalize escaped wildcard fragments (for example, `snapshots.\*transfer.\*STARTED`) and whitespace, so emails like `snapshots transfer pve-rubicon STARTED/SUCCESS` are matched reliably.
