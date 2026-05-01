@@ -1,11 +1,11 @@
 """
 /bot/handlers/zfs_pool_free_space_handlers.py
-Server Monitoring System v8.56.99
+Server Monitoring System v8.57.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Telegram handlers for ZFS pool free space extension
 Система мониторинга серверов
-Версия: 8.56.99
+Версия: 8.57.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Telegram-обработчики расширения свободного места ZFS-пулов
