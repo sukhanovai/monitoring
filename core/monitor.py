@@ -1,11 +1,11 @@
 """
 /core/monitor.py
-Server Monitoring System v8.56.91
+Server Monitoring System v8.56.92
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core monitoring module
 Система мониторинга серверов
-Версия: 8.56.91
+Версия: 8.56.92
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль мониторинга
@@ -43,6 +43,7 @@ class Monitor:
         self.last_check_time = datetime.now()
         self.last_resource_check = datetime.now()
         self.last_report_date = None
+        self.last_collection_schedule_time = None
         
     def is_silent_time(self) -> bool:
         """
@@ -313,36 +314,58 @@ class Monitor:
     def check_morning_report(self) -> None:
         """Проверяет и отправляет утренний отчет если нужно"""
         current_time = datetime.now()
-        current_time_time = current_time.time()
-        
+
         # Проверяем актуальное время сбора данных из настроек
         collection_time = morning_report._get_collection_time()
-        debug_log(f"🕒 Проверка автозапуска утреннего отчета: текущее={current_time.strftime('%H:%M:%S')} план={collection_time.strftime('%H:%M')}")
-        if (current_time_time.hour == collection_time.hour and
-            current_time_time.minute == collection_time.minute):
-            
-            # Проверяем, что сегодня еще не отправляли отчет
-            today = current_time.date()
-            if self.last_report_date != today:
-                debug_log(f"🚀 Триггер автозапуска утреннего отчета: now={current_time.strftime('%Y-%m-%d %H:%M:%S')} plan={collection_time.strftime('%H:%M')}")
-                debug_log(f"[{current_time}] 🔍 Собираем данные для утреннего отчета...")
-                
-                # Собираем данные утреннего отчета
-                morning_report.collect_morning_data(manual_call=False)
+        today = current_time.date()
 
-                status = morning_report.morning_data.get("status", {})
-                debug_log(f"✅ Данные собраны: {len(status.get('ok', []))} доступно")
+        if self.last_collection_schedule_time is None:
+            self.last_collection_schedule_time = collection_time
+        elif collection_time != self.last_collection_schedule_time:
+            debug_log(
+                "🕒 Обнаружено изменение времени утреннего отчета: "
+                f"{self.last_collection_schedule_time.strftime('%H:%M')} -> {collection_time.strftime('%H:%M')}"
+            )
+            if self.last_report_date == today:
+                debug_log("♻️ Сбрасываем флаг отправки отчета за сегодня из-за смены времени")
+                self.last_report_date = None
+            self.last_collection_schedule_time = collection_time
 
-                # Отправляем отчет
-                debug_log(f"[{current_time}] 📊 Отправка утреннего отчета...")
-                report_text = morning_report.generate_report_message()
-                send_alert(report_text, force=True)
-                
-                self.last_report_date = today
-                debug_log("✅ Утренний отчет отправлен")
-                
-                # Добавляем задержку чтобы не запускать повторно
-                time.sleep(65)
+        scheduled_collection_dt = datetime.combine(today, collection_time)
+        debug_log(
+            "🕒 Проверка автозапуска утреннего отчета: "
+            f"текущее={current_time.strftime('%H:%M:%S')} "
+            f"план={scheduled_collection_dt.strftime('%H:%M')} "
+            f"последний_отчет={self.last_report_date}"
+        )
+
+        if current_time >= scheduled_collection_dt and self.last_report_date != today:
+            debug_log(
+                f"🚀 Триггер автозапуска утреннего отчета: "
+                f"now={current_time.strftime('%Y-%m-%d %H:%M:%S')} "
+                f"plan={collection_time.strftime('%H:%M')}"
+            )
+            debug_log(
+                f"[{current_time}] 🔍 Собираем данные для утреннего отчета "
+                f"(план: {scheduled_collection_dt.strftime('%H:%M')})..."
+            )
+
+            # Собираем данные утреннего отчета
+            morning_report.collect_morning_data(manual_call=False)
+
+            status = morning_report.morning_data.get("status", {})
+            debug_log(f"✅ Данные собраны: {len(status.get('ok', []))} доступно")
+
+            # Отправляем отчет
+            debug_log(f"[{current_time}] 📊 Отправка утреннего отчета...")
+            report_text = morning_report.generate_report_message()
+            send_alert(report_text, force=True)
+
+            self.last_report_date = today
+            debug_log("✅ Утренний отчет отправлен")
+
+            # Короткая пауза, чтобы не запускать повторно в ту же секунду
+            time.sleep(2)
     
     def start(self) -> None:
         """Запускает основной цикл мониторинга"""
