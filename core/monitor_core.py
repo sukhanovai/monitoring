@@ -1,11 +1,11 @@
 """
 /core/monitor_core.py
-Server Monitoring System v8.56.90
+Server Monitoring System v8.56.91
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core system
 Система мониторинга серверов
-Версия: 8.56.90
+Версия: 8.56.91
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Ядро системы
@@ -51,6 +51,7 @@ resource_history = {}
 last_resource_check = datetime.now()
 resource_alerts_sent = {}
 last_report_date = None
+last_collection_schedule_time = None
 
 _alerts_configured = False
 
@@ -1673,6 +1674,20 @@ def start_monitoring():
         config = get_config()
         collection_time = config.DATA_COLLECTION_TIME
         today = current_time.date()
+
+        global last_collection_schedule_time
+        if last_collection_schedule_time is None:
+            last_collection_schedule_time = collection_time
+        elif collection_time != last_collection_schedule_time:
+            debug_log(
+                "🕒 Обнаружено изменение времени утреннего отчета: "
+                f"{last_collection_schedule_time.strftime('%H:%M')} -> {collection_time.strftime('%H:%M')}"
+            )
+            if last_report_date == today:
+                debug_log("♻️ Сбрасываем флаг отправки отчета за сегодня из-за смены времени")
+                last_report_date = None
+            last_collection_schedule_time = collection_time
+
         scheduled_collection_dt = datetime.combine(today, collection_time)
 
         # Отчет должен отправляться один раз в день сразу после завершения
