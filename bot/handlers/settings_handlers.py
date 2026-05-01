@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.56.89
+Server Monitoring System v8.56.90
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.56.89
+Версия: 8.56.90
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -20,7 +20,7 @@ from telegram.error import BadRequest, TelegramError
 from telegram.utils.helpers import escape_markdown
 from telegram.ext import CommandHandler, CallbackQueryHandler, MessageHandler, Filters
 from core.config_manager import config_manager as settings_manager
-from config.db_settings import BACKUP_DATABASE_CONFIG
+from config.db_settings import BACKUP_DATABASE_CONFIG, load_all_settings
 from config.settings import BACKUP_PATTERNS as DEFAULT_BACKUP_PATTERNS, BACKUP_DB_FILE
 from extensions.extension_manager import extension_manager
 from extensions.zfs_free_space_monitor import get_zfs_servers_config
@@ -2418,6 +2418,12 @@ def handle_setting_value(update, context):
         category = category_map.get(setting_key, 'general')
         
         settings_manager.set_setting(db_key, new_value, category)
+
+        # Подтягиваем обновленные значения из БД в runtime-конфиг,
+        # чтобы цикл мониторинга сразу увидел новое время отчета.
+        load_all_settings()
+        if db_key == 'DATA_COLLECTION_TIME':
+            debug_log(f"🕒 Обновлено время сбора данных для утреннего отчета: {new_value}")
         
         # Очищаем контекст
         del context.user_data['editing_setting']

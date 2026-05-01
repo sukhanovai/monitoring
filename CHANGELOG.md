@@ -1,10 +1,14 @@
-## [8.56.89] - 2026-05-01
+## [8.56.90] - 2026-05-01
 
 ### Changed
-- EN: SemVer patch bump to `8.56.89`; synchronized explicit current-version mentions across project files.
-- RU: Выполнен SemVer patch-бамп до `8.56.89`; синхронизированы явные упоминания текущей версии во всех файлах проекта.
-- EN: Android metadata updated to `ANDROID_VERSION_NAME=8.56.89` and `ANDROID_VERSION_CODE=663`; prerelease APK links aligned to `v8.56.89-develop`.
-- RU: Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.89` и `ANDROID_VERSION_CODE=663`; ссылки на prerelease APK выровнены на `v8.56.89-develop`.
+- EN: Fixed Telegram settings runtime apply for `DATA_COLLECTION_TIME`: after saving, backend now immediately reloads DB settings via `load_all_settings()`, so morning report schedule is applied without service restart.
+- RU: Исправлено применение `DATA_COLLECTION_TIME` из Telegram-настроек в runtime: после сохранения бэкенд сразу перезагружает настройки из БД через `load_all_settings()`, поэтому новое время утреннего отчета применяется без рестарта сервиса.
+- EN: Added debug log when morning report collection time is updated from Telegram settings to simplify troubleshooting in service logs.
+- RU: Добавлен debug-лог при обновлении времени сбора утреннего отчёта из Telegram-настроек, чтобы проще диагностировать запуск по логам сервиса.
+- EN: SemVer patch bump to `8.56.90`; synchronized explicit current-version mentions across project files.
+- RU: Выполнен SemVer patch-бамп до `8.56.90`; синхронизированы явные упоминания текущей версии во всех файлах проекта.
+- EN: Android metadata updated to `ANDROID_VERSION_NAME=8.56.90` and `ANDROID_VERSION_CODE=664`; prerelease APK links aligned to `v8.56.90-develop`.
+- RU: Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.90` и `ANDROID_VERSION_CODE=664`; ссылки на prerelease APK выровнены на `v8.56.90-develop`.
 
 ## [8.56.88] - 2026-05-01
 - EN: Fixed morning report scheduling after changing `DATA_COLLECTION_TIME` in Telegram settings: the monitor now reads runtime-configured collection time on each check instead of relying on stale startup constants.
