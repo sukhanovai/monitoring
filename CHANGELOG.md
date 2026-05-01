@@ -1,3 +1,11 @@
+## [8.56.88] - 2026-05-01
+- EN: Fixed morning report scheduling after changing `DATA_COLLECTION_TIME` in Telegram settings: the monitor now reads runtime-configured collection time on each check instead of relying on stale startup constants.
+- RU: Исправлено расписание утреннего отчёта после изменения `DATA_COLLECTION_TIME` в настройках Telegram: монитор теперь на каждой проверке читает актуальное время из runtime-настроек, а не использует устаревшую константу со старта.
+- EN: Added explicit startup-trigger logs for automatic morning report run (current time + planned time) so launch can be verified via `journalctl -u server-monitor.service -f`.
+- RU: Добавлен явный лог-триггер автозапуска утреннего отчёта (текущее время + плановое время), чтобы запуск можно было проверить через `journalctl -u server-monitor.service -f`.
+- EN: SemVer patch bump to `8.56.88`; Android metadata updated to `ANDROID_VERSION_NAME=8.56.88` and `ANDROID_VERSION_CODE=662`.
+- RU: Выполнен SemVer patch-бамп до `8.56.88`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.88` и `ANDROID_VERSION_CODE=662`.
+
 ## [8.56.87] - 2026-05-01
 
 - EN: Fixed Telegram time input validation for `DATA_COLLECTION_TIME`: the bot now enforces valid `HH:MM` ranges and normalizes saved values, preventing fallback to default schedule when invalid times were entered.
