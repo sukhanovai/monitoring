@@ -1,11 +1,11 @@
 """
 /app/modules/morning_report.py
-Server Monitoring System v8.56.92
+Server Monitoring System v8.56.93
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Morning Report Module
 Система мониторинга серверов
-Версия: 8.56.92
+Версия: 8.56.93
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль утреннего отчета
@@ -513,8 +513,12 @@ class MorningReport:
             value = raw_value.strip()
             if ':' in value:
                 try:
-                    hours, minutes = value.split(':', 1)
-                    return datetime.strptime(f"{int(hours):02d}:{int(minutes):02d}", "%H:%M").time()
+                    parts = value.split(':')
+                    if len(parts) < 2:
+                        raise ValueError('Invalid collection time format')
+                    hours = int(parts[0])
+                    minutes = int(parts[1])
+                    return datetime.strptime(f"{hours:02d}:{minutes:02d}", "%H:%M").time()
                 except Exception:
                     pass
         if hasattr(raw_value, 'hour') and hasattr(raw_value, 'minute'):

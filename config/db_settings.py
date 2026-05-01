@@ -1,11 +1,11 @@
 """
 /config/db_settings.py
-Server Monitoring System v8.56.92
+Server Monitoring System v8.56.93
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Database-backed settings loader
 Система мониторинга серверов
-Версия: 8.56.92
+Версия: 8.56.93
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Загрузчик настроек из базы данных
@@ -229,7 +229,11 @@ def load_all_settings() -> None:
             default_time_str = str(default_collection_time)
         DATA_COLLECTION_TIME_STR = get_setting('DATA_COLLECTION_TIME', default_time_str)
         try:
-            hours, minutes = map(int, DATA_COLLECTION_TIME_STR.split(':'))
+            parts = [part for part in str(DATA_COLLECTION_TIME_STR).split(':') if part != '']
+            if len(parts) < 2:
+                raise ValueError('DATA_COLLECTION_TIME must contain hours and minutes')
+            hours = int(parts[0])
+            minutes = int(parts[1])
             DATA_COLLECTION_TIME = dt_time(hours, minutes)
         except:
             DATA_COLLECTION_TIME = defaults.DATA_COLLECTION_TIME
