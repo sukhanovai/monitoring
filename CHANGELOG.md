@@ -1,14 +1,14 @@
-## [8.56.91] - 2026-05-01
+## [8.56.92] - 2026-05-01
 
 ### Changed
 - EN: Fixed morning report rescheduling after changing `DATA_COLLECTION_TIME` in Telegram settings: runtime config reloads immediately and daily-send flag resets when schedule time changes, so report can run at the newly configured time the same day.
 - RU: Исправлено перепланирование утреннего отчёта после смены `DATA_COLLECTION_TIME` в Telegram-настройках: runtime-конфиг обновляется сразу, а при смене времени сбрасывается флаг дневной отправки, чтобы отчёт мог уйти в новое время в тот же день.
 - EN: Added debug log when morning report collection time is updated from Telegram settings to simplify troubleshooting in service logs.
 - RU: Добавлен debug-лог при обновлении времени сбора утреннего отчёта из Telegram-настроек, чтобы проще диагностировать запуск по логам сервиса.
-- EN: SemVer patch bump to `8.56.91`; synchronized explicit current-version mentions across project files.
-- RU: Выполнен SemVer patch-бамп до `8.56.91`; синхронизированы явные упоминания текущей версии во всех файлах проекта.
-- EN: Android metadata updated to `ANDROID_VERSION_NAME=8.56.91` and `ANDROID_VERSION_CODE=665`; prerelease APK links aligned to `v8.56.91-develop`.
-- RU: Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.91` и `ANDROID_VERSION_CODE=665`; ссылки на prerelease APK выровнены на `v8.56.91-develop`.
+- EN: SemVer patch bump to `8.56.92`; synchronized explicit current-version mentions across project files.
+- RU: Выполнен SemVer patch-бамп до `8.56.92`; синхронизированы явные упоминания текущей версии во всех файлах проекта.
+- EN: Android metadata updated to `ANDROID_VERSION_NAME=8.56.92` and `ANDROID_VERSION_CODE=666`; prerelease APK links aligned to `v8.56.92-develop`.
+- RU: Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.56.92` и `ANDROID_VERSION_CODE=666`; ссылки на prerelease APK выровнены на `v8.56.92-develop`.
 
 ## [8.56.88] - 2026-05-01
 - EN: Fixed morning report scheduling after changing `DATA_COLLECTION_TIME` in Telegram settings: the monitor now reads runtime-configured collection time on each check instead of relying on stale startup constants.
