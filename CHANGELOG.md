@@ -1,3 +1,10 @@
+## [8.56.84] - 2026-05-01
+
+- EN: Fixed automatic morning report dispatch logic: report generation now triggers once per day immediately after data collection when current time reaches or passes `DATA_COLLECTION_TIME`, even if the main loop missed the exact minute boundary.
+- RU: Исправлена логика авто-отправки утреннего отчёта: формирование запускается один раз в день сразу после сбора данных при достижении или превышении `DATA_COLLECTION_TIME`, даже если основной цикл не попал ровно в минуту старта.
+- EN: SemVer patch bump to `8.56.84`; synchronized explicit current-version mentions across project files and updated Android metadata to `ANDROID_VERSION_NAME=8.56.84` and `ANDROID_VERSION_CODE=659`.
+- RU: Выполнен SemVer patch-бамп до `8.56.84`; синхронизированы явные упоминания текущей версии во всех файлах проекта и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.56.84` и `ANDROID_VERSION_CODE=659`.
+
 ## [8.56.83] - 2026-05-01
 
 - EN: Fixed Telegram time-setting input flow: `SILENT_START` and `SILENT_END` now accept both hour-only (`21`) and `HH:MM` format (`21:00`) without `invalid literal for int()` errors.

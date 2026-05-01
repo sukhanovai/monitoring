@@ -1671,35 +1671,40 @@ def start_monitoring():
 
         # Сбор и отправка утреннего отчета
         config = get_config()
-        if (current_time_time.hour == config.DATA_COLLECTION_TIME.hour and
-            current_time_time.minute == config.DATA_COLLECTION_TIME.minute):
+        collection_time = config.DATA_COLLECTION_TIME
+        today = current_time.date()
+        scheduled_collection_dt = datetime.combine(today, collection_time)
 
-            # Проверяем, что сегодня еще не отправляли отчет
-            today = current_time.date()
-            if last_report_date != today:
-                debug_log(f"[{current_time}] 🔍 Собираем данные для утреннего отчета...")
+        # Отчет должен отправляться один раз в день сразу после завершения
+        # сбора, запущенного в запланированное время, даже если цикл
+        # мониторинга пропустил точное попадание в минуту старта.
+        if current_time >= scheduled_collection_dt and last_report_date != today:
+            debug_log(
+                f"[{current_time}] 🔍 Собираем данные для утреннего отчета "
+                f"(план: {scheduled_collection_dt.strftime('%H:%M')})..."
+            )
 
-                # Собираем текущий статус серверов
-                morning_status = get_current_server_status()
-                morning_data = {
-                    "status": morning_status,
-                    "collection_time": current_time,
-                    "manual_call": False  # Автоматический вызов
-                }
-                last_data_collection = current_time
+            # Собираем текущий статус серверов
+            morning_status = get_current_server_status()
+            morning_data = {
+                "status": morning_status,
+                "collection_time": current_time,
+                "manual_call": False  # Автоматический вызов
+            }
+            last_data_collection = current_time
 
-                debug_log(f"✅ Данные собраны: {len(morning_status['ok'])} доступно, {len(morning_status['failed'])} недоступно")
+            debug_log(f"✅ Данные собраны: {len(morning_status['ok'])} доступно, {len(morning_status['failed'])} недоступно")
 
-                # СРАЗУ отправляем отчет после сбора данных
-                debug_log(f"[{current_time}] 📊 Отправка утреннего отчета...")
-                send_morning_report(manual_call=False)  # Автоматический вызов
-                last_report_date = today
-                debug_log("✅ Утренний отчет отправлен")
+            # СРАЗУ отправляем отчет после сбора данных
+            debug_log(f"[{current_time}] 📊 Отправка утреннего отчета...")
+            send_morning_report(manual_call=False)  # Автоматический вызов
+            last_report_date = today
+            debug_log("✅ Утренний отчет отправлен")
 
-                # Добавляем задержку чтобы не запускать повторно в ту же минуту
-                time.sleep(65)  # Спим 65 секунд чтобы выйти за пределы минуты сбора
-            else:
-                debug_log(f"⏭️ Отчет уже отправлен сегодня {last_report_date}")
+            # Короткая пауза, чтобы не дёргать ветку повторно в ту же секунду
+            time.sleep(2)
+        elif last_report_date == today:
+            debug_log(f"⏭️ Отчет уже отправлен сегодня {last_report_date}")
 
         # Основной цикл мониторинга доступности
         if monitoring_active:
