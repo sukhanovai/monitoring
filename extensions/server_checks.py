@@ -1,11 +1,11 @@
 """
 /extensions/server_checks.py
-Server Monitoring System v8.56.90
+Server Monitoring System v8.56.91
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Unified server checks: resources, availability, list
 Система мониторинга серверов
-Версия: 8.56.90
+Версия: 8.56.91
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Унифицированные проверки серверов: ресурсы, доступность, список
