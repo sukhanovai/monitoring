@@ -1,11 +1,11 @@
 """
 /modules/mail_monitor.py
-Server Monitoring System v8.56.77
+Server Monitoring System v8.56.79
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Mailbox monitoring
 Система мониторинга серверов
-Версия: 8.56.77
+Версия: 8.56.79
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг почтового ящика
@@ -941,15 +941,20 @@ class BackupProcessor:
                 r"^snapshots transfer (?P<host>[\w.-]+) (?P<status>STARTED|SUCCESS|SKIPPED|ERROR|BUSY)$",
             ]
 
+        normalized_subject = " ".join((subject or "").split())
+
         match = None
         for pattern in patterns:
-            match = re.search(pattern, subject, re.IGNORECASE)
+            match = re.search(pattern, normalized_subject, re.IGNORECASE)
             if match:
+                logger.info("✅ Snapshot transfer: совпадение по пользовательскому паттерну: %s", pattern)
                 break
 
         if not match:
             fallback_pattern = r"^snapshots transfer (?P<host>[\w.-]+) (?P<status>STARTED|SUCCESS|SKIPPED|ERROR|BUSY)$"
-            match = re.search(fallback_pattern, subject, re.IGNORECASE)
+            match = re.search(fallback_pattern, normalized_subject, re.IGNORECASE)
+            if match:
+                logger.info("✅ Snapshot transfer: совпадение по fallback-паттерну")
 
         host_name = ""
         status = ""
@@ -961,7 +966,7 @@ class BackupProcessor:
         if not host_name or not status:
             token_match = re.search(
                 r"\bsnapshots\s+transfer\s+(?P<host>[\w.-]+)\s+(?P<status>STARTED|SUCCESS|SKIPPED|ERROR|BUSY)\b",
-                subject,
+                normalized_subject,
                 re.IGNORECASE,
             )
             if token_match:
