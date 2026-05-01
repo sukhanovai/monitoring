@@ -1,11 +1,11 @@
 """
 /core/monitor.py
-Server Monitoring System v8.56.87
+Server Monitoring System v8.56.88
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core monitoring module
 Система мониторинга серверов
-Версия: 8.56.87
+Версия: 8.56.88
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль мониторинга
@@ -22,7 +22,6 @@ from config import (
     CHECK_INTERVAL,
     MAX_FAIL_TIME,
     RESOURCE_CHECK_INTERVAL,
-    DATA_COLLECTION_TIME,
     SILENT_START,
     SILENT_END,
 )
@@ -316,13 +315,16 @@ class Monitor:
         current_time = datetime.now()
         current_time_time = current_time.time()
         
-        # Проверяем время сбора данных
-        if (current_time_time.hour == DATA_COLLECTION_TIME.hour and
-            current_time_time.minute == DATA_COLLECTION_TIME.minute):
+        # Проверяем актуальное время сбора данных из настроек
+        collection_time = morning_report._get_collection_time()
+        debug_log(f"🕒 Проверка автозапуска утреннего отчета: текущее={current_time.strftime('%H:%M:%S')} план={collection_time.strftime('%H:%M')}")
+        if (current_time_time.hour == collection_time.hour and
+            current_time_time.minute == collection_time.minute):
             
             # Проверяем, что сегодня еще не отправляли отчет
             today = current_time.date()
             if self.last_report_date != today:
+                debug_log(f"🚀 Триггер автозапуска утреннего отчета: now={current_time.strftime('%Y-%m-%d %H:%M:%S')} plan={collection_time.strftime('%H:%M')}")
                 debug_log(f"[{current_time}] 🔍 Собираем данные для утреннего отчета...")
                 
                 # Собираем данные утреннего отчета
