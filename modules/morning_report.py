@@ -1,11 +1,11 @@
 """
 /app/modules/morning_report.py
-Server Monitoring System v8.56.80
+Server Monitoring System v8.56.81
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Morning Report Module
 Система мониторинга серверов
-Версия: 8.56.80
+Версия: 8.56.81
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль утреннего отчета
@@ -392,17 +392,108 @@ class MorningReport:
             )
             servers_ok = servers_count - servers_problem
 
+            free_space_summary, free_space_has_issues = self._get_zfs_free_space_summary(db_path, allowed_servers)
+            snapshot_summary, snapshot_has_issues = self._get_snapshot_transfer_summary(db_path, allowed_servers)
+
             summary = (
                 f"• Серверов: {servers_count} (🟢 {servers_ok} / 🔴 {servers_problem})\n"
                 f"• Пулов: {total_pools} (🟢 {ok_pools} / 🔴 {bad_pools})\n"
+                f"• Свободное место ZFS пулов: {free_space_summary}\n"
+                f"• Передачи снэпшотов: {snapshot_summary}\n"
             )
 
-            has_issues = servers_problem > 0 or bad_pools > 0 or bool(stale_servers)
+            has_issues = (
+                servers_problem > 0
+                or bad_pools > 0
+                or bool(stale_servers)
+                or free_space_has_issues
+                or snapshot_has_issues
+            )
             return summary, has_issues
         except Exception as e:
             debug_log(f"❌ Ошибка получения сводки ZFS: {e}")
             return "❌ Данные ZFS недоступны\n", True
     
+    def _get_zfs_free_space_summary(self, db_path, allowed_servers):
+        """Сводка по свободному месту ZFS-пулов."""
+        try:
+            conn = sqlite3.connect(str(db_path))
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT server_name, pool_name, free_percent, is_alert
+                FROM zfs_pool_free_space_status
+                ORDER BY received_at DESC
+                """
+            )
+            rows = cursor.fetchall()
+        except Exception as exc:
+            if "no such table: zfs_pool_free_space_status" in str(exc):
+                return "нет данных", False
+            return "ошибка чтения", True
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+        latest = {}
+        for server_name, pool_name, free_percent, is_alert in rows:
+            key = (server_name, pool_name)
+            if key not in latest:
+                latest[key] = (free_percent, is_alert)
+
+        if allowed_servers:
+            latest = {
+                key: value
+                for key, value in latest.items()
+                if key[0] in allowed_servers
+            }
+
+        if not latest:
+            return "нет данных", False
+
+        total = len(latest)
+        alert_count = sum(1 for _, (_, is_alert) in latest.items() if bool(is_alert))
+        ok_count = total - alert_count
+        return f"{total} (🟢 {ok_count} / 🔴 {alert_count})", alert_count > 0
+
+    def _get_snapshot_transfer_summary(self, db_path, allowed_servers):
+        """Сводка по передачам снэпшотов за 24 часа."""
+        try:
+            conn = sqlite3.connect(str(db_path))
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT host_name, status
+                FROM snapshot_transfers
+                WHERE received_at >= datetime('now', '-24 hours')
+                ORDER BY received_at DESC
+                """
+            )
+            rows = cursor.fetchall()
+        except Exception as exc:
+            if "no such table: snapshot_transfers" in str(exc):
+                return "нет данных", False
+            return "ошибка чтения", True
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+        if allowed_servers:
+            rows = [row for row in rows if row[0] in allowed_servers]
+
+        if not rows:
+            return "за 24ч: 0", False
+
+        total = len(rows)
+        ok_statuses = {"SUCCESS", "SKIPPED"}
+        ok_count = sum(1 for _, status in rows if str(status).upper() in ok_statuses)
+        bad_count = total - ok_count
+        return f"за 24ч: {total} (🟢 {ok_count} / 🔴 {bad_count})", bad_count > 0
+
     def send_report(self, manual_call=False):
         """Отправка отчета"""
         try:
