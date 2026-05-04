@@ -1,13 +1,13 @@
-## [8.57.0] - 2026-05-01
+## [8.57.1] - 2026-05-01
 
 - EN: Fixed morning report scheduler to trigger strictly inside the configured `HH:MM` minute window and to reuse unified send pipeline with success/failure handling.
 - RU: Исправлен планировщик утреннего отчёта: запуск теперь происходит строго в минутном окне `HH:MM` из настроек и использует единый пайплайн отправки с контролем успешности.
 - EN: Added explicit schedule diagnostics for missed windows after restarts (`[MORNING_REPORT_SCHEDULE] waiting_next_day`) and delivery failures (`send_failed`) to simplify `journalctl -u server-monitor.service -f` debugging.
 - RU: Добавлена явная диагностика расписания при пропуске окна после рестартов (`[MORNING_REPORT_SCHEDULE] waiting_next_day`) и при неуспешной отправке (`send_failed`) для удобной отладки в `journalctl -u server-monitor.service -f`.
-- EN: SemVer minor bump to `8.57.0`; synchronized current version mentions across project files and docs.
-- RU: Выполнен SemVer minor-бамп до `8.57.0`; синхронизированы актуальные упоминания версии в файлах проекта и документации.
-- EN: Android metadata updated to `ANDROID_VERSION_NAME=8.57.0` and `ANDROID_VERSION_CODE=672`; prerelease APK links aligned to `v8.57.0-develop`.
-- RU: Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.57.0` и `ANDROID_VERSION_CODE=672`; ссылки на prerelease APK выровнены на `v8.57.0-develop`.
+- EN: SemVer patch bump to `8.57.1`; synchronized current version mentions across project files and docs.
+- RU: Выполнен SemVer patch-бамп до `8.57.1`; синхронизированы актуальные упоминания версии в файлах проекта и документации.
+- EN: Android metadata updated to `ANDROID_VERSION_NAME=8.57.1` and `ANDROID_VERSION_CODE=673`; prerelease APK links aligned to `v8.57.1-develop`.
+- RU: Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.57.1` и `ANDROID_VERSION_CODE=673`; ссылки на prerelease APK выровнены на `v8.57.1-develop`.
 
 ## [8.56.99] - 2026-05-01
 
