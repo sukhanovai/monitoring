@@ -1,3 +1,10 @@
+## [8.57.3] - 2026-05-04
+
+- EN: SemVer patch bump to `8.57.3`; synchronized explicit current-version mentions across project files where version is documented.
+- RU: Выполнен SemVer patch-бамп до `8.57.3`; синхронизированы явные упоминания текущей версии во всех файлах, где она зафиксирована.
+- EN: Updated prerelease Android APK links in documentation to `v8.57.3-develop` and `monitoring-android-8.57.3-develop-debug.apk`.
+- RU: Обновлены ссылки на Android prerelease APK в документации до `v8.57.3-develop` и `monitoring-android-8.57.3-develop-debug.apk`.
+
 ## [8.57.2] - 2026-05-04
 
 - EN: Fixed morning report scheduler to trigger strictly inside the configured `HH:MM` minute window and to reuse unified send pipeline with success/failure handling.
