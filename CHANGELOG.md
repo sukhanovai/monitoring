@@ -1,3 +1,9 @@
+## [8.58.4] - 2026-05-05
+- EN: SemVer patch bump to `8.58.4`; synchronized current project-version mentions across runtime headers, backend config constants, and Android client metadata files.
+- RU: Выполнен SemVer patch-бамп до `8.58.4`; синхронизированы актуальные упоминания версии проекта в runtime-заголовках, backend-константах конфигурации и Android-метаданных.
+- EN: Android metadata updated to `ANDROID_VERSION_NAME=8.58.4` and `ANDROID_VERSION_CODE=676`.
+- RU: Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.58.4` и `ANDROID_VERSION_CODE=676`.
+
 ## [8.58.3] - 2026-05-05
 - EN: Follow-up patch to fully synchronize current version mentions after review feedback; bumped runtime headers and app version constants to `8.58.3`.
 - RU: Дополнительный patch-фикс по замечанию ревью: полностью синхронизированы актуальные упоминания версии, runtime-заголовки и константы версии приложения обновлены до `8.58.3`.
