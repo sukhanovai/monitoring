@@ -1,11 +1,11 @@
 """
 /app/modules/morning_report.py
-Server Monitoring System v8.58.4
+Server Monitoring System v8.58.5
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Morning Report Module
 Система мониторинга серверов
-Версия: 8.58.4
+Версия: 8.58.5
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль утреннего отчета
@@ -575,22 +575,25 @@ class MorningReport:
             current_time = datetime.now()
             current_time_time = current_time.time()
             
-            # Проверяем время сбора данных
-            collection_time = self._get_collection_time()
-            if (current_time_time.hour == collection_time.hour and
-                current_time_time.minute == collection_time.minute):
-                
-                # Проверяем, что сегодня еще не отправляли отчет
-                today = current_time.date()
-                if self.last_report_date != today:
-                    debug_log(f"📊 Автоматический сбор данных для утреннего отчета")
-                    self.send_report(manual_call=False)
-                    self.last_report_date = today
-                    
-                    # Задержка чтобы не запускать повторно в ту же минуту
-                    time.sleep(65)
-                else:
-                    debug_log(f"⏭️ Отчет уже отправлен сегодня {self.last_report_date}")
+            # Проверяем все актуальные времена сбора данных
+            collection_times = self._get_collection_times()
+            today = current_time.date()
+
+            for collection_time in collection_times:
+                if (current_time_time.hour == collection_time.hour and
+                    current_time_time.minute == collection_time.minute):
+
+                    # Проверяем, что сегодня еще не отправляли отчет
+                    if self.last_report_date != today:
+                        debug_log(f"📊 Автоматический сбор данных для утреннего отчета ({collection_time.strftime('%H:%M')})")
+                        self.send_report(manual_call=False)
+                        self.last_report_date = today
+
+                        # Задержка чтобы не запускать повторно в ту же минуту
+                        time.sleep(65)
+                    else:
+                        debug_log(f"⏭️ Отчет уже отправлен сегодня {self.last_report_date}")
+                    break
             
             time.sleep(60)  # Проверяем каждую минуту
 
