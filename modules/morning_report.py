@@ -1,11 +1,11 @@
 """
 /app/modules/morning_report.py
-Server Monitoring System v8.57.3
+Server Monitoring System v8.58.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Morning Report Module
 Система мониторинга серверов
-Версия: 8.57.3
+Версия: 8.58.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль утреннего отчета
@@ -494,8 +494,33 @@ class MorningReport:
         return f"за 24ч: {total} (🟢 {ok_count} / 🔴 {bad_count})", bad_count > 0
 
 
-    def _get_collection_time(self):
-        """Возвращает актуальное время автосбора из настроек."""
+    def _parse_collection_times(self, raw_value):
+        """Парсит одно или несколько значений времени в список time."""
+        if raw_value is None:
+            return []
+
+        values = []
+        if isinstance(raw_value, (list, tuple, set)):
+            values = [str(item).strip() for item in raw_value]
+        else:
+            normalized = str(raw_value).replace(';', ',')
+            values = [item.strip() for item in normalized.split(',') if item.strip()]
+
+        parsed = []
+        for value in values:
+            try:
+                parts = value.split(':')
+                if len(parts) < 2:
+                    continue
+                hours = int(parts[0])
+                minutes = int(parts[1])
+                parsed.append(datetime.strptime(f"{hours:02d}:{minutes:02d}", "%H:%M").time())
+            except Exception:
+                continue
+        return sorted(parsed, key=lambda t: (t.hour, t.minute))
+
+    def _get_collection_times(self):
+        """Возвращает актуальные времена автосбора из настроек."""
         default_time = None
         try:
             from config.db_settings import DATA_COLLECTION_TIME as runtime_default
@@ -505,30 +530,23 @@ class MorningReport:
 
         try:
             from core.config_manager import config_manager as settings_manager
-            raw_value = settings_manager.get_setting('DATA_COLLECTION_TIME', default_time, use_cache=False)
+            raw_value = settings_manager.get_setting('DATA_COLLECTION_TIMES', None, use_cache=False)
+            if raw_value in (None, ""):
+                raw_value = settings_manager.get_setting('DATA_COLLECTION_TIME', default_time, use_cache=False)
         except Exception:
             raw_value = default_time
 
-        if isinstance(raw_value, str):
-            value = raw_value.strip()
-            if ':' in value:
-                try:
-                    parts = value.split(':')
-                    if len(parts) < 2:
-                        raise ValueError('Invalid collection time format')
-                    hours = int(parts[0])
-                    minutes = int(parts[1])
-                    return datetime.strptime(f"{hours:02d}:{minutes:02d}", "%H:%M").time()
-                except Exception:
-                    pass
+        parsed = self._parse_collection_times(raw_value)
+        if parsed:
+            return parsed
         if hasattr(raw_value, 'hour') and hasattr(raw_value, 'minute'):
-            return raw_value
+            return [raw_value]
 
         try:
             from config.settings import DATA_COLLECTION_TIME as static_default
-            return static_default
+            return [static_default]
         except Exception:
-            return datetime.now().time().replace(second=0, microsecond=0)
+            return [datetime.now().time().replace(second=0, microsecond=0)]
 
     def send_report(self, manual_call=False):
         """Отправка отчета"""

@@ -110,6 +110,7 @@ class SettingsManager:
             ('SILENT_START', '20', 'time', 'Начало тихого режима (час)', 'int'),
             ('SILENT_END', '9', 'time', 'Конец тихого режима (час)', 'int'),
             ('DATA_COLLECTION_TIME', '08:30', 'time', 'Время сбора данных для отчета', 'time'),
+            ('DATA_COLLECTION_TIMES', '08:30', 'time', 'Время(а) сбора данных для отчета (HH:MM,HH:MM)', 'string'),
             
             # Настройки ресурсов
             ('RESOURCE_CHECK_INTERVAL', '1800', 'resources', 'Интервал проверки ресурсов (секунды)', 'int'),
