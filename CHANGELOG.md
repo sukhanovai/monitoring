@@ -1,3 +1,9 @@
+## [8.58.1] - 2026-05-05
+- EN: SemVer patch bump to `8.58.1`; synchronized explicit version mentions across backend, Android config, and documentation files.
+- RU: Выполнен SemVer patch-бамп до `8.58.1`; синхронизированы явные упоминания версии в backend, Android-конфигурации и документации.
+- EN: Android metadata updated to `ANDROID_VERSION_NAME=8.58.1` and `ANDROID_VERSION_CODE=675`; prerelease APK links aligned to `v8.58.1-develop`.
+- RU: Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.58.1` и `ANDROID_VERSION_CODE=675`; ссылки на prerelease APK выровнены на `v8.58.1-develop`.
+
 ## [8.58.0] - 2026-05-05
 
 - EN: Added support for multiple morning-report schedule points via settings (`DATA_COLLECTION_TIMES`), allowing comma-separated `HH:MM` values instead of a single daily time.
