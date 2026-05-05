@@ -1,3 +1,17 @@
+## [8.58.3] - 2026-05-05
+- EN: Follow-up patch to fully synchronize current version mentions after review feedback; bumped runtime headers and app version constants to `8.58.3`.
+- RU: Дополнительный patch-фикс по замечанию ревью: полностью синхронизированы актуальные упоминания версии, runtime-заголовки и константы версии приложения обновлены до `8.58.3`.
+- EN: SemVer patch bump to `8.58.3`.
+- RU: Выполнен SemVer patch-бамп до `8.58.3`.
+
+## [8.58.2] - 2026-05-05
+- EN: Fixed morning-report scheduler window: trigger now uses a dynamic interval from settings (`CHECK_INTERVAL`) so the report is not skipped when loop timing drifts past the exact minute.
+- RU: Исправлено окно запуска планировщика утреннего отчёта: триггер теперь учитывает динамический интервал из настроек (`CHECK_INTERVAL`), поэтому отчёт не пропускается при сдвиге цикла мимо точной минуты.
+- EN: Monitor loop sleep now also uses live `CHECK_INTERVAL` from DB settings, so runtime changes apply without restart and stay consistent with scheduler checks.
+- RU: Пауза основного цикла мониторинга теперь тоже берётся из актуального `CHECK_INTERVAL` в БД, поэтому изменения применяются без рестарта и синхронизируются с проверкой расписания.
+- EN: SemVer patch bump to `8.58.2`; synchronized explicit version mentions in updated runtime/config files.
+- RU: Выполнен SemVer patch-бамп до `8.58.2`; синхронизированы явные упоминания версии в обновлённых runtime/config-файлах.
+
 ## [8.58.1] - 2026-05-05
 - EN: SemVer patch bump to `8.58.1`; synchronized explicit version mentions across backend, Android config, and documentation files.
 - RU: Выполнен SemVer patch-бамп до `8.58.1`; синхронизированы явные упоминания версии в backend, Android-конфигурации и документации.

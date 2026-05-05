@@ -1,11 +1,11 @@
 """
 /core/monitor.py
-Server Monitoring System v8.58.1
+Server Monitoring System v8.58.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core monitoring module
 Система мониторинга серверов
-Версия: 8.58.1
+Версия: 8.58.3
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль мониторинга
@@ -13,7 +13,7 @@ Core monitoring module
 
 import time
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List
 
 from lib.logging import debug_log, info_log
@@ -59,6 +59,15 @@ class Monitor:
         
         return alerts_is_silent_time()
     
+    def _get_check_interval_seconds(self) -> int:
+        """Возвращает актуальный интервал проверки из БД настроек."""
+        try:
+            value = config_manager.get_setting('CHECK_INTERVAL', CHECK_INTERVAL, use_cache=False)
+            interval = int(value)
+            return max(1, interval)
+        except Exception:
+            return max(1, int(CHECK_INTERVAL))
+
     def load_servers(self) -> List[Dict]:
         """
         Загружает список серверов для мониторинга
@@ -345,8 +354,9 @@ class Monitor:
         )
         for collection_time in collection_times:
             scheduled_collection_dt = datetime.combine(today, collection_time)
+            check_interval_seconds = self._get_check_interval_seconds()
             trigger_window_start = scheduled_collection_dt
-            trigger_window_end = scheduled_collection_dt.replace(second=59, microsecond=999999)
+            trigger_window_end = scheduled_collection_dt + timedelta(seconds=check_interval_seconds - 1)
             slot_key = f"{today.isoformat()} {collection_time.strftime('%H:%M')}"
             if not (trigger_window_start <= current_time <= trigger_window_end):
                 continue
@@ -501,7 +511,7 @@ class Monitor:
                         debug_log(f"❌ Ошибка мониторинга {server.get('name')}: {e}")
             
             # Ожидание перед следующей проверкой
-            time.sleep(CHECK_INTERVAL)
+            time.sleep(self._get_check_interval_seconds())
     
     def stop(self) -> None:
         """Останавливает мониторинг"""
