@@ -1,3 +1,12 @@
+## [8.58.0] - 2026-05-05
+
+- EN: Added support for multiple morning-report schedule points via settings (`DATA_COLLECTION_TIMES`), allowing comma-separated `HH:MM` values instead of a single daily time.
+- RU: Добавлена поддержка нескольких точек расписания утреннего отчёта через настройки (`DATA_COLLECTION_TIMES`): теперь можно указывать список `HH:MM` через запятую вместо одного времени в сутки.
+- EN: Updated scheduler logic to trigger once per configured slot per day and keep backward compatibility with legacy `DATA_COLLECTION_TIME`.
+- RU: Обновлена логика планировщика: запуск выполняется один раз на каждый настроенный слот в день с сохранением обратной совместимости с `DATA_COLLECTION_TIME`.
+- EN: SemVer minor bump to `8.58.0`; synchronized explicit version mentions in updated backend files.
+- RU: Выполнен SemVer minor-бамп до `8.58.0`; синхронизированы явные упоминания версии в обновлённых backend-файлах.
+
 ## [8.57.3] - 2026-05-04
 
 - EN: SemVer patch bump to `8.57.3`; synchronized explicit current-version mentions across project files where version is documented.

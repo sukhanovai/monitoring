@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.57.3
+Server Monitoring System v8.58.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.57.3
+Версия: 8.58.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -703,7 +703,10 @@ def show_time_settings(update, context):
     
     silent_start = settings_manager.get_setting('SILENT_START', 20)
     silent_end = settings_manager.get_setting('SILENT_END', 9)
-    data_collection = settings_manager.get_setting('DATA_COLLECTION_TIME', '08:30')
+    data_collection = settings_manager.get_setting(
+        'DATA_COLLECTION_TIMES',
+        settings_manager.get_setting('DATA_COLLECTION_TIME', '08:30')
+    )
     
     message = (
         "⏰ *Временные настройки*\n\n"
@@ -715,7 +718,7 @@ def show_time_settings(update, context):
     keyboard = [
         [InlineKeyboardButton("🔇 Начало тихого режима", callback_data='set_silent_start')],
         [InlineKeyboardButton("🔊 Конец тихого режима", callback_data='set_silent_end')],
-        [InlineKeyboardButton("📊 Время сбора данных", callback_data='set_data_collection')],
+        [InlineKeyboardButton("📊 Время(а) сбора данных", callback_data='set_data_collection')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
@@ -2385,17 +2388,22 @@ def handle_setting_value(update, context):
         elif setting_key in setting_types and setting_types[setting_key] == 'int':
             new_value = int(new_value)
         elif setting_key == 'data_collection':
-            # Проверяем и нормализуем формат времени HH:MM
-            import re
+            # Проверяем и нормализуем список времен HH:MM,HH:MM
             normalized = str(new_value).strip()
-            if not re.match(r'^\d{1,2}:\d{2}$', normalized):
-                raise ValueError("Неверный формат времени. Используйте HH:MM")
-            hour_part, minute_part = normalized.split(':', 1)
-            hour_value = int(hour_part)
-            minute_value = int(minute_part)
-            if not (0 <= hour_value <= 23 and 0 <= minute_value <= 59):
-                raise ValueError("Время должно быть в диапазоне 00:00-23:59")
-            new_value = f"{hour_value:02d}:{minute_value:02d}"
+            raw_points = [item.strip() for item in normalized.replace(';', ',').split(',') if item.strip()]
+            if not raw_points:
+                raise ValueError("Укажите хотя бы одно время в формате HH:MM")
+            normalized_points = []
+            for point in raw_points:
+                if not re.match(r'^\d{1,2}:\d{2}$', point):
+                    raise ValueError("Неверный формат времени. Используйте HH:MM или HH:MM,HH:MM")
+                hour_part, minute_part = point.split(':', 1)
+                hour_value = int(hour_part)
+                minute_value = int(minute_part)
+                if not (0 <= hour_value <= 23 and 0 <= minute_value <= 59):
+                    raise ValueError("Время должно быть в диапазоне 00:00-23:59")
+                normalized_points.append(f"{hour_value:02d}:{minute_value:02d}")
+            new_value = ",".join(sorted(set(normalized_points)))
         
         # Сохраняем настройку
         category_map = {
@@ -2412,7 +2420,7 @@ def handle_setting_value(update, context):
         
         special_db_keys = {
             'telegram_token': 'TELEGRAM_TOKEN',
-            'data_collection': 'DATA_COLLECTION_TIME',
+            'data_collection': 'DATA_COLLECTION_TIMES',
         }
         db_key = special_db_keys.get(setting_key, setting_key.upper())
         category = category_map.get(setting_key, 'general')
@@ -2422,8 +2430,9 @@ def handle_setting_value(update, context):
         # Подтягиваем обновленные значения из БД в runtime-конфиг,
         # чтобы цикл мониторинга сразу увидел новое время отчета.
         load_all_settings()
-        if db_key == 'DATA_COLLECTION_TIME':
-            debug_log(f"🕒 Обновлено время сбора данных для утреннего отчета: {new_value}")
+        if db_key == 'DATA_COLLECTION_TIMES':
+            settings_manager.set_setting('DATA_COLLECTION_TIME', new_value.split(',')[0], category='time')
+            debug_log(f"🕒 Обновлено расписание сбора данных для утреннего отчета: {new_value}")
         
         # Очищаем контекст
         del context.user_data['editing_setting']

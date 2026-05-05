@@ -1,11 +1,11 @@
 """
 /core/monitor.py
-Server Monitoring System v8.57.3
+Server Monitoring System v8.58.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core monitoring module
 Система мониторинга серверов
-Версия: 8.57.3
+Версия: 8.58.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль мониторинга
@@ -43,7 +43,8 @@ class Monitor:
         self.last_check_time = datetime.now()
         self.last_resource_check = datetime.now()
         self.last_report_date = None
-        self.last_collection_schedule_time = None
+        self.last_collection_schedule_time = []
+        self.sent_collection_slots = set()
         
     def is_silent_time(self) -> bool:
         """
@@ -316,39 +317,41 @@ class Monitor:
         current_time = datetime.now()
 
         # Проверяем актуальное время сбора данных из настроек
-        collection_time = morning_report._get_collection_time()
+        collection_times = morning_report._get_collection_times()
         today = current_time.date()
+        normalized_slots = [slot.strftime('%H:%M') for slot in collection_times]
 
-        if self.last_collection_schedule_time is None:
-            self.last_collection_schedule_time = collection_time
-        elif collection_time != self.last_collection_schedule_time:
+        if self.last_collection_schedule_time != normalized_slots:
             debug_log(
-                "🕒 Обнаружено изменение времени утреннего отчета: "
-                f"{self.last_collection_schedule_time.strftime('%H:%M')} -> {collection_time.strftime('%H:%M')}"
+                "🕒 Обнаружено изменение расписания утреннего отчета: "
+                f"{', '.join(self.last_collection_schedule_time) or 'пусто'} -> {', '.join(normalized_slots)}"
             )
-            if self.last_report_date == today:
-                debug_log("♻️ Сбрасываем флаг отправки отчета за сегодня из-за смены времени")
-                self.last_report_date = None
-            self.last_collection_schedule_time = collection_time
+            self.sent_collection_slots = {
+                slot for slot in self.sent_collection_slots if not slot.startswith(f"{today.isoformat()} ")
+            }
+            self.last_collection_schedule_time = normalized_slots
 
-        scheduled_collection_dt = datetime.combine(today, collection_time)
         debug_log(
             "🕒 Проверка автозапуска утреннего отчета: "
             f"текущее={current_time.strftime('%H:%M:%S')} "
-            f"план={scheduled_collection_dt.strftime('%H:%M')} "
+            f"план={', '.join(normalized_slots)} "
             f"последний_отчет={self.last_report_date}"
         )
         info_log(
             "[MORNING_REPORT_SCHEDULE] heartbeat "
             f"now={current_time.strftime('%Y-%m-%d %H:%M:%S')} "
-            f"plan={scheduled_collection_dt.strftime('%Y-%m-%d %H:%M')} "
+            f"plan={','.join(normalized_slots)} "
             f"last_report_date={self.last_report_date}"
         )
-
-        trigger_window_start = scheduled_collection_dt
-        trigger_window_end = scheduled_collection_dt.replace(second=59, microsecond=999999)
-
-        if trigger_window_start <= current_time <= trigger_window_end and self.last_report_date != today:
+        for collection_time in collection_times:
+            scheduled_collection_dt = datetime.combine(today, collection_time)
+            trigger_window_start = scheduled_collection_dt
+            trigger_window_end = scheduled_collection_dt.replace(second=59, microsecond=999999)
+            slot_key = f"{today.isoformat()} {collection_time.strftime('%H:%M')}"
+            if not (trigger_window_start <= current_time <= trigger_window_end):
+                continue
+            if slot_key in self.sent_collection_slots:
+                continue
             debug_log(
                 f"🚀 Триггер автозапуска утреннего отчета: "
                 f"now={current_time.strftime('%Y-%m-%d %H:%M:%S')} "
@@ -387,17 +390,12 @@ class Monitor:
                 return
 
             self.last_report_date = today
+            self.sent_collection_slots.add(slot_key)
             debug_log("✅ Утренний отчет отправлен")
 
             # Короткая пауза, чтобы не запускать повторно в ту же секунду
             time.sleep(2)
-        elif current_time > trigger_window_end and self.last_report_date != today:
-            info_log(
-                "[MORNING_REPORT_SCHEDULE] waiting_next_day "
-                f"now={current_time.strftime('%Y-%m-%d %H:%M:%S')} "
-                f"plan={collection_time.strftime('%H:%M')} "
-                "reason=window_missed_or_service_restarted"
-            )
+            return
     
     def start(self) -> None:
         """Запускает основной цикл мониторинга"""
