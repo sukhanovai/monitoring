@@ -1,9 +1,8 @@
-## [8.58.5] - 2026-05-05
-- EN: Fixed fallback scheduler loop in `modules.morning_report`: `start_scheduler` now reads configured slots via `_get_collection_times()` (including multiple `HH:MM`) instead of calling missing `_get_collection_time()`.
-- RU: Исправлен fallback-цикл планировщика в `modules.morning_report`: `start_scheduler` теперь читает настроенные слоты через `_get_collection_times()` (включая несколько `HH:MM`) вместо вызова отсутствующего `_get_collection_time()`.
-- EN: SemVer patch bump to `8.58.5`; synchronized explicit project version mentions across source/config/docs and updated Android metadata to `ANDROID_VERSION_NAME=8.58.5` and `ANDROID_VERSION_CODE=677`.
-- RU: Выполнен SemVer patch-бамп до `8.58.5`; синхронизированы явные упоминания версии проекта в исходниках/конфигах/доках и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.58.5` и `ANDROID_VERSION_CODE=677`.
-
+## [8.58.7] - 2026-05-06
+- EN: Updated Android application icons and synchronized related Android assets.
+- RU: Обновлены иконки Android-приложения и синхронизированы связанные Android-ресурсы.
+- EN: SemVer patch bump to `8.58.7`; synchronized explicit project version mentions across source/config/docs and updated Android metadata to `ANDROID_VERSION_NAME=8.58.7` and `ANDROID_VERSION_CODE=678`.
+- RU: Выполнен SemVer patch-бамп до `8.58.7`; синхронизированы явные упоминания версии проекта в исходниках/конфигах/доках и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.58.7` и `ANDROID_VERSION_CODE=678`.
 ## [8.58.4] - 2026-05-05
 - EN: SemVer patch bump to `8.58.4`; synchronized current project-version mentions across runtime headers, backend config constants, and Android client metadata files.
 - RU: Выполнен SemVer patch-бамп до `8.58.4`; синхронизированы актуальные упоминания версии проекта в runtime-заголовках, backend-константах конфигурации и Android-метаданных.
