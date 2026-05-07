@@ -5,7 +5,7 @@ Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Settings for the backup_monitor extension
 Система мониторинга серверов
-Версия: 8.58.13
+Версия: 8.58.14
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Настройки для расширения backup_monitor

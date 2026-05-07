@@ -5,7 +5,7 @@ Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core monitoring module
 Система мониторинга серверов
-Версия: 8.58.13
+Версия: 8.58.14
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль мониторинга
@@ -413,7 +413,7 @@ class Monitor:
 
             # Отправляем отчет
             debug_log(f"[{current_time}] 📊 Отправка утреннего отчета...")
-            sent_ok = morning_report.send_report(manual_call=False)
+            sent_ok = morning_report.send_report(manual_call=False, collect_before_send=False)
             if not sent_ok:
                 info_log(
                     "[MORNING_REPORT_SCHEDULE] send_failed "

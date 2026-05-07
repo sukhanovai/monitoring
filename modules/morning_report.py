@@ -5,7 +5,7 @@ Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Morning Report Module
 Система мониторинга серверов
-Версия: 8.58.13
+Версия: 8.58.14
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль утреннего отчета
@@ -562,11 +562,16 @@ class MorningReport:
         except Exception:
             return [datetime.now().time().replace(second=0, microsecond=0)]
 
-    def send_report(self, manual_call=False):
+    def send_report(self, manual_call=False, collect_before_send=True):
         """Отправка отчета"""
         try:
-            # Собираем данные
-            self.collect_morning_data(manual_call)
+            # По умолчанию собираем данные перед отправкой, но при автозапуске
+            # можно переиспользовать уже собранный слепок, чтобы не запускать
+            # повторный сбор и не блокировать отправку отчета.
+            if collect_before_send:
+                collected = self.collect_morning_data(manual_call)
+                if not collected:
+                    return False
             
             # Генерируем сообщение
             message = self.generate_report_message()
