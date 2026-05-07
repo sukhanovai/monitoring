@@ -1,12 +1,12 @@
-## 8.58.8 - 2026-05-07
+## 8.58.9 - 2026-05-07
 - RU: Исправлен источник времени автозапуска утреннего отчёта: запуск сбора данных в цикле мониторинга теперь явно привязан к настройкам из Telegram-меню «Настройки → Временные настройки → Время сбора данных» (ключи `DATA_COLLECTION_TIMES`/`DATA_COLLECTION_TIME` из БД настроек).
 - EN: Fixed morning report auto-run time source: data collection start in monitoring loop is now explicitly tied to Telegram menu settings “Settings → Time settings → Data collection time” (settings DB keys `DATA_COLLECTION_TIMES`/`DATA_COLLECTION_TIME`).
 - RU: Добавлено server-visible логирование старта сбора данных для утреннего отчёта (`[MORNING_REPORT_COLLECTION] start`) с временем триггера, итоговым расписанием и источником значения, чтобы это было видно через `journalctl -u server-monitor.service -f`.
 - EN: Added server-visible logging for morning report collection start (`[MORNING_REPORT_COLLECTION] start`) with trigger time, resolved schedule, and value source, so it is visible via `journalctl -u server-monitor.service -f`.
-- RU: SemVer patch bump до `8.58.8`; синхронизированы явные упоминания версии в backend-конфигах и Android metadata (`ANDROID_VERSION_NAME=8.58.8`, `ANDROID_VERSION_CODE=679`).
-- EN: SemVer patch bump to `8.58.8`; synchronized explicit version mentions in backend configs and Android metadata (`ANDROID_VERSION_NAME=8.58.8`, `ANDROID_VERSION_CODE=679`).
-- RU: Досинхронизированы оставшиеся упоминания `8.58.7` в runtime-заголовках Python-модулей, Android `MainViewModel` и документации (`README.md`, `docs/android_mobile_app.md`, `docs/api_202020_project.md`) до текущей версии `8.58.8`.
-- EN: Synchronized remaining `8.58.7` mentions in Python module runtime headers, Android `MainViewModel`, and documentation files (`README.md`, `docs/android_mobile_app.md`, `docs/api_202020_project.md`) to the current version `8.58.8`.
+- RU: SemVer patch bump до `8.58.9`; синхронизированы явные упоминания версии в backend-конфигах и Android metadata (`ANDROID_VERSION_NAME=8.58.9`, `ANDROID_VERSION_CODE=680`).
+- EN: SemVer patch bump to `8.58.9`; synchronized explicit version mentions in backend configs and Android metadata (`ANDROID_VERSION_NAME=8.58.9`, `ANDROID_VERSION_CODE=680`).
+- RU: Досинхронизированы оставшиеся упоминания `8.58.7` в runtime-заголовках Python-модулей, Android `MainViewModel` и документации (`README.md`, `docs/android_mobile_app.md`, `docs/api_202020_project.md`) до текущей версии `8.58.9`.
+- EN: Synchronized remaining `8.58.7` mentions in Python module runtime headers, Android `MainViewModel`, and documentation files (`README.md`, `docs/android_mobile_app.md`, `docs/api_202020_project.md`) to the current version `8.58.9`.
 
 ## [8.58.7] - 2026-05-06
 - EN: Updated Android application icons and synchronized related Android assets.
