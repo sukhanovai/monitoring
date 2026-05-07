@@ -1,11 +1,11 @@
 """
 /app/modules/morning_report.py
-Server Monitoring System v8.58.9
+Server Monitoring System v8.58.15
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Morning Report Module
 Система мониторинга серверов
-Версия: 8.58.14
+Версия: 8.58.15
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль утреннего отчета
@@ -576,12 +576,18 @@ class MorningReport:
             # Генерируем сообщение
             message = self.generate_report_message()
             
-            # Отправляем через обработчик
-            from bot.handlers.commands import send_alert
-            send_alert(message, force=True)
-            
-            debug_log(f"✅ Отчет отправлен ({'ручной' if manual_call else 'автоматический'})")
-            return True
+            # Отправляем через унифицированный канал алертов
+            from lib.alerts import send_alert
+            sent_ok = send_alert(message, force=True)
+
+            if sent_ok:
+                debug_log(f"✅ Отчет отправлен ({'ручной' if manual_call else 'автоматический'})")
+            else:
+                debug_log(
+                    f"❌ Отчет не доставлен ({'ручной' if manual_call else 'автоматический'}): "
+                    "канал отправки вернул sent=False"
+                )
+            return sent_ok
         except Exception as e:
             debug_log(f"❌ Ошибка отправки отчета: {e}")
             return False
