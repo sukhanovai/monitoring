@@ -5,7 +5,7 @@ Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core monitoring module
 Система мониторинга серверов
-Версия: 8.58.12
+Версия: 8.58.13
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль мониторинга
@@ -24,6 +24,7 @@ from config import (
     RESOURCE_CHECK_INTERVAL,
     SILENT_START,
     SILENT_END,
+    DATA_COLLECTION_TIME,
 )
 from modules.resources import resources_checker
 from modules.morning_report import morning_report

@@ -1,8 +1,8 @@
-## 8.58.12 - 2026-05-07
-- RU: SemVer patch bump до `8.58.12`; синхронизированы все явные упоминания текущей версии проекта в runtime-заголовках Python-модулей, backend-конфигах и Android metadata.
-- EN: SemVer patch bump to `8.58.12`; synchronized all explicit current-version mentions across Python runtime headers, backend config constants, and Android metadata.
-- RU: Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.58.12` и `ANDROID_VERSION_CODE=682`.
-- EN: Android metadata updated to `ANDROID_VERSION_NAME=8.58.12` and `ANDROID_VERSION_CODE=682`.
+## 8.58.13 - 2026-05-07
+- RU: Исправлен `NameError` в `core/monitor.py` при старте мониторинга через proxychains/systemd: переменная `DATA_COLLECTION_TIME` теперь корректно импортируется из конфигурации и используется в стартовом сообщении.
+- EN: Fixed `NameError` in `core/monitor.py` during monitor startup via proxychains/systemd: `DATA_COLLECTION_TIME` is now properly imported from configuration and used in the startup message.
+- RU: SemVer patch bump до `8.58.13`; синхронизированы явные упоминания текущей версии проекта в runtime-заголовках Python-модулей, backend-конфигах, документации и Android metadata (`ANDROID_VERSION_NAME=8.58.13`, `ANDROID_VERSION_CODE=683`).
+- EN: SemVer patch bump to `8.58.13`; synchronized explicit current-version mentions across Python runtime headers, backend config constants, documentation, and Android metadata (`ANDROID_VERSION_NAME=8.58.13`, `ANDROID_VERSION_CODE=683`).
 
 ## 8.58.10 - 2026-05-07
 - RU: Добавлено server-visible логирование старта запуска сбора данных для утреннего отчёта в `core/monitor_core.py`: теперь перед сбором пишется `[MORNING_REPORT_COLLECTION] start` с текущим временем, временем триггера и расчётным временем запуска.
