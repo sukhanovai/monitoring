@@ -330,6 +330,20 @@ class Monitor:
         today = current_time.date()
         normalized_slots = [slot.strftime('%H:%M') for slot in collection_times]
 
+        configured_times_raw = None
+        configured_source = "config.settings.DATA_COLLECTION_TIME"
+        try:
+            from core.config_manager import config_manager as settings_manager
+            configured_times_raw = settings_manager.get_setting('DATA_COLLECTION_TIMES', None, use_cache=False)
+            if configured_times_raw not in (None, ""):
+                configured_source = "БД settings: DATA_COLLECTION_TIMES"
+            else:
+                configured_times_raw = settings_manager.get_setting('DATA_COLLECTION_TIME', None, use_cache=False)
+                if configured_times_raw not in (None, ""):
+                    configured_source = "БД settings: DATA_COLLECTION_TIME"
+        except Exception:
+            pass
+
         if self.last_collection_schedule_time != normalized_slots:
             debug_log(
                 "🕒 Обнаружено изменение расписания утреннего отчета: "
@@ -376,6 +390,14 @@ class Monitor:
                 "[MORNING_REPORT_SCHEDULE] trigger_from_menu "
                 "path='Главное меню → Настройки → Временные настройки → Время сбора данных' "
                 f"collection_time={collection_time.strftime('%H:%M')}"
+            )
+            info_log(
+                "[MORNING_REPORT_COLLECTION] start "
+                f"now={current_time.strftime('%Y-%m-%d %H:%M:%S')} "
+                f"trigger_time={collection_time.strftime('%H:%M')} "
+                f"resolved_schedule={','.join(normalized_slots)} "
+                f"source='{configured_source}' "
+                f"raw='{configured_times_raw}'"
             )
             debug_log(
                 f"[{current_time}] 🔍 Собираем данные для утреннего отчета "
