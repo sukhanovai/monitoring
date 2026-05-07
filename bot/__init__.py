@@ -5,7 +5,7 @@ Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Telegram bot module
 Система мониторинга серверов
-Версия: 8.58.9
+Версия: 8.58.11
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль Telegram-бота
