@@ -1699,6 +1699,12 @@ def start_monitoring():
         # сбора, запущенного в запланированное время, даже если цикл
         # мониторинга пропустил точное попадание в минуту старта.
         if current_time >= scheduled_collection_dt and last_report_date != today:
+            info_log(
+                "[MORNING_REPORT_COLLECTION] start "
+                f"now={current_time.strftime('%Y-%m-%d %H:%M:%S')} "
+                f"trigger_time={collection_time.strftime('%H:%M')} "
+                f"scheduled_at={scheduled_collection_dt.strftime('%Y-%m-%d %H:%M:%S')}"
+            )
             debug_log(
                 f"[{current_time}] 🔍 Собираем данные для утреннего отчета "
                 f"(план: {scheduled_collection_dt.strftime('%H:%M')})..."

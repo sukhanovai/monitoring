@@ -1,3 +1,9 @@
+## 8.58.10 - 2026-05-07
+- RU: Добавлено server-visible логирование старта запуска сбора данных для утреннего отчёта в `core/monitor_core.py`: теперь перед сбором пишется `[MORNING_REPORT_COLLECTION] start` с текущим временем, временем триггера и расчётным временем запуска.
+- EN: Added server-visible logging for morning-report data collection start in `core/monitor_core.py`: before collecting data, the app now writes `[MORNING_REPORT_COLLECTION] start` with current time, trigger time, and resolved scheduled datetime.
+- RU: SemVer patch bump до `8.58.10`; синхронизированы явные упоминания версии в backend-конфигах и Android metadata (`ANDROID_VERSION_NAME=8.58.10`, `ANDROID_VERSION_CODE=681`).
+- EN: SemVer patch bump to `8.58.10`; synchronized explicit version mentions in backend configs and Android metadata (`ANDROID_VERSION_NAME=8.58.10`, `ANDROID_VERSION_CODE=681`).
+
 ## 8.58.9 - 2026-05-07
 - RU: Исправлен источник времени автозапуска утреннего отчёта: запуск сбора данных в цикле мониторинга теперь явно привязан к настройкам из Telegram-меню «Настройки → Временные настройки → Время сбора данных» (ключи `DATA_COLLECTION_TIMES`/`DATA_COLLECTION_TIME` из БД настроек).
 - EN: Fixed morning report auto-run time source: data collection start in monitoring loop is now explicitly tied to Telegram menu settings “Settings → Time settings → Data collection time” (settings DB keys `DATA_COLLECTION_TIMES`/`DATA_COLLECTION_TIME`).

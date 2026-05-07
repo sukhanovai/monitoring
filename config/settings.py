@@ -22,10 +22,10 @@ from lib.utils import is_proxmox_server
 DEBUG_MODE = False
 
 # Версия приложения
-APP_VERSION = "8.58.9"
-ANDROID_APP_VERSION = "8.58.9"
-ANDROID_MIN_SUPPORTED_VERSION = "8.58.9"
-ANDROID_LATEST_VERSION = "8.58.9"
+APP_VERSION = "8.58.10"
+ANDROID_APP_VERSION = "8.58.10"
+ANDROID_MIN_SUPPORTED_VERSION = "8.58.10"
+ANDROID_LATEST_VERSION = "8.58.10"
 ANDROID_APK_DOWNLOAD_URL = os.environ.get(
     "ANDROID_APK_DOWNLOAD_URL",
     "https://github.com/sukhanovai/monitoring/releases/latest",
