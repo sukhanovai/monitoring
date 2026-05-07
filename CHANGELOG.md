@@ -5,6 +5,8 @@
 - EN: Added server-visible logging for morning report collection start (`[MORNING_REPORT_COLLECTION] start`) with trigger time, resolved schedule, and value source, so it is visible via `journalctl -u server-monitor.service -f`.
 - RU: SemVer patch bump до `8.58.8`; синхронизированы явные упоминания версии в backend-конфигах и Android metadata (`ANDROID_VERSION_NAME=8.58.8`, `ANDROID_VERSION_CODE=679`).
 - EN: SemVer patch bump to `8.58.8`; synchronized explicit version mentions in backend configs and Android metadata (`ANDROID_VERSION_NAME=8.58.8`, `ANDROID_VERSION_CODE=679`).
+- RU: Досинхронизированы оставшиеся упоминания `8.58.7` в runtime-заголовках Python-модулей, Android `MainViewModel` и документации (`README.md`, `docs/android_mobile_app.md`, `docs/api_202020_project.md`) до текущей версии `8.58.8`.
+- EN: Synchronized remaining `8.58.7` mentions in Python module runtime headers, Android `MainViewModel`, and documentation files (`README.md`, `docs/android_mobile_app.md`, `docs/api_202020_project.md`) to the current version `8.58.8`.
 
 ## [8.58.7] - 2026-05-06
 - EN: Updated Android application icons and synchronized related Android assets.
