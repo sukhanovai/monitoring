@@ -5,7 +5,7 @@ Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Mailbox monitoring
 Система мониторинга серверов
-Версия: 8.58.11
+Версия: 8.58.12
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Мониторинг почтового ящика

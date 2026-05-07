@@ -5,7 +5,7 @@ Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core system
 Система мониторинга серверов
-Версия: 8.58.11
+Версия: 8.58.12
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Ядро системы
@@ -52,6 +52,7 @@ last_resource_check = datetime.now()
 resource_alerts_sent = {}
 last_report_date = None
 last_collection_schedule_time = None
+sent_collection_slots = set()
 
 _alerts_configured = False
 
@@ -1671,39 +1672,38 @@ def start_monitoring():
                 debug_log("⏸️ Проверка ресурсов пропущена (тихий режим или мониторинг неактивен)")
 
         # Сбор и отправка утреннего отчета
-        config = get_config()
-        collection_time = config.DATA_COLLECTION_TIME
+        collection_times = morning_report._get_collection_times()
         today = current_time.date()
+        normalized_slots = [slot.strftime('%H:%M') for slot in collection_times]
 
-        global last_collection_schedule_time
-        if last_collection_schedule_time is None:
-            last_collection_schedule_time = collection_time
-        elif collection_time != last_collection_schedule_time:
+        global last_collection_schedule_time, sent_collection_slots
+        if last_collection_schedule_time != normalized_slots:
             debug_log(
-                "🕒 Обнаружено изменение времени утреннего отчета: "
-                f"{last_collection_schedule_time.strftime('%H:%M')} -> {collection_time.strftime('%H:%M')}"
+                "🕒 Обнаружено изменение расписания утреннего отчета: "
+                f"{', '.join(last_collection_schedule_time or []) or 'пусто'} -> {', '.join(normalized_slots)}"
             )
-            if last_report_date == today:
-                debug_log("♻️ Сбрасываем флаг отправки отчета за сегодня из-за смены времени")
-                last_report_date = None
-            last_collection_schedule_time = collection_time
+            sent_collection_slots = {
+                slot for slot in sent_collection_slots if not slot.startswith(f"{today.isoformat()} ")
+            }
+            last_collection_schedule_time = normalized_slots
 
-        scheduled_collection_dt = datetime.combine(today, collection_time)
         debug_log(
             f"🕒 План отчета: now={current_time.strftime('%Y-%m-%d %H:%M:%S')} | "
-            f"scheduled={scheduled_collection_dt.strftime('%Y-%m-%d %H:%M:%S')} | "
+            f"scheduled={','.join(normalized_slots)} | "
             f"last_report_date={last_report_date}"
         )
 
-        # Отчет должен отправляться один раз в день сразу после завершения
-        # сбора, запущенного в запланированное время, даже если цикл
-        # мониторинга пропустил точное попадание в минуту старта.
-        if current_time >= scheduled_collection_dt and last_report_date != today:
+        for collection_time in collection_times:
+            scheduled_collection_dt = datetime.combine(today, collection_time)
+            slot_key = f"{today.isoformat()} {collection_time.strftime('%H:%M')}"
+            if current_time < scheduled_collection_dt or slot_key in sent_collection_slots:
+                continue
+
             info_log(
                 "[MORNING_REPORT_COLLECTION] start "
                 f"now={current_time.strftime('%Y-%m-%d %H:%M:%S')} "
                 f"trigger_time={collection_time.strftime('%H:%M')} "
-                f"scheduled_at={scheduled_collection_dt.strftime('%Y-%m-%d %H:%M:%S')}"
+                f"resolved_schedule={','.join(normalized_slots)}"
             )
             debug_log(
                 f"[{current_time}] 🔍 Собираем данные для утреннего отчета "
@@ -1726,14 +1726,14 @@ def start_monitoring():
             sent_ok = send_morning_report(manual_call=False)  # Автоматический вызов
             if sent_ok:
                 last_report_date = today
+                sent_collection_slots.add(slot_key)
                 debug_log("✅ Утренний отчет отправлен")
             else:
                 debug_log("❌ Утренний отчет НЕ отправлен, повторим на следующем цикле")
 
             # Короткая пауза, чтобы не дёргать ветку повторно в ту же секунду
             time.sleep(2)
-        elif last_report_date == today:
-            debug_log(f"⏭️ Отчет уже отправлен сегодня {last_report_date}")
+            break
 
         # Основной цикл мониторинга доступности
         if monitoring_active:
