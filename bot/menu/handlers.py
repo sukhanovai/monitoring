@@ -5,7 +5,7 @@ Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Bot menu handlers
 Система мониторинга серверов
-Версия: 8.58.13
+Версия: 8.58.14
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики меню бота
