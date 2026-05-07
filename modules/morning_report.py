@@ -1,11 +1,11 @@
 """
 /app/modules/morning_report.py
-Server Monitoring System v8.58.8
+Server Monitoring System v8.58.9
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Morning Report Module
 Система мониторинга серверов
-Версия: 8.58.8
+Версия: 8.58.9
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль утреннего отчета
@@ -15,7 +15,7 @@ import threading
 import time
 from datetime import datetime, timedelta, timezone
 import sqlite3
-from lib.logging import debug_log
+from lib.logging import debug_log, info_log
 
 class MorningReport:
     """Класс управления утренними отчетами"""
@@ -28,6 +28,10 @@ class MorningReport:
     def collect_morning_data(self, manual_call=False):
         """Сбор данных для утреннего отчета"""
         try:
+            info_log(
+                "[MORNING_REPORT_COLLECTION] collect_start "
+                f"manual_call={manual_call} now={datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            )
             from modules.availability import availability_monitor
             current_status = availability_monitor.get_current_status()
             
@@ -522,6 +526,7 @@ class MorningReport:
     def _get_collection_times(self):
         """Возвращает актуальные времена автосбора из настроек."""
         default_time = None
+        configured_source = "config.settings.DATA_COLLECTION_TIME"
         try:
             from config.db_settings import DATA_COLLECTION_TIME as runtime_default
             default_time = runtime_default
@@ -531,12 +536,21 @@ class MorningReport:
         try:
             from core.config_manager import config_manager as settings_manager
             raw_value = settings_manager.get_setting('DATA_COLLECTION_TIMES', None, use_cache=False)
+            if raw_value not in (None, ''):
+                configured_source = 'БД settings: DATA_COLLECTION_TIMES'
             if raw_value in (None, ""):
                 raw_value = settings_manager.get_setting('DATA_COLLECTION_TIME', default_time, use_cache=False)
+                if raw_value not in (None, ''):
+                    configured_source = 'БД settings: DATA_COLLECTION_TIME'
         except Exception:
             raw_value = default_time
 
         parsed = self._parse_collection_times(raw_value)
+        resolved_slots = ','.join(slot.strftime('%H:%M') for slot in parsed) if parsed else ''
+        info_log(
+            '[MORNING_REPORT_SCHEDULE] resolve_collection_times '
+            f"source='{configured_source}' raw='{raw_value}' resolved='{resolved_slots}'"
+        )
         if parsed:
             return parsed
         if hasattr(raw_value, 'hour') and hasattr(raw_value, 'minute'):
