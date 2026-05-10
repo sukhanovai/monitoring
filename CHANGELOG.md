@@ -1,8 +1,10 @@
-## 8.58.22 - 2026-05-10
-- RU: Синхронизированы упоминания версии проекта во всех файлах: runtime-заголовки Python, backend-конфигурация, Android metadata и документация.
-- EN: Synchronized project-version mentions across all files: Python runtime headers, backend configuration, Android metadata, and documentation.
-- RU: SemVer patch bump до `8.58.22`; обновлены `ANDROID_VERSION_NAME=8.58.22` и `ANDROID_VERSION_CODE=690`.
-- EN: SemVer patch bump to `8.58.22`; updated `ANDROID_VERSION_NAME=8.58.22` and `ANDROID_VERSION_CODE=690`.
+## 8.58.23 - 2026-05-10
+- RU: Android: для синхронизации добавлены диагностические логи с эффективным Base URL и флагом наличия токена в момент старта, чтобы видно было, почему sync не идет.
+- EN: Android: added sync diagnostic logs with effective base URL and token-presence flag at start to make sync-start failures visible.
+- RU: Android: исправлена проверка связи с BFF — теперь отдельно обрабатывается ошибка инициализации API (битый Base URL), а в логах фиксируется HTTP-код при неуспехе запроса.
+- EN: Android: fixed BFF connectivity check — API initialization errors (invalid base URL) are now handled explicitly, and failed requests log HTTP status code.
+- RU: SemVer patch bump до `8.58.23`; обновлены `ANDROID_VERSION_NAME=8.58.23` и `ANDROID_VERSION_CODE=691`.
+- EN: SemVer patch bump to `8.58.23`; updated `ANDROID_VERSION_NAME=8.58.23` and `ANDROID_VERSION_CODE=691`.
 
 ## 8.58.21 - 2026-05-10
 - RU: Android: усилил логирование синхронизации (старт/этапы/финиш по `sessionId`), чтобы в логах явно было видно ход sync-процесса.
