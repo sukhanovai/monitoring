@@ -57,7 +57,7 @@ class MainViewModel(
     private companion object {
         private const val TAG_SYNC = "MonitoringSync"
     }
-    private val projectVersion = "8.58.28"
+    private val projectVersion = "8.58.29"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -692,7 +692,16 @@ class MainViewModel(
         is SocketTimeoutException -> "Таймаут запроса. Проверь интернет на устройстве и доступность сервера"
         is UnknownHostException -> "DNS не резолвит хост. Проверь Base URL и сеть"
         is ConnectException -> "Нет соединения с API. Проверь Base URL, порт и фаервол"
-        is SSLException -> "Ошибка TLS/сертификата. Проверь сертификат и дату/время устройства"
+        is SSLException -> {
+            val details = error.message?.lowercase().orEmpty()
+            when {
+                "expired" in details || "not yet valid" in details || "validity" in details ->
+                    "Ошибка TLS: сертификат просрочен/ещё не действителен. Проверь дату/время устройства и срок сертификата сервера"
+                "hostname" in details || "host" in details ->
+                    "Ошибка TLS: имя хоста не совпадает с сертификатом. Проверь Base URL и SAN/CN сертификата"
+                else -> "Ошибка TLS/сертификата. Проверь сертификат и дату/время устройства"
+            }
+        }
         is HttpException -> when (error.code()) {
             401 -> "HTTP 401: токен недействителен или нет доступа"
             403 -> "HTTP 403: у токена нет прав"
