@@ -1,12 +1,14 @@
-## 8.58.19 - 2026-05-10
+## 8.58.20 - 2026-05-10
 - RU: Android: добавлены расширенные логи синхронизации (старт с базовым URL/флагом токена и результаты проверки связи) для диагностики проблем, когда синхронизация не стартует и в логах пусто.
 - EN: Android: added extended synchronization logs (start with base URL/token flag and connectivity-check results) to diagnose cases where sync does not start and logs are empty.
 - RU: В разделе «Настройки бота» добавлена кнопка «Проверить связь с сервером бота», выполняющая API-проверку и показывающая результат пользователю.
 - EN: Added a “Check bot server connection” button in “Bot settings”; it runs an API connectivity check and shows the result to the user.
 - RU: Исправлена ошибка компиляции Android (`Suspension functions can only be called within coroutine body`) в `MainViewModel`: helper `fetchOrLog` переведён в `suspend`-контекст с явной обработкой исключений через `try/catch`.
 - EN: Fixed Android compilation error (`Suspension functions can only be called within coroutine body`) in `MainViewModel`: the `fetchOrLog` helper is now suspend-aware with explicit `try/catch` exception handling.
-- RU: SemVer patch bump до `8.58.19`; синхронизированы явные упоминания текущей версии в runtime-заголовках, конфигурации, документации и Android metadata (`ANDROID_VERSION_NAME=8.58.19`, `ANDROID_VERSION_CODE=686`).
-- EN: SemVer patch bump to `8.58.19`; synchronized explicit current-version mentions across runtime headers, configuration, documentation, and Android metadata (`ANDROID_VERSION_NAME=8.58.19`, `ANDROID_VERSION_CODE=686`).
+- RU: Исправлена ошибка компиляции Android в `MainViewModel`: в логе старта синхронизации заменено несуществующее поле `state.tokenInput` на `state.token`.
+- EN: Fixed Android compilation error in `MainViewModel`: replaced nonexistent `state.tokenInput` with `state.token` in the sync-start log line.
+- RU: SemVer patch bump до `8.58.20`; синхронизированы явные упоминания текущей версии в runtime-заголовках, конфигурации, документации и Android metadata (`ANDROID_VERSION_NAME=8.58.20`, `ANDROID_VERSION_CODE=688`).
+- EN: SemVer patch bump to `8.58.20`; synchronized explicit current-version mentions across runtime headers, configuration, documentation, and Android metadata (`ANDROID_VERSION_NAME=8.58.20`, `ANDROID_VERSION_CODE=688`).
 ## 8.58.16 - 2026-05-07
 - RU: Исправлена ложноположительная «успешная» отправка утреннего отчета: `modules/morning_report.py` теперь отправляет отчет через `lib.alerts.send_alert`, проверяет `sent_ok` и пишет ошибку доставки при `sent=False`.
 - EN: Fixed false-positive "successful" morning report delivery: `modules/morning_report.py` now sends via `lib.alerts.send_alert`, validates `sent_ok`, and logs delivery failure when `sent=False`.
