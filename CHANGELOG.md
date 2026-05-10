@@ -1,3 +1,9 @@
+## 8.58.22 - 2026-05-10
+- RU: Синхронизированы упоминания версии проекта во всех файлах: runtime-заголовки Python, backend-конфигурация, Android metadata и документация.
+- EN: Synchronized project-version mentions across all files: Python runtime headers, backend configuration, Android metadata, and documentation.
+- RU: SemVer patch bump до `8.58.22`; обновлены `ANDROID_VERSION_NAME=8.58.22` и `ANDROID_VERSION_CODE=690`.
+- EN: SemVer patch bump to `8.58.22`; updated `ANDROID_VERSION_NAME=8.58.22` and `ANDROID_VERSION_CODE=690`.
+
 ## 8.58.21 - 2026-05-10
 - RU: Android: усилил логирование синхронизации (старт/этапы/финиш по `sessionId`), чтобы в логах явно было видно ход sync-процесса.
 - EN: Android: improved synchronization logging (start/steps/finish with `sessionId`) so sync flow is clearly visible in logs.
