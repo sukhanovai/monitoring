@@ -56,7 +56,7 @@ class MainViewModel(
     private companion object {
         private const val TAG_SYNC = "MonitoringSync"
     }
-    private val projectVersion = "8.58.22"
+    private val projectVersion = "8.58.23"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -979,7 +979,9 @@ class MainViewModel(
             return
         }
         val syncSessionId = startSyncProgressSession()
-        Log.i(TAG_SYNC, "refreshData started, sessionId=$syncSessionId, baseUrl=${state.baseUrlInput}, hasToken=${state.token.isNotBlank()}")
+        val effectiveBaseUrl = normalizeBaseUrlInput(state.baseUrlInput.ifBlank { preferences.apiBaseUrl })
+        val hasToken = normalizeToken(state.token.ifBlank { preferences.apiToken }).isNotBlank()
+        Log.i(TAG_SYNC, "refreshData started, sessionId=$syncSessionId, baseUrl=$effectiveBaseUrl, hasToken=$hasToken")
         Log.i(TAG_SYNC, "sync flow start: refreshSettingsFromServer + refreshAvailability, sessionId=$syncSessionId")
         refreshSettingsFromServer(showErrors = true, syncSessionId = syncSessionId)
         refreshAvailability(syncSessionId = syncSessionId)
@@ -2334,9 +2336,20 @@ class MainViewModel(
 
     fun testBffConnection() {
         viewModelScope.launch {
-            Log.i(TAG_SYNC, "testBffConnection started")
+            val effectiveBaseUrl = normalizeBaseUrlInput(state.baseUrlInput.ifBlank { preferences.apiBaseUrl })
+            val hasToken = normalizeToken(state.token.ifBlank { preferences.apiToken }).isNotBlank()
+            Log.i(TAG_SYNC, "testBffConnection started: baseUrl=$effectiveBaseUrl, hasToken=$hasToken")
             state = state.copy(isLoading = true, message = "Проверяю связь с BFF…")
-            runCatching { currentApi().getControlStatus() }
+            runCatching { currentApi() }
+                .onFailure { error ->
+                    Log.e(TAG_SYNC, "testBffConnection failed before request: ${error.message}", error)
+                    state = state.copy(
+                        isLoading = false,
+                        message = "Нет связи с BFF: проверь Base URL (${formatNetworkError(error)})"
+                    )
+                }
+                .onSuccess { api ->
+                    runCatching { api.getControlStatus() }
                 .onSuccess { status ->
                     Log.i(TAG_SYNC, "testBffConnection success: status=${status.monitoringStatus}")
                     state = state.copy(
@@ -2345,8 +2358,10 @@ class MainViewModel(
                     )
                 }
                 .onFailure { error ->
-                    Log.e(TAG_SYNC, "testBffConnection failed: ${error.message}", error)
+                    val statusCode = (error as? HttpException)?.code()
+                    Log.e(TAG_SYNC, "testBffConnection failed: statusCode=$statusCode, message=${error.message}", error)
                     state = state.copy(isLoading = false, message = "Нет связи с BFF: ${formatNetworkError(error)}")
+                }
                 }
         }
     }
