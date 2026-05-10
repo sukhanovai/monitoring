@@ -1,3 +1,11 @@
+## 8.58.21 - 2026-05-10
+- RU: Android: усилил логирование синхронизации (старт/этапы/финиш по `sessionId`), чтобы в логах явно было видно ход sync-процесса.
+- EN: Android: improved synchronization logging (start/steps/finish with `sessionId`) so sync flow is clearly visible in logs.
+- RU: В секцию BFF в настройках добавлена отдельная кнопка «Проверить связь с BFF»; проверка связи с сервером бота оставлена в секции Bot.
+- EN: Added a dedicated “Check BFF connectivity” button to the BFF settings section; bot-server connectivity check remains in the Bot section.
+- RU: SemVer patch bump до `8.58.21`; обновлены `ANDROID_VERSION_NAME=8.58.21`, `ANDROID_VERSION_CODE=689`, runtime-версия Android UI и ссылка prerelease APK в README.
+- EN: SemVer patch bump to `8.58.21`; updated `ANDROID_VERSION_NAME=8.58.21`, `ANDROID_VERSION_CODE=689`, Android UI runtime version, and prerelease APK link in README.
+
 ## 8.58.20 - 2026-05-10
 - RU: Android: добавлены расширенные логи синхронизации (старт с базовым URL/флагом токена и результаты проверки связи) для диагностики проблем, когда синхронизация не стартует и в логах пусто.
 - EN: Android: added extended synchronization logs (start with base URL/token flag and connectivity-check results) to diagnose cases where sync does not start and logs are empty.

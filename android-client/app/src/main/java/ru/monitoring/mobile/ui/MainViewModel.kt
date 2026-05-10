@@ -56,7 +56,7 @@ class MainViewModel(
     private companion object {
         private const val TAG_SYNC = "MonitoringSync"
     }
-    private val projectVersion = "8.58.20"
+    private val projectVersion = "8.58.21"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -806,6 +806,7 @@ class MainViewModel(
 
         viewModelScope.launch {
             Log.i(TAG_SYNC, "refreshSettingsFromServer started: showErrors=$showErrors, sessionId=$syncSessionId")
+            Log.i(TAG_SYNC, "sync step settings started, sessionId=$syncSessionId")
             state = state.copy(isLoading = true)
 
             val result = withContext(Dispatchers.IO) {
@@ -965,6 +966,7 @@ class MainViewModel(
             )
             rescheduleBackgroundWorkers()
             Log.i(TAG_SYNC, "refreshSettingsFromServer finished successfully, sessionId=$syncSessionId")
+            Log.i(TAG_SYNC, "sync step settings finished, sessionId=$syncSessionId")
             completeSyncProgressPart(syncSessionId)
         }
     }
@@ -978,6 +980,7 @@ class MainViewModel(
         }
         val syncSessionId = startSyncProgressSession()
         Log.i(TAG_SYNC, "refreshData started, sessionId=$syncSessionId, baseUrl=${state.baseUrlInput}, hasToken=${state.token.isNotBlank()}")
+        Log.i(TAG_SYNC, "sync flow start: refreshSettingsFromServer + refreshAvailability, sessionId=$syncSessionId")
         refreshSettingsFromServer(showErrors = true, syncSessionId = syncSessionId)
         refreshAvailability(syncSessionId = syncSessionId)
     }
@@ -997,6 +1000,7 @@ class MainViewModel(
     fun refreshAvailability(syncSessionId: Int? = null) {
         viewModelScope.launch {
             Log.i(TAG_SYNC, "refreshAvailability started, sessionId=$syncSessionId")
+            Log.i(TAG_SYNC, "sync step availability started, sessionId=$syncSessionId")
             val serversForBatchCheck = state.managedServers.filter { managed ->
                 managed.ip.isNotBlank() || managed.name.isNotBlank()
             }
@@ -1108,6 +1112,7 @@ class MainViewModel(
                 lastSyncTime = LocalDateTime.now().format(syncTimeFormatter)
             )
             Log.i(TAG_SYNC, "refreshAvailability finished: total=$totalServers, failed=$failedChecks, sessionId=$syncSessionId")
+            Log.i(TAG_SYNC, "sync step availability finished, sessionId=$syncSessionId")
             completeSyncProgressPart(syncSessionId)
         }
     }
@@ -2324,6 +2329,25 @@ class MainViewModel(
                     refreshSettingsFromServer(showErrors = false)
                 }
                 .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
+        }
+    }
+
+    fun testBffConnection() {
+        viewModelScope.launch {
+            Log.i(TAG_SYNC, "testBffConnection started")
+            state = state.copy(isLoading = true, message = "Проверяю связь с BFF…")
+            runCatching { currentApi().getControlStatus() }
+                .onSuccess { status ->
+                    Log.i(TAG_SYNC, "testBffConnection success: status=${status.monitoringStatus}")
+                    state = state.copy(
+                        isLoading = false,
+                        message = "Связь с BFF есть (${status.monitoringStatus ?: "ok"})"
+                    )
+                }
+                .onFailure { error ->
+                    Log.e(TAG_SYNC, "testBffConnection failed: ${error.message}", error)
+                    state = state.copy(isLoading = false, message = "Нет связи с BFF: ${formatNetworkError(error)}")
+                }
         }
     }
 
