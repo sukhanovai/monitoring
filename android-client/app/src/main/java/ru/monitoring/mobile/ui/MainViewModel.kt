@@ -57,7 +57,7 @@ class MainViewModel(
     private companion object {
         private const val TAG_SYNC = "MonitoringSync"
     }
-    private val projectVersion = "8.58.26"
+    private val projectVersion = "8.58.27"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -799,8 +799,9 @@ class MainViewModel(
     }
 
     fun refreshSettingsFromServer(showErrors: Boolean = false, syncSessionId: Int? = null) {
-        if (state.token.isBlank()) {
-            Log.w(TAG_SYNC, "refreshSettingsFromServer skipped: token is blank, sessionId=$syncSessionId")
+        val effectiveToken = normalizeToken(state.token.ifBlank { preferences.apiToken })
+        if (effectiveToken.isBlank()) {
+            Log.w(TAG_SYNC, "refreshSettingsFromServer skipped: effective token is blank, sessionId=$syncSessionId")
             completeSyncProgressPart(syncSessionId)
             return
         }
@@ -2354,7 +2355,7 @@ class MainViewModel(
             }
 
             result.onSuccess { status ->
-                val uiMessage = "Связь с BFF есть (${status.monitoringStatus ?: "ok"})"
+                val uiMessage = "Проверка связи с BFF: успех (${status.monitoringStatus ?: "ok"})"
                 ConnectionLogger.info(
                     event = "bff_connection_check_success",
                     fields = mapOf("base_url" to effectiveBaseUrl, "status" to (status.monitoringStatus ?: "ok"), "ui_message" to uiMessage)
@@ -2364,9 +2365,9 @@ class MainViewModel(
             }.onFailure { error ->
                 val statusCode = (error as? HttpException)?.code()
                 val uiMessage = if (statusCode == null) {
-                    "Нет связи с BFF: проверь Base URL (${formatNetworkError(error)})"
+                    "Проверка связи с BFF: ошибка, проверь Base URL (${formatNetworkError(error)})"
                 } else {
-                    "Нет связи с BFF: ${formatNetworkError(error)}"
+                    "Проверка связи с BFF: ошибка (${formatNetworkError(error)})"
                 }
                 ConnectionLogger.error(
                     event = "bff_connection_check_failed",
