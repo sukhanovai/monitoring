@@ -9,12 +9,18 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import java.net.ConnectException
+import java.net.InetSocketAddress
 import java.net.URI
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import java.time.LocalDateTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
+import java.util.Date
+import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLException
+import javax.net.ssl.SSLSocket
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -57,7 +63,8 @@ class MainViewModel(
     private companion object {
         private const val TAG_SYNC = "MonitoringSync"
     }
-    private val projectVersion = "8.58.34"
+    private val projectVersion = "8.58.35"
+    private val certificateExpiryWarningDays = 14L
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -916,6 +923,8 @@ class MainViewModel(
                 return@launch
             }
 
+            val certificateStatus = fetchBffCertificateStatus()
+
             state = state.copy(
                 isLoading = false,
                 checkIntervalInput = (monitoringData?.checkIntervalSec ?: monitoring?.checkIntervalSec)?.toString() ?: state.checkIntervalInput,
@@ -973,12 +982,64 @@ class MainViewModel(
                     "force_loud" -> "🔊 Принудительно громкий"
                     "auto" -> if (control.silentActive == true) "🔇 Авто (сейчас тихий)" else "🔊 Авто (сейчас громкий)"
                     else -> state.silentStatusText
-                }
+                },
+                bffCertificateStatusText = certificateStatus.statusText,
+                bffCertificateWarningText = certificateStatus.warningText
             )
             rescheduleBackgroundWorkers()
             Log.i(TAG_SYNC, "refreshSettingsFromServer finished successfully, sessionId=$syncSessionId")
             Log.i(TAG_SYNC, "sync step settings finished, sessionId=$syncSessionId")
             completeSyncProgressPart(syncSessionId)
+        }
+    }
+
+    private data class BffCertificateStatus(
+        val statusText: String,
+        val warningText: String
+    )
+
+    private fun fetchBffCertificateStatus(): BffCertificateStatus {
+        return runCatching {
+            val baseUrl = normalizeBaseUrlInput(state.baseUrlInput.ifBlank { preferences.apiBaseUrl })
+            val uri = URI(baseUrl)
+            val host = uri.host ?: return BffCertificateStatus("⚪ TLS: хост не определён", "")
+            val port = if (uri.port > 0) uri.port else 443
+            val sslContext = SSLContext.getInstance("TLS")
+            sslContext.init(null, null, null)
+            val socket = sslContext.socketFactory.createSocket() as SSLSocket
+            socket.soTimeout = 5000
+            socket.connect(InetSocketAddress(host, port), 5000)
+            socket.startHandshake()
+            val certificates = socket.session.peerCertificates
+            val x509 = certificates.firstOrNull() as? java.security.cert.X509Certificate
+            socket.close()
+            if (x509 == null) {
+                return BffCertificateStatus("⚪ TLS: сертификат не получен", "")
+            }
+
+            val now = LocalDateTime.now()
+            val expiresAt = LocalDateTime.ofInstant(Date(x509.notAfter.time).toInstant(), ZoneId.systemDefault())
+            val daysLeft = ChronoUnit.DAYS.between(now, expiresAt)
+            val expiresText = expiresAt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+            when {
+                daysLeft < 0 -> BffCertificateStatus(
+                    statusText = "🔴 TLS: истёк ($expiresText)",
+                    warningText = "Сертификат BFF просрочен"
+                )
+                daysLeft <= certificateExpiryWarningDays -> BffCertificateStatus(
+                    statusText = "🟠 TLS: истекает через $daysLeft дн. ($expiresText)",
+                    warningText = "⚠️ BFF TLS скоро истечёт ($daysLeft дн.)"
+                )
+                else -> BffCertificateStatus(
+                    statusText = "🟢 TLS: OK, $daysLeft дн. до истечения",
+                    warningText = ""
+                )
+            }
+        }.getOrElse { error ->
+            BffCertificateStatus(
+                statusText = "⚪ TLS: ошибка проверки (${formatNetworkError(error)})",
+                warningText = ""
+            )
         }
     }
 
@@ -2606,7 +2667,9 @@ data class MainUiState(
     val apkDownloadUrl: String = "",
     val updateMessage: String = "",
     val monitoringStatusText: String = "Неизвестно",
-    val silentStatusText: String = "Неизвестно"
+    val silentStatusText: String = "Неизвестно",
+    val bffCertificateStatusText: String = "⚪ TLS: не проверен",
+    val bffCertificateWarningText: String = ""
 )
 
 data class MailBackupHistoryItem(
