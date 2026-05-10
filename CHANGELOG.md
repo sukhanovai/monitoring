@@ -1,16 +1,24 @@
-## 8.58.15 - 2026-05-07
+## 8.58.17 - 2026-05-10
+- RU: В Android-клиенте переименована кнопка `🌅 Утренний отчёт` в `🌅 Отчёт` в оперативном центре, чтобы убрать лишнее слово из UI.
+- EN: In the Android client, the `🌅 Morning report` quick action label was shortened to `🌅 Report` in the ops hub UI.
+- RU: Добавлено расширенное логирование синхронизации в `MainViewModel`: старт/пропуск sync-сессии, ошибки загрузки настроек по отдельным API-эндпоинтам, ошибки batch-проверки доступности и итог sync-проверки теперь пишутся в logcat с тегом `MonitoringSync`.
+- EN: Added expanded synchronization logging in `MainViewModel`: sync start/skip events, per-endpoint settings-fetch failures, batch availability-check failures, and final sync summary are now written to logcat with `MonitoringSync` tag.
+- RU: SemVer patch bump до `8.58.17`; синхронизированы явные упоминания текущей версии в runtime-заголовках, конфигурации, документации и Android metadata (`ANDROID_VERSION_NAME=8.58.17`, `ANDROID_VERSION_CODE=685`).
+- EN: SemVer patch bump to `8.58.17`; synchronized explicit current-version mentions across runtime headers, configuration, documentation, and Android metadata (`ANDROID_VERSION_NAME=8.58.17`, `ANDROID_VERSION_CODE=685`).
+
+## 8.58.16 - 2026-05-07
 - RU: Исправлена ложноположительная «успешная» отправка утреннего отчета: `modules/morning_report.py` теперь отправляет отчет через `lib.alerts.send_alert`, проверяет `sent_ok` и пишет ошибку доставки при `sent=False`.
 - EN: Fixed false-positive "successful" morning report delivery: `modules/morning_report.py` now sends via `lib.alerts.send_alert`, validates `sent_ok`, and logs delivery failure when `sent=False`.
-- RU: SemVer patch bump до `8.58.15`; синхронизированы явные упоминания текущей версии в runtime-заголовках, конфигурации и Android metadata.
-- EN: SemVer patch bump to `8.58.15`; synchronized explicit current-version mentions across runtime headers, configuration, and Android metadata.
+- RU: SemVer patch bump до `8.58.16`; синхронизированы явные упоминания текущей версии в runtime-заголовках, конфигурации и Android metadata.
+- EN: SemVer patch bump to `8.58.16`; synchronized explicit current-version mentions across runtime headers, configuration, and Android metadata.
 
 ## 8.58.14 - 2026-05-07
 - RU: Исправлен двойной запуск сбора перед отправкой утреннего отчета: в плановом автозапуске `core/monitor.py` теперь используется `send_report(..., collect_before_send=False)`, чтобы не стартовал повторный `collect_morning_data` и отчет уходил сразу по уже собранному слепку.
 - EN: Fixed duplicate data-collection start before morning-report delivery: scheduled auto-run in `core/monitor.py` now calls `send_report(..., collect_before_send=False)` to avoid a second `collect_morning_data` pass and send immediately using the collected snapshot.
 - RU: Исправлен `NameError` в `core/monitor.py` при старте мониторинга через proxychains/systemd: переменная `DATA_COLLECTION_TIME` теперь корректно импортируется из конфигурации и используется в стартовом сообщении.
 - EN: Fixed `NameError` in `core/monitor.py` during monitor startup via proxychains/systemd: `DATA_COLLECTION_TIME` is now properly imported from configuration and used in the startup message.
-- RU: SemVer patch bump до `8.58.14`; синхронизированы явные упоминания текущей версии проекта в runtime-заголовках Python-модулей, backend-конфигах, документации и Android metadata (`ANDROID_VERSION_NAME=8.58.15`, `ANDROID_VERSION_CODE=683`).
-- EN: SemVer patch bump to `8.58.14`; synchronized explicit current-version mentions across Python runtime headers, backend config constants, documentation, and Android metadata (`ANDROID_VERSION_NAME=8.58.15`, `ANDROID_VERSION_CODE=683`).
+- RU: SemVer patch bump до `8.58.14`; синхронизированы явные упоминания текущей версии проекта в runtime-заголовках Python-модулей, backend-конфигах, документации и Android metadata (`ANDROID_VERSION_NAME=8.58.16`, `ANDROID_VERSION_CODE=684`).
+- EN: SemVer patch bump to `8.58.14`; synchronized explicit current-version mentions across Python runtime headers, backend config constants, documentation, and Android metadata (`ANDROID_VERSION_NAME=8.58.16`, `ANDROID_VERSION_CODE=684`).
 
 ## 8.58.10 - 2026-05-07
 - RU: Добавлено server-visible логирование старта запуска сбора данных для утреннего отчёта в `core/monitor_core.py`: теперь перед сбором пишется `[MORNING_REPORT_COLLECTION] start` с текущим временем, временем триггера и расчётным временем запуска.
