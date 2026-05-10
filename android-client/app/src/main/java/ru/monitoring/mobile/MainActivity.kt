@@ -2559,7 +2559,7 @@ private fun MonitoringApp(
                             Text("Версия проекта: ${state.projectVersion}")
                             Text("BFF сертификат: ${state.bffCertificateStatusText}")
                             if (state.bffCertificateWarningText.isNotBlank()) {
-                                Text(state.bffCertificateWarningText, color = MaterialTheme.colors.error)
+                                Text(state.bffCertificateWarningText, color = MaterialTheme.colorScheme.error)
                             }
                             if (state.message.isNotBlank() && state.messageSource == "global") {
                                 Text(state.message)

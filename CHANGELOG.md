@@ -1,3 +1,9 @@
+## 8.58.36 - 2026-05-10
+- RU: Android: исправлена ошибка компиляции `Unresolved reference colors` в `MainActivity` — для Material 3 заменён вызов `MaterialTheme.colors.error` на `MaterialTheme.colorScheme.error`.
+- EN: Android: fixed `Unresolved reference colors` compilation error in `MainActivity` by switching Material 3 usage from `MaterialTheme.colors.error` to `MaterialTheme.colorScheme.error`.
+- RU: SemVer patch bump до `8.58.36`; обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.58.36` и `ANDROID_VERSION_CODE=704`, синхронизированы явные упоминания версии в runtime/конфигах/документации.
+- EN: SemVer patch bump to `8.58.36`; updated Android metadata to `ANDROID_VERSION_NAME=8.58.36` and `ANDROID_VERSION_CODE=704`, and synchronized explicit version mentions across runtime/config/docs.
+
 ## 8.58.35 - 2026-05-10
 - RU: Android: добавлена проверка TLS-сертификата Base URL BFF при синхронизации настроек; в оперативном центре теперь показывается текущий статус сертификата (OK / скоро истекает / истёк / ошибка проверки) и предупреждение при риске истечения в ближайшие 14 дней.
 - EN: Android: added TLS certificate expiry check for the BFF Base URL during settings sync; Ops Center now shows current certificate status (OK / expiring soon / expired / check error) and displays a warning when expiry is within the next 14 days.
