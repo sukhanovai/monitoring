@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -36,12 +37,18 @@ class MorningReportWorker(
     override suspend fun doWork(): Result {
         val prefs = AppPreferences(applicationContext)
         val token = prefs.apiToken.trim()
-        if (token.isBlank()) return Result.success()
+        val baseUrl = prefs.apiBaseUrl.trim().ifBlank { "https://api.202020.ru:8443/" }.let {
+            if (it.endsWith("/")) it else "$it/"
+        }
+        if (token.isBlank()) {
+            Log.w("MorningReportWorker", "doWork skipped: blank token")
+            return Result.success()
+        }
 
         return runCatching {
             val api = ApiFactory.createApi(
-                tokenProvider = { prefs.apiToken },
-                baseUrlProvider = { prefs.apiBaseUrl }
+                tokenProvider = { token },
+                baseUrlProvider = { baseUrl }
             )
             val response = api.runControlAction(ControlActionRequest("send_morning_report"))
             val reportText = response.message?.trim()
@@ -55,8 +62,12 @@ class MorningReportWorker(
 
             ensureNotificationChannel(applicationContext)
             showNotification(applicationContext, reportText)
+            Log.i("MorningReportWorker", "doWork success: baseUrl=$baseUrl, report_len=${reportText.length}")
             Result.success()
-        }.getOrElse { Result.retry() }
+        }.getOrElse {
+            Log.e("MorningReportWorker", "doWork failed: baseUrl=$baseUrl, error=${it.message}", it)
+            Result.retry()
+        }
     }
 
     private fun ensureNotificationChannel(context: Context) {

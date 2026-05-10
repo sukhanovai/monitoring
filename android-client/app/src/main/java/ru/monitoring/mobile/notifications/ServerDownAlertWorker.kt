@@ -19,6 +19,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import java.util.concurrent.TimeUnit
+import android.util.Log
 import ru.monitoring.mobile.MainActivity
 import ru.monitoring.mobile.api.ApiFactory
 import ru.monitoring.mobile.api.ManagedServer
@@ -28,20 +29,27 @@ class ServerDownAlertWorker(
     appContext: Context,
     params: WorkerParameters
 ) : CoroutineWorker(appContext, params) {
+    private companion object {
+        private const val TAG = "ServerDownAlertWorker"
+    }
 
     private val prefs = AppPreferences(appContext)
 
     override suspend fun doWork(): Result {
         val token = prefs.apiToken.trim()
+        val baseUrl = prefs.apiBaseUrl.trim().ifBlank { "https://api.202020.ru:8443/" }.let {
+            if (it.endsWith("/")) it else "$it/"
+        }
         if (token.isBlank()) {
+            Log.w(TAG, "doWork skipped: blank token")
             scheduleNext(applicationContext, enabled = false)
             return Result.success()
         }
 
         val result = runCatching {
             val api = ApiFactory.createApi(
-                tokenProvider = { prefs.apiToken },
-                baseUrlProvider = { prefs.apiBaseUrl }
+                tokenProvider = { token },
+                baseUrlProvider = { baseUrl }
             )
             val managedServers = runCatching { api.getServersSettings().items }.getOrDefault(emptyList())
             val response = api.getAvailability()
@@ -88,8 +96,12 @@ class ServerDownAlertWorker(
                 showRecoveryNotification(applicationContext, recoveredServers.sorted())
             }
 
+            Log.i(TAG, "doWork success: baseUrl=$baseUrl, down=${downServerNames.size}")
             Result.success()
-        }.getOrElse { Result.retry() }
+        }.getOrElse {
+            Log.e(TAG, "doWork failed: baseUrl=$baseUrl, error=${it.message}", it)
+            Result.retry()
+        }
 
         scheduleNext(applicationContext, enabled = true)
         return result

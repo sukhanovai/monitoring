@@ -1,10 +1,10 @@
-## 8.58.24 - 2026-05-10
-- RU: Android: для синхронизации добавлены диагностические логи с эффективным Base URL и флагом наличия токена в момент старта, чтобы видно было, почему sync не идет.
-- EN: Android: added sync diagnostic logs with effective base URL and token-presence flag at start to make sync-start failures visible.
-- RU: Android: исправлена проверка связи с BFF — теперь отдельно обрабатывается ошибка инициализации API (битый Base URL), а в логах фиксируется HTTP-код при неуспехе запроса.
-- EN: Android: fixed BFF connectivity check — API initialization errors (invalid base URL) are now handled explicitly, and failed requests log HTTP status code.
-- RU: SemVer patch bump до `8.58.24`; обновлены `ANDROID_VERSION_NAME=8.58.24` и `ANDROID_VERSION_CODE=692`.
-- EN: SemVer patch bump to `8.58.24`; updated `ANDROID_VERSION_NAME=8.58.24` and `ANDROID_VERSION_CODE=692`.
+## 8.58.25 - 2026-05-10
+- RU: Android: починена проверка связи с BFF в настройках — запрос теперь выполняется с нормализованными token/Base URL, а результат проверки дублируется в сообщение приложения и в системный лог.
+- EN: Android: fixed BFF connectivity check in settings — requests now run with normalized token/base URL, and check results are mirrored to both in-app message and system log.
+- RU: Android: стабилизирована доставка данных и оповещений из фоновых воркеров — для API-вызовов используется нормализованный Base URL, добавлены явные логи успеха/ошибок, чтобы легче разбирать отвал синхронизации.
+- EN: Android: stabilized data delivery and alerts from background workers — API calls now use normalized base URL, with explicit success/failure logs to simplify sync-failure diagnostics.
+- RU: SemVer patch bump до `8.58.25`; обновлены `ANDROID_VERSION_NAME=8.58.25` и `ANDROID_VERSION_CODE=693`, синхронизированы явные упоминания версии.
+- EN: SemVer patch bump to `8.58.25`; updated `ANDROID_VERSION_NAME=8.58.25` and `ANDROID_VERSION_CODE=693`, and synchronized explicit version mentions.
 
 ## 8.58.21 - 2026-05-10
 - RU: Android: усилил логирование синхронизации (старт/этапы/финиш по `sessionId`), чтобы в логах явно было видно ход sync-процесса.
