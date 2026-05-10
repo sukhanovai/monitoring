@@ -1,3 +1,11 @@
+## 8.58.27 - 2026-05-10
+- RU: Починена синхронизация с BFF, когда токен хранится в сохранённых настройках (а поле токена в UI временно пустое); синхронизация больше не скипается ошибочно.
+- EN: Fixed BFF synchronization when token is stored in persisted settings (while token input in UI is temporarily empty); sync is no longer skipped incorrectly.
+- RU: Исправлена проверка связи с BFF в настройках: результат проверки теперь явно формируется в сообщении приложения и дублируется в логах с тем же статусом.
+- EN: Fixed BFF connection check in settings: check result is now explicitly shown in app message and mirrored in logs with matching status.
+- RU: SemVer patch bump до `8.58.27`; обновлены `ANDROID_VERSION_NAME=8.58.27` и `ANDROID_VERSION_CODE=695`, синхронизированы явные упоминания версии.
+- EN: SemVer patch bump to `8.58.27`; updated `ANDROID_VERSION_NAME=8.58.27` and `ANDROID_VERSION_CODE=695`, synchronized explicit version mentions.
+
 ## 8.58.25 - 2026-05-10
 - RU: Android: исправлена сборка уведомлений о недоступности серверов — в `ServerDownAlertWorker` объединён `companion object`, из-за чего снова доступны константы (`CHANNEL_ID`, `EXTRA_DOWN_SERVER_NAMES`, `NOTIFICATION_ID`) и методы планирования (`schedule`, `scheduleNext`).
 - EN: Android: fixed build for server-down notifications — merged duplicated `companion object` in `ServerDownAlertWorker`, restoring access to constants (`CHANNEL_ID`, `EXTRA_DOWN_SERVER_NAMES`, `NOTIFICATION_ID`) and scheduling methods (`schedule`, `scheduleNext`).
