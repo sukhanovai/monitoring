@@ -1,8 +1,8 @@
-## 8.58.29 - 2026-05-10
+## 8.58.30 - 2026-05-10
 - RU: Android: улучшена диагностика TLS-ошибок в UI — для `SSLException` добавлены более точные подсказки про просроченный/ещё не действительный сертификат и про mismatch имени хоста в сертификате.
 - EN: Android: improved TLS error diagnostics in UI — `SSLException` now provides more specific hints for expired/not-yet-valid certificates and hostname mismatch in certificate.
-- RU: SemVer patch bump до `8.58.29`; обновлены `ANDROID_VERSION_NAME=8.58.29` и `ANDROID_VERSION_CODE=697`, синхронизированы явные упоминания версии.
-- EN: SemVer patch bump to `8.58.29`; updated `ANDROID_VERSION_NAME=8.58.29` and `ANDROID_VERSION_CODE=697`, synchronized explicit version mentions.
+- RU: SemVer patch bump до `8.58.30`; обновлены `ANDROID_VERSION_NAME=8.58.30` и `ANDROID_VERSION_CODE=698`, синхронизированы явные упоминания версии.
+- EN: SemVer patch bump to `8.58.30`; updated `ANDROID_VERSION_NAME=8.58.30` and `ANDROID_VERSION_CODE=698`, synchronized explicit version mentions.
 
 ## 8.58.28 - 2026-05-10
 - RU: Досинхронизированы явные упоминания версии проекта во всех backend/runtime/doc-файлах, где оставался рассинхрон после прошлого релизного шага.
