@@ -57,7 +57,7 @@ class MainViewModel(
     private companion object {
         private const val TAG_SYNC = "MonitoringSync"
     }
-    private val projectVersion = "8.58.24"
+    private val projectVersion = "8.58.25"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -2338,7 +2338,8 @@ class MainViewModel(
     fun testBffConnection() {
         viewModelScope.launch {
             val effectiveBaseUrl = normalizeBaseUrlInput(state.baseUrlInput.ifBlank { preferences.apiBaseUrl })
-            val hasToken = normalizeToken(state.token.ifBlank { preferences.apiToken }).isNotBlank()
+            val effectiveToken = normalizeToken(state.token.ifBlank { preferences.apiToken })
+            val hasToken = effectiveToken.isNotBlank()
             ConnectionLogger.info(
                 event = "bff_connection_check_started",
                 fields = mapOf("base_url" to effectiveBaseUrl, "has_token" to hasToken)
@@ -2347,8 +2348,8 @@ class MainViewModel(
 
             val result = runCatching {
                 ApiFactory.createApi(
-                    tokenProvider = { normalizeToken(state.token.ifBlank { preferences.apiToken }) },
-                    baseUrlProvider = { normalizeBaseUrlInput(state.baseUrlInput.ifBlank { preferences.apiBaseUrl }) }
+                    tokenProvider = { effectiveToken },
+                    baseUrlProvider = { effectiveBaseUrl }
                 ).getControlStatus()
             }
 
@@ -2358,6 +2359,7 @@ class MainViewModel(
                     event = "bff_connection_check_success",
                     fields = mapOf("base_url" to effectiveBaseUrl, "status" to (status.monitoringStatus ?: "ok"), "ui_message" to uiMessage)
                 )
+                Log.i(TAG_SYNC, "BFF connection check success: baseUrl=$effectiveBaseUrl, status=${status.monitoringStatus ?: "ok"}, message=$uiMessage")
                 state = state.copy(isLoading = false, message = uiMessage)
             }.onFailure { error ->
                 val statusCode = (error as? HttpException)?.code()
@@ -2375,6 +2377,7 @@ class MainViewModel(
                         "ui_message" to uiMessage
                     )
                 )
+                Log.e(TAG_SYNC, "BFF connection check failed: baseUrl=$effectiveBaseUrl, message=$uiMessage, error=${error.message}", error)
                 state = state.copy(isLoading = false, message = uiMessage)
             }
         }
