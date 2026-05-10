@@ -29,10 +29,6 @@ class ServerDownAlertWorker(
     appContext: Context,
     params: WorkerParameters
 ) : CoroutineWorker(appContext, params) {
-    private companion object {
-        private const val TAG = "ServerDownAlertWorker"
-    }
-
     private val prefs = AppPreferences(appContext)
 
     override suspend fun doWork(): Result {
@@ -234,6 +230,7 @@ class ServerDownAlertWorker(
     }
 
     companion object {
+        private const val TAG = "ServerDownAlertWorker"
         private const val CHANNEL_ID = "server_down_alerts_channel"
         private const val NOTIFICATION_ID = 202021
         private const val RECOVERY_NOTIFICATION_ID = 202022

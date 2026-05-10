@@ -1,4 +1,10 @@
 ## 8.58.25 - 2026-05-10
+- RU: Android: исправлена сборка уведомлений о недоступности серверов — в `ServerDownAlertWorker` объединён `companion object`, из-за чего снова доступны константы (`CHANNEL_ID`, `EXTRA_DOWN_SERVER_NAMES`, `NOTIFICATION_ID`) и методы планирования (`schedule`, `scheduleNext`).
+- EN: Android: fixed build for server-down notifications — merged duplicated `companion object` in `ServerDownAlertWorker`, restoring access to constants (`CHANNEL_ID`, `EXTRA_DOWN_SERVER_NAMES`, `NOTIFICATION_ID`) and scheduling methods (`schedule`, `scheduleNext`).
+- RU: SemVer patch bump до `8.58.26`; обновлены `ANDROID_VERSION_NAME=8.58.26` и `ANDROID_VERSION_CODE=694`, синхронизированы явные упоминания версии.
+- EN: SemVer patch bump to `8.58.26`; updated `ANDROID_VERSION_NAME=8.58.26` and `ANDROID_VERSION_CODE=694`, synchronized explicit version mentions.
+
+## 8.58.26 - 2026-05-10
 - RU: Android: починена проверка связи с BFF в настройках — запрос теперь выполняется с нормализованными token/Base URL, а результат проверки дублируется в сообщение приложения и в системный лог.
 - EN: Android: fixed BFF connectivity check in settings — requests now run with normalized token/base URL, and check results are mirrored to both in-app message and system log.
 - RU: Android: стабилизирована доставка данных и оповещений из фоновых воркеров — для API-вызовов используется нормализованный Base URL, добавлены явные логи успеха/ошибок, чтобы легче разбирать отвал синхронизации.
