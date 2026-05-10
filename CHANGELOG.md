@@ -1,6 +1,6 @@
-## 8.58.33 - 2026-05-10
-- RU: Исправлена TLS-проблема Android-клиента: приложение теперь доверяет пользовательским CA-сертификатам (помимо системных), поэтому запросы (включая утренний отчёт) снова работают в окружениях с корпоративными/самоподписанными сертификатами; выполнен SemVer patch bump до `8.58.33` и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.58.33` и `ANDROID_VERSION_CODE=701`.
-- EN: Fixed Android TLS issue: the app now trusts user-installed CA certificates (in addition to system CAs), so requests (including morning report) work again in environments with corporate/self-signed certificates; performed SemVer patch bump to `8.58.33` and updated Android metadata to `ANDROID_VERSION_NAME=8.58.33` and `ANDROID_VERSION_CODE=701`.
+## 8.58.34 - 2026-05-10
+- RU: Добавлен операционный TLS-блок для `api.202020.ru:8443` с готовым cron-скриптом (exit code 1 при истечении сертификата) и пошаговым сценарием ручного продления через certbot/acme.sh; выполнен SemVer patch bump до `8.58.34` и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.58.34` и `ANDROID_VERSION_CODE=702`.
+- EN: Added an operational TLS section for `api.202020.ru:8443` with a ready-to-use cron check script (exit code 1 when certificate is expired) and step-by-step manual renewal flow for certbot/acme.sh; performed SemVer patch bump to `8.58.34` and updated Android metadata to `ANDROID_VERSION_NAME=8.58.34` and `ANDROID_VERSION_CODE=702`.
 
 ## 8.58.32 - 2026-05-10
 - RU: SemVer patch bump до `8.58.32`; синхронизированы явные упоминания версии проекта во всех файлах с runtime/config/doc-константами, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.58.32` и `ANDROID_VERSION_CODE=700`.

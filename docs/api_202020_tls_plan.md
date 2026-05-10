@@ -87,6 +87,68 @@ acme.sh --renew -d api.202020.ru --dry-run
 
 ---
 
+
+## Операционный блок: алерт в cron + ручное продление сейчас
+
+### 1) Проверка в cron с exit code 1 при истечении
+
+Скрипт ниже возвращает `0`, если сертификат ещё валиден, и `1`, если уже истёк (или не удалось получить сертификат):
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+host="api.202020.ru"
+port="8443"
+name="api.202020.ru"
+
+if ! cert=$(echo | openssl s_client -connect "${host}:${port}" -servername "${name}" 2>/dev/null | openssl x509 -noout -enddate 2>/dev/null); then
+  echo "CRIT: cannot read certificate from ${host}:${port}" >&2
+  exit 1
+fi
+
+end_date="${cert#notAfter=}"
+end_ts=$(date -u -d "$end_date" +%s)
+now_ts=$(date -u +%s)
+left=$((end_ts - now_ts))
+
+if [ "$left" -le 0 ]; then
+  echo "CRIT: certificate expired at ${end_date}"
+  exit 1
+fi
+
+echo "OK: certificate valid, seconds_left=${left}, end_date_utc=${end_date}"
+exit 0
+```
+
+Пример cron (каждые 15 минут + лог в файл):
+
+```cron
+*/15 * * * * /usr/local/bin/check_api_202020_cert.sh >> /var/log/check_api_202020_cert.log 2>&1
+```
+
+### 2) Как продлить сертификат прямо сейчас
+
+Вариант для certbot + nginx:
+
+```bash
+certbot certonly --nginx -d api.202020.ru --force-renewal
+nginx -t && systemctl reload nginx
+```
+
+Проверка после перезагрузки nginx:
+
+```bash
+echo | openssl s_client -connect api.202020.ru:8443 -servername api.202020.ru 2>/dev/null | openssl x509 -noout -subject -issuer -dates -ext subjectAltName
+```
+
+Если используете `acme.sh`, эквивалент:
+
+```bash
+acme.sh --renew -d api.202020.ru --force
+# затем deploy/install сертификата в путь nginx + reload nginx
+```
+
 ## Финальный чек-лист готовности
 
 - [ ] `dig` показывает корректный IP для `api.202020.ru`.
