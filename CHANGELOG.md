@@ -1,3 +1,9 @@
+## 8.58.35 - 2026-05-10
+- RU: Android: добавлена проверка TLS-сертификата Base URL BFF при синхронизации настроек; в оперативном центре теперь показывается текущий статус сертификата (OK / скоро истекает / истёк / ошибка проверки) и предупреждение при риске истечения в ближайшие 14 дней.
+- EN: Android: added TLS certificate expiry check for the BFF Base URL during settings sync; Ops Center now shows current certificate status (OK / expiring soon / expired / check error) and displays a warning when expiry is within the next 14 days.
+- RU: SemVer patch bump до `8.58.35`; обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.58.35` и `ANDROID_VERSION_CODE=703`, синхронизированы явные упоминания версии в runtime/документации.
+- EN: SemVer patch bump to `8.58.35`; updated Android metadata to `ANDROID_VERSION_NAME=8.58.35` and `ANDROID_VERSION_CODE=703`, synchronized explicit version mentions in runtime/documentation.
+
 ## 8.58.34 - 2026-05-10
 - RU: Добавлен операционный TLS-блок для `api.202020.ru:8443` с готовым cron-скриптом (exit code 1 при истечении сертификата) и пошаговым сценарием ручного продления через certbot/acme.sh; выполнен SemVer patch bump до `8.58.34` и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.58.34` и `ANDROID_VERSION_CODE=702`.
 - EN: Added an operational TLS section for `api.202020.ru:8443` with a ready-to-use cron check script (exit code 1 when certificate is expired) and step-by-step manual renewal flow for certbot/acme.sh; performed SemVer patch bump to `8.58.34` and updated Android metadata to `ANDROID_VERSION_NAME=8.58.34` and `ANDROID_VERSION_CODE=702`.
