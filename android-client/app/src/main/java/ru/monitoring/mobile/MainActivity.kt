@@ -1442,6 +1442,7 @@ class MainActivity : ComponentActivity() {
                     onTelegramTokenChanged = vm::setTelegramTokenInput,
                     onTelegramChatIdChanged = vm::setTelegramChatIdInput,
                     onSaveBot = vm::updateBotSettings,
+                    onTestBotServerConnection = vm::testBotServerConnection,
                     onNewTelegramChatIdChanged = vm::setNewTelegramChatIdInput,
                     onAddTelegramChatId = vm::addTelegramChatId,
                     onRemoveTelegramChatId = vm::removeTelegramChatId,
@@ -1558,6 +1559,7 @@ private fun MonitoringApp(
     onTelegramTokenChanged: (String) -> Unit,
     onTelegramChatIdChanged: (String) -> Unit,
     onSaveBot: () -> Unit,
+    onTestBotServerConnection: () -> Unit,
     onNewTelegramChatIdChanged: (String) -> Unit,
     onAddTelegramChatId: () -> Unit,
     onRemoveTelegramChatId: (String) -> Unit,
@@ -2788,11 +2790,17 @@ private fun MonitoringApp(
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             SettingsActionButton(label = "Добавить chat_id", onClick = onAddTelegramChatId)
                         }
-                        SettingsActionButton(
-                            label = "Сохранить bot",
-                            onClick = onSaveBot,
-                            enabled = canSaveBot
-                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            SettingsActionButton(
+                                label = "Проверить связь с сервером бота",
+                                onClick = onTestBotServerConnection
+                            )
+                            SettingsActionButton(
+                                label = "Сохранить bot",
+                                onClick = onSaveBot,
+                                enabled = canSaveBot
+                            )
+                        }
                         }
 
                         if (settingsSection == "time") {

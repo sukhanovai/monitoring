@@ -56,7 +56,7 @@ class MainViewModel(
     private companion object {
         private const val TAG_SYNC = "MonitoringSync"
     }
-    private val projectVersion = "8.58.18"
+    private val projectVersion = "8.58.19"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -977,7 +977,7 @@ class MainViewModel(
             return
         }
         val syncSessionId = startSyncProgressSession()
-        Log.i(TAG_SYNC, "refreshData started, sessionId=$syncSessionId")
+        Log.i(TAG_SYNC, "refreshData started, sessionId=$syncSessionId, baseUrl=${state.baseUrlInput}, hasToken=${state.tokenInput.isNotBlank()}")
         refreshSettingsFromServer(showErrors = true, syncSessionId = syncSessionId)
         refreshAvailability(syncSessionId = syncSessionId)
     }
@@ -2324,6 +2324,25 @@ class MainViewModel(
                     refreshSettingsFromServer(showErrors = false)
                 }
                 .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
+        }
+    }
+
+    fun testBotServerConnection() {
+        viewModelScope.launch {
+            Log.i(TAG_SYNC, "testBotServerConnection started")
+            state = state.copy(isLoading = true, message = "Проверяю связь с сервером бота…")
+            runCatching { currentApi().getControlStatus() }
+                .onSuccess { status ->
+                    Log.i(TAG_SYNC, "testBotServerConnection success: status=${status.monitoringStatus}")
+                    state = state.copy(
+                        isLoading = false,
+                        message = "Связь с сервером бота есть (${status.monitoringStatus ?: "ok"})"
+                    )
+                }
+                .onFailure { error ->
+                    Log.e(TAG_SYNC, "testBotServerConnection failed: ${error.message}", error)
+                    state = state.copy(isLoading = false, message = "Нет связи с сервером бота: ${formatNetworkError(error)}")
+                }
         }
     }
 
