@@ -1,3 +1,9 @@
+## 8.58.28 - 2026-05-10
+- RU: Досинхронизированы явные упоминания версии проекта во всех backend/runtime/doc-файлах, где оставался рассинхрон после прошлого релизного шага.
+- EN: Finalized synchronization of explicit project version mentions across backend/runtime/doc files where drift remained after the previous release step.
+- RU: SemVer patch bump до `8.58.28`; обновлены `ANDROID_VERSION_NAME=8.58.28` и `ANDROID_VERSION_CODE=696`.
+- EN: SemVer patch bump to `8.58.28`; updated `ANDROID_VERSION_NAME=8.58.28` and `ANDROID_VERSION_CODE=696`.
+
 ## 8.58.27 - 2026-05-10
 - RU: Починена синхронизация с BFF, когда токен хранится в сохранённых настройках (а поле токена в UI временно пустое); синхронизация больше не скипается ошибочно.
 - EN: Fixed BFF synchronization when token is stored in persisted settings (while token input in UI is temporarily empty); sync is no longer skipped incorrectly.
