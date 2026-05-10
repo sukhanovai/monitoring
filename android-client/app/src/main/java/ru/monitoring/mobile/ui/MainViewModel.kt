@@ -1,6 +1,7 @@
 package ru.monitoring.mobile.ui
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -52,7 +53,10 @@ class MainViewModel(
     private val appContext: Context,
     private val preferences: AppPreferences
 ) : ViewModel() {
-    private val projectVersion = "8.58.15"
+    private companion object {
+        private const val TAG_SYNC = "MonitoringSync"
+    }
+    private val projectVersion = "8.58.17"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -795,45 +799,41 @@ class MainViewModel(
 
     fun refreshSettingsFromServer(showErrors: Boolean = false, syncSessionId: Int? = null) {
         if (state.token.isBlank()) {
+            Log.w(TAG_SYNC, "refreshSettingsFromServer skipped: token is blank, sessionId=$syncSessionId")
             completeSyncProgressPart(syncSessionId)
             return
         }
 
         viewModelScope.launch {
+            Log.i(TAG_SYNC, "refreshSettingsFromServer started: showErrors=$showErrors, sessionId=$syncSessionId")
             state = state.copy(isLoading = true)
 
             val result = withContext(Dispatchers.IO) {
-                val monitoring = runCatching { currentApi().getMonitoringSettings() }.getOrNull()
-                val bot = runCatching { currentApi().getBotSettings() }.getOrNull()
-                val time = runCatching { currentApi().getTimeSettings() }.getOrNull()
-                val auth = runCatching { currentApi().getAuthSettings() }.getOrNull()
-                val control = runCatching { currentApi().getControlStatus() }.getOrNull()
-                val winTypes = runCatching { currentApi().getWindowsTypes() }.getOrNull()
-                val winCreds = runCatching { currentApi().getWindowsCredentials() }.getOrNull()
-                val servers = runCatching { currentApi().getServersSettings() }.getOrNull()
-                val extensions = runCatching { currentApi().getExtensionsSettings() }.getOrNull()
-                val proxmoxBackupSummary = runCatching {
-                    currentApi().runControlAction(ControlActionRequest("backup_proxmox"))
-                }.getOrNull()
-                val dbBackupSummary = runCatching {
-                    currentApi().runControlAction(ControlActionRequest("backup_databases"))
-                }.getOrNull()
-                val stockLoadSummary = runCatching {
-                    currentApi().runControlAction(ControlActionRequest("backup_stock_loads"))
-                }.getOrNull()
-                val supplierStockSummary = runCatching {
-                    currentApi().runControlAction(ControlActionRequest("supplier_stock_reports"))
-                }.getOrNull()
-                val mailBackupSummary = runCatching {
-                    currentApi().runControlAction(ControlActionRequest("backup_mail"))
-                }.getOrNull()
-                val zfsSummaryBundle = runCatching {
+                fun <T> fetchOrLog(name: String, block: () -> T): T? = runCatching(block)
+                    .onFailure { error ->
+                        Log.e(TAG_SYNC, "refreshSettingsFromServer failed: $name, sessionId=$syncSessionId, error=${error.message}", error)
+                    }
+                    .getOrNull()
+
+                val monitoring = fetchOrLog("getMonitoringSettings") { currentApi().getMonitoringSettings() }
+                val bot = fetchOrLog("getBotSettings") { currentApi().getBotSettings() }
+                val time = fetchOrLog("getTimeSettings") { currentApi().getTimeSettings() }
+                val auth = fetchOrLog("getAuthSettings") { currentApi().getAuthSettings() }
+                val control = fetchOrLog("getControlStatus") { currentApi().getControlStatus() }
+                val winTypes = fetchOrLog("getWindowsTypes") { currentApi().getWindowsTypes() }
+                val winCreds = fetchOrLog("getWindowsCredentials") { currentApi().getWindowsCredentials() }
+                val servers = fetchOrLog("getServersSettings") { currentApi().getServersSettings() }
+                val extensions = fetchOrLog("getExtensionsSettings") { currentApi().getExtensionsSettings() }
+                val proxmoxBackupSummary = fetchOrLog("runControlAction(backup_proxmox)") { currentApi().runControlAction(ControlActionRequest("backup_proxmox")) }
+                val dbBackupSummary = fetchOrLog("runControlAction(backup_databases)") { currentApi().runControlAction(ControlActionRequest("backup_databases")) }
+                val stockLoadSummary = fetchOrLog("runControlAction(backup_stock_loads)") { currentApi().runControlAction(ControlActionRequest("backup_stock_loads")) }
+                val supplierStockSummary = fetchOrLog("runControlAction(supplier_stock_reports)") { currentApi().runControlAction(ControlActionRequest("supplier_stock_reports")) }
+                val mailBackupSummary = fetchOrLog("runControlAction(backup_mail)") { currentApi().runControlAction(ControlActionRequest("backup_mail")) }
+                val zfsSummaryBundle = fetchOrLog("zfs_menu + fetchZfsLatestStatusesResponse") {
                     val zfsRoot = currentApi().runControlAction(ControlActionRequest("zfs_menu"))
                     fetchZfsLatestStatusesResponse(zfsRoot)
-                }.getOrNull()
-                val zfsPoolFreeSpaceSummary = runCatching {
-                    currentApi().runControlAction(ControlActionRequest("zfs_pool_free_space_menu"))
-                }.getOrNull()
+                }
+                val zfsPoolFreeSpaceSummary = fetchOrLog("runControlAction(zfs_pool_free_space_menu)") { currentApi().runControlAction(ControlActionRequest("zfs_pool_free_space_menu")) }
                 listOf(
                     monitoring,
                     bot,
@@ -893,6 +893,7 @@ class MainViewModel(
 
             val hasAny = monitoring != null || bot != null || time != null || auth != null || control != null || winTypes != null || winCreds != null || servers != null || extensions != null
             if (!hasAny) {
+                Log.w(TAG_SYNC, "refreshSettingsFromServer: all critical settings responses are null, sessionId=$syncSessionId")
                 state = if (showErrors) {
                     state.copy(isLoading = false, message = "Не удалось подтянуть настройки")
                 } else {
@@ -962,6 +963,7 @@ class MainViewModel(
                 }
             )
             rescheduleBackgroundWorkers()
+            Log.i(TAG_SYNC, "refreshSettingsFromServer finished successfully, sessionId=$syncSessionId")
             completeSyncProgressPart(syncSessionId)
         }
     }
@@ -969,10 +971,12 @@ class MainViewModel(
 
     fun refreshData() {
         if (state.isSyncInProgress) {
+            Log.w(TAG_SYNC, "refreshData skipped: sync already in progress")
             state = state.copy(message = "Синхронизация уже выполняется", messageSource = "global")
             return
         }
         val syncSessionId = startSyncProgressSession()
+        Log.i(TAG_SYNC, "refreshData started, sessionId=$syncSessionId")
         refreshSettingsFromServer(showErrors = true, syncSessionId = syncSessionId)
         refreshAvailability(syncSessionId = syncSessionId)
     }
@@ -991,6 +995,7 @@ class MainViewModel(
 
     fun refreshAvailability(syncSessionId: Int? = null) {
         viewModelScope.launch {
+            Log.i(TAG_SYNC, "refreshAvailability started, sessionId=$syncSessionId")
             val serversForBatchCheck = state.managedServers.filter { managed ->
                 managed.ip.isNotBlank() || managed.name.isNotBlank()
             }
@@ -1021,6 +1026,7 @@ class MainViewModel(
                         completeSyncProgressPart(syncSessionId)
                     }
                     .onFailure { error ->
+                        Log.e(TAG_SYNC, "refreshAvailability failed (all servers API), sessionId=$syncSessionId, error=${error.message}", error)
                         val userMessage = when ((error as? HttpException)?.code()) {
                             401 -> "HTTP 401: нет доступа к статусу серверов. Проверь Base URL и токен в Настройках"
                             403 -> "HTTP 403: нет прав на получение статуса серверов"
@@ -1058,6 +1064,7 @@ class MainViewModel(
                 val availability = runCatching {
                     currentApi().getAvailabilitySingle(serverTarget)
                 }.getOrElse {
+                    Log.e(TAG_SYNC, "refreshAvailability failed for server=$serverTarget, sessionId=$syncSessionId, error=${it.message}", it)
                     failedChecks += 1
                     null
                 }
@@ -1099,6 +1106,7 @@ class MainViewModel(
                 isDataSynchronized = true,
                 lastSyncTime = LocalDateTime.now().format(syncTimeFormatter)
             )
+            Log.i(TAG_SYNC, "refreshAvailability finished: total=$totalServers, failed=$failedChecks, sessionId=$syncSessionId")
             completeSyncProgressPart(syncSessionId)
         }
     }

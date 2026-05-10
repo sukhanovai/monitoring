@@ -2498,7 +2498,7 @@ private fun MonitoringApp(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             DashboardActionButton(
-                                label = "🌅 Утренний отчёт",
+                                label = "🌅 Отчёт",
                                 modifier = Modifier.weight(1f),
                                 onClick = {
                                     showMorningReportDialog = true
