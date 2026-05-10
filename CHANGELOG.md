@@ -1,11 +1,8 @@
-## 8.58.17 - 2026-05-10
-- RU: В Android-клиенте переименована кнопка `🌅 Утренний отчёт` в `🌅 Отчёт` в оперативном центре, чтобы убрать лишнее слово из UI.
-- EN: In the Android client, the `🌅 Morning report` quick action label was shortened to `🌅 Report` in the ops hub UI.
-- RU: Добавлено расширенное логирование синхронизации в `MainViewModel`: старт/пропуск sync-сессии, ошибки загрузки настроек по отдельным API-эндпоинтам, ошибки batch-проверки доступности и итог sync-проверки теперь пишутся в logcat с тегом `MonitoringSync`.
-- EN: Added expanded synchronization logging in `MainViewModel`: sync start/skip events, per-endpoint settings-fetch failures, batch availability-check failures, and final sync summary are now written to logcat with `MonitoringSync` tag.
-- RU: SemVer patch bump до `8.58.17`; синхронизированы явные упоминания текущей версии в runtime-заголовках, конфигурации, документации и Android metadata (`ANDROID_VERSION_NAME=8.58.17`, `ANDROID_VERSION_CODE=685`).
-- EN: SemVer patch bump to `8.58.17`; synchronized explicit current-version mentions across runtime headers, configuration, documentation, and Android metadata (`ANDROID_VERSION_NAME=8.58.17`, `ANDROID_VERSION_CODE=685`).
-
+## 8.58.18 - 2026-05-10
+- RU: Исправлена ошибка компиляции Android (`Suspension functions can only be called within coroutine body`) в `MainViewModel`: helper `fetchOrLog` переведён в `suspend`-контекст с явной обработкой исключений через `try/catch`.
+- EN: Fixed Android compilation error (`Suspension functions can only be called within coroutine body`) in `MainViewModel`: the `fetchOrLog` helper is now suspend-aware with explicit `try/catch` exception handling.
+- RU: SemVer patch bump до `8.58.18`; синхронизированы явные упоминания текущей версии в runtime-заголовках, конфигурации, документации и Android metadata (`ANDROID_VERSION_NAME=8.58.18`, `ANDROID_VERSION_CODE=686`).
+- EN: SemVer patch bump to `8.58.18`; synchronized explicit current-version mentions across runtime headers, configuration, documentation, and Android metadata (`ANDROID_VERSION_NAME=8.58.18`, `ANDROID_VERSION_CODE=686`).
 ## 8.58.16 - 2026-05-07
 - RU: Исправлена ложноположительная «успешная» отправка утреннего отчета: `modules/morning_report.py` теперь отправляет отчет через `lib.alerts.send_alert`, проверяет `sent_ok` и пишет ошибку доставки при `sent=False`.
 - EN: Fixed false-positive "successful" morning report delivery: `modules/morning_report.py` now sends via `lib.alerts.send_alert`, validates `sent_ok`, and logs delivery failure when `sent=False`.

@@ -56,7 +56,7 @@ class MainViewModel(
     private companion object {
         private const val TAG_SYNC = "MonitoringSync"
     }
-    private val projectVersion = "8.58.17"
+    private val projectVersion = "8.58.18"
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
     private val problemBackupKeywords = listOf("failed", "error", "problem", "down", "ошиб", "проблем", "недоступ", "не найден", "no backup")
@@ -809,11 +809,12 @@ class MainViewModel(
             state = state.copy(isLoading = true)
 
             val result = withContext(Dispatchers.IO) {
-                fun <T> fetchOrLog(name: String, block: () -> T): T? = runCatching(block)
-                    .onFailure { error ->
-                        Log.e(TAG_SYNC, "refreshSettingsFromServer failed: $name, sessionId=$syncSessionId, error=${error.message}", error)
-                    }
-                    .getOrNull()
+                suspend fun <T> fetchOrLog(name: String, block: suspend () -> T): T? = try {
+                    block()
+                } catch (error: Exception) {
+                    Log.e(TAG_SYNC, "refreshSettingsFromServer failed: $name, sessionId=$syncSessionId, error=${error.message}", error)
+                    null
+                }
 
                 val monitoring = fetchOrLog("getMonitoringSettings") { currentApi().getMonitoringSettings() }
                 val bot = fetchOrLog("getBotSettings") { currentApi().getBotSettings() }
