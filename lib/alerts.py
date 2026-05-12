@@ -479,11 +479,15 @@ def _send_matrix_alert(message: str) -> bool:
         return False
     try:
         encoded_room_id = quote(_matrix_room_id, safe="")
-        url = f"{_matrix_homeserver}/_matrix/client/v3/rooms/{encoded_room_id}/send/m.room.message"
+        txn_id = str(int(time.time() * 1000))
+        url = (
+            f"{_matrix_homeserver}/_matrix/client/v3/rooms/"
+            f"{encoded_room_id}/send/m.room.message/{txn_id}"
+        )
         payload = {"msgtype": "m.text", "body": message}
         response = requests.post(
             url,
-            params={"access_token": _matrix_access_token},
+            headers={"Authorization": f"Bearer {_matrix_access_token}"},
             json=payload,
             timeout=10,
         )
