@@ -1,3 +1,7 @@
+## 8.58.41 - 2026-05-12
+- RU: SemVer patch bump до `8.58.41`; синхронизированы все явные упоминания версии проекта во всех затронутых файлах (runtime/config/docs/Android), обновлены `ANDROID_VERSION_NAME=8.58.41`, повышен `ANDROID_VERSION_CODE=709` и синхронизирована in-app версия Android-клиента.
+- EN: SemVer patch bump to `8.58.41`; synchronized all explicit project version mentions across touched files (runtime/config/docs/Android), updated `ANDROID_VERSION_NAME=8.58.41`, bumped `ANDROID_VERSION_CODE=709`, and synced Android client in-app version.
+
 ## 8.58.40 - 2026-05-12
 
 - RU: SemVer patch bump до `8.58.40`; синхронизированы все явные упоминания версии проекта в runtime/config/Android-файлах, Android metadata обновлены до `ANDROID_VERSION_NAME=8.58.40` и `ANDROID_VERSION_CODE=708`.
