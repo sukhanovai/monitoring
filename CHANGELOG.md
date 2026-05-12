@@ -1,3 +1,8 @@
+## 8.58.40 - 2026-05-12
+
+- RU: SemVer patch bump до `8.58.40`; синхронизированы все явные упоминания версии проекта в runtime/config/Android-файлах, Android metadata обновлены до `ANDROID_VERSION_NAME=8.58.40` и `ANDROID_VERSION_CODE=708`.
+- EN: SemVer patch bump to `8.58.40`; synchronized all explicit project version mentions across runtime/config/Android files, Android metadata updated to `ANDROID_VERSION_NAME=8.58.40` and `ANDROID_VERSION_CODE=708`.
+
 ## 8.58.39 - 2026-05-12
 
 - RU: README по Matrix дополнен пояснениями про Bash history expansion (`!` в `room_id`) и рабочими примерами экспорта `MATRIX_ROOM_ID` для shell.
