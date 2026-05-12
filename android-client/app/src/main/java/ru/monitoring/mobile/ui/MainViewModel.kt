@@ -2406,54 +2406,6 @@ class MainViewModel(
         }
     }
 
-    fun testBffConnection() {
-        viewModelScope.launch {
-            val effectiveBaseUrl = normalizeBaseUrlInput(state.baseUrlInput.ifBlank { preferences.apiBaseUrl })
-            val effectiveToken = normalizeToken(state.token.ifBlank { preferences.apiToken })
-            val hasToken = effectiveToken.isNotBlank()
-            ConnectionLogger.info(
-                event = "bff_connection_check_started",
-                fields = mapOf("base_url" to effectiveBaseUrl, "has_token" to hasToken)
-            )
-            state = state.copy(isLoading = true, message = "Проверяю связь с BFF…")
-
-            val result = runCatching {
-                ApiFactory.createApi(
-                    tokenProvider = { effectiveToken },
-                    baseUrlProvider = { effectiveBaseUrl }
-                ).getControlStatus()
-            }
-
-            result.onSuccess { status ->
-                val uiMessage = "Проверка связи с BFF: успех (${status.monitoringStatus ?: "ok"})"
-                ConnectionLogger.info(
-                    event = "bff_connection_check_success",
-                    fields = mapOf("base_url" to effectiveBaseUrl, "status" to (status.monitoringStatus ?: "ok"), "ui_message" to uiMessage)
-                )
-                Log.i(TAG_SYNC, "BFF connection check success: baseUrl=$effectiveBaseUrl, status=${status.monitoringStatus ?: "ok"}, message=$uiMessage")
-                state = state.copy(isLoading = false, message = uiMessage)
-            }.onFailure { error ->
-                val statusCode = (error as? HttpException)?.code()
-                val uiMessage = if (statusCode == null) {
-                    "Проверка связи с BFF: ошибка, проверь Base URL (${formatNetworkError(error)})"
-                } else {
-                    "Проверка связи с BFF: ошибка (${formatNetworkError(error)})"
-                }
-                ConnectionLogger.error(
-                    event = "bff_connection_check_failed",
-                    fields = mapOf(
-                        "base_url" to effectiveBaseUrl,
-                        "status_code" to statusCode,
-                        "error" to ConnectionLogger.shortErrorMessage(error.message),
-                        "ui_message" to uiMessage
-                    )
-                )
-                Log.e(TAG_SYNC, "BFF connection check failed: baseUrl=$effectiveBaseUrl, message=$uiMessage, error=${error.message}", error)
-                state = state.copy(isLoading = false, message = uiMessage)
-            }
-        }
-    }
-
     fun testBotServerConnection() {
         viewModelScope.launch {
             Log.i(TAG_SYNC, "testBotServerConnection started")

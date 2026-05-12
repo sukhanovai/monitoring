@@ -17,6 +17,7 @@ from lib.alerts import (
     send_alert as base_send_alert,
     configure_alerts,
     init_telegram_bot,
+    init_matrix_bot,
     set_silent_override,
     is_silent_time as alerts_is_silent_time,
     get_silent_override,
@@ -121,6 +122,7 @@ def ensure_alert_bot():
     try:
         config = get_config()
         init_telegram_bot(bot, config.CHAT_IDS)
+        init_matrix_bot(config.MATRIX_HOMESERVER, config.MATRIX_ACCESS_TOKEN, config.MATRIX_ROOM_ID)
     except Exception as e:
         debug_log(f"Не удалось инициализировать бот алертов: {e}")
 
