@@ -1,9 +1,9 @@
-## 8.58.47 - 2026-05-12
+## 8.58.48 - 2026-05-12
 
 - RU: Исправлена критичность алертов недоступности сервера: при падении SSH/host события теперь отправляются как `critical`, поэтому тихий режим не блокирует доставку в Telegram и Matrix в ночные часы.
 - EN: Fixed severity for server availability alerts: SSH/host downtime events are now sent as `critical`, so silent mode no longer blocks nighttime delivery to Telegram and Matrix.
-- RU: SemVer patch bump до `8.58.47`; синхронизированы все явные упоминания версии проекта в runtime/config/docs/Android, обновлены `ANDROID_VERSION_NAME=8.58.47` и `ANDROID_VERSION_CODE=715`.
-- EN: SemVer patch bump to `8.58.47`; synchronized all explicit project version mentions across runtime/config/docs/Android, updated `ANDROID_VERSION_NAME=8.58.47` and `ANDROID_VERSION_CODE=715`.
+- RU: SemVer patch bump до `8.58.48`; синхронизированы все явные упоминания версии проекта в runtime/config/docs/Android, обновлены `ANDROID_VERSION_NAME=8.58.48` и `ANDROID_VERSION_CODE=716`.
+- EN: SemVer patch bump to `8.58.48`; synchronized all explicit project version mentions across runtime/config/docs/Android, updated `ANDROID_VERSION_NAME=8.58.48` and `ANDROID_VERSION_CODE=716`.
 
 ## 8.58.46 - 2026-05-12
 
