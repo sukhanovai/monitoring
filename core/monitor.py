@@ -1,11 +1,11 @@
 """
 /core/monitor.py
-Server Monitoring System v8.58.48
+Server Monitoring System v8.58.49
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core monitoring module
 Система мониторинга серверов
-Версия: 8.58.48
+Версия: 8.58.49
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль мониторинга
@@ -68,6 +68,15 @@ class Monitor:
             return max(1, interval)
         except Exception:
             return max(1, int(CHECK_INTERVAL))
+
+    def _get_max_fail_time_seconds(self) -> int:
+        """Возвращает актуальный порог простоя до алерта из БД настроек."""
+        try:
+            value = config_manager.get_setting('MAX_FAIL_TIME', MAX_FAIL_TIME, use_cache=False)
+            timeout = int(value)
+            return max(1, timeout)
+        except Exception:
+            return max(1, int(MAX_FAIL_TIME))
 
     def load_servers(self) -> List[Dict]:
         """
@@ -196,7 +205,8 @@ class Monitor:
         downtime = (current_time - downtime_start).total_seconds()
 
         # Проверяем нужно ли отправлять алерт
-        if downtime >= MAX_FAIL_TIME and not status.get("alert_sent"):
+        max_fail_time = self._get_max_fail_time_seconds()
+        if downtime >= max_fail_time and not status.get("alert_sent"):
             message = f"🚨 {status.get('name')} ({ip}) не отвечает"
             message += f" ({int(downtime // 60)} мин {int(downtime % 60)} сек)"
 
