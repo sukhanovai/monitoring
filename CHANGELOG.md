@@ -1,3 +1,7 @@
+## 8.58.43 - 2026-05-12
+- RU: SemVer patch bump до `8.58.43`; синхронизированы все явные упоминания версии проекта во всех рабочих файлах (runtime/config/docs/Android), обновлены `ANDROID_VERSION_NAME=8.58.43`, повышен `ANDROID_VERSION_CODE=711` и синхронизирована in-app версия Android-клиента.
+- EN: SemVer patch bump to `8.58.43`; synchronized all explicit project version mentions across working files (runtime/config/docs/Android), updated `ANDROID_VERSION_NAME=8.58.43`, bumped `ANDROID_VERSION_CODE=711`, and synced Android in-app client version.
+
 ## 8.58.42 - 2026-05-12
 - RU: Matrix-отправка исправлена: `room_id` теперь URL-encoded перед вызовом Matrix Client API, поэтому идентификаторы комнат вида `!room:server` корректно доходят до endpoint и алерты не теряются из-за некорректного URL.
 - EN: Fixed Matrix delivery: `room_id` is now URL-encoded before Matrix Client API call, so room IDs like `!room:server` reach the endpoint correctly and alerts are no longer dropped due to malformed URL paths.
