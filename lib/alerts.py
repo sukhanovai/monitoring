@@ -1,11 +1,11 @@
 """
 /lib/alerts.py
-Server Monitoring System v8.58.41
+Server Monitoring System v8.58.42
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Unified alert system
 Система мониторинга серверов
-Версия: 8.58.41
+Версия: 8.58.42
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единая система оповещений
@@ -478,7 +478,8 @@ def _send_matrix_alert(message: str) -> bool:
     if not (_matrix_homeserver and _matrix_access_token and _matrix_room_id):
         return False
     try:
-        url = f"{_matrix_homeserver}/_matrix/client/v3/rooms/{_matrix_room_id}/send/m.room.message"
+        encoded_room_id = quote(_matrix_room_id, safe="")
+        url = f"{_matrix_homeserver}/_matrix/client/v3/rooms/{encoded_room_id}/send/m.room.message"
         payload = {"msgtype": "m.text", "body": message}
         response = requests.post(
             url,
