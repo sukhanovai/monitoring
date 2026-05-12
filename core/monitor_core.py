@@ -1,11 +1,11 @@
 """
 /core/monitor_core.py
-Server Monitoring System v8.58.46
+Server Monitoring System v8.58.47
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core system
 Система мониторинга серверов
-Версия: 8.58.46
+Версия: 8.58.47
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Ядро системы
@@ -1822,7 +1822,7 @@ def handle_server_down(ip, status, current_time):
     downtime = (current_time - last_up).total_seconds()
 
     if downtime >= config.MAX_FAIL_TIME and not status.get("alert_sent"):
-        send_alert(f"🚨 {status['name']} ({ip}) не отвечает (проверка: {status['type'].upper()})")
+        send_alert(f"🚨 {status['name']} ({ip}) не отвечает (проверка: {status['type'].upper()})", alert_type="critical")
         server_status[ip]["alert_sent"] = True
 
 def check_resources_automatically():

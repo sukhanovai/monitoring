@@ -1,11 +1,11 @@
 """
 /core/monitor.py
-Server Monitoring System v8.58.46
+Server Monitoring System v8.58.47
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core monitoring module
 Система мониторинга серверов
-Версия: 8.58.46
+Версия: 8.58.47
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль мониторинга
@@ -200,7 +200,7 @@ class Monitor:
             message = f"🚨 {status.get('name')} ({ip}) не отвечает"
             message += f" ({int(downtime // 60)} мин {int(downtime % 60)} сек)"
 
-            send_alert(message)
+            send_alert(message, alert_type="critical")
             self.server_status[ip]["alert_sent"] = True
             return True
 
