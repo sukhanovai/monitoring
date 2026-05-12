@@ -1,11 +1,11 @@
 """
 /core/monitor_core.py
-Server Monitoring System v8.58.47
+Server Monitoring System v8.58.48
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core system
 Система мониторинга серверов
-Версия: 8.58.47
+Версия: 8.58.48
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Ядро системы
@@ -126,11 +126,11 @@ def ensure_alert_bot():
     except Exception as e:
         debug_log(f"Не удалось инициализировать бот алертов: {e}")
 
-def send_alert(message, force=False):
+def send_alert(message, force=False, alert_type="info"):
     """Обертка над lib.alerts.send_alert с применением настроек и инициализацией бота."""
     ensure_alerts_config()
     ensure_alert_bot()
-    return base_send_alert(message, force=force)
+    return base_send_alert(message, force=force, alert_type=alert_type)
 
 def is_silent_time():
     """Использует единый механизм тихого режима из lib.alerts."""
