@@ -1,13 +1,5 @@
 # Changelog / История изменений
 
-## [8.0.4] - 2026-05-12
-
-### RU
-- Выполнен технический бамп версии проекта до **8.0.4**: синхронизированы все вхождения версии в исходниках и конфигурации.
-
-### EN
-- Performed a technical project version bump to **8.0.4**: synchronized all version references across source files and configuration.
-
 ## [8.0.3] - 2026-04-12
 
 ### RU
