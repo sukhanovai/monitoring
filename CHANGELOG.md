@@ -1,3 +1,8 @@
+## 8.58.45 - 2026-05-12
+
+- RU: SemVer patch bump до `8.58.45`; синхронизированы все явные упоминания версии проекта в runtime/config/docs/Android, обновлены `ANDROID_VERSION_NAME=8.58.45` и `ANDROID_VERSION_CODE=713`.
+- EN: SemVer patch bump to `8.58.45`; synchronized all explicit project version mentions across runtime/config/docs/Android, updated `ANDROID_VERSION_NAME=8.58.45` and `ANDROID_VERSION_CODE=713`.
+
 ## 8.58.44 - 2026-05-12
 - RU: Исправлена отправка в Matrix для алертов недоступности: endpoint Matrix Client API теперь вызывается в корректном формате `.../send/m.room.message/{txnId}` c `Authorization: Bearer`, поэтому уведомления дублируются в Matrix даже при падении целевого сервера.
 - EN: Fixed Matrix delivery for availability alerts: Matrix Client API is now called using the correct `.../send/m.room.message/{txnId}` endpoint with `Authorization: Bearer`, so notifications are duplicated to Matrix even when the target server is down.
