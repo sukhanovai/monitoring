@@ -1,3 +1,23 @@
+## 8.58.39 - 2026-05-12
+
+- RU: README по Matrix дополнен пояснениями про Bash history expansion (`!` в `room_id`) и рабочими примерами экспорта `MATRIX_ROOM_ID` для shell.
+- EN: Matrix README section now explains Bash history expansion (`!` in `room_id`) with working `MATRIX_ROOM_ID` export examples.
+- RU: README уточнён по `MATRIX_ACCESS_TOKEN`: нужен токен того Matrix-аккаунта, который отправляет алерты (рекомендован отдельный бот-пользователь).
+- EN: README clarified `MATRIX_ACCESS_TOKEN`: use the token of the Matrix account that sends alerts (dedicated bot account is recommended).
+- RU: SemVer patch bump до `8.58.39`; Android metadata обновлены до `ANDROID_VERSION_NAME=8.58.39` и `ANDROID_VERSION_CODE=707`.
+- EN: SemVer patch bump to `8.58.39`; Android metadata updated to `ANDROID_VERSION_NAME=8.58.39` and `ANDROID_VERSION_CODE=707`.
+
+## 8.58.38 - 2026-05-11
+
+- RU: Android: удалена кнопка «Проверить связь с BFF» из экрана настроек, так как ручная проверка не давала стабильного результата.
+- EN: Android: removed the “Check BFF connection” button from settings because the manual check was unreliable.
+- RU: Добавлен Matrix-канал уведомлений (homeserver `matrix.202020.ru`) как дополнительная доставка алертов параллельно Telegram при заполненных `MATRIX_HOMESERVER`, `MATRIX_ACCESS_TOKEN`, `MATRIX_ROOM_ID`.
+- EN: Added Matrix notifications (homeserver `matrix.202020.ru`) as an additional alert delivery channel alongside Telegram when `MATRIX_HOMESERVER`, `MATRIX_ACCESS_TOKEN`, and `MATRIX_ROOM_ID` are configured.
+- RU: В README добавлена пошаговая инструкция по созданию Matrix-бота/пользователя и подключению комнаты для алертов.
+- EN: Added a step-by-step README guide for creating a Matrix bot/user and wiring a room for alert delivery.
+- RU: SemVer patch bump до `8.58.38`; Android metadata обновлены до `ANDROID_VERSION_NAME=8.58.38` и `ANDROID_VERSION_CODE=706`.
+- EN: SemVer patch bump to `8.58.38`; Android metadata updated to `ANDROID_VERSION_NAME=8.58.38` and `ANDROID_VERSION_CODE=706`.
+
 ## 8.58.36 - 2026-05-10
 - RU: Android: исправлена ошибка компиляции `Unresolved reference colors` в `MainActivity` — для Material 3 заменён вызов `MaterialTheme.colors.error` на `MaterialTheme.colorScheme.error`.
 - EN: Android: fixed `Unresolved reference colors` compilation error in `MainActivity` by switching Material 3 usage from `MaterialTheme.colors.error` to `MaterialTheme.colorScheme.error`.

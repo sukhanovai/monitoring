@@ -1,11 +1,11 @@
 """
 /lib/alerts.py
-Server Monitoring System v8.58.36
+Server Monitoring System v8.58.39
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Unified alert system
 Система мониторинга серверов
-Версия: 8.58.36
+Версия: 8.58.39
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единая система оповещений
@@ -23,6 +23,9 @@ _logger = setup_logging("alerts")
 # Глобальные переменные
 _telegram_bot = None
 _chat_ids = []
+_matrix_homeserver = ""
+_matrix_access_token = ""
+_matrix_room_id = ""
 _silent_override: Optional[bool] = None
 _alert_history: List[Dict[str, Any]] = []
 _max_history_size = 1000
@@ -87,7 +90,15 @@ def init_telegram_bot(bot_instance, chat_ids: List[str]) -> None:
     global _telegram_bot, _chat_ids
     _telegram_bot = bot_instance
     _chat_ids = chat_ids
-    debug_log(f"Telegram бот инициализирован для {len(chat_ids)} чатов")
+
+
+def init_matrix_bot(homeserver: str, access_token: str, room_id: str) -> None:
+    """Инициализация Matrix-канала уведомлений."""
+    global _matrix_homeserver, _matrix_access_token, _matrix_room_id
+    _matrix_homeserver = (homeserver or "").rstrip("/")
+    _matrix_access_token = access_token or ""
+    _matrix_room_id = room_id or ""
+    debug_log("Matrix-канал уведомлений инициализирован")
 
 
 
@@ -236,6 +247,11 @@ def send_alert(
             sent = True
         else:
             errors.append("Telegram: ошибка отправки")
+
+    # Matrix
+    matrix_sent = _send_matrix_alert(full_message)
+    if matrix_sent:
+        sent = True
 
     # Записываем в историю
     _record_alert({
@@ -456,3 +472,23 @@ def configure(
 
 # Алиасы для обратной совместимости
 send_message = send_alert
+
+def _send_matrix_alert(message: str) -> bool:
+    """Отправляет уведомление в Matrix room, если канал настроен."""
+    if not (_matrix_homeserver and _matrix_access_token and _matrix_room_id):
+        return False
+    try:
+        url = f"{_matrix_homeserver}/_matrix/client/v3/rooms/{_matrix_room_id}/send/m.room.message"
+        payload = {"msgtype": "m.text", "body": message}
+        response = requests.post(
+            url,
+            params={"access_token": _matrix_access_token},
+            json=payload,
+            timeout=10,
+        )
+        response.raise_for_status()
+        return True
+    except Exception as exc:
+        debug_log(f"Matrix отправка не удалась: {exc}")
+        return False
+

@@ -1442,7 +1442,6 @@ class MainActivity : ComponentActivity() {
                     onTelegramTokenChanged = vm::setTelegramTokenInput,
                     onTelegramChatIdChanged = vm::setTelegramChatIdInput,
                     onSaveBot = vm::updateBotSettings,
-                    onTestBffConnection = vm::testBffConnection,
                     onTestBotServerConnection = vm::testBotServerConnection,
                     onNewTelegramChatIdChanged = vm::setNewTelegramChatIdInput,
                     onAddTelegramChatId = vm::addTelegramChatId,
@@ -1560,7 +1559,6 @@ private fun MonitoringApp(
     onTelegramTokenChanged: (String) -> Unit,
     onTelegramChatIdChanged: (String) -> Unit,
     onSaveBot: () -> Unit,
-    onTestBffConnection: () -> Unit,
     onTestBotServerConnection: () -> Unit,
     onNewTelegramChatIdChanged: (String) -> Unit,
     onAddTelegramChatId: () -> Unit,
@@ -2707,7 +2705,6 @@ private fun MonitoringApp(
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             SettingsActionButton(label = "Сохранить URL", onClick = onSaveBaseUrl)
-                            SettingsActionButton(label = "Проверить связь с BFF", onClick = onTestBffConnection)
                         }
                         OutlinedTextField(
                             value = state.token,

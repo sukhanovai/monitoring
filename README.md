@@ -171,6 +171,46 @@ AVAILABLE_EXTENSIONS = {
 ```
 
 
+
+## 🟩 Matrix-бот/канал уведомлений (matrix.202020.ru)
+
+Чтобы получать те же алерты, что и в Telegram, в Matrix:
+
+1. Создайте пользователя-бота на homeserver `matrix.202020.ru` (например, `@monitoring-bot:matrix.202020.ru`).
+2. Войдите этим пользователем через Element/Web и получите access token:
+   - Element -> Settings -> Help & About -> Advanced -> Access Token,
+   - либо через API логина `/_matrix/client/v3/login`.
+3. Создайте комнату или выберите существующую, куда бот будет слать уведомления.
+4. Пригласите бота в комнату и убедитесь, что он может писать сообщения.
+5. Возьмите `room_id` (вида `!xxxxxxxx:matrix.202020.ru`).
+6. Добавьте переменные окружения для backend:
+
+```bash
+export MATRIX_HOMESERVER="https://matrix.202020.ru"
+export MATRIX_ACCESS_TOKEN="<token_бота_или_вашего_matrix_пользователя>"
+export MATRIX_ROOM_ID='!roomid:matrix.202020.ru'
+```
+
+7. Перезапустите сервис мониторинга. После этого алерты будут уходить параллельно в Telegram и Matrix.
+
+
+Важно по Bash:
+- `!` в начале `room_id` триггерит history expansion (ошибка `event not found`).
+- Используй одинарные кавычки для `MATRIX_ROOM_ID` или экранируй `!`:
+
+```bash
+export MATRIX_ROOM_ID='!rBnJoAPQKeovFClrhg:matrix.202020.ru'
+# или
+export MATRIX_ROOM_ID="\!rBnJoAPQKeovFClrhg:matrix.202020.ru"
+```
+
+Какой token нужен:
+- Нужен **access token того Matrix-аккаунта, от имени которого будут уходить уведомления**.
+- Обычно это отдельный сервисный пользователь (бот), но технически может быть и ваш личный пользователь.
+- Рекомендуется отдельный бот-аккаунт (безопаснее и проще ротация токена).
+
+> Если любой из `MATRIX_*` параметров пустой — Matrix-канал отключён, Telegram работает как раньше.
+
 ## 📱 Android-клиент
 
 В репозитории добавлен Android-проект `android-client/` (Kotlin + Compose), который работает с BFF API по адресу `https://api.202020.ru:8443` и не ломает существующий Telegram-канал управления.
