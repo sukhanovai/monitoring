@@ -1,11 +1,11 @@
 """
 /bot/menu/builder.py
-Server Monitoring System v8.59.2
+Server Monitoring System v8.59.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 The place where keyboards are made.
 Система мониторинга серверов
-Версия: 8.59.2
+Версия: 8.59.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Место, где строятся клавиатуры
@@ -63,8 +63,6 @@ def main_menu(extension_manager):
         )
 
     keyboard.extend([
-        [InlineKeyboardButton("🧪 Тест Telegram", callback_data='test_alert_telegram')],
-        [InlineKeyboardButton("🧪 Тест Matrix", callback_data='test_alert_matrix')],
         [InlineKeyboardButton("🛠️ Расширения", callback_data='extensions_menu')],
         [InlineKeyboardButton("🎛️ Управление", callback_data='control_panel')],
         [InlineKeyboardButton("⚙️ Настройки", callback_data='settings_main')],

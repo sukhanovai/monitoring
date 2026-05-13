@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.59.2
+Server Monitoring System v8.59.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.59.2
+Версия: 8.59.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -590,7 +590,8 @@ def _build_zfs_pattern_from_fragments(
 def settings_command(update, context):
     """Команда управления настройками"""
     keyboard = [
-        [InlineKeyboardButton("🤖 Настройки бота", callback_data='settings_telegram')],
+        [InlineKeyboardButton("🤖 Настройки Telegram", callback_data='settings_telegram')],
+        [InlineKeyboardButton("🟦 Настройки Matrix", callback_data='settings_matrix')],
         [InlineKeyboardButton("⏰ Временные настройки", callback_data='settings_time')],
         [InlineKeyboardButton("🔧 Мониторинг", callback_data='settings_monitoring')],
     ]
@@ -644,6 +645,7 @@ def show_telegram_settings(update, context):
     keyboard = [
         [InlineKeyboardButton("🔑 Установить токен", callback_data='set_telegram_token')],
         [InlineKeyboardButton("💬 Управление чатами", callback_data='manage_chats')],
+        [InlineKeyboardButton("🧪 Тест Telegram", callback_data='test_alert_telegram')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
@@ -653,6 +655,43 @@ def show_telegram_settings(update, context):
         parse_mode='Markdown',
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
+
+def show_matrix_settings(update, context):
+    """Показать настройки Matrix"""
+    query = update.callback_query
+    query.answer()
+
+    homeserver = settings_manager.get_setting('MATRIX_HOMESERVER', '')
+    access_token = settings_manager.get_setting('MATRIX_ACCESS_TOKEN', '')
+    room_id = settings_manager.get_setting('MATRIX_ROOM_ID', '')
+
+    homeserver_display = homeserver if homeserver else "🔴 Не настроен"
+    token_display = "🟢 Установлен" if access_token else "🔴 Не установлен"
+    room_display = room_id if room_id else "🔴 Не настроена"
+
+    message = (
+        "🟦 *Настройки Matrix*\n\n"
+        f"• Homeserver: {homeserver_display}\n"
+        f"• Access token: {token_display}\n"
+        f"• Room ID: {room_display}\n\n"
+        "Выберите параметр для изменения:"
+    )
+
+    keyboard = [
+        [InlineKeyboardButton("🌐 Установить homeserver", callback_data='set_matrix_homeserver')],
+        [InlineKeyboardButton("🔑 Установить access token", callback_data='set_matrix_access_token')],
+        [InlineKeyboardButton("💬 Установить room ID", callback_data='set_matrix_room_id')],
+        [InlineKeyboardButton("🧪 Тест Matrix", callback_data='test_alert_matrix')],
+        [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
+         InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+    ]
+
+    query.edit_message_text(
+        message,
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
 
 def show_monitoring_settings(update, context):
     """Показать настройки мониторинга - ОБНОВЛЕННАЯ ВЕРСИЯ"""
@@ -983,6 +1022,8 @@ def settings_callback_handler(update, context):
             settings_command(update, context)
         elif data == 'settings_telegram':
             show_telegram_settings(update, context)
+        elif data == 'settings_matrix':
+            show_matrix_settings(update, context)
         elif data == 'settings_monitoring':
             show_monitoring_settings(update, context)
         elif data == 'settings_time':
@@ -2083,6 +2124,9 @@ def handle_setting_input(update, context, setting_key):
     setting_descriptions = {
         # Существующие настройки...
         'telegram_token': 'Введите новый токен Telegram бота:',
+        'matrix_homeserver': 'Введите URL Matrix homeserver (например https://matrix.example.com):',
+        'matrix_access_token': 'Введите Matrix access token:',
+        'matrix_room_id': 'Введите Matrix room ID (например !roomid:example.com):',
         'check_interval': 'Введите новый интервал проверки (в секундах):',
         'max_fail_time': 'Введите максимальное время простоя (в секундах):',
         'silent_start': 'Введите час начала тихого режима (0-23):',
@@ -2408,6 +2452,7 @@ def handle_setting_value(update, context):
         # Сохраняем настройку
         category_map = {
             'telegram_token': 'telegram',
+            'matrix_homeserver': 'matrix', 'matrix_access_token': 'matrix', 'matrix_room_id': 'matrix',
             'check_interval': 'monitoring', 'max_fail_time': 'monitoring',
             'silent_start': 'time', 'silent_end': 'time', 'data_collection': 'time',
             'cpu_warning': 'resources', 'cpu_critical': 'resources',
@@ -2420,6 +2465,9 @@ def handle_setting_value(update, context):
         
         special_db_keys = {
             'telegram_token': 'TELEGRAM_TOKEN',
+            'matrix_homeserver': 'MATRIX_HOMESERVER',
+            'matrix_access_token': 'MATRIX_ACCESS_TOKEN',
+            'matrix_room_id': 'MATRIX_ROOM_ID',
             'data_collection': 'DATA_COLLECTION_TIMES',
         }
         db_key = special_db_keys.get(setting_key, setting_key.upper())
@@ -9453,6 +9501,9 @@ def handle_setting_input(update, context, setting_key):
     
     setting_descriptions = {
         'telegram_token': 'Введите новый токен Telegram бота:',
+        'matrix_homeserver': 'Введите URL Matrix homeserver (например https://matrix.example.com):',
+        'matrix_access_token': 'Введите Matrix access token:',
+        'matrix_room_id': 'Введите Matrix room ID (например !roomid:example.com):',
         'check_interval': 'Введите новый интервал проверки (в секундах):',
         'max_fail_time': 'Введите максимальное время простоя (в секундах):',
         'silent_start': 'Введите час начала тихого режима (0-23):',
