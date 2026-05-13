@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.61.10
+Server Monitoring System v8.61.11
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit).
 Система мониторинга серверов
-Версия: 8.61.10
+Версия: 8.61.11
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит).
@@ -69,6 +69,7 @@ class MatrixCommandBot:
         self.client.add_event_callback(self._on_message, RoomMessageText)
         self.client.add_event_callback(self._on_message, RoomMessageNotice)
         self._started = False
+        self._ignored_events_count = 0
 
     @property
     def enabled(self) -> bool:
@@ -167,12 +168,30 @@ class MatrixCommandBot:
 
         return ""
 
+    async def _should_ignore_event(self, event: RoomMessage, room_id: str) -> bool:
+        sender = getattr(event, "sender", "") or ""
+        if sender == getattr(self.client, "user_id", None):
+            debug_log(f"ℹ️ Matrix событие проигнорировано: echo от самого бота (room={room_id})")
+            return True
+
+        raw_body = getattr(event, "body", "") or ""
+        if "!" not in raw_body:
+            self._ignored_events_count += 1
+            if self._ignored_events_count <= 3 or self._ignored_events_count % 100 == 0:
+                preview = raw_body.replace("\n", "\\n")[:200]
+                debug_log(
+                    "ℹ️ Matrix событие проигнорировано: в сообщении нет командного префикса "
+                    f"(room={room_id}, sender={sender}, body='{preview}', ignored={self._ignored_events_count})"
+                )
+            return True
+
+        return False
+
     async def _on_message(self, room: MatrixRoom, event: RoomMessage) -> None:
         sender = event.sender or ""
         room_id = room.room_id
 
-        if sender == getattr(self.client, "user_id", None):
-            debug_log(f"ℹ️ Matrix событие проигнорировано: echo от самого бота (room={room_id})")
+        if await self._should_ignore_event(event, room_id):
             return
 
         raw_body = getattr(event, "body", "") or ""
@@ -206,6 +225,15 @@ class MatrixCommandBot:
             return
 
         if not self._started:
+            try:
+                whoami = await self.client.whoami()
+                user_id = getattr(whoami, "user_id", None)
+                if user_id:
+                    self.client.user_id = user_id
+                    debug_log(f"✅ Matrix whoami: user_id={user_id}")
+            except Exception as exc:
+                debug_log(f"⚠️ Matrix whoami failed: {exc}")
+
             try:
                 await self.client.sync(timeout=3000, full_state=True)
                 self._started = True

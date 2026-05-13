@@ -1,11 +1,11 @@
-## [8.61.10] - 2026-05-13
+## [8.61.11] - 2026-05-13
 
-- RU: Исправлена обработка Matrix-команд: бот теперь слушает не только `m.text`, но и `m.notice`, поэтому `!help`/`!menu` корректно обрабатываются и для notice-сообщений из клиентов Matrix.
-- EN: Fixed Matrix command handling: the bot now listens to both `m.text` and `m.notice`, so `!help`/`!menu` are handled correctly for notice messages from Matrix clients.
-- RU: Усилен разбор тела события: чтение `body` выполняется безопасно через `getattr`, чтобы не терять события при вариациях типа входящего сообщения.
-- EN: Hardened event body parsing: `body` is now read safely via `getattr`, preventing dropped events across inbound message type variations.
-- RU: Выполнен SemVer patch-бамп до `8.61.10`; синхронизированы упоминания версии в runtime/config/docs/Android.
-- EN: Performed a SemVer patch bump to `8.61.10`; synchronized version mentions across runtime/config/docs/Android.
+- RU: Исправлена инициализация Matrix command-bot: на старте добавлен `whoami`, чтобы корректно определить `user_id` бота и перестать обрабатывать собственные служебные сообщения как внешние команды.
+- EN: Fixed Matrix command-bot initialization: added `whoami` during startup to correctly resolve bot `user_id` and stop treating self-sent service messages as external commands.
+- RU: Снижен шум логов для входящих Matrix-событий без команд: такие сообщения теперь игнорируются тихо, с редким диагностическим логом вместо спама на каждое событие.
+- EN: Reduced log noise for inbound Matrix events without commands: such messages are now ignored quietly with occasional diagnostic logs instead of per-event spam.
+- RU: Выполнен SemVer patch-бамп до `8.61.11`; синхронизированы упоминания версии в runtime/config/docs/Android.
+- EN: Performed a SemVer patch bump to `8.61.11`; synchronized version mentions across runtime/config/docs/Android.
 ## [8.61.8] - 2026-05-13
 
 - RU: Улучшена диагностика пропуска Matrix command sync при отсутствии `matrix-nio`: в лог добавлен путь активного Python-интерпретатора и точная команда установки зависимости в этот интерпретатор.
