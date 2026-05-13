@@ -1,3 +1,9 @@
+## [8.60.1] - 2026-05-13
+- RU: Синхронизированы все актуальные упоминания версии проекта в runtime/config/docs/Android до `8.60.1`.
+- EN: Synchronized all active project version mentions across runtime/config/docs/Android to `8.60.1`.
+- RU: Выполнен SemVer patch-бамп до `8.60.1`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.60.1` и `ANDROID_VERSION_CODE=734`.
+- EN: Performed a SemVer patch bump to `8.60.1`; Android metadata updated to `ANDROID_VERSION_NAME=8.60.1` and `ANDROID_VERSION_CODE=734`.
+
 ## [8.60.0] - 2026-05-13
 - RU: Добавлен входящий Matrix command-bot на базе `matrix-nio`: long-poll `/sync`, обработчик `m.room.message`, роутинг команд `!status`, `!report`, `!settings` и ответы в комнату.
 - EN: Added inbound Matrix command bot based on `matrix-nio`: long-poll `/sync`, `m.room.message` handler, command routing for `!status`, `!report`, `!settings`, and room replies.
