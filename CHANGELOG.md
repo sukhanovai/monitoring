@@ -1,18 +1,20 @@
-## [8.61.7] - 2026-05-13
+## [8.61.9] - 2026-05-13
 
+- RU: Исправлена обработка входящих Matrix-сообщений: echo от самого бота теперь отфильтровывается до разбора команды, чтобы не засорять лог записями «команда не найдена» на собственных сервисных сообщениях.
+- EN: Fixed inbound Matrix message handling: bot self-echo is now filtered before command parsing to avoid noisy “command not found” logs for bot-generated service messages.
 - RU: Зафиксирована зависимость `cachetools==4.2.2` и `python-telegram-bot==13.15` для устранения конфликта резолвера pip в основном окружении; для `matrix-nio[e2e]` добавлено явное примечание про отдельное окружение при необходимости.
 - EN: Pinned `cachetools==4.2.2` and `python-telegram-bot==13.15` to remove pip resolver conflicts in the main environment; added an explicit note to use a separate environment for `matrix-nio[e2e]` when needed.
 - RU: В обработчик входящих Matrix-команд добавлены диагностические логи для проигнорированных сообщений (пустое/не-командное, echo от самого бота) и отдельное логирование ошибок отправки ответа в комнату.
 - EN: Added diagnostic logging to inbound Matrix command handling for ignored messages (empty/non-command and bot self-echo) and dedicated error logging for reply delivery failures.
-- RU: Выполнен SemVer patch-бамп до `8.61.7`; синхронизированы актуальные упоминания версии и Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.61.7` и `ANDROID_VERSION_CODE=743`.
-- EN: Performed a SemVer patch bump to `8.61.7`; synchronized active version mentions and updated Android metadata to `ANDROID_VERSION_NAME=8.61.7` and `ANDROID_VERSION_CODE=743`.
+- RU: Выполнен SemVer patch-бамп до `8.61.8`; синхронизированы актуальные упоминания версии и Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.61.8` и `ANDROID_VERSION_CODE=743`.
+- EN: Performed a SemVer patch bump to `8.61.8`; synchronized active version mentions and updated Android metadata to `ANDROID_VERSION_NAME=8.61.8` and `ANDROID_VERSION_CODE=743`.
 
-## [8.61.7] - 2026-05-13
+## [8.61.8] - 2026-05-13
 
 - RU: Улучшена диагностика пропуска Matrix command sync при отсутствии `matrix-nio`: в лог добавлен путь активного Python-интерпретатора и точная команда установки зависимости в этот интерпретатор.
 - EN: Improved diagnostics for skipped Matrix command sync when `matrix-nio` is missing: logs now include the active Python interpreter path and an exact install command for that interpreter.
-- RU: Выполнен SemVer patch-бамп до `8.61.7`; синхронизированы актуальные упоминания версии в проекте и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.61.7` и `ANDROID_VERSION_CODE=742`.
-- EN: Performed a SemVer patch bump to `8.61.7`; synchronized active version mentions across the project and updated Android metadata to `ANDROID_VERSION_NAME=8.61.7` and `ANDROID_VERSION_CODE=742`.
+- RU: Выполнен SemVer patch-бамп до `8.61.8`; синхронизированы актуальные упоминания версии в проекте и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.61.8` и `ANDROID_VERSION_CODE=742`.
+- EN: Performed a SemVer patch bump to `8.61.8`; synchronized active version mentions across the project and updated Android metadata to `ANDROID_VERSION_NAME=8.61.8` and `ANDROID_VERSION_CODE=742`.
 
 ## [8.60.4] - 2026-05-13
 
