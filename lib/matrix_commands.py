@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.61.7
+Server Monitoring System v8.61.9
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit).
 Система мониторинга серверов
-Версия: 8.61.7
+Версия: 8.61.9
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит).
@@ -165,6 +165,13 @@ class MatrixCommandBot:
         return ""
 
     async def _on_message(self, room: MatrixRoom, event: RoomMessageText) -> None:
+        sender = event.sender or ""
+        room_id = room.room_id
+
+        if sender == getattr(self.client, "user_id", None):
+            debug_log(f"ℹ️ Matrix событие проигнорировано: echo от самого бота (room={room_id})")
+            return
+
         raw_body = event.body or ""
         body = self._extract_command(raw_body)
         if not body:
@@ -173,13 +180,6 @@ class MatrixCommandBot:
                 "ℹ️ Matrix событие проигнорировано: команда не найдена "
                 f"(room={getattr(room, 'room_id', 'unknown')}, sender={getattr(event, 'sender', 'unknown')}, body='{preview}')"
             )
-            return
-
-        sender = event.sender or ""
-        room_id = room.room_id
-
-        if sender == getattr(self.client, "user_id", None):
-            debug_log(f"ℹ️ Matrix событие проигнорировано: echo от самого бота (room={room_id})")
             return
 
         if not self.acl.allows(sender, room_id):
