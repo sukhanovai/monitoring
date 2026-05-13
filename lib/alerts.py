@@ -496,7 +496,8 @@ def _build_matrix_message_payload(message: str, buttons: Optional[List[Dict[str,
 
     payload["body"] = "\n".join(fallback_lines)
     payload["format"] = "org.matrix.custom.html"
-    payload["formatted_body"] = f"<p>{message}</p><p>{" | ".join(html_links)}</p>"
+    html_actions = " | ".join(html_links)
+    payload["formatted_body"] = f"<p>{message}</p><p>{html_actions}</p>"
     return payload
 
 
