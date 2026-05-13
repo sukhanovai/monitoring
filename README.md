@@ -184,6 +184,25 @@ AVAILABLE_EXTENSIONS = {
 4. Пригласите бота в комнату и убедитесь, что он может писать сообщения.
 5. Возьмите `room_id` (вида `!xxxxxxxx:matrix.202020.ru`).
 6. Добавьте переменные окружения для backend:
+6.1 (Опционально, для Synapse Admin API) Можно автоматизировать создание бота:
+
+```bash
+python scripts/setup_matrix_bot.py \
+  --homeserver https://matrix.202020.ru \
+  --admin-token <SYNAPSE_ADMIN_TOKEN> \
+  --username monitoring_bot \
+  --password <STRONG_PASSWORD> \
+  --room-id "!roomid:matrix.202020.ru"
+```
+
+Скрипт выведет готовые `MATRIX_HOMESERVER`, `MATRIX_ROOM_ID`, `MATRIX_ACCESS_TOKEN` для вставки в окружение.
+
+Важно: `--admin-token` в этом скрипте — это **админский токен Synapse** (учётка с правами admin на homeserver), а не обычный `MATRIX_ACCESS_TOKEN` пользователя/бота из UI настроек.
+
+`--password` — это **новый пароль**, который ты задаёшь для создаваемого bot-user (например `@monitoring_bot:matrix.202020.ru`). Он нужен, чтобы скрипт мог выполнить login и получить рабочий `MATRIX_ACCESS_TOKEN` этого бота.
+
+Если у тебя уже есть отдельный Matrix-пользователь, он уже в комнате и его `MATRIX_ACCESS_TOKEN` уже указан в Telegram-настройках (🟢 Установлен) — скрипт можно не запускать вообще.
+
 
 ```bash
 export MATRIX_HOMESERVER="https://matrix.202020.ru"
