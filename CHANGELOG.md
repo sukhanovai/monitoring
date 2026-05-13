@@ -1,9 +1,9 @@
-## [8.61.2] - 2026-05-13
+## [8.61.3] - 2026-05-13
 
 - RU: Исправлена деградация Matrix command sync при отсутствии `matrix-nio`: запуск больше не падает на импорте, модуль аккуратно пропускается с понятной диагностикой и не заспамливает WARN-ошибками `No module named 'nio'`.
 - EN: Fixed Matrix command sync degradation when `matrix-nio` is missing: startup no longer fails on import, the module is skipped gracefully with clear diagnostics, avoiding noisy `No module named 'nio'` WARN errors.
-- RU: Выполнен SemVer patch-бамп до `8.61.2`; синхронизированы актуальные упоминания версии в проекте и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.61.2` и `ANDROID_VERSION_CODE=740`.
-- EN: Performed a SemVer patch bump to `8.61.2`; synchronized active version mentions across the project and updated Android metadata to `ANDROID_VERSION_NAME=8.61.2` and `ANDROID_VERSION_CODE=740`.
+- RU: Выполнен SemVer patch-бамп до `8.61.3`; синхронизированы актуальные упоминания версии в проекте и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.61.3` и `ANDROID_VERSION_CODE=741`.
+- EN: Performed a SemVer patch bump to `8.61.3`; synchronized active version mentions across the project and updated Android metadata to `ANDROID_VERSION_NAME=8.61.3` and `ANDROID_VERSION_CODE=741`.
 
 ## [8.60.4] - 2026-05-13
 
