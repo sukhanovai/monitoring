@@ -1,3 +1,9 @@
+## [8.59.15] - 2026-05-13
+- RU: Приведены к единому актуальному значению все рабочие упоминания версии проекта в исходниках и конфигурации; текущая версия синхронизирована как `8.59.15`.
+- EN: Aligned all active project version mentions across source files and configuration; current version is synchronized to `8.59.15`.
+- RU: Обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.59.15` и `ANDROID_VERSION_CODE=731`.
+- EN: Updated Android metadata to `ANDROID_VERSION_NAME=8.59.15` and `ANDROID_VERSION_CODE=731`.
+
 ## [8.59.14] - 2026-05-13
 - RU: Уточнена рекомендация по Matrix-стеку под этот репозиторий: основным вариантом выбран `matrix-nio` (Python) с аргументацией по внедрению в текущий backend, эксплуатации и контролю доступа.
 - EN: Refined Matrix stack recommendation for this repository: `matrix-nio` (Python) is now the primary option, with rationale focused on backend integration, operations, and access control.

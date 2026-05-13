@@ -5,7 +5,7 @@ Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Supplier stock files downloader
 Система мониторинга серверов
-Версия: 8.59.12
+Версия: 8.59.15
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Получение файлов остатков поставщиков
