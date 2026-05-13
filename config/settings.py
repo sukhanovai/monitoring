@@ -22,16 +22,18 @@ from lib.utils import is_proxmox_server
 DEBUG_MODE = False
 
 # Версия приложения
-APP_VERSION = "8.59.17"
-ANDROID_APP_VERSION = "8.59.17"
+APP_VERSION = "8.60.0"
+ANDROID_APP_VERSION = "8.60.0"
 ANDROID_MIN_SUPPORTED_VERSION = "8.59.10"
-ANDROID_LATEST_VERSION = "8.59.17"
+ANDROID_LATEST_VERSION = "8.60.0"
 
 
 # Matrix-уведомления (доп. канал к Telegram)
 MATRIX_HOMESERVER = os.environ.get("MATRIX_HOMESERVER", "https://matrix.202020.ru")
 MATRIX_ACCESS_TOKEN = os.environ.get("MATRIX_ACCESS_TOKEN", "")
 MATRIX_ROOM_ID = os.environ.get("MATRIX_ROOM_ID", "")
+MATRIX_ALLOWED_USER_IDS = os.environ.get("MATRIX_ALLOWED_USER_IDS", "")
+MATRIX_ALLOWED_ROOM_IDS = os.environ.get("MATRIX_ALLOWED_ROOM_IDS", "")
 ANDROID_APK_DOWNLOAD_URL = os.environ.get(
     "ANDROID_APK_DOWNLOAD_URL",
     "https://github.com/sukhanovai/monitoring/releases/latest",

@@ -6,7 +6,7 @@ Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Main launch module
 Система мониторинга серверов
-Версия: 8.59.17
+Версия: 8.60.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль запуска
@@ -289,6 +289,40 @@ def main(args: argparse.Namespace):
             logger.error(f"❌ Ошибка запуска мониторинга: {e}")
     else:
         logger.info("🧪 Dry-run: запуск основного мониторинга пропущен")
+
+    # ------------------------------------------------------------------
+    # 8.1 Matrix incoming commands (/sync)
+    # ------------------------------------------------------------------
+    if not args.dry_run:
+        try:
+            from config.db_settings import (
+                MATRIX_HOMESERVER,
+                MATRIX_ACCESS_TOKEN,
+                MATRIX_ROOM_ID,
+                MATRIX_ALLOWED_USER_IDS,
+                MATRIX_ALLOWED_ROOM_IDS,
+            )
+            from lib.matrix_commands import run_matrix_command_bot
+
+            def _parse_acl(raw_value):
+                return [item.strip() for item in str(raw_value or "").split(",") if item.strip()]
+
+            threading.Thread(
+                target=run_matrix_command_bot,
+                kwargs={
+                    "homeserver": MATRIX_HOMESERVER,
+                    "access_token": MATRIX_ACCESS_TOKEN,
+                    "room_id": MATRIX_ROOM_ID,
+                    "whitelist_user_ids": _parse_acl(MATRIX_ALLOWED_USER_IDS),
+                    "allowed_room_ids": _parse_acl(MATRIX_ALLOWED_ROOM_IDS) or ([MATRIX_ROOM_ID] if MATRIX_ROOM_ID else []),
+                },
+                daemon=True,
+            ).start()
+            logger.info("✅ Matrix command sync запущен")
+        except Exception as e:
+            logger.warning(f"⚠️ Ошибка запуска Matrix command sync: {e}")
+    else:
+        logger.info("🧪 Dry-run: Matrix command sync пропущен")
 
     # ------------------------------------------------------------------
     # 9. Стартовое уведомление

@@ -322,6 +322,8 @@ def load_all_settings() -> None:
         MATRIX_HOMESERVER = (matrix_homeserver or defaults.MATRIX_HOMESERVER).rstrip('/')
         MATRIX_ACCESS_TOKEN = get_setting('MATRIX_ACCESS_TOKEN', defaults.MATRIX_ACCESS_TOKEN)
         MATRIX_ROOM_ID = get_setting('MATRIX_ROOM_ID', defaults.MATRIX_ROOM_ID)
+        MATRIX_ALLOWED_USER_IDS = get_setting('MATRIX_ALLOWED_USER_IDS', defaults.MATRIX_ALLOWED_USER_IDS)
+        MATRIX_ALLOWED_ROOM_IDS = get_setting('MATRIX_ALLOWED_ROOM_IDS', defaults.MATRIX_ALLOWED_ROOM_IDS)
 
         # === КОНФИГУРАЦИЯ БЭКАПОВ ===
         PROXMOX_HOSTS = get_json_setting('PROXMOX_HOSTS', defaults.PROXMOX_HOSTS)
