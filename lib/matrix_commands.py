@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.61.4
+Server Monitoring System v8.61.7
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit).
 Система мониторинга серверов
-Версия: 8.61.4
+Версия: 8.61.7
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит).
@@ -165,14 +165,21 @@ class MatrixCommandBot:
         return ""
 
     async def _on_message(self, room: MatrixRoom, event: RoomMessageText) -> None:
-        body = self._extract_command(event.body or "")
+        raw_body = event.body or ""
+        body = self._extract_command(raw_body)
         if not body:
+            preview = raw_body.replace("\n", "\\n")[:200]
+            debug_log(
+                "ℹ️ Matrix событие проигнорировано: команда не найдена "
+                f"(room={getattr(room, 'room_id', 'unknown')}, sender={getattr(event, 'sender', 'unknown')}, body='{preview}')"
+            )
             return
 
         sender = event.sender or ""
         room_id = room.room_id
 
         if sender == getattr(self.client, "user_id", None):
+            debug_log(f"ℹ️ Matrix событие проигнорировано: echo от самого бота (room={room_id})")
             return
 
         if not self.acl.allows(sender, room_id):
@@ -182,7 +189,13 @@ class MatrixCommandBot:
 
         self._audit(sender, room_id, body, "accepted")
         response_text = await self._route_command(body)
-        await self._send_text(room_id, response_text)
+        try:
+            await self._send_text(room_id, response_text)
+        except Exception as exc:
+            debug_log(
+                f"❌ Ошибка отправки Matrix-ответа (room={room_id}, sender={sender}, command={body}): {exc}"
+            )
+            raise
 
     async def run_forever(self) -> None:
         if not self.enabled:
