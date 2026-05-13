@@ -5,7 +5,7 @@ Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Unified logging system
 Система мониторинга серверов
-Версия: 8.59.15
+Версия: 8.59.16
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единая система логирования

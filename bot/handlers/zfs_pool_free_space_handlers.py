@@ -5,7 +5,7 @@ Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Telegram handlers for ZFS pool free space extension
 Система мониторинга серверов
-Версия: 8.59.15
+Версия: 8.59.16
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Telegram-обработчики расширения свободного места ZFS-пулов

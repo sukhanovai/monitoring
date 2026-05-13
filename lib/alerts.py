@@ -5,12 +5,13 @@ Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Unified alert system
 Система мониторинга серверов
-Версия: 8.59.15
+Версия: 8.59.16
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единая система оповещений
 """
 
+import asyncio
 import time
 import requests
 from urllib.parse import quote
@@ -19,6 +20,11 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Optional, Dict, Any
 from datetime import datetime, time as dt_time
 from lib.logging import debug_log, error_log, setup_logging
+
+try:
+    from nio import AsyncClient
+except ImportError:  # pragma: no cover
+    AsyncClient = None
 
 # Логгер для этого модуля
 _logger = setup_logging("alerts")
@@ -501,6 +507,28 @@ def _build_matrix_message_payload(message: str, buttons: Optional[List[Dict[str,
     return payload
 
 
+async def _send_matrix_alert_async(message: str, buttons: Optional[List[Dict[str, str]]] = None) -> bool:
+    payload = _build_matrix_message_payload(message, buttons=buttons)
+    client = AsyncClient(_matrix_homeserver, user="")
+    client.access_token = _matrix_access_token
+    try:
+        response = await client.room_send(
+            room_id=_matrix_room_id,
+            message_type="m.room.message",
+            content=payload,
+            tx_id=uuid4().hex,
+        )
+        if getattr(response, "transport_response", None) and response.transport_response.status >= 400:
+            debug_log(f"Matrix отправка не удалась: HTTP {response.transport_response.status}")
+            return False
+        return True
+    except Exception as exc:
+        debug_log(f"Matrix nio отправка не удалась: {exc}")
+        return False
+    finally:
+        await client.close()
+
+
 def _send_matrix_alert(message: str, buttons: Optional[List[Dict[str, str]]] = None) -> bool:
     """Отправляет уведомление в Matrix room, если канал настроен."""
     if not (_matrix_homeserver and _matrix_access_token and _matrix_room_id):
@@ -511,6 +539,15 @@ def _send_matrix_alert(message: str, buttons: Optional[List[Dict[str, str]]] = N
             f"room_id={'ok' if _matrix_room_id else 'empty'})"
         )
         return False
+    if AsyncClient is not None:
+        try:
+            sent = asyncio.run(_send_matrix_alert_async(message, buttons=buttons))
+            if sent:
+                debug_log("✅ Matrix алерт отправлен успешно (matrix-nio)")
+                return True
+        except Exception as exc:
+            debug_log(f"Matrix nio path fallback to HTTP: {exc}")
+
     try:
         encoded_room_id = quote(_matrix_room_id, safe="")
         txn_id = uuid4().hex
@@ -526,7 +563,7 @@ def _send_matrix_alert(message: str, buttons: Optional[List[Dict[str, str]]] = N
             timeout=10,
         )
         response.raise_for_status()
-        debug_log("✅ Matrix алерт отправлен успешно")
+        debug_log("✅ Matrix алерт отправлен успешно (HTTP fallback)")
         return True
     except Exception as exc:
         debug_log(f"Matrix отправка не удалась: {exc}")
