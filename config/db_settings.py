@@ -1,11 +1,11 @@
 """
 /config/db_settings.py
-Server Monitoring System v8.59.0
+Server Monitoring System v8.59.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Database-backed settings loader
 Система мониторинга серверов
-Версия: 8.59.0
+Версия: 8.59.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Загрузчик настроек из базы данных
@@ -204,6 +204,7 @@ def load_all_settings() -> None:
     global PROXMOX_HOSTS, DUPLICATE_IP_HOSTS, HOSTNAME_ALIASES
     global BACKUP_PATTERNS, BACKUP_STATUS_MAP, DATABASE_CONFIG, ZFS_SERVERS
     global BACKUP_DATABASE_CONFIG, DATABASE_BACKUP_CONFIG
+    global MATRIX_HOMESERVER, MATRIX_ACCESS_TOKEN, MATRIX_ROOM_ID
     
     if not USE_DB:
         debug_log("⚠️ Используются настройки по умолчанию (БД недоступна)")
@@ -315,6 +316,12 @@ def load_all_settings() -> None:
             'MONITOR_SERVER_IP',
             defaults.MONITOR_SERVER_IP,
         )
+
+        # === MATRIX-УВЕДОМЛЕНИЯ ===
+        matrix_homeserver = get_setting('MATRIX_HOMESERVER', defaults.MATRIX_HOMESERVER)
+        MATRIX_HOMESERVER = (matrix_homeserver or defaults.MATRIX_HOMESERVER).rstrip('/')
+        MATRIX_ACCESS_TOKEN = get_setting('MATRIX_ACCESS_TOKEN', defaults.MATRIX_ACCESS_TOKEN)
+        MATRIX_ROOM_ID = get_setting('MATRIX_ROOM_ID', defaults.MATRIX_ROOM_ID)
 
         # === КОНФИГУРАЦИЯ БЭКАПОВ ===
         PROXMOX_HOSTS = get_json_setting('PROXMOX_HOSTS', defaults.PROXMOX_HOSTS)
