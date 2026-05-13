@@ -1,3 +1,11 @@
+## [8.59.9] - 2026-05-13
+- RU: Исправлена синтаксическая ошибка в Matrix payload builder: формирование `formatted_body` вынесено в отдельную переменную, чтобы устранить падение сервиса с `SyntaxError: f-string: expecting '\}'` при старте.
+- EN: Fixed a syntax error in the Matrix payload builder: `formatted_body` assembly now uses a separate variable, preventing service startup crash with `SyntaxError: f-string: expecting '\}'`.
+- RU: SemVer patch-бамп до `8.59.9`; синхронизированы текущие упоминания версии в runtime/конфигурации/Android.
+- EN: SemVer patch bump to `8.59.9`; synchronized current version mentions across runtime/configuration/Android.
+- RU: Обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.59.9` и `ANDROID_VERSION_CODE=725`.
+- EN: Updated Android metadata to `ANDROID_VERSION_NAME=8.59.9` and `ANDROID_VERSION_CODE=725`.
+
 ## [8.59.8] - 2026-05-13
 - RU: SemVer patch-бамп до `8.59.8`; синхронизированы все текущие упоминания версии проекта в runtime/конфигурации/Android/документации.
 - EN: SemVer patch bump to `8.59.8`; synchronized all current project version mentions across runtime/configuration/Android/documentation.
