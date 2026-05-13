@@ -1,4 +1,13 @@
-## 8.58.51 - 2026-05-13
+## 8.59.0 - 2026-05-13
+
+- RU: Добавлены расширенные логи доставки в Matrix: теперь явно видно успешную отправку, пропуск из-за пустой конфигурации (`homeserver/token/room_id`) и ошибки API.
+- EN: Added extended Matrix delivery logs: now success, skipped sends due to missing config (`homeserver/token/room_id`), and API errors are explicitly logged.
+- RU: В главное меню Telegram-бота добавлены кнопки тестовой доставки `🧪 Тест Telegram` и `🧪 Тест Matrix` с отдельной проверкой каждого канала.
+- EN: Added `🧪 Test Telegram` and `🧪 Test Matrix` buttons to the Telegram bot main menu with per-channel delivery checks.
+- RU: SemVer minor bump до `8.59.0`; синхронизированы все явные упоминания версии проекта в runtime/config/docs/Android, обновлены `ANDROID_VERSION_NAME=8.59.0` и `ANDROID_VERSION_CODE=720`.
+- EN: SemVer minor bump to `8.59.0`; synchronized all explicit project version mentions across runtime/config/docs/Android, updated `ANDROID_VERSION_NAME=8.59.0` and `ANDROID_VERSION_CODE=720`.
+
+## 8.59.0 - 2026-05-13
 
 - RU: Исправлена дубликация Telegram-алертов в Matrix: `txn_id` для Matrix Client API теперь генерируется через `uuid4`, поэтому при нескольких отправках в одну миллисекунду события не конфликтуют и не теряются.
 - EN: Fixed Telegram-to-Matrix alert duplication: Matrix Client API `txn_id` is now generated with `uuid4`, so concurrent sends within the same millisecond no longer collide or drop events.

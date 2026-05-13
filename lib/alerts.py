@@ -1,11 +1,11 @@
 """
 /lib/alerts.py
-Server Monitoring System v8.58.51
+Server Monitoring System v8.59.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Unified alert system
 Система мониторинга серверов
-Версия: 8.58.51
+Версия: 8.59.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единая система оповещений
@@ -479,6 +479,12 @@ send_message = send_alert
 def _send_matrix_alert(message: str) -> bool:
     """Отправляет уведомление в Matrix room, если канал настроен."""
     if not (_matrix_homeserver and _matrix_access_token and _matrix_room_id):
+        debug_log(
+            "Matrix отправка пропущена: канал не настроен "
+            f"(homeserver={'ok' if _matrix_homeserver else 'empty'}, "
+            f"token={'ok' if _matrix_access_token else 'empty'}, "
+            f"room_id={'ok' if _matrix_room_id else 'empty'})"
+        )
         return False
     try:
         encoded_room_id = quote(_matrix_room_id, safe="")
@@ -495,8 +501,27 @@ def _send_matrix_alert(message: str) -> bool:
             timeout=10,
         )
         response.raise_for_status()
+        debug_log("✅ Matrix алерт отправлен успешно")
         return True
     except Exception as exc:
         debug_log(f"Matrix отправка не удалась: {exc}")
         return False
 
+
+def send_test_telegram_alert() -> bool:
+    """Отправляет тестовый алерт только в Telegram."""
+    if not (_telegram_bot and _chat_ids):
+        debug_log("Тест Telegram пропущен: бот или CHAT_IDS не инициализированы")
+        return False
+    message = "🧪 Тест Telegram-доставки: канал работает."
+    result = _send_telegram_alert(message, "info")
+    debug_log(f"Тест Telegram-доставки: {'успех' if result else 'ошибка'}")
+    return result
+
+
+def send_test_matrix_alert() -> bool:
+    """Отправляет тестовый алерт только в Matrix."""
+    message = "🧪 Тест Matrix-доставки: канал работает."
+    result = _send_matrix_alert(message)
+    debug_log(f"Тест Matrix-доставки: {'успех' if result else 'ошибка'}")
+    return result

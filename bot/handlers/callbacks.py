@@ -1,11 +1,11 @@
 """
 /bot/handlers/callbacks.py
-Server Monitoring System v8.58.51
+Server Monitoring System v8.59.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 A single router for callbacks.
 Система мониторинга серверов
-Версия: 8.58.51
+Версия: 8.59.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единый router callback’ов.
@@ -283,6 +283,30 @@ def callback_router(update, context):
 
     elif data == 'control_panel':
         control_panel_handler(update, context)
+
+    elif data == 'test_alert_telegram':
+        from lib.alerts import send_test_telegram_alert
+        sent = send_test_telegram_alert()
+        query.edit_message_text(
+            "✅ Тест Telegram отправлен" if sent else "❌ Тест Telegram не отправлен, смотри логи",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🧪 Повторить Telegram", callback_data='test_alert_telegram')],
+                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
+                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ])
+        )
+
+    elif data == 'test_alert_matrix':
+        from lib.alerts import send_test_matrix_alert
+        sent = send_test_matrix_alert()
+        query.edit_message_text(
+            "✅ Тест Matrix отправлен" if sent else "❌ Тест Matrix не отправлен, смотри логи",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🧪 Повторить Matrix", callback_data='test_alert_matrix')],
+                [InlineKeyboardButton("🏠 На главную", callback_data='main_menu'),
+                 InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
+            ])
+        )
 
     elif data == 'toggle_monitoring':
         toggle_monitoring_handler(update, context)
