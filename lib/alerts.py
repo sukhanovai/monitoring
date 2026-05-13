@@ -1,11 +1,11 @@
 """
 /lib/alerts.py
-Server Monitoring System v8.59.5
+Server Monitoring System v8.59.6
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Unified alert system
 Система мониторинга серверов
-Версия: 8.59.5
+Версия: 8.59.6
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единая система оповещений
@@ -494,7 +494,7 @@ def _send_matrix_alert(message: str) -> bool:
             f"{encoded_room_id}/send/m.room.message/{txn_id}"
         )
         payload = {"msgtype": "m.text", "body": message}
-        response = requests.post(
+        response = requests.put(
             url,
             headers={"Authorization": f"Bearer {_matrix_access_token}"},
             json=payload,

@@ -1,3 +1,9 @@
+## [8.59.6] - 2026-05-13
+- RU: Исправлена отправка тестового сообщения в Matrix: запрос на endpoint `/_matrix/client/v3/rooms/{roomId}/send/m.room.message/{txnId}` переведён на корректный HTTP-метод `PUT`, чтобы устранить `405 Method Not Allowed`.
+- EN: Fixed Matrix test-message delivery: request to `/_matrix/client/v3/rooms/{roomId}/send/m.room.message/{txnId}` now uses the correct HTTP `PUT` method to eliminate `405 Method Not Allowed`.
+- RU: SemVer patch-бамп до `8.59.6`; синхронизированы явные упоминания версии в runtime/config/docs/Android, обновлены `ANDROID_VERSION_NAME=8.59.6` и `ANDROID_VERSION_CODE=722`.
+- EN: SemVer patch bump to `8.59.6`; synchronized explicit version mentions across runtime/config/docs/Android, updated `ANDROID_VERSION_NAME=8.59.6` and `ANDROID_VERSION_CODE=722`.
+
 ## 8.59.5 - 2026-05-13
 
 - RU: Исправлен тест Matrix из меню настроек: перед отправкой тестового сообщения callback теперь читает `MATRIX_HOMESERVER`, `MATRIX_ACCESS_TOKEN`, `MATRIX_ROOM_ID` из БД и вызывает `init_matrix_bot`, поэтому тест больше не пропускается с `homeserver=empty, token=empty, room_id=empty`.
