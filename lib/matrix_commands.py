@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.61.3
+Server Monitoring System v8.61.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit).
 Система мониторинга серверов
-Версия: 8.61.3
+Версия: 8.61.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит).
@@ -17,6 +17,7 @@ import asyncio
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Set
+import sys
 
 try:
     from nio import AsyncClient, MatrixRoom, RoomMessageText
@@ -206,7 +207,10 @@ class MatrixCommandBot:
 def run_matrix_command_bot(**kwargs) -> None:
     """Синхронная обёртка для запуска в отдельном потоке."""
     if not _MATRIX_NIO_AVAILABLE:
-        info_log("Matrix command sync пропущен: dependency matrix-nio не установлена (pip install matrix-nio[e2e]).")
+        info_log(
+            "Matrix command sync пропущен: dependency matrix-nio не установлена для текущего интерпретатора "
+            f"{sys.executable}. Установи так: {sys.executable} -m pip install 'matrix-nio[e2e]'."
+        )
         return
 
     bot = MatrixCommandBot(**kwargs)
