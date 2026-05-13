@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
 /main.py
-Server Monitoring System v8.61.0
+Server Monitoring System v8.61.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Main launch module
 Система мониторинга серверов
-Версия: 8.61.0
+Версия: 8.61.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль запуска
@@ -140,7 +140,16 @@ def main(args: argparse.Namespace):
     # 1. Загрузка конфигурации
     # ------------------------------------------------------------------
     try:
-        from config.db_settings import TELEGRAM_TOKEN, DEBUG_MODE, CHAT_IDS, SILENT_START, SILENT_END
+        from config.db_settings import (
+        TELEGRAM_TOKEN,
+        DEBUG_MODE,
+        CHAT_IDS,
+        SILENT_START,
+        SILENT_END,
+        MATRIX_HOMESERVER,
+        MATRIX_ACCESS_TOKEN,
+        MATRIX_ROOM_ID,
+    )
     except ImportError as e:
         print(f"❌ Не удалось загрузить db_settings: {e}")
         sys.exit(1)
