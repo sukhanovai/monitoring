@@ -1,10 +1,9 @@
-## [8.60.2] - 2026-05-13
-- RU: Синхронизированы все актуальные упоминания версии проекта в runtime/config/docs/Android до `8.60.2`.
-- EN: Synchronized all active project version mentions across runtime/config/docs/Android to `8.60.2`.
-- RU: Исправлена обработка Matrix-команд из Element: бот теперь извлекает `!status`/`!report`/`!settings` даже из reply/цитат (строки с `>` игнорируются).
-- EN: Fixed Matrix command handling from Element: the bot now extracts `!status`/`!report`/`!settings` even from replies/quotes (lines starting with `>` are ignored).
-- RU: Выполнен SemVer patch-бамп до `8.60.2`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.60.2` и `ANDROID_VERSION_CODE=735`.
-- EN: Performed a SemVer patch bump to `8.60.2`; Android metadata updated to `ANDROID_VERSION_NAME=8.60.2` and `ANDROID_VERSION_CODE=735`.
+## [8.60.3] - 2026-05-13
+
+- EN: Fixed Matrix alert initialization in the main startup flow: `main.py` now initializes Matrix channel parameters together with Telegram, preventing false "channel not configured" skips when values are configured in settings/database.
+- RU: Исправлена инициализация Matrix-алертов в основном потоке запуска: `main.py` теперь инициализирует параметры Matrix вместе с Telegram, что устраняет ложные пропуски "канал не настроен" при заданных настройках в конфиге/БД.
+- EN: SemVer patch bump to `8.60.3`; synchronized active version mentions across runtime/config/docs/Android and bumped Android metadata to `ANDROID_VERSION_NAME=8.60.3` and `ANDROID_VERSION_CODE=736`.
+- RU: Патч-бамп SemVer до `8.60.3`; синхронизированы актуальные упоминания версии в runtime/config/docs/Android и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.60.3` и `ANDROID_VERSION_CODE=736`.
 
 ## [8.60.0] - 2026-05-13
 - RU: Добавлен входящий Matrix command-bot на базе `matrix-nio`: long-poll `/sync`, обработчик `m.room.message`, роутинг команд `!status`, `!report`, `!settings` и ответы в комнату.
