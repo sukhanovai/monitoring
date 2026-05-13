@@ -1,9 +1,9 @@
-## [8.60.3] - 2026-05-13
+## [8.60.4] - 2026-05-13
 
-- EN: Fixed Matrix alert initialization in the main startup flow: `main.py` now initializes Matrix channel parameters together with Telegram, preventing false "channel not configured" skips when values are configured in settings/database.
-- RU: Исправлена инициализация Matrix-алертов в основном потоке запуска: `main.py` теперь инициализирует параметры Matrix вместе с Telegram, что устраняет ложные пропуски "канал не настроен" при заданных настройках в конфиге/БД.
-- EN: SemVer patch bump to `8.60.3`; synchronized active version mentions across runtime/config/docs/Android and bumped Android metadata to `ANDROID_VERSION_NAME=8.60.3` and `ANDROID_VERSION_CODE=736`.
-- RU: Патч-бамп SemVer до `8.60.3`; синхронизированы актуальные упоминания версии в runtime/config/docs/Android и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.60.3` и `ANDROID_VERSION_CODE=736`.
+- EN: Fixed Matrix alert initialization in the main startup flow: `lib/alerts.py` now performs a safe fallback to `config.settings` when Matrix globals are empty, reducing false "channel not configured" skips caused by late initialization order.
+- RU: Исправлена инициализация Matrix-алертов в основном потоке запуска: `lib/alerts.py` теперь делает безопасный fallback к `config.settings`, если Matrix-глобали пустые, что снижает ложные пропуски "канал не настроен" из-за порядка инициализации.
+- EN: SemVer patch bump to `8.60.4`; synchronized active version mentions across runtime/config/docs/Android and bumped Android metadata to `ANDROID_VERSION_NAME=8.60.4` and `ANDROID_VERSION_CODE=737`.
+- RU: Патч-бамп SemVer до `8.60.4`; синхронизированы актуальные упоминания версии в runtime/config/docs/Android и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.60.4` и `ANDROID_VERSION_CODE=737`.
 
 ## [8.60.0] - 2026-05-13
 - RU: Добавлен входящий Matrix command-bot на базе `matrix-nio`: long-poll `/sync`, обработчик `m.room.message`, роутинг команд `!status`, `!report`, `!settings` и ответы в комнату.

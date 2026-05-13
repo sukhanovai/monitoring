@@ -1,11 +1,11 @@
 """
 /lib/alerts.py
-Server Monitoring System v8.60.3
+Server Monitoring System v8.60.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Unified alert system
 Система мониторинга серверов
-Версия: 8.60.3
+Версия: 8.60.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единая система оповещений
@@ -531,6 +531,17 @@ async def _send_matrix_alert_async(message: str, buttons: Optional[List[Dict[str
 
 def _send_matrix_alert(message: str, buttons: Optional[List[Dict[str, str]]] = None) -> bool:
     """Отправляет уведомление в Matrix room, если канал настроен."""
+    global _matrix_homeserver, _matrix_access_token, _matrix_room_id
+    if not (_matrix_homeserver and _matrix_access_token and _matrix_room_id):
+        try:
+            from config import settings as _settings
+
+            _matrix_homeserver = _matrix_homeserver or (_settings.MATRIX_HOMESERVER or "").rstrip("/")
+            _matrix_access_token = _matrix_access_token or (_settings.MATRIX_ACCESS_TOKEN or "")
+            _matrix_room_id = _matrix_room_id or (_settings.MATRIX_ROOM_ID or "")
+        except Exception:
+            pass
+
     if not (_matrix_homeserver and _matrix_access_token and _matrix_room_id):
         debug_log(
             "Matrix отправка пропущена: канал не настроен "
