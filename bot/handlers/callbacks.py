@@ -1,11 +1,11 @@
 """
 /bot/handlers/callbacks.py
-Server Monitoring System v8.59.4
+Server Monitoring System v8.59.5
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 A single router for callbacks.
 Система мониторинга серверов
-Версия: 8.59.4
+Версия: 8.59.5
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единый router callback’ов.
@@ -297,7 +297,14 @@ def callback_router(update, context):
         )
 
     elif data == 'test_alert_matrix':
-        from lib.alerts import send_test_matrix_alert
+        from lib.alerts import init_matrix_bot, send_test_matrix_alert
+        from core.config_manager import config_manager
+
+        homeserver = config_manager.get_setting('MATRIX_HOMESERVER', '')
+        access_token = config_manager.get_setting('MATRIX_ACCESS_TOKEN', '')
+        room_id = config_manager.get_setting('MATRIX_ROOM_ID', '')
+        init_matrix_bot(homeserver, access_token, room_id)
+
         sent = send_test_matrix_alert()
         query.edit_message_text(
             "✅ Тест Matrix отправлен" if sent else "❌ Тест Matrix не отправлен, смотри логи",

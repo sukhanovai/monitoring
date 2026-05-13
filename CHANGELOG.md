@@ -1,13 +1,10 @@
-## 8.59.4 - 2026-05-13
+## 8.59.5 - 2026-05-13
 
-- RU: В разделе «⚙️ Настройки» добавлены отдельные пункты «🤖 Настройки Telegram» и «🟦 Настройки Matrix», чтобы конфигурация ботов была разнесена по своим экранам.
-- EN: Added separate “🤖 Telegram Settings” and “🟦 Matrix Settings” sections under “⚙️ Settings” so bot configuration is split into dedicated screens.
-- RU: Кнопки «🧪 Тест Telegram» и «🧪 Тест Matrix» перенесены с главного меню в соответствующие разделы настроек ботов.
-- EN: Moved “🧪 Test Telegram” and “🧪 Test Matrix” buttons from the main menu into their corresponding bot settings sections.
-- RU: Для Matrix добавлен экран управления `MATRIX_HOMESERVER`, `MATRIX_ACCESS_TOKEN`, `MATRIX_ROOM_ID` с возможностью тестовой отправки из этого же раздела.
-- EN: Added a Matrix settings screen to manage `MATRIX_HOMESERVER`, `MATRIX_ACCESS_TOKEN`, and `MATRIX_ROOM_ID`, including test-send from the same section.
-- RU: SemVer patch bump до `8.59.4`; синхронизированы явные упоминания версии проекта в runtime/config/docs/Android.
-- EN: SemVer patch bump to `8.59.4`; synchronized explicit project version mentions across runtime/config/docs/Android.
+- RU: Исправлен тест Matrix из меню настроек: перед отправкой тестового сообщения callback теперь читает `MATRIX_HOMESERVER`, `MATRIX_ACCESS_TOKEN`, `MATRIX_ROOM_ID` из БД и вызывает `init_matrix_bot`, поэтому тест больше не пропускается с `homeserver=empty, token=empty, room_id=empty`.
+- EN: Fixed Matrix test from settings menu: before sending the test message, the callback now reads `MATRIX_HOMESERVER`, `MATRIX_ACCESS_TOKEN`, and `MATRIX_ROOM_ID` from DB and calls `init_matrix_bot`, so the test is no longer skipped with `homeserver=empty, token=empty, room_id=empty`.
+- RU: SemVer patch bump до `8.59.5`; синхронизированы явные упоминания версии проекта в runtime/config/docs/Android, обновлены `ANDROID_VERSION_NAME=8.59.5` и `ANDROID_VERSION_CODE=721`.
+- EN: SemVer patch bump to `8.59.5`; synchronized explicit project version mentions across runtime/config/docs/Android, updated `ANDROID_VERSION_NAME=8.59.5` and `ANDROID_VERSION_CODE=721`.
+
 ## 8.59.3 - 2026-05-13
 
 - RU: Исправлена дубликация Telegram-алертов в Matrix: `txn_id` для Matrix Client API теперь генерируется через `uuid4`, поэтому при нескольких отправках в одну миллисекунду события не конфликтуют и не теряются.
