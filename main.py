@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
 /main.py
-Server Monitoring System v8.60.2
+Server Monitoring System v8.60.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Main launch module
 Система мониторинга серверов
-Версия: 8.60.2
+Версия: 8.60.3
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль запуска
@@ -203,9 +203,10 @@ def main(args: argparse.Namespace):
 
     dispatcher.add_error_handler(telegram_error_handler)
     try:
-        from lib.alerts import init_telegram_bot
+        from lib.alerts import init_telegram_bot, init_matrix_bot
 
         init_telegram_bot(updater.bot, CHAT_IDS)
+        init_matrix_bot(MATRIX_HOMESERVER, MATRIX_ACCESS_TOKEN, MATRIX_ROOM_ID)
     except Exception as e:
         logger.warning(f"⚠️ Не удалось инициализировать алерты: {e}")
 
