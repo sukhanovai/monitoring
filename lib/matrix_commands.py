@@ -1,4 +1,15 @@
-"""Входящие команды из Matrix (sync + router + ACL + аудит)."""
+"""
+/lib/matrix_commands.py
+Server Monitoring System v8.60.1
+Copyright (c) 2025 Aleksandr Sukhanov
+License: MIT
+Incoming commands from Matrix (sync + router + ACL + audit).
+Система мониторинга серверов
+Версия: 8.60.1
+Автор: Александр Суханов (c)
+Лицензия: MIT
+Входящие команды из Matrix (sync + router + ACL + аудит).
+"""
 
 from __future__ import annotations
 
