@@ -174,6 +174,8 @@ AVAILABLE_EXTENSIONS = {
 
 ## 🟩 Matrix-бот/канал уведомлений (matrix.202020.ru)
 
+Подробная эксплуатационная инструкция: `docs/matrix_bot_management.md`.
+
 Чтобы получать те же алерты, что и в Telegram, в Matrix:
 
 1. Создайте пользователя-бота на homeserver `matrix.202020.ru` (например, `@monitoring-bot:matrix.202020.ru`).
@@ -288,7 +290,7 @@ export MATRIX_ROOM_ID="\!rBnJoAPQKeovFClrhg:matrix.202020.ru"
 - загружает APK в релиз, не затрагивая стабильный релиз в `main`.
 
 Актуальная ссылка на APK prerelease (скрипт обновляет её только при запуске с флагом `-UpdateDocsLinks`):
-<!-- ANDROID_PRERELEASE_APK_LINK_START -->https://github.com/sukhanovai/monitoring/releases/download/v8.59.16-develop/monitoring-android-8.59.16-develop-debug.apk<!-- ANDROID_PRERELEASE_APK_LINK_END -->
+<!-- ANDROID_PRERELEASE_APK_LINK_START -->https://github.com/sukhanovai/monitoring/releases/download/v8.59.17-develop/monitoring-android-8.59.17-develop-debug.apk<!-- ANDROID_PRERELEASE_APK_LINK_END -->
 
 Требования:
 - либо установлен `gh` (GitHub CLI) и выполнен `gh auth login`;

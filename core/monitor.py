@@ -5,7 +5,7 @@ Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core monitoring module
 Система мониторинга серверов
-Версия: 8.59.16
+Версия: 8.59.17
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль мониторинга
