@@ -1,3 +1,15 @@
+## [8.60.0] - 2026-05-13
+- RU: Добавлен входящий Matrix command-bot на базе `matrix-nio`: long-poll `/sync`, обработчик `m.room.message`, роутинг команд `!status`, `!report`, `!settings` и ответы в комнату.
+- EN: Added inbound Matrix command bot based on `matrix-nio`: long-poll `/sync`, `m.room.message` handler, command routing for `!status`, `!report`, `!settings`, and room replies.
+- RU: Команда `!status` переиспользует backend-проверку доступности через `core.task_router.run_availability_task`, а `!report` использует существующий генератор отчёта `morning_report.force_report()`.
+- EN: `!status` now reuses backend availability checks via `core.task_router.run_availability_task`, while `!report` reuses existing report generation via `morning_report.force_report()`.
+- RU: Добавлен ACL для Matrix-команд: whitelist по `MATRIX_ALLOWED_USER_IDS` и ограничение комнат через `MATRIX_ALLOWED_ROOM_IDS` (с fallback на `MATRIX_ROOM_ID`).
+- EN: Added ACL for Matrix commands: user whitelist via `MATRIX_ALLOWED_USER_IDS` and room restriction via `MATRIX_ALLOWED_ROOM_IDS` (fallback to `MATRIX_ROOM_ID`).
+- RU: Добавлен аудит команд в логах (`[MATRIX_AUDIT]`): кто, когда, какая команда и результат ACL.
+- EN: Added command audit logging (`[MATRIX_AUDIT]`): who, when, which command, and ACL result.
+- RU: Выполнен SemVer minor-бамп до `8.60.0`; обновлены актуальные упоминания версии в runtime-файлах.
+- EN: Performed SemVer minor bump to `8.60.0`; synchronized active runtime version mentions.
+
 ## [8.59.17] - 2026-05-13
 - RU: Добавлена отдельная эксплуатационная документация по управлению ботом в Matrix (`docs/matrix_bot_management.md`): быстрый запуск, первичная настройка, ротация токена, диагностика и roadmap входящих команд.
 - EN: Added a dedicated operational guide for Matrix bot management (`docs/matrix_bot_management.md`): quick start, initial setup, token rotation, troubleshooting, and incoming-commands roadmap.
