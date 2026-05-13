@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.60.5
+Server Monitoring System v8.61.0
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit).
 Система мониторинга серверов
-Версия: 8.60.5
+Версия: 8.61.0
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит).
@@ -114,15 +114,30 @@ class MatrixCommandBot:
         except Exception as exc:
             return f"❌ Ошибка чтения настройки: {exc}"
 
+    def _control_menu_text(self) -> str:
+        return (
+            "🤖 Управление мониторингом (как в Telegram):\n"
+            "• !start или !menu — открыть меню команд\n"
+            "• !status — текущий статус серверов\n"
+            "• !report — сводный отчёт\n"
+            "• !settings — справка по настройкам\n"
+            "• !settings get <KEY> — значение настройки\n\n"
+            "Пример: !settings get CHECK_INTERVAL"
+        )
+
     async def _route_command(self, command_text: str) -> str:
         normalized = command_text.strip()
-        if normalized.startswith("!status"):
+        command = normalized.split()[0].lower() if normalized else ""
+
+        if command in {"!start", "!menu", "!help"}:
+            return self._control_menu_text()
+        if command == "!status":
             return await self._handle_status()
-        if normalized.startswith("!report"):
+        if command == "!report":
             return await self._handle_report()
-        if normalized.startswith("!settings"):
+        if command == "!settings":
             return await self._handle_settings(normalized)
-        return "ℹ️ Неизвестная команда. Доступно: !status, !report, !settings"
+        return "ℹ️ Неизвестная команда. Напиши !menu для списка команд."
 
     def _extract_command(self, raw_body: str) -> str:
         body = (raw_body or "").strip()
