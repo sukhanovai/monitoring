@@ -1,13 +1,10 @@
-## [8.61.1] - 2026-05-13
+## [8.61.2] - 2026-05-13
 
-- RU: Для входящих Matrix-команд добавлено «управление как в Telegram-боте»: теперь `!start`, `!menu` и `!help` открывают единое меню управления с подсказками по действиям.
-- EN: Added “Telegram-like control” for inbound Matrix commands: `!start`, `!menu`, and `!help` now open a unified control menu with actionable hints.
-- RU: В роутере Matrix-команд включено более предсказуемое поведение: неизвестные команды теперь возвращают короткий ответ с советом использовать `!menu`.
-- EN: Matrix command router now behaves more predictably: unknown commands return a short hint that points users to `!menu`.
-- RU: Выполнен SemVer minor-бамп до `8.61.1`; синхронизированы рабочие упоминания версии и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.61.1` и `ANDROID_VERSION_CODE=739`.
-- EN: Performed a SemVer minor bump to `8.61.1`; synchronized active version mentions and updated Android metadata to `ANDROID_VERSION_NAME=8.61.1` and `ANDROID_VERSION_CODE=739`.
-- RU: Исправлен запуск входящего Matrix command sync в `main.py`: Matrix-параметры теперь импортируются при старте, поэтому `init_matrix_bot(...)` больше не падает из-за `NameError` и команды `!start`/`!menu`/`!help` реально обрабатываются.
-- EN: Fixed inbound Matrix command sync startup in `main.py`: Matrix settings are now imported during startup, so `init_matrix_bot(...)` no longer fails with `NameError` and `!start`/`!menu`/`!help` are actually processed.
+- RU: Исправлена деградация Matrix command sync при отсутствии `matrix-nio`: запуск больше не падает на импорте, модуль аккуратно пропускается с понятной диагностикой и не заспамливает WARN-ошибками `No module named 'nio'`.
+- EN: Fixed Matrix command sync degradation when `matrix-nio` is missing: startup no longer fails on import, the module is skipped gracefully with clear diagnostics, avoiding noisy `No module named 'nio'` WARN errors.
+- RU: Выполнен SemVer patch-бамп до `8.61.2`; синхронизированы актуальные упоминания версии в проекте и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.61.2` и `ANDROID_VERSION_CODE=740`.
+- EN: Performed a SemVer patch bump to `8.61.2`; synchronized active version mentions across the project and updated Android metadata to `ANDROID_VERSION_NAME=8.61.2` and `ANDROID_VERSION_CODE=740`.
+
 ## [8.60.4] - 2026-05-13
 
 - EN: Fixed Matrix alert initialization in the main startup flow: `lib/alerts.py` now performs a safe fallback to `config.settings` when Matrix globals are empty, reducing false "channel not configured" skips caused by late initialization order.
