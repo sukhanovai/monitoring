@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.60.1
+Server Monitoring System v8.60.2
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit).
 Система мониторинга серверов
-Версия: 8.60.1
+Версия: 8.60.2
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит).
@@ -124,9 +124,26 @@ class MatrixCommandBot:
             return await self._handle_settings(normalized)
         return "ℹ️ Неизвестная команда. Доступно: !status, !report, !settings"
 
+    def _extract_command(self, raw_body: str) -> str:
+        body = (raw_body or "").strip()
+        if not body:
+            return ""
+
+        if body.startswith("!"):
+            return body
+
+        for line in body.splitlines():
+            clean = line.strip()
+            if not clean or clean.startswith(">"):
+                continue
+            if clean.startswith("!"):
+                return clean
+
+        return ""
+
     async def _on_message(self, room: MatrixRoom, event: RoomMessageText) -> None:
-        body = (event.body or "").strip()
-        if not body.startswith("!"):
+        body = self._extract_command(event.body or "")
+        if not body:
             return
 
         sender = event.sender or ""
