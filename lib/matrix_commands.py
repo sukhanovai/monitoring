@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.61.9
+Server Monitoring System v8.61.10
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit).
 Система мониторинга серверов
-Версия: 8.61.9
+Версия: 8.61.10
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит).
@@ -20,11 +20,13 @@ from typing import Dict, List, Optional, Set
 import sys
 
 try:
-    from nio import AsyncClient, MatrixRoom, RoomMessageText
+    from nio import AsyncClient, MatrixRoom, RoomMessage, RoomMessageNotice, RoomMessageText
     _MATRIX_NIO_AVAILABLE = True
 except ImportError:
     AsyncClient = None  # type: ignore[assignment]
     MatrixRoom = object  # type: ignore[assignment]
+    RoomMessage = object  # type: ignore[assignment]
+    RoomMessageNotice = object  # type: ignore[assignment]
     RoomMessageText = object  # type: ignore[assignment]
     _MATRIX_NIO_AVAILABLE = False
 
@@ -65,6 +67,7 @@ class MatrixCommandBot:
         self.client = AsyncClient(self.homeserver, user="")
         self.client.access_token = self.access_token
         self.client.add_event_callback(self._on_message, RoomMessageText)
+        self.client.add_event_callback(self._on_message, RoomMessageNotice)
         self._started = False
 
     @property
@@ -164,7 +167,7 @@ class MatrixCommandBot:
 
         return ""
 
-    async def _on_message(self, room: MatrixRoom, event: RoomMessageText) -> None:
+    async def _on_message(self, room: MatrixRoom, event: RoomMessage) -> None:
         sender = event.sender or ""
         room_id = room.room_id
 
@@ -172,7 +175,7 @@ class MatrixCommandBot:
             debug_log(f"ℹ️ Matrix событие проигнорировано: echo от самого бота (room={room_id})")
             return
 
-        raw_body = event.body or ""
+        raw_body = getattr(event, "body", "") or ""
         body = self._extract_command(raw_body)
         if not body:
             preview = raw_body.replace("\n", "\\n")[:200]
