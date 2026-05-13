@@ -1,8 +1,10 @@
-## [8.59.7] - 2026-05-13
-- RU: SemVer patch-бамп до `8.59.7`; синхронизированы все текущие упоминания версии проекта в runtime/конфигурации/Android/документации.
-- EN: SemVer patch bump to `8.59.7`; synchronized all current project version mentions across runtime/configuration/Android/documentation.
-- RU: Обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.59.7` и `ANDROID_VERSION_CODE=723`.
-- EN: Updated Android metadata to `ANDROID_VERSION_NAME=8.59.7` and `ANDROID_VERSION_CODE=723`.
+## [8.59.8] - 2026-05-13
+- RU: SemVer patch-бамп до `8.59.8`; синхронизированы все текущие упоминания версии проекта в runtime/конфигурации/Android/документации.
+- EN: SemVer patch bump to `8.59.8`; synchronized all current project version mentions across runtime/configuration/Android/documentation.
+- RU: Обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.59.8` и `ANDROID_VERSION_CODE=724`.
+- EN: Updated Android metadata to `ANDROID_VERSION_NAME=8.59.8` and `ANDROID_VERSION_CODE=724`.
+- RU: Для Matrix тестового сообщения добавлены action-кнопки в стиле Telegram (рендер через `formatted_body` и HTML-ссылки + текстовый fallback для клиентов без rich-format).
+- EN: Added Telegram-style action buttons for Matrix test messages (rendered via `formatted_body` HTML links with plain-text fallback for clients without rich formatting).
 
 ## [8.59.6] - 2026-05-13
 - RU: Исправлена отправка тестового сообщения в Matrix: запрос на endpoint `/_matrix/client/v3/rooms/{roomId}/send/m.room.message/{txnId}` переведён на корректный HTTP-метод `PUT`, чтобы устранить `405 Method Not Allowed`.
