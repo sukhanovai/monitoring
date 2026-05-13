@@ -1,17 +1,20 @@
 """
 /lib/alerts.py
-Server Monitoring System v8.58.49
+Server Monitoring System v8.58.51
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Unified alert system
 Система мониторинга серверов
-Версия: 8.58.49
+Версия: 8.58.51
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единая система оповещений
 """
 
 import time
+import requests
+from urllib.parse import quote
+from uuid import uuid4
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Optional, Dict, Any
 from datetime import datetime, time as dt_time
@@ -479,7 +482,7 @@ def _send_matrix_alert(message: str) -> bool:
         return False
     try:
         encoded_room_id = quote(_matrix_room_id, safe="")
-        txn_id = str(int(time.time() * 1000))
+        txn_id = uuid4().hex
         url = (
             f"{_matrix_homeserver}/_matrix/client/v3/rooms/"
             f"{encoded_room_id}/send/m.room.message/{txn_id}"

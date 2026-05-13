@@ -1,9 +1,9 @@
-## 8.58.49 - 2026-05-12
+## 8.58.51 - 2026-05-13
 
-- RU: Исправлено чтение порога простоя для алертов недоступности: теперь `MAX_FAIL_TIME` берётся из «Настройки → Мониторинг» (из БД настроек при каждом цикле), поэтому уведомления приходят согласно актуальным временным параметрам.
-- EN: Fixed downtime alert threshold resolution: `MAX_FAIL_TIME` is now read from “Settings → Monitoring” (live from settings DB each cycle), so notifications follow the current timing parameters.
-- RU: SemVer patch bump до `8.58.49`; синхронизированы все явные упоминания версии проекта в runtime/config/docs/Android, обновлены `ANDROID_VERSION_NAME=8.58.49` и `ANDROID_VERSION_CODE=717`.
-- EN: SemVer patch bump to `8.58.49`; synchronized all explicit project version mentions across runtime/config/docs/Android, updated `ANDROID_VERSION_NAME=8.58.49` and `ANDROID_VERSION_CODE=717`.
+- RU: Исправлена дубликация Telegram-алертов в Matrix: `txn_id` для Matrix Client API теперь генерируется через `uuid4`, поэтому при нескольких отправках в одну миллисекунду события не конфликтуют и не теряются.
+- EN: Fixed Telegram-to-Matrix alert duplication: Matrix Client API `txn_id` is now generated with `uuid4`, so concurrent sends within the same millisecond no longer collide or drop events.
+- RU: SemVer patch bump до `8.58.51`; синхронизированы все явные упоминания версии проекта в runtime/config/docs/Android, обновлены `ANDROID_VERSION_NAME=8.58.51` и `ANDROID_VERSION_CODE=719`.
+- EN: SemVer patch bump to `8.58.51`; synchronized all explicit project version mentions across runtime/config/docs/Android, updated `ANDROID_VERSION_NAME=8.58.51` and `ANDROID_VERSION_CODE=719`.
 
 ## 8.58.46 - 2026-05-12
 
