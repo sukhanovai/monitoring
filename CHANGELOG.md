@@ -1,11 +1,14 @@
-## 8.59.2 - 2026-05-13
+## 8.59.4 - 2026-05-13
 
-- RU: Исправлена загрузка Matrix-настроек из БД: добавлены ключи `MATRIX_HOMESERVER`, `MATRIX_ACCESS_TOKEN`, `MATRIX_ROOM_ID`; для пустого homeserver применяется fallback на `https://matrix.202020.ru`.
-- EN: Fixed Matrix settings loading from DB: added `MATRIX_HOMESERVER`, `MATRIX_ACCESS_TOKEN`, `MATRIX_ROOM_ID`; empty homeserver now falls back to `https://matrix.202020.ru`.
-- RU: SemVer patch bump до `8.59.2`; синхронизированы явные упоминания версии проекта в runtime/config/docs/Android.
-- EN: SemVer patch bump to `8.59.2`; synchronized explicit project version mentions across runtime/config/docs/Android.
-
-## 8.59.2 - 2026-05-13
+- RU: В разделе «⚙️ Настройки» добавлены отдельные пункты «🤖 Настройки Telegram» и «🟦 Настройки Matrix», чтобы конфигурация ботов была разнесена по своим экранам.
+- EN: Added separate “🤖 Telegram Settings” and “🟦 Matrix Settings” sections under “⚙️ Settings” so bot configuration is split into dedicated screens.
+- RU: Кнопки «🧪 Тест Telegram» и «🧪 Тест Matrix» перенесены с главного меню в соответствующие разделы настроек ботов.
+- EN: Moved “🧪 Test Telegram” and “🧪 Test Matrix” buttons from the main menu into their corresponding bot settings sections.
+- RU: Для Matrix добавлен экран управления `MATRIX_HOMESERVER`, `MATRIX_ACCESS_TOKEN`, `MATRIX_ROOM_ID` с возможностью тестовой отправки из этого же раздела.
+- EN: Added a Matrix settings screen to manage `MATRIX_HOMESERVER`, `MATRIX_ACCESS_TOKEN`, and `MATRIX_ROOM_ID`, including test-send from the same section.
+- RU: SemVer patch bump до `8.59.4`; синхронизированы явные упоминания версии проекта в runtime/config/docs/Android.
+- EN: SemVer patch bump to `8.59.4`; synchronized explicit project version mentions across runtime/config/docs/Android.
+## 8.59.3 - 2026-05-13
 
 - RU: Исправлена дубликация Telegram-алертов в Matrix: `txn_id` для Matrix Client API теперь генерируется через `uuid4`, поэтому при нескольких отправках в одну миллисекунду события не конфликтуют и не теряются.
 - EN: Fixed Telegram-to-Matrix alert duplication: Matrix Client API `txn_id` is now generated with `uuid4`, so concurrent sends within the same millisecond no longer collide or drop events.
