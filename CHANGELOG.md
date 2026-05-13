@@ -1,3 +1,21 @@
+## [8.59.14] - 2026-05-13
+- RU: Уточнена рекомендация по Matrix-стеку под этот репозиторий: основным вариантом выбран `matrix-nio` (Python) с аргументацией по внедрению в текущий backend, эксплуатации и контролю доступа.
+- EN: Refined Matrix stack recommendation for this repository: `matrix-nio` (Python) is now the primary option, with rationale focused on backend integration, operations, and access control.
+- RU: Добавлены критерии, когда вместо `matrix-nio` уместнее использовать `maubot` или `matrix-bot-sdk`.
+- EN: Added decision criteria for when `maubot` or `matrix-bot-sdk` is a better fit than `matrix-nio`.
+- RU: SemVer patch-бамп до `8.59.14`; синхронизированы актуальные упоминания версии в runtime/config/docs/Android.
+- EN: SemVer patch bump to `8.59.14`; synchronized current version mentions across runtime/config/docs/Android.
+- RU: Обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.59.14` и `ANDROID_VERSION_CODE=730`.
+- EN: Updated Android metadata to `ANDROID_VERSION_NAME=8.59.14` and `ANDROID_VERSION_CODE=730`.
+
+## [8.59.13] - 2026-05-13
+- RU: В `README.md` добавлен практический гайд по управлению мониторингом через Matrix (как в Telegram-боте): варианты стека (`matrix-nio`, `matrix-bot-sdk`, `maubot`), безопасный MVP команд и рекомендации по ACL.
+- EN: Added a practical guide to `README.md` for Matrix-based monitoring control (Telegram-bot style): stack options (`matrix-nio`, `matrix-bot-sdk`, `maubot`), safe MVP commands, and ACL recommendations.
+- RU: SemVer patch-бамп до `8.59.13`; синхронизированы актуальные упоминания версии в runtime/config/docs/Android.
+- EN: SemVer patch bump to `8.59.13`; synchronized current version mentions across runtime/config/docs/Android.
+- RU: Обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.59.13` и `ANDROID_VERSION_CODE=729`.
+- EN: Updated Android metadata to `ANDROID_VERSION_NAME=8.59.13` and `ANDROID_VERSION_CODE=729`.
+
 ## [8.59.12] - 2026-05-13
 - RU: Уточнена документация по bootstrap Matrix-бота: явно разделены `--admin-token` (админский токен Synapse) и обычный `MATRIX_ACCESS_TOKEN` бота/пользователя из настроек.
 - EN: Clarified Matrix bot bootstrap docs: explicitly distinguished `--admin-token` (Synapse admin token) from the regular bot/user `MATRIX_ACCESS_TOKEN` used in settings.

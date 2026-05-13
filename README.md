@@ -230,6 +230,42 @@ export MATRIX_ROOM_ID="\!rBnJoAPQKeovFClrhg:matrix.202020.ru"
 
 > Если любой из `MATRIX_*` параметров пустой — Matrix-канал отключён, Telegram работает как раньше.
 
+
+### Управление в Matrix (как Telegram-бот)
+
+Коротко: **писать с нуля не обязательно**. Нормальный путь — взять SDK и сделать мост команд в уже существующий backend мониторинга.
+
+Что выбрать:
+- `matrix-bot-sdk` (TypeScript/Node.js) — быстрый старт, если хочешь UI/кнопки и команды в Matrix-румах.
+- `matrix-nio` (Python) — если хочешь держать всё в Python-стеке этого проекта и не тащить Node.js.
+- `maubot` — готовый фреймворк плагинов, когда нужно быстро поднять отдельного Matrix-бота с командами (`!report`, `!settings`, `!status`) и ACL.
+
+**Рекомендация именно для этого проекта: бери `matrix-nio`.**
+
+Почему это лучший вариант здесь:
+- текущий backend мониторинга уже на Python, команды в Matrix можно подключить без второго runtime и без отдельного Node.js-контура;
+- проще переиспользовать существующую бизнес-логику отчётов/настроек из текущих модулей;
+- меньше операционной сложности: один стек логирования, деплоя и отладки;
+- проще контроль доступа: whitelist по `user_id` + проверка `room_id` прямо в том же сервисе.
+
+Когда НЕ `matrix-nio`:
+- если нужен отдельно живущий плагинный бот с горячей заменой модулей — смотри `maubot`;
+- если команда сильнее в TypeScript и нужен богатый кастомный UX на стороне Matrix-клиента — можно `matrix-bot-sdk`.
+
+Практически для этого репо:
+1. Оставляем текущую отправку алертов в Matrix (она уже есть).
+2. Добавляем **входящие команды** из Matrix (poll/sync + router команд).
+3. На команды дергаем уже существующие сервисы: отчёты, настройки, тесты алертов.
+4. Ограничиваем доступ по whitelist user-id (например `@comdone:matrix.202020.ru`) и/или по room-id.
+
+Минимальный MVP команд:
+- `!status` — краткий статус мониторинга;
+- `!report` — сводка по серверам;
+- `!settings get <key>` / `!settings set <key> <value>` — чтение/изменение настроек;
+- `!test matrix` — тест отправки уведомления.
+
+Если хочешь, можно сразу пилить Python-вариант через `matrix-nio` в этом репо без отдельного сервиса.
+
 ## 📱 Android-клиент
 
 В репозитории добавлен Android-проект `android-client/` (Kotlin + Compose), который работает с BFF API по адресу `https://api.202020.ru:8443` и не ломает существующий Telegram-канал управления.
@@ -252,7 +288,7 @@ export MATRIX_ROOM_ID="\!rBnJoAPQKeovFClrhg:matrix.202020.ru"
 - загружает APK в релиз, не затрагивая стабильный релиз в `main`.
 
 Актуальная ссылка на APK prerelease (скрипт обновляет её только при запуске с флагом `-UpdateDocsLinks`):
-<!-- ANDROID_PRERELEASE_APK_LINK_START -->https://github.com/sukhanovai/monitoring/releases/download/v8.59.10-develop/monitoring-android-8.59.10-develop-debug.apk<!-- ANDROID_PRERELEASE_APK_LINK_END -->
+<!-- ANDROID_PRERELEASE_APK_LINK_START -->https://github.com/sukhanovai/monitoring/releases/download/v8.59.14-develop/monitoring-android-8.59.14-develop-debug.apk<!-- ANDROID_PRERELEASE_APK_LINK_END -->
 
 Требования:
 - либо установлен `gh` (GitHub CLI) и выполнен `gh auth login`;
