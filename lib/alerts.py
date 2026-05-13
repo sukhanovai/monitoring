@@ -476,7 +476,31 @@ def configure(
 # Алиасы для обратной совместимости
 send_message = send_alert
 
-def _send_matrix_alert(message: str) -> bool:
+def _build_matrix_message_payload(message: str, buttons: Optional[List[Dict[str, str]]] = None) -> Dict[str, Any]:
+    """Собирает payload Matrix-сообщения c поддержкой псевдо-кнопок через HTML-ссылки."""
+    payload: Dict[str, Any] = {"msgtype": "m.text", "body": message}
+    if not buttons:
+        return payload
+
+    valid_buttons = [btn for btn in buttons if btn.get("label") and btn.get("url")]
+    if not valid_buttons:
+        return payload
+
+    fallback_lines = [message, "", "Действия:"]
+    html_links = []
+    for button in valid_buttons:
+        label = str(button["label"]).strip()
+        url = str(button["url"]).strip()
+        fallback_lines.append(f"• {label}: {url}")
+        html_links.append(f'<a href="{url}">{label}</a>')
+
+    payload["body"] = "\n".join(fallback_lines)
+    payload["format"] = "org.matrix.custom.html"
+    payload["formatted_body"] = f"<p>{message}</p><p>{" | ".join(html_links)}</p>"
+    return payload
+
+
+def _send_matrix_alert(message: str, buttons: Optional[List[Dict[str, str]]] = None) -> bool:
     """Отправляет уведомление в Matrix room, если канал настроен."""
     if not (_matrix_homeserver and _matrix_access_token and _matrix_room_id):
         debug_log(
@@ -493,7 +517,7 @@ def _send_matrix_alert(message: str) -> bool:
             f"{_matrix_homeserver}/_matrix/client/v3/rooms/"
             f"{encoded_room_id}/send/m.room.message/{txn_id}"
         )
-        payload = {"msgtype": "m.text", "body": message}
+        payload = _build_matrix_message_payload(message, buttons=buttons)
         response = requests.put(
             url,
             headers={"Authorization": f"Bearer {_matrix_access_token}"},
@@ -520,8 +544,12 @@ def send_test_telegram_alert() -> bool:
 
 
 def send_test_matrix_alert() -> bool:
-    """Отправляет тестовый алерт только в Matrix."""
+    """Отправляет тестовый алерт только в Matrix c action-кнопками (как в Telegram)."""
     message = "🧪 Тест Matrix-доставки: канал работает."
-    result = _send_matrix_alert(message)
+    buttons = [
+        {"label": "📊 Открыть дашборд", "url": "https://github.com/sukhanovai/monitoring"},
+        {"label": "🤖 Открыть Telegram-бота", "url": "https://t.me"},
+    ]
+    result = _send_matrix_alert(message, buttons=buttons)
     debug_log(f"Тест Matrix-доставки: {'успех' if result else 'ошибка'}")
     return result
