@@ -1,11 +1,10 @@
-## [8.59.16] - 2026-05-13
-- RU: Для Matrix-доставки в `lib/alerts.py` добавлен основной путь через `matrix-nio` (`AsyncClient.room_send`) с автоматическим HTTP fallback, чтобы бот работал даже без новой зависимости в старых окружениях.
-- EN: Added a primary `matrix-nio` delivery path in `lib/alerts.py` (`AsyncClient.room_send`) with automatic HTTP fallback so notifications still work in legacy environments without the new dependency.
-- RU: В `requirements.txt` добавлена зависимость `matrix-nio[e2e]>=0.25.0` для Python-варианта Matrix-бота.
-- EN: Added `matrix-nio[e2e]>=0.25.0` to `requirements.txt` for the Python Matrix-bot implementation.
-- RU: Выполнен SemVer patch-бамп до `8.59.16`; синхронизированы актуальные упоминания версии в проекте, Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.59.16` и `ANDROID_VERSION_CODE=732`.
-- EN: Performed a SemVer patch bump to `8.59.16`; synchronized active version mentions across the project, and updated Android metadata to `ANDROID_VERSION_NAME=8.59.16` and `ANDROID_VERSION_CODE=732`.
-
+## [8.59.17] - 2026-05-13
+- RU: Добавлена отдельная эксплуатационная документация по управлению ботом в Matrix (`docs/matrix_bot_management.md`): быстрый запуск, первичная настройка, ротация токена, диагностика и roadmap входящих команд.
+- EN: Added a dedicated operational guide for Matrix bot management (`docs/matrix_bot_management.md`): quick start, initial setup, token rotation, troubleshooting, and incoming-commands roadmap.
+- RU: В README добавлена прямая ссылка на новую инструкцию по Matrix, чтобы сократить время онбординга и убрать дубли в основном документе.
+- EN: Added a direct link in README to the new Matrix guide to reduce onboarding time and avoid duplicated operational details in the main document.
+- RU: Выполнен SemVer patch-бамп до `8.59.17`; синхронизированы актуальные упоминания версии в проекте, Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.59.17` и `ANDROID_VERSION_CODE=733`.
+- EN: Performed a SemVer patch bump to `8.59.17`; synchronized active version mentions across the project, and updated Android metadata to `ANDROID_VERSION_NAME=8.59.17` and `ANDROID_VERSION_CODE=733`.
 ## [8.59.15] - 2026-05-13
 - RU: Приведены к единому актуальному значению все рабочие упоминания версии проекта в исходниках и конфигурации; текущая версия синхронизирована как `8.59.15`.
 - EN: Aligned all active project version mentions across source files and configuration; current version is synchronized to `8.59.15`.
