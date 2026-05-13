@@ -1,11 +1,11 @@
 """
 /lib/alerts.py
-Server Monitoring System v8.60.4
+Server Monitoring System v8.60.5
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Unified alert system
 Система мониторинга серверов
-Версия: 8.60.4
+Версия: 8.60.5
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единая система оповещений
@@ -534,6 +534,16 @@ def _send_matrix_alert(message: str, buttons: Optional[List[Dict[str, str]]] = N
     global _matrix_homeserver, _matrix_access_token, _matrix_room_id
     if not (_matrix_homeserver and _matrix_access_token and _matrix_room_id):
         try:
+            from config import db_settings as _db_settings
+
+            _matrix_homeserver = _matrix_homeserver or (_db_settings.MATRIX_HOMESERVER or "").rstrip("/")
+            _matrix_access_token = _matrix_access_token or (_db_settings.MATRIX_ACCESS_TOKEN or "")
+            _matrix_room_id = _matrix_room_id or (_db_settings.MATRIX_ROOM_ID or "")
+        except Exception:
+            pass
+
+    if not (_matrix_homeserver and _matrix_access_token and _matrix_room_id):
+        try:
             from config import settings as _settings
 
             _matrix_homeserver = _matrix_homeserver or (_settings.MATRIX_HOMESERVER or "").rstrip("/")
@@ -593,12 +603,11 @@ def send_test_telegram_alert() -> bool:
 
 
 def send_test_matrix_alert() -> bool:
-    """Отправляет тестовый алерт только в Matrix c action-кнопками (как в Telegram)."""
-    message = "🧪 Тест Matrix-доставки: канал работает."
-    buttons = [
-        {"label": "📊 Открыть дашборд", "url": "https://github.com/sukhanovai/monitoring"},
-        {"label": "🤖 Открыть Telegram-бота", "url": "https://t.me"},
-    ]
-    result = _send_matrix_alert(message, buttons=buttons)
+    """Отправляет тестовый алерт только в Matrix."""
+    message = (
+        "🧪 Тест Matrix-доставки: канал работает.\n\n"
+        "Команды: /start, /help, /status, /report, /alerts, /settings"
+    )
+    result = _send_matrix_alert(message)
     debug_log(f"Тест Matrix-доставки: {'успех' if result else 'ошибка'}")
     return result
