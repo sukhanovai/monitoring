@@ -1,8 +1,26 @@
+## [8.59.12] - 2026-05-13
+- RU: Уточнена документация по bootstrap Matrix-бота: явно разделены `--admin-token` (админский токен Synapse) и обычный `MATRIX_ACCESS_TOKEN` бота/пользователя из настроек.
+- EN: Clarified Matrix bot bootstrap docs: explicitly distinguished `--admin-token` (Synapse admin token) from the regular bot/user `MATRIX_ACCESS_TOKEN` used in settings.
+- RU: Добавлены пояснения по `--password`: это новый пароль создаваемого bot-user, нужен для login и получения `MATRIX_ACCESS_TOKEN`.
+- EN: Added `--password` explanation: it is a new password for the created bot user and is required for login/access-token retrieval.
+- RU: SemVer patch-бамп до `8.59.12`; синхронизированы текущие упоминания версии в runtime/config/docs/Android.
+- EN: SemVer patch bump to `8.59.12`; synchronized current version mentions across runtime/config/docs/Android.
+- RU: Обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.59.12` и `ANDROID_VERSION_CODE=728`.
+- EN: Updated Android metadata to `ANDROID_VERSION_NAME=8.59.12` and `ANDROID_VERSION_CODE=728`.
+
+## [8.59.11] - 2026-05-13
+- RU: Добавлен скрипт `scripts/setup_matrix_bot.py` для первичной установки Matrix-бота на Synapse: создание пользователя через Admin API, логин, получение `access_token` и join в указанную комнату.
+- EN: Added `scripts/setup_matrix_bot.py` bootstrap script for initial Matrix bot setup on Synapse: user creation via Admin API, login, `access_token` retrieval, and joining a target room.
+- RU: SemVer patch-бамп до `8.59.11`; синхронизированы текущие упоминания версии в runtime/config/docs/Android.
+- EN: SemVer patch bump to `8.59.11`; synchronized current version mentions across runtime/config/docs/Android.
+- RU: Обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.59.12` и `ANDROID_VERSION_CODE=727`.
+- EN: Updated Android metadata to `ANDROID_VERSION_NAME=8.59.12` and `ANDROID_VERSION_CODE=727`.
+
 ## [8.59.10] - 2026-05-13
 - RU: Выполнен SemVer patch-бамп до `8.59.10`; выровнены разъехавшиеся упоминания версии во всех рабочих файлах проекта (runtime/config/docs/Android).
 - EN: Performed a SemVer patch bump to `8.59.10`; aligned drifted version mentions across all working project files (runtime/config/docs/Android).
-- RU: Обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.59.10` и `ANDROID_VERSION_CODE=726`.
-- EN: Updated Android metadata to `ANDROID_VERSION_NAME=8.59.10` and `ANDROID_VERSION_CODE=726`.
+- RU: Обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.59.12` и `ANDROID_VERSION_CODE=726`.
+- EN: Updated Android metadata to `ANDROID_VERSION_NAME=8.59.12` and `ANDROID_VERSION_CODE=726`.
 
 ## [8.59.9] - 2026-05-13
 - RU: Исправлена синтаксическая ошибка в Matrix payload builder: формирование `formatted_body` вынесено в отдельную переменную, чтобы устранить падение сервиса с `SyntaxError: f-string: expecting '\}'` при старте.

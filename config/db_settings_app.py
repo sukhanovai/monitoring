@@ -5,7 +5,7 @@ Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Database Settings Manager
 Система мониторинга серверов
-Версия: 8.59.10
+Версия: 8.59.12
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Менеджер настроек БД
