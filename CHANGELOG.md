@@ -1,3 +1,12 @@
+## [8.60.5] - 2026-05-13
+
+- RU: Исправлен приоритет конфигурации Matrix-канала в `lib/alerts.py`: теперь при отправке алертов сначала подгружаются значения из `config.db_settings` (БД настроек), и только при их отсутствии применяется fallback к `config.settings`.
+- EN: Fixed Matrix channel configuration priority in `lib/alerts.py`: alert delivery now loads values from `config.db_settings` (settings DB) first, and falls back to `config.settings` only when DB values are absent.
+- RU: Обновлено тестовое Matrix-сообщение: убраны кнопки «Открыть дашборд/Telegram-бота», вместо них добавлена краткая подсказка по командам (`/start`, `/help`, `/status`, `/report`, `/alerts`, `/settings`).
+- EN: Updated the test Matrix message: removed the “Open dashboard/Telegram bot” buttons and added a compact commands hint (`/start`, `/help`, `/status`, `/report`, `/alerts`, `/settings`).
+- RU: Выполнен SemVer patch-бамп до `8.60.5`; синхронизированы рабочие упоминания версии и обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.60.5` и `ANDROID_VERSION_CODE=738`.
+- EN: Performed a SemVer patch bump to `8.60.5`; synchronized active version mentions and updated Android metadata to `ANDROID_VERSION_NAME=8.60.5` and `ANDROID_VERSION_CODE=738`.
+
 ## [8.60.4] - 2026-05-13
 
 - EN: Fixed Matrix alert initialization in the main startup flow: `lib/alerts.py` now performs a safe fallback to `config.settings` when Matrix globals are empty, reducing false "channel not configured" skips caused by late initialization order.
