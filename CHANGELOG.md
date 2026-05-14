@@ -1,9 +1,9 @@
-## [8.61.26] - 2026-05-14
+## [8.61.27] - 2026-05-14
 
-- RU: Исправлена обработка self-сообщений Matrix command bot: извлечение команды `!` теперь выполняется до фильтра echo, поэтому команды вида «текст + !help» от аккаунта бота больше не отбрасываются как не-командные.
-- EN: Fixed Matrix command bot self-message handling: `!` command extraction now runs before echo filtering, so messages like "text + !help" from the bot account are no longer discarded as non-commands.
-- RU: Выполнен SemVer patch-бамп до `8.61.26`; синхронизированы все актуальные упоминания версии проекта в исходниках и конфигурации, Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.61.26` и `ANDROID_VERSION_CODE=758`.
-- EN: Performed a SemVer patch bump to `8.61.26`; synchronized all active project version mentions across source/config files, and updated Android metadata to `ANDROID_VERSION_NAME=8.61.26` and `ANDROID_VERSION_CODE=758`.
+- RU: Исправлено зацикливание Matrix self-command на сообщениях меню: для echo-событий от самого бота inline-поиск команд отключён, поэтому строки вида «!start или !menu — открыть меню команд» больше не запускают повторную обработку.
+- EN: Fixed Matrix self-command looping on menu messages: inline command extraction is now disabled for bot echo events, so lines like "!start or !menu — open command menu" no longer trigger recursive processing.
+- RU: Выполнен SemVer patch-бамп до `8.61.27`; синхронизированы все актуальные упоминания версии проекта в исходниках и конфигурации, Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.61.27` и `ANDROID_VERSION_CODE=759`.
+- EN: Performed a SemVer patch bump to `8.61.27`; synchronized all active project version mentions across source/config files, and updated Android metadata to `ANDROID_VERSION_NAME=8.61.27` and `ANDROID_VERSION_CODE=759`.
 
 ## [8.61.24] - 2026-05-14
 

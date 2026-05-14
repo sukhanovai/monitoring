@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.61.26
+Server Monitoring System v8.61.27
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit).
 Система мониторинга серверов
-Версия: 8.61.26
+Версия: 8.61.27
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит).
@@ -175,7 +175,7 @@ class MatrixCommandBot:
             return command, "🏓 pong"
         return command or "unknown", "ℹ️ Неизвестная команда. Напиши !menu для списка команд."
 
-    def _extract_command(self, raw_body: str) -> str:
+    def _extract_command(self, raw_body: str, *, allow_inline: bool = True) -> str:
         body = (raw_body or "").replace("！", "!").strip()
         if not body:
             return ""
@@ -189,9 +189,10 @@ class MatrixCommandBot:
                 continue
             if clean.startswith("!"):
                 return clean
-            inline_command = re.search(r"(^|\s)(![a-z0-9_]+(?:\s+[^\n]+)?)", clean, flags=re.IGNORECASE)
-            if inline_command:
-                return inline_command.group(2).strip()
+            if allow_inline:
+                inline_command = re.search(r"(^|\s)(![a-z0-9_]+(?:\s+[^\n]+)?)", clean, flags=re.IGNORECASE)
+                if inline_command:
+                    return inline_command.group(2).strip()
 
         return ""
 
@@ -200,7 +201,7 @@ class MatrixCommandBot:
         raw_body = getattr(event, "body", "") or ""
 
         if sender == getattr(self.client, "user_id", None):
-            own_command = self._extract_command(raw_body)
+            own_command = self._extract_command(raw_body, allow_inline=False)
             if not own_command.startswith("!"):
                 debug_log(f"ℹ️ Matrix событие проигнорировано: echo от самого бота (room={room_id})")
                 return True
