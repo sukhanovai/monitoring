@@ -1,3 +1,9 @@
+## [8.61.22] - 2026-05-14
+- RU: Исправлен зацикленный echo в Matrix command-bot: исходящие сообщения бота теперь не повторно маршрутизируются как self-command, если текст не начинается с явной команды `!`.
+- EN: Fixed looped echo in Matrix command-bot: bot outbound messages are no longer re-routed as self-commands unless the text explicitly starts with a `!` command.
+- RU: Выполнен SemVer patch-бамп до `8.61.22`; синхронизированы актуальные упоминания версии проекта и Android-метаданные (`ANDROID_VERSION_NAME=8.61.22`, `ANDROID_VERSION_CODE=754`).
+- EN: Performed a SemVer patch bump to `8.61.22`; synchronized active project version mentions and Android metadata (`ANDROID_VERSION_NAME=8.61.22`, `ANDROID_VERSION_CODE=754`).
+
 ## [8.61.21] - 2026-05-14
 
 - RU: Исправлен разбор Matrix-команд в сообщениях с префиксом/упоминанием: регулярное выражение для inline-команд (`!help`, `!status` и т.д.) теперь использует корректные escape-последовательности и реально находит команду в тексте, а не пропускает её.

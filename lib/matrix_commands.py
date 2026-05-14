@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.61.21
+Server Monitoring System v8.61.22
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit).
 Система мониторинга серверов
-Версия: 8.61.21
+Версия: 8.61.22
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит).
@@ -199,10 +199,16 @@ class MatrixCommandBot:
         raw_body = getattr(event, "body", "") or ""
 
         if sender == getattr(self.client, "user_id", None):
+            normalized_body = (raw_body or "").replace("！", "!").lstrip()
+            if not normalized_body.startswith("!"):
+                debug_log(f"ℹ️ Matrix событие проигнорировано: echo от самого бота (room={room_id})")
+                return True
+
             own_command = self._extract_command(raw_body)
             if not own_command.startswith("!"):
                 debug_log(f"ℹ️ Matrix событие проигнорировано: echo от самого бота (room={room_id})")
                 return True
+
             debug_log(
                 f"ℹ️ Matrix self-command принят к обработке (room={room_id}, command='{own_command[:80]}')"
             )
