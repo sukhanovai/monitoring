@@ -236,6 +236,11 @@ class MatrixCommandBot:
             )
             return
 
+        info_log(
+            "📩 Matrix команда получена: "
+            f"room={room_id}, sender={sender}, command={body}"
+        )
+
         if not self.acl.allows(sender, room_id):
             self._audit(sender, room_id, body, "denied")
             await self._send_text(room_id, "⛔ Доступ запрещён для этой комнаты/пользователя")
@@ -253,8 +258,19 @@ class MatrixCommandBot:
 
     async def run_forever(self) -> None:
         if not self.enabled:
-            debug_log("ℹ️ Matrix command bot отключён: не хватает MATRIX_* параметров")
+            debug_log(
+                "ℹ️ Matrix command bot отключён: не хватает MATRIX_* параметров "
+                f"(homeserver={'ok' if self.homeserver else 'empty'}, "
+                f"token={'ok' if self.access_token else 'empty'}, "
+                f"room_id={'ok' if self.default_room_id else 'empty'})"
+            )
             return
+
+        info_log(
+            "🚀 Matrix command bot запущен: "
+            f"homeserver={self.homeserver}, default_room={self.default_room_id or 'empty'}, "
+            f"allowed_users={len(self.acl.whitelist_user_ids)}, allowed_rooms={len(self.acl.allowed_room_ids)}"
+        )
 
         if not self._started:
             try:

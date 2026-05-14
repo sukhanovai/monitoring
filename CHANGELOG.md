@@ -1,3 +1,10 @@
+## [8.61.16] - 2026-05-14
+
+- RU: Добавлено явное логирование запуска Matrix command sync с параметрами ACL и входящих команд (`room`, `sender`, `command`) для быстрой диагностики, когда в логах не видно реакции на сообщения комнаты.
+- EN: Added explicit Matrix command sync startup logging with ACL parameters and incoming command logs (`room`, `sender`, `command`) for fast diagnostics when room message reactions are not visible in logs.
+- RU: Выполнен SemVer patch-бамп до `8.61.16`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.61.16` и `ANDROID_VERSION_CODE=748`, ссылка prerelease APK в README синхронизирована.
+- EN: Performed a SemVer patch bump to `8.61.16`; Android metadata updated to `ANDROID_VERSION_NAME=8.61.16` and `ANDROID_VERSION_CODE=748`, and the README prerelease APK link was synchronized.
+
 ## [8.61.15] - 2026-05-14
 
 - RU: Синхронизированы актуальные упоминания версии проекта во всех рабочих файлах; значения приведены к `8.61.15`.
