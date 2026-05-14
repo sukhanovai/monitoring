@@ -269,7 +269,7 @@ class MatrixCommandBot:
         info_log(
             "🚀 Matrix command bot запущен: "
             f"homeserver={self.homeserver}, default_room={self.default_room_id or 'empty'}, "
-            f"allowed_users={len(self.acl.whitelist_user_ids)}, allowed_rooms={len(self.acl.allowed_room_ids)}"
+            f"allowed_users={len(self.acl.allowed_users)}, allowed_rooms={len(self.acl.allowed_room_ids)}"
         )
 
         if not self._started:
