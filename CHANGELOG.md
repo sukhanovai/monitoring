@@ -1,9 +1,11 @@
-## [8.61.20] - 2026-05-14
+## [8.61.21] - 2026-05-14
 
-- RU: Выполнен SemVer patch-бамп до `8.61.20`; синхронизированы все текущие упоминания версии проекта во всех файлах, включая runtime-модули, Android-клиент и документацию.
-- EN: Performed a SemVer patch bump to `8.61.20`; synchronized all current project version mentions across runtime modules, Android client, and documentation.
-- RU: Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.61.20` и `ANDROID_VERSION_CODE=752`; ссылки на prerelease APK в README и Android-документации приведены к текущей версии.
-- EN: Android metadata was updated to `ANDROID_VERSION_NAME=8.61.20` and `ANDROID_VERSION_CODE=752`; prerelease APK links in README and Android docs were aligned to the current version.
+- RU: Исправлен разбор Matrix-команд в сообщениях с префиксом/упоминанием: регулярное выражение для inline-команд (`!help`, `!status` и т.д.) теперь использует корректные escape-последовательности и реально находит команду в тексте, а не пропускает её.
+- EN: Fixed Matrix command parsing for prefixed/mention messages: the inline command regex (`!help`, `!status`, etc.) now uses correct escape sequences and actually matches commands in message text instead of skipping them.
+- RU: Добавлена нормализация символа `！` → `!` при извлечении команды из Matrix-сообщения, чтобы команды с «широким» восклицательным знаком тоже отрабатывали.
+- EN: Added normalization `！` → `!` during Matrix command extraction so commands sent with the fullwidth exclamation mark are processed as expected.
+- RU: Выполнен SemVer patch-бамп до `8.61.21`; синхронизированы все актуальные упоминания версии проекта и Android-метаданные (`ANDROID_VERSION_NAME=8.61.21`, `ANDROID_VERSION_CODE=753`).
+- EN: Performed a SemVer patch bump to `8.61.21`; synchronized all active project version mentions and Android metadata (`ANDROID_VERSION_NAME=8.61.21`, `ANDROID_VERSION_CODE=753`).
 
 ## [8.61.19] - 2026-05-15
 
