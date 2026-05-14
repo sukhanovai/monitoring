@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.61.20
+Server Monitoring System v8.61.21
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit).
 Система мониторинга серверов
-Версия: 8.61.20
+Версия: 8.61.21
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит).
@@ -175,7 +175,7 @@ class MatrixCommandBot:
         return command or "unknown", "ℹ️ Неизвестная команда. Напиши !menu для списка команд."
 
     def _extract_command(self, raw_body: str) -> str:
-        body = (raw_body or "").strip()
+        body = (raw_body or "").replace("！", "!").strip()
         if not body:
             return ""
 
@@ -188,7 +188,7 @@ class MatrixCommandBot:
                 continue
             if clean.startswith("!"):
                 return clean
-            inline_command = re.search(r"(^|\\s)(![a-z0-9_]+(?:\\s+[^\\n]+)?)", clean, flags=re.IGNORECASE)
+            inline_command = re.search(r"(^|\s)(![a-z0-9_]+(?:\s+[^\n]+)?)", clean, flags=re.IGNORECASE)
             if inline_command:
                 return inline_command.group(2).strip()
 
