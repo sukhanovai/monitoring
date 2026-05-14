@@ -1,3 +1,10 @@
+## [8.61.13] - 2026-05-14
+
+- RU: Синхронизированы актуальные упоминания версии проекта во всех рабочих файлах; значения приведены к `8.61.13`.
+- EN: Synchronized current project version mentions across all active files; values were aligned to `8.61.13`.
+- RU: Выполнен SemVer patch-бамп до `8.61.13`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.61.13` и `ANDROID_VERSION_CODE=745`.
+- EN: Performed a SemVer patch bump to `8.61.13`; Android metadata updated to `ANDROID_VERSION_NAME=8.61.13` and `ANDROID_VERSION_CODE=745`.
+
 ## [8.61.12] - 2026-05-13
 
 - RU: Исправлена обработка Matrix-команд из чата с ботом при использовании того же user_id: self-команды (например, `!help`) теперь обрабатываются, а обычные echo-сообщения по-прежнему игнорируются.
