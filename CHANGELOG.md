@@ -1,7 +1,9 @@
-## [8.61.25] - 2026-05-14
+## [8.61.26] - 2026-05-14
 
-- RU: Выполнен SemVer patch-бамп до `8.61.25`; синхронизированы все актуальные упоминания версии проекта в исходниках и конфигурации, Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.61.25` и `ANDROID_VERSION_CODE=757`.
-- EN: Performed a SemVer patch bump to `8.61.25`; synchronized all active project version mentions across source/config files, and updated Android metadata to `ANDROID_VERSION_NAME=8.61.25` and `ANDROID_VERSION_CODE=757`.
+- RU: Исправлена обработка self-сообщений Matrix command bot: извлечение команды `!` теперь выполняется до фильтра echo, поэтому команды вида «текст + !help» от аккаунта бота больше не отбрасываются как не-командные.
+- EN: Fixed Matrix command bot self-message handling: `!` command extraction now runs before echo filtering, so messages like "text + !help" from the bot account are no longer discarded as non-commands.
+- RU: Выполнен SemVer patch-бамп до `8.61.26`; синхронизированы все актуальные упоминания версии проекта в исходниках и конфигурации, Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.61.26` и `ANDROID_VERSION_CODE=758`.
+- EN: Performed a SemVer patch bump to `8.61.26`; synchronized all active project version mentions across source/config files, and updated Android metadata to `ANDROID_VERSION_NAME=8.61.26` and `ANDROID_VERSION_CODE=758`.
 
 ## [8.61.24] - 2026-05-14
 
