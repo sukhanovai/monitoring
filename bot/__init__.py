@@ -1,11 +1,11 @@
 """
 /bot/__init__.py
-Server Monitoring System v8.61.21
+Server Monitoring System v8.61.25
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Telegram bot module
 Система мониторинга серверов
-Версия: 8.61.21
+Версия: 8.61.25
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль Telegram-бота
