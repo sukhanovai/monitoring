@@ -1,3 +1,8 @@
+## [8.61.24] - 2026-05-14
+
+- RU: Выполнен SemVer patch-бамп до `8.61.24`; синхронизированы актуальные упоминания версии проекта и Android-метаданные (`ANDROID_VERSION_NAME=8.61.24`, `ANDROID_VERSION_CODE=756`).
+- EN: Performed a SemVer patch bump to `8.61.24`; synchronized active project version mentions and Android metadata (`ANDROID_VERSION_NAME=8.61.24`, `ANDROID_VERSION_CODE=756`).
+
 ## [8.61.23] - 2026-05-14
 
 ### Fixed
