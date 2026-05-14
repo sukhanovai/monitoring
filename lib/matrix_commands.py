@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.61.14
+Server Monitoring System v8.61.15
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit).
 Система мониторинга серверов
-Версия: 8.61.14
+Версия: 8.61.15
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит).
@@ -16,6 +16,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import re
 from typing import Dict, List, Optional, Set, Tuple
 import sys
 
@@ -187,6 +188,9 @@ class MatrixCommandBot:
                 continue
             if clean.startswith("!"):
                 return clean
+            inline_command = re.search(r"(^|\\s)(![a-z0-9_]+(?:\\s+[^\\n]+)?)", clean, flags=re.IGNORECASE)
+            if inline_command:
+                return inline_command.group(2).strip()
 
         return ""
 

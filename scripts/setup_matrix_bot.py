@@ -1,6 +1,6 @@
 """
 /scripts/setup_matrix_bot.py
-Server Monitoring System v8.61.14
+Server Monitoring System v8.61.15
 Утилита первичной настройки Matrix-бота для уведомлений.
 """
 
