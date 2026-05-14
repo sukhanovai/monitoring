@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.61.27
+Server Monitoring System v8.61.28
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit).
 Система мониторинга серверов
-Версия: 8.61.27
+Версия: 8.61.28
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит).
@@ -181,6 +181,8 @@ class MatrixCommandBot:
             return ""
 
         if body.startswith("!"):
+            if len(re.findall(r"![a-z0-9_]+", body, flags=re.IGNORECASE)) > 1:
+                return ""
             return body
 
         for line in body.splitlines():
