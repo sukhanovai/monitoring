@@ -1,3 +1,8 @@
+## [8.61.17] - 2026-05-14
+
+- RU: Выполнен SemVer patch-бамп до `8.61.17`; синхронизированы все актуальные упоминания версии проекта в runtime/config/Android/README, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.61.17` и `ANDROID_VERSION_CODE=749`.
+- EN: Performed a SemVer patch bump to `8.61.17`; synchronized all active project version mentions across runtime/config/Android/README, and updated Android metadata to `ANDROID_VERSION_NAME=8.61.17` and `ANDROID_VERSION_CODE=749`.
+
 ## [8.61.16] - 2026-05-14
 
 - RU: Добавлено явное логирование запуска Matrix command sync с параметрами ACL и входящих команд (`room`, `sender`, `command`) для быстрой диагностики, когда в логах не видно реакции на сообщения комнаты.
