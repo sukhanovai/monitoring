@@ -1,11 +1,11 @@
 """
 /extensions/zfs_pool_free_space.py
-Server Monitoring System v8.61.15
+Server Monitoring System v8.61.18
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 ZFS pool free space extension over SSH
 Система мониторинга серверов
-Версия: 8.61.15
+Версия: 8.61.18
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Расширение мониторинга свободного места ZFS-пулов по SSH
