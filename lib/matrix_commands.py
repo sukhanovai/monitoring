@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.61.22
+Server Monitoring System v8.61.23
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit).
 Система мониторинга серверов
-Версия: 8.61.22
+Версия: 8.61.23
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит).
@@ -69,6 +69,7 @@ class MatrixCommandBot:
         self.client.access_token = self.access_token
         self.client.add_event_callback(self._on_message, RoomMessageText)
         self.client.add_event_callback(self._on_message, RoomMessageNotice)
+        self.client.add_event_callback(self._on_any_message, RoomMessage)
         self._started = False
         self._ignored_events_count = 0
 
@@ -224,6 +225,22 @@ class MatrixCommandBot:
             return True
 
         return False
+
+
+    async def _on_any_message(self, room: MatrixRoom, event: RoomMessage) -> None:
+        """Диагностический callback для любых m.room.message-событий."""
+        event_type = event.__class__.__name__
+        sender = getattr(event, "sender", "") or "unknown"
+        room_id = getattr(room, "room_id", "unknown")
+        body = (getattr(event, "body", "") or "").replace("\n", "\\n")[:120]
+
+        if isinstance(event, (RoomMessageText, RoomMessageNotice)):
+            return
+
+        debug_log(
+            "ℹ️ Matrix событие получено (не text/notice): "
+            f"type={event_type}, room={room_id}, sender={sender}, body='{body}'"
+        )
 
     async def _on_message(self, room: MatrixRoom, event: RoomMessage) -> None:
         sender = event.sender or ""
