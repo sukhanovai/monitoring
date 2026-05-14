@@ -1,13 +1,15 @@
-## [8.61.14] - 2026-05-14
+## [8.61.15] - 2026-05-14
 
-- RU: Синхронизированы актуальные упоминания версии проекта во всех рабочих файлах; значения приведены к `8.61.14`.
-- EN: Synchronized current project version mentions across all active files; values were aligned to `8.61.14`.
+- RU: Синхронизированы актуальные упоминания версии проекта во всех рабочих файлах; значения приведены к `8.61.15`.
+- EN: Synchronized current project version mentions across all active files; values were aligned to `8.61.15`.
 - RU: Добавлены диагностические Matrix-команды `!diag` и `!ping`, а также расширена справка `!help/!menu` для оперативной проверки маршрутизации команд и ACL.
 - EN: Added diagnostic Matrix commands `!diag` and `!ping`, and expanded `!help/!menu` guidance for quick command-routing and ACL checks.
+- RU: Исправлен парсинг Matrix-команд в bridged/префиксных сообщениях: `!diag` и другие `!`-команды теперь извлекаются даже если команда не в начале строки, что устраняет ложное игнорирование как echo от бота.
+- EN: Fixed Matrix command parsing for bridged/prefixed messages: `!diag` and other `!` commands are now extracted even when not at the start of a line, preventing false self-echo ignores.
 - RU: Тестовое Matrix-сообщение из Telegram-бота обновлено: теперь показывает корректные Matrix-команды с префиксом `!` вместо Telegram-style `/...`.
 - EN: Updated Matrix test message from the Telegram bot: it now shows correct Matrix commands with `!` prefix instead of Telegram-style `/...`.
-- RU: Выполнен SemVer patch-бамп до `8.61.14`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.61.14` и `ANDROID_VERSION_CODE=746`.
-- EN: Performed a SemVer patch bump to `8.61.14`; Android metadata updated to `ANDROID_VERSION_NAME=8.61.14` and `ANDROID_VERSION_CODE=746`.
+- RU: Выполнен SemVer patch-бамп до `8.61.15`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.61.15` и `ANDROID_VERSION_CODE=747`.
+- EN: Performed a SemVer patch bump to `8.61.15`; Android metadata updated to `ANDROID_VERSION_NAME=8.61.15` and `ANDROID_VERSION_CODE=747`.
 
 ## [8.61.12] - 2026-05-13
 
