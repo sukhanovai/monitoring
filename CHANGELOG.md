@@ -1,9 +1,13 @@
-## [8.61.13] - 2026-05-14
+## [8.61.14] - 2026-05-14
 
-- RU: Синхронизированы актуальные упоминания версии проекта во всех рабочих файлах; значения приведены к `8.61.13`.
-- EN: Synchronized current project version mentions across all active files; values were aligned to `8.61.13`.
-- RU: Выполнен SemVer patch-бамп до `8.61.13`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.61.13` и `ANDROID_VERSION_CODE=745`.
-- EN: Performed a SemVer patch bump to `8.61.13`; Android metadata updated to `ANDROID_VERSION_NAME=8.61.13` and `ANDROID_VERSION_CODE=745`.
+- RU: Синхронизированы актуальные упоминания версии проекта во всех рабочих файлах; значения приведены к `8.61.14`.
+- EN: Synchronized current project version mentions across all active files; values were aligned to `8.61.14`.
+- RU: Добавлены диагностические Matrix-команды `!diag` и `!ping`, а также расширена справка `!help/!menu` для оперативной проверки маршрутизации команд и ACL.
+- EN: Added diagnostic Matrix commands `!diag` and `!ping`, and expanded `!help/!menu` guidance for quick command-routing and ACL checks.
+- RU: Тестовое Matrix-сообщение из Telegram-бота обновлено: теперь показывает корректные Matrix-команды с префиксом `!` вместо Telegram-style `/...`.
+- EN: Updated Matrix test message from the Telegram bot: it now shows correct Matrix commands with `!` prefix instead of Telegram-style `/...`.
+- RU: Выполнен SemVer patch-бамп до `8.61.14`; Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.61.14` и `ANDROID_VERSION_CODE=746`.
+- EN: Performed a SemVer patch bump to `8.61.14`; Android metadata updated to `ANDROID_VERSION_NAME=8.61.14` and `ANDROID_VERSION_CODE=746`.
 
 ## [8.61.12] - 2026-05-13
 

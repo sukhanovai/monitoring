@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.61.13
+Server Monitoring System v8.61.14
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit).
 Система мониторинга серверов
-Версия: 8.61.13
+Версия: 8.61.14
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит).
@@ -16,7 +16,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Tuple
 import sys
 
 try:
@@ -130,26 +130,48 @@ class MatrixCommandBot:
         return (
             "🤖 Управление мониторингом (как в Telegram):\n"
             "• !start или !menu — открыть меню команд\n"
+            "• !help — краткая справка по Matrix-командам\n"
             "• !status — текущий статус серверов\n"
             "• !report — сводный отчёт\n"
             "• !settings — справка по настройкам\n"
             "• !settings get <KEY> — значение настройки\n\n"
+            "• !diag — диагностика Matrix command-bot\n"
+            "• !ping — проверка отклика command-bot\n\n"
             "Пример: !settings get CHECK_INTERVAL"
         )
 
-    async def _route_command(self, command_text: str) -> str:
+    def _format_diag(self, sender: str, room_id: str, command_text: str) -> str:
+        acl_allowed = self.acl.allows(sender, room_id)
+        bot_user_id = getattr(self.client, "user_id", "") or "unknown"
+        return (
+            "🩺 Matrix диагностика:\n"
+            f"• bot_user_id: {bot_user_id}\n"
+            f"• sender: {sender or 'unknown'}\n"
+            f"• room_id: {room_id or 'unknown'}\n"
+            f"• acl_allowed: {'yes' if acl_allowed else 'no'}\n"
+            f"• allowed_users: {len(self.acl.allowed_users)}\n"
+            f"• allowed_rooms: {len(self.acl.allowed_room_ids)}\n"
+            f"• homeserver: {self.homeserver or 'empty'}\n"
+            f"• command: {command_text or 'empty'}"
+        )
+
+    async def _route_command(self, command_text: str, sender: str, room_id: str) -> Tuple[str, str]:
         normalized = command_text.strip()
         command = normalized.split()[0].lower() if normalized else ""
 
         if command in {"!start", "!menu", "!help"}:
-            return self._control_menu_text()
+            return command, self._control_menu_text()
         if command == "!status":
-            return await self._handle_status()
+            return command, await self._handle_status()
         if command == "!report":
-            return await self._handle_report()
+            return command, await self._handle_report()
         if command == "!settings":
-            return await self._handle_settings(normalized)
-        return "ℹ️ Неизвестная команда. Напиши !menu для списка команд."
+            return command, await self._handle_settings(normalized)
+        if command == "!diag":
+            return command, self._format_diag(sender=sender, room_id=room_id, command_text=normalized)
+        if command == "!ping":
+            return command, "🏓 pong"
+        return command or "unknown", "ℹ️ Неизвестная команда. Напиши !menu для списка команд."
 
     def _extract_command(self, raw_body: str) -> str:
         body = (raw_body or "").strip()
@@ -215,8 +237,8 @@ class MatrixCommandBot:
             await self._send_text(room_id, "⛔ Доступ запрещён для этой комнаты/пользователя")
             return
 
-        self._audit(sender, room_id, body, "accepted")
-        response_text = await self._route_command(body)
+        routed_command, response_text = await self._route_command(body, sender=sender, room_id=room_id)
+        self._audit(sender, room_id, routed_command, "accepted")
         try:
             await self._send_text(room_id, response_text)
         except Exception as exc:

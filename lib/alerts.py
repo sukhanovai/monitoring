@@ -1,11 +1,11 @@
 """
 /lib/alerts.py
-Server Monitoring System v8.61.13
+Server Monitoring System v8.61.14
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Unified alert system
 Система мониторинга серверов
-Версия: 8.61.13
+Версия: 8.61.14
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единая система оповещений
@@ -606,7 +606,7 @@ def send_test_matrix_alert() -> bool:
     """Отправляет тестовый алерт только в Matrix."""
     message = (
         "🧪 Тест Matrix-доставки: канал работает.\n\n"
-        "Команды: /start, /help, /status, /report, /alerts, /settings"
+        "Matrix-команды: !menu, !help, !status, !report, !settings, !diag, !ping"
     )
     result = _send_matrix_alert(message)
     debug_log(f"Тест Matrix-доставки: {'успех' if result else 'ошибка'}")
