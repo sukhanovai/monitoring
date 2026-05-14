@@ -1,3 +1,13 @@
+## [8.61.23] - 2026-05-14
+
+### Fixed
+- RU: Для Matrix command-bot добавлен диагностический callback на все `m.room.message`-события: теперь в логах видно события, которые не являются `RoomMessageText/RoomMessageNotice`, что помогает разбирать кейс «команды отправляются, но бот молчит».
+- EN: Added a diagnostic callback for all Matrix `m.room.message` events in the command bot: logs now show non-`RoomMessageText/RoomMessageNotice` events to troubleshoot cases where commands are sent but the bot stays silent.
+
+### Changed
+- RU: Выполнен SemVer patch-бамп до `8.61.23`; синхронизированы актуальные упоминания версии проекта и Android-метаданные (`ANDROID_VERSION_NAME=8.61.23`, `ANDROID_VERSION_CODE=755`).
+- EN: Performed a SemVer patch bump to `8.61.23`; synchronized active project version mentions and Android metadata (`ANDROID_VERSION_NAME=8.61.23`, `ANDROID_VERSION_CODE=755`).
+
 ## [8.61.22] - 2026-05-14
 - RU: Исправлен зацикленный echo в Matrix command-bot: исходящие сообщения бота теперь не повторно маршрутизируются как self-command, если текст не начинается с явной команды `!`.
 - EN: Fixed looped echo in Matrix command-bot: bot outbound messages are no longer re-routed as self-commands unless the text explicitly starts with a `!` command.
