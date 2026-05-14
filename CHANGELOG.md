@@ -1,3 +1,10 @@
+## [8.61.12] - 2026-05-13
+
+- RU: Исправлена обработка Matrix-команд из чата с ботом при использовании того же user_id: self-команды (например, `!help`) теперь обрабатываются, а обычные echo-сообщения по-прежнему игнорируются.
+- EN: Fixed Matrix command handling in bot chat when using the same user_id: self-commands (for example, `!help`) are now processed, while regular echo messages are still ignored.
+- RU: Выполнен SemVer patch-бамп до `8.61.12`; синхронизированы упоминания версии в runtime/config/Android, Android-метаданные обновлены до `ANDROID_VERSION_NAME=8.61.12` и `ANDROID_VERSION_CODE=744`.
+- EN: Performed a SemVer patch bump to `8.61.12`; synchronized version mentions across runtime/config/Android, and updated Android metadata to `ANDROID_VERSION_NAME=8.61.12` and `ANDROID_VERSION_CODE=744`.
+
 ## [8.61.11] - 2026-05-13
 
 - RU: Исправлена инициализация Matrix command-bot: на старте добавлен `whoami`, чтобы корректно определить `user_id` бота и перестать обрабатывать собственные служебные сообщения как внешние команды.

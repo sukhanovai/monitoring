@@ -170,11 +170,17 @@ class MatrixCommandBot:
 
     async def _should_ignore_event(self, event: RoomMessage, room_id: str) -> bool:
         sender = getattr(event, "sender", "") or ""
-        if sender == getattr(self.client, "user_id", None):
-            debug_log(f"ℹ️ Matrix событие проигнорировано: echo от самого бота (room={room_id})")
-            return True
-
         raw_body = getattr(event, "body", "") or ""
+
+        if sender == getattr(self.client, "user_id", None):
+            own_command = self._extract_command(raw_body)
+            if not own_command.startswith("!"):
+                debug_log(f"ℹ️ Matrix событие проигнорировано: echo от самого бота (room={room_id})")
+                return True
+            debug_log(
+                f"ℹ️ Matrix self-command принят к обработке (room={room_id}, command='{own_command[:80]}')"
+            )
+
         if "!" not in raw_body:
             self._ignored_events_count += 1
             if self._ignored_events_count <= 3 or self._ignored_events_count % 100 == 0:
