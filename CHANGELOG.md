@@ -1,3 +1,8 @@
+## [8.61.18] - 2026-05-14
+
+- RU: Выполнен SemVer patch-бамп до `8.61.18`; синхронизированы упоминания версии проекта во всех актуальных файлах, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.61.18` и `ANDROID_VERSION_CODE=750`, а также ссылки на prerelease APK в документации.
+- EN: Performed a SemVer patch bump to `8.61.18`; synchronized project version mentions across all active files, updated Android metadata to `ANDROID_VERSION_NAME=8.61.18` and `ANDROID_VERSION_CODE=750`, and refreshed prerelease APK links in docs.
+
 ## [8.61.17] - 2026-05-14
 
 - RU: Выполнен SemVer patch-бамп до `8.61.17`; синхронизированы все актуальные упоминания версии проекта в runtime/config/Android/README, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.61.17` и `ANDROID_VERSION_CODE=749`.
