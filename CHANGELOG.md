@@ -1,3 +1,10 @@
+## [8.61.19] - 2026-05-15
+
+- RU: Исправлен краш Matrix command bot при старте: в диагностическом логе ACL использовалось несуществующее поле `whitelist_user_ids`; заменено на актуальное `allowed_users`, из-за чего `AttributeError` больше не возникает.
+- EN: Fixed a startup crash in Matrix command bot: ACL diagnostics referenced non-existent `whitelist_user_ids`; switched to current `allowed_users`, preventing the `AttributeError`.
+- RU: Выполнен SemVer patch-бамп до `8.61.19`; синхронизированы упоминания версии проекта и Android-метаданные (`ANDROID_VERSION_NAME=8.61.19`, `ANDROID_VERSION_CODE=751`), обновлена ссылка prerelease APK в README.
+- EN: Performed a SemVer patch bump to `8.61.19`; synchronized project version mentions and Android metadata (`ANDROID_VERSION_NAME=8.61.19`, `ANDROID_VERSION_CODE=751`), and updated the prerelease APK link in README.
+
 ## [8.61.18] - 2026-05-14
 
 - RU: Выполнен SemVer patch-бамп до `8.61.18`; синхронизированы упоминания версии проекта во всех актуальных файлах, обновлены Android-метаданные до `ANDROID_VERSION_NAME=8.61.18` и `ANDROID_VERSION_CODE=750`, а также ссылки на prerelease APK в документации.
