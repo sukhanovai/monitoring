@@ -34,6 +34,11 @@ MATRIX_ACCESS_TOKEN = os.environ.get("MATRIX_ACCESS_TOKEN", "")
 MATRIX_ROOM_ID = os.environ.get("MATRIX_ROOM_ID", "")
 MATRIX_ALLOWED_USER_IDS = os.environ.get("MATRIX_ALLOWED_USER_IDS", "")
 MATRIX_ALLOWED_ROOM_IDS = os.environ.get("MATRIX_ALLOWED_ROOM_IDS", "")
+# E2EE для command-bot: логин по паролю даёт стабильный device_id и crypto-store,
+# без которых входящие из зашифрованных комнат не расшифровываются.
+MATRIX_BOT_USER_ID = os.environ.get("MATRIX_BOT_USER_ID", "")
+MATRIX_BOT_PASSWORD = os.environ.get("MATRIX_BOT_PASSWORD", "")
+MATRIX_DEVICE_NAME = os.environ.get("MATRIX_DEVICE_NAME", "monitoring-command-bot")
 ANDROID_APK_DOWNLOAD_URL = os.environ.get(
     "ANDROID_APK_DOWNLOAD_URL",
     "https://github.com/sukhanovai/monitoring/releases/latest",
@@ -49,6 +54,11 @@ LOG_DIR = BASE_DIR / "logs"
 
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+# Каталог persistent crypto-store matrix-nio (Olm/Megolm-ключи бота)
+MATRIX_STORE_PATH = os.environ.get(
+    "MATRIX_STORE_PATH", str(DATA_DIR / "matrix_store")
+)
 
 # === НАСТРОЙКИ ЛОГИРОВАНИЯ ===
 LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

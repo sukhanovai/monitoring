@@ -205,6 +205,9 @@ def load_all_settings() -> None:
     global BACKUP_PATTERNS, BACKUP_STATUS_MAP, DATABASE_CONFIG, ZFS_SERVERS
     global BACKUP_DATABASE_CONFIG, DATABASE_BACKUP_CONFIG
     global MATRIX_HOMESERVER, MATRIX_ACCESS_TOKEN, MATRIX_ROOM_ID
+    global MATRIX_ALLOWED_USER_IDS, MATRIX_ALLOWED_ROOM_IDS
+    global MATRIX_BOT_USER_ID, MATRIX_BOT_PASSWORD
+    global MATRIX_STORE_PATH, MATRIX_DEVICE_NAME
     
     if not USE_DB:
         debug_log("⚠️ Используются настройки по умолчанию (БД недоступна)")
@@ -324,6 +327,10 @@ def load_all_settings() -> None:
         MATRIX_ROOM_ID = get_setting('MATRIX_ROOM_ID', defaults.MATRIX_ROOM_ID)
         MATRIX_ALLOWED_USER_IDS = get_setting('MATRIX_ALLOWED_USER_IDS', defaults.MATRIX_ALLOWED_USER_IDS)
         MATRIX_ALLOWED_ROOM_IDS = get_setting('MATRIX_ALLOWED_ROOM_IDS', defaults.MATRIX_ALLOWED_ROOM_IDS)
+        MATRIX_BOT_USER_ID = get_setting('MATRIX_BOT_USER_ID', defaults.MATRIX_BOT_USER_ID)
+        MATRIX_BOT_PASSWORD = get_setting('MATRIX_BOT_PASSWORD', defaults.MATRIX_BOT_PASSWORD)
+        MATRIX_STORE_PATH = get_setting('MATRIX_STORE_PATH', defaults.MATRIX_STORE_PATH)
+        MATRIX_DEVICE_NAME = get_setting('MATRIX_DEVICE_NAME', defaults.MATRIX_DEVICE_NAME)
 
         # === КОНФИГУРАЦИЯ БЭКАПОВ ===
         PROXMOX_HOSTS = get_json_setting('PROXMOX_HOSTS', defaults.PROXMOX_HOSTS)
