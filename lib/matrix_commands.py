@@ -3,12 +3,12 @@
 Server Monitoring System v8.61.29
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
-Incoming commands from Matrix (sync + router + ACL + audit + reaction buttons).
+Incoming commands from Matrix (sync + router + ACL + audit + reaction buttons + E2EE).
 Система мониторинга серверов
 Версия: 8.61.29
 Автор: Александр Суханов (c)
 Лицензия: MIT
-Входящие команды из Matrix (sync + router + ACL + аудит + кнопки-реакции).
+Входящие команды из Matrix (sync + router + ACL + аудит + кнопки-реакции + E2EE).
 """
 
 from __future__ import annotations
@@ -17,6 +17,8 @@ import asyncio
 from collections import OrderedDict
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import json
+import os
 import re
 from typing import Dict, List, Optional, Set, Tuple
 import sys
@@ -24,6 +26,8 @@ import sys
 try:
     from nio import (
         AsyncClient,
+        AsyncClientConfig,
+        LoginResponse,
         MatrixRoom,
         RoomMessage,
         RoomMessageNotice,
@@ -32,6 +36,8 @@ try:
     _MATRIX_NIO_AVAILABLE = True
 except ImportError:
     AsyncClient = None  # type: ignore[assignment]
+    AsyncClientConfig = None  # type: ignore[assignment]
+    LoginResponse = object  # type: ignore[assignment]
     MatrixRoom = object  # type: ignore[assignment]
     RoomMessage = object  # type: ignore[assignment]
     RoomMessageNotice = object  # type: ignore[assignment]
@@ -51,6 +57,13 @@ try:
 except ImportError:
     UnknownEvent = object  # type: ignore[assignment]
     _MATRIX_UNKNOWN_EVENT_AVAILABLE = False
+
+try:
+    from nio import MegolmEvent  # type: ignore[attr-defined]
+    _MATRIX_MEGOLM_EVENT_AVAILABLE = True
+except ImportError:
+    MegolmEvent = object  # type: ignore[assignment]
+    _MATRIX_MEGOLM_EVENT_AVAILABLE = False
 
 from lib.logging import debug_log, info_log
 from core.task_router import (
@@ -91,7 +104,7 @@ class MatrixACL:
 
 
 class MatrixCommandBot:
-    """Простой long-polling Matrix-бот на /sync с кнопками-реакциями."""
+    """Long-polling Matrix-бот на /sync с кнопками-реакциями и E2EE."""
 
     def __init__(
         self,
@@ -100,23 +113,24 @@ class MatrixCommandBot:
         room_id: str,
         whitelist_user_ids: Optional[List[str]] = None,
         allowed_room_ids: Optional[List[str]] = None,
+        bot_user_id: str = "",
+        bot_password: str = "",
+        store_path: str = "",
+        device_name: str = "monitoring-command-bot",
     ) -> None:
         self.homeserver = (homeserver or "").rstrip("/")
         self.access_token = access_token or ""
         self.default_room_id = room_id or ""
+        self.bot_user_id = (bot_user_id or "").strip()
+        self.bot_password = bot_password or ""
+        self.store_path = (store_path or "").strip()
+        self.device_name = device_name or "monitoring-command-bot"
         self.acl = MatrixACL(
             allowed_users={i.strip() for i in (whitelist_user_ids or []) if i and i.strip()},
             allowed_room_ids={i.strip() for i in (allowed_room_ids or []) if i and i.strip()},
         )
-        self.client = AsyncClient(self.homeserver, user="")
-        self.client.access_token = self.access_token
-        self.client.add_event_callback(self._on_message, RoomMessageText)
-        self.client.add_event_callback(self._on_message, RoomMessageNotice)
-        self.client.add_event_callback(self._on_any_message, RoomMessage)
-        if _MATRIX_REACTION_EVENT_AVAILABLE:
-            self.client.add_event_callback(self._on_reaction, ReactionEvent)
-        if _MATRIX_UNKNOWN_EVENT_AVAILABLE:
-            self.client.add_event_callback(self._on_unknown_event, UnknownEvent)
+        self.client: Optional[AsyncClient] = None
+        self._e2e_enabled = False
         self._started = False
         self._ignored_events_count = 0
         # event_id меню-сообщений (для маппинга реакций на команды)
@@ -126,18 +140,167 @@ class MatrixCommandBot:
 
     @property
     def enabled(self) -> bool:
-        return bool(self.homeserver and self.access_token and self.default_room_id)
+        return bool(self.homeserver and self.default_room_id and (
+            self.access_token or (self.bot_user_id and self.bot_password)
+        ))
+
+    @property
+    def _credentials_file(self) -> str:
+        return os.path.join(self.store_path, "credentials.json")
 
     @staticmethod
     def _cap_ordered(store: "OrderedDict", max_items: int) -> None:
         while len(store) > max_items:
             store.popitem(last=False)
 
+    # ------------------------------------------------------------------
+    # Создание клиента: E2EE (login+store) или legacy (token-only)
+    # ------------------------------------------------------------------
+    def _load_saved_credentials(self) -> Optional[Dict[str, str]]:
+        try:
+            with open(self._credentials_file, "r", encoding="utf-8") as fh:
+                data = json.load(fh)
+            if data.get("user_id") and data.get("device_id") and data.get("access_token"):
+                return data
+        except FileNotFoundError:
+            return None
+        except Exception as exc:
+            debug_log(f"⚠️ Не удалось прочитать Matrix credentials: {exc}")
+        return None
+
+    def _save_credentials(self, user_id: str, device_id: str, access_token: str) -> None:
+        try:
+            os.makedirs(self.store_path, exist_ok=True)
+            with open(self._credentials_file, "w", encoding="utf-8") as fh:
+                json.dump(
+                    {"user_id": user_id, "device_id": device_id, "access_token": access_token},
+                    fh,
+                )
+            try:
+                os.chmod(self._credentials_file, 0o600)
+            except OSError:
+                pass
+        except Exception as exc:
+            debug_log(f"⚠️ Не удалось сохранить Matrix credentials: {exc}")
+
+    def _register_callbacks(self) -> None:
+        self.client.add_event_callback(self._on_message, RoomMessageText)
+        self.client.add_event_callback(self._on_message, RoomMessageNotice)
+        self.client.add_event_callback(self._on_any_message, RoomMessage)
+        if _MATRIX_REACTION_EVENT_AVAILABLE:
+            self.client.add_event_callback(self._on_reaction, ReactionEvent)
+        if _MATRIX_UNKNOWN_EVENT_AVAILABLE:
+            self.client.add_event_callback(self._on_unknown_event, UnknownEvent)
+        if _MATRIX_MEGOLM_EVENT_AVAILABLE:
+            self.client.add_event_callback(self._on_undecrypted, MegolmEvent)
+
+    async def _setup_client(self) -> bool:
+        """Готовит клиент. Возвращает True, если можно запускать sync."""
+        want_e2e = bool(self.bot_password and self.bot_user_id and self.store_path)
+
+        if not want_e2e:
+            # Legacy-режим: только token (работает для НЕзашифрованных комнат).
+            self.client = AsyncClient(self.homeserver, user=self.bot_user_id or "")
+            self.client.access_token = self.access_token
+            self._register_callbacks()
+            if not self.access_token:
+                debug_log("❌ Matrix: нет ни access_token, ни пары user/password")
+                return False
+            info_log(
+                "ℹ️ Matrix command bot в legacy-режиме (без E2EE). "
+                "Зашифрованные комнаты требуют MATRIX_BOT_USER_ID + MATRIX_BOT_PASSWORD."
+            )
+            return True
+
+        os.makedirs(self.store_path, exist_ok=True)
+        config = AsyncClientConfig(
+            store_sync_tokens=True,
+            encryption_enabled=True,
+        )
+
+        creds = self._load_saved_credentials()
+        if creds:
+            self.client = AsyncClient(
+                self.homeserver,
+                user=creds["user_id"],
+                device_id=creds["device_id"],
+                store_path=self.store_path,
+                config=config,
+            )
+            self.client.restore_login(
+                user_id=creds["user_id"],
+                device_id=creds["device_id"],
+                access_token=creds["access_token"],
+            )
+            try:
+                self.client.load_store()
+                self._e2e_enabled = True
+                self._register_callbacks()
+                info_log(
+                    "✅ Matrix E2EE: восстановлен device "
+                    f"{creds['device_id']} из crypto-store"
+                )
+                return True
+            except Exception as exc:
+                debug_log(
+                    f"⚠️ Не удалось загрузить Matrix crypto-store ({exc}); "
+                    "выполняю свежий логин по паролю"
+                )
+                try:
+                    await self.client.close()
+                except Exception:
+                    pass
+
+        # Свежий логин по паролю → стабильный device + crypto-store.
+        self.client = AsyncClient(
+            self.homeserver,
+            user=self.bot_user_id,
+            store_path=self.store_path,
+            config=config,
+        )
+        try:
+            resp = await self.client.login(
+                self.bot_password, device_name=self.device_name
+            )
+        except Exception as exc:
+            debug_log(f"❌ Matrix login исключение: {exc}")
+            return False
+
+        if not isinstance(resp, LoginResponse):
+            debug_log(f"❌ Matrix login не удался: {resp}")
+            return False
+
+        self._save_credentials(resp.user_id, resp.device_id, resp.access_token)
+        try:
+            self.client.load_store()
+        except Exception as exc:
+            debug_log(f"⚠️ load_store после логина: {exc}")
+        self._e2e_enabled = True
+        self._register_callbacks()
+        info_log(
+            f"✅ Matrix E2EE: выполнен логин, device_id={resp.device_id}, "
+            f"store={self.store_path}"
+        )
+        return True
+
+    async def _ensure_keys(self) -> None:
+        if not self._e2e_enabled or not self.client:
+            return
+        try:
+            if getattr(self.client, "should_upload_keys", False):
+                await self.client.keys_upload()
+                debug_log("🔑 Matrix: ключи устройства выгружены")
+            if getattr(self.client, "should_query_keys", False):
+                await self.client.keys_query()
+        except Exception as exc:
+            debug_log(f"⚠️ Matrix keys upload/query: {exc}")
+
     async def _send_text(self, room_id: str, message: str) -> Optional[str]:
         response = await self.client.room_send(
             room_id=room_id,
             message_type="m.room.message",
             content={"msgtype": "m.text", "body": message},
+            ignore_unverified_devices=True,
         )
         return getattr(response, "event_id", None)
 
@@ -153,6 +316,7 @@ class MatrixCommandBot:
                         "key": key,
                     }
                 },
+                ignore_unverified_devices=True,
             )
         except Exception as exc:
             debug_log(f"⚠️ Не удалось добавить Matrix-реакцию '{key}': {exc}")
@@ -375,9 +539,11 @@ class MatrixCommandBot:
                     break
             except Exception:
                 continue
+        e2e = "вкл" if self._e2e_enabled else "выкл"
         return (
             "ℹ️ Система мониторинга серверов\n"
             f"• Версия: {version}\n"
+            f"• E2EE: {e2e}\n"
             "• Автор: Александр Суханов\n"
             "• Канал: Matrix command-bot (паритет с Telegram)\n"
             "Напиши !menu для списка команд и кнопок."
@@ -430,9 +596,12 @@ class MatrixCommandBot:
     def _format_diag(self, sender: str, room_id: str, command_text: str) -> str:
         acl_allowed = self.acl.allows(sender, room_id)
         bot_user_id = getattr(self.client, "user_id", "") or "unknown"
+        device_id = getattr(self.client, "device_id", "") or "unknown"
         return (
             "🩺 Matrix диагностика:\n"
             f"• bot_user_id: {bot_user_id}\n"
+            f"• device_id: {device_id}\n"
+            f"• e2ee: {'on' if self._e2e_enabled else 'off'}\n"
             f"• sender: {sender or 'unknown'}\n"
             f"• room_id: {room_id or 'unknown'}\n"
             f"• acl_allowed: {'yes' if acl_allowed else 'no'}\n"
@@ -546,6 +715,20 @@ class MatrixCommandBot:
             "ℹ️ Matrix событие получено (не text/notice): "
             f"type={event_type}, room={room_id}, sender={sender}, body='{body}'"
         )
+
+    async def _on_undecrypted(self, room: MatrixRoom, event) -> None:
+        """E2EE: сообщение не расшифровано — логируем и просим ключ комнаты."""
+        room_id = getattr(room, "room_id", "unknown")
+        sender = getattr(event, "sender", "unknown")
+        info_log(
+            "🔒 Matrix: входящее не расшифровано (нет ключа сессии) "
+            f"room={room_id}, sender={sender}. Запрашиваю room key."
+        )
+        try:
+            if self.client and hasattr(self.client, "request_room_key"):
+                await self.client.request_room_key(event)
+        except Exception as exc:
+            debug_log(f"⚠️ request_room_key не удался: {exc}")
 
     async def _dispatch_and_reply(self, command_text: str, sender: str, room_id: str) -> None:
         if not self.acl.allows(sender, room_id):
@@ -662,14 +845,20 @@ class MatrixCommandBot:
             debug_log(
                 "ℹ️ Matrix command bot отключён: не хватает MATRIX_* параметров "
                 f"(homeserver={'ok' if self.homeserver else 'empty'}, "
-                f"token={'ok' if self.access_token else 'empty'}, "
-                f"room_id={'ok' if self.default_room_id else 'empty'})"
+                f"room_id={'ok' if self.default_room_id else 'empty'}, "
+                f"auth={'token' if self.access_token else ('login' if (self.bot_user_id and self.bot_password) else 'empty')})"
             )
+            return
+
+        ready = await self._setup_client()
+        if not ready or not self.client:
+            debug_log("❌ Matrix command bot: клиент не инициализирован, остановка")
             return
 
         info_log(
             "🚀 Matrix command bot запущен: "
             f"homeserver={self.homeserver}, default_room={self.default_room_id or 'empty'}, "
+            f"e2ee={'on' if self._e2e_enabled else 'off'}, "
             f"allowed_users={len(self.acl.allowed_users)}, allowed_rooms={len(self.acl.allowed_room_ids)}, "
             f"reaction_buttons={'on' if _MATRIX_REACTION_EVENT_AVAILABLE else 'fallback'}"
         )
@@ -686,15 +875,20 @@ class MatrixCommandBot:
 
             try:
                 await self.client.sync(timeout=3000, full_state=True)
+                await self._ensure_keys()
                 self._started = True
             except Exception as exc:
                 debug_log(f"❌ Matrix initial sync failed: {exc}")
 
         while True:
             try:
-                await self.client.sync(timeout=30000)
+                await self.client.sync_forever(
+                    timeout=30000,
+                    full_state=True,
+                    loop_sleep_time=1000,
+                )
             except Exception as exc:
-                debug_log(f"⚠️ Matrix sync loop error: {exc}")
+                debug_log(f"⚠️ Matrix sync_forever error: {exc}")
                 await asyncio.sleep(3)
 
 
