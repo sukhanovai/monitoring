@@ -1,3 +1,15 @@
+## [8.61.29] - 2026-05-15
+
+### Added
+- RU: Matrix command-bot доведён до паритета с Telegram по основным операциям: добавлены команды `!resources` (ресурсы всех серверов), `!servers`/`!list` (список серверов), `!check <имя|ip>` и `!res <имя|ip>` (точечные проверки доступности/ресурсов), `!pause`/`!resume` (управление мониторингом), `!silent`/`!loud`/`!auto` (управление тихим режимом), `!mode` (состояние управления) и `!about` (версия/сведения). Команды переиспользуют существующий backend (`core.task_router`, `lib.alerts`, `modules.morning_report`) без Telegram-объектов.
+- EN: Brought the Matrix command-bot to parity with Telegram for core operations: added `!resources` (all-server resources), `!servers`/`!list` (server list), `!check <name|ip>` and `!res <name|ip>` (targeted availability/resource checks), `!pause`/`!resume` (monitoring control), `!silent`/`!loud`/`!auto` (silent-mode control), `!mode` (control state) and `!about` (version/info). Commands reuse the existing backend (`core.task_router`, `lib.alerts`, `modules.morning_report`) without Telegram objects.
+- RU: Добавлены кнопки в чате через emoji-реакции: на сообщение `!menu` бот навешивает реакции, нажатие которых в Element / Element X / web-клиенте запускает соответствующую команду с теми же ACL и аудитом. Для старых сборок `matrix-nio` без `ReactionEvent` предусмотрен fallback через `UnknownEvent`.
+- EN: Added in-chat buttons via emoji reactions: the bot attaches reactions to the `!menu` message, and pressing one in Element / Element X / the web client runs the mapped command with the same ACL and audit. A fallback via `UnknownEvent` covers older `matrix-nio` builds without `ReactionEvent`.
+
+### Changed
+- RU: Документация `docs/matrix_bot_management.md` обновлена: roadmap заменён на описание реализованных команд и кнопок-реакций. Выполнен SemVer patch-бамп до `8.61.29`; синхронизированы упоминания версии и Android-метаданные (`ANDROID_VERSION_NAME=8.61.29`, `ANDROID_VERSION_CODE=761`).
+- EN: Updated `docs/matrix_bot_management.md`: the roadmap was replaced with the implemented commands and reaction-button reference. Performed a SemVer patch bump to `8.61.29`; synchronized version mentions and Android metadata (`ANDROID_VERSION_NAME=8.61.29`, `ANDROID_VERSION_CODE=761`).
+
 ## [8.61.28] - 2026-05-14
 
 - RU: Исправлено зацикливание Matrix self-command на сообщениях меню: echo-сообщения бота с несколькими `!`-командами в одной строке (например «!start или !menu — ...») теперь отбрасываются и не запускают повторную обработку.
