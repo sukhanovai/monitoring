@@ -668,12 +668,18 @@ def show_matrix_settings(update, context):
     bot_password = settings_manager.get_setting('MATRIX_BOT_PASSWORD', '')
     store_path = settings_manager.get_setting('MATRIX_STORE_PATH', '')
 
-    homeserver_display = homeserver if homeserver else "🔴 Не настроен"
+    def _mono(value):
+        # Значения могут содержать _ * ` [ — в legacy-Markdown это ломает
+        # парсинг entity, поэтому выводим как inline-code (внутри backticks
+        # спецсимволы литеральны), убирая сами backticks из значения.
+        return "`" + str(value).replace("`", "'") + "`"
+
+    homeserver_display = _mono(homeserver) if homeserver else "🔴 Не настроен"
     token_display = "🟢 Установлен" if access_token else "🔴 Не установлен"
-    room_display = room_id if room_id else "🔴 Не настроена"
-    bot_user_display = bot_user_id if bot_user_id else "🔴 Не задан"
+    room_display = _mono(room_id) if room_id else "🔴 Не настроена"
+    bot_user_display = _mono(bot_user_id) if bot_user_id else "🔴 Не задан"
     bot_pass_display = "🟢 Установлен" if bot_password else "🔴 Не установлен"
-    store_display = store_path if store_path else "по умолчанию (data/matrix_store)"
+    store_display = _mono(store_path) if store_path else "по умолчанию (`data/matrix_store`)"
     e2ee_display = (
         "🟢 включится (есть user+password)"
         if (bot_user_id and bot_password)
