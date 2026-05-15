@@ -664,16 +664,34 @@ def show_matrix_settings(update, context):
     homeserver = settings_manager.get_setting('MATRIX_HOMESERVER', '')
     access_token = settings_manager.get_setting('MATRIX_ACCESS_TOKEN', '')
     room_id = settings_manager.get_setting('MATRIX_ROOM_ID', '')
+    bot_user_id = settings_manager.get_setting('MATRIX_BOT_USER_ID', '')
+    bot_password = settings_manager.get_setting('MATRIX_BOT_PASSWORD', '')
+    store_path = settings_manager.get_setting('MATRIX_STORE_PATH', '')
 
     homeserver_display = homeserver if homeserver else "🔴 Не настроен"
     token_display = "🟢 Установлен" if access_token else "🔴 Не установлен"
     room_display = room_id if room_id else "🔴 Не настроена"
+    bot_user_display = bot_user_id if bot_user_id else "🔴 Не задан"
+    bot_pass_display = "🟢 Установлен" if bot_password else "🔴 Не установлен"
+    store_display = store_path if store_path else "по умолчанию (data/matrix_store)"
+    e2ee_display = (
+        "🟢 включится (есть user+password)"
+        if (bot_user_id and bot_password)
+        else "🔴 выкл (нужны user ID и пароль)"
+    )
 
     message = (
         "🟦 *Настройки Matrix*\n\n"
         f"• Homeserver: {homeserver_display}\n"
         f"• Access token: {token_display}\n"
         f"• Room ID: {room_display}\n\n"
+        "*E2EE (зашифрованные комнаты)*\n"
+        f"• Bot user ID: {bot_user_display}\n"
+        f"• Bot password: {bot_pass_display}\n"
+        f"• Store path: {store_display}\n"
+        f"• Статус E2EE: {e2ee_display}\n\n"
+        "Без user ID + пароля команды читаются только из *НЕ*зашифрованных "
+        "комнат. Изменения применяются после перезапуска сервиса.\n\n"
         "Выберите параметр для изменения:"
     )
 
@@ -681,6 +699,9 @@ def show_matrix_settings(update, context):
         [InlineKeyboardButton("🌐 Установить homeserver", callback_data='set_matrix_homeserver')],
         [InlineKeyboardButton("🔑 Установить access token", callback_data='set_matrix_access_token')],
         [InlineKeyboardButton("💬 Установить room ID", callback_data='set_matrix_room_id')],
+        [InlineKeyboardButton("👤 Установить bot user ID (E2EE)", callback_data='set_matrix_bot_user_id')],
+        [InlineKeyboardButton("🔐 Установить bot password (E2EE)", callback_data='set_matrix_bot_password')],
+        [InlineKeyboardButton("📁 Установить store path (опц.)", callback_data='set_matrix_store_path')],
         [InlineKeyboardButton("🧪 Тест Matrix", callback_data='test_alert_matrix')],
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_main'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
@@ -2127,6 +2148,9 @@ def handle_setting_input(update, context, setting_key):
         'matrix_homeserver': 'Введите URL Matrix homeserver (например https://matrix.example.com):',
         'matrix_access_token': 'Введите Matrix access token:',
         'matrix_room_id': 'Введите Matrix room ID (например !roomid:example.com):',
+        'matrix_bot_user_id': 'Введите полный MXID бота для E2EE (например @comdone:matrix.202020.ru):',
+        'matrix_bot_password': 'Введите пароль аккаунта Matrix-бота (для E2EE-логина):',
+        'matrix_store_path': 'Введите путь к persistent crypto-store (пусто = data/matrix_store):',
         'check_interval': 'Введите новый интервал проверки (в секундах):',
         'max_fail_time': 'Введите максимальное время простоя (в секундах):',
         'silent_start': 'Введите час начала тихого режима (0-23):',
@@ -2453,6 +2477,7 @@ def handle_setting_value(update, context):
         category_map = {
             'telegram_token': 'telegram',
             'matrix_homeserver': 'matrix', 'matrix_access_token': 'matrix', 'matrix_room_id': 'matrix',
+            'matrix_bot_user_id': 'matrix', 'matrix_bot_password': 'matrix', 'matrix_store_path': 'matrix',
             'check_interval': 'monitoring', 'max_fail_time': 'monitoring',
             'silent_start': 'time', 'silent_end': 'time', 'data_collection': 'time',
             'cpu_warning': 'resources', 'cpu_critical': 'resources',
@@ -2468,6 +2493,9 @@ def handle_setting_value(update, context):
             'matrix_homeserver': 'MATRIX_HOMESERVER',
             'matrix_access_token': 'MATRIX_ACCESS_TOKEN',
             'matrix_room_id': 'MATRIX_ROOM_ID',
+            'matrix_bot_user_id': 'MATRIX_BOT_USER_ID',
+            'matrix_bot_password': 'MATRIX_BOT_PASSWORD',
+            'matrix_store_path': 'MATRIX_STORE_PATH',
             'data_collection': 'DATA_COLLECTION_TIMES',
         }
         db_key = special_db_keys.get(setting_key, setting_key.upper())
@@ -9504,6 +9532,9 @@ def handle_setting_input(update, context, setting_key):
         'matrix_homeserver': 'Введите URL Matrix homeserver (например https://matrix.example.com):',
         'matrix_access_token': 'Введите Matrix access token:',
         'matrix_room_id': 'Введите Matrix room ID (например !roomid:example.com):',
+        'matrix_bot_user_id': 'Введите полный MXID бота для E2EE (например @comdone:matrix.202020.ru):',
+        'matrix_bot_password': 'Введите пароль аккаунта Matrix-бота (для E2EE-логина):',
+        'matrix_store_path': 'Введите путь к persistent crypto-store (пусто = data/matrix_store):',
         'check_interval': 'Введите новый интервал проверки (в секундах):',
         'max_fail_time': 'Введите максимальное время простоя (в секундах):',
         'silent_start': 'Введите час начала тихого режима (0-23):',
