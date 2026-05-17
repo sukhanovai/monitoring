@@ -1,3 +1,13 @@
+## [8.62.3] - 2026-05-17
+
+### Fixed
+- RU: Matrix command-bot: `!zfs` (расширение `zfs_monitor`) теперь отдаёт детальный список пулов по серверам (как в Telegram-боте): `🧊 Мониторинг ZFS` → `📊 Текущее состояние пулов` → `🖥 <сервер>` → `🟢/🔴 <пул>: <state> (<время>)`, вместо агрегированной сводки `Статусы ZFS (последние)`. Причина: команда `!zfs` зарегистрирована как расширение и маршрутизировалась в `_handle_ext_zfs` (сводка из `morning_report.get_zfs_summary_for_report()`), из-за чего детальный обработчик `_handle_zfs` был недостижим. Теперь `_handle_ext_zfs` делегирует в `_handle_zfs`; убрана мёртвая ветка `!zfs` в `_route_command`.
+- EN: Matrix command-bot: `!zfs` (the `zfs_monitor` extension) now returns the detailed per-server pool list (like the Telegram bot): `🧊 Мониторинг ZFS` → `📊 Текущее состояние пулов` → `🖥 <server>` → `🟢/🔴 <pool>: <state> (<time>)`, instead of the aggregated `Статусы ZFS (последние)` summary. Root cause: `!zfs` is registered as an extension and was routed to `_handle_ext_zfs` (summary from `morning_report.get_zfs_summary_for_report()`), leaving the detailed `_handle_zfs` handler unreachable. `_handle_ext_zfs` now delegates to `_handle_zfs`; the dead `!zfs` branch in `_route_command` was removed.
+
+### Changed
+- RU: Выполнен SemVer patch-бамп до `8.62.3`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.3`, `ANDROID_VERSION_CODE=765`).
+- EN: Performed a SemVer patch bump to `8.62.3`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.3`, `ANDROID_VERSION_CODE=765`).
+
 ## [8.62.2] - 2026-05-17
 
 ### Changed
