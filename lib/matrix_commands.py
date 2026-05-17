@@ -1268,105 +1268,193 @@ class MatrixCommandBot:
         except Exception as exc:
             return f"❌ Ошибка чтения настройки: {exc}"
 
-    def _settings_set(self, setting_key: str, raw_value: str) -> str:
+    async def _handle_zfs(self) -> str:
         try:
+            import sqlite3
+
+            from config.db_settings import BACKUP_DATABASE_CONFIG
             from core.config_manager import config_manager
-
-            meta = config_manager.get_setting_meta(setting_key)
-            if meta is None:
-                return (
-                    f"❌ Настройка {setting_key} не найдена, изменение отклонено. "
-                    "Доступные параметры: !settings list"
-                )
-
-            blocked = self._check_setting_access(setting_key, meta)
-            if blocked:
-                return blocked
-
-            data_type = meta.get("data_type", "string")
-            try:
-                converted = self._convert_setting_value(raw_value, data_type)
-            except (ValueError, json.JSONDecodeError) as exc:
-                return (
-                    f"❌ Неверное значение для {setting_key} "
-                    f"(тип {data_type}): {exc}"
-                )
-
-            ok = config_manager.set_setting(
-                setting_key,
-                converted,
-                category=meta.get("category", "general"),
-                description=meta.get("description", ""),
-                data_type="auto",
-            )
-            if not ok:
-                return f"❌ Не удалось сохранить настройку {setting_key}"
-
-            shown = self._format_setting_value(setting_key, converted)
-            self._audit(
-                "settings", "settings", f"set {setting_key}", "applied"
-            )
-            return (
-                f"✅ {setting_key} обновлена: {shown}\n"
-                "ⓘ Часть параметров применяется при следующем цикле проверки."
-            )
         except Exception as exc:
-            return f"❌ Ошибка изменения настройки: {exc}"
+            return f"❌ Не удалось загрузить модули ZFS: {exc}"
 
-    async def _handle_settings(self, command_text: str) -> str:
-        parts = command_text.strip().split()
-        if len(parts) < 2 or parts[1].lower() in ("help", "?"):
-            return self._settings_help()
+        db_path = BACKUP_DATABASE_CONFIG.get("backups_db")
+        if not db_path:
+            return "❌ База бэкапов не настроена."
 
-        action = parts[1].lower()
+        zfs_servers = config_manager.get_setting("ZFS_SERVERS", {})
+        if not isinstance(zfs_servers, dict):
+            zfs_servers = {}
+        allowed_servers = {
+            name
+            for name, server_value in zfs_servers.items()
+            if not isinstance(server_value, dict) or server_value.get("enabled", True)
+        }
 
-        if action == "list":
-            group_filter = parts[2].strip() if len(parts) > 2 else None
-            return self._settings_list(group_filter)
+        conn = sqlite3.connect(str(db_path))
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                """
+                SELECT s.server_name, s.pool_name, s.pool_state, s.received_at
+                FROM zfs_pool_status s
+                JOIN (
+                    SELECT server_name, pool_name, MAX(received_at) AS last_seen
+                    FROM zfs_pool_status
+                    GROUP BY server_name, pool_name
+                ) latest
+                ON s.server_name = latest.server_name
+                AND s.pool_name = latest.pool_name
+                AND s.received_at = latest.last_seen
+                ORDER BY s.server_name, s.pool_name
+                """
+            )
+            rows = cursor.fetchall()
+        except Exception as exc:
+            if "no such table: zfs_pool_status" in str(exc):
+                return "❌ Таблица ZFS ещё не создана. Дождитесь первого письма мониторинга."
+            return f"❌ Не удалось получить статусы ZFS: {exc}"
+        finally:
+            conn.close()
 
-        if action == "get":
-            if len(parts) < 3:
-                return "ℹ️ Использование: !settings get <KEY>"
-            return self._settings_get(parts[2].strip().upper())
+        if allowed_servers:
+            rows = [row for row in rows if row[0] in allowed_servers]
+        else:
+            rows = []
 
-        if action == "set":
-            if len(parts) < 4:
-                return (
-                    "ℹ️ Использование: !settings set <KEY> <значение>\n"
-                    "Пример: !settings set CHECK_INTERVAL 120"
+        if not rows:
+            return "🧊 Мониторинг ZFS\n\n❌ Нет данных по пулам ZFS."
+
+        lines = ["🧊 Мониторинг ZFS", "", "📊 Текущее состояние пулов", ""]
+        healthy_states = {"ONLINE"}
+        current_server = None
+        for server_name, pool_name, pool_state, received_at in rows:
+            if server_name != current_server:
+                if current_server is not None:
+                    lines.append("")
+                lines.append(f"🖥 {server_name}")
+                current_server = server_name
+            normalized_state = str(pool_state or "").strip().upper()
+            marker = "🟢" if normalized_state in healthy_states else "🔴"
+            lines.append(f"{marker} {pool_name}: {pool_state} ({received_at})")
+        return "\n".join(lines)
+
+    async def _handle_stock(self, hours: int = 24) -> str:
+        try:
+            import sqlite3
+            from datetime import timedelta
+
+            from config.db_settings import BACKUP_DATABASE_CONFIG
+        except Exception as exc:
+            return f"❌ Не удалось загрузить модули остатков: {exc}"
+
+        try:
+            from extensions.backup_monitor.backup_utils import get_stock_load_summary
+
+            brief = get_stock_load_summary(hours).strip()
+        except Exception:
+            brief = ""
+
+        db_path = BACKUP_DATABASE_CONFIG.get("backups_db")
+        if not db_path:
+            return "❌ База бэкапов не настроена."
+
+        since_time = (datetime.now() - timedelta(hours=hours)).strftime("%Y-%m-%d %H:%M:%S")
+        conn = sqlite3.connect(str(db_path))
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                """
+                WITH normalized AS (
+                    SELECT
+                        id,
+                        COALESCE(source_name, 'Основное предприятие') AS source_name,
+                        CASE
+                            WHEN supplier_name IS NULL OR supplier_name = 'неизвестно'
+                                THEN COALESCE(source_name, 'Основное предприятие')
+                            ELSE supplier_name
+                        END AS supplier_name,
+                        status,
+                        rows_count,
+                        error_sample,
+                        received_at
+                    FROM stock_load_results
+                    WHERE received_at >= ?
+                ),
+                ranked AS (
+                    SELECT
+                        *,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY source_name, supplier_name
+                            ORDER BY received_at DESC, id DESC
+                        ) AS row_num
+                    FROM normalized
                 )
-            setting_key = parts[2].strip().upper()
-            raw_value = command_text.split(maxsplit=3)[3].strip()
-            return self._settings_set(setting_key, raw_value)
+                SELECT source_name, supplier_name, status, rows_count, error_sample, received_at
+                FROM ranked
+                WHERE row_num = 1
+                ORDER BY source_name, supplier_name
+                """,
+                (since_time,),
+            )
+            results = cursor.fetchall()
+        except Exception as exc:
+            if "no such table: stock_load_results" in str(exc):
+                return "❌ Таблица остатков ещё не создана."
+            return f"❌ Не удалось получить данные по остаткам: {exc}"
+        finally:
+            conn.close()
 
-        return (
-            f"ℹ️ Неизвестное действие «{action}».\n\n{self._SETTINGS_USAGE}"
-        )
+        header = f"📦 Загрузка остатков 1С (за {hours}ч)"
+        if not results:
+            msg = header
+            if brief:
+                msg += f"\n{brief}"
+            msg += f"\n\n❌ Нет данных за последние {hours} часов."
+            return msg
+
+        grouped: Dict[str, List[Tuple]] = {}
+        for source_name, supplier, status, rows_count, error_sample, received_at in results:
+            grouped.setdefault(source_name or "Основное предприятие", []).append(
+                (supplier, status, rows_count, error_sample, received_at)
+            )
+        total_suppliers = sum(len(items) for items in grouped.values())
+
+        lines: List[str] = [header]
+        if brief:
+            lines.append(brief)
+        lines.append(f"Всего поставщиков: {total_suppliers}")
+        lines.append("")
+        for source_name, items in grouped.items():
+            lines.append(f"{source_name} ({len(items)})")
+            for supplier, status, rows_count, error_sample, received_at in items:
+                if status == "success":
+                    icon = "✅"
+                elif status == "warning":
+                    icon = "⚠️"
+                elif status == "failed":
+                    icon = "❌"
+                else:
+                    icon = "❔"
+                rows_text = f"{rows_count} строк" if rows_count else "строки: —"
+                error_text = f" — {error_sample}" if error_sample else ""
+                lines.append(f"{icon} {supplier} ({rows_text}){error_text} ({received_at})")
+            lines.append("")
+        return "\n".join(lines).rstrip()
 
     def _control_menu_text(self) -> str:
         return (
-            "🤖 Управление мониторингом (паритет с Telegram).\n"
-            "Жми кнопки-реакции под этим сообщением или пиши команды:\n\n"
-            "📡 !status — доступность всех серверов\n"
-            "🌅 !report — утренний/сводный отчёт\n"
-            "🖥️ !servers — список серверов под мониторингом\n"
-            "⏸️ !pause — приостановить мониторинг\n"
-            "▶️ !resume — возобновить мониторинг\n"
-            "🔇 !silent — принудительно тихий режим\n"
-            "🔊 !loud — принудительно громкий режим\n"
-            "🔄 !auto — авто тихий режим по расписанию\n"
-            "🧩 !extensions — команды и кнопки расширений\n"
-            "ℹ️ !about — версия и сведения о боте\n\n"
-            "Команды с аргументом:\n"
-            "• !check <имя|ip> — проверить один сервер\n"
-            "• !settings — хелп и список всех параметров\n"
-            "• !settings list [группа] — параметры со значениями\n"
-            "• !settings get <KEY> — значение настройки\n"
-            "• !settings set <KEY> <значение> — изменить настройку\n"
-            "• !mode — текущее состояние управления\n"
-            "• !diag / !ping — диагностика command-bot\n\n"
-            "Длинные списки (серверы/ресурсы/настройки) приходят "
-            "несколькими сообщениями с маркером (n/total)."
+            "🤖 Управление мониторингом (как в Telegram):\n"
+            "• !start или !menu — открыть меню команд\n"
+            "• !help — краткая справка по Matrix-командам\n"
+            "• !status — текущий статус серверов\n"
+            "• !report — сводный отчёт\n"
+            "• !stock — детальная загрузка остатков 1С\n"
+            "• !zfs — детальный статус ZFS пулов\n"
+            "• !settings — справка по настройкам\n"
+            "• !settings get <KEY> — значение настройки\n\n"
+            "• !diag — диагностика Matrix command-bot\n"
+            "• !ping — проверка отклика command-bot\n\n"
+            "Пример: !settings get CHECK_INTERVAL"
         )
 
     def _format_diag(self, sender: str, room_id: str, command_text: str) -> str:
@@ -1414,30 +1502,10 @@ class MatrixCommandBot:
             return command, await self._handle_status()
         if command == "!report":
             return command, await self._handle_report()
-        if command == "!servers" or command == "!list":
-            return command, await self._handle_servers()
-        if command == "!check":
-            return command, await self._handle_targeted(normalized, mode="availability")
-        if command == "!res":
-            if "resource_monitor" not in self._enabled_extensions():
-                return command, (
-                    "❌ Команда !res недоступна: расширение «resource_monitor» выключено."
-                )
-            return command, await self._handle_targeted(normalized, mode="resources")
-        if command == "!pause":
-            return command, await self._handle_pause()
-        if command == "!resume":
-            return command, await self._handle_resume()
-        if command == "!silent":
-            return command, await self._handle_silent_mode(True)
-        if command == "!loud":
-            return command, await self._handle_silent_mode(False)
-        if command == "!auto":
-            return command, await self._handle_silent_mode(None)
-        if command == "!mode":
-            return command, await self._handle_mode_status()
-        if command == "!about":
-            return command, await self._handle_about()
+        if command == "!stock":
+            return command, await self._handle_stock()
+        if command == "!zfs":
+            return command, await self._handle_zfs()
         if command == "!settings":
             return command, await self._handle_settings(normalized)
         if command == "!diag":
