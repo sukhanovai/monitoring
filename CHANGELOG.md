@@ -1,3 +1,9 @@
+## [8.62.2] - 2026-05-17
+
+### Changed
+- RU: Выполнен SemVer patch-бамп до `8.62.2`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.2`, `ANDROID_VERSION_CODE=764`).
+- EN: Performed a SemVer patch bump to `8.62.2`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.2`, `ANDROID_VERSION_CODE=764`).
+
 ## [8.62.1] - 2026-05-17
 
 ### Added
