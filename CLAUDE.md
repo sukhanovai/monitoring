@@ -7,16 +7,15 @@
 
 Канонический источник версии — `config/settings.py`:
 
-- `APP_VERSION`
-- `ANDROID_APP_VERSION`
-- `ANDROID_LATEST_VERSION`
+- `APP_VERSION` — версия серверного бэкенда.
+- `ANDROID_LATEST_VERSION` — какую новейшую APK сервер анонсирует
+  мобильному клиенту через `/v1/mobile/version`.
 - `ANDROID_MIN_SUPPORTED_VERSION` — нижний порог поддержки, **не** равен
   текущей версии, менять только осознанно.
 
 Места, которые должны совпадать с текущей версией:
 
-- `config/settings.py` (`APP_VERSION`, `ANDROID_APP_VERSION`,
-  `ANDROID_LATEST_VERSION`)
+- `config/settings.py` (`APP_VERSION`, `ANDROID_LATEST_VERSION`)
 - заголовки `main.py`, файлов `modules/*`, `extensions/*`, `docs/*`
   (`Server Monitoring System v<версия>` / `Версия: <версия>`)
 - `android-client/gradle.properties` (`ANDROID_VERSION_NAME`)
