@@ -150,8 +150,27 @@ class ConfigManager:
         
         conn.commit()
         self.init_default_settings()
+        self._cleanup_legacy_settings()
         debug_log("База данных настроек инициализирована")
-    
+
+    def _cleanup_legacy_settings(self) -> None:
+        """Удаляет устаревшие настройки (интеграция TamTam выведена из проекта)."""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                "DELETE FROM settings WHERE key LIKE 'TAMTAM%' OR category = 'tamtam'"
+            )
+            removed = cursor.rowcount
+            conn.commit()
+            if removed:
+                for cached_key in list(self._cache):
+                    if cached_key.upper().startswith("TAMTAM"):
+                        self._cache.pop(cached_key, None)
+                debug_log(f"Удалены устаревшие настройки TamTam: {removed}")
+        except Exception as e:
+            error_log(f"Ошибка очистки устаревших настроек: {e}")
+
     def init_default_settings(self) -> None:
         """Инициализация настроек по умолчанию"""
         default_settings = [

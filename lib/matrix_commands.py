@@ -130,6 +130,106 @@ def _split_message(message: str, limit: int = _MAX_MESSAGE_CHARS) -> List[str]:
     return [f"({idx}/{total})\n{chunk}" for idx, chunk in enumerate(chunks, 1)]
 
 
+# === Схема настроек для команды !settings ===
+#
+# «Основные настройки системы» показываются строго в этом порядке —
+# по группам и ключам, независимо от категории в БД.
+_CORE_SETTINGS_GROUPS: "OrderedDict[str, List[str]]" = OrderedDict((
+    ("telegram", ["CHAT_IDS", "TELEGRAM_TOKEN"]),
+    ("matrix", [
+        "MATRIX_ACCESS_TOKEN", "MATRIX_BOT_PASSWORD",
+        "MATRIX_BOT_USER_ID", "MATRIX_ROOM_ID",
+    ]),
+    ("monitoring", [
+        "API_TIMEOUT_SEC", "CHECK_INTERVAL", "CPU_WARNING",
+        "MAX_FAIL_TIME", "SERVER_TIMEOUTS",
+    ]),
+    ("time", [
+        "DATA_COLLECTION", "DATA_COLLECTION_TIME", "DATA_COLLECTION_TIMES",
+        "SILENT_END", "SILENT_START",
+    ]),
+    ("auth", ["SSH_KEY_PATH", "SSH_USERNAME"]),
+))
+_CORE_KEYS: Set[str] = {
+    key for keys in _CORE_SETTINGS_GROUPS.values() for key in keys
+}
+
+# Параметры расширений. Показываются в секции «Расширения» только если
+# расширение включено в extension_manager. Привязка по явным ключам и/или
+# по категории настройки в БД.
+_EXTENSION_SETTINGS: "OrderedDict[str, Dict[str, object]]" = OrderedDict((
+    ("resource_monitor", {
+        "label": "💻 ресурсы",
+        "keys": [
+            "RESOURCE_CHECK_INTERVAL", "RESOURCE_ALERT_INTERVAL",
+            "CPU_CRITICAL", "RAM_WARNING", "RAM_CRITICAL",
+            "DISK_WARNING", "DISK_CRITICAL",
+        ],
+        "categories": ["resources"],
+    }),
+    ("backup_monitor", {
+        "label": "📊 бэкапы Proxmox",
+        "keys": ["BACKUP_ALERT_HOURS", "BACKUP_STALE_HOURS"],
+        "categories": ["backup"],
+    }),
+    ("zfs_monitor", {
+        "label": "🧊 ZFS",
+        "keys": ["ZFS_SERVERS"],
+        "categories": [],
+    }),
+    ("zfs_pool_free_space_monitor", {
+        "label": "💽 свободное место ZFS",
+        "keys": ["ZFS_POOL_FREE_SPACE_HOSTS"],
+        "categories": [],
+    }),
+    ("snapshot_transfer_monitor", {
+        "label": "📸 передачи снэпшотов",
+        "keys": ["SNAPSHOT_TRANSFER_HOSTS"],
+        "categories": [],
+    }),
+    ("web_interface", {
+        "label": "🌐 веб-интерфейс",
+        "keys": ["WEB_PORT", "WEB_HOST"],
+        "categories": ["web"],
+    }),
+))
+
+# debug управляется на стороне сервера (config/debug.py, modules.debug),
+# tamtam удалён из проекта — оба не показываются и не меняются из бота.
+_HIDDEN_SETTING_CATEGORIES: Set[str] = {"debug", "tamtam"}
+_HIDDEN_SETTING_KEYS: Set[str] = {"DEBUG_MODE", "LOG_LEVEL"}
+
+
+def _is_tamtam_setting(key: str, category: str) -> bool:
+    return (key or "").upper().startswith("TAMTAM") or (category or "").lower() == "tamtam"
+
+
+def _is_debug_setting(key: str, category: str) -> bool:
+    return (
+        (key or "").upper() in _HIDDEN_SETTING_KEYS
+        or (category or "").lower() == "debug"
+    )
+
+
+# Однозначный владелец параметра: явный ключ имеет приоритет над категорией.
+_EXT_KEY_OWNER: Dict[str, str] = {
+    key: ext_id
+    for ext_id, spec in _EXTENSION_SETTINGS.items()
+    for key in spec["keys"]  # type: ignore[index]
+}
+_EXT_CATEGORY_OWNER: Dict[str, str] = {}
+for _ext_id, _spec in _EXTENSION_SETTINGS.items():
+    for _cat in _spec["categories"]:  # type: ignore[index]
+        _EXT_CATEGORY_OWNER.setdefault(_cat, _ext_id)
+
+
+def _extension_for_setting(key: str, category: str) -> Optional[str]:
+    """Расширение-владелец параметра по явному ключу или по категории."""
+    if key in _EXT_KEY_OWNER:
+        return _EXT_KEY_OWNER[key]
+    return _EXT_CATEGORY_OWNER.get((category or "").lower())
+
+
 @dataclass
 class MatrixACL:
     allowed_users: Set[str]
@@ -596,13 +696,14 @@ class MatrixCommandBot:
     _SETTINGS_USAGE = (
         "⚙️ Управление настройками:\n"
         "• !settings — этот хелп и список параметров\n"
-        "• !settings list [категория] — параметры с текущими значениями\n"
+        "• !settings list [группа] — параметры с текущими значениями\n"
         "• !settings get <KEY> — значение одного параметра\n"
         "• !settings set <KEY> <значение> — изменить параметр\n"
         "Примеры:\n"
         "  !settings get CHECK_INTERVAL\n"
         "  !settings set CHECK_INTERVAL 120\n"
-        "  !settings set DEBUG_MODE true"
+        "  !settings list monitoring\n"
+        "ⓘ Отладка (DEBUG_MODE/LOG_LEVEL) управляется на стороне сервера."
     )
 
     @staticmethod
@@ -644,58 +745,169 @@ class MatrixCommandBot:
             return parsed
         return raw
 
+    @staticmethod
+    def _enabled_extensions() -> Set[str]:
+        try:
+            from extensions.extension_manager import extension_manager
+
+            return set(extension_manager.get_enabled_extensions())
+        except Exception:
+            return set()
+
+    def _build_settings_view(self) -> Tuple[List[Tuple[str, List[Tuple[str, list]]]], int]:
+        """Структурированное представление настроек для !settings.
+
+        Возвращает (sections, total), где sections — список
+        (заголовок_секции, [(подзаголовок_группы, [meta_row, ...]), ...]).
+        Скрытые параметры (debug/tamtam) и параметры выключенных
+        расширений не попадают в результат.
+        """
+        from core.config_manager import config_manager
+
+        rows = config_manager.get_all_settings_meta()
+        by_key = {row.get("key", ""): row for row in rows}
+        enabled = self._enabled_extensions()
+
+        # --- Основные настройки системы ---
+        core_groups: List[Tuple[str, list]] = []
+        for group, keys in _CORE_SETTINGS_GROUPS.items():
+            present = [by_key[k] for k in keys if k in by_key]
+            if present:
+                core_groups.append((group, present))
+
+        # --- Распределение остальных параметров по расширениям ---
+        # У каждого параметра ровно один владелец (явный ключ > категория).
+        ext_buckets: Dict[str, list] = {}
+        leftover: list = []
+        for key, row in by_key.items():
+            if key in _CORE_KEYS:
+                continue
+            category = row.get("category", "")
+            if _is_tamtam_setting(key, category) or _is_debug_setting(key, category):
+                continue
+            owner = _extension_for_setting(key, category)
+            if owner is None:
+                leftover.append(row)
+            else:
+                ext_buckets.setdefault(owner, []).append(row)
+
+        ext_groups: List[Tuple[str, list]] = []
+        for ext_id, spec in _EXTENSION_SETTINGS.items():
+            if ext_id not in enabled:
+                continue  # параметры выключенного расширения не показываем
+            members = ext_buckets.get(ext_id)
+            if not members:
+                continue
+            key_order = {k: i for i, k in enumerate(spec["keys"])}  # type: ignore[index]
+            members.sort(
+                key=lambda r: (
+                    key_order.get(r.get("key", ""), len(key_order)),
+                    r.get("key", ""),
+                )
+            )
+            ext_groups.append((str(spec["label"]), members))
+
+        if leftover:
+            leftover.sort(key=lambda r: r.get("key", ""))
+            ext_groups.append(("🧩 прочее", leftover))
+
+        sections: List[Tuple[str, List[Tuple[str, list]]]] = []
+        if core_groups:
+            sections.append(("🔧 Основные настройки системы", core_groups))
+        if ext_groups:
+            sections.append(("🧩 Расширения", ext_groups))
+
+        total = sum(
+            len(members)
+            for _, groups in sections
+            for _, members in groups
+        )
+        return sections, total
+
+    def _render_settings_sections(
+        self,
+        sections: List[Tuple[str, List[Tuple[str, list]]]],
+        with_desc: bool,
+    ) -> List[str]:
+        lines: List[str] = []
+        for title, groups in sections:
+            lines.append(f"\n══ {title} ══")
+            for group, members in groups:
+                lines.append(f"\n— {group} —")
+                for row in members:
+                    key = row.get("key", "")
+                    dtype = row.get("data_type", "string")
+                    value = self._format_setting_value(key, row.get("value", ""))
+                    lines.append(f"• {key} [{dtype}] = {value}")
+                    if with_desc:
+                        lines.append(f"   {row.get('description') or 'без описания'}")
+        return lines
+
     def _settings_help(self) -> str:
         try:
-            from core.config_manager import config_manager
-
-            rows = config_manager.get_all_settings_meta()
+            sections, total = self._build_settings_view()
         except Exception as exc:
             return f"{self._SETTINGS_USAGE}\n\n❌ Не удалось загрузить список: {exc}"
 
-        lines = [self._SETTINGS_USAGE, "", f"📋 Параметры ({len(rows)}):"]
-        current_category = None
-        for row in rows:
-            category = row.get("category", "general")
-            if category != current_category:
-                current_category = category
-                lines.append(f"\n— {category} —")
-            key = row.get("key", "")
-            desc = row.get("description") or "без описания"
-            dtype = row.get("data_type", "string")
-            value = self._format_setting_value(key, row.get("value", ""))
-            lines.append(f"• {key} [{dtype}] = {value}")
-            lines.append(f"   {desc}")
+        lines = [self._SETTINGS_USAGE, "", f"📋 Параметры ({total}):"]
+        lines.extend(self._render_settings_sections(sections, with_desc=True))
         return "\n".join(lines)
 
-    def _settings_list(self, category: Optional[str]) -> str:
+    def _settings_list(self, group_filter: Optional[str]) -> str:
         try:
-            from core.config_manager import config_manager
-
-            rows = config_manager.get_all_settings_meta(category=category)
+            sections, total = self._build_settings_view()
         except Exception as exc:
             return f"❌ Не удалось загрузить настройки: {exc}"
 
-        if not rows:
-            if category:
-                return f"ℹ️ Нет настроек в категории «{category}»"
+        if not sections:
             return "ℹ️ Список настроек пуст"
 
-        title = (
-            f"⚙️ Настройки категории «{category}»: {len(rows)}"
-            if category
-            else f"⚙️ Все настройки: {len(rows)}"
-        )
-        lines = [title]
-        current_category = None
-        for row in rows:
-            cat = row.get("category", "general")
-            if not category and cat != current_category:
-                current_category = cat
-                lines.append(f"\n— {cat} —")
-            key = row.get("key", "")
-            value = self._format_setting_value(key, row.get("value", ""))
-            lines.append(f"• {key} = {value}")
+        if group_filter:
+            needle = group_filter.strip().lower()
+            filtered: List[Tuple[str, List[Tuple[str, list]]]] = []
+            for title, groups in sections:
+                matched = [
+                    (group, members)
+                    for group, members in groups
+                    if needle in group.lower()
+                ]
+                if matched:
+                    filtered.append((title, matched))
+            if not filtered:
+                return (
+                    f"ℹ️ Группа «{group_filter}» не найдена или её "
+                    "параметры скрыты (расширение выключено)."
+                )
+            lines = [f"⚙️ Настройки: «{group_filter}»"]
+            lines.extend(self._render_settings_sections(filtered, with_desc=False))
+            return "\n".join(lines)
+
+        lines = [f"⚙️ Все настройки: {total}"]
+        lines.extend(self._render_settings_sections(sections, with_desc=False))
         return "\n".join(lines)
+
+    def _check_setting_access(self, setting_key: str, meta: dict) -> Optional[str]:
+        """Возвращает текст ошибки, если параметр недоступен из бота."""
+        category = meta.get("category", "")
+        if _is_tamtam_setting(setting_key, category):
+            return (
+                f"❌ Параметр {setting_key} удалён из проекта "
+                "(интеграция TamTam отключена)."
+            )
+        if _is_debug_setting(setting_key, category):
+            return (
+                f"ⓘ {setting_key} — параметр отладки. "
+                "Управление отладкой вынесено на сторону сервера, "
+                "из command-bot он недоступен."
+            )
+        if setting_key not in _CORE_KEYS:
+            ext_id = _extension_for_setting(setting_key, category)
+            if ext_id and ext_id not in self._enabled_extensions():
+                return (
+                    f"❌ Параметр {setting_key} относится к выключенному "
+                    f"расширению «{ext_id}» и недоступен."
+                )
+        return None
 
     def _settings_get(self, setting_key: str) -> str:
         try:
@@ -707,6 +919,9 @@ class MatrixCommandBot:
                     f"❌ Настройка {setting_key} не найдена. "
                     "Список: !settings list"
                 )
+            blocked = self._check_setting_access(setting_key, meta)
+            if blocked:
+                return blocked
             value = config_manager.get_setting(setting_key, None)
             desc = meta.get("description") or "без описания"
             dtype = meta.get("data_type", "string")
@@ -714,7 +929,6 @@ class MatrixCommandBot:
             return (
                 f"✅ {setting_key} = {shown}\n"
                 f"• тип: {dtype}\n"
-                f"• категория: {meta.get('category', 'general')}\n"
                 f"• описание: {desc}"
             )
         except Exception as exc:
@@ -730,6 +944,10 @@ class MatrixCommandBot:
                     f"❌ Настройка {setting_key} не найдена, изменение отклонено. "
                     "Доступные параметры: !settings list"
                 )
+
+            blocked = self._check_setting_access(setting_key, meta)
+            if blocked:
+                return blocked
 
             data_type = meta.get("data_type", "string")
             try:
@@ -769,8 +987,8 @@ class MatrixCommandBot:
         action = parts[1].lower()
 
         if action == "list":
-            category = parts[2].strip() if len(parts) > 2 else None
-            return self._settings_list(category)
+            group_filter = parts[2].strip() if len(parts) > 2 else None
+            return self._settings_list(group_filter)
 
         if action == "get":
             if len(parts) < 3:
@@ -809,7 +1027,7 @@ class MatrixCommandBot:
             "• !check <имя|ip> — проверить один сервер\n"
             "• !res <имя|ip> — ресурсы одного сервера\n"
             "• !settings — хелп и список всех параметров\n"
-            "• !settings list [категория] — параметры со значениями\n"
+            "• !settings list [группа] — параметры со значениями\n"
             "• !settings get <KEY> — значение настройки\n"
             "• !settings set <KEY> <значение> — изменить настройку\n"
             "• !mode — текущее состояние управления\n"
@@ -1097,6 +1315,13 @@ class MatrixCommandBot:
             f"e2ee={'on' if self._e2e_enabled else 'off'}, "
             f"allowed_users={len(self.acl.allowed_users)}, allowed_rooms={len(self.acl.allowed_room_ids)}, "
             f"reaction_buttons={'on' if _MATRIX_REACTION_EVENT_AVAILABLE else 'fallback'}"
+        )
+        info_log(
+            "ⓘ Отладка управляется на стороне сервера (из command-bot убрана). "
+            "Команды: python -c \"from modules.debug import debug_manager; "
+            "debug_manager.toggle_debug_mode(True)\" — включить DEBUG; "
+            "...toggle_debug_mode(False) — выключить; "
+            "...get_debug_info() — статус. Файл: data/debug_config.json."
         )
 
         if not self._started:
