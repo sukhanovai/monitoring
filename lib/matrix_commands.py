@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.62.2
+Server Monitoring System v8.62.3
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit + reaction buttons + E2EE).
 Система мониторинга серверов
-Версия: 8.62.2
+Версия: 8.62.3
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит + кнопки-реакции + E2EE).
@@ -135,7 +135,7 @@ EXTENSION_MENU_ITEMS: List[ExtensionMenuItem] = [
     ),
     ExtensionMenuItem(
         "zfs_monitor", "🧊", "!zfs",
-        "свободное место ZFS (почта)", "_handle_ext_zfs",
+        "детальный статус пулов ZFS (почта)", "_handle_ext_zfs",
     ),
     ExtensionMenuItem(
         "zfs_pool_free_space_monitor", "💽", "!zfsfree",
@@ -942,13 +942,9 @@ class MatrixCommandBot:
 
     async def _handle_ext_zfs(self) -> str:
         # zfs_monitor — почтовый монитор: статусы пулов берутся из БД
-        # бэкапов (таблица zfs_pool_status), а ZFS_SERVERS хранит только
-        # имена серверов без IP. SSH-сбор тут неприменим (давал «не указан
-        # IP» для каждого хоста). Отдаём ту же сводку, что и !report.
-        summary, has_issues = morning_report.get_zfs_summary_for_report()
-        icon = "🔴" if has_issues else "🟢"
-        body = (summary or "").strip() or "ℹ️ Нет данных по ZFS"
-        return f"{icon} Статусы ZFS (последние):\n{body}"
+        # бэкапов (таблица zfs_pool_status). Отдаём детальный список пулов
+        # по серверам (как в Telegram-боте), а не агрегированную сводку.
+        return await self._handle_zfs()
 
     async def _handle_ext_zfs_free(self) -> str:
         from extensions.zfs_pool_free_space import (
@@ -1504,8 +1500,6 @@ class MatrixCommandBot:
             return command, await self._handle_report()
         if command == "!stock":
             return command, await self._handle_stock()
-        if command == "!zfs":
-            return command, await self._handle_zfs()
         if command == "!settings":
             return command, await self._handle_settings(normalized)
         if command == "!diag":
