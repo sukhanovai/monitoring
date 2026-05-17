@@ -1,3 +1,17 @@
+## [8.62.1] - 2026-05-17
+
+### Added
+- RU: В Matrix command-bot `!backup` без аргумента теперь шлёт сводку Proxmox и навешивает кнопки-реакции с именами серверов; нажатие кнопки (или команда `!backup <имя_сервера>`) отдаёт детализацию последних бэкапов по конкретному хосту (статус, время, размер, ошибка). Список хостов берётся из `BackupMonitorBot.get_all_hosts()` (только включённые), кнопок не больше 40, посторонние emoji-реакции под сводкой игнорируются. В подменю `!extensions` добавлена подсказка про аргумент `!backup <имя_сервера>`.
+- EN: In the Matrix command-bot, `!backup` with no argument now sends the Proxmox summary and attaches reaction buttons labeled with server names; pressing a button (or the `!backup <server>` command) returns the last backups detail for that host (status, time, size, error). The host list comes from `BackupMonitorBot.get_all_hosts()` (enabled only), capped at 40 buttons, and stray emoji reactions under the summary are ignored. The `!extensions` submenu now hints at the `!backup <server>` argument.
+
+### Fixed
+- RU: `!zfs` (расширение `zfs_monitor`) больше не выдаёт «не указан IP» для каждого сервера. Это почтовый монитор: статусы пулов берутся из таблицы `zfs_pool_status`, как в `!report` (`morning_report.get_zfs_summary_for_report()`), а `ZFS_SERVERS` хранит только имена без IP. Ранее команда ошибочно шла в SSH-сборщик `zfs_free_space_monitor.collect_zfs_free_space()`. SSH-сбор свободного места остаётся за `!zfsfree` (`ZFS_POOL_FREE_SPACE_HOSTS`).
+- EN: `!zfs` (the `zfs_monitor` extension) no longer reports "IP not set" for every server. It is a mail-based monitor: pool statuses come from the `zfs_pool_status` table, like `!report` (`morning_report.get_zfs_summary_for_report()`), while `ZFS_SERVERS` only stores names without IPs. The command previously and incorrectly went through the SSH collector `zfs_free_space_monitor.collect_zfs_free_space()`. SSH-based free-space polling stays with `!zfsfree` (`ZFS_POOL_FREE_SPACE_HOSTS`).
+
+### Changed
+- RU: Выполнен SemVer patch-бамп до `8.62.1`; синхронизированы упоминания версии в заголовках исходников/доков и Android-метаданные (`ANDROID_VERSION_NAME=8.62.1`, `ANDROID_VERSION_CODE=763`).
+- EN: Performed a SemVer patch bump to `8.62.1`; synchronized version mentions in source/doc headers and Android metadata (`ANDROID_VERSION_NAME=8.62.1`, `ANDROID_VERSION_CODE=763`).
+
 ## [8.62.0] - 2026-05-17
 
 ### Added
