@@ -390,6 +390,79 @@ class ConfigManager:
         
         return settings
     
+    def get_setting_meta(self, key: str) -> Optional[Dict[str, Any]]:
+        """
+        Получить метаданные настройки (значение + категория/описание/тип).
+
+        Args:
+            key: Ключ настройки
+
+        Returns:
+            Словарь {key, value, category, description, data_type} или None
+        """
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(
+                'SELECT key, value, category, description, data_type '
+                'FROM settings WHERE key = ?',
+                (key,)
+            )
+            row = cursor.fetchone()
+        except Exception as e:
+            error_log(f"Ошибка чтения метаданных настройки {key}: {e}")
+            return None
+
+        if not row:
+            return None
+
+        return {
+            'key': row[0],
+            'value': row[1] if row[1] is not None else '',
+            'category': row[2] or 'general',
+            'description': row[3] or '',
+            'data_type': row[4] or 'string',
+        }
+
+    def get_all_settings_meta(
+        self, category: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Получить все настройки вместе с метаданными.
+
+        Args:
+            category: Фильтр по категории
+
+        Returns:
+            Список словарей {key, value, category, description, data_type}
+        """
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        if category:
+            cursor.execute(
+                'SELECT key, value, category, description, data_type '
+                'FROM settings WHERE category = ? ORDER BY key',
+                (category,)
+            )
+        else:
+            cursor.execute(
+                'SELECT key, value, category, description, data_type '
+                'FROM settings ORDER BY category, key'
+            )
+
+        rows = []
+        for row in cursor.fetchall():
+            rows.append({
+                'key': row[0],
+                'value': row[1] if row[1] is not None else '',
+                'category': row[2] or 'general',
+                'description': row[3] or '',
+                'data_type': row[4] or 'string',
+            })
+        return rows
+
     def get_categories(self) -> List[str]:
         """
         Получить список категорий настроек
