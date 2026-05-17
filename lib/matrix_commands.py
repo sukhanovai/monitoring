@@ -339,6 +339,9 @@ class MatrixCommandBot:
         # event_id сообщений подменю «расширения»: реакции на них
         # резолвятся по EXTENSION_MENU_ITEMS с учётом включённости
         self._ext_menu_event_ids: "OrderedDict[str, str]" = OrderedDict()
+        # event_id сообщений сводки !backup: реакции-кнопки с именами
+        # серверов резолвятся в детализацию по конкретному хосту Proxmox
+        self._backup_menu_event_ids: "OrderedDict[str, str]" = OrderedDict()
         # уже обработанные реакции (защита от повторной доставки в sync)
         self._processed_reactions: "OrderedDict[str, bool]" = OrderedDict()
         # event_id собственных исходящих сообщений: защита от петли, когда
@@ -567,6 +570,46 @@ class MatrixCommandBot:
         for item in EXTENSION_MENU_ITEMS:
             if item.extension_id in enabled:
                 await self._send_reaction(room_id, event_id, item.emoji)
+
+    # Лимит кнопок-реакций под сводкой !backup. Matrix-клиенты плохо
+    # рендерят десятки реакций на одном сообщении; при превышении лимита
+    # подсказываем точечную команду !backup <хост>.
+    _BACKUP_MENU_MAX_BUTTONS = 40
+
+    async def _post_backup_menu(self, room_id: str, body: str) -> None:
+        """Отправляет сводку !backup и навешивает кнопки-реакции с именами
+        серверов Proxmox для перехода к детализации по конкретному хосту."""
+        if "backup_monitor" not in self._enabled_extensions():
+            await self._send_long_text(room_id, body)
+            return
+
+        hosts = self._proxmox_backup_hosts()
+        if not hosts:
+            await self._send_long_text(room_id, body)
+            return
+
+        limited = hosts[: self._BACKUP_MENU_MAX_BUTTONS]
+        hint = [
+            "",
+            "🔘 Жми кнопку с именем сервера под этим сообщением — "
+            "покажу детали бэкапов по нему.",
+            "Либо команда: !backup <имя_сервера>",
+        ]
+        if len(hosts) > len(limited):
+            hint.append(
+                f"ⓘ Серверов {len(hosts)}, кнопок показано {len(limited)} "
+                "(остальные — командой !backup <имя_сервера>)."
+            )
+        event_id = await self._send_text(room_id, body + "\n" + "\n".join(hint))
+        if not event_id:
+            debug_log("⚠️ Matrix сводка !backup без event_id: кнопки-реакции пропущены")
+            return
+
+        self._backup_menu_event_ids[event_id] = room_id
+        self._cap_ordered(self._backup_menu_event_ids, 50)
+
+        for host_name in limited:
+            await self._send_reaction(room_id, event_id, host_name)
 
     def _audit(self, user_id: str, room_id: str, command: str, status: str) -> None:
         ts = datetime.now(timezone.utc).isoformat()
@@ -811,6 +854,78 @@ class MatrixCommandBot:
         body = self._backup_summary(24, proxmox=True, databases=False, mail=False)
         return f"💾 Бэкапы Proxmox (24ч):\n{body}"
 
+    _BACKUP_HOST_STATUS_LABEL: Dict[str, str] = {
+        "success": "🟢 в норме",
+        "old": "🟡 устаревает",
+        "stale": "⚫ нет свежих бэкапов",
+        "failed": "🔴 последний бэкап неудачен",
+        "recent_failed": "🟠 есть неудачные бэкапы",
+        "unknown": "❔ статус не определён",
+    }
+
+    @staticmethod
+    def _proxmox_backup_hosts() -> List[str]:
+        """Список включённых хостов Proxmox (для кнопок под !backup)."""
+        try:
+            from extensions.backup_monitor.bot_handler import BackupMonitorBot
+
+            hosts = BackupMonitorBot().get_all_hosts()
+        except Exception as exc:
+            debug_log(f"⚠️ Не удалось получить список хостов Proxmox: {exc}")
+            return []
+        return [str(h).strip() for h in hosts if str(h).strip()]
+
+    async def _handle_backup_host_detail(self, host_name: str) -> str:
+        """Детализация бэкапов одного хоста Proxmox (последние записи)."""
+        host_name = (host_name or "").strip()
+        if not host_name:
+            return "ℹ️ Не указано имя сервера. Использование: !backup <имя_сервера>"
+        try:
+            from extensions.backup_monitor.bot_handler import BackupMonitorBot
+
+            bot = BackupMonitorBot()
+            rows = bot.get_host_status(host_name)
+        except Exception as exc:
+            return f"❌ Ошибка получения данных по «{host_name}»: {str(exc)[:160]}"
+
+        if not rows:
+            return (
+                f"🖥️ Бэкапы {host_name}\n"
+                "Нет данных по этому хосту за последнее время."
+            )
+
+        try:
+            status_key = bot.get_host_display_status(host_name)
+        except Exception:
+            status_key = ""
+        status_label = self._BACKUP_HOST_STATUS_LABEL.get(
+            str(status_key), str(status_key) or ""
+        )
+
+        lines = [f"🖥️ Бэкапы {host_name}"]
+        if status_label:
+            lines.append(f"Статус: {status_label}")
+        lines.append("")
+        for backup_status, duration, total_size, error_message, received_at in rows:
+            icon = "✅" if str(backup_status) == "success" else "❌"
+            try:
+                backup_time = datetime.strptime(
+                    str(received_at), "%Y-%m-%d %H:%M:%S"
+                )
+                time_str = backup_time.strftime("%d.%m %H:%M")
+            except Exception:
+                time_str = str(received_at)[:16]
+            lines.append(f"{icon} {time_str} — {backup_status}")
+            if duration:
+                lines.append(f"• Время: {duration}")
+            if total_size:
+                lines.append(f"• Размер: {total_size}")
+            if error_message and str(backup_status) != "success":
+                lines.append(f"• Ошибка: {str(error_message)[:160]}")
+            lines.append("")
+        lines.append(f"🕒 Обновлено: {datetime.now().strftime('%H:%M:%S')}")
+        return "\n".join(lines).rstrip()
+
     async def _handle_ext_db_backup(self) -> str:
         body = self._backup_summary(24, proxmox=False, databases=True, mail=False)
         return f"🗃️ Бэкапы баз данных (24ч):\n{body}"
@@ -826,13 +941,14 @@ class MatrixCommandBot:
         return f"📦 Загрузка остатков 1С (24ч):\n{body or 'ℹ️ Нет данных за период'}"
 
     async def _handle_ext_zfs(self) -> str:
-        from extensions.zfs_free_space_monitor import (
-            build_zfs_free_space_lines,
-            collect_zfs_free_space,
-        )
-
-        results, errors = collect_zfs_free_space()
-        return "\n".join(build_zfs_free_space_lines(results, errors))
+        # zfs_monitor — почтовый монитор: статусы пулов берутся из БД
+        # бэкапов (таблица zfs_pool_status), а ZFS_SERVERS хранит только
+        # имена серверов без IP. SSH-сбор тут неприменим (давал «не указан
+        # IP» для каждого хоста). Отдаём ту же сводку, что и !report.
+        summary, has_issues = morning_report.get_zfs_summary_for_report()
+        icon = "🔴" if has_issues else "🟢"
+        body = (summary or "").strip() or "ℹ️ Нет данных по ZFS"
+        return f"{icon} Статусы ZFS (последние):\n{body}"
 
     async def _handle_ext_zfs_free(self) -> str:
         from extensions.zfs_pool_free_space import (
@@ -893,10 +1009,18 @@ class MatrixCommandBot:
         else:
             for it in items:
                 lines.append(f"{it.emoji} {it.command} — {it.label}")
+        arg_commands: List[str] = []
         if "resource_monitor" in enabled:
+            arg_commands.append("• !res <имя|ip> — ресурсы одного сервера")
+        if "backup_monitor" in enabled:
+            arg_commands.append(
+                "• !backup <имя_сервера> — детали бэкапов по серверу "
+                "(или жми кнопку-реакцию под сводкой !backup)"
+            )
+        if arg_commands:
             lines.append("")
             lines.append("Команды с аргументом:")
-            lines.append("• !res <имя|ip> — ресурсы одного сервера")
+            lines.extend(arg_commands)
         lines.append("")
         lines.append("Назад: !menu")
         return "\n".join(lines)
@@ -1272,6 +1396,17 @@ class MatrixCommandBot:
             return command, self._control_menu_text()
         if command in {"!extensions", "!ext"}:
             return command, self._extensions_menu_text()
+        if command == "!backup":
+            if "backup_monitor" not in self._enabled_extensions():
+                return command, (
+                    "❌ Команда !backup недоступна: расширение "
+                    "«backup_monitor» выключено."
+                )
+            parts = normalized.split(maxsplit=1)
+            arg = parts[1].strip() if len(parts) > 1 else ""
+            if arg:
+                return command, await self._handle_backup_host_detail(arg)
+            return command, await self._handle_ext_proxmox_backup()
         ext_item = _EXT_ITEM_BY_COMMAND.get(command)
         if ext_item is not None:
             return command, await self._run_extension_command(ext_item)
@@ -1415,6 +1550,10 @@ class MatrixCommandBot:
                 await self._post_menu(room_id, response_text)
             elif routed_command in {"!extensions", "!ext"}:
                 await self._post_extensions_menu(room_id)
+            elif routed_command == "!backup" and len(command_text.split()) <= 1:
+                # «!backup» без аргумента — сводка + кнопки по серверам.
+                # «!backup <хост>» уже вернул готовую детализацию текстом.
+                await self._post_backup_menu(room_id, response_text)
             else:
                 await self._send_long_text(room_id, response_text)
         except Exception as exc:
@@ -1488,11 +1627,19 @@ class MatrixCommandBot:
 
         is_main_menu = target_event_id in self._menu_event_ids
         is_ext_menu = target_event_id in self._ext_menu_event_ids
-        if not (is_main_menu or is_ext_menu):
+        is_backup_menu = target_event_id in self._backup_menu_event_ids
+        if not (is_main_menu or is_ext_menu or is_backup_menu):
             return
 
         normalized_key = (key or "").strip()
-        if is_ext_menu:
+        if is_backup_menu:
+            # Ключ реакции — имя сервера Proxmox. Игнорируем посторонние
+            # emoji-реакции, реагируем только на known-хосты.
+            if normalized_key and normalized_key in set(self._proxmox_backup_hosts()):
+                command = f"!backup {normalized_key}"
+            else:
+                command = ""
+        elif is_ext_menu:
             command = self._ext_command_by_emoji(key) or self._ext_command_by_emoji(
                 normalized_key
             )
