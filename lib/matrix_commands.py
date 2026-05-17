@@ -712,13 +712,15 @@ class MatrixCommandBot:
         return any(token in upper for token in ("TOKEN", "PASSWORD", "SECRET"))
 
     @classmethod
-    def _format_setting_value(cls, key: str, value) -> str:
-        if cls._is_secret_key(key):
+    def _format_setting_value(cls, key: str, value, *, reveal: bool = False) -> str:
+        # reveal=True — явный запрос одного параметра (!settings get <KEY>):
+        # секреты не маскируются, длинные значения не обрезаются.
+        if cls._is_secret_key(key) and not reveal:
             return "•••• (скрыто)" if str(value or "") else "(пусто)"
         text = "" if value is None else str(value)
         if text == "":
             return "(пусто)"
-        if len(text) > 120:
+        if not reveal and len(text) > 120:
             return text[:120] + "…"
         return text
 
@@ -925,7 +927,7 @@ class MatrixCommandBot:
             value = config_manager.get_setting(setting_key, None)
             desc = meta.get("description") or "без описания"
             dtype = meta.get("data_type", "string")
-            shown = self._format_setting_value(setting_key, value)
+            shown = self._format_setting_value(setting_key, value, reveal=True)
             return (
                 f"✅ {setting_key} = {shown}\n"
                 f"• тип: {dtype}\n"
