@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.62.3
+Server Monitoring System v8.62.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit + reaction buttons + E2EE).
 Система мониторинга серверов
-Версия: 8.62.3
+Версия: 8.62.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит + кнопки-реакции + E2EE).
@@ -935,10 +935,10 @@ class MatrixCommandBot:
         return f"📬 Бэкапы почтового сервера (72ч):\n{body}"
 
     async def _handle_ext_stock_load(self) -> str:
-        from extensions.backup_monitor.backup_utils import get_stock_load_summary
-
-        body = (get_stock_load_summary(period_hours=24) or "").strip()
-        return f"📦 Загрузка остатков 1С (24ч):\n{body or 'ℹ️ Нет данных за период'}"
+        # stock_load_monitor — отдаём детальную загрузку остатков по
+        # источникам/поставщикам (как в Telegram-боте), а не краткую
+        # сводку get_stock_load_summary.
+        return await self._handle_stock()
 
     async def _handle_ext_zfs(self) -> str:
         # zfs_monitor — почтовый монитор: статусы пулов берутся из БД
@@ -1334,6 +1334,20 @@ class MatrixCommandBot:
             lines.append(f"{marker} {pool_name}: {pool_state} ({received_at})")
         return "\n".join(lines)
 
+    @staticmethod
+    def _format_time_ago(time_str: str) -> str:
+        """Человекочитаемое 'Xд Yч назад' (как format_time_ago в Telegram)."""
+        try:
+            if not time_str:
+                return "неизвестно"
+            time_obj = datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S")
+            hours_ago = int((datetime.now() - time_obj).total_seconds() / 3600)
+            if hours_ago >= 24:
+                return f"{hours_ago // 24}д {hours_ago % 24}ч назад"
+            return f"{hours_ago}ч назад"
+        except Exception:
+            return "ошибка времени"
+
     async def _handle_stock(self, hours: int = 24) -> str:
         try:
             import sqlite3
@@ -1342,13 +1356,6 @@ class MatrixCommandBot:
             from config.db_settings import BACKUP_DATABASE_CONFIG
         except Exception as exc:
             return f"❌ Не удалось загрузить модули остатков: {exc}"
-
-        try:
-            from extensions.backup_monitor.backup_utils import get_stock_load_summary
-
-            brief = get_stock_load_summary(hours).strip()
-        except Exception:
-            brief = ""
 
         db_path = BACKUP_DATABASE_CONFIG.get("backups_db")
         if not db_path:
@@ -1402,11 +1409,7 @@ class MatrixCommandBot:
 
         header = f"📦 Загрузка остатков 1С (за {hours}ч)"
         if not results:
-            msg = header
-            if brief:
-                msg += f"\n{brief}"
-            msg += f"\n\n❌ Нет данных за последние {hours} часов."
-            return msg
+            return f"{header}\n\n❌ Нет данных за последние {hours} часов."
 
         grouped: Dict[str, List[Tuple]] = {}
         for source_name, supplier, status, rows_count, error_sample, received_at in results:
@@ -1415,25 +1418,15 @@ class MatrixCommandBot:
             )
         total_suppliers = sum(len(items) for items in grouped.values())
 
-        lines: List[str] = [header]
-        if brief:
-            lines.append(brief)
-        lines.append(f"Всего поставщиков: {total_suppliers}")
-        lines.append("")
+        lines: List[str] = [header, f"Всего поставщиков: {total_suppliers}", ""]
         for source_name, items in grouped.items():
             lines.append(f"{source_name} ({len(items)})")
             for supplier, status, rows_count, error_sample, received_at in items:
-                if status == "success":
-                    icon = "✅"
-                elif status == "warning":
-                    icon = "⚠️"
-                elif status == "failed":
-                    icon = "❌"
-                else:
-                    icon = "❔"
+                icon = "✅" if status == "success" else "⚠️" if status == "warning" else "❌"
                 rows_text = f"{rows_count} строк" if rows_count else "строки: —"
                 error_text = f" — {error_sample}" if error_sample else ""
-                lines.append(f"{icon} {supplier} ({rows_text}){error_text} ({received_at})")
+                time_ago = self._format_time_ago(received_at)
+                lines.append(f"{icon} {supplier} ({rows_text}){error_text} ({time_ago})")
             lines.append("")
         return "\n".join(lines).rstrip()
 
@@ -1498,8 +1491,6 @@ class MatrixCommandBot:
             return command, await self._handle_status()
         if command == "!report":
             return command, await self._handle_report()
-        if command == "!stock":
-            return command, await self._handle_stock()
         if command == "!settings":
             return command, await self._handle_settings(normalized)
         if command == "!diag":
