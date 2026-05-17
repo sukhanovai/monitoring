@@ -137,6 +137,10 @@ class MatrixCommandBot:
         self._menu_event_ids: "OrderedDict[str, str]" = OrderedDict()
         # уже обработанные реакции (защита от повторной доставки в sync)
         self._processed_reactions: "OrderedDict[str, bool]" = OrderedDict()
+        # event_id собственных исходящих сообщений: защита от петли, когда
+        # бот залогинен под тем же MXID, что и человек (ответ бота не должен
+        # повторно маршрутизироваться как команда)
+        self._sent_event_ids: "OrderedDict[str, bool]" = OrderedDict()
 
     @property
     def enabled(self) -> bool:
@@ -302,7 +306,11 @@ class MatrixCommandBot:
             content={"msgtype": "m.text", "body": message},
             ignore_unverified_devices=True,
         )
-        return getattr(response, "event_id", None)
+        event_id = getattr(response, "event_id", None)
+        if event_id:
+            self._sent_event_ids[event_id] = True
+            self._cap_ordered(self._sent_event_ids, 500)
+        return event_id
 
     async def _send_reaction(self, room_id: str, target_event_id: str, key: str) -> None:
         try:
@@ -678,6 +686,17 @@ class MatrixCommandBot:
     async def _should_ignore_event(self, event: RoomMessage, room_id: str) -> bool:
         sender = getattr(event, "sender", "") or ""
         raw_body = getattr(event, "body", "") or ""
+        event_id = getattr(event, "event_id", "") or ""
+
+        # Сообщение, которое отправил сам бот: не маршрутизируем повторно.
+        # Критично, когда бот залогинен под тем же MXID, что и человек —
+        # иначе ответ-меню/хелп с строками "!cmd ..." уходит в бесконечный цикл.
+        if event_id and event_id in self._sent_event_ids:
+            debug_log(
+                "ℹ️ Matrix событие проигнорировано: это собственный ответ бота "
+                f"(room={room_id}, event_id={event_id})"
+            )
+            return True
 
         if sender == getattr(self.client, "user_id", None):
             own_command = self._extract_command(raw_body, allow_inline=False)
