@@ -1,6 +1,6 @@
-# 🛰️ ComDone: Telegram/TamTam-бот и платформа мониторинга серверов
+# 🛰️ ComDone: Telegram/Matrix-бот и платформа мониторинга серверов
 
-**ComDone** — это модульная система мониторинга инфраструктуры (communication done, контроль done) с управлением через Telegram/TamTam-ботов, CLI-проверками и опциональным веб‑интерфейсом. Проект умеет отслеживать доступность, ресурсы, бэкапы и события из почтовых уведомлений, а также отправлять алерты в чат.
+**ComDone** — это модульная система мониторинга инфраструктуры (communication done, контроль done) с управлением через Telegram/Matrix-ботов, CLI-проверками и опциональным веб‑интерфейсом. Проект умеет отслеживать доступность, ресурсы, бэкапы и события из почтовых уведомлений, а также отправлять алерты в чат.
 
 ## ✨ Ключевые возможности
 
@@ -19,7 +19,7 @@
 
 ```
 core/        — ядро мониторинга и маршрутизация задач
-bot/         — Telegram/TamTam-боты, команды и меню
+bot/         — Telegram/Matrix-боты, команды и меню
 modules/     — фоновые модули (ресурсы, отчёты, почта)
 extensions/ — расширения (бэкапы, веб, проверки)
 config/      — конфигурация и значения по умолчанию
@@ -31,7 +31,7 @@ lib/         — служебные утилиты, логирование, ал
 - **Python 3.9+**
 - Linux (рекомендуется Ubuntu/Debian)
 - Telegram Bot Token
-- TamTam Bot Token (опционально)
+- Matrix-аккаунт бота (опционально, для command-bot)
 
 Опционально:
 - **Flask + WebSocket** — для веб‑панели.
@@ -68,8 +68,6 @@ pip install -r requirements.txt
 ```python
 TELEGRAM_TOKEN = "YOUR_BOT_TOKEN"
 CHAT_IDS = ["123456789"]
-TAMTAM_TOKEN = "YOUR_TAMTAM_BOT_TOKEN"
-TAMTAM_CHAT_IDS = ["<chat_id>"]
 ```
 
 > После первого запуска настройки автоматически сохраняются в `data/settings.db`.  
@@ -85,17 +83,6 @@ curl "https://api.telegram.org/bot<ВАШ_ТОКЕН>/getUpdates"
 ```json
 "chat": {"id": 123456789}
 ```
-
-
-### 5.1 Получение TamTam Chat ID
-
-1. Создайте бота через [@BotFather в TamTam](https://tt.me/BotFather).
-2. Добавьте бота в нужный чат.
-3. Выполните запрос к API:
-```bash
-curl "https://botapi.tamtam.chat/updates?access_token=<ВАШ_TAMTAM_ТОКЕН>"
-```
-4. Найдите `recipient.chat_id` и добавьте его в `TAMTAM_CHAT_IDS`.
 
 ### 6. Запуск
 
@@ -145,11 +132,11 @@ python main.py --check targeted_checks --server 192.168.9.00 --mode resources
 - `/check_server` — проверка одного сервера.
 - `/check_res` — ресурсы одного сервера.
 
-TamTam (текстовые команды):
-- `/help`, `/status`, `/check`, `/resources`.
-- `/check_server <IP|имя>`.
-- `/monitor_on`, `/monitor_off`.
-- `/silent_on`, `/silent_off`.
+Matrix command-bot (текстовые команды, паритет с Telegram):
+- `!status`, `!resources`, `!report`, `!servers`.
+- `!check <IP|имя>`, `!res <IP|имя>`.
+- `!pause`, `!resume`, `!silent`, `!loud`, `!auto`.
+- `!settings` — просмотр и изменение настроек.
 
 Команды бэкапов (при активных расширениях):
 - `/backup`, `/backup_search`, `/backup_help` — Proxmox.
