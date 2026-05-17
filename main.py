@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
 /main.py
-Server Monitoring System v8.61.28
+Server Monitoring System v8.62.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Main launch module
 Система мониторинга серверов
-Версия: 8.61.28
+Версия: 8.62.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль запуска
@@ -311,6 +311,10 @@ def main(args: argparse.Namespace):
                 MATRIX_ROOM_ID,
                 MATRIX_ALLOWED_USER_IDS,
                 MATRIX_ALLOWED_ROOM_IDS,
+                MATRIX_BOT_USER_ID,
+                MATRIX_BOT_PASSWORD,
+                MATRIX_STORE_PATH,
+                MATRIX_DEVICE_NAME,
             )
             from lib.matrix_commands import run_matrix_command_bot
 
@@ -325,6 +329,10 @@ def main(args: argparse.Namespace):
                     "room_id": MATRIX_ROOM_ID,
                     "whitelist_user_ids": _parse_acl(MATRIX_ALLOWED_USER_IDS),
                     "allowed_room_ids": _parse_acl(MATRIX_ALLOWED_ROOM_IDS) or ([MATRIX_ROOM_ID] if MATRIX_ROOM_ID else []),
+                    "bot_user_id": MATRIX_BOT_USER_ID,
+                    "bot_password": MATRIX_BOT_PASSWORD,
+                    "store_path": MATRIX_STORE_PATH,
+                    "device_name": MATRIX_DEVICE_NAME,
                 },
                 daemon=True,
             ).start()

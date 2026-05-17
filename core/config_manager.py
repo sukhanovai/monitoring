@@ -1,11 +1,11 @@
 """
 /core/config_manager.py
-Server Monitoring System v8.61.28
+Server Monitoring System v8.62.1
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Configuration Manager
 Система мониторинга серверов
-Версия: 8.61.28
+Версия: 8.62.1
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Менеджер конфигурации
@@ -150,8 +150,27 @@ class ConfigManager:
         
         conn.commit()
         self.init_default_settings()
+        self._cleanup_legacy_settings()
         debug_log("База данных настроек инициализирована")
-    
+
+    def _cleanup_legacy_settings(self) -> None:
+        """Удаляет устаревшие настройки (интеграция TamTam выведена из проекта)."""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                "DELETE FROM settings WHERE key LIKE 'TAMTAM%' OR category = 'tamtam'"
+            )
+            removed = cursor.rowcount
+            conn.commit()
+            if removed:
+                for cached_key in list(self._cache):
+                    if cached_key.upper().startswith("TAMTAM"):
+                        self._cache.pop(cached_key, None)
+                debug_log(f"Удалены устаревшие настройки TamTam: {removed}")
+        except Exception as e:
+            error_log(f"Ошибка очистки устаревших настроек: {e}")
+
     def init_default_settings(self) -> None:
         """Инициализация настроек по умолчанию"""
         default_settings = [
@@ -390,6 +409,79 @@ class ConfigManager:
         
         return settings
     
+    def get_setting_meta(self, key: str) -> Optional[Dict[str, Any]]:
+        """
+        Получить метаданные настройки (значение + категория/описание/тип).
+
+        Args:
+            key: Ключ настройки
+
+        Returns:
+            Словарь {key, value, category, description, data_type} или None
+        """
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(
+                'SELECT key, value, category, description, data_type '
+                'FROM settings WHERE key = ?',
+                (key,)
+            )
+            row = cursor.fetchone()
+        except Exception as e:
+            error_log(f"Ошибка чтения метаданных настройки {key}: {e}")
+            return None
+
+        if not row:
+            return None
+
+        return {
+            'key': row[0],
+            'value': row[1] if row[1] is not None else '',
+            'category': row[2] or 'general',
+            'description': row[3] or '',
+            'data_type': row[4] or 'string',
+        }
+
+    def get_all_settings_meta(
+        self, category: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Получить все настройки вместе с метаданными.
+
+        Args:
+            category: Фильтр по категории
+
+        Returns:
+            Список словарей {key, value, category, description, data_type}
+        """
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        if category:
+            cursor.execute(
+                'SELECT key, value, category, description, data_type '
+                'FROM settings WHERE category = ? ORDER BY key',
+                (category,)
+            )
+        else:
+            cursor.execute(
+                'SELECT key, value, category, description, data_type '
+                'FROM settings ORDER BY category, key'
+            )
+
+        rows = []
+        for row in cursor.fetchall():
+            rows.append({
+                'key': row[0],
+                'value': row[1] if row[1] is not None else '',
+                'category': row[2] or 'general',
+                'description': row[3] or '',
+                'data_type': row[4] or 'string',
+            })
+        return rows
+
     def get_categories(self) -> List[str]:
         """
         Получить список категорий настроек

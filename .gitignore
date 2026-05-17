@@ -91,6 +91,10 @@ extensions_config.json
 data/extensions/*
 !data/extensions/.gitkeep
 
+# Matrix E2EE crypto-store (ключи устройства, не коммитить)
+data/matrix_store/
+matrix_store/
+
 # Coverage reports
 .coverage
 coverage.xml
