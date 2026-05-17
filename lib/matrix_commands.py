@@ -77,9 +77,9 @@ from modules.morning_report import morning_report
 
 # Кнопки меню как в Telegram: emoji-реакция -> команда.
 # Реакции работают в Element, Element X и web-клиенте Matrix.
+# Команды расширений вынесены в подменю !extensions (см. EXTENSION_MENU_ITEMS).
 MENU_BUTTONS: List[Tuple[str, str]] = [
     ("📡", "!status"),
-    ("📊", "!resources"),
     ("🌅", "!report"),
     ("🖥️", "!servers"),
     ("⏸️", "!pause"),
@@ -87,9 +87,72 @@ MENU_BUTTONS: List[Tuple[str, str]] = [
     ("🔇", "!silent"),
     ("🔊", "!loud"),
     ("🔄", "!auto"),
+    ("🧩", "!extensions"),
     ("ℹ️", "!about"),
 ]
 _BUTTON_BY_EMOJI: Dict[str, str] = {emoji: command for emoji, command in MENU_BUTTONS}
+
+
+@dataclass(frozen=True)
+class ExtensionMenuItem:
+    """Команда/кнопка подменю «расширения».
+
+    Появляется в !extensions и навешивается реакцией только если
+    расширение extension_id включено в extension_manager.
+    handler — имя async-метода MatrixCommandBot без аргументов.
+    """
+
+    extension_id: str
+    emoji: str
+    command: str
+    label: str
+    handler: str
+
+
+# Порядок определяет порядок строк и кнопок-реакций в подменю.
+# Расширения без headless-данных (snapshot_transfer_monitor,
+# email_processor) сюда не входят: им нечего показать командой.
+EXTENSION_MENU_ITEMS: List[ExtensionMenuItem] = [
+    ExtensionMenuItem(
+        "resource_monitor", "📊", "!resources",
+        "ресурсы всех серверов", "_handle_resources_all",
+    ),
+    ExtensionMenuItem(
+        "backup_monitor", "💾", "!backup",
+        "бэкапы Proxmox", "_handle_ext_proxmox_backup",
+    ),
+    ExtensionMenuItem(
+        "database_backup_monitor", "🗃️", "!dbbackup",
+        "бэкапы баз данных", "_handle_ext_db_backup",
+    ),
+    ExtensionMenuItem(
+        "mail_backup_monitor", "📬", "!mailbackup",
+        "бэкапы почтового сервера", "_handle_ext_mail_backup",
+    ),
+    ExtensionMenuItem(
+        "stock_load_monitor", "📦", "!stock",
+        "загрузка остатков 1С", "_handle_ext_stock_load",
+    ),
+    ExtensionMenuItem(
+        "zfs_monitor", "🧊", "!zfs",
+        "свободное место ZFS (почта)", "_handle_ext_zfs",
+    ),
+    ExtensionMenuItem(
+        "zfs_pool_free_space_monitor", "💽", "!zfsfree",
+        "свободное место ZFS (SSH)", "_handle_ext_zfs_free",
+    ),
+    ExtensionMenuItem(
+        "supplier_stock_files", "🏷️", "!supplier",
+        "остатки поставщиков", "_handle_ext_supplier",
+    ),
+    ExtensionMenuItem(
+        "web_interface", "🌐", "!web",
+        "адрес веб-интерфейса", "_handle_ext_web",
+    ),
+]
+_EXT_ITEM_BY_COMMAND: Dict[str, ExtensionMenuItem] = {
+    item.command: item for item in EXTENSION_MENU_ITEMS
+}
 
 # Длинные ответы (списки серверов/ресурсов/настроек) Matrix-клиенты обрезают
 # или плохо рендерят. Режем на части по границам строк и шлём пачкой.
@@ -273,6 +336,9 @@ class MatrixCommandBot:
         self._ignored_events_count = 0
         # event_id меню-сообщений (для маппинга реакций на команды)
         self._menu_event_ids: "OrderedDict[str, str]" = OrderedDict()
+        # event_id сообщений подменю «расширения»: реакции на них
+        # резолвятся по EXTENSION_MENU_ITEMS с учётом включённости
+        self._ext_menu_event_ids: "OrderedDict[str, str]" = OrderedDict()
         # уже обработанные реакции (защита от повторной доставки в sync)
         self._processed_reactions: "OrderedDict[str, bool]" = OrderedDict()
         # event_id собственных исходящих сообщений: защита от петли, когда
@@ -485,6 +551,23 @@ class MatrixCommandBot:
         for emoji, _command in MENU_BUTTONS:
             await self._send_reaction(room_id, event_id, emoji)
 
+    async def _post_extensions_menu(self, room_id: str) -> None:
+        """Отправляет подменю расширений и навешивает кнопки только
+        для включённых расширений."""
+        enabled = self._enabled_extensions()
+        text = self._extensions_menu_text(enabled)
+        event_id = await self._send_text(room_id, text)
+        if not event_id:
+            debug_log("⚠️ Matrix подменю расширений отправлено без event_id")
+            return
+
+        self._ext_menu_event_ids[event_id] = room_id
+        self._cap_ordered(self._ext_menu_event_ids, 50)
+
+        for item in EXTENSION_MENU_ITEMS:
+            if item.extension_id in enabled:
+                await self._send_reaction(room_id, event_id, item.emoji)
+
     def _audit(self, user_id: str, room_id: str, command: str, status: str) -> None:
         ts = datetime.now(timezone.utc).isoformat()
         info_log(
@@ -692,6 +775,131 @@ class MatrixCommandBot:
             "• Канал: Matrix command-bot (паритет с Telegram)\n"
             "Напиши !menu для списка команд и кнопок."
         )
+
+    # ------------------------------------------------------------------
+    # Команды расширений (подменю !extensions)
+    # ------------------------------------------------------------------
+    async def _run_extension_command(self, item: ExtensionMenuItem) -> str:
+        """Выполняет команду расширения, если оно включено."""
+        if item.extension_id not in self._enabled_extensions():
+            return (
+                f"❌ Команда {item.command} недоступна: "
+                f"расширение «{item.extension_id}» выключено.\n"
+                "Включить можно в управлении расширениями (Telegram/веб-интерфейс)."
+            )
+        handler = getattr(self, item.handler, None)
+        if handler is None:
+            return f"❌ Обработчик для {item.command} не найден"
+        try:
+            return await handler()
+        except Exception as exc:
+            return f"❌ Ошибка выполнения {item.command}: {str(exc)[:160]}"
+
+    @staticmethod
+    def _backup_summary(period_hours: int, *, proxmox: bool, databases: bool, mail: bool) -> str:
+        from extensions.backup_monitor.backup_utils import get_backup_summary
+
+        text, _has_issues = get_backup_summary(
+            period_hours=period_hours,
+            include_proxmox=proxmox,
+            include_databases=databases,
+            include_mail=mail,
+        )
+        return (text or "").strip() or "ℹ️ Нет данных за период"
+
+    async def _handle_ext_proxmox_backup(self) -> str:
+        body = self._backup_summary(24, proxmox=True, databases=False, mail=False)
+        return f"💾 Бэкапы Proxmox (24ч):\n{body}"
+
+    async def _handle_ext_db_backup(self) -> str:
+        body = self._backup_summary(24, proxmox=False, databases=True, mail=False)
+        return f"🗃️ Бэкапы баз данных (24ч):\n{body}"
+
+    async def _handle_ext_mail_backup(self) -> str:
+        body = self._backup_summary(72, proxmox=False, databases=False, mail=True)
+        return f"📬 Бэкапы почтового сервера (72ч):\n{body}"
+
+    async def _handle_ext_stock_load(self) -> str:
+        from extensions.backup_monitor.backup_utils import get_stock_load_summary
+
+        body = (get_stock_load_summary(period_hours=24) or "").strip()
+        return f"📦 Загрузка остатков 1С (24ч):\n{body or 'ℹ️ Нет данных за период'}"
+
+    async def _handle_ext_zfs(self) -> str:
+        from extensions.zfs_free_space_monitor import (
+            build_zfs_free_space_lines,
+            collect_zfs_free_space,
+        )
+
+        results, errors = collect_zfs_free_space()
+        return "\n".join(build_zfs_free_space_lines(results, errors))
+
+    async def _handle_ext_zfs_free(self) -> str:
+        from extensions.zfs_pool_free_space import (
+            build_status_lines,
+            collect_zfs_pool_free_space,
+        )
+
+        results, errors = collect_zfs_pool_free_space()
+        return "\n".join(build_status_lines(results, errors))
+
+    async def _handle_ext_supplier(self) -> str:
+        from extensions.supplier_stock_files import summarize_supplier_stock_reports
+
+        grouped = summarize_supplier_stock_reports()
+        lines = ["🏷️ Остатки поставщиков:"]
+        any_source = False
+        for kind in ("download", "mail"):
+            sources = grouped.get(kind) or []
+            if not sources:
+                continue
+            any_source = True
+            title = "загрузка" if kind == "download" else "почта"
+            lines.append(f"• {title}: источников {len(sources)}")
+            for src in sources:
+                name = src.get("source_name") or src.get("source_id") or "?"
+                recv = (src.get("receive") or {}).get("icon", "⚪️")
+                proc = (src.get("processing") or {}).get("icon", "⚪️")
+                tran = (src.get("transfer") or {}).get("icon", "⚪️")
+                lines.append(
+                    f"  {name}: приём {recv} обработка {proc} передача {tran}"
+                )
+        if not any_source:
+            lines.append("ℹ️ Нет данных по источникам")
+        return "\n".join(lines)
+
+    async def _handle_ext_web(self) -> str:
+        from core.config_manager import config_manager
+
+        host = config_manager.get_setting("WEB_HOST", "127.0.0.1") or "127.0.0.1"
+        port = config_manager.get_setting("WEB_PORT", 5000) or 5000
+        return (
+            "🌐 Веб-интерфейс управления:\n"
+            f"• http://{host}:{port}\n"
+            "Открой адрес в браузере из доверенной сети."
+        )
+
+    def _extensions_menu_text(self, enabled: Optional[Set[str]] = None) -> str:
+        if enabled is None:
+            enabled = self._enabled_extensions()
+        items = [it for it in EXTENSION_MENU_ITEMS if it.extension_id in enabled]
+        lines = [
+            "🧩 Расширения (показаны только включённые).",
+            "Жми кнопки-реакции под этим сообщением или пиши команды:",
+            "",
+        ]
+        if not items:
+            lines.append("ℹ️ Нет включённых расширений с командами.")
+        else:
+            for it in items:
+                lines.append(f"{it.emoji} {it.command} — {it.label}")
+        if "resource_monitor" in enabled:
+            lines.append("")
+            lines.append("Команды с аргументом:")
+            lines.append("• !res <имя|ip> — ресурсы одного сервера")
+        lines.append("")
+        lines.append("Назад: !menu")
+        return "\n".join(lines)
 
     _SETTINGS_USAGE = (
         "⚙️ Управление настройками:\n"
@@ -1016,7 +1224,6 @@ class MatrixCommandBot:
             "🤖 Управление мониторингом (паритет с Telegram).\n"
             "Жми кнопки-реакции под этим сообщением или пиши команды:\n\n"
             "📡 !status — доступность всех серверов\n"
-            "📊 !resources — ресурсы всех серверов\n"
             "🌅 !report — утренний/сводный отчёт\n"
             "🖥️ !servers — список серверов под мониторингом\n"
             "⏸️ !pause — приостановить мониторинг\n"
@@ -1024,10 +1231,10 @@ class MatrixCommandBot:
             "🔇 !silent — принудительно тихий режим\n"
             "🔊 !loud — принудительно громкий режим\n"
             "🔄 !auto — авто тихий режим по расписанию\n"
+            "🧩 !extensions — команды и кнопки расширений\n"
             "ℹ️ !about — версия и сведения о боте\n\n"
             "Команды с аргументом:\n"
             "• !check <имя|ip> — проверить один сервер\n"
-            "• !res <имя|ip> — ресурсы одного сервера\n"
             "• !settings — хелп и список всех параметров\n"
             "• !settings list [группа] — параметры со значениями\n"
             "• !settings get <KEY> — значение настройки\n"
@@ -1063,10 +1270,13 @@ class MatrixCommandBot:
 
         if command in {"!start", "!menu", "!help"}:
             return command, self._control_menu_text()
+        if command in {"!extensions", "!ext"}:
+            return command, self._extensions_menu_text()
+        ext_item = _EXT_ITEM_BY_COMMAND.get(command)
+        if ext_item is not None:
+            return command, await self._run_extension_command(ext_item)
         if command == "!status":
             return command, await self._handle_status()
-        if command == "!resources":
-            return command, await self._handle_resources_all()
         if command == "!report":
             return command, await self._handle_report()
         if command == "!servers" or command == "!list":
@@ -1074,6 +1284,10 @@ class MatrixCommandBot:
         if command == "!check":
             return command, await self._handle_targeted(normalized, mode="availability")
         if command == "!res":
+            if "resource_monitor" not in self._enabled_extensions():
+                return command, (
+                    "❌ Команда !res недоступна: расширение «resource_monitor» выключено."
+                )
             return command, await self._handle_targeted(normalized, mode="resources")
         if command == "!pause":
             return command, await self._handle_pause()
@@ -1199,6 +1413,8 @@ class MatrixCommandBot:
         try:
             if routed_command in {"!start", "!menu", "!help"}:
                 await self._post_menu(room_id, response_text)
+            elif routed_command in {"!extensions", "!ext"}:
+                await self._post_extensions_menu(room_id)
             else:
                 await self._send_long_text(room_id, response_text)
         except Exception as exc:
@@ -1244,6 +1460,17 @@ class MatrixCommandBot:
         relates = content.get("m.relates_to") or {}
         return relates.get("event_id", "") or "", relates.get("key", "") or ""
 
+    def _ext_command_by_emoji(self, key: str) -> Optional[str]:
+        """Резолвит emoji подменю в команду расширения только если
+        соответствующее расширение сейчас включено."""
+        if not key:
+            return None
+        enabled = self._enabled_extensions()
+        for item in EXTENSION_MENU_ITEMS:
+            if item.emoji == key and item.extension_id in enabled:
+                return item.command
+        return None
+
     async def _process_reaction(self, room: MatrixRoom, event) -> None:
         sender = getattr(event, "sender", "") or ""
         room_id = getattr(room, "room_id", "") or self.default_room_id
@@ -1256,13 +1483,21 @@ class MatrixCommandBot:
             return
 
         target_event_id, key = self._reaction_target_and_key(event)
-        if not target_event_id or target_event_id not in self._menu_event_ids:
+        if not target_event_id:
             return
 
-        command = _BUTTON_BY_EMOJI.get(key)
-        if not command:
-            normalized_key = (key or "").strip()
-            command = _BUTTON_BY_EMOJI.get(normalized_key)
+        is_main_menu = target_event_id in self._menu_event_ids
+        is_ext_menu = target_event_id in self._ext_menu_event_ids
+        if not (is_main_menu or is_ext_menu):
+            return
+
+        normalized_key = (key or "").strip()
+        if is_ext_menu:
+            command = self._ext_command_by_emoji(key) or self._ext_command_by_emoji(
+                normalized_key
+            )
+        else:
+            command = _BUTTON_BY_EMOJI.get(key) or _BUTTON_BY_EMOJI.get(normalized_key)
         if not command:
             debug_log(
                 f"ℹ️ Matrix реакция без сопоставленной кнопки (key='{key}', room={room_id})"
