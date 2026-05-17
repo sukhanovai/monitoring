@@ -1,3 +1,13 @@
+## [8.62.4] - 2026-05-17
+
+### Fixed
+- RU: Matrix command-bot: `!stock` (расширение `stock_load_monitor`) теперь отдаёт детальную загрузку остатков 1С по источникам/поставщикам (как в Telegram-боте): `📦 Загрузка остатков 1С (за 24ч)` → `Всего поставщиков: N` → `<источник> (N)` → `✅/⚠️/❌ <поставщик> (<строки>)[ — <ошибка>] (<Xд Yч назад>)`, вместо краткой сводки `• Файлов: …, ✅ … успешно, ❔ … без статуса`. Причина: команда `!stock` зарегистрирована как расширение и маршрутизировалась в `_handle_ext_stock_load` (краткая сводка `get_stock_load_summary`), из-за чего детальный обработчик `_handle_stock` был недостижим. Теперь `_handle_ext_stock_load` делегирует в `_handle_stock` (формат и относительное время совпадают с Telegram); убрана мёртвая ветка `!stock` в `_route_command`.
+- EN: Matrix command-bot: `!stock` (the `stock_load_monitor` extension) now returns the detailed 1C stock load grouped by source/supplier (like the Telegram bot): `📦 Загрузка остатков 1С (за 24ч)` → `Всего поставщиков: N` → `<source> (N)` → `✅/⚠️/❌ <supplier> (<rows>)[ — <error>] (<Xd Yh ago>)`, instead of the brief `• Файлов: …, ✅ … успешно, ❔ … без статуса` summary. Root cause: `!stock` is registered as an extension and was routed to `_handle_ext_stock_load` (brief `get_stock_load_summary`), leaving the detailed `_handle_stock` handler unreachable. `_handle_ext_stock_load` now delegates to `_handle_stock` (format and relative time match Telegram); the dead `!stock` branch in `_route_command` was removed.
+
+### Changed
+- RU: Выполнен SemVer patch-бамп до `8.62.4`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.4`, `ANDROID_VERSION_CODE=766`).
+- EN: Performed a SemVer patch bump to `8.62.4`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.4`, `ANDROID_VERSION_CODE=766`).
+
 ## [8.62.3] - 2026-05-17
 
 ### Fixed
