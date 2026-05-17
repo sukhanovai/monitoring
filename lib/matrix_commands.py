@@ -91,6 +91,44 @@ MENU_BUTTONS: List[Tuple[str, str]] = [
 ]
 _BUTTON_BY_EMOJI: Dict[str, str] = {emoji: command for emoji, command in MENU_BUTTONS}
 
+# Длинные ответы (списки серверов/ресурсов/настроек) Matrix-клиенты обрезают
+# или плохо рендерят. Режем на части по границам строк и шлём пачкой.
+_MAX_MESSAGE_CHARS = 3500
+
+
+def _split_message(message: str, limit: int = _MAX_MESSAGE_CHARS) -> List[str]:
+    """Режет сообщение на части <= limit символов по границам строк.
+
+    Возвращает список с маркерами «(n/total)», если частей больше одной.
+    Сверхдлинные одиночные строки дробятся жёстко по символам.
+    """
+    text = message or ""
+    if len(text) <= limit:
+        return [text]
+
+    chunks: List[str] = []
+    current = ""
+    for line in text.split("\n"):
+        while len(line) > limit:
+            if current:
+                chunks.append(current)
+                current = ""
+            chunks.append(line[:limit])
+            line = line[limit:]
+        candidate = line if not current else f"{current}\n{line}"
+        if len(candidate) > limit:
+            chunks.append(current)
+            current = line
+        else:
+            current = candidate
+    if current:
+        chunks.append(current)
+
+    total = len(chunks)
+    if total <= 1:
+        return chunks
+    return [f"({idx}/{total})\n{chunk}" for idx, chunk in enumerate(chunks, 1)]
+
 
 @dataclass
 class MatrixACL:
@@ -304,6 +342,11 @@ class MatrixCommandBot:
         )
         return getattr(response, "event_id", None)
 
+    async def _send_long_text(self, room_id: str, message: str) -> None:
+        """Шлёт ответ, при необходимости разбивая на несколько сообщений."""
+        for part in _split_message(message):
+            await self._send_text(room_id, part)
+
     async def _send_reaction(self, room_id: str, target_event_id: str, key: str) -> None:
         try:
             await self.client.room_send(
@@ -352,7 +395,7 @@ class MatrixCommandBot:
         lines = [f"📡 Статус мониторинга: доступно {up}, недоступно {len(down)}"]
         if down:
             lines.append("Проблемные серверы:")
-            for item in down[:10]:
+            for item in down:
                 lines.append(f"- {item.get('name', item.get('ip', 'unknown'))} ({item.get('ip', 'n/a')})")
         return "\n".join(lines)
 
@@ -372,11 +415,7 @@ class MatrixCommandBot:
             f"успешно {stats.get('success', 0)}, "
             f"ошибок {stats.get('failed', 0)}"
         ]
-        shown = 0
         for item in results:
-            if shown >= 15:
-                lines.append("…")
-                break
             server = item.get("server", {}) or {}
             name = server.get("name", server.get("ip", "unknown"))
             res = item.get("resources") or {}
@@ -387,7 +426,6 @@ class MatrixCommandBot:
                 )
             else:
                 lines.append(f"• {name}: ❌ нет данных")
-            shown += 1
         return "\n".join(lines)
 
     async def _handle_targeted(self, command_text: str, mode: str) -> str:
@@ -420,15 +458,13 @@ class MatrixCommandBot:
             return "ℹ️ Список серверов пуст"
 
         lines = [f"🖥️ Серверы под мониторингом: {len(servers)}"]
-        for server in servers[:40]:
+        for server in servers:
             name = server.get("name", "unknown")
             ip = server.get("ip", "n/a")
             stype = server.get("type", "?")
             enabled = server.get("enabled", True)
             flag = "🟢" if enabled else "⚪"
             lines.append(f"{flag} {name} ({ip}) [{stype}]")
-        if len(servers) > 40:
-            lines.append(f"… и ещё {len(servers) - 40}")
         return "\n".join(lines)
 
     async def _handle_report(self) -> str:
@@ -549,27 +585,203 @@ class MatrixCommandBot:
             "Напиши !menu для списка команд и кнопок."
         )
 
-    async def _handle_settings(self, command_text: str) -> str:
-        help_text = (
-            "⚙️ Доступные настройки в Matrix:\n"
-            "- !settings\n"
-            "- !settings get <KEY>\n"
-            "Пример: !settings get CHECK_INTERVAL"
-        )
-        parts = command_text.strip().split()
-        if len(parts) < 3 or parts[1].lower() != "get":
-            return help_text
+    _SETTINGS_USAGE = (
+        "⚙️ Управление настройками:\n"
+        "• !settings — этот хелп и список параметров\n"
+        "• !settings list [категория] — параметры с текущими значениями\n"
+        "• !settings get <KEY> — значение одного параметра\n"
+        "• !settings set <KEY> <значение> — изменить параметр\n"
+        "Примеры:\n"
+        "  !settings get CHECK_INTERVAL\n"
+        "  !settings set CHECK_INTERVAL 120\n"
+        "  !settings set DEBUG_MODE true"
+    )
 
-        setting_key = parts[2].strip().upper()
+    @staticmethod
+    def _is_secret_key(key: str) -> bool:
+        upper = (key or "").upper()
+        return any(token in upper for token in ("TOKEN", "PASSWORD", "SECRET"))
+
+    @classmethod
+    def _format_setting_value(cls, key: str, value) -> str:
+        if cls._is_secret_key(key):
+            return "•••• (скрыто)" if str(value or "") else "(пусто)"
+        text = "" if value is None else str(value)
+        if text == "":
+            return "(пусто)"
+        if len(text) > 120:
+            return text[:120] + "…"
+        return text
+
+    @staticmethod
+    def _convert_setting_value(raw: str, data_type: str):
+        dt = (data_type or "string").lower()
+        if dt == "int":
+            return int(raw)
+        if dt == "float":
+            return float(raw)
+        if dt == "bool":
+            low = raw.strip().lower()
+            if low in ("true", "1", "yes", "on", "да"):
+                return True
+            if low in ("false", "0", "no", "off", "нет"):
+                return False
+            raise ValueError("ожидается true/false")
+        if dt in ("list", "dict"):
+            parsed = json.loads(raw)
+            if dt == "list" and not isinstance(parsed, list):
+                raise ValueError("ожидается JSON-массив")
+            if dt == "dict" and not isinstance(parsed, dict):
+                raise ValueError("ожидается JSON-объект")
+            return parsed
+        return raw
+
+    def _settings_help(self) -> str:
         try:
             from core.config_manager import config_manager
 
+            rows = config_manager.get_all_settings_meta()
+        except Exception as exc:
+            return f"{self._SETTINGS_USAGE}\n\n❌ Не удалось загрузить список: {exc}"
+
+        lines = [self._SETTINGS_USAGE, "", f"📋 Параметры ({len(rows)}):"]
+        current_category = None
+        for row in rows:
+            category = row.get("category", "general")
+            if category != current_category:
+                current_category = category
+                lines.append(f"\n— {category} —")
+            key = row.get("key", "")
+            desc = row.get("description") or "без описания"
+            dtype = row.get("data_type", "string")
+            value = self._format_setting_value(key, row.get("value", ""))
+            lines.append(f"• {key} [{dtype}] = {value}")
+            lines.append(f"   {desc}")
+        return "\n".join(lines)
+
+    def _settings_list(self, category: Optional[str]) -> str:
+        try:
+            from core.config_manager import config_manager
+
+            rows = config_manager.get_all_settings_meta(category=category)
+        except Exception as exc:
+            return f"❌ Не удалось загрузить настройки: {exc}"
+
+        if not rows:
+            if category:
+                return f"ℹ️ Нет настроек в категории «{category}»"
+            return "ℹ️ Список настроек пуст"
+
+        title = (
+            f"⚙️ Настройки категории «{category}»: {len(rows)}"
+            if category
+            else f"⚙️ Все настройки: {len(rows)}"
+        )
+        lines = [title]
+        current_category = None
+        for row in rows:
+            cat = row.get("category", "general")
+            if not category and cat != current_category:
+                current_category = cat
+                lines.append(f"\n— {cat} —")
+            key = row.get("key", "")
+            value = self._format_setting_value(key, row.get("value", ""))
+            lines.append(f"• {key} = {value}")
+        return "\n".join(lines)
+
+    def _settings_get(self, setting_key: str) -> str:
+        try:
+            from core.config_manager import config_manager
+
+            meta = config_manager.get_setting_meta(setting_key)
+            if meta is None:
+                return (
+                    f"❌ Настройка {setting_key} не найдена. "
+                    "Список: !settings list"
+                )
             value = config_manager.get_setting(setting_key, None)
-            if value is None:
-                return f"❌ Настройка {setting_key} не найдена"
-            return f"✅ {setting_key} = {value}"
+            desc = meta.get("description") or "без описания"
+            dtype = meta.get("data_type", "string")
+            shown = self._format_setting_value(setting_key, value)
+            return (
+                f"✅ {setting_key} = {shown}\n"
+                f"• тип: {dtype}\n"
+                f"• категория: {meta.get('category', 'general')}\n"
+                f"• описание: {desc}"
+            )
         except Exception as exc:
             return f"❌ Ошибка чтения настройки: {exc}"
+
+    def _settings_set(self, setting_key: str, raw_value: str) -> str:
+        try:
+            from core.config_manager import config_manager
+
+            meta = config_manager.get_setting_meta(setting_key)
+            if meta is None:
+                return (
+                    f"❌ Настройка {setting_key} не найдена, изменение отклонено. "
+                    "Доступные параметры: !settings list"
+                )
+
+            data_type = meta.get("data_type", "string")
+            try:
+                converted = self._convert_setting_value(raw_value, data_type)
+            except (ValueError, json.JSONDecodeError) as exc:
+                return (
+                    f"❌ Неверное значение для {setting_key} "
+                    f"(тип {data_type}): {exc}"
+                )
+
+            ok = config_manager.set_setting(
+                setting_key,
+                converted,
+                category=meta.get("category", "general"),
+                description=meta.get("description", ""),
+                data_type="auto",
+            )
+            if not ok:
+                return f"❌ Не удалось сохранить настройку {setting_key}"
+
+            shown = self._format_setting_value(setting_key, converted)
+            self._audit(
+                "settings", "settings", f"set {setting_key}", "applied"
+            )
+            return (
+                f"✅ {setting_key} обновлена: {shown}\n"
+                "ⓘ Часть параметров применяется при следующем цикле проверки."
+            )
+        except Exception as exc:
+            return f"❌ Ошибка изменения настройки: {exc}"
+
+    async def _handle_settings(self, command_text: str) -> str:
+        parts = command_text.strip().split()
+        if len(parts) < 2 or parts[1].lower() in ("help", "?"):
+            return self._settings_help()
+
+        action = parts[1].lower()
+
+        if action == "list":
+            category = parts[2].strip() if len(parts) > 2 else None
+            return self._settings_list(category)
+
+        if action == "get":
+            if len(parts) < 3:
+                return "ℹ️ Использование: !settings get <KEY>"
+            return self._settings_get(parts[2].strip().upper())
+
+        if action == "set":
+            if len(parts) < 4:
+                return (
+                    "ℹ️ Использование: !settings set <KEY> <значение>\n"
+                    "Пример: !settings set CHECK_INTERVAL 120"
+                )
+            setting_key = parts[2].strip().upper()
+            raw_value = command_text.split(maxsplit=3)[3].strip()
+            return self._settings_set(setting_key, raw_value)
+
+        return (
+            f"ℹ️ Неизвестное действие «{action}».\n\n{self._SETTINGS_USAGE}"
+        )
 
     def _control_menu_text(self) -> str:
         return (
@@ -588,9 +800,14 @@ class MatrixCommandBot:
             "Команды с аргументом:\n"
             "• !check <имя|ip> — проверить один сервер\n"
             "• !res <имя|ip> — ресурсы одного сервера\n"
+            "• !settings — хелп и список всех параметров\n"
+            "• !settings list [категория] — параметры со значениями\n"
             "• !settings get <KEY> — значение настройки\n"
+            "• !settings set <KEY> <значение> — изменить настройку\n"
             "• !mode — текущее состояние управления\n"
-            "• !diag / !ping — диагностика command-bot"
+            "• !diag / !ping — диагностика command-bot\n\n"
+            "Длинные списки (серверы/ресурсы/настройки) приходят "
+            "несколькими сообщениями с маркером (n/total)."
         )
 
     def _format_diag(self, sender: str, room_id: str, command_text: str) -> str:
@@ -744,7 +961,7 @@ class MatrixCommandBot:
             if routed_command in {"!start", "!menu", "!help"}:
                 await self._post_menu(room_id, response_text)
             else:
-                await self._send_text(room_id, response_text)
+                await self._send_long_text(room_id, response_text)
         except Exception as exc:
             debug_log(
                 f"❌ Ошибка отправки Matrix-ответа (room={room_id}, sender={sender}, "
