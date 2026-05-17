@@ -1,3 +1,13 @@
+## [8.62.0] - 2026-05-17
+
+### Added
+- RU: В Matrix command-bot добавлено подменю расширений: в главное `!menu` добавлена кнопка `🧩` и команда `!extensions` (алиас `!ext`). Подменю показывает команды и кнопки-реакции только для включённых расширений (`extension_manager.is_extension_enabled`): `!resources` (resource_monitor), `!backup` (backup_monitor), `!dbbackup` (database_backup_monitor), `!mailbackup` (mail_backup_monitor), `!stock` (stock_load_monitor), `!zfs` (zfs_monitor), `!zfsfree` (zfs_pool_free_space_monitor), `!supplier` (supplier_stock_files), `!web` (web_interface). Каждая команда переиспользует существующий headless-backend без Telegram-объектов; выключенное расширение возвращает понятное сообщение, реакция на стороннее меню игнорируется.
+- EN: Added an extensions submenu to the Matrix command-bot: a `🧩` button and `!extensions` command (alias `!ext`) were added to the main `!menu`. The submenu shows commands and reaction buttons only for enabled extensions (`extension_manager.is_extension_enabled`): `!resources` (resource_monitor), `!backup` (backup_monitor), `!dbbackup` (database_backup_monitor), `!mailbackup` (mail_backup_monitor), `!stock` (stock_load_monitor), `!zfs` (zfs_monitor), `!zfsfree` (zfs_pool_free_space_monitor), `!supplier` (supplier_stock_files), `!web` (web_interface). Each command reuses the existing headless backend without Telegram objects; a disabled extension returns a clear message and stale reactions are ignored.
+
+### Changed
+- RU: `!resources` и `!res` теперь относятся к расширению `resource_monitor` и учитывают его включённость: при выключенном расширении команды недоступны. Кнопка `📊 !resources` убрана из главного `!menu` и перенесена в подменю `!extensions`. Выполнен SemVer minor-бамп до `8.62.0`; синхронизированы упоминания версии в заголовках исходников/доков и Android-метаданные (`ANDROID_VERSION_NAME=8.62.0`, `ANDROID_VERSION_CODE=762`).
+- EN: `!resources` and `!res` now belong to the `resource_monitor` extension and respect its enabled state: the commands are unavailable when the extension is off. The `📊 !resources` button was removed from the main `!menu` and moved into the `!extensions` submenu. Performed a SemVer minor bump to `8.62.0`; synchronized version mentions in source/doc headers and Android metadata (`ANDROID_VERSION_NAME=8.62.0`, `ANDROID_VERSION_CODE=762`).
+
 ## [8.61.29] - 2026-05-15
 
 ### Added
