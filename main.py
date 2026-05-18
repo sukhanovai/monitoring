@@ -143,6 +143,54 @@ def run_cli_checks(args: argparse.Namespace) -> tuple[bool, int]:
     return True, 0 if success else 1
 
 
+def build_startup_message() -> str:
+    """Формирует стартовое уведомление с версией и полезными сведениями."""
+    lines = ["🟢 *Мониторинг серверов запущен*", ""]
+
+    try:
+        from config.settings import APP_VERSION
+        lines.append(f"🔖 *Версия:* {APP_VERSION}")
+    except Exception:
+        pass
+
+    try:
+        from config.settings import ANDROID_LATEST_VERSION
+        lines.append(f"📱 *Android-клиент:* {ANDROID_LATEST_VERSION}")
+    except Exception:
+        pass
+
+    try:
+        import socket
+        lines.append(f"🖥 *Хост:* {socket.gethostname()}")
+    except Exception:
+        pass
+
+    try:
+        import platform
+        lines.append(f"🐍 *Python:* {platform.python_version()}")
+    except Exception:
+        pass
+
+    try:
+        from datetime import datetime
+        lines.append(f"🕒 *Время запуска:* {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    except Exception:
+        pass
+
+    try:
+        from extensions.extension_manager import extension_manager
+        if extension_manager.is_extension_enabled('web_interface'):
+            from config import settings as _settings
+            from core.monitor_core import get_web_interface_url
+            lines.append("")
+            lines.append(f"🌐 *Веб-интерфейс:* {get_web_interface_url(_settings)}")
+            lines.append("_доступен только в локальной сети_")
+    except Exception:
+        pass
+
+    return "\n".join(lines)
+
+
 def main(args: argparse.Namespace):
     # CLI-ключ тихого старта пробрасываем в окружение, чтобы фоновые
     # потоки мониторинга (core.monitor / monitor_core) тоже его видели.
@@ -364,11 +412,7 @@ def main(args: argparse.Namespace):
             if is_startup_muted():
                 logger.info("🔇 Тихий старт: стартовое уведомление подавлено (--silent-start)")
             else:
-                send_alert(
-                    "🟢 *Мониторинг серверов запущен*\n\n"
-                    "Система успешно инициализирована",
-                    force=True
-                )
+                send_alert(build_startup_message(), force=True)
         except Exception as e:
             logger.warning(f"⚠️ Не удалось отправить стартовое сообщение: {e}")
     else:
