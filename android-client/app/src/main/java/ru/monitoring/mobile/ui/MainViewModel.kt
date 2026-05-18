@@ -25,6 +25,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import retrofit2.HttpException
+import ru.monitoring.mobile.BuildConfig
 import ru.monitoring.mobile.api.ApiFactory
 import ru.monitoring.mobile.api.AddWindowsCredentialRequest
 import ru.monitoring.mobile.api.AddServerRequest
@@ -63,7 +64,12 @@ class MainViewModel(
     private companion object {
         private const val TAG_SYNC = "MonitoringSync"
     }
-    private val projectVersion = "8.62.0"
+    // Берём реальную версию сборки из BuildConfig (gradle.properties → ANDROID_VERSION_NAME),
+    // отрезая суффикс flavor'а (-legacy/-compactops), чтобы не хардкодить и не отставать
+    // от канонической версии. Раньше тут была зашитая строка, которую забывали бампать.
+    private val projectVersion: String =
+        Regex("""^\d+\.\d+\.\d+""").find(BuildConfig.VERSION_NAME)?.value
+            ?: BuildConfig.VERSION_NAME
     private val certificateExpiryWarningDays = 14L
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     private val problemBackupMarkers = listOf("❌", "⚠️", "🚨", "🆘", "⛔", "🔴", "🟠", "⚪")
@@ -1050,9 +1056,21 @@ class MainViewModel(
             state = state.copy(message = "Синхронизация уже выполняется", messageSource = "global")
             return
         }
-        val syncSessionId = startSyncProgressSession()
         val effectiveBaseUrl = normalizeBaseUrlInput(state.baseUrlInput.ifBlank { preferences.apiBaseUrl })
         val hasToken = normalizeToken(state.token.ifBlank { preferences.apiToken }).isNotBlank()
+        if (!hasToken) {
+            // Без токена refreshSettingsFromServer молча пропускался, а refreshAvailability
+            // всё равно бил по /v1/monitoring/availability без заголовка Authorization —
+            // сервер логировал `unauthorized ... reason=missing` и отдавал 401.
+            // Не шлём неаутентифицированные запросы, а просим настроить токен.
+            Log.w(TAG_SYNC, "refreshData skipped: token is blank, baseUrl=$effectiveBaseUrl")
+            state = state.copy(
+                message = "Не задан токен доступа. Укажите токен в Настройках и сохраните его.",
+                messageSource = "global"
+            )
+            return
+        }
+        val syncSessionId = startSyncProgressSession()
         Log.i(TAG_SYNC, "refreshData started, sessionId=$syncSessionId, baseUrl=$effectiveBaseUrl, hasToken=$hasToken")
         Log.i(TAG_SYNC, "sync flow start: refreshSettingsFromServer + refreshAvailability, sessionId=$syncSessionId")
         refreshSettingsFromServer(showErrors = true, syncSessionId = syncSessionId)
@@ -1072,6 +1090,19 @@ class MainViewModel(
     }
 
     fun refreshAvailability(syncSessionId: Int? = null) {
+        val effectiveToken = normalizeToken(state.token.ifBlank { preferences.apiToken })
+        if (effectiveToken.isBlank()) {
+            // Не шлём GET /v1/monitoring/availability без Authorization (сервер логирует
+            // `unauthorized ... reason=missing` и отдаёт 401). Поведение как у
+            // refreshSettingsFromServer, который при пустом токене тоже пропускается.
+            Log.w(TAG_SYNC, "refreshAvailability skipped: effective token is blank, sessionId=$syncSessionId")
+            state = state.copy(
+                message = "Не задан токен доступа. Укажите токен в Настройках и сохраните его.",
+                messageSource = "all_servers"
+            )
+            completeSyncProgressPart(syncSessionId)
+            return
+        }
         viewModelScope.launch {
             Log.i(TAG_SYNC, "refreshAvailability started, sessionId=$syncSessionId")
             Log.i(TAG_SYNC, "sync step availability started, sessionId=$syncSessionId")
@@ -1238,6 +1269,19 @@ class MainViewModel(
         if (query.isBlank()) return
 
         val serverTarget = server.ip.ifBlank { server.name }
+
+        val effectiveToken = normalizeToken(state.token.ifBlank { preferences.apiToken })
+        if (effectiveToken.isBlank()) {
+            // Точечная проверка тоже бьёт по /v1/monitoring/availability/<server> —
+            // без токена сервер логирует `reason=missing` и отдаёт 401.
+            Log.w(TAG_SYNC, "refreshServerAvailability skipped: effective token is blank, server=$serverTarget")
+            state = state.copy(
+                message = "Не задан токен доступа. Укажите токен в Настройках и сохраните его.",
+                messageSource = "server_availability",
+                availabilityServerMessageTarget = serverTarget
+            )
+            return
+        }
 
         viewModelScope.launch {
             state = state.copy(isLoading = true, availabilityServerMessageTarget = serverTarget)

@@ -26,7 +26,7 @@
 
 ```sh
 grep -rnoE "8\.6[0-9]\.[0-9]+" \
-  --include="*.py" --include="*.kts" --include="*.properties" \
+  --include="*.py" --include="*.kt" --include="*.kts" --include="*.properties" \
   --include="*.md" --include="*.json" --include="*.gradle" --include="*.txt" \
   . --exclude-dir=.git \
   | grep -vE "CHANGELOG.md" \
