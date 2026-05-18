@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.62.4
+Server Monitoring System v8.62.5
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit + reaction buttons + E2EE).
 Система мониторинга серверов
-Версия: 8.62.4
+Версия: 8.62.5
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит + кнопки-реакции + E2EE).
@@ -342,6 +342,11 @@ class MatrixCommandBot:
         # event_id сообщений сводки !backup: реакции-кнопки с именами
         # серверов резолвятся в детализацию по конкретному хосту Proxmox
         self._backup_menu_event_ids: "OrderedDict[str, str]" = OrderedDict()
+        # event_id сообщений сводки !dbbackup: реакции-кнопки с именами
+        # баз резолвятся в статистику по конкретной БД
+        self._dbbackup_menu_event_ids: "OrderedDict[str, str]" = OrderedDict()
+        # label кнопки -> (backup_type, db_name, display_name) для !dbbackup
+        self._dbbackup_index: "OrderedDict[str, Tuple[str, str, str]]" = OrderedDict()
         # уже обработанные реакции (защита от повторной доставки в sync)
         self._processed_reactions: "OrderedDict[str, bool]" = OrderedDict()
         # event_id собственных исходящих сообщений: защита от петли, когда
@@ -610,6 +615,177 @@ class MatrixCommandBot:
 
         for host_name in limited:
             await self._send_reaction(room_id, event_id, host_name)
+
+    # Иконки статуса БД (как в Telegram DisplayFormatters.DB_STATUS_ICONS).
+    _DB_STATUS_ICONS: Dict[str, str] = {
+        "success": "✅",
+        "failed": "🔴",
+        "recent_failed": "🟠",
+        "warning": "🟡",
+        "recent_errors": "🟠",
+        "old": "🟡",
+        "stale": "⚫",
+        "unknown": "⚪",
+    }
+    _DB_STATUS_LABEL: Dict[str, str] = {
+        "success": "🟢 в норме",
+        "old": "🟡 устаревает",
+        "warning": "🟡 ошибки в последнем бэкапе",
+        "recent_errors": "🟠 ошибки в истории",
+        "recent_failed": "🟠 есть неудачные бэкапы",
+        "failed": "🔴 последний бэкап неудачен",
+        "stale": "⚫ нет свежих бэкапов",
+        "unknown": "❔ статус не определён",
+    }
+
+    @staticmethod
+    def _database_backup_entries() -> List[dict]:
+        """Снимок БД и их статусов (для кнопок под !dbbackup).
+
+        Источник тот же, что и в Telegram-боте
+        (get_database_monitor_snapshot): конфиг + backups.db.
+        """
+        try:
+            from extensions.backup_monitor.bot_handler import BackupMonitorBot
+            from extensions.backup_monitor.backup_handlers import (
+                get_database_monitor_snapshot,
+            )
+
+            snapshot = get_database_monitor_snapshot(BackupMonitorBot())
+        except Exception as exc:
+            debug_log(f"⚠️ Не удалось получить список БД для !dbbackup: {exc}")
+            return []
+
+        entries: List[dict] = []
+        for item in snapshot or []:
+            db_name = str(item.get("db_name") or "").strip()
+            backup_type = str(item.get("backup_type") or "").strip()
+            if not db_name or not backup_type:
+                continue
+            entries.append(
+                {
+                    "backup_type": backup_type,
+                    "db_name": db_name,
+                    "display_name": str(
+                        item.get("display_name") or db_name
+                    ).strip()
+                    or db_name,
+                    "status": str(item.get("status") or "unknown"),
+                    "is_disabled": bool(item.get("is_disabled")),
+                }
+            )
+        return entries
+
+    def _build_dbbackup_index(
+        self, entries: List[dict]
+    ) -> "OrderedDict[str, Tuple[str, str, str]]":
+        """label кнопки-реакции -> (backup_type, db_name, display_name).
+
+        Лейблы делаем уникальными: Matrix агрегирует реакции по одинаковому
+        ключу, поэтому при совпадении display_name добавляем тип/счётчик.
+        """
+        index: "OrderedDict[str, Tuple[str, str, str]]" = OrderedDict()
+        for entry in entries:
+            status = str(entry.get("status") or "unknown")
+            icon = (
+                "⚪"
+                if entry.get("is_disabled")
+                else self._DB_STATUS_ICONS.get(status, "⚪")
+            )
+            display_name = entry["display_name"]
+            base = f"{icon} {display_name}"
+            label = base
+            if label in index:
+                label = f"{base} ({entry['backup_type']})"
+                suffix = 2
+                while label in index:
+                    label = f"{base} #{suffix}"
+                    suffix += 1
+            index[label] = (
+                entry["backup_type"],
+                entry["db_name"],
+                display_name,
+            )
+        return index
+
+    def _resolve_db_entry(
+        self, label: str
+    ) -> Optional[Tuple[str, str, str]]:
+        """Резолвит ключ реакции/аргумент в (backup_type, db_name, display).
+
+        Сначала по актуальному индексу из последнего меню, затем по свежему
+        снимку — чтобы `!dbbackup <имя>` работал и без открытого меню.
+        """
+        label = (label or "").strip()
+        if not label:
+            return None
+
+        indices = [self._dbbackup_index]
+        for index in indices:
+            if not index:
+                continue
+            if label in index:
+                return index[label]
+            low = label.lower()
+            for lbl, target in index.items():
+                if low in (lbl.lower(), target[2].lower(), target[1].lower()):
+                    return target
+
+        fresh = self._build_dbbackup_index(self._database_backup_entries())
+        if not fresh:
+            return None
+        if label in fresh:
+            return fresh[label]
+        low = label.lower()
+        for lbl, target in fresh.items():
+            if low in (lbl.lower(), target[2].lower(), target[1].lower()):
+                return target
+        return None
+
+    # Лимит кнопок-реакций под сводкой !dbbackup (см. _BACKUP_MENU_MAX_BUTTONS).
+    _DBBACKUP_MENU_MAX_BUTTONS = 40
+
+    async def _post_dbbackup_menu(self, room_id: str, body: str) -> None:
+        """Отправляет сводку !dbbackup и навешивает кнопки-реакции с именами
+        баз для перехода к статистике бэкапов по конкретной БД."""
+        if "database_backup_monitor" not in self._enabled_extensions():
+            await self._send_long_text(room_id, body)
+            return
+
+        entries = self._database_backup_entries()
+        if not entries:
+            await self._send_long_text(room_id, body)
+            return
+
+        index = self._build_dbbackup_index(entries)
+        self._dbbackup_index = index
+
+        labels = list(index.keys())[: self._DBBACKUP_MENU_MAX_BUTTONS]
+        hint = [
+            "",
+            "🔘 Жми кнопку с именем базы под этим сообщением — "
+            "покажу статистику бэкапов по ней.",
+            "Либо команда: !dbbackup <имя_базы>",
+        ]
+        if len(index) > len(labels):
+            hint.append(
+                f"ⓘ Баз {len(index)}, кнопок показано {len(labels)} "
+                "(остальные — командой !dbbackup <имя_базы>)."
+            )
+        event_id = await self._send_text(
+            room_id, body + "\n" + "\n".join(hint)
+        )
+        if not event_id:
+            debug_log(
+                "⚠️ Matrix сводка !dbbackup без event_id: кнопки-реакции пропущены"
+            )
+            return
+
+        self._dbbackup_menu_event_ids[event_id] = room_id
+        self._cap_ordered(self._dbbackup_menu_event_ids, 50)
+
+        for label in labels:
+            await self._send_reaction(room_id, event_id, label)
 
     def _audit(self, user_id: str, room_id: str, command: str, status: str) -> None:
         ts = datetime.now(timezone.utc).isoformat()
@@ -930,6 +1106,98 @@ class MatrixCommandBot:
         body = self._backup_summary(24, proxmox=False, databases=True, mail=False)
         return f"🗃️ Бэкапы баз данных (24ч):\n{body}"
 
+    _DB_DETAIL_HOURS = 168
+    _DB_TASK_TYPE_NAMES: Dict[str, str] = {
+        "database_dump": "Дамп БД",
+        "client_database_dump": "Дамп клиентской БД",
+        "cobian_backup": "Резервное копирование",
+        "yandex_backup": "Yandex Backup",
+    }
+
+    async def _handle_db_backup_detail(self, label: str) -> str:
+        """Статистика бэкапов одной БД (как деталь в Telegram-боте)."""
+        label = (label or "").strip()
+        if not label:
+            return (
+                "ℹ️ Не указано имя базы. "
+                "Использование: !dbbackup <имя_базы>"
+            )
+
+        target = self._resolve_db_entry(label)
+        if target is None:
+            return (
+                f"ℹ️ База «{label}» не найдена. Открой список командой "
+                "!dbbackup и жми кнопку под сводкой."
+            )
+
+        backup_type, db_name, display_name = target
+        try:
+            from extensions.backup_monitor.bot_handler import BackupMonitorBot
+
+            bot = BackupMonitorBot()
+            details = bot.get_database_details(
+                backup_type, db_name, self._DB_DETAIL_HOURS
+            )
+            try:
+                status_key = bot.get_database_display_status(
+                    backup_type, db_name
+                )
+            except Exception:
+                status_key = ""
+        except Exception as exc:
+            return (
+                f"❌ Ошибка получения данных по «{display_name}»: "
+                f"{str(exc)[:160]}"
+            )
+
+        if not details:
+            return (
+                f"🗃️ Бэкапы БД: {display_name}\n"
+                f"Нет данных по этой базе за последние "
+                f"{self._DB_DETAIL_HOURS} часов."
+            )
+
+        status_label = self._DB_STATUS_LABEL.get(
+            str(status_key), str(status_key) or ""
+        )
+        success = sum(1 for d in details if d and d[0] == "success")
+        failed = sum(1 for d in details if d and d[0] == "failed")
+        total = len(details)
+
+        lines = [f"🗃️ Бэкапы БД: {display_name}"]
+        if status_label:
+            lines.append(f"Статус: {status_label}")
+        lines.append(f"Период: {self._DB_DETAIL_HOURS} часов")
+        lines.append("")
+        lines.append("📊 Статистика:")
+        lines.append(f"✅ Успешных: {success}")
+        lines.append(f"❌ Ошибок: {failed}")
+        lines.append(f"📈 Всего: {total}")
+        lines.append("")
+        lines.append("⏰ Последние бэкапы:")
+        for status, task_type, error_count, _subject, received_at in details[:10]:
+            icon = "✅" if status == "success" else "❌"
+            try:
+                backup_time = datetime.strptime(
+                    str(received_at), "%Y-%m-%d %H:%M:%S"
+                )
+                time_str = backup_time.strftime("%d.%m %H:%M")
+            except Exception:
+                time_str = str(received_at)[:16]
+            task_display = self._DB_TASK_TYPE_NAMES.get(
+                task_type, task_type or "Резервное копирование"
+            )
+            line = f"{icon} {time_str} — {status} — {task_display}"
+            try:
+                if error_count and int(error_count) > 0:
+                    line += f" (ошибок: {int(error_count)})"
+            except (TypeError, ValueError):
+                pass
+            lines.append(line)
+        lines.append("")
+        lines.append(f"🕒 Обновлено: {datetime.now().strftime('%H:%M:%S')}")
+        return "\n".join(lines).rstrip()
+
     async def _handle_ext_mail_backup(self) -> str:
         body = self._backup_summary(72, proxmox=False, databases=False, mail=True)
         return f"📬 Бэкапы почтового сервера (72ч):\n{body}"
@@ -1012,6 +1280,11 @@ class MatrixCommandBot:
             arg_commands.append(
                 "• !backup <имя_сервера> — детали бэкапов по серверу "
                 "(или жми кнопку-реакцию под сводкой !backup)"
+            )
+        if "database_backup_monitor" in enabled:
+            arg_commands.append(
+                "• !dbbackup <имя_базы> — статистика бэкапов по базе "
+                "(или жми кнопку-реакцию под сводкой !dbbackup)"
             )
         if arg_commands:
             lines.append("")
@@ -1437,6 +1710,8 @@ class MatrixCommandBot:
             "• !help — краткая справка по Matrix-командам\n"
             "• !status — текущий статус серверов\n"
             "• !report — сводный отчёт\n"
+            "• !extensions или !ext — меню расширений "
+            "(бэкапы, ресурсы, ZFS и т.д.)\n"
             "• !stock — детальная загрузка остатков 1С\n"
             "• !zfs — детальный статус ZFS пулов\n"
             "• !settings — справка по настройкам\n"
@@ -1484,6 +1759,17 @@ class MatrixCommandBot:
             if arg:
                 return command, await self._handle_backup_host_detail(arg)
             return command, await self._handle_ext_proxmox_backup()
+        if command == "!dbbackup":
+            if "database_backup_monitor" not in self._enabled_extensions():
+                return command, (
+                    "❌ Команда !dbbackup недоступна: расширение "
+                    "«database_backup_monitor» выключено."
+                )
+            parts = normalized.split(maxsplit=1)
+            arg = parts[1].strip() if len(parts) > 1 else ""
+            if arg:
+                return command, await self._handle_db_backup_detail(arg)
+            return command, await self._handle_ext_db_backup()
         ext_item = _EXT_ITEM_BY_COMMAND.get(command)
         if ext_item is not None:
             return command, await self._run_extension_command(ext_item)
@@ -1607,6 +1893,10 @@ class MatrixCommandBot:
                 # «!backup» без аргумента — сводка + кнопки по серверам.
                 # «!backup <хост>» уже вернул готовую детализацию текстом.
                 await self._post_backup_menu(room_id, response_text)
+            elif routed_command == "!dbbackup" and len(command_text.split()) <= 1:
+                # «!dbbackup» без аргумента — сводка + кнопки по базам.
+                # «!dbbackup <база>» уже вернул статистику текстом.
+                await self._post_dbbackup_menu(room_id, response_text)
             else:
                 await self._send_long_text(room_id, response_text)
         except Exception as exc:
@@ -1681,7 +1971,10 @@ class MatrixCommandBot:
         is_main_menu = target_event_id in self._menu_event_ids
         is_ext_menu = target_event_id in self._ext_menu_event_ids
         is_backup_menu = target_event_id in self._backup_menu_event_ids
-        if not (is_main_menu or is_ext_menu or is_backup_menu):
+        is_dbbackup_menu = target_event_id in self._dbbackup_menu_event_ids
+        if not (
+            is_main_menu or is_ext_menu or is_backup_menu or is_dbbackup_menu
+        ):
             return
 
         normalized_key = (key or "").strip()
@@ -1690,6 +1983,13 @@ class MatrixCommandBot:
             # emoji-реакции, реагируем только на known-хосты.
             if normalized_key and normalized_key in set(self._proxmox_backup_hosts()):
                 command = f"!backup {normalized_key}"
+            else:
+                command = ""
+        elif is_dbbackup_menu:
+            # Ключ реакции — лейбл базы из последнего меню !dbbackup.
+            # Посторонние emoji-реакции под сводкой игнорируем.
+            if normalized_key and normalized_key in self._dbbackup_index:
+                command = f"!dbbackup {normalized_key}"
             else:
                 command = ""
         elif is_ext_menu:

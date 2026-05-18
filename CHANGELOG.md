@@ -1,3 +1,15 @@
+## [8.62.5] - 2026-05-17
+
+### Added
+- RU: В Matrix command-bot `!dbbackup` без аргумента теперь шлёт сводку бэкапов БД и навешивает кнопки-реакции с именами баз; нажатие кнопки (или команда `!dbbackup <имя_базы>`) отдаёт статистику бэкапов по конкретной базе: статус, число успешных/неудачных/всего и последние бэкапы за 168ч (время, статус, тип задачи, число ошибок). Список баз берётся из `get_database_monitor_snapshot` (конфиг + `backups.db`), как в Telegram-боте; лейблы кнопок делаются уникальными (Matrix агрегирует одинаковые реакции — при совпадении display_name добавляется тип/счётчик), кнопок не больше 40, посторонние emoji-реакции под сводкой игнорируются. `!dbbackup <имя_базы>` работает и без открытого меню (резолв по свежему снимку). В подменю `!extensions` добавлена подсказка про аргумент `!dbbackup <имя_базы>`.
+- EN: In the Matrix command-bot, `!dbbackup` with no argument now sends the database backup summary and attaches reaction buttons labeled with database names; pressing a button (or the `!dbbackup <db>` command) returns per-database backup stats: status, success/failed/total counts and the last 168h backups (time, status, task type, error count). The database list comes from `get_database_monitor_snapshot` (config + `backups.db`), like the Telegram bot; button labels are made unique (Matrix aggregates identical reactions — on display_name collision a type/counter suffix is added), capped at 40 buttons, and stray emoji reactions under the summary are ignored. `!dbbackup <db>` also works without an open menu (resolved against a fresh snapshot). The `!extensions` submenu now hints at the `!dbbackup <db>` argument.
+- RU: В главное `!menu` Matrix command-bot добавлено описание команды вызова меню расширений — `!extensions` (алиас `!ext`): кнопка `🧩` присутствовала, но строки-описания в тексте `!menu` не было.
+- EN: Added the extensions-menu command description to the Matrix command-bot main `!menu` — `!extensions` (alias `!ext`): the `🧩` button existed, but the `!menu` text had no description line for it.
+
+### Changed
+- RU: Выполнен SemVer patch-бамп до `8.62.5`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.5`, `ANDROID_VERSION_CODE=767`).
+- EN: Performed a SemVer patch bump to `8.62.5`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.5`, `ANDROID_VERSION_CODE=767`).
+
 ## [8.62.4] - 2026-05-17
 
 ### Fixed
