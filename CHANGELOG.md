@@ -1,3 +1,17 @@
+## [8.62.6] - 2026-05-18
+
+### Fixed
+- RU: Matrix command-bot, `!settings`: команда падала с `'MatrixCommandBot' object has no attribute '_handle_settings'` (в `sync_forever`), потому что диспетчер `_handle_settings` и обработчик `_settings_set` были удалены при рефакторинге, а `_route_command` всё ещё вызывал `await self._handle_settings(...)`. Восстановлены `_handle_settings` (разбор `help/list/get/set`) и `_settings_set` (конвертация значения по `data_type`, проверка доступа `_check_setting_access`, сохранение через `config_manager.set_setting` + аудит). Теперь работают `!settings`, `!settings list [группа]`, `!settings get <KEY>`, `!settings set <KEY> <значение>`.
+- EN: Matrix command-bot, `!settings`: the command crashed with `'MatrixCommandBot' object has no attribute '_handle_settings'` (in `sync_forever`) because the `_handle_settings` dispatcher and `_settings_set` handler were dropped during a refactor while `_route_command` still called `await self._handle_settings(...)`. Restored `_handle_settings` (parses `help/list/get/set`) and `_settings_set` (value conversion by `data_type`, `_check_setting_access` gate, persisted via `config_manager.set_setting` + audit). `!settings`, `!settings list [group]`, `!settings get <KEY>` and `!settings set <KEY> <value>` work again.
+- RU: Matrix command-bot, главное `!menu`: в описаниях команд пропали emoji — строки шли как `• !status — …`, хотя под сообщением висят кнопки-реакции с emoji. `_control_menu_text` теперь строится из `MENU_BUTTONS` и нового словаря `_MENU_DESCRIPTIONS`, поэтому emoji в строке всегда совпадает с emoji соответствующей кнопки-реакции (`📡 !status — доступность всех серверов` и т.д.).
+- EN: Matrix command-bot, main `!menu`: emojis were missing from command descriptions — lines rendered as `• !status — …` even though the message has emoji reaction buttons. `_control_menu_text` is now built from `MENU_BUTTONS` and the new `_MENU_DESCRIPTIONS` map, so the emoji in each line always matches the emoji of its reaction button (`📡 !status — доступность всех серверов`, etc.).
+- RU: Matrix command-bot: `!start`, `!menu` и `!help` открывали одно и то же меню, хотя в тексте было два разных описания. Теперь `!start`/`!menu` отдают главное меню с кнопками-реакциями, а `!help` — отдельную краткую справку по командам (без кнопок-реакций).
+- EN: Matrix command-bot: `!start`, `!menu` and `!help` all opened the same menu despite two distinct descriptions in the text. Now `!start`/`!menu` return the main menu with reaction buttons, while `!help` returns a separate brief command reference (no reaction buttons).
+
+### Changed
+- RU: Выполнен SemVer patch-бамп до `8.62.6`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.6`, `ANDROID_VERSION_CODE=768`).
+- EN: Performed a SemVer patch bump to `8.62.6`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.6`, `ANDROID_VERSION_CODE=768`).
+
 ## [8.62.5] - 2026-05-17
 
 ### Added

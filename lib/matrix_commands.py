@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.62.5
+Server Monitoring System v8.62.6
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit + reaction buttons + E2EE).
 Система мониторинга серверов
-Версия: 8.62.5
+Версия: 8.62.6
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит + кнопки-реакции + E2EE).
@@ -91,6 +91,22 @@ MENU_BUTTONS: List[Tuple[str, str]] = [
     ("ℹ️", "!about"),
 ]
 _BUTTON_BY_EMOJI: Dict[str, str] = {emoji: command for emoji, command in MENU_BUTTONS}
+
+# Описание команд главного меню. Ключ — команда из MENU_BUTTONS; строки
+# меню строятся из этого словаря, поэтому emoji в тексте всегда совпадает
+# с emoji кнопки-реакции под сообщением.
+_MENU_DESCRIPTIONS: Dict[str, str] = {
+    "!status": "доступность всех серверов",
+    "!report": "утренний/сводный отчёт",
+    "!servers": "список серверов под мониторингом",
+    "!pause": "приостановить мониторинг",
+    "!resume": "возобновить мониторинг",
+    "!silent": "принудительно тихий режим",
+    "!loud": "принудительно громкий режим",
+    "!auto": "авто тихий режим по расписанию",
+    "!extensions": "меню расширений (бэкапы, ресурсы, ZFS и т.д.)",
+    "!about": "версия и сведения о боте",
+}
 
 
 @dataclass(frozen=True)
@@ -1537,6 +1553,84 @@ class MatrixCommandBot:
         except Exception as exc:
             return f"❌ Ошибка чтения настройки: {exc}"
 
+    def _settings_set(self, setting_key: str, raw_value: str) -> str:
+        try:
+            from core.config_manager import config_manager
+
+            meta = config_manager.get_setting_meta(setting_key)
+            if meta is None:
+                return (
+                    f"❌ Настройка {setting_key} не найдена, изменение "
+                    "отклонено. Доступные параметры: !settings list"
+                )
+
+            blocked = self._check_setting_access(setting_key, meta)
+            if blocked:
+                return blocked
+
+            data_type = meta.get("data_type", "string")
+            try:
+                converted = self._convert_setting_value(raw_value, data_type)
+            except (ValueError, json.JSONDecodeError) as exc:
+                return (
+                    f"❌ Неверное значение для {setting_key} "
+                    f"(тип {data_type}): {exc}"
+                )
+
+            ok = config_manager.set_setting(
+                setting_key,
+                converted,
+                category=meta.get("category", "general"),
+                description=meta.get("description", ""),
+                data_type="auto",
+            )
+            if not ok:
+                return f"❌ Не удалось сохранить настройку {setting_key}"
+
+            shown = self._format_setting_value(
+                setting_key, converted, reveal=True
+            )
+            self._audit(
+                "settings", "settings", f"set {setting_key}", "applied"
+            )
+            return (
+                f"✅ {setting_key} обновлена: {shown}\n"
+                "ⓘ Часть параметров применяется при следующем "
+                "цикле проверки."
+            )
+        except Exception as exc:
+            return f"❌ Ошибка изменения настройки: {exc}"
+
+    async def _handle_settings(self, command_text: str) -> str:
+        parts = command_text.strip().split()
+        if len(parts) < 2 or parts[1].lower() in ("help", "?"):
+            return self._settings_help()
+
+        action = parts[1].lower()
+
+        if action == "list":
+            group = parts[2].strip() if len(parts) > 2 else None
+            return self._settings_list(group)
+
+        if action == "get":
+            if len(parts) < 3:
+                return "ℹ️ Использование: !settings get <KEY>"
+            return self._settings_get(parts[2].strip().upper())
+
+        if action == "set":
+            if len(parts) < 4:
+                return (
+                    "ℹ️ Использование: !settings set <KEY> <значение>\n"
+                    "Пример: !settings set CHECK_INTERVAL 120"
+                )
+            setting_key = parts[2].strip().upper()
+            raw_value = command_text.split(maxsplit=3)[3].strip()
+            return self._settings_set(setting_key, raw_value)
+
+        return (
+            f"ℹ️ Неизвестное действие «{action}».\n\n{self._SETTINGS_USAGE}"
+        )
+
     async def _handle_zfs(self) -> str:
         try:
             import sqlite3
@@ -1704,21 +1798,44 @@ class MatrixCommandBot:
         return "\n".join(lines).rstrip()
 
     def _control_menu_text(self) -> str:
+        lines = [
+            "🤖 Управление мониторингом (паритет с Telegram).",
+            "Жми кнопки-реакции под этим сообщением или пиши команды:",
+            "",
+        ]
+        for emoji, command in MENU_BUTTONS:
+            desc = _MENU_DESCRIPTIONS.get(command, "")
+            lines.append(f"{emoji} {command} — {desc}" if desc else f"{emoji} {command}")
+        lines += [
+            "",
+            "Команды с аргументом:",
+            "• !settings — хелп и список всех параметров",
+            "• !settings list [группа] — параметры со значениями",
+            "• !settings get <KEY> — значение настройки",
+            "• !settings set <KEY> <значение> — изменить настройку",
+            "• !help — краткая справка по Matrix-командам",
+            "• !diag / !ping — диагностика command-bot",
+            "",
+            "Длинные списки приходят несколькими сообщениями "
+            "с маркером (n/total).",
+        ]
+        return "\n".join(lines)
+
+    def _help_text(self) -> str:
         return (
-            "🤖 Управление мониторингом (как в Telegram):\n"
-            "• !start или !menu — открыть меню команд\n"
-            "• !help — краткая справка по Matrix-командам\n"
-            "• !status — текущий статус серверов\n"
-            "• !report — сводный отчёт\n"
-            "• !extensions или !ext — меню расширений "
-            "(бэкапы, ресурсы, ZFS и т.д.)\n"
-            "• !stock — детальная загрузка остатков 1С\n"
-            "• !zfs — детальный статус ZFS пулов\n"
-            "• !settings — справка по настройкам\n"
-            "• !settings get <KEY> — значение настройки\n\n"
-            "• !diag — диагностика Matrix command-bot\n"
-            "• !ping — проверка отклика command-bot\n\n"
-            "Пример: !settings get CHECK_INTERVAL"
+            "🆘 Краткая справка Matrix command-bot:\n\n"
+            "• !menu или !start — главное меню с кнопками-реакциями\n"
+            "• !status — доступность всех серверов\n"
+            "• !report — утренний/сводный отчёт\n"
+            "• !servers — список серверов под мониторингом\n"
+            "• !pause / !resume — пауза и возобновление мониторинга\n"
+            "• !silent / !loud / !auto — режим тишины\n"
+            "• !extensions (!ext) — меню расширений (бэкапы, ресурсы, ZFS)\n"
+            "• !about — версия и сведения о боте\n"
+            "• !settings — управление настройками (help/list/get/set)\n"
+            "• !diag / !ping — диагностика command-bot\n\n"
+            "Подсказка: открой !menu и жми кнопки-реакции под сообщением.\n"
+            "Пример настройки: !settings get CHECK_INTERVAL"
         )
 
     def _format_diag(self, sender: str, room_id: str, command_text: str) -> str:
@@ -1744,8 +1861,10 @@ class MatrixCommandBot:
         normalized = command_text.strip()
         command = normalized.split()[0].lower() if normalized else ""
 
-        if command in {"!start", "!menu", "!help"}:
+        if command in {"!start", "!menu"}:
             return command, self._control_menu_text()
+        if command == "!help":
+            return command, self._help_text()
         if command in {"!extensions", "!ext"}:
             return command, self._extensions_menu_text()
         if command == "!backup":
@@ -1885,7 +2004,7 @@ class MatrixCommandBot:
         )
         self._audit(sender, room_id, routed_command, "accepted")
         try:
-            if routed_command in {"!start", "!menu", "!help"}:
+            if routed_command in {"!start", "!menu"}:
                 await self._post_menu(room_id, response_text)
             elif routed_command in {"!extensions", "!ext"}:
                 await self._post_extensions_menu(room_id)
