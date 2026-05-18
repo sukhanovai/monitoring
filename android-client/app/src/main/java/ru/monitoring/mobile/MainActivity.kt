@@ -2453,6 +2453,15 @@ private fun MonitoringApp(
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
+                                Text(
+                                    "Сертификат: ${state.bffCertificateStatusText}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (state.bffCertificateWarningText.isNotBlank()) {
+                                        MaterialTheme.colorScheme.error
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    }
+                                )
                                 if (state.isSyncInProgress) {
                                     Spacer(modifier = Modifier.height(6.dp))
                                     LinearProgressIndicator(
@@ -2563,6 +2572,33 @@ private fun MonitoringApp(
                                 label = "⚙️ Настройки",
                                 modifier = Modifier.weight(1f),
                                 onClick = { isSettingsExpanded = true }
+                            )
+                        }
+                    }
+                }
+                if (state.bffCertificateWarningText.isNotBlank()) {
+                    item {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(MaterialTheme.colorScheme.errorContainer)
+                                .padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                "🔐 Сертификат BFF",
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Text(
+                                state.bffCertificateWarningText,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Text(
+                                state.bffCertificateStatusText,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer
                             )
                         }
                     }
