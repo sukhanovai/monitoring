@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.62.6
+Server Monitoring System v8.62.7
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit + reaction buttons + E2EE).
 Система мониторинга серверов
-Версия: 8.62.6
+Версия: 8.62.7
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит + кнопки-реакции + E2EE).
@@ -248,23 +248,28 @@ _EXTENSION_SETTINGS: "OrderedDict[str, Dict[str, object]]" = OrderedDict((
     }),
     ("backup_monitor", {
         "label": "📊 бэкапы Proxmox",
-        "keys": ["BACKUP_ALERT_HOURS", "BACKUP_STALE_HOURS"],
+        "keys": ["BACKUP_ALERT_HOURS", "BACKUP_STALE_HOURS", "PROXMOX_HOSTS"],
         "categories": ["backup"],
+    }),
+    ("database_backup_monitor", {
+        "label": "🗃️ бэкапы БД",
+        "keys": ["DATABASE_CONFIG"],
+        "categories": ["database"],
     }),
     ("zfs_monitor", {
         "label": "🧊 ZFS",
         "keys": ["ZFS_SERVERS"],
-        "categories": [],
+        "categories": ["zfs"],
     }),
     ("zfs_pool_free_space_monitor", {
         "label": "💽 свободное место ZFS",
         "keys": ["ZFS_POOL_FREE_SPACE_HOSTS"],
-        "categories": [],
+        "categories": ["zfs_pool_free_space"],
     }),
     ("snapshot_transfer_monitor", {
         "label": "📸 передачи снэпшотов",
         "keys": ["SNAPSHOT_TRANSFER_HOSTS"],
-        "categories": [],
+        "categories": ["snapshot_transfer"],
     }),
     ("web_interface", {
         "label": "🌐 веб-интерфейс",

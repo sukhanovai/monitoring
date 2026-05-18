@@ -1,11 +1,11 @@
 """
 /core/config_manager.py
-Server Monitoring System v8.62.6
+Server Monitoring System v8.62.7
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Configuration Manager
 Система мониторинга серверов
-Версия: 8.62.6
+Версия: 8.62.7
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Менеджер конфигурации
@@ -151,7 +151,47 @@ class ConfigManager:
         conn.commit()
         self.init_default_settings()
         self._cleanup_legacy_settings()
+        self._migrate_setting_categories()
         debug_log("База данных настроек инициализирована")
+
+    # Канонический владелец параметра-расширения: ровно одна категория на ключ.
+    # Используется и для починки уже сохранённых БД (раньше set_setting без
+    # category затирал её в 'general', из-за чего параметры независимых
+    # расширений путались в !settings и в меню паттернов).
+    _CANONICAL_SETTING_CATEGORY: Dict[str, str] = {
+        'BACKUP_ALERT_HOURS': 'backup',
+        'BACKUP_STALE_HOURS': 'backup',
+        'PROXMOX_HOSTS': 'backup',
+        'DUPLICATE_IP_HOSTS': 'backup',
+        'HOSTNAME_ALIASES': 'backup',
+        'DATABASE_CONFIG': 'database',
+        'ZFS_SERVERS': 'zfs',
+        'ZFS_POOL_FREE_SPACE_HOSTS': 'zfs_pool_free_space',
+        'SNAPSHOT_TRANSFER_HOSTS': 'snapshot_transfer',
+    }
+
+    def _migrate_setting_categories(self) -> None:
+        """Приводит категории параметров расширений к каноническим.
+
+        Идемпотентно: трогает строку только если её категория отличается
+        от канонической для этого ключа.
+        """
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            fixed = 0
+            for key, category in self._CANONICAL_SETTING_CATEGORY.items():
+                cursor.execute(
+                    'UPDATE settings SET category = ? '
+                    'WHERE key = ? AND IFNULL(category, "") != ?',
+                    (category, key, category)
+                )
+                fixed += cursor.rowcount
+            conn.commit()
+            if fixed:
+                debug_log(f"Категории параметров расширений приведены к норме: {fixed}")
+        except Exception as e:
+            error_log(f"Ошибка миграции категорий настроек: {e}")
 
     def _cleanup_legacy_settings(self) -> None:
         """Удаляет устаревшие настройки (интеграция TamTam выведена из проекта)."""
@@ -204,12 +244,15 @@ class ConfigManager:
             ('SSH_USERNAME', 'root', 'auth', 'Имя пользователя SSH', 'string'),
             ('SSH_KEY_PATH', '/root/.ssh/id_rsa', 'auth', 'Путь к SSH ключу', 'string'),
             
-            # Бэкапы
+            # Бэкапы Proxmox (расширение backup_monitor)
             ('BACKUP_ALERT_HOURS', '24', 'backup', 'Часы для алертов о бэкапах', 'int'),
             ('BACKUP_STALE_HOURS', '36', 'backup', 'Часы для устаревших бэкапов', 'int'),
-            ('ZFS_SERVERS', '{}', 'backup', 'Список ZFS серверов и массивов', 'dict'),
-            ('ZFS_POOL_FREE_SPACE_HOSTS', '{}', 'monitoring', 'Хосты для мониторинга свободного места ZFS-пулов', 'dict'),
-            ('SNAPSHOT_TRANSFER_HOSTS', '{}', 'backup', 'Хосты/пулы/время старта для мониторинга передачи снэпшотов', 'dict'),
+            # Исправность ZFS-массивов (расширение zfs_monitor)
+            ('ZFS_SERVERS', '{}', 'zfs', 'Список ZFS серверов и массивов', 'dict'),
+            # Свободное место ZFS-пулов (расширение zfs_pool_free_space_monitor)
+            ('ZFS_POOL_FREE_SPACE_HOSTS', '{}', 'zfs_pool_free_space', 'Хосты для мониторинга свободного места ZFS-пулов', 'dict'),
+            # Передачи ZFS-снэпшотов (расширение snapshot_transfer_monitor)
+            ('SNAPSHOT_TRANSFER_HOSTS', '{}', 'snapshot_transfer', 'Хосты/пулы/время старта для мониторинга передачи снэпшотов', 'dict'),
             
             # Веб-интерфейс
             ('WEB_PORT', '5000', 'web', 'Порт веб-интерфейса', 'int'),
@@ -295,23 +338,24 @@ class ConfigManager:
         return value
     
     def set_setting(
-        self, 
-        key: str, 
-        value: Any, 
-        category: str = 'general', 
-        description: str = '', 
+        self,
+        key: str,
+        value: Any,
+        category: Optional[str] = None,
+        description: Optional[str] = None,
         data_type: str = 'auto'
     ) -> bool:
         """
         Установить значение настройки
-        
+
         Args:
             key: Ключ настройки
             value: Значение
-            category: Категория
-            description: Описание
+            category: Категория. None — сохранить существующую категорию
+                (или 'general' для нового ключа), не затирая её.
+            description: Описание. None — сохранить существующее описание.
             data_type: Тип данных (auto/int/float/bool/list/dict/string/time)
-            
+
         Returns:
             True если успешно
         """
@@ -340,7 +384,30 @@ class ConfigManager:
         
         conn = self.get_connection()
         cursor = conn.cursor()
-        
+
+        # INSERT OR REPLACE удаляет и пересоздаёт строку, поэтому отсутствие
+        # category/description в вызове не должно затирать уже сохранённые
+        # метаданные настройки (иначе category «съезжает» в 'general' при
+        # каждом сохранении из бота и привязка параметра к расширению ломается).
+        if category is None or description is None:
+            try:
+                cursor.execute(
+                    'SELECT category, description FROM settings WHERE key = ?',
+                    (key,)
+                )
+                existing = cursor.fetchone()
+            except Exception:
+                existing = None
+            if existing is not None:
+                if category is None:
+                    category = existing[0]
+                if description is None:
+                    description = existing[1]
+        if category is None:
+            category = 'general'
+        if description is None:
+            description = ''
+
         try:
             cursor.execute('''
                 INSERT OR REPLACE INTO settings (key, value, category, description, data_type, updated_at)

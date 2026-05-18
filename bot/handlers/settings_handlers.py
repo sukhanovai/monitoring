@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.62.6
+Server Monitoring System v8.62.7
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.62.6
+Версия: 8.62.7
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -12221,12 +12221,19 @@ def view_patterns_handler(update, context):
             """
         )
     elif filter_mode == 'db':
+        # Паттерны бэкапов БД — это произвольные категории-группы БД из
+        # DATABASE_CONFIG (+ 'database'/'unknown'). Категории других,
+        # независимых расширений (snapshot_transfer, stock_load, mail,
+        # zfs, proxmox) сюда попадать не должны — иначе паттерны разных
+        # расширений сваливаются в одну кучу в меню «Паттерны бэкапов БД».
         cursor.execute(
             """
             SELECT id, pattern_type, pattern, category
             FROM backup_patterns
             WHERE enabled = 1
-            AND category NOT IN ('mail', 'zfs', 'proxmox')
+            AND category NOT IN (
+                'mail', 'zfs', 'proxmox', 'snapshot_transfer', 'stock_load'
+            )
             ORDER BY category, pattern_type, id
             """
         )
