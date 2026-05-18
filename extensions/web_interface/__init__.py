@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.62.6
+Server Monitoring System v8.62.7
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.62.6
+Версия: 8.62.7
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -4215,7 +4215,7 @@ def v1_extensions_actions():
             message = f"ℹ️ Категория «{category}» уже существует."
         else:
             db_config[category] = {}
-            settings_manager.set_setting('DATABASE_CONFIG', db_config, 'backup', data_type='auto')
+            settings_manager.set_setting('DATABASE_CONFIG', db_config, 'database', data_type='auto')
             message = f"✅ Категория «{category}» добавлена."
         return jsonify({
             "request_id": request_id,
@@ -4274,7 +4274,7 @@ def v1_extensions_actions():
         if category not in db_config or not isinstance(db_config.get(category), dict):
             db_config[category] = {}
         db_config[category][db_key] = db_name
-        settings_manager.set_setting('DATABASE_CONFIG', db_config, 'backup', data_type='auto')
+        settings_manager.set_setting('DATABASE_CONFIG', db_config, 'database', data_type='auto')
         return jsonify({
             "request_id": request_id,
             "action": action,
@@ -4319,7 +4319,7 @@ def v1_extensions_actions():
             category_map.pop(old_key, None)
         category_map[new_key] = value
         db_config[category] = category_map
-        settings_manager.set_setting('DATABASE_CONFIG', db_config, 'backup', data_type='auto')
+        settings_manager.set_setting('DATABASE_CONFIG', db_config, 'database', data_type='auto')
         return jsonify({
             "request_id": request_id,
             "action": action,
@@ -4351,7 +4351,7 @@ def v1_extensions_actions():
         category_map = db_config.get(category) if isinstance(db_config.get(category), dict) else {}
         removed = category_map.pop(db_key, None)
         db_config[category] = category_map
-        settings_manager.set_setting('DATABASE_CONFIG', db_config, 'backup', data_type='auto')
+        settings_manager.set_setting('DATABASE_CONFIG', db_config, 'database', data_type='auto')
         return jsonify({
             "request_id": request_id,
             "action": action,
@@ -4379,7 +4379,7 @@ def v1_extensions_actions():
         if not isinstance(db_config, dict):
             db_config = {}
         removed = db_config.pop(category, None)
-        settings_manager.set_setting('DATABASE_CONFIG', db_config, 'backup', data_type='auto')
+        settings_manager.set_setting('DATABASE_CONFIG', db_config, 'database', data_type='auto')
         return jsonify({
             "request_id": request_id,
             "action": action,
