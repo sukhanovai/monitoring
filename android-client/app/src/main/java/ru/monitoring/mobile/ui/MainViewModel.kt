@@ -41,6 +41,7 @@ import ru.monitoring.mobile.api.ExtensionsActionRequest
 import ru.monitoring.mobile.api.ExtensionsActionResponse
 import ru.monitoring.mobile.api.MergeWindowsTypesRequest
 import ru.monitoring.mobile.api.MenuOption
+import ru.monitoring.mobile.api.MobileTokenRefresher
 import ru.monitoring.mobile.api.ManagedServer
 import ru.monitoring.mobile.api.RenameWindowsTypeRequest
 import ru.monitoring.mobile.api.ServerAvailability
@@ -152,13 +153,31 @@ class MainViewModel(
 
     private fun currentApi() = ApiFactory.createApi(
         tokenProvider = { normalizeToken(state.token.ifBlank { preferences.apiToken }) },
-        baseUrlProvider = { normalizeBaseUrlInput(state.baseUrlInput.ifBlank { preferences.apiBaseUrl }) }
+        baseUrlProvider = { normalizeBaseUrlInput(state.baseUrlInput.ifBlank { preferences.apiBaseUrl }) },
+        tokenRefresher = ::refreshSessionToken
     )
 
+    // Без tokenRefresher → у клиента нет Authenticator → переобмен по bootstrap
+    // не зациклится сам на себя (reissue, получивший 401, не дёргает reissue снова).
     private fun apiForToken(rawToken: String) = ApiFactory.createApi(
         tokenProvider = { normalizeToken(rawToken) },
         baseUrlProvider = { normalizeBaseUrlInput(state.baseUrlInput.ifBlank { preferences.apiBaseUrl }) }
     )
+
+    private val sharedTokenRefresher = MobileTokenRefresher.forPreferences(preferences)
+
+    // Вызывается из OkHttp Authenticator (фоновый поток) при ответе 401. Сам
+    // переобмен bootstrap→session и его персист — в MobileTokenRefresher (общий
+    // с фоновыми воркерами). Здесь дополнительно синхронизируем Compose-state:
+    // tokenProvider у currentApi() читает state.token раньше preferences.apiToken,
+    // без обновления state повтор запроса ушёл бы со старым (мёртвым) токеном.
+    private fun refreshSessionToken(): String? {
+        val newToken = sharedTokenRefresher()
+        if (!newToken.isNullOrBlank()) {
+            state = state.copy(token = newToken)
+        }
+        return newToken
+    }
 
     var state by mutableStateOf(MainUiState())
         private set
@@ -589,9 +608,14 @@ class MainViewModel(
         val normalizedToken = normalizeToken(token)
         if (normalizedToken.isBlank()) {
             preferences.apiToken = ""
+            preferences.bootstrapToken = ""
             state = state.copy(token = "", message = "Токен очищен")
             return
         }
+
+        // Сохраняем исходный (bootstrap) токен ДО обмена: на нём держится
+        // авто-восстановление session-токена при 401 reason=invalid/expired.
+        preferences.bootstrapToken = normalizedToken
 
         viewModelScope.launch {
             state = state.copy(isLoading = true)
@@ -613,7 +637,11 @@ class MainViewModel(
             state = state.copy(
                 isLoading = false,
                 token = finalToken,
-                message = if (exchangedToken.isNotBlank()) "Токен выдан сервером и сохранен" else "Токен сохранен"
+                message = if (exchangedToken.isNotBlank()) {
+                    "Токен выдан сервером и сохранен"
+                } else {
+                    "Токен сохранён. Обмен на серверный токен не прошёл — будет повторён автоматически при синхронизации"
+                }
             )
 
             if (finalToken.isNotBlank()) {

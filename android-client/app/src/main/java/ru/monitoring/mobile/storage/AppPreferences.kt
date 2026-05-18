@@ -12,6 +12,17 @@ class AppPreferences(context: Context) {
             prefs.edit().putString(KEY_API_TOKEN, value).apply()
         }
 
+    // Исходный токен, который пользователь ввёл в Настройках (bootstrap/static).
+    // Храним отдельно от apiToken (выданного сервером session-токена), чтобы при
+    // протухании session-токена (reason=invalid/expired после передеплоя сервера,
+    // ротации MOBILE_AUTH_SECRET или отзыва токена) уметь автоматически
+    // переобменять его на свежий, не требуя от пользователя повторного ввода.
+    var bootstrapToken: String
+        get() = prefs.getString(KEY_BOOTSTRAP_TOKEN, "") ?: ""
+        set(value) {
+            prefs.edit().putString(KEY_BOOTSTRAP_TOKEN, value).apply()
+        }
+
     var apiBaseUrl: String
         get() = prefs.getString(KEY_API_BASE_URL, DEFAULT_API_BASE_URL) ?: DEFAULT_API_BASE_URL
         set(value) {
@@ -71,6 +82,7 @@ class AppPreferences(context: Context) {
 
     companion object {
         private const val KEY_API_TOKEN = "api_token"
+        private const val KEY_BOOTSTRAP_TOKEN = "bootstrap_token"
         private const val KEY_API_BASE_URL = "api_base_url"
         private const val KEY_DEVICE_ID = "device_id"
         private const val KEY_THEME_MODE = "theme_mode"

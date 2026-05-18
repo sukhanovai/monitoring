@@ -27,6 +27,7 @@ import java.util.concurrent.TimeUnit
 import ru.monitoring.mobile.MainActivity
 import ru.monitoring.mobile.api.ApiFactory
 import ru.monitoring.mobile.api.ControlActionRequest
+import ru.monitoring.mobile.api.MobileTokenRefresher
 import ru.monitoring.mobile.storage.AppPreferences
 
 class MorningReportWorker(
@@ -47,8 +48,11 @@ class MorningReportWorker(
 
         return runCatching {
             val api = ApiFactory.createApi(
-                tokenProvider = { token },
-                baseUrlProvider = { baseUrl }
+                // Читаем токен из prefs динамически: после авто-переобмена
+                // (Authenticator на 401) повтор должен уйти со свежим токеном.
+                tokenProvider = { prefs.apiToken.trim().ifBlank { token } },
+                baseUrlProvider = { baseUrl },
+                tokenRefresher = MobileTokenRefresher.forPreferences(prefs)
             )
             val response = api.runControlAction(ControlActionRequest("send_morning_report"))
             val reportText = response.message?.trim()
