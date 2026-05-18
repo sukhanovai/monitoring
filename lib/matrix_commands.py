@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.62.9
+Server Monitoring System v8.62.10
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit + reaction buttons + E2EE).
 Система мониторинга серверов
-Версия: 8.62.9
+Версия: 8.62.10
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит + кнопки-реакции + E2EE).
@@ -14,6 +14,7 @@ Incoming commands from Matrix (sync + router + ACL + audit + reaction buttons + 
 from __future__ import annotations
 
 import asyncio
+import copy
 from collections import OrderedDict
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -353,6 +354,20 @@ _BACKUP_PATTERN_SECTION_DESC: Dict[str, str] = {
 }
 _BACKUP_PATTERN_SECTION_HINT = "; правится через меню паттернов расширений"
 
+# Канонический раздел паттернов для каждого расширения-владельца. Если в
+# эффективном BACKUP_PATTERNS у владельца нет ни одного раздела, в
+# !settings всё равно показывается пустой раздел-плейсхолдер — чтобы
+# 🧊 ZFS / 📸 передачи снэпшотов / 📬 почта / … были видны так же, как
+# 📊 Proxmox и 🗃️ БД, а не пропадали молча.
+_PATTERN_OWNER_PRIMARY_SECTION: Dict[str, str] = {
+    "backup_monitor": "proxmox",
+    "database_backup_monitor": "database",
+    "mail_backup_monitor": "mail",
+    "zfs_monitor": "zfs",
+    "snapshot_transfer_monitor": "snapshot_transfer",
+    "stock_load_monitor": "stock_load",
+}
+
 
 def _parse_backup_patterns_value(raw) -> Optional[dict]:
     """Парсит значение BACKUP_PATTERNS в словарь; None — если не словарь."""
@@ -367,21 +382,71 @@ def _parse_backup_patterns_value(raw) -> Optional[dict]:
     return parsed if isinstance(parsed, dict) else None
 
 
-def _expand_backup_patterns(row: dict) -> List[Tuple[dict, str]]:
-    """Раздувает строку BACKUP_PATTERNS в (виртуальная_строка, владелец).
+def _effective_backup_patterns(row: dict) -> Optional[dict]:
+    """Эффективный BACKUP_PATTERNS для !settings (объединение хранилищ).
 
-    Если значение не парсится как непустой словарь — возвращает исходную
-    строку с владельцем по умолчанию (поведение как раньше).
+    Разделы паттернов живут в ДВУХ хранилищах: legacy-JSON
+    ``settings.BACKUP_PATTERNS`` (его правит ``!settings set`` и старый
+    путь бота) и таблица ``backup_patterns``, которой управляют меню
+    паттернов Telegram-бота (``zfs``, ``snapshot_transfer``,
+    ``proxmox``, …) и из которой реально читает рантайм
+    (``modules.mail_monitor``). Раньше ``!settings`` показывал только
+    JSON, поэтому разделы, заведённые через таблицу (🧊 ZFS,
+    📸 передачи снэпшотов и т.п.), не были видны вовсе, хотя
+    📊 Proxmox / 🗃️ БД из JSON показывались.
+
+    Слияние на уровне раздела: дефолты ``config.settings`` ← legacy-JSON
+    ← таблица (таблица авторитетна, как в рантайме). ``None`` — если ни
+    одно из хранилищ не дало непустого словаря.
     """
-    parsed = _parse_backup_patterns_value(row.get("value", ""))
+    merged: dict = {}
+    try:
+        from config import settings as _defaults
+
+        base = getattr(_defaults, "BACKUP_PATTERNS", None)
+        if isinstance(base, dict):
+            merged.update(copy.deepcopy(base))
+    except Exception:
+        pass
+    stored = _parse_backup_patterns_value(row.get("value", ""))
+    if isinstance(stored, dict):
+        for section, value in stored.items():
+            merged[section] = copy.deepcopy(value)
+    try:
+        from core.config_manager import config_manager
+
+        table = config_manager.get_backup_patterns()
+        if isinstance(table, dict):
+            for section, value in table.items():
+                if value:
+                    merged[section] = copy.deepcopy(value)
+    except Exception:
+        pass
+    return merged or None
+
+
+def _expand_backup_patterns(row: dict) -> List[Tuple[dict, str]]:
+    """Раздувает BACKUP_PATTERNS в список (виртуальная_строка, владелец).
+
+    Источник — эффективный словарь (legacy-JSON ⊕ таблица паттернов ⊕
+    дефолты), а не только сырое значение строки. Для каждого
+    расширения-владельца паттернов гарантируется хотя бы один раздел
+    (пустой плейсхолдер, если паттернов ещё нет), чтобы 🧊 ZFS /
+    📸 передачи снэпшотов / 📬 почта были видны так же, как
+    📊 Proxmox / 🗃️ БД. Если ни одно хранилище не дало словаря —
+    возвращается исходная строка с владельцем по умолчанию (как раньше).
+    """
+    parsed = _effective_backup_patterns(row)
     if not parsed:
         return [(row, _BACKUP_PATTERN_DEFAULT_OWNER)]
     category = row.get("category", "backup")
     out: List[Tuple[dict, str]] = []
+    seen_owners: Set[str] = set()
     for section in sorted(parsed.keys()):
         owner = _BACKUP_PATTERN_SECTION_OWNER.get(
             section, _BACKUP_PATTERN_DEFAULT_OWNER
         )
+        seen_owners.add(owner)
         try:
             section_value = json.dumps(parsed[section], ensure_ascii=False)
         except (TypeError, ValueError):
@@ -395,6 +460,25 @@ def _expand_backup_patterns(row: dict) -> List[Tuple[dict, str]]:
                 "value": section_value,
                 "category": category,
                 "description": desc + _BACKUP_PATTERN_SECTION_HINT,
+                "data_type": "dict",
+            },
+            owner,
+        ))
+    for owner, section in _PATTERN_OWNER_PRIMARY_SECTION.items():
+        if owner in seen_owners:
+            continue
+        desc = _BACKUP_PATTERN_SECTION_DESC.get(
+            section, f"Регэкспы раздела «{section}» BACKUP_PATTERNS"
+        )
+        out.append((
+            {
+                "key": f"{_BACKUP_PATTERNS_KEY}.{section}",
+                "value": "{}",
+                "category": category,
+                "description": (
+                    desc + " (паттерны не заданы)"
+                    + _BACKUP_PATTERN_SECTION_HINT
+                ),
                 "data_type": "dict",
             },
             owner,
@@ -1630,8 +1714,8 @@ class MatrixCommandBot:
         try:
             from core.config_manager import config_manager
 
-            data = _parse_backup_patterns_value(
-                config_manager.get_setting(_BACKUP_PATTERNS_KEY, None)
+            data = _effective_backup_patterns(
+                {"value": config_manager.get_setting(_BACKUP_PATTERNS_KEY, None)}
             )
             if not data:
                 return (
