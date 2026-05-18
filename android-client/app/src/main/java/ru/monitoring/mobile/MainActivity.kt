@@ -1201,11 +1201,18 @@ private fun OpsMetricChip(
     value: String,
     hasProblem: Boolean = false,
     modifier: Modifier = Modifier,
+    isStale: Boolean = false,
+    isLoading: Boolean = false,
     onClick: () -> Unit = {},
     onLongClick: (() -> Unit)? = null,
     onSettingsClick: (() -> Unit)? = null
 ) {
-    val valueColor = if (hasProblem) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+    val displayValue = if (isStale) "?" else value
+    val valueColor = when {
+        isStale -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+        hasProblem -> MaterialTheme.colorScheme.error
+        else -> MaterialTheme.colorScheme.onSurface
+    }
     Surface(
         modifier = modifier
             .widthIn(min = 72.dp)
@@ -1218,24 +1225,49 @@ private fun OpsMetricChip(
         shape = RoundedCornerShape(14.dp),
         tonalElevation = 1.dp
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Text(value, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = valueColor)
-                Text(label, style = MaterialTheme.typography.labelSmall)
+        Box {
+            Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(displayValue, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = valueColor)
+                    Text(label, style = MaterialTheme.typography.labelSmall)
+                }
+                if (!isStale && onSettingsClick != null) {
+                    IconButton(
+                        onClick = onSettingsClick,
+                        modifier = Modifier.height(28.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Settings,
+                            contentDescription = "Настройки $label"
+                        )
+                    }
+                }
             }
-            if (onSettingsClick != null) {
-                IconButton(
-                    onClick = onSettingsClick,
-                    modifier = Modifier.height(28.dp)
+            if (isStale) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.35f)),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Filled.Settings,
-                        contentDescription = "Настройки $label"
-                    )
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(22.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Filled.Refresh,
+                            contentDescription = "Загрузить данные $label",
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+                            modifier = Modifier.size(26.dp)
+                        )
+                    }
                 }
             }
         }
@@ -1425,6 +1457,8 @@ class MainActivity : ComponentActivity() {
                     onSaveBaseUrl = vm::saveBaseUrl,
                     onRefreshData = vm::refreshData,
                     onLoadServersForSingleCheck = { vm.refreshSettingsFromServer(showErrors = true) },
+                    onLoadTileData = vm::loadTileData,
+                    onEnsureSettingsLoaded = vm::ensureSettingsLoaded,
                     onRefresh = vm::refreshAvailability,
                     onCloseApp = { moveTaskToBack(true) },
                     onToggleApiTokenVisibility = vm::toggleApiTokenVisibility,
@@ -1542,6 +1576,8 @@ private fun MonitoringApp(
     onSaveBaseUrl: () -> Unit,
     onRefreshData: () -> Unit,
     onLoadServersForSingleCheck: () -> Unit,
+    onLoadTileData: (String) -> Unit,
+    onEnsureSettingsLoaded: () -> Unit,
     onRefresh: () -> Unit,
     onCloseApp: () -> Unit,
     onToggleApiTokenVisibility: () -> Unit,
@@ -1819,6 +1855,12 @@ private fun MonitoringApp(
     LaunchedEffect(settingsSection) {
         if (settingsSection == "extensions") {
             onOpenExtensionsSettingsMenu()
+        }
+    }
+
+    LaunchedEffect(isSettingsExpanded) {
+        if (isSettingsExpanded) {
+            onEnsureSettingsLoaded()
         }
     }
 
@@ -2469,6 +2511,10 @@ private fun MonitoringApp(
                             maxItemsInEachRow = 3
                         ) {
                             visibleTiles.forEach { tile ->
+                                val tileLoaded = state.allDataLoaded ||
+                                    tile.id == "modes" ||
+                                    tile.id in state.loadedTileIds
+                                val isStale = !tileLoaded
                                 OpsMetricChip(
                                     label = tile.label,
                                     value = tile.value,
@@ -2476,9 +2522,15 @@ private fun MonitoringApp(
                                     modifier = Modifier
                                     .weight(1f)
                                     .animateContentSize(),
-                                    onClick = tile.onClick,
-                                    onLongClick = tile.onLongClick,
-                                    onSettingsClick = tile.onSettingsClick
+                                    isStale = isStale,
+                                    isLoading = tile.id in state.loadingTileIds,
+                                    onClick = if (isStale) {
+                                        { onLoadTileData(tile.id) }
+                                    } else {
+                                        tile.onClick
+                                    },
+                                    onLongClick = if (isStale) null else tile.onLongClick,
+                                    onSettingsClick = if (isStale) null else tile.onSettingsClick
                                 )
                             }
                         }

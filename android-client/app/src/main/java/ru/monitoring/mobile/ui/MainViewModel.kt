@@ -452,10 +452,182 @@ class MainViewModel(
         )
 
         if (token.isNotBlank()) {
-            refreshSettingsFromServer(showErrors = false)
+            loadStartupEssentials()
             checkMobileVersion()
         }
         rescheduleBackgroundWorkers()
+    }
+
+    // Лёгкий старт: при запуске тянем только то, что нужно чтобы отрисовать
+    // дашборд — список включённых расширений (какие плитки показывать) и
+    // текущий режим работы (плитка «Режим»). Тяжёлые данные каждой плитки
+    // (бэкапы, zfs, доступность серверов) грузятся лениво по тапу — см.
+    // loadTileData(). Это резко ускоряет ввод приложения в рабочее состояние.
+    fun loadStartupEssentials() {
+        val effectiveToken = normalizeToken(state.token.ifBlank { preferences.apiToken })
+        if (effectiveToken.isBlank()) return
+        settingsAutoLoaded = false
+        state = state.copy(
+            loadedTileIds = emptySet(),
+            loadingTileIds = emptySet(),
+            allDataLoaded = false
+        )
+        viewModelScope.launch {
+            state = state.copy(isLoading = true)
+            val (extensions, control) = withContext(Dispatchers.IO) {
+                val extensions = runCatching { currentApi().getExtensionsSettings() }.getOrNull()
+                val control = runCatching { currentApi().getControlStatus() }.getOrNull()
+                extensions to control
+            }
+            state = state.copy(
+                isLoading = false,
+                extensions = extensions?.items ?: state.extensions,
+                monitoringStatusText = when {
+                    control?.monitoringActive == true -> "🟢 Активен"
+                    control?.monitoringActive == false -> "🔴 Приостановлен"
+                    else -> state.monitoringStatusText
+                },
+                silentStatusText = when (control?.silentMode) {
+                    "force_quiet" -> "🔇 Принудительно тихий"
+                    "force_loud" -> "🔊 Принудительно громкий"
+                    "auto" -> if (control.silentActive == true) "🔇 Авто (сейчас тихий)" else "🔊 Авто (сейчас громкий)"
+                    else -> state.silentStatusText
+                }
+            )
+        }
+    }
+
+    // Ленивая загрузка данных одной плитки по тапу, пока она в состоянии «?».
+    // Каждой плитке соответствует свой минимальный набор запросов.
+    fun loadTileData(tileId: String) {
+        if (tileId == "modes") return
+        if (tileId in state.loadingTileIds || tileId in state.loadedTileIds) return
+        val effectiveToken = normalizeToken(state.token.ifBlank { preferences.apiToken })
+        if (effectiveToken.isBlank()) {
+            state = state.copy(
+                message = "Не задан токен доступа. Укажите токен в Настройках и сохраните его.",
+                messageSource = "global"
+            )
+            return
+        }
+        state = state.copy(loadingTileIds = state.loadingTileIds + tileId)
+        viewModelScope.launch {
+            when (tileId) {
+                "servers" -> {
+                    val servers = withContext(Dispatchers.IO) {
+                        runCatching { currentApi().getServersSettings() }.getOrNull()
+                    }
+                    if (servers != null) {
+                        state = state.copy(managedServers = servers.items)
+                    }
+                    refreshAvailability()
+                }
+                "extension_resource_monitor",
+                "extension_web",
+                "extension_mail" -> {
+                    val extensions = withContext(Dispatchers.IO) {
+                        runCatching { currentApi().getExtensionsSettings() }.getOrNull()
+                    }
+                    if (extensions != null) {
+                        state = state.copy(extensions = extensions.items)
+                    }
+                }
+                "extension_backup_monitor" -> {
+                    val response = withContext(Dispatchers.IO) {
+                        runCatching { currentApi().runControlAction(ControlActionRequest("backup_proxmox")) }.getOrNull()
+                    }
+                    val summary = buildProxmoxBackupTileSummary(response)
+                    state = state.copy(
+                        backupProxmoxSummary = summary?.ratioText ?: state.backupProxmoxSummary,
+                        backupProxmoxHasProblemItems = summary?.hasProblem ?: state.backupProxmoxHasProblemItems
+                    )
+                }
+                "extension_database_backup_monitor" -> {
+                    val response = withContext(Dispatchers.IO) {
+                        runCatching { currentApi().runControlAction(ControlActionRequest("backup_databases")) }.getOrNull()
+                    }
+                    val summary = buildDatabaseBackupTileSummary(response)
+                    state = state.copy(
+                        backupDatabasesSummary = summary?.ratioText ?: state.backupDatabasesSummary,
+                        backupDatabasesHasProblemItems = summary?.hasProblem ?: state.backupDatabasesHasProblemItems
+                    )
+                }
+                "extension_mail_backup_monitor" -> {
+                    val response = withContext(Dispatchers.IO) {
+                        runCatching { currentApi().runControlAction(ControlActionRequest("backup_mail")) }.getOrNull()
+                    }
+                    val summary = buildBackupTileSummary(response)
+                    val mailVolume = parseMailBackupHistory(response?.message.orEmpty())
+                        ?.items
+                        ?.firstOrNull()
+                        ?.size
+                        ?: extractMailBackupVolume(response?.message.orEmpty())
+                    state = state.copy(
+                        backupMailSummary = summary?.ratioText ?: state.backupMailSummary,
+                        backupMailHasProblemItems = summary?.hasProblem ?: state.backupMailHasProblemItems,
+                        mailBackupLastVolume = mailVolume ?: state.mailBackupLastVolume
+                    )
+                }
+                "extension_zfs_monitor" -> {
+                    val bundle = withContext(Dispatchers.IO) {
+                        runCatching {
+                            val zfsRoot = currentApi().runControlAction(ControlActionRequest("zfs_menu"))
+                            fetchZfsLatestStatusesResponse(zfsRoot)
+                        }.getOrNull()
+                    }
+                    val summary = buildBackupTileSummary(bundle?.second)
+                        ?: buildBackupTileSummary(bundle?.first)
+                    state = state.copy(
+                        zfsSummary = summary?.ratioText ?: state.zfsSummary,
+                        zfsHasProblemItems = summary?.hasProblem ?: state.zfsHasProblemItems
+                    )
+                }
+                "extension_zfs_pool_free_space_monitor" -> {
+                    val response = withContext(Dispatchers.IO) {
+                        runCatching { currentApi().runControlAction(ControlActionRequest("zfs_pool_free_space_menu")) }.getOrNull()
+                    }
+                    val summary = buildBackupTileSummary(response)
+                    state = state.copy(
+                        zfsPoolFreeSpaceSummary = summary?.ratioText ?: state.zfsPoolFreeSpaceSummary,
+                        zfsPoolFreeSpaceHasProblemItems = summary?.hasProblem ?: state.zfsPoolFreeSpaceHasProblemItems
+                    )
+                }
+                "extension_stock_load_monitor" -> {
+                    val response = withContext(Dispatchers.IO) {
+                        runCatching { currentApi().runControlAction(ControlActionRequest("backup_stock_loads")) }.getOrNull()
+                    }
+                    val summary = buildBackupTileSummary(response)
+                    state = state.copy(
+                        backupStockLoadsSummary = summary?.ratioText ?: state.backupStockLoadsSummary,
+                        backupStockLoadsHasProblemItems = summary?.hasProblem ?: state.backupStockLoadsHasProblemItems
+                    )
+                }
+                "extension_supplier_stock_files" -> {
+                    val response = withContext(Dispatchers.IO) {
+                        runCatching { currentApi().runControlAction(ControlActionRequest("supplier_stock_reports")) }.getOrNull()
+                    }
+                    val summary = buildBackupTileSummary(response)
+                    state = state.copy(
+                        supplierStockSummary = summary?.ratioText ?: state.supplierStockSummary,
+                        supplierStockHasProblemItems = summary?.hasProblem ?: state.supplierStockHasProblemItems
+                    )
+                }
+            }
+            state = state.copy(
+                loadedTileIds = state.loadedTileIds + tileId,
+                loadingTileIds = state.loadingTileIds - tileId
+            )
+        }
+    }
+
+    private var settingsAutoLoaded = false
+
+    // Настройки (интервалы/бот/время/доступы) при лёгком старте не грузятся —
+    // подтягиваем их один раз лениво, когда пользователь открывает «Настройки».
+    fun ensureSettingsLoaded() {
+        if (settingsAutoLoaded) return
+        settingsAutoLoaded = true
+        refreshSettingsFromServer(showErrors = false)
     }
 
     fun checkMobileVersion() {
@@ -1018,7 +1190,9 @@ class MainViewModel(
                     else -> state.silentStatusText
                 },
                 bffCertificateStatusText = certificateStatus.statusText,
-                bffCertificateWarningText = certificateStatus.warningText
+                bffCertificateWarningText = certificateStatus.warningText,
+                allDataLoaded = true,
+                loadingTileIds = emptySet()
             )
             rescheduleBackgroundWorkers()
             Log.i(TAG_SYNC, "refreshSettingsFromServer finished successfully, sessionId=$syncSessionId")
@@ -2693,7 +2867,10 @@ data class MainUiState(
     val monitoringStatusText: String = "Неизвестно",
     val silentStatusText: String = "Неизвестно",
     val bffCertificateStatusText: String = "⚪ TLS: не проверен",
-    val bffCertificateWarningText: String = ""
+    val bffCertificateWarningText: String = "",
+    val loadedTileIds: Set<String> = emptySet(),
+    val loadingTileIds: Set<String> = emptySet(),
+    val allDataLoaded: Boolean = false
 )
 
 data class MailBackupHistoryItem(
