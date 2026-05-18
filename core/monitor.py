@@ -1,11 +1,11 @@
 """
 /core/monitor.py
-Server Monitoring System v8.62.7
+Server Monitoring System v8.62.8
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core monitoring module
 Система мониторинга серверов
-Версия: 8.62.7
+Версия: 8.62.8
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль мониторинга
@@ -461,10 +461,17 @@ class Monitor:
         start_message = "🟢 *Мониторинг серверов запущен*\n\n"
         if APP_VERSION:
             start_message += f"🔖 *Версия:* {APP_VERSION}\n"
+        try:
+            report_slots = morning_report._get_collection_times()
+            report_time = ", ".join(
+                slot.strftime('%H:%M') for slot in report_slots
+            ) or DATA_COLLECTION_TIME.strftime('%H:%M')
+        except Exception:
+            report_time = DATA_COLLECTION_TIME.strftime('%H:%M')
         start_message += (
             f"• Серверов в мониторинге: {len(self.servers)}\n"
             f"• Проверка доступности: каждые {CHECK_INTERVAL} сек\n"
-            f"• Утренний отчет: {DATA_COLLECTION_TIME.strftime('%H:%M')}\n\n"
+            f"• Утренний отчет: {report_time}\n\n"
         )
 
         resources_enabled = True
@@ -490,7 +497,11 @@ class Monitor:
         except ImportError:
             start_message += "🌐 *Веб-интерфейс:* 🔴 модуль не загружен\n"
         
-        send_alert(start_message)
+        from lib.alerts import is_startup_muted
+        if is_startup_muted():
+            debug_log("🔇 Тихий старт: стартовое сообщение мониторинга подавлено (--silent-start)")
+        else:
+            send_alert(start_message)
         debug_log(f"✅ Мониторинг запущен для {len(self.servers)} серверов")
         
         # Основной цикл мониторинга

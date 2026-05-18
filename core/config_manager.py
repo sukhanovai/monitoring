@@ -1,11 +1,11 @@
 """
 /core/config_manager.py
-Server Monitoring System v8.62.7
+Server Monitoring System v8.62.8
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Configuration Manager
 Система мониторинга серверов
-Версия: 8.62.7
+Версия: 8.62.8
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Менеджер конфигурации
@@ -161,6 +161,7 @@ class ConfigManager:
     _CANONICAL_SETTING_CATEGORY: Dict[str, str] = {
         'BACKUP_ALERT_HOURS': 'backup',
         'BACKUP_STALE_HOURS': 'backup',
+        'BACKUP_PATTERNS': 'backup',
         'PROXMOX_HOSTS': 'backup',
         'DUPLICATE_IP_HOSTS': 'backup',
         'HOSTNAME_ALIASES': 'backup',
@@ -170,11 +171,23 @@ class ConfigManager:
         'SNAPSHOT_TRANSFER_HOSTS': 'snapshot_transfer',
     }
 
-    def _migrate_setting_categories(self) -> None:
-        """Приводит категории параметров расширений к каноническим.
+    # Канонические описания параметров, у которых в БД могло не оказаться
+    # description (раньше set_setting сохранял ключ без него — параметр
+    # уходил в !settings как «без описания»). Бэкфилл идемпотентен:
+    # перезаписывается только пустое/NULL-описание.
+    _CANONICAL_SETTING_DESCRIPTION: Dict[str, str] = {
+        'BACKUP_PATTERNS': (
+            'Регэкспы распознавания писем/логов бэкапов '
+            '(Proxmox/PBS/Zimbra, БД, ZFS-снэпшоты, остатки 1С); '
+            'правится через меню паттернов расширений'
+        ),
+    }
 
-        Идемпотентно: трогает строку только если её категория отличается
-        от канонической для этого ключа.
+    def _migrate_setting_categories(self) -> None:
+        """Приводит категории и описания параметров расширений к каноническим.
+
+        Идемпотентно: категория трогается только если отличается от
+        канонической, описание — только если оно пустое/NULL.
         """
         try:
             conn = self.get_connection()
@@ -187,9 +200,16 @@ class ConfigManager:
                     (category, key, category)
                 )
                 fixed += cursor.rowcount
+            for key, description in self._CANONICAL_SETTING_DESCRIPTION.items():
+                cursor.execute(
+                    'UPDATE settings SET description = ? '
+                    'WHERE key = ? AND IFNULL(description, "") = ""',
+                    (description, key)
+                )
+                fixed += cursor.rowcount
             conn.commit()
             if fixed:
-                debug_log(f"Категории параметров расширений приведены к норме: {fixed}")
+                debug_log(f"Категории/описания параметров расширений приведены к норме: {fixed}")
         except Exception as e:
             error_log(f"Ошибка миграции категорий настроек: {e}")
 

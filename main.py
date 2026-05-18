@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
 /main.py
-Server Monitoring System v8.62.7
+Server Monitoring System v8.62.8
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Main launch module
 Система мониторинга серверов
-Версия: 8.62.7
+Версия: 8.62.8
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль запуска
@@ -67,6 +67,14 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--dry-run",
         action="store_true",
         help="Тестовый запуск без сетевых действий и опроса Telegram",
+    )
+    parser.add_argument(
+        "--silent-start",
+        action="store_true",
+        help=(
+            "Не отправлять стартовое уведомление в Telegram и Matrix "
+            "(тихий перезапуск). Эквивалент MONITOR_SILENT_START=1"
+        ),
     )
     return parser
 
@@ -136,6 +144,11 @@ def run_cli_checks(args: argparse.Namespace) -> tuple[bool, int]:
 
 
 def main(args: argparse.Namespace):
+    # CLI-ключ тихого старта пробрасываем в окружение, чтобы фоновые
+    # потоки мониторинга (core.monitor / monitor_core) тоже его видели.
+    if getattr(args, "silent_start", False):
+        os.environ["MONITOR_SILENT_START"] = "1"
+
     # ------------------------------------------------------------------
     # 1. Загрузка конфигурации
     # ------------------------------------------------------------------
@@ -347,12 +360,15 @@ def main(args: argparse.Namespace):
     # ------------------------------------------------------------------
     if not args.dry_run:
         try:
-            from lib.alerts import send_alert
-            send_alert(
-                "🟢 *Мониторинг серверов запущен*\n\n"
-                "Система успешно инициализирована",
-                force=True
-            )
+            from lib.alerts import send_alert, is_startup_muted
+            if is_startup_muted():
+                logger.info("🔇 Тихий старт: стартовое уведомление подавлено (--silent-start)")
+            else:
+                send_alert(
+                    "🟢 *Мониторинг серверов запущен*\n\n"
+                    "Система успешно инициализирована",
+                    force=True
+                )
         except Exception as e:
             logger.warning(f"⚠️ Не удалось отправить стартовое сообщение: {e}")
     else:
