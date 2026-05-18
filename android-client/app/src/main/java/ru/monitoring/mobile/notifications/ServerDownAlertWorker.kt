@@ -23,6 +23,7 @@ import android.util.Log
 import ru.monitoring.mobile.MainActivity
 import ru.monitoring.mobile.api.ApiFactory
 import ru.monitoring.mobile.api.ManagedServer
+import ru.monitoring.mobile.api.MobileTokenRefresher
 import ru.monitoring.mobile.storage.AppPreferences
 
 class ServerDownAlertWorker(
@@ -44,8 +45,12 @@ class ServerDownAlertWorker(
 
         val result = runCatching {
             val api = ApiFactory.createApi(
-                tokenProvider = { token },
-                baseUrlProvider = { baseUrl }
+                // Читаем токен из prefs динамически, а не захваченную локальную
+                // переменную: после авто-переобмена (Authenticator на 401) повтор
+                // запроса должен уйти уже со свежим session-токеном.
+                tokenProvider = { prefs.apiToken.trim().ifBlank { token } },
+                baseUrlProvider = { baseUrl },
+                tokenRefresher = MobileTokenRefresher.forPreferences(prefs)
             )
             val managedServers = runCatching { api.getServersSettings().items }.getOrDefault(emptyList())
             val response = api.getAvailability()
