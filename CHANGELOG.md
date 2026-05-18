@@ -1,3 +1,13 @@
+## [8.62.14] - 2026-05-18
+
+### Added
+- RU: В Android-клиенте срок действия TLS-сертификата Base URL API BFF теперь виден в «⚡ Оперативном центре», а не только в legacy-карточке «Статус». В шапку оперативного центра добавлена строка «Сертификат: …» с текущим статусом (`🟢 OK, N дн.` / `🟠 истекает через N дн.` / `🔴 истёк` / `⚪ не проверен`); при приближении к истечению строка подсвечивается цветом ошибки. Когда до истечения остаётся ≤14 дней (`certificateExpiryWarningDays`) или сертификат уже просрочен, под плитками показывается заметная карточка-предупреждение «🔐 Сертификат BFF» с текстом предупреждения и датой истечения. Сама проверка (`fetchBffCertificateStatus()` — TLS-хендшейк к хосту/порту из Base URL, разбор `notAfter` X.509) уже выполнялась при синхронизации настроек, но её результат в компактном оперативном центре нигде не отображался.
+- EN: In the Android client the TLS certificate expiry of the BFF API Base URL is now surfaced in the "⚡ Operations Center", not only in the legacy "Status" card. A "Сертификат: …" line was added to the ops-center header with the current status (`🟢 OK, N days` / `🟠 expires in N days` / `🔴 expired` / `⚪ not checked`); as expiry approaches the line turns the error colour. When ≤14 days remain (`certificateExpiryWarningDays`) or the certificate is already expired, a prominent "🔐 Сертификат BFF" warning card with the warning text and expiry date is shown below the tiles. The check itself (`fetchBffCertificateStatus()` — TLS handshake to the Base URL host/port, parsing the X.509 `notAfter`) already ran during settings sync, but its result was never displayed in the compact ops center.
+
+### Changed
+- RU: Выполнен SemVer patch-бамп до `8.62.14`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.14`, `ANDROID_VERSION_CODE=776`).
+- EN: Performed a SemVer patch bump to `8.62.14`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.14`, `ANDROID_VERSION_CODE=776`).
+
 ## [8.62.13] - 2026-05-18
 
 ### Changed
