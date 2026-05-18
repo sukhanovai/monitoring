@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.62.8
+Server Monitoring System v8.62.9
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit + reaction buttons + E2EE).
 Система мониторинга серверов
-Версия: 8.62.8
+Версия: 8.62.9
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит + кнопки-реакции + E2EE).
@@ -256,6 +256,16 @@ _EXTENSION_SETTINGS: "OrderedDict[str, Dict[str, object]]" = OrderedDict((
         "keys": ["DATABASE_CONFIG"],
         "categories": ["database"],
     }),
+    ("mail_backup_monitor", {
+        "label": "📬 бэкапы почтового сервера",
+        "keys": [],
+        "categories": ["mail"],
+    }),
+    ("stock_load_monitor", {
+        "label": "📦 загрузка остатков 1С",
+        "keys": [],
+        "categories": ["stock_load"],
+    }),
     ("zfs_monitor", {
         "label": "🧊 ZFS",
         "keys": ["ZFS_SERVERS"],
@@ -312,6 +322,84 @@ def _extension_for_setting(key: str, category: str) -> Optional[str]:
     if key in _EXT_KEY_OWNER:
         return _EXT_KEY_OWNER[key]
     return _EXT_CATEGORY_OWNER.get((category or "").lower())
+
+
+# BACKUP_PATTERNS — единый параметр-словарь, но его разделы верхнего
+# уровня принадлежат РАЗНЫМ расширениям (как в Telegram-боте, где паттерны
+# разнесены по меню каждого расширения). В !settings раздуваем его в
+# виртуальные строки BACKUP_PATTERNS.<раздел> и привязываем каждую к
+# своему расширению, а не валим весь блок под «📊 бэкапы Proxmox».
+_BACKUP_PATTERNS_KEY = "BACKUP_PATTERNS"
+_BACKUP_PATTERN_DEFAULT_OWNER = "backup_monitor"
+_BACKUP_PATTERN_SECTION_OWNER: Dict[str, str] = {
+    "mail": "mail_backup_monitor",
+    "zfs": "zfs_monitor",
+    "snapshot_transfer": "snapshot_transfer_monitor",
+    "stock_load": "stock_load_monitor",
+    "database": "database_backup_monitor",
+    "proxmox": "backup_monitor",
+    "proxmox_subject": "backup_monitor",
+    "hostname_extraction": "backup_monitor",
+}
+_BACKUP_PATTERN_SECTION_DESC: Dict[str, str] = {
+    "mail": "Регэкспы писем бэкапа Zimbra (почтовый сервер)",
+    "zfs": "Регэкспы писем статуса ZFS-массивов",
+    "snapshot_transfer": "Регэкспы писем передачи ZFS-снэпшотов",
+    "stock_load": "Регэкспы логов загрузки остатков 1С",
+    "database": "Регэкспы писем бэкапов баз данных",
+    "proxmox": "Регэкспы писем бэкапов Proxmox/PBS",
+    "proxmox_subject": "Регэкспы темы писем бэкапов Proxmox/PBS",
+    "hostname_extraction": "Регэкспы извлечения имени хоста Proxmox",
+}
+_BACKUP_PATTERN_SECTION_HINT = "; правится через меню паттернов расширений"
+
+
+def _parse_backup_patterns_value(raw) -> Optional[dict]:
+    """Парсит значение BACKUP_PATTERNS в словарь; None — если не словарь."""
+    if isinstance(raw, dict):
+        return raw
+    if not raw:
+        return None
+    try:
+        parsed = json.loads(raw)
+    except (TypeError, ValueError):
+        return None
+    return parsed if isinstance(parsed, dict) else None
+
+
+def _expand_backup_patterns(row: dict) -> List[Tuple[dict, str]]:
+    """Раздувает строку BACKUP_PATTERNS в (виртуальная_строка, владелец).
+
+    Если значение не парсится как непустой словарь — возвращает исходную
+    строку с владельцем по умолчанию (поведение как раньше).
+    """
+    parsed = _parse_backup_patterns_value(row.get("value", ""))
+    if not parsed:
+        return [(row, _BACKUP_PATTERN_DEFAULT_OWNER)]
+    category = row.get("category", "backup")
+    out: List[Tuple[dict, str]] = []
+    for section in sorted(parsed.keys()):
+        owner = _BACKUP_PATTERN_SECTION_OWNER.get(
+            section, _BACKUP_PATTERN_DEFAULT_OWNER
+        )
+        try:
+            section_value = json.dumps(parsed[section], ensure_ascii=False)
+        except (TypeError, ValueError):
+            section_value = str(parsed[section])
+        desc = _BACKUP_PATTERN_SECTION_DESC.get(
+            section, f"Регэкспы раздела «{section}» BACKUP_PATTERNS"
+        )
+        out.append((
+            {
+                "key": f"{_BACKUP_PATTERNS_KEY}.{section}",
+                "value": section_value,
+                "category": category,
+                "description": desc + _BACKUP_PATTERN_SECTION_HINT,
+                "data_type": "dict",
+            },
+            owner,
+        ))
+    return out
 
 
 @dataclass
@@ -1409,6 +1497,11 @@ class MatrixCommandBot:
             category = row.get("category", "")
             if _is_tamtam_setting(key, category) or _is_debug_setting(key, category):
                 continue
+            if key == _BACKUP_PATTERNS_KEY:
+                # Раздел верхнего уровня → своё расширение (как в Telegram).
+                for vrow, vowner in _expand_backup_patterns(row):
+                    ext_buckets.setdefault(vowner, []).append(vrow)
+                continue
             owner = _extension_for_setting(key, category)
             if owner is None:
                 leftover.append(row)
@@ -1533,7 +1626,46 @@ class MatrixCommandBot:
                 )
         return None
 
+    def _settings_get_backup_section(self, section_raw: str) -> str:
+        try:
+            from core.config_manager import config_manager
+
+            data = _parse_backup_patterns_value(
+                config_manager.get_setting(_BACKUP_PATTERNS_KEY, None)
+            )
+            if not data:
+                return (
+                    "❌ BACKUP_PATTERNS пуст или не является словарём. "
+                    "Полностью: !settings get BACKUP_PATTERNS"
+                )
+            match = next(
+                (k for k in data if k.lower() == section_raw.lower()), None
+            )
+            if match is None:
+                avail = ", ".join(sorted(data.keys())) or "—"
+                return (
+                    f"❌ Раздел «{section_raw}» в BACKUP_PATTERNS не найден.\n"
+                    f"• доступные разделы: {avail}"
+                )
+            owner = _BACKUP_PATTERN_SECTION_OWNER.get(
+                match.lower(), _BACKUP_PATTERN_DEFAULT_OWNER
+            )
+            desc = _BACKUP_PATTERN_SECTION_DESC.get(
+                match, f"Регэкспы раздела «{match}» BACKUP_PATTERNS"
+            )
+            shown = json.dumps(data[match], ensure_ascii=False, indent=2)
+            return (
+                f"✅ BACKUP_PATTERNS.{match} =\n{shown}\n"
+                "• тип: dict (раздел BACKUP_PATTERNS)\n"
+                f"• расширение: {owner}\n"
+                f"• описание: {desc}{_BACKUP_PATTERN_SECTION_HINT}"
+            )
+        except Exception as exc:
+            return f"❌ Ошибка чтения раздела BACKUP_PATTERNS: {exc}"
+
     def _settings_get(self, setting_key: str) -> str:
+        if setting_key.split(".", 1)[0] == _BACKUP_PATTERNS_KEY and "." in setting_key:
+            return self._settings_get_backup_section(setting_key.split(".", 1)[1])
         try:
             from core.config_manager import config_manager
 
@@ -1559,6 +1691,13 @@ class MatrixCommandBot:
             return f"❌ Ошибка чтения настройки: {exc}"
 
     def _settings_set(self, setting_key: str, raw_value: str) -> str:
+        if setting_key.split(".", 1)[0] == _BACKUP_PATTERNS_KEY and "." in setting_key:
+            return (
+                "ⓘ Разделы BACKUP_PATTERNS по отдельности из command-bot "
+                "не редактируются — паттерны правятся через меню паттернов "
+                "соответствующего расширения в Telegram-боте. Целиком: "
+                "!settings set BACKUP_PATTERNS <JSON>."
+            )
         try:
             from core.config_manager import config_manager
 
