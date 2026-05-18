@@ -1,11 +1,11 @@
 """
 /core/monitor_core.py
-Server Monitoring System v8.62.7
+Server Monitoring System v8.62.8
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core system
 Система мониторинга серверов
-Версия: 8.62.7
+Версия: 8.62.8
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Ядро системы
@@ -1636,10 +1636,17 @@ def start_monitoring():
     start_message = "🟢 *Мониторинг серверов запущен*\n\n"
     if getattr(config, "APP_VERSION", None):
         start_message += f"🔖 *Версия:* {config.APP_VERSION}\n"
+    try:
+        report_slots = morning_report._get_collection_times()
+        report_time = ", ".join(
+            slot.strftime('%H:%M') for slot in report_slots
+        ) or config.DATA_COLLECTION_TIME.strftime('%H:%M')
+    except Exception:
+        report_time = config.DATA_COLLECTION_TIME.strftime('%H:%M')
     start_message += (
         f"• Серверов в мониторинге: {len(servers)}\n"
         f"• Проверка ресурсов: каждые {config.RESOURCE_CHECK_INTERVAL // 60} минут\n"
-        f"• Утренний отчет: {config.DATA_COLLECTION_TIME.strftime('%H:%M')}\n\n"
+        f"• Утренний отчет: {report_time}\n\n"
     )
 
     # Информация о веб-интерфейсе
@@ -1650,7 +1657,11 @@ def start_monitoring():
     else:
         start_message += "🌐 *Веб-интерфейс:* 🔴 отключен\n"
 
-    send_alert(start_message)
+    from lib.alerts import is_startup_muted
+    if is_startup_muted():
+        debug_log("🔇 Тихий старт: стартовое сообщение мониторинга подавлено (--silent-start)")
+    else:
+        send_alert(start_message)
 
     last_resource_check = datetime.now()
     last_data_collection = None

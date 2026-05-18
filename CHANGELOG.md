@@ -1,3 +1,19 @@
+## [8.62.8] - 2026-05-18
+
+### Added
+- RU: Тихий перезапуск сервиса: CLI-ключ `--silent-start` и эквивалентная переменная окружения `MONITOR_SILENT_START` (truthy — `1/true/yes/on`). При их наличии стартовое уведомление «🟢 Мониторинг серверов запущен» не отправляется ни в Telegram, ни в Matrix (оба идут через `send_alert`), а лишь пишется в лог. Удобно для `systemctl restart server-monitor` без шума о перезапуске в чаты: добавьте `Environment=MONITOR_SILENT_START=1` (или флаг в `ExecStart`) в unit. Хелпер `lib.alerts.is_startup_muted()`; CLI-ключ пробрасывается в окружение, чтобы фоновые потоки `core.monitor`/`monitor_core` тоже его видели.
+- EN: Quiet service restart: CLI flag `--silent-start` and the equivalent `MONITOR_SILENT_START` env var (truthy — `1/true/yes/on`). When set, the "🟢 Monitoring started" startup notification is sent neither to Telegram nor Matrix (both go through `send_alert`) and is only logged. Handy for `systemctl restart server-monitor` without restart noise in chats: add `Environment=MONITOR_SILENT_START=1` (or the flag in `ExecStart`) to the unit. Added `lib.alerts.is_startup_muted()`; the CLI flag is propagated into the environment so the `core.monitor`/`monitor_core` background threads see it too.
+
+### Fixed
+- RU: Стартовое сообщение мониторинга показывало жёстко зашитое `• Утренний отчет: 08:30` (статическая `config.settings.DATA_COLLECTION_TIME`), игнорируя реальное время из настроек. Теперь время берётся из `morning_report._get_collection_times()` (БД `DATA_COLLECTION_TIMES`/`DATA_COLLECTION_TIME` с фолбэком на дефолт), несколько слотов выводятся через запятую; при сбое — прежний фолбэк. Поправлено в `core/monitor.py` и `core/monitor_core.py`.
+- EN: The monitoring startup message showed a hardcoded `• Morning report: 08:30` (static `config.settings.DATA_COLLECTION_TIME`), ignoring the actual configured time. The time now comes from `morning_report._get_collection_times()` (DB `DATA_COLLECTION_TIMES`/`DATA_COLLECTION_TIME`, falling back to the default); multiple slots are comma-joined; on failure the previous fallback is used. Fixed in `core/monitor.py` and `core/monitor_core.py`.
+- RU: В `!settings` (Matrix command-bot) параметр `BACKUP_PATTERNS` сваливался в «🧩 прочее» как `BACKUP_PATTERNS [string] = {…}` без описания, хотя в Telegram-боте паттерны корректно разнесены по расширениям. Причина — у ключа в БД были категория `general` и пустое `description` (сохранялся из бота без них). `BACKUP_PATTERNS` добавлен в канонические категории (`backup`) — теперь привязывается к расширению «📊 бэкапы Proxmox»; добавлен идемпотентный бэкфилл `description` (новый `_CANONICAL_SETTING_DESCRIPTION`, перезаписывается только пустое/NULL-описание) — `_migrate_setting_categories` чинит уже существующие БД.
+- EN: In `!settings` (Matrix command-bot) the `BACKUP_PATTERNS` setting fell into "🧩 other" as `BACKUP_PATTERNS [string] = {…}` with no description, even though the Telegram bot splits patterns across extensions correctly. Root cause — the DB row had category `general` and an empty `description` (saved from the bot without them). `BACKUP_PATTERNS` was added to the canonical categories (`backup`) so it now attaches to the "📊 Proxmox backups" extension; an idempotent `description` backfill was added (new `_CANONICAL_SETTING_DESCRIPTION`, overwrites only empty/NULL description) — `_migrate_setting_categories` repairs existing databases.
+
+### Changed
+- RU: Выполнен SemVer patch-бамп до `8.62.8`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.8`, `ANDROID_VERSION_CODE=770`).
+- EN: Performed a SemVer patch bump to `8.62.8`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.8`, `ANDROID_VERSION_CODE=770`).
+
 ## [8.62.7] - 2026-05-18
 
 ### Fixed

@@ -1,17 +1,18 @@
 """
 /lib/alerts.py
-Server Monitoring System v8.62.7
+Server Monitoring System v8.62.8
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Unified alert system
 Система мониторинга серверов
-Версия: 8.62.7
+Версия: 8.62.8
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единая система оповещений
 """
 
 import asyncio
+import os
 import time
 import requests
 from urllib.parse import quote
@@ -158,6 +159,17 @@ def is_silent_time() -> bool:
     
     # Период в пределах одних суток
     return _config.silent_start <= current_hour < _config.silent_end
+
+def is_startup_muted() -> bool:
+    """Заглушено ли стартовое уведомление (Telegram + Matrix).
+
+    Истинно, если задан CLI-ключ ``--silent-start`` либо переменная
+    окружения ``MONITOR_SILENT_START`` в truthy-значении. Удобно для
+    тихого ``systemctl restart server-monitor`` без оповещения о
+    перезапуске в чаты.
+    """
+    raw = os.environ.get("MONITOR_SILENT_START", "")
+    return str(raw).strip().lower() in ("1", "true", "yes", "on")
 
 def should_send_alert(alert_type: str, force: bool) -> bool:
     """
