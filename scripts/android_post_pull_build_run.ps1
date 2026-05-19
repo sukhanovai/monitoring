@@ -174,6 +174,65 @@ function Invoke-GradleStep {
     }
 }
 
+function Restart-AdbServer {
+    param(
+        [string]$AdbPath
+    )
+
+    Write-Host "Restarting adb server to recover the transport (Broken pipe workaround)..."
+    & $AdbPath kill-server 2>$null | Out-Null
+    Start-Sleep -Seconds 1
+    & $AdbPath start-server 2>$null | Out-Null
+    & $AdbPath wait-for-device
+}
+
+function Invoke-RobustInstall {
+    param(
+        [string]$AdbPath,
+        [string]$Description,
+        [string]$InstallTask,
+        [string]$ApkPath,
+        [int]$MaxAttempts = 3
+    )
+
+    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+        Write-Host "==> $Description (attempt $attempt/$MaxAttempts)"
+
+        if ($attempt -gt 1) {
+            Restart-AdbServer -AdbPath $AdbPath
+            Start-Sleep -Seconds ([int][Math]::Min(8, [Math]::Pow(2, $attempt)))
+        }
+
+        $deviceId = Resolve-TargetDevice -AdbPath $AdbPath
+
+        # Prefer a direct 'adb install': platform-tools is far more resilient to
+        # the ddmlib "Failure calling service package: Broken pipe" that the
+        # Gradle :app:install*Debug task hits on flaky emulator transports.
+        if ((Test-Path $ApkPath) -and $deviceId) {
+            Write-Host "Installing via 'adb -s $deviceId install -r -t' ..."
+            & $AdbPath -s $deviceId install -r -t "$ApkPath"
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "APK installed via adb install."
+                return
+            }
+            Write-Warning "adb install failed (exit $LASTEXITCODE); trying Gradle install task..."
+        }
+        elseif (-not (Test-Path $ApkPath)) {
+            Write-Warning "APK not found at $ApkPath; using Gradle install task..."
+        }
+
+        & $gradlew "-p" $androidDir $InstallTask
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "APK installed via Gradle install task."
+            return
+        }
+
+        Write-Warning "Install attempt $attempt/$MaxAttempts failed."
+    }
+
+    throw "Gradle step failed: $Description (after $MaxAttempts attempts; last error is likely 'Broken pipe' — cold-boot/wipe the AVD or reconnect the device, then rerun)"
+}
+
 Write-Host "[1/5] Sync project with Gradle files (CLI equivalent)..."
 Invoke-GradleStep -Description "Gradle sync-equivalent" -Tasks @("help")
 
@@ -197,7 +256,8 @@ if (-not $SkipInstall) {
 if (-not $SkipInstall) {
     Write-Host "[4/5] Install app on connected device/emulator..."
     $installTask = ":app:install{0}Debug" -f $variantName
-    Invoke-GradleStep -Description "Install $Flavor debug APK" -Tasks @($installTask)
+    $apkPath = Join-Path $androidDir ("app\build\outputs\apk\{0}\debug\app-{0}-debug.apk" -f $Flavor)
+    Invoke-RobustInstall -AdbPath $adbPath -Description "Install $Flavor debug APK" -InstallTask $installTask -ApkPath $apkPath
 }
 else {
     Write-Host "[4/5] Install skipped (-SkipInstall)."
