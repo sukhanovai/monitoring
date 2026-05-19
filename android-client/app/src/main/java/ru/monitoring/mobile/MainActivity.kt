@@ -2636,7 +2636,7 @@ private fun MonitoringApp(
                                         MaterialTheme.colorScheme.onSurfaceVariant
                                     }
                                 )
-                                // ВРЕМЕННО (8.62.22): диагностика TLS — гоняет
+                                // ВРЕМЕННО (8.62.23): диагностика TLS — гоняет
                                 // только проверку сертификата и шлёт подробный
                                 // отчёт в консоль сервера.
                                 TextButton(
@@ -2836,7 +2836,7 @@ private fun MonitoringApp(
                             if (state.bffCertificateWarningText.isNotBlank()) {
                                 Text(state.bffCertificateWarningText, color = MaterialTheme.colorScheme.error)
                             }
-                            // ВРЕМЕННО (8.62.22): диагностика TLS — только
+                            // ВРЕМЕННО (8.62.23): диагностика TLS — только
                             // проверка сертификата + отчёт в консоль сервера.
                             OutlinedButton(
                                 onClick = onCheckCertificateOnly,
