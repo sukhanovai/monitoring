@@ -1711,6 +1711,14 @@ private fun MonitoringApp(
     var showTileSettingsDialog by rememberSaveable { mutableStateOf(false) }
     var settingsSection by rememberSaveable { mutableStateOf("bff") }
     var showSettingsSectionOverlay by rememberSaveable { mutableStateOf(false) }
+    val pullToRefreshState = rememberPullRefreshState(state.isLoading, onRefreshData)
+    val reportPullRefreshState = rememberPullRefreshState(
+        state.isLoading,
+        { onAction("send_morning_report") }
+    )
+    // 0 — настройки, 1 — оперативный центр (стартовый экран), 2 — отчёт.
+    val screensPagerState = rememberPagerState(initialPage = 1) { 3 }
+    val screensScope = rememberCoroutineScope()
     var showProxmoxPatternAddDialog by rememberSaveable { mutableStateOf(false) }
     var showProxmoxPatternEditDialog by rememberSaveable { mutableStateOf(false) }
     var proxmoxPatternCategoryInput by rememberSaveable { mutableStateOf("proxmox") }
@@ -2376,13 +2384,6 @@ private fun MonitoringApp(
         "не синхронизировано"
     }
     val synchronizationColor = if (isSynchronized) Color(0xFF2E7D32) else Color(0xFFC62828)
-    val pullToRefreshState = rememberPullRefreshState(state.isLoading, onRefreshData)
-    val reportPullRefreshState = rememberPullRefreshState(state.isLoading) {
-        onAction("send_morning_report")
-    }
-    // 0 — настройки, 1 — оперативный центр (стартовый экран), 2 — отчёт.
-    val screensPagerState = rememberPagerState(initialPage = 1) { 3 }
-    val screensScope = rememberCoroutineScope()
     val serverButtonsForDialog = state.managedServers
         .asSequence()
         .sortedWith(
@@ -2635,7 +2636,7 @@ private fun MonitoringApp(
                                         MaterialTheme.colorScheme.onSurfaceVariant
                                     }
                                 )
-                                // ВРЕМЕННО (8.62.19): диагностика TLS — гоняет
+                                // ВРЕМЕННО (8.62.20): диагностика TLS — гоняет
                                 // только проверку сертификата и шлёт подробный
                                 // отчёт в консоль сервера.
                                 TextButton(
@@ -2835,7 +2836,7 @@ private fun MonitoringApp(
                             if (state.bffCertificateWarningText.isNotBlank()) {
                                 Text(state.bffCertificateWarningText, color = MaterialTheme.colorScheme.error)
                             }
-                            // ВРЕМЕННО (8.62.19): диагностика TLS — только
+                            // ВРЕМЕННО (8.62.20): диагностика TLS — только
                             // проверка сертификата + отчёт в консоль сервера.
                             OutlinedButton(
                                 onClick = onCheckCertificateOnly,

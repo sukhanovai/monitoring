@@ -1,3 +1,13 @@
+## [8.62.20] - 2026-05-19
+
+### Fixed
+- RU: Исправлена ошибка компиляции Android-клиента (`compileCompactOpsDebugKotlin`), возникшая после перехода на `HorizontalPager` (8.62.19). `screensPagerState`/`screensScope` использовались в обработчике плашки расширения (строка ~2309) раньше, чем объявлялись (~2384) — `val` объявления перенесены в начало `MonitoringApp`. Также `rememberPullRefreshState` для экрана отчёта вызывался с trailing-lambda, которая попадала в параметр `refreshingOffset: Dp` вместо `onRefresh` — колбэк передан позиционным аргументом.
+- EN: Fixed an Android client compile error (`compileCompactOpsDebugKotlin`) introduced by the `HorizontalPager` rework (8.62.19). `screensPagerState`/`screensScope` were referenced in the extension-tile click handler (line ~2309) before their declaration (~2384) — the `val` declarations were moved to the top of `MonitoringApp`. Also `rememberPullRefreshState` for the report screen was called with a trailing lambda that bound to the `refreshingOffset: Dp` parameter instead of `onRefresh` — the callback is now passed as a positional argument.
+
+### Changed
+- RU: Выполнен SemVer patch-бамп до `8.62.20`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.20`, `ANDROID_VERSION_CODE=782`).
+- EN: Performed a SemVer patch bump to `8.62.20`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.20`, `ANDROID_VERSION_CODE=782`).
+
 ## [8.62.19] - 2026-05-19
 
 ### Changed
