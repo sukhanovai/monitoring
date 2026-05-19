@@ -1,15 +1,5 @@
 # Changelog / История изменений
 
-## [8.0.4] - 2026-05-19
-
-### RU
-- Добавлен API-эндпоинт `/api/cert` (и алиас `/api/certificate`), который возвращает текущий статус TLS-сертификата для адреса подключения Android-приложения. Эндпоинт сам подключается к хосту обратного прокси, читает сертификат и отдаёт структурированный JSON (издатель, субъект, срок действия, остаток дней, признак валидности). При сетевой ошибке или сбое TLS возвращается понятный статус вместо «Ошибка сети», что устраняет ошибку «TLS: ошибка проверки (Ошибка сети)» в приложении.
-- Хост и порт проверки сертификата настраиваются через настройки `CERT_CHECK_HOST` / `CERT_CHECK_PORT` (по умолчанию `api.202020.ru:8443`).
-
-### EN
-- Added the `/api/cert` API endpoint (with an `/api/certificate` alias) that returns the current TLS certificate status for the Android app's connection address. The endpoint connects to the reverse-proxy host itself, reads the certificate and returns structured JSON (issuer, subject, validity period, days remaining, validity flag). On a network or TLS failure it returns a clear status instead of a network error, fixing the "TLS: verification error (Network error)" shown in the app.
-- The certificate-check host and port are configurable via the `CERT_CHECK_HOST` / `CERT_CHECK_PORT` settings (defaulting to `api.202020.ru:8443`).
-
 ## [8.0.3] - 2026-04-12
 
 ### RU
