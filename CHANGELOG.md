@@ -1,3 +1,13 @@
+## [8.62.18] - 2026-05-19
+
+### Added
+- RU: В Android-клиенте из «⚡ Оперативного центра» добавлена навигация свайпами: свайп влево открывает просмотр текущего последнего (утреннего) отчёта — то же, что кнопка «🌅 Отчёт»; свайп вправо открывает экран настроек. Экран настроек теперь показывает разделы в виде плашек (BFF, Мониторинг, Бот, Время, Аутентификация, Расширения); по тапу на плашку открывается окно-наложение с настройками соответствующего раздела. Прежний переключатель разделов через `FilterChip` заменён на плашки.
+- EN: In the Android client the "⚡ Operations Center" gained swipe navigation: swiping left opens the current latest (morning) report — the same as the "🌅 Отчёт" button; swiping right opens the settings screen. The settings screen now lays out sections as tiles (BFF, Monitoring, Bot, Time, Auth, Extensions); tapping a tile opens an overlay window with that section's settings. The previous `FilterChip` section switcher was replaced by tiles.
+
+### Changed
+- RU: Выполнен SemVer patch-бамп до `8.62.18`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.18`, `ANDROID_VERSION_CODE=780`).
+- EN: Performed a SemVer patch bump to `8.62.18`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.18`, `ANDROID_VERSION_CODE=780`).
+
 ## [8.62.17] - 2026-05-19
 
 ### Fixed
