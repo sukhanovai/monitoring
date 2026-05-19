@@ -1,3 +1,13 @@
+## [8.62.22] - 2026-05-19
+
+### Fixed
+- RU: `scripts/android_post_pull_build_run.ps1` не парсился в Windows PowerShell 5.1 (`ParserError: UnexpectedToken`, «Отсутствует закрывающий знак "}"»): файл содержал не-ASCII символы (em-dash `—` в сообщении throw и `✅` в `Write-Host`), а PS 5.1 под русской локалью читает `.ps1` без BOM как Windows-1251 → мохибейк ломал разбор строк. Скрипт приведён к чистому ASCII (`—` → `-`, `✅` → `[OK]`), теперь парсится независимо от локали/кодировки. Логика установки/сборки/запуска не изменена.
+- EN: `scripts/android_post_pull_build_run.ps1` failed to parse under Windows PowerShell 5.1 (`ParserError: UnexpectedToken`, missing closing `}`): the file contained non-ASCII characters (an em-dash `—` in a throw message and `✅` in `Write-Host`), and PS 5.1 under a Russian locale reads a BOM-less `.ps1` as Windows-1251, so the mojibake broke string parsing. The script is now pure ASCII (`—` → `-`, `✅` → `[OK]`) and parses regardless of locale/encoding. Install/build/run logic is unchanged.
+
+### Changed
+- RU: SemVer patch-бамп до `8.62.22`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.22`, `ANDROID_VERSION_CODE=784`).
+- EN: SemVer patch bump to `8.62.22`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.22`, `ANDROID_VERSION_CODE=784`).
+
 ## [8.62.21] - 2026-05-19
 
 ### Fixed

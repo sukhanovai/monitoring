@@ -230,7 +230,7 @@ function Invoke-RobustInstall {
         Write-Warning "Install attempt $attempt/$MaxAttempts failed."
     }
 
-    throw "Gradle step failed: $Description (after $MaxAttempts attempts; last error is likely 'Broken pipe' — cold-boot/wipe the AVD or reconnect the device, then rerun)"
+    throw "Gradle step failed: $Description (after $MaxAttempts attempts; last error is likely 'Broken pipe' - cold-boot/wipe the AVD or reconnect the device, then rerun)"
 }
 
 Write-Host "[1/5] Sync project with Gradle files (CLI equivalent)..."
@@ -265,7 +265,7 @@ else {
 
 if ($SkipRun) {
     Write-Host "[5/5] App launch skipped (-SkipRun)."
-    Write-Host "✅ Done: sync + clean + assemble ($Flavor)"
+    Write-Host "[OK] Done: sync + clean + assemble ($Flavor)"
     exit 0
 }
 
@@ -309,9 +309,9 @@ if (-not $SkipInstall) {
         }
     }
 
-    Write-Host "✅ Done: sync + clean + assemble + install + run ($Flavor)"
+    Write-Host "[OK] Done: sync + clean + assemble + install + run ($Flavor)"
 }
 else {
     Write-Host "[5/5] Launch skipped because install was skipped."
-    Write-Host "✅ Done: sync + clean + assemble ($Flavor)"
+    Write-Host "[OK] Done: sync + clean + assemble ($Flavor)"
 }
