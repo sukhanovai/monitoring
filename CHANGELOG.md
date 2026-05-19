@@ -1,3 +1,13 @@
+## [8.62.17] - 2026-05-19
+
+### Fixed
+- RU: При перезапуске сервиса в Telegram и Matrix приходило два отдельных уведомления «🟢 Мониторинг серверов запущен» — одно из `main.py` (этап стартового уведомления) и одно из потока мониторинга `core/monitor.py`. Теперь стартовое уведомление формируется и отправляется один раз методом `Monitor._send_startup_notification()`: версия сервера, версия Android-клиента, хост, версия Python и время запуска объединены с параметрами мониторинга (число серверов, интервалы проверок, время утреннего отчёта, состояние веб-интерфейса) в одно сообщение. Дублирующая отправка из `main.py` и неиспользуемая `build_startup_message()` удалены; уведомление по-прежнему подавляется при `--silent-start`.
+- EN: On service restart Telegram and Matrix received two separate "🟢 Monitoring started" notifications — one from `main.py` (startup notification stage) and one from the `core/monitor.py` monitoring thread. The startup notification is now built and sent once by `Monitor._send_startup_notification()`: server version, Android client version, host, Python version and start time are merged with the monitoring parameters (server count, check intervals, morning report time, web interface state) into a single message. The duplicate send from `main.py` and the unused `build_startup_message()` were removed; the notification is still suppressed under `--silent-start`.
+
+### Changed
+- RU: Выполнен SemVer patch-бамп до `8.62.17`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.17`, `ANDROID_VERSION_CODE=779`).
+- EN: Performed a SemVer patch bump to `8.62.17`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.17`, `ANDROID_VERSION_CODE=779`).
+
 ## [8.62.16] - 2026-05-19
 
 ### Added

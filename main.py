@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
 /main.py
-Server Monitoring System v8.62.16
+Server Monitoring System v8.62.17
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Main launch module
 Система мониторинга серверов
-Версия: 8.62.16
+Версия: 8.62.17
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль запуска
@@ -141,54 +141,6 @@ def run_cli_checks(args: argparse.Namespace) -> tuple[bool, int]:
         print(message)
 
     return True, 0 if success else 1
-
-
-def build_startup_message() -> str:
-    """Формирует стартовое уведомление с версией и полезными сведениями."""
-    lines = ["🟢 *Мониторинг серверов запущен*", ""]
-
-    try:
-        from config.settings import APP_VERSION
-        lines.append(f"🔖 *Версия:* {APP_VERSION}")
-    except Exception:
-        pass
-
-    try:
-        from config.settings import ANDROID_LATEST_VERSION
-        lines.append(f"📱 *Android-клиент:* {ANDROID_LATEST_VERSION}")
-    except Exception:
-        pass
-
-    try:
-        import socket
-        lines.append(f"🖥 *Хост:* {socket.gethostname()}")
-    except Exception:
-        pass
-
-    try:
-        import platform
-        lines.append(f"🐍 *Python:* {platform.python_version()}")
-    except Exception:
-        pass
-
-    try:
-        from datetime import datetime
-        lines.append(f"🕒 *Время запуска:* {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    except Exception:
-        pass
-
-    try:
-        from extensions.extension_manager import extension_manager
-        if extension_manager.is_extension_enabled('web_interface'):
-            from config import settings as _settings
-            from core.monitor_core import get_web_interface_url
-            lines.append("")
-            lines.append(f"🌐 *Веб-интерфейс:* {get_web_interface_url(_settings)}")
-            lines.append("_доступен только в локальной сети_")
-    except Exception:
-        pass
-
-    return "\n".join(lines)
 
 
 def main(args: argparse.Namespace):
@@ -404,19 +356,10 @@ def main(args: argparse.Namespace):
         logger.info("🧪 Dry-run: Matrix command sync пропущен")
 
     # ------------------------------------------------------------------
-    # 9. Стартовое уведомление
+    # 9. Стартовое уведомление отправляется потоком мониторинга
+    #    (core.monitor.Monitor._send_startup_notification), чтобы
+    #    в Telegram/Matrix приходило одно объединённое сообщение.
     # ------------------------------------------------------------------
-    if not args.dry_run:
-        try:
-            from lib.alerts import send_alert, is_startup_muted
-            if is_startup_muted():
-                logger.info("🔇 Тихий старт: стартовое уведомление подавлено (--silent-start)")
-            else:
-                send_alert(build_startup_message(), force=True)
-        except Exception as e:
-            logger.warning(f"⚠️ Не удалось отправить стартовое сообщение: {e}")
-    else:
-        logger.info("🧪 Dry-run: стартовое уведомление не отправлялось")
 
     # ------------------------------------------------------------------
     # 10. Запуск

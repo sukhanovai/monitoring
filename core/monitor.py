@@ -1,11 +1,11 @@
 """
 /core/monitor.py
-Server Monitoring System v8.62.16
+Server Monitoring System v8.62.17
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core monitoring module
 Система мониторинга серверов
-Версия: 8.62.16
+Версия: 8.62.17
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Основной модуль мониторинга
@@ -440,27 +440,49 @@ class Monitor:
             time.sleep(2)
             return
     
-    def start(self) -> None:
-        """Запускает основной цикл мониторинга"""
-        # Загружаем серверы
-        self.servers = self.load_servers()
-        
-        if not self.servers:
-            debug_log("❌ Нет серверов для мониторинга")
+    def _send_startup_notification(self) -> None:
+        """Формирует и отправляет единое стартовое уведомление.
+
+        Объединяет сведения о версии/хосте и параметры мониторинга в
+        одно сообщение, чтобы при перезапуске сервиса в Telegram и
+        Matrix приходило одно уведомление вместо двух.
+        """
+        from lib.alerts import is_startup_muted
+
+        if is_startup_muted():
+            debug_log("🔇 Тихий старт: стартовое сообщение подавлено (--silent-start)")
             return
-        
-        # Инициализируем статусы
-        self.initialize_server_status()
-        
-        # Отправляем стартовое сообщение
+
+        lines = ["🟢 *Мониторинг серверов запущен*", ""]
+
         try:
             from config.settings import APP_VERSION
+            lines.append(f"🔖 *Версия:* {APP_VERSION}")
         except Exception:
-            APP_VERSION = None
+            pass
 
-        start_message = "🟢 *Мониторинг серверов запущен*\n\n"
-        if APP_VERSION:
-            start_message += f"🔖 *Версия:* {APP_VERSION}\n"
+        try:
+            from config.settings import ANDROID_LATEST_VERSION
+            lines.append(f"📱 *Android-клиент:* {ANDROID_LATEST_VERSION}")
+        except Exception:
+            pass
+
+        try:
+            import socket
+            lines.append(f"🖥 *Хост:* {socket.gethostname()}")
+        except Exception:
+            pass
+
+        try:
+            import platform
+            lines.append(f"🐍 *Python:* {platform.python_version()}")
+        except Exception:
+            pass
+
+        lines.append(
+            f"🕒 *Время запуска:* {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        )
+
         try:
             report_slots = morning_report._get_collection_times()
             report_time = ", ".join(
@@ -468,13 +490,12 @@ class Monitor:
             ) or DATA_COLLECTION_TIME.strftime('%H:%M')
         except Exception:
             report_time = DATA_COLLECTION_TIME.strftime('%H:%M')
-        start_message += (
-            f"• Серверов в мониторинге: {len(self.servers)}\n"
-            f"• Проверка доступности: каждые {CHECK_INTERVAL} сек\n"
-            f"• Утренний отчет: {report_time}\n\n"
-        )
 
-        resources_enabled = True
+        lines.append("")
+        lines.append(f"• Серверов в мониторинге: {len(self.servers)}")
+        lines.append(f"• Проверка доступности: каждые {CHECK_INTERVAL} сек")
+        lines.append(f"• Утренний отчет: {report_time}")
+
         try:
             from extensions.extension_manager import extension_manager
             resources_enabled = extension_manager.is_extension_enabled('resource_monitor')
@@ -482,26 +503,46 @@ class Monitor:
             resources_enabled = True
 
         if resources_enabled:
-            start_message += f"• Проверка ресурсов: каждые {RESOURCE_CHECK_INTERVAL // 60} минут\n"
+            lines.append(
+                f"• Проверка ресурсов: каждые {RESOURCE_CHECK_INTERVAL // 60} минут"
+            )
         else:
-            start_message += "• Проверка ресурсов: отключена\n"
-        
-        # Информация о веб-интерфейсе
+            lines.append("• Проверка ресурсов: отключена")
+
         try:
             from extensions.extension_manager import extension_manager
             if extension_manager.is_extension_enabled('web_interface'):
-                start_message += "🌐 *Веб-интерфейс:* http://192.168.20.2:5000\n"
-                start_message += "_*доступен только в локальной сети_\n"
+                from config import settings as _settings
+                from core.monitor_core import get_web_interface_url
+                lines.append("")
+                lines.append(f"🌐 *Веб-интерфейс:* {get_web_interface_url(_settings)}")
+                lines.append("_доступен только в локальной сети_")
             else:
-                start_message += "🌐 *Веб-интерфейс:* 🔴 отключен\n"
+                lines.append("")
+                lines.append("🌐 *Веб-интерфейс:* 🔴 отключен")
         except ImportError:
-            start_message += "🌐 *Веб-интерфейс:* 🔴 модуль не загружен\n"
-        
-        from lib.alerts import is_startup_muted
-        if is_startup_muted():
-            debug_log("🔇 Тихий старт: стартовое сообщение мониторинга подавлено (--silent-start)")
-        else:
-            send_alert(start_message)
+            lines.append("")
+            lines.append("🌐 *Веб-интерфейс:* 🔴 модуль не загружен")
+
+        send_alert("\n".join(lines), force=True)
+
+    def start(self) -> None:
+        """Запускает основной цикл мониторинга"""
+        # Загружаем серверы
+        self.servers = self.load_servers()
+
+        # Единое стартовое сообщение (версия, сведения о хосте и
+        # параметры мониторинга). Отправляется один раз при запуске
+        # сервиса, чтобы в Telegram/Matrix не приходило два уведомления.
+        self._send_startup_notification()
+
+        if not self.servers:
+            debug_log("❌ Нет серверов для мониторинга")
+            return
+
+        # Инициализируем статусы
+        self.initialize_server_status()
+
         debug_log(f"✅ Мониторинг запущен для {len(self.servers)} серверов")
         
         # Основной цикл мониторинга
