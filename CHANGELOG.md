@@ -1,3 +1,15 @@
+## [8.62.16] - 2026-05-19
+
+### Added
+- RU: Диагностика ошибки «⚪ TLS: ошибка проверки (Ошибка сети)» в Android-клиенте. Добавлен временный серверный эндпоинт `POST /v1/mobile/diagnostics/tls` (+ `/api/...`), который принимает результат проверки TLS-сертификата Base URL от приложения и подробно логирует его в консоль сервера через `app.logger`: исход (`success`/`error`/`no_certificate`/`config_error`), host/port/base_url, согласованные protocol и cipher suite, subject/issuer/SAN/срок действия сертификата при успехе, а при ошибке — полную цепочку исключений (`класс: сообщение <- класс: сообщение …`) и обрезанный стектрейс, плюс версию приложения, модель устройства и subject токена. Это позволяет понять реальную причину сбоя удалённо, без доступа к logcat устройства.
+- RU: В оперативный центр (под строкой «Сертификат: …») и в legacy-карточку «Статус» добавлена временная кнопка «🔐 Проверить только сертификат (врем.)». Она запускает только TLS-проверку Base URL (без полной синхронизации ~16 запросов), обновляет статус сертификата на экране и отправляет подробный диагностический отчёт в консоль сервера. Периодическая синхронизация настроек по-прежнему делает ту же проверку, но в консоль сервера не пишет (чтобы не засорять лог) — отчёт уходит только по нажатию кнопки.
+- EN: Diagnostics for the Android client "⚪ TLS: ошибка проверки (Ошибка сети)" error. Added a temporary server endpoint `POST /v1/mobile/diagnostics/tls` (+ `/api/...`) that receives the Base URL TLS certificate check result from the app and logs it in detail to the server console via `app.logger`: outcome (`success`/`error`/`no_certificate`/`config_error`), host/port/base_url, negotiated protocol and cipher suite, certificate subject/issuer/SAN/validity on success, and on failure the full exception chain (`class: message <- class: message …`) plus a truncated stack trace, along with the app version, device model and token subject. This makes the real failure cause diagnosable remotely without access to the device logcat.
+- EN: Added a temporary "🔐 Проверить только сертификат (врем.)" button to the operations center (below the "Сертификат: …" line) and to the legacy "Status" card. It runs only the Base URL TLS check (without the full ~16-request sync), refreshes the on-screen certificate status and sends a detailed diagnostic report to the server console. The periodic settings sync still performs the same check but no longer writes to the server console (to avoid log noise) — the report is only sent on button press.
+
+### Changed
+- RU: Выполнен SemVer patch-бамп до `8.62.16`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.16`, `ANDROID_VERSION_CODE=778`).
+- EN: Performed a SemVer patch bump to `8.62.16`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.16`, `ANDROID_VERSION_CODE=778`).
+
 ## [8.62.15] - 2026-05-19
 
 ### Fixed

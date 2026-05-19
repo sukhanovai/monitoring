@@ -99,6 +99,30 @@ data class MobileVersionResponse(
     @Json(name = "update_required") val updateRequired: Boolean? = null,
 )
 
+data class TlsDiagnosticsRequest(
+    val outcome: String? = null,
+    @Json(name = "base_url") val baseUrl: String? = null,
+    val host: String? = null,
+    val port: Int? = null,
+    val protocol: String? = null,
+    @Json(name = "cipher_suite") val cipherSuite: String? = null,
+    @Json(name = "status_text") val statusText: String? = null,
+    @Json(name = "cert_subject") val certSubject: String? = null,
+    @Json(name = "cert_issuer") val certIssuer: String? = null,
+    @Json(name = "cert_not_before") val certNotBefore: String? = null,
+    @Json(name = "cert_not_after") val certNotAfter: String? = null,
+    @Json(name = "cert_sans") val certSans: String? = null,
+    @Json(name = "app_version") val appVersion: String? = null,
+    val device: String? = null,
+    @Json(name = "error_chain") val errorChain: String? = null,
+    val stacktrace: String? = null,
+)
+
+data class TlsDiagnosticsResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val received: Boolean? = null,
+)
+
 data class MenuOption(
     val label: String? = null,
     val action: String? = null,

@@ -1,6 +1,7 @@
 package ru.monitoring.mobile.ui
 
 import android.content.Context
+import android.os.Build
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -8,6 +9,8 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import java.io.PrintWriter
+import java.io.StringWriter
 import java.net.ConnectException
 import java.net.InetSocketAddress
 import java.net.URI
@@ -50,6 +53,7 @@ import ru.monitoring.mobile.api.SettingsAuthRequest
 import ru.monitoring.mobile.api.SettingsBotRequest
 import ru.monitoring.mobile.api.SettingsMonitoringRequest
 import ru.monitoring.mobile.api.SettingsTimeRequest
+import ru.monitoring.mobile.api.TlsDiagnosticsRequest
 import ru.monitoring.mobile.api.ToggleServerEnabledRequest
 import ru.monitoring.mobile.api.UpdateServerRequest
 import ru.monitoring.mobile.api.WindowsCredential
@@ -1130,7 +1134,7 @@ class MainViewModel(
                 return@launch
             }
 
-            val certificateStatus = fetchBffCertificateStatus()
+            val certificateStatus = runBffCertificateCheck(reportToServer = false)
 
             state = state.copy(
                 isLoading = false,
@@ -1207,55 +1211,184 @@ class MainViewModel(
         val warningText: String
     )
 
-    private fun fetchBffCertificateStatus(): BffCertificateStatus {
-        return runCatching {
-            val baseUrl = normalizeBaseUrlInput(state.baseUrlInput.ifBlank { preferences.apiBaseUrl })
-            val uri = URI(baseUrl)
-            val host = uri.host ?: return BffCertificateStatus("⚪ TLS: хост не определён", "")
-            val port = if (uri.port > 0) uri.port else 443
-            val sslContext = SSLContext.getInstance("TLS")
-            sslContext.init(null, null, null)
-            val socket = sslContext.socketFactory.createSocket() as SSLSocket
-            socket.soTimeout = 5000
-            socket.connect(InetSocketAddress(host, port), 5000)
-            // Без SNI обратный прокси (api.202020.ru:8443) не понимает, какой
-            // виртуальный хост запрашивается, и рвёт handshake — проверка
-            // сертификата ложно падала с "ошибка проверки (Ошибка сети)",
-            // хотя боевой трафик через OkHttp (он шлёт SNI) работает.
-            socket.sslParameters = socket.sslParameters.apply {
-                serverNames = listOf(SNIHostName(host))
-            }
-            socket.startHandshake()
-            val certificates = socket.session.peerCertificates
-            val x509 = certificates.firstOrNull() as? java.security.cert.X509Certificate
-            socket.close()
-            if (x509 == null) {
-                return BffCertificateStatus("⚪ TLS: сертификат не получен", "")
-            }
+    private data class CertHandshake(
+        val protocol: String?,
+        val cipherSuite: String?,
+        val x509: java.security.cert.X509Certificate?
+    )
 
-            val now = LocalDateTime.now()
-            val expiresAt = LocalDateTime.ofInstant(Date(x509.notAfter.time).toInstant(), ZoneId.systemDefault())
-            val daysLeft = ChronoUnit.DAYS.between(now, expiresAt)
-            val expiresText = expiresAt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
-            when {
-                daysLeft < 0 -> BffCertificateStatus(
-                    statusText = "🔴 TLS: истёк ($expiresText)",
-                    warningText = "Сертификат BFF просрочен"
-                )
-                daysLeft <= certificateExpiryWarningDays -> BffCertificateStatus(
-                    statusText = "🟠 TLS: истекает через $daysLeft дн. ($expiresText)",
-                    warningText = "⚠️ BFF TLS скоро истечёт ($daysLeft дн.)"
-                )
-                else -> BffCertificateStatus(
-                    statusText = "🟢 TLS: OK, $daysLeft дн. до истечения",
-                    warningText = ""
-                )
-            }
-        }.getOrElse { error ->
-            BffCertificateStatus(
-                statusText = "⚪ TLS: ошибка проверки (${formatNetworkError(error)})",
+    private fun describeErrorChain(error: Throwable): String {
+        val parts = mutableListOf<String>()
+        var current: Throwable? = error
+        var guard = 0
+        while (current != null && guard < 8) {
+            parts.add("${current.javaClass.name}: ${current.message ?: "<no message>"}")
+            val next = current.cause
+            if (next === current) break
+            current = next
+            guard++
+        }
+        return parts.joinToString(" <- ")
+    }
+
+    private fun stacktraceHead(error: Throwable): String {
+        val writer = StringWriter()
+        error.printStackTrace(PrintWriter(writer))
+        val full = writer.toString()
+        return if (full.length <= 2000) full else full.take(2000) + "…"
+    }
+
+    private fun deviceLabel(): String =
+        "${Build.MANUFACTURER} ${Build.MODEL} (Android ${Build.VERSION.RELEASE}, SDK ${Build.VERSION.SDK_INT})"
+
+    private fun buildCertCheckResult(
+        handshake: CertHandshake,
+        baseUrl: String,
+        host: String,
+        port: Int,
+        device: String
+    ): Pair<BffCertificateStatus, TlsDiagnosticsRequest> {
+        val x509 = handshake.x509
+        if (x509 == null) {
+            val status = BffCertificateStatus("⚪ TLS: сертификат не получен", "")
+            return status to TlsDiagnosticsRequest(
+                outcome = "no_certificate",
+                baseUrl = baseUrl, host = host, port = port,
+                protocol = handshake.protocol, cipherSuite = handshake.cipherSuite,
+                statusText = status.statusText,
+                appVersion = BuildConfig.VERSION_NAME, device = device
+            )
+        }
+
+        val now = LocalDateTime.now()
+        val fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+        val notBefore = LocalDateTime.ofInstant(Date(x509.notBefore.time).toInstant(), ZoneId.systemDefault())
+        val expiresAt = LocalDateTime.ofInstant(Date(x509.notAfter.time).toInstant(), ZoneId.systemDefault())
+        val daysLeft = ChronoUnit.DAYS.between(now, expiresAt)
+        val expiresText = expiresAt.format(fmt)
+        val status = when {
+            daysLeft < 0 -> BffCertificateStatus(
+                statusText = "🔴 TLS: истёк ($expiresText)",
+                warningText = "Сертификат BFF просрочен"
+            )
+            daysLeft <= certificateExpiryWarningDays -> BffCertificateStatus(
+                statusText = "🟠 TLS: истекает через $daysLeft дн. ($expiresText)",
+                warningText = "⚠️ BFF TLS скоро истечёт ($daysLeft дн.)"
+            )
+            else -> BffCertificateStatus(
+                statusText = "🟢 TLS: OK, $daysLeft дн. до истечения",
                 warningText = ""
             )
+        }
+        val sans = runCatching {
+            x509.subjectAlternativeNames
+                ?.mapNotNull { entry -> entry?.getOrNull(1)?.toString() }
+                ?.joinToString(", ")
+        }.getOrNull()
+        return status to TlsDiagnosticsRequest(
+            outcome = "success",
+            baseUrl = baseUrl, host = host, port = port,
+            protocol = handshake.protocol, cipherSuite = handshake.cipherSuite,
+            statusText = status.statusText,
+            certSubject = x509.subjectDN?.name,
+            certIssuer = x509.issuerDN?.name,
+            certNotBefore = notBefore.format(fmt),
+            certNotAfter = expiresText,
+            certSans = sans,
+            appVersion = BuildConfig.VERSION_NAME, device = device
+        )
+    }
+
+    private suspend fun runBffCertificateCheck(reportToServer: Boolean): BffCertificateStatus =
+        withContext(Dispatchers.IO) {
+            val baseUrl = normalizeBaseUrlInput(state.baseUrlInput.ifBlank { preferences.apiBaseUrl })
+            val device = deviceLabel()
+            val uri = runCatching { URI(baseUrl) }.getOrNull()
+            val host = uri?.host
+            val port = if ((uri?.port ?: -1) > 0) uri!!.port else 443
+
+            val (status, diagnostics) = if (host.isNullOrBlank()) {
+                val cfgStatus = BffCertificateStatus("⚪ TLS: хост не определён", "")
+                cfgStatus to TlsDiagnosticsRequest(
+                    outcome = "config_error",
+                    baseUrl = baseUrl, host = host, port = port,
+                    statusText = cfgStatus.statusText,
+                    appVersion = BuildConfig.VERSION_NAME, device = device,
+                    errorChain = "host is null/blank in Base URL"
+                )
+            } else {
+                runCatching {
+                    val sslContext = SSLContext.getInstance("TLS")
+                    sslContext.init(null, null, null)
+                    val socket = sslContext.socketFactory.createSocket() as SSLSocket
+                    socket.soTimeout = 5000
+                    socket.connect(InetSocketAddress(host, port), 5000)
+                    // Без SNI обратный прокси (api.202020.ru:8443) не понимает,
+                    // какой виртуальный хост запрашивается, и рвёт handshake —
+                    // проверка ложно падала с "ошибка проверки (Ошибка сети)".
+                    socket.sslParameters = socket.sslParameters.apply {
+                        serverNames = listOf(SNIHostName(host))
+                    }
+                    socket.startHandshake()
+                    val session = socket.session
+                    val x509 = session.peerCertificates
+                        .firstOrNull() as? java.security.cert.X509Certificate
+                    socket.close()
+                    CertHandshake(session.protocol, session.cipherSuite, x509)
+                }.fold(
+                    onSuccess = { hs -> buildCertCheckResult(hs, baseUrl, host, port, device) },
+                    onFailure = { error ->
+                        val chain = describeErrorChain(error)
+                        ConnectionLogger.error(
+                            "bff_tls_check_failed",
+                            mapOf("host" to host, "port" to port, "error_chain" to chain)
+                        )
+                        Log.e(TAG_SYNC, "BFF TLS check failed: $chain", error)
+                        val failStatus = BffCertificateStatus(
+                            statusText = "⚪ TLS: ошибка проверки (${formatNetworkError(error)})",
+                            warningText = ""
+                        )
+                        failStatus to TlsDiagnosticsRequest(
+                            outcome = "error",
+                            baseUrl = baseUrl, host = host, port = port,
+                            statusText = failStatus.statusText,
+                            appVersion = BuildConfig.VERSION_NAME, device = device,
+                            errorChain = chain,
+                            stacktrace = stacktraceHead(error)
+                        )
+                    }
+                )
+            }
+
+            if (reportToServer) {
+                runCatching { currentApi().postTlsDiagnostics(diagnostics) }
+                    .onFailure { Log.w(TAG_SYNC, "postTlsDiagnostics failed: ${it.message}") }
+            }
+            status
+        }
+
+    // ВРЕМЕННО (8.62.16): отдельная кнопка «Проверить только сертификат».
+    // Гоняет только TLS-проверку Base URL (без полной синхронизации) и шлёт
+    // подробный отчёт в консоль сервера (POST /v1/mobile/diagnostics/tls),
+    // чтобы диагностировать «⚪ TLS: ошибка проверки (Ошибка сети)» удалённо.
+    fun checkBffCertificateOnly() {
+        viewModelScope.launch {
+            Log.i(TAG_SYNC, "checkBffCertificateOnly started")
+            state = state.copy(
+                isLoading = true,
+                message = "Проверяю только TLS-сертификат…",
+                messageSource = "global"
+            )
+            val status = runBffCertificateCheck(reportToServer = true)
+            state = state.copy(
+                isLoading = false,
+                bffCertificateStatusText = status.statusText,
+                bffCertificateWarningText = status.warningText,
+                message = "Проверка сертификата: ${status.statusText} " +
+                    "(детали отправлены в консоль сервера)",
+                messageSource = "global"
+            )
+            Log.i(TAG_SYNC, "checkBffCertificateOnly finished: ${status.statusText}")
         }
     }
 

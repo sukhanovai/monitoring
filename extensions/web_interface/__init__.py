@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.62.15
+Server Monitoring System v8.62.16
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.62.15
+Версия: 8.62.16
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -2749,6 +2749,88 @@ def v1_mobile_version():
         "current_version": current_version,
         "update_required": update_required,
     }), 200
+
+
+@app.route('/v1/mobile/diagnostics/tls', methods=['POST'])
+@app.route('/api/v1/mobile/diagnostics/tls', methods=['POST'])
+def v1_mobile_diagnostics_tls():
+    """Принимает от Android-клиента результат проверки TLS-сертификата
+    Base URL и подробно логирует его в консоль сервера, чтобы можно было
+    диагностировать ошибку «⚪ TLS: ошибка проверки (Ошибка сети)»
+    удалённо, без доступа к logcat устройства.
+
+    Временный диагностический эндпоинт (см. CHANGELOG 8.62.16)."""
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+
+    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    if not is_ok:
+        app.logger.warning(
+            "POST /v1/mobile/diagnostics/tls unauthorized request_id=%s",
+            request_id,
+        )
+        return jsonify({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid or expired token",
+                "request_id": request_id,
+            }
+        }), 401
+
+    payload = request.get_json(silent=True) or {}
+
+    outcome = str(payload.get('outcome') or 'unknown')
+    host = payload.get('host')
+    port = payload.get('port')
+    base_url = payload.get('base_url')
+    protocol = payload.get('protocol')
+    cipher = payload.get('cipher_suite')
+    status_text = payload.get('status_text')
+    cert_subject = payload.get('cert_subject')
+    cert_issuer = payload.get('cert_issuer')
+    cert_not_before = payload.get('cert_not_before')
+    cert_not_after = payload.get('cert_not_after')
+    cert_sans = payload.get('cert_sans')
+    app_version = payload.get('app_version')
+    device = payload.get('device')
+    error_chain = payload.get('error_chain')
+    stacktrace = payload.get('stacktrace')
+
+    subject = token_info.get('subject') if isinstance(token_info, dict) else None
+
+    header = (
+        "[ANDROID TLS DIAG] request_id=%s subject=%s app_version=%s device=%s "
+        "outcome=%s base_url=%s host=%s port=%s protocol=%s cipher=%s"
+    )
+    header_args = (
+        request_id, subject, app_version, device,
+        outcome, base_url, host, port, protocol, cipher,
+    )
+    if outcome == 'success':
+        app.logger.info(header, *header_args)
+        app.logger.info(
+            "[ANDROID TLS DIAG] request_id=%s status=%s subject=%s issuer=%s "
+            "not_before=%s not_after=%s sans=%s",
+            request_id, status_text, cert_subject, cert_issuer,
+            cert_not_before, cert_not_after, cert_sans,
+        )
+    else:
+        app.logger.warning(header, *header_args)
+        app.logger.warning(
+            "[ANDROID TLS DIAG] request_id=%s status=%s error_chain=%s",
+            request_id, status_text, error_chain,
+        )
+        if stacktrace:
+            app.logger.warning(
+                "[ANDROID TLS DIAG] request_id=%s stacktrace:\n%s",
+                request_id, stacktrace,
+            )
+
+    return jsonify({
+        "request_id": request_id,
+        "received": True,
+    }), 200
+
+
 @app.route('/v1/control/actions', methods=['POST'])
 def v1_control_actions():
     request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())

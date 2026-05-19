@@ -27,6 +27,9 @@ interface MonitoringApi {
     @GET("v1/mobile/version")
     suspend fun getMobileVersionInfo(@Query("current_version") currentVersion: String): MobileVersionResponse
 
+    @POST("v1/mobile/diagnostics/tls")
+    suspend fun postTlsDiagnostics(@Body request: TlsDiagnosticsRequest): TlsDiagnosticsResponse
+
     @POST("v1/control/actions")
     suspend fun runControlAction(@Body request: ControlActionRequest): ControlActionResult
 
