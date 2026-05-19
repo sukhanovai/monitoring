@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.0.3
+Server Monitoring System v8.0.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.0.3
+Версия: 8.0.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -15,10 +15,12 @@ from flask import Flask, jsonify, render_template_string, request
 from config.db_settings import WEB_PORT, WEB_HOST
 from config.settings import STATS_FILE
 import threading
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 import subprocess
 import sys
+import ssl
+import socket
 
 app = Flask(__name__)
 
@@ -988,6 +990,185 @@ def api_stats():
 def health_check():
     """Health check endpoint"""
     return jsonify({"status": "healthy", "timestamp": datetime.now().isoformat()})
+
+
+def _get_cert_check_target():
+    """Возвращает (host, port, timeout) адреса подключения приложения."""
+    try:
+        from config import db_settings as _cfg
+    except Exception:
+        _cfg = None
+
+    def _val(name, default):
+        if _cfg is not None and getattr(_cfg, name, None) is not None:
+            return getattr(_cfg, name)
+        return default
+
+    host = str(_val("CERT_CHECK_HOST", "api.202020.ru"))
+    try:
+        port = int(_val("CERT_CHECK_PORT", 8443))
+    except (TypeError, ValueError):
+        port = 8443
+    try:
+        timeout = float(_val("CERT_CHECK_TIMEOUT", 10))
+    except (TypeError, ValueError):
+        timeout = 10.0
+    return host, port, timeout
+
+
+def _ssl_dt(value):
+    """Преобразует время сертификата OpenSSL в datetime (UTC)."""
+    return datetime.fromtimestamp(ssl.cert_time_to_seconds(value), tz=timezone.utc)
+
+
+def _flatten_name(rdn_seq):
+    flat = {}
+    for rdn in rdn_seq or ():
+        for key, val in rdn:
+            flat[key] = val
+    return flat
+
+
+def get_connection_cert_status():
+    """
+    Возвращает текущий статус TLS-сертификата адреса, по которому
+    Android-приложение подключается к боту через обратный прокси.
+
+    Сертификат выпускается на стороне прокси (вне этого проекта) —
+    здесь только считывается и сообщается его актуальный статус.
+    """
+    host, port, timeout = _get_cert_check_target()
+    now = datetime.now(timezone.utc)
+    result = {
+        "host": host,
+        "port": port,
+        "checked_at": now.isoformat(),
+        "status": "unknown",
+        "valid": False,
+        "trusted": False,
+        "message": "",
+    }
+
+    # 1) Доверенное соединение — как его видит клиент с системными CA.
+    try:
+        ctx = ssl.create_default_context()
+        with socket.create_connection((host, port), timeout=timeout) as sock:
+            with ctx.wrap_socket(sock, server_hostname=host) as ssock:
+                cert = ssock.getpeercert()
+                tls_version = ssock.version()
+        not_after = _ssl_dt(cert["notAfter"])
+        not_before = _ssl_dt(cert["notBefore"])
+        subject = _flatten_name(cert.get("subject"))
+        issuer = _flatten_name(cert.get("issuer"))
+        days_left = (not_after - now).days
+        result.update({
+            "status": "expiring" if days_left <= 14 else "ok",
+            "valid": True,
+            "trusted": True,
+            "tls_version": tls_version,
+            "subject_cn": subject.get("commonName"),
+            "issuer_cn": issuer.get("commonName"),
+            "issuer_org": issuer.get("organizationName"),
+            "not_before": not_before.isoformat(),
+            "not_after": not_after.isoformat(),
+            "days_left": days_left,
+            "message": (
+                f"Сертификат скоро истекает, осталось дней: {days_left}"
+                if days_left <= 14
+                else f"Сертификат действителен, осталось дней: {days_left}"
+            ),
+        })
+        return result
+    except ssl.SSLCertVerificationError as exc:
+        result["verify_error"] = str(getattr(exc, "verify_message", "") or exc)
+    except ssl.SSLError as exc:
+        result.update({"status": "tls_error", "message": f"Ошибка TLS: {exc}"})
+        return result
+    except (socket.timeout, TimeoutError):
+        result.update({
+            "status": "network_error",
+            "message": "Ошибка сети: превышено время ожидания подключения",
+        })
+        return result
+    except (socket.gaierror, OSError) as exc:
+        result.update({"status": "network_error", "message": f"Ошибка сети: {exc}"})
+        return result
+
+    # 2) Сертификат не прошёл проверку доверия — читаем его без валидации,
+    #    чтобы всё равно вернуть статус (срок действия, издатель).
+    try:
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        with socket.create_connection((host, port), timeout=timeout) as sock:
+            with ctx.wrap_socket(sock, server_hostname=host) as ssock:
+                der = ssock.getpeercert(binary_form=True)
+                tls_version = ssock.version()
+
+        from cryptography import x509
+
+        cert_obj = x509.load_der_x509_certificate(der)
+        not_after = getattr(cert_obj, "not_valid_after_utc", None)
+        if not_after is None:
+            not_after = cert_obj.not_valid_after.replace(tzinfo=timezone.utc)
+        not_before = getattr(cert_obj, "not_valid_before_utc", None)
+        if not_before is None:
+            not_before = cert_obj.not_valid_before.replace(tzinfo=timezone.utc)
+        days_left = (not_after - now).days
+
+        def _cn(name):
+            try:
+                attrs = name.get_attributes_for_oid(x509.NameOID.COMMON_NAME)
+                return attrs[0].value if attrs else None
+            except Exception:
+                return None
+
+        out_of_period = now > not_after or now < not_before
+        result.update({
+            "status": "expired" if out_of_period else "untrusted",
+            "valid": not out_of_period,
+            "trusted": False,
+            "tls_version": tls_version,
+            "subject_cn": _cn(cert_obj.subject),
+            "issuer_cn": _cn(cert_obj.issuer),
+            "not_before": not_before.isoformat(),
+            "not_after": not_after.isoformat(),
+            "days_left": days_left,
+            "message": (
+                f"Сертификат недействителен по сроку. Осталось дней: {days_left}"
+                if out_of_period
+                else "Сертификат не прошёл проверку доверия: "
+                f"{result.get('verify_error', 'неизвестная причина')}"
+            ),
+        })
+        return result
+    except Exception as exc:  # noqa: BLE001
+        result.update({
+            "status": "verify_failed",
+            "message": (
+                "Не удалось прочитать сертификат: "
+                f"{result.get('verify_error') or exc}"
+            ),
+        })
+        return result
+
+
+@app.route('/api/cert')
+@app.route('/api/certificate')
+def api_cert():
+    """Текущий статус TLS-сертификата адреса подключения приложения."""
+    try:
+        return jsonify(get_connection_cert_status())
+    except Exception as exc:  # noqa: BLE001
+        # Всегда отдаём 200 со структурой статуса, чтобы приложение
+        # показывало понятный статус, а не «Ошибка сети».
+        return jsonify({
+            "status": "error",
+            "valid": False,
+            "trusted": False,
+            "message": f"Внутренняя ошибка проверки сертификата: {exc}",
+            "checked_at": datetime.now(timezone.utc).isoformat(),
+        }), 200
 
 @app.route('/api/servers', methods=['GET', 'POST', 'PUT', 'DELETE'])
 def api_manage_servers():
