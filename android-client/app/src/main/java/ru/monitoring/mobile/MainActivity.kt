@@ -1349,25 +1349,6 @@ private fun ZfsStatusTile(
 }
 
 @Composable
-private fun DashboardActionButton(
-    label: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Button(
-        onClick = onClick,
-        modifier = modifier,
-        shape = RoundedCornerShape(14.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-        )
-    ) {
-        Text(label, fontWeight = FontWeight.Medium)
-    }
-}
-
-@Composable
 private fun SettingsActionButton(
     label: String,
     onClick: () -> Unit,
@@ -1716,7 +1697,7 @@ private fun MonitoringApp(
         state.isLoading,
         { onAction("send_morning_report") }
     )
-    // 0 — настройки, 1 — оперативный центр (стартовый экран), 2 — отчёт.
+    // 0 — отчёт, 1 — оперативный центр (стартовый экран), 2 — настройки.
     val screensPagerState = rememberPagerState(initialPage = 1) { 3 }
     val screensScope = rememberCoroutineScope()
     var showProxmoxPatternAddDialog by rememberSaveable { mutableStateOf(false) }
@@ -2314,7 +2295,7 @@ private fun MonitoringApp(
                 {
                     settingsSection = "extensions"
                     showSettingsSectionOverlay = true
-                    screensScope.launch { screensPagerState.animateScrollToPage(0) }
+                    screensScope.launch { screensPagerState.animateScrollToPage(2) }
                 }
             },
             onLongClick = if (
@@ -2449,7 +2430,7 @@ private fun MonitoringApp(
                 modifier = Modifier.fillMaxSize()
             ) { pagerPage ->
                 when (pagerPage) {
-                    0 -> {
+                    2 -> {
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -2481,7 +2462,7 @@ private fun MonitoringApp(
                                 }
                             }
                             Text(
-                                "Свайп вправо — назад в оперативный центр. Тапни плашку, чтобы открыть настройки раздела.",
+                                "➡️ Свайп вправо — назад в оперативный центр. Тапни плашку, чтобы открыть настройки раздела.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -2511,7 +2492,7 @@ private fun MonitoringApp(
                             }
                         }
                     }
-                    2 -> {
+                    0 -> {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -2539,7 +2520,7 @@ private fun MonitoringApp(
                                     }
                                 }
                                 Text(
-                                    "Свайп влево — назад в оперативный центр. Потяни вниз, чтобы запросить свежий отчёт.",
+                                    "⬅️ Свайп влево — назад в оперативный центр. Потяни вниз, чтобы запросить свежий отчёт.",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -2636,7 +2617,7 @@ private fun MonitoringApp(
                                         MaterialTheme.colorScheme.onSurfaceVariant
                                     }
                                 )
-                                // ВРЕМЕННО (8.62.23): диагностика TLS — гоняет
+                                // ВРЕМЕННО (8.62.24): диагностика TLS — гоняет
                                 // только проверку сертификата и шлёт подробный
                                 // отчёт в консоль сервера.
                                 TextButton(
@@ -2743,24 +2724,29 @@ private fun MonitoringApp(
                                 Text(if (areOpsTilesExpanded) "Свернуть" else "Развернуть")
                             }
                         }
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
-                            DashboardActionButton(
-                                label = "🌅 Отчёт",
-                                modifier = Modifier.weight(1f),
-                                onClick = {
-                                    screensScope.launch { screensPagerState.animateScrollToPage(2) }
-                                }
+                            Text(
+                                "👆 Свайп между экранами:",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            DashboardActionButton(
-                                label = "⚙️ Настройки",
-                                modifier = Modifier.weight(1f),
-                                onClick = {
-                                    showSettingsSectionOverlay = false
-                                    screensScope.launch { screensPagerState.animateScrollToPage(0) }
-                                }
+                            Text(
+                                "➡️ Свайп вправо — 🌅 отчёт",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                "⬅️ Свайп влево — ⚙️ настройки",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -2836,7 +2822,7 @@ private fun MonitoringApp(
                             if (state.bffCertificateWarningText.isNotBlank()) {
                                 Text(state.bffCertificateWarningText, color = MaterialTheme.colorScheme.error)
                             }
-                            // ВРЕМЕННО (8.62.23): диагностика TLS — только
+                            // ВРЕМЕННО (8.62.24): диагностика TLS — только
                             // проверка сертификата + отчёт в консоль сервера.
                             OutlinedButton(
                                 onClick = onCheckCertificateOnly,
@@ -2875,7 +2861,7 @@ private fun MonitoringApp(
                             Button(
                                 onClick = {
                                     showSettingsSectionOverlay = false
-                                    screensScope.launch { screensPagerState.animateScrollToPage(0) }
+                                    screensScope.launch { screensPagerState.animateScrollToPage(2) }
                                 },
                                 modifier = Modifier.weight(1f)
                             ) {
