@@ -1,3 +1,13 @@
+## [8.62.25] - 2026-05-19
+
+### Changed
+- RU: Android: текстовые подсказки о свайпах убраны со всех экранов (оперативный центр, отчёт, настройки) и заменены на чисто визуальный индикатор страниц (точки-«пилюли»), интуитивно показывающий три экрана и текущую позицию.
+- EN: Android: textual swipe hints were removed from all screens (operational center, report, settings) and replaced with a purely visual page indicator (pill dots) that intuitively shows the three screens and the current position.
+- RU: Android: вместо временной кнопки «Проверить только сертификат» и отдельной строки статуса сертификата добавлена единая плашка статуса сертификата в оперативном центре (тап по плашке запускает перепроверку TLS).
+- EN: Android: the temporary "Check certificate only" button and the separate certificate status line were replaced with a single certificate status tile in the operational center (tapping the tile triggers a TLS re-check).
+- RU: SemVer patch-бамп до `8.62.25`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.25`, `ANDROID_VERSION_CODE=787`).
+- EN: SemVer patch bump to `8.62.25`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.25`, `ANDROID_VERSION_CODE=787`).
+
 ## [8.62.24] - 2026-05-19
 
 ### Changed

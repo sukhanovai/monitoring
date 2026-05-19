@@ -1367,10 +1367,9 @@ class MainViewModel(
             status
         }
 
-    // ВРЕМЕННО (8.62.24): отдельная кнопка «Проверить только сертификат».
-    // Гоняет только TLS-проверку Base URL (без полной синхронизации) и шлёт
-    // подробный отчёт в консоль сервера (POST /v1/mobile/diagnostics/tls),
-    // чтобы диагностировать «⚪ TLS: ошибка проверки (Ошибка сети)» удалённо.
+    // Запускается тапом по плашке сертификата в оперативном центре: гоняет
+    // только TLS-проверку Base URL (без полной синхронизации) и шлёт подробный
+    // отчёт в консоль сервера (POST /v1/mobile/diagnostics/tls).
     fun checkBffCertificateOnly() {
         viewModelScope.launch {
             Log.i(TAG_SYNC, "checkBffCertificateOnly started")
