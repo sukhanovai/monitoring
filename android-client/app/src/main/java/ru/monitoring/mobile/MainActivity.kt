@@ -93,6 +93,8 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.monitoring.mobile.api.ExtensionItem
 import ru.monitoring.mobile.api.ManagedServer
@@ -1405,6 +1407,37 @@ private fun SettingsDangerButton(
 }
 
 @Composable
+private fun SettingsSectionTile(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .heightIn(min = 76.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        tonalElevation = 2.dp
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = label,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 15.sp
+            )
+        }
+    }
+}
+
+@Composable
 private fun CompactHeaderIconButton(
     onClick: () -> Unit,
     contentDescription: String,
@@ -1675,6 +1708,7 @@ private fun MonitoringApp(
     var areOpsTilesExpanded by rememberSaveable { mutableStateOf(false) }
     var showTileSettingsDialog by rememberSaveable { mutableStateOf(false) }
     var settingsSection by rememberSaveable { mutableStateOf("bff") }
+    var showSettingsSectionOverlay by rememberSaveable { mutableStateOf(false) }
     var showProxmoxPatternAddDialog by rememberSaveable { mutableStateOf(false) }
     var showProxmoxPatternEditDialog by rememberSaveable { mutableStateOf(false) }
     var proxmoxPatternCategoryInput by rememberSaveable { mutableStateOf("proxmox") }
@@ -2267,7 +2301,7 @@ private fun MonitoringApp(
                     zfsPoolHostThresholdInput = "20"
                 }
             } else {
-                { isSettingsExpanded = true; settingsSection = "extensions" }
+                { isSettingsExpanded = true; settingsSection = "extensions"; showSettingsSectionOverlay = true }
             },
             onLongClick = if (
                 extension.id == "zfs_pool_free_space_monitor" ||
@@ -2396,6 +2430,26 @@ private fun MonitoringApp(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .pullRefresh(pullToRefreshState)
+                .pointerInput(Unit) {
+                    val swipeThreshold = 72.dp.toPx()
+                    var totalDrag = 0f
+                    detectHorizontalDragGestures(
+                        onDragStart = { totalDrag = 0f },
+                        onDragEnd = {
+                            if (totalDrag <= -swipeThreshold) {
+                                // Свайп влево — последний (утренний) отчёт.
+                                showMorningReportDialog = true
+                                onAction("send_morning_report")
+                            } else if (totalDrag >= swipeThreshold) {
+                                // Свайп вправо — экран настроек с плашками.
+                                showSettingsSectionOverlay = false
+                                isSettingsExpanded = true
+                            }
+                        }
+                    ) { _, dragAmount ->
+                        totalDrag += dragAmount
+                    }
+                }
         ) {
             LazyColumn(
                 modifier = Modifier
@@ -2464,7 +2518,7 @@ private fun MonitoringApp(
                                         MaterialTheme.colorScheme.onSurfaceVariant
                                     }
                                 )
-                                // ВРЕМЕННО (8.62.17): диагностика TLS — гоняет
+                                // ВРЕМЕННО (8.62.18): диагностика TLS — гоняет
                                 // только проверку сертификата и шлёт подробный
                                 // отчёт в консоль сервера.
                                 TextButton(
@@ -2586,7 +2640,7 @@ private fun MonitoringApp(
                             DashboardActionButton(
                                 label = "⚙️ Настройки",
                                 modifier = Modifier.weight(1f),
-                                onClick = { isSettingsExpanded = true }
+                                onClick = { showSettingsSectionOverlay = false; isSettingsExpanded = true }
                             )
                         }
                     }
@@ -2662,7 +2716,7 @@ private fun MonitoringApp(
                             if (state.bffCertificateWarningText.isNotBlank()) {
                                 Text(state.bffCertificateWarningText, color = MaterialTheme.colorScheme.error)
                             }
-                            // ВРЕМЕННО (8.62.17): диагностика TLS — только
+                            // ВРЕМЕННО (8.62.18): диагностика TLS — только
                             // проверка сертификата + отчёт в консоль сервера.
                             OutlinedButton(
                                 onClick = onCheckCertificateOnly,
@@ -2699,7 +2753,7 @@ private fun MonitoringApp(
                                 Text("🎛️ Управление")
                             }
                             Button(
-                                onClick = { isSettingsExpanded = true },
+                                onClick = { showSettingsSectionOverlay = false; isSettingsExpanded = true },
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Text("⚙️ Настройки")
@@ -2725,7 +2779,10 @@ private fun MonitoringApp(
                     }
                     if (isSettingsExpanded) {
                         AlertDialog(
-                            onDismissRequest = { isSettingsExpanded = false },
+                            onDismissRequest = {
+                                isSettingsExpanded = false
+                                showSettingsSectionOverlay = false
+                            },
                             confirmButton = {},
                             title = {
                                 Row(
@@ -2752,7 +2809,10 @@ private fun MonitoringApp(
                                                 contentDescription = "Переключить тему"
                                             )
                                         }
-                                        IconButton(onClick = { isSettingsExpanded = false }) {
+                                        IconButton(onClick = {
+                                            isSettingsExpanded = false
+                                            showSettingsSectionOverlay = false
+                                        }) {
                                             Icon(
                                                 imageVector = Icons.Filled.Close,
                                                 contentDescription = "Закрыть окно настроек"
@@ -2770,41 +2830,77 @@ private fun MonitoringApp(
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     Text("Разделы настроек", fontWeight = FontWeight.Bold)
+                                    Text(
+                                        "Тапни плашку, чтобы открыть нужные настройки.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                     FlowRow(
+                                        modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                                        maxItemsInEachRow = 2
                                     ) {
-                                        FilterChip(
-                                            selected = settingsSection == "bff",
-                                            onClick = { settingsSection = "bff" },
-                                            label = { Text("BFF") }
-                                        )
-                                        FilterChip(
-                                            selected = settingsSection == "monitoring",
-                                            onClick = { settingsSection = "monitoring" },
-                                            label = { Text("Мониторинг") }
-                                        )
-                                        FilterChip(
-                                            selected = settingsSection == "bot",
-                                            onClick = { settingsSection = "bot" },
-                                            label = { Text("Бот") }
-                                        )
-                                        FilterChip(
-                                            selected = settingsSection == "time",
-                                            onClick = { settingsSection = "time" },
-                                            label = { Text("Время") }
-                                        )
-                                        FilterChip(
-                                            selected = settingsSection == "auth",
-                                            onClick = { settingsSection = "auth" },
-                                            label = { Text("Аутентификация") }
-                                        )
-                                        FilterChip(
-                                            selected = settingsSection == "extensions",
-                                            onClick = { settingsSection = "extensions" },
-                                            label = { Text("Расширения") }
+                                        listOf(
+                                            "bff" to "🔌 BFF",
+                                            "monitoring" to "📈 Мониторинг",
+                                            "bot" to "🤖 Бот",
+                                            "time" to "⏰ Время",
+                                            "auth" to "🔐 Аутентификация",
+                                            "extensions" to "🧩 Расширения"
+                                        ).forEach { (sectionId, sectionLabel) ->
+                                            SettingsSectionTile(
+                                                label = sectionLabel,
+                                                modifier = Modifier.weight(1f),
+                                                onClick = {
+                                                    settingsSection = sectionId
+                                                    showSettingsSectionOverlay = true
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        )
+                    }
+
+                    if (isSettingsExpanded && showSettingsSectionOverlay) {
+                        AlertDialog(
+                            onDismissRequest = { showSettingsSectionOverlay = false },
+                            confirmButton = {},
+                            title = {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        when (settingsSection) {
+                                            "bff" -> "🔌 BFF"
+                                            "monitoring" -> "📈 Мониторинг"
+                                            "bot" -> "🤖 Бот"
+                                            "time" -> "⏰ Время"
+                                            "auth" -> "🔐 Аутентификация"
+                                            "extensions" -> "🧩 Расширения"
+                                            else -> "⚙️ Настройки"
+                                        }
+                                    )
+                                    IconButton(onClick = { showSettingsSectionOverlay = false }) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Close,
+                                            contentDescription = "Закрыть настройки раздела"
                                         )
                                     }
+                                }
+                            },
+                            text = {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(max = 560.dp)
+                                        .verticalScroll(rememberScrollState()),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
 
                         if (settingsSection == "bff") {
                             Text("Подключение к BFF", fontWeight = FontWeight.Bold)
