@@ -1,11 +1,11 @@
 """
 /config/settings.py
-Server Monitoring System v8.0.3
+Server Monitoring System v8.0.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Application settings - default values
 Система мониторинга серверов
-Версия: 8.0.3
+Версия: 8.0.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Настройки приложения - значения по умолчанию
@@ -22,7 +22,7 @@ from lib.utils import is_proxmox_server
 DEBUG_MODE = False
 
 # Версия приложения
-APP_VERSION = "8.0.3"
+APP_VERSION = "8.0.4"
 
 # === БАЗОВЫЕ ПУТИ ===
 _DEFAULT_BASE = Path(__file__).resolve().parents[1]
@@ -144,6 +144,14 @@ SERVER_TIMEOUTS = {
 WEB_PORT = 5000
 WEB_HOST = '0.0.0.0'
 MONITOR_SERVER_IP = "192.0.2.1"
+
+# === ПРОВЕРКА TLS-СЕРТИФИКАТА ПОДКЛЮЧЕНИЯ ===
+# Адрес обратного прокси, к которому подключается Android-приложение.
+# Сертификат выпускается на стороне прокси (вне этого проекта),
+# проект только сообщает его текущий статус.
+CERT_CHECK_HOST = "api.202020.ru"
+CERT_CHECK_PORT = 8443
+CERT_CHECK_TIMEOUT = 10
 
 # === ФАЙЛЫ ДАННЫХ ===
 STATS_FILE = DATA_DIR / "monitoring_stats.json"
