@@ -1456,6 +1456,7 @@ class MainActivity : ComponentActivity() {
                     onSaveToken = vm::saveToken,
                     onSaveBaseUrl = vm::saveBaseUrl,
                     onRefreshData = vm::refreshData,
+                    onCheckCertificateOnly = vm::checkBffCertificateOnly,
                     onLoadServersForSingleCheck = { vm.refreshSettingsFromServer(showErrors = true) },
                     onLoadTileData = vm::loadTileData,
                     onEnsureSettingsLoaded = vm::ensureSettingsLoaded,
@@ -1575,6 +1576,7 @@ private fun MonitoringApp(
     onSaveToken: (String) -> Unit,
     onSaveBaseUrl: () -> Unit,
     onRefreshData: () -> Unit,
+    onCheckCertificateOnly: () -> Unit,
     onLoadServersForSingleCheck: () -> Unit,
     onLoadTileData: (String) -> Unit,
     onEnsureSettingsLoaded: () -> Unit,
@@ -2462,6 +2464,19 @@ private fun MonitoringApp(
                                         MaterialTheme.colorScheme.onSurfaceVariant
                                     }
                                 )
+                                // ВРЕМЕННО (8.62.16): диагностика TLS — гоняет
+                                // только проверку сертификата и шлёт подробный
+                                // отчёт в консоль сервера.
+                                TextButton(
+                                    onClick = onCheckCertificateOnly,
+                                    enabled = !state.isLoading,
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        "🔐 Проверить только сертификат (врем.)",
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
                                 if (state.isSyncInProgress) {
                                     Spacer(modifier = Modifier.height(6.dp))
                                     LinearProgressIndicator(
@@ -2646,6 +2661,14 @@ private fun MonitoringApp(
                             Text("BFF сертификат: ${state.bffCertificateStatusText}")
                             if (state.bffCertificateWarningText.isNotBlank()) {
                                 Text(state.bffCertificateWarningText, color = MaterialTheme.colorScheme.error)
+                            }
+                            // ВРЕМЕННО (8.62.16): диагностика TLS — только
+                            // проверка сертификата + отчёт в консоль сервера.
+                            OutlinedButton(
+                                onClick = onCheckCertificateOnly,
+                                enabled = !state.isLoading
+                            ) {
+                                Text("🔐 Проверить только сертификат (врем.)")
                             }
                             if (state.message.isNotBlank() && state.messageSource == "global") {
                                 Text(state.message)
