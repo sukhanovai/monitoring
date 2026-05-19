@@ -1,3 +1,15 @@
+## [8.62.23] - 2026-05-19
+
+### Fixed
+- RU: `scripts/android_post_pull_build_run.ps1` падал на 3-й попытке установки с `NativeCommandError`: `adb start-server` пишет `* daemon not running; starting now` в stderr, а при `$ErrorActionPreference = "Stop"` Windows PowerShell 5.1 превращает stderr нативной команды в терминирующую ошибку (`2>$null` это не подавляет). Добавлена обёртка `Invoke-Adb` (локальный `ErrorActionPreference=Continue`, stderr через `2>&1` в текст, явная проверка кода возврата); все adb-вызовы в логике установки переведены на неё.
+- RU: Истинная причина провала установки — не флак транспорта, а `Failure calling service package: Broken pipe` → `Can't find service: package`: на эмуляторе не поднят/упал package manager (`system_server`). Перезапуск adb это не лечит. Добавлена `Wait-ForPackageService`: перед каждой попыткой установки скрипт ждёт `sys.boot_completed=1` и доступности сервиса `package` (poll `cmd package list packages`, таймаут 180с). Если сервис так и не поднялся — внятная ошибка с инструкцией восстановить устройство (Cold Boot / Wipe Data / увеличить Internal Storage AVD).
+- EN: `scripts/android_post_pull_build_run.ps1` died on the 3rd install attempt with `NativeCommandError`: `adb start-server` prints `* daemon not running; starting now` to stderr, and under `$ErrorActionPreference = "Stop"` Windows PowerShell 5.1 turns native-command stderr into a terminating error (`2>$null` does not suppress it). Added an `Invoke-Adb` wrapper (local `ErrorActionPreference=Continue`, stderr folded via `2>&1`, explicit exit-code check); all adb calls in the install path now go through it.
+- EN: The real install failure is a device-side fault, not a transport flake: `Failure calling service package: Broken pipe` → `Can't find service: package` means the emulator's package manager (`system_server`) is not up/crashed; restarting adb cannot fix it. Added `Wait-ForPackageService`: before each install attempt the script waits for `sys.boot_completed=1` and a responsive `package` service (polls `cmd package list packages`, 180s timeout). If it never comes up, the script fails with a clear device-recovery message (Cold Boot / Wipe Data / enlarge AVD Internal Storage).
+
+### Changed
+- RU: SemVer patch-бамп до `8.62.23`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.23`, `ANDROID_VERSION_CODE=785`).
+- EN: SemVer patch bump to `8.62.23`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.23`, `ANDROID_VERSION_CODE=785`).
+
 ## [8.62.22] - 2026-05-19
 
 ### Fixed

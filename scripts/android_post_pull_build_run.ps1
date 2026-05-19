@@ -174,16 +174,84 @@ function Invoke-GradleStep {
     }
 }
 
+# Native commands (adb) print informational text like
+# "* daemon not running; starting now" to stderr. With
+# $ErrorActionPreference = "Stop" PowerShell turns that stderr into a
+# terminating NativeCommandError and kills the script (2>$null does not
+# suppress it in Windows PowerShell 5.1). Run adb through this wrapper so
+# stderr is captured as text and the exit code is inspected explicitly.
+function Invoke-Adb {
+    param(
+        [Parameter(Mandatory = $true)][string]$AdbPath,
+        [Parameter(Mandatory = $true)][string[]]$AdbArgs
+    )
+
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        $raw = & $AdbPath @AdbArgs 2>&1
+        $code = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $prevEap
+    }
+
+    if ($null -eq $code) {
+        $code = 0
+    }
+
+    return [pscustomobject]@{
+        ExitCode = $code
+        Output   = (($raw | ForEach-Object { $_.ToString() }) -join "`n")
+    }
+}
+
 function Restart-AdbServer {
     param(
         [string]$AdbPath
     )
 
-    Write-Host "Restarting adb server to recover the transport (Broken pipe workaround)..."
-    & $AdbPath kill-server 2>$null | Out-Null
+    Write-Host "Restarting adb server to recover the transport..."
+    Invoke-Adb -AdbPath $AdbPath -AdbArgs @("kill-server")     | Out-Null
     Start-Sleep -Seconds 1
-    & $AdbPath start-server 2>$null | Out-Null
-    & $AdbPath wait-for-device
+    Invoke-Adb -AdbPath $AdbPath -AdbArgs @("start-server")    | Out-Null
+    Invoke-Adb -AdbPath $AdbPath -AdbArgs @("wait-for-device") | Out-Null
+}
+
+# 'Failure calling service package: Broken pipe' followed by
+# 'Can't find service: package' means the device's package manager
+# (system_server) is not serving yet (still booting) or has crashed.
+# Installing before it is up can never succeed, so poll until it answers.
+function Wait-ForPackageService {
+    param(
+        [string]$AdbPath,
+        [string]$DeviceId,
+        [int]$TimeoutSeconds = 180
+    )
+
+    Write-Host "Waiting for package manager service on '$DeviceId' (timeout ${TimeoutSeconds}s)..."
+    Invoke-Adb -AdbPath $AdbPath -AdbArgs @("-s", $DeviceId, "wait-for-device") | Out-Null
+
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    while ((Get-Date) -lt $deadline) {
+        $boot = Invoke-Adb -AdbPath $AdbPath -AdbArgs @("-s", $DeviceId, "shell", "getprop", "sys.boot_completed")
+        $pkg  = Invoke-Adb -AdbPath $AdbPath -AdbArgs @("-s", $DeviceId, "shell", "cmd", "package", "list", "packages", "android")
+
+        $bootOk = ($boot.Output -match "1")
+        $pkgOk  = ($pkg.ExitCode -eq 0) -and
+                  ($pkg.Output -match "package:") -and
+                  ($pkg.Output -notmatch "Can't find service") -and
+                  ($pkg.Output -notmatch "Broken pipe")
+
+        if ($bootOk -and $pkgOk) {
+            Write-Host "Package manager service is ready."
+            return $true
+        }
+
+        Start-Sleep -Seconds 3
+    }
+
+    return $false
 }
 
 function Invoke-RobustInstall {
@@ -195,6 +263,10 @@ function Invoke-RobustInstall {
         [int]$MaxAttempts = 3
     )
 
+    # Start the server up-front so later 'adb devices' does not emit the
+    # daemon-start message to stderr (which would terminate the script).
+    Invoke-Adb -AdbPath $AdbPath -AdbArgs @("start-server") | Out-Null
+
     for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
         Write-Host "==> $Description (attempt $attempt/$MaxAttempts)"
 
@@ -204,20 +276,29 @@ function Invoke-RobustInstall {
         }
 
         $deviceId = Resolve-TargetDevice -AdbPath $AdbPath
+        if (-not $deviceId) {
+            Write-Warning "No adb device detected on attempt $attempt/$MaxAttempts."
+            continue
+        }
 
-        # Prefer a direct 'adb install': platform-tools is far more resilient to
-        # the ddmlib "Failure calling service package: Broken pipe" that the
-        # Gradle :app:install*Debug task hits on flaky emulator transports.
-        if ((Test-Path $ApkPath) -and $deviceId) {
+        if (-not (Wait-ForPackageService -AdbPath $AdbPath -DeviceId $deviceId)) {
+            Write-Warning "Package manager on '$deviceId' did not come up on attempt $attempt/$MaxAttempts."
+            continue
+        }
+
+        if (Test-Path $ApkPath) {
             Write-Host "Installing via 'adb -s $deviceId install -r -t' ..."
-            & $AdbPath -s $deviceId install -r -t "$ApkPath"
-            if ($LASTEXITCODE -eq 0) {
+            $res = Invoke-Adb -AdbPath $AdbPath -AdbArgs @("-s", $deviceId, "install", "-r", "-t", $ApkPath)
+            if ($res.Output) {
+                Write-Host $res.Output.Trim()
+            }
+            if (($res.ExitCode -eq 0) -and ($res.Output -notmatch "Failure|Broken pipe|Can't find service")) {
                 Write-Host "APK installed via adb install."
                 return
             }
-            Write-Warning "adb install failed (exit $LASTEXITCODE); trying Gradle install task..."
+            Write-Warning "adb install failed (exit $($res.ExitCode)); trying Gradle install task..."
         }
-        elseif (-not (Test-Path $ApkPath)) {
+        else {
             Write-Warning "APK not found at $ApkPath; using Gradle install task..."
         }
 
@@ -230,7 +311,17 @@ function Invoke-RobustInstall {
         Write-Warning "Install attempt $attempt/$MaxAttempts failed."
     }
 
-    throw "Gradle step failed: $Description (after $MaxAttempts attempts; last error is likely 'Broken pipe' - cold-boot/wipe the AVD or reconnect the device, then rerun)"
+    throw @"
+Install failed after $MaxAttempts attempts for: $Description
+
+Root cause: the emulator/device package manager service is not responding
+('Failure calling service package: Broken pipe' / 'Can't find service: package').
+This is a device-side fault - adb and Gradle cannot install while the device's
+system_server is down. Recover the device, then rerun this script:
+  1. Cold Boot the AVD (Device Manager -> arrow next to the AVD -> Cold Boot Now), or
+  2. Wipe Data on the AVD (it may have run out of internal storage), or
+  3. Recreate the AVD with larger Internal Storage.
+"@
 }
 
 Write-Host "[1/5] Sync project with Gradle files (CLI equivalent)..."
