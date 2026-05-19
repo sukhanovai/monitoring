@@ -18,6 +18,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Date
+import javax.net.ssl.SNIHostName
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLException
 import javax.net.ssl.SSLSocket
@@ -1217,6 +1218,13 @@ class MainViewModel(
             val socket = sslContext.socketFactory.createSocket() as SSLSocket
             socket.soTimeout = 5000
             socket.connect(InetSocketAddress(host, port), 5000)
+            // Без SNI обратный прокси (api.202020.ru:8443) не понимает, какой
+            // виртуальный хост запрашивается, и рвёт handshake — проверка
+            // сертификата ложно падала с "ошибка проверки (Ошибка сети)",
+            // хотя боевой трафик через OkHttp (он шлёт SNI) работает.
+            socket.sslParameters = socket.sslParameters.apply {
+                serverNames = listOf(SNIHostName(host))
+            }
             socket.startHandshake()
             val certificates = socket.session.peerCertificates
             val x509 = certificates.firstOrNull() as? java.security.cert.X509Certificate

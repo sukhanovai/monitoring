@@ -1,3 +1,13 @@
+## [8.62.15] - 2026-05-19
+
+### Fixed
+- RU: В Android-клиенте проверка TLS-сертификата Base URL API («Сертификат: …» в оперативном центре / карточке «Статус») ложно показывала «⚪ TLS: ошибка проверки (Ошибка сети)», хотя боевой трафик приложения через этот же `https://api.202020.ru:8443/` работал. Причина — `fetchBffCertificateStatus()` создавал `SSLSocket` через `createSocket()` без аргументов и подключался вручную, из-за чего в TLS-хендшейке не отправлялось расширение SNI (`server_name`). Обратный прокси, который и выдаёт сертификат для `api.202020.ru:8443`, без SNI не понимал, какой виртуальный хост запрашивается, и рвал соединение — ошибка приходила без сообщения и сворачивалась в обобщённое «Ошибка сети». Боевой трафик не страдал, потому что OkHttp/Retrofit отправляют SNI автоматически. Теперь перед `startHandshake()` на сокете явно выставляется `SNIHostName(host)` через `sslParameters`, и проверка корректно получает сертификат прокси и его срок действия.
+- EN: In the Android client the Base URL API TLS certificate check ("Сертификат: …" in the operations center / "Статус" card) falsely reported "⚪ TLS: ошибка проверки (Ошибка сети)", even though the app's production traffic over the same `https://api.202020.ru:8443/` worked. Cause — `fetchBffCertificateStatus()` created the `SSLSocket` via the no-arg `createSocket()` and connected it manually, so the TLS handshake sent no SNI (`server_name`) extension. The reverse proxy that issues the certificate for `api.202020.ru:8443` could not tell which virtual host was requested without SNI and reset the connection; the resulting error had no message and collapsed into the generic "Ошибка сети". Production traffic was unaffected because OkHttp/Retrofit set SNI automatically. The socket now explicitly sets `SNIHostName(host)` via `sslParameters` before `startHandshake()`, so the check correctly retrieves the proxy certificate and its expiry.
+
+### Changed
+- RU: Выполнен SemVer patch-бамп до `8.62.15`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.15`, `ANDROID_VERSION_CODE=777`).
+- EN: Performed a SemVer patch bump to `8.62.15`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.15`, `ANDROID_VERSION_CODE=777`).
+
 ## [8.62.14] - 2026-05-18
 
 ### Added
