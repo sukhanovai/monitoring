@@ -1,3 +1,15 @@
+## [8.62.24] - 2026-05-19
+
+### Changed
+- RU: Android: в горизонтальном пейджере поменяны местами экраны «Отчёт» и «Настройки» — теперь из оперативного центра свайп вправо открывает 🌅 отчёт, свайп влево — ⚙️ настройки (раньше было наоборот). Из оперативного центра убраны кнопки «🌅 Отчёт» и «⚙️ Настройки» (переход между экранами только свайпом), вместо них добавлена визуальная подсказка о направлении свайпов.
+- EN: Android: the "Report" and "Settings" pages were swapped in the horizontal pager — from the operational center a swipe right now opens the 🌅 report and a swipe left opens ⚙️ settings (previously the opposite). The "🌅 Report" and "⚙️ Settings" buttons were removed from the operational center (screen navigation is swipe-only) and replaced with a visual hint describing the swipe directions.
+- RU: SemVer patch-бамп до `8.62.24`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.24`, `ANDROID_VERSION_CODE=786`).
+- EN: SemVer patch bump to `8.62.24`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.24`, `ANDROID_VERSION_CODE=786`).
+
+### Fixed
+- RU: Android: подсказки о свайпах на экранах отчёта и настроек приведены в соответствие фактическому направлению жеста (свайп влево/вправо для возврата в оперативный центр), добавлены стрелки-эмодзи.
+- EN: Android: the swipe hints on the report and settings screens now match the actual gesture direction (swipe left/right to return to the operational center), with emoji arrows added.
+
 ## [8.62.23] - 2026-05-19
 
 ### Fixed
