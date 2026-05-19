@@ -1,3 +1,13 @@
+## [8.62.19] - 2026-05-19
+
+### Changed
+- RU: В Android-клиенте навигация между экранами переделана со «всплывающих окон» на горизонтальный пейджер (`HorizontalPager`): «⚡ Оперативный центр» — центральный экран, свайп влево перелистывает на экран последнего отчёта, свайп вправо — на экран настроек с плашками. Оперативный центр при перелистывании уходит в противоположную сторону (нативный эффект пейджера). Кнопки «🌅 Отчёт» и «⚙️ Настройки» теперь перелистывают на соответствующий экран, а не открывают модальное окно. По тапу на плашку настроек по-прежнему открывается окно-наложение с настройками раздела.
+- RU: Экран отчёта показывает последний полученный отчёт без автоматического запроса нового; добавлены кнопка «Обновить» и pull-to-refresh (потянуть вниз) — оба запрашивают свежий отчёт (`send_morning_report`).
+- EN: In the Android client screen navigation was reworked from pop-up dialogs to a horizontal pager (`HorizontalPager`): the "⚡ Operations Center" is the central screen, swiping left pages to the latest-report screen, swiping right to the tiled settings screen. The ops center slides off to the opposite side while paging (native pager effect). The "🌅 Отчёт" and "⚙️ Настройки" buttons now page to the matching screen instead of opening a modal. Tapping a settings tile still opens an overlay window with that section's settings.
+- EN: The report screen shows the last received report without auto-requesting a new one; an "Обновить" button and pull-to-refresh were added — both request a fresh report (`send_morning_report`).
+- RU: Выполнен SemVer patch-бамп до `8.62.19`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.19`, `ANDROID_VERSION_CODE=781`).
+- EN: Performed a SemVer patch bump to `8.62.19`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.19`, `ANDROID_VERSION_CODE=781`).
+
 ## [8.62.18] - 2026-05-19
 
 ### Added

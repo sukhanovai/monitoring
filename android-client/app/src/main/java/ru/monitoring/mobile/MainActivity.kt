@@ -61,6 +61,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -93,8 +94,10 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.monitoring.mobile.api.ExtensionItem
 import ru.monitoring.mobile.api.ManagedServer
@@ -1687,7 +1690,6 @@ private fun MonitoringApp(
     val isCompactOpsHub = BuildConfig.IS_COMPACT_OPS_HUB
 
     var isManagementExpanded by rememberSaveable { mutableStateOf(false) }
-    var isSettingsExpanded by rememberSaveable { mutableStateOf(false) }
     var isSshAuthExpanded by rememberSaveable { mutableStateOf(false) }
     var isWindowsAuthExpanded by rememberSaveable { mutableStateOf(false) }
     var showWindowsAll by rememberSaveable { mutableStateOf(false) }
@@ -1894,8 +1896,8 @@ private fun MonitoringApp(
         }
     }
 
-    LaunchedEffect(isSettingsExpanded) {
-        if (isSettingsExpanded) {
+    LaunchedEffect(showSettingsSectionOverlay) {
+        if (showSettingsSectionOverlay) {
             onEnsureSettingsLoaded()
         }
     }
@@ -2301,7 +2303,11 @@ private fun MonitoringApp(
                     zfsPoolHostThresholdInput = "20"
                 }
             } else {
-                { isSettingsExpanded = true; settingsSection = "extensions"; showSettingsSectionOverlay = true }
+                {
+                    settingsSection = "extensions"
+                    showSettingsSectionOverlay = true
+                    screensScope.launch { screensPagerState.animateScrollToPage(0) }
+                }
             },
             onLongClick = if (
                 extension.id == "zfs_pool_free_space_monitor" ||
@@ -2371,6 +2377,12 @@ private fun MonitoringApp(
     }
     val synchronizationColor = if (isSynchronized) Color(0xFF2E7D32) else Color(0xFFC62828)
     val pullToRefreshState = rememberPullRefreshState(state.isLoading, onRefreshData)
+    val reportPullRefreshState = rememberPullRefreshState(state.isLoading) {
+        onAction("send_morning_report")
+    }
+    // 0 — настройки, 1 — оперативный центр (стартовый экран), 2 — отчёт.
+    val screensPagerState = rememberPagerState(initialPage = 1) { 3 }
+    val screensScope = rememberCoroutineScope()
     val serverButtonsForDialog = state.managedServers
         .asSequence()
         .sortedWith(
@@ -2429,28 +2441,133 @@ private fun MonitoringApp(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .pullRefresh(pullToRefreshState)
-                .pointerInput(Unit) {
-                    val swipeThreshold = 72.dp.toPx()
-                    var totalDrag = 0f
-                    detectHorizontalDragGestures(
-                        onDragStart = { totalDrag = 0f },
-                        onDragEnd = {
-                            if (totalDrag <= -swipeThreshold) {
-                                // Свайп влево — последний (утренний) отчёт.
-                                showMorningReportDialog = true
-                                onAction("send_morning_report")
-                            } else if (totalDrag >= swipeThreshold) {
-                                // Свайп вправо — экран настроек с плашками.
-                                showSettingsSectionOverlay = false
-                                isSettingsExpanded = true
+        ) {
+            HorizontalPager(
+                state = screensPagerState,
+                beyondBoundsPageCount = 1,
+                modifier = Modifier.fillMaxSize()
+            ) { pagerPage ->
+                when (pagerPage) {
+                    0 -> {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(contentPadding)
+                                .verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("⚙️ Настройки", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                                IconButton(
+                                    onClick = {
+                                        onThemeModeChanged(
+                                            if (state.themeMode == "light") "dark" else "light"
+                                        )
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = if (state.themeMode == "light") {
+                                            Icons.Filled.DarkMode
+                                        } else {
+                                            Icons.Filled.LightMode
+                                        },
+                                        contentDescription = "Переключить тему"
+                                    )
+                                }
+                            }
+                            Text(
+                                "Свайп вправо — назад в оперативный центр. Тапни плашку, чтобы открыть настройки раздела.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                maxItemsInEachRow = 2
+                            ) {
+                                listOf(
+                                    "bff" to "🔌 BFF",
+                                    "monitoring" to "📈 Мониторинг",
+                                    "bot" to "🤖 Бот",
+                                    "time" to "⏰ Время",
+                                    "auth" to "🔐 Аутентификация",
+                                    "extensions" to "🧩 Расширения"
+                                ).forEach { (sectionId, sectionLabel) ->
+                                    SettingsSectionTile(
+                                        label = sectionLabel,
+                                        modifier = Modifier.weight(1f),
+                                        onClick = {
+                                            settingsSection = sectionId
+                                            showSettingsSectionOverlay = true
+                                        }
+                                    )
+                                }
                             }
                         }
-                    ) { _, dragAmount ->
-                        totalDrag += dragAmount
                     }
-                }
-        ) {
+                    2 -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .pullRefresh(reportPullRefreshState)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(contentPadding)
+                                    .verticalScroll(rememberScrollState()),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        "🌅 Последний отчёт",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 20.sp
+                                    )
+                                    Button(onClick = { onAction("send_morning_report") }) {
+                                        Text("Обновить")
+                                    }
+                                }
+                                Text(
+                                    "Свайп влево — назад в оперативный центр. Потяни вниз, чтобы запросить свежий отчёт.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                if (state.morningReportText.isNotBlank()) {
+                                    Text(state.morningReportText)
+                                    if (state.morningReportReceivedAt.isNotBlank()) {
+                                        Text(
+                                            "Получен: ${state.morningReportReceivedAt}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                } else {
+                                    Text("Отчёт ещё не получен. Нажми «Обновить» или потяни список вниз.")
+                                }
+                            }
+                            PullRefreshIndicator(
+                                refreshing = state.isLoading,
+                                state = reportPullRefreshState,
+                                modifier = Modifier.align(Alignment.TopCenter)
+                            )
+                        }
+                    }
+                    else -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .pullRefresh(pullToRefreshState)
+                        ) {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -2518,7 +2635,7 @@ private fun MonitoringApp(
                                         MaterialTheme.colorScheme.onSurfaceVariant
                                     }
                                 )
-                                // ВРЕМЕННО (8.62.18): диагностика TLS — гоняет
+                                // ВРЕМЕННО (8.62.19): диагностика TLS — гоняет
                                 // только проверку сертификата и шлёт подробный
                                 // отчёт в консоль сервера.
                                 TextButton(
@@ -2633,14 +2750,16 @@ private fun MonitoringApp(
                                 label = "🌅 Отчёт",
                                 modifier = Modifier.weight(1f),
                                 onClick = {
-                                    showMorningReportDialog = true
-                                    onAction("send_morning_report")
+                                    screensScope.launch { screensPagerState.animateScrollToPage(2) }
                                 }
                             )
                             DashboardActionButton(
                                 label = "⚙️ Настройки",
                                 modifier = Modifier.weight(1f),
-                                onClick = { showSettingsSectionOverlay = false; isSettingsExpanded = true }
+                                onClick = {
+                                    showSettingsSectionOverlay = false
+                                    screensScope.launch { screensPagerState.animateScrollToPage(0) }
+                                }
                             )
                         }
                     }
@@ -2716,7 +2835,7 @@ private fun MonitoringApp(
                             if (state.bffCertificateWarningText.isNotBlank()) {
                                 Text(state.bffCertificateWarningText, color = MaterialTheme.colorScheme.error)
                             }
-                            // ВРЕМЕННО (8.62.18): диагностика TLS — только
+                            // ВРЕМЕННО (8.62.19): диагностика TLS — только
                             // проверка сертификата + отчёт в консоль сервера.
                             OutlinedButton(
                                 onClick = onCheckCertificateOnly,
@@ -2753,7 +2872,10 @@ private fun MonitoringApp(
                                 Text("🎛️ Управление")
                             }
                             Button(
-                                onClick = { showSettingsSectionOverlay = false; isSettingsExpanded = true },
+                                onClick = {
+                                    showSettingsSectionOverlay = false
+                                    screensScope.launch { screensPagerState.animateScrollToPage(0) }
+                                },
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Text("⚙️ Настройки")
@@ -2777,94 +2899,7 @@ private fun MonitoringApp(
                             Button(onClick = { onAction("auto_mode") }) { Text("Авто") }
                         }
                     }
-                    if (isSettingsExpanded) {
-                        AlertDialog(
-                            onDismissRequest = {
-                                isSettingsExpanded = false
-                                showSettingsSectionOverlay = false
-                            },
-                            confirmButton = {},
-                            title = {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text("⚙️ Настройки")
-                                    Row(
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        IconButton(
-                                            onClick = {
-                                                onThemeModeChanged(if (state.themeMode == "light") "dark" else "light")
-                                            }
-                                        ) {
-                                            Icon(
-                                                imageVector = if (state.themeMode == "light") {
-                                                    Icons.Filled.DarkMode
-                                                } else {
-                                                    Icons.Filled.LightMode
-                                                },
-                                                contentDescription = "Переключить тему"
-                                            )
-                                        }
-                                        IconButton(onClick = {
-                                            isSettingsExpanded = false
-                                            showSettingsSectionOverlay = false
-                                        }) {
-                                            Icon(
-                                                imageVector = Icons.Filled.Close,
-                                                contentDescription = "Закрыть окно настроек"
-                                            )
-                                        }
-                                    }
-                                }
-                            },
-                            text = {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .heightIn(max = 560.dp)
-                                        .verticalScroll(rememberScrollState()),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Text("Разделы настроек", fontWeight = FontWeight.Bold)
-                                    Text(
-                                        "Тапни плашку, чтобы открыть нужные настройки.",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    FlowRow(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                                        maxItemsInEachRow = 2
-                                    ) {
-                                        listOf(
-                                            "bff" to "🔌 BFF",
-                                            "monitoring" to "📈 Мониторинг",
-                                            "bot" to "🤖 Бот",
-                                            "time" to "⏰ Время",
-                                            "auth" to "🔐 Аутентификация",
-                                            "extensions" to "🧩 Расширения"
-                                        ).forEach { (sectionId, sectionLabel) ->
-                                            SettingsSectionTile(
-                                                label = sectionLabel,
-                                                modifier = Modifier.weight(1f),
-                                                onClick = {
-                                                    settingsSection = sectionId
-                                                    showSettingsSectionOverlay = true
-                                                }
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        )
-                    }
-
-                    if (isSettingsExpanded && showSettingsSectionOverlay) {
+                    if (showSettingsSectionOverlay) {
                         AlertDialog(
                             onDismissRequest = { showSettingsSectionOverlay = false },
                             confirmButton = {},
@@ -7158,6 +7193,10 @@ private fun MonitoringApp(
 }
 }
 }
-}
-}
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
