@@ -1,3 +1,13 @@
+## [8.62.21] - 2026-05-19
+
+### Fixed
+- RU: Скрипт `scripts/android_post_pull_build_run.ps1` падал на шаге `[4/5] Install` с `com.android.ddmlib.InstallException: Failure calling service package: Broken pipe (32)` — флакающий обрыв ADB-транспорта при установке через Gradle-задачу `:app:install*Debug` (ddmlib). Сборка APK при этом проходит успешно. Шаг установки переделан: новая функция `Invoke-RobustInstall` сначала ставит APK напрямую через `adb -s <device> install -r -t` (platform-tools устойчивее ddmlib), при неуспехе откатывается на Gradle-задачу, и повторяет до 3 попыток с перезапуском adb-сервера (`Restart-AdbServer`: `kill-server`/`start-server`/`wait-for-device`) и экспоненциальной паузой между попытками. Логика сборки/запуска не изменена.
+- EN: The `scripts/android_post_pull_build_run.ps1` script failed at the `[4/5] Install` step with `com.android.ddmlib.InstallException: Failure calling service package: Broken pipe (32)` — a flaky ADB transport drop while installing through the Gradle `:app:install*Debug` (ddmlib) task. The APK itself assembles fine. The install step was reworked: a new `Invoke-RobustInstall` function first installs the APK directly via `adb -s <device> install -r -t` (platform-tools is far more resilient than ddmlib), falls back to the Gradle task on failure, and retries up to 3 times with an adb-server restart (`Restart-AdbServer`: `kill-server`/`start-server`/`wait-for-device`) and exponential backoff between attempts. Build/run logic is unchanged.
+
+### Changed
+- RU: Выполнен SemVer patch-бамп до `8.62.21`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.21`, `ANDROID_VERSION_CODE=783`).
+- EN: Performed a SemVer patch bump to `8.62.21`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.21`, `ANDROID_VERSION_CODE=783`).
+
 ## [8.62.20] - 2026-05-19
 
 ### Fixed
