@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.62.26
+Server Monitoring System v8.62.27
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.62.26
+Версия: 8.62.27
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -2237,8 +2237,7 @@ def _execute_mobile_control_action(action: str):
 
             db_path = BACKUP_DATABASE_CONFIG.get("backups_db")
             if not db_path:
-                status_message = "🧊 ZFS статусы\n\n❌ База бэкапов не настроена."
-                return True, f"{status_message}\n\n{_build_zfs_free_space_section()}", "accepted", None
+                return True, "🧊 ZFS статусы\n\n❌ База бэкапов не настроена.", "accepted", None
 
             conn = sqlite3.connect(str(db_path))
             cursor = conn.cursor()
@@ -2261,12 +2260,11 @@ def _execute_mobile_control_action(action: str):
                 rows = cursor.fetchall()
             except Exception as exc:
                 if "no such table: zfs_pool_status" in str(exc):
-                    status_message = (
+                    return True, (
                         "🧊 ZFS статусы\n\n"
                         "❌ Таблица ZFS ещё не создана.\n"
                         "Дождитесь первого письма или перезапустите мониторинг."
-                    )
-                    return True, f"{status_message}\n\n{_build_zfs_free_space_section()}", "accepted", None
+                    ), "accepted", None
                 return False, f"Не удалось получить статусы ZFS: {exc}", "failed", None
             finally:
                 conn.close()
@@ -2277,8 +2275,7 @@ def _execute_mobile_control_action(action: str):
                 rows = []
 
             if not rows:
-                status_message = "📊 ZFS статусы\n\n❌ Данных нет."
-                return True, f"{status_message}\n\n{_build_zfs_free_space_section()}", "accepted", None
+                return True, "📊 ZFS статусы\n\n❌ Данных нет.", "accepted", None
 
             lines = ["📊 ZFS статусы (последние)", ""]
             current_server = None
@@ -2290,8 +2287,7 @@ def _execute_mobile_control_action(action: str):
                     current_server = server_name
                 lines.append(f"• {pool_name}: {pool_state} ({received_at})")
 
-            status_message = "\n".join(lines)
-            return True, f"{status_message}\n\n{_build_zfs_free_space_section()}", "accepted", None
+            return True, "\n".join(lines), "accepted", None
 
         return True, "Команда принята", "accepted", None
 
@@ -2759,7 +2755,7 @@ def v1_mobile_diagnostics_tls():
     диагностировать ошибку «⚪ TLS: ошибка проверки (Ошибка сети)»
     удалённо, без доступа к logcat устройства.
 
-    Временный диагностический эндпоинт (см. CHANGELOG 8.62.26)."""
+    Временный диагностический эндпоинт (см. CHANGELOG 8.62.27)."""
     request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
 
     is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
