@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.62.28
+Server Monitoring System v8.62.29
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.62.28
+Версия: 8.62.29
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -2755,7 +2755,7 @@ def v1_mobile_diagnostics_tls():
     диагностировать ошибку «⚪ TLS: ошибка проверки (Ошибка сети)»
     удалённо, без доступа к logcat устройства.
 
-    Временный диагностический эндпоинт (см. CHANGELOG 8.62.28)."""
+    Временный диагностический эндпоинт (см. CHANGELOG 8.62.29)."""
     request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
 
     is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))

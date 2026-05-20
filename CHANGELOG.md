@@ -1,3 +1,13 @@
+## [8.62.29] - 2026-05-20
+
+### Added
+- RU: Android: в оперативном центре между заголовком и плашками появилась компактная сводка инцидентов — отдельные мини-плашки в красной палитре с меткой проблемного раздела и его текущим значением; секция показывается только когда есть актуальные инциденты (хотя бы одна загруженная плашка с `hasProblem=true`). Тап по мини-плашке открывает тот же экран деталей, что и основная плашка.
+- EN: Android: the operational center now shows a compact incident summary between the header and the tile grid — small error-tinted chips listing each problematic section together with its current value; the strip is shown only when there are live incidents (at least one loaded tile with `hasProblem=true`). Tapping a chip opens the same details screen as the corresponding main tile.
+
+### Changed
+- RU: SemVer patch-бамп до `8.62.29`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.29`, `ANDROID_VERSION_CODE=791`).
+- EN: SemVer patch bump to `8.62.29`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.29`, `ANDROID_VERSION_CODE=791`).
+
 ## [8.62.28] - 2026-05-20
 
 ### Changed

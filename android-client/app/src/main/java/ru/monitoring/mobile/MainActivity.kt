@@ -1280,6 +1280,38 @@ private fun OpsMetricChip(
 }
 
 @Composable
+private fun IncidentSummaryChip(
+    label: String,
+    value: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick),
+        color = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        shape = RoundedCornerShape(12.dp),
+        tonalElevation = 1.dp
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("⚠", fontSize = 14.sp)
+            Text(label, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+            Text(
+                value,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
 private fun ScreensPagerIndicator(
     pageCount: Int,
     currentPage: Int,
@@ -2765,6 +2797,35 @@ private fun MonitoringApp(
                                         imageVector = Icons.Filled.Settings,
                                         contentDescription = "Настроить плашки"
                                     )
+                                }
+                            }
+                        }
+                        val incidentTiles = allOpsTiles.filter { tile ->
+                            val tileLoaded = state.allDataLoaded ||
+                                tile.id == "modes" ||
+                                tile.id in state.loadedTileIds
+                            tileLoaded && tile.hasProblem
+                        }
+                        if (incidentTiles.isNotEmpty()) {
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(
+                                    "⚠️ Инциденты (${incidentTiles.size})",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                                FlowRow(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    incidentTiles.forEach { tile ->
+                                        IncidentSummaryChip(
+                                            label = tile.label,
+                                            value = tile.value,
+                                            onClick = tile.onClick
+                                        )
+                                    }
                                 }
                             }
                         }
