@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.62.30
+Server Monitoring System v8.62.31
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit + reaction buttons + E2EE).
 Система мониторинга серверов
-Версия: 8.62.30
+Версия: 8.62.31
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит + кнопки-реакции + E2EE).
@@ -2037,6 +2037,7 @@ class MatrixCommandBot:
         lines += [
             "",
             "Команды с аргументом:",
+            "• !check <имя|ip> — точечная проверка доступности сервера",
             "• !settings — хелп и список всех параметров",
             "• !settings list [группа] — параметры со значениями",
             "• !settings get <KEY> — значение настройки",
@@ -2054,11 +2055,13 @@ class MatrixCommandBot:
             "🆘 Краткая справка Matrix command-bot:\n\n"
             "• !menu или !start — главное меню с кнопками-реакциями\n"
             "• !status — доступность всех серверов\n"
+            "• !check <имя|ip> — точечная проверка доступности сервера\n"
             "• !report — утренний/сводный отчёт\n"
             "• !servers — список серверов под мониторингом\n"
             "• !pause / !resume — пауза и возобновление мониторинга\n"
             "• !silent / !loud / !auto — режим тишины\n"
             "• !extensions (!ext) — меню расширений (бэкапы, ресурсы, ZFS)\n"
+            "• !res <имя|ip> — точечная проверка ресурсов сервера\n"
             "• !about — версия и сведения о боте\n"
             "• !settings — управление настройками (help/list/get/set)\n"
             "• !diag / !ping — диагностика command-bot\n\n"
@@ -2122,6 +2125,15 @@ class MatrixCommandBot:
             return command, await self._run_extension_command(ext_item)
         if command == "!status":
             return command, await self._handle_status()
+        if command == "!check":
+            return command, await self._handle_targeted(normalized, "availability")
+        if command == "!res":
+            if "resource_monitor" not in self._enabled_extensions():
+                return command, (
+                    "❌ Команда !res недоступна: расширение "
+                    "«resource_monitor» выключено."
+                )
+            return command, await self._handle_targeted(normalized, "resources")
         if command == "!report":
             return command, await self._handle_report()
         if command == "!settings":

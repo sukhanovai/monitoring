@@ -1,3 +1,15 @@
+## [8.62.31] - 2026-05-20
+
+### Added
+- RU: Matrix-бот: в основное меню (`!menu`) добавлена точечная проверка доступности сервера через команду `!check <имя|ip>` — отрабатывает тот же бэкенд, что и Telegram-бот (`run_targeted_task` в режиме `availability`).
+- EN: Matrix bot: the main menu (`!menu`) now lists a targeted availability check via `!check <name|ip>` — reusing the same backend (`run_targeted_task` in `availability` mode) as the Telegram bot.
+- RU: Matrix-бот: в подменю расширений (`!extensions`) подключена точечная проверка ресурсов одного сервера через команду `!res <имя|ip>` — доступна только при включённом расширении `resource_monitor` и использует `run_targeted_task` в режиме `resources`.
+- EN: Matrix bot: the extensions submenu (`!extensions`) wires up a targeted single-server resource check via `!res <name|ip>` — only available when the `resource_monitor` extension is enabled and calls `run_targeted_task` in `resources` mode.
+
+### Changed
+- RU: SemVer patch-бамп до `8.62.31`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.31`, `ANDROID_VERSION_CODE=793`).
+- EN: SemVer patch bump to `8.62.31`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.31`, `ANDROID_VERSION_CODE=793`).
+
 ## [8.62.30] - 2026-05-20
 
 ### Changed
