@@ -297,8 +297,8 @@ class MainViewModel(
     private val zfsSummaryRegex = Regex(
         """(?i)(серверов|пулов)\s*:\s*(\d+)\s*\(\s*(?:🟢|✅|✔️?)?\s*(\d+)\s*(?:/|,)\s*(?:🔴|❌|⚠️)?\s*(\d+)\s*\)"""
     )
-    private val zfsStatusLineRegex = Regex("""^[•\-]\s*(.+?):\s*([^()]+?)(?:\s*\((.+)\))?$""")
-    private val zfsStatusEmojiLineRegex = Regex("""^[🟢🟡🔴❌⚠️✅✔️]\s+`?([^`]+?)`?\s*:\s*`?([^`()]+?)`?\s*\((.+)\)$""")
+    private val zfsStatusLineRegex = Regex("""^[•\-]\s*(.+?):\s*([A-Z_]+)\s*(?:\((.+)\))?$""")
+    private val zfsStatusEmojiLineRegex = Regex("""^[🟢🟡🔴❌⚠️✅✔️]\s+`?([^`]+?)`?\s*:\s*`?([A-Z_]+)`?\s*\((.+)\)$""")
     private val zfsPoolsTotalLineRegex = Regex("""(?i)(?:пулов|pools)\s*[:=]\s*(\d+)""")
     private val zfsProblemStates = setOf(
         "DEGRADED",
@@ -371,7 +371,14 @@ class MainViewModel(
             )
         }
 
-        val zfsStatusLines = message.lineSequence()
+        // Парсим только секцию со статусами пулов ZFS, исключая блок
+        // «💽 Свободное место ZFS», где у строк-пулов в скобках указано
+        // занятое место, а не STATE из zpool status.
+        val zfsStatusSection = run {
+            val freeSpaceIndex = message.indexOf("💽 Свободное место")
+            if (freeSpaceIndex >= 0) message.substring(0, freeSpaceIndex) else message
+        }
+        val zfsStatusLines = zfsStatusSection.lineSequence()
             .map { line ->
                 line.trim()
                     .removePrefix("*")
@@ -380,7 +387,7 @@ class MainViewModel(
             }
             .mapNotNull { line -> zfsStatusLineRegex.matchEntire(line) }
             .toList()
-        val zfsStatusEmojiLines = message.lineSequence()
+        val zfsStatusEmojiLines = zfsStatusSection.lineSequence()
             .map { line -> line.trim() }
             .mapNotNull { line -> zfsStatusEmojiLineRegex.matchEntire(line) }
             .toList()
@@ -395,6 +402,14 @@ class MainViewModel(
             return BackupTileSummary(
                 ratioText = "$ok/$total",
                 hasProblem = problems > 0
+            )
+        }
+
+        val hasZfsStatusHeader = zfsStatusSection.contains("ZFS статусы", ignoreCase = true)
+        if (hasZfsStatusHeader) {
+            return BackupTileSummary(
+                ratioText = "0/0",
+                hasProblem = false
             )
         }
 
@@ -1367,7 +1382,7 @@ class MainViewModel(
             status
         }
 
-    // ВРЕМЕННО (8.62.25): отдельная кнопка «Проверить только сертификат».
+    // ВРЕМЕННО (8.62.26): отдельная кнопка «Проверить только сертификат».
     // Гоняет только TLS-проверку Base URL (без полной синхронизации) и шлёт
     // подробный отчёт в консоль сервера (POST /v1/mobile/diagnostics/tls),
     // чтобы диагностировать «⚪ TLS: ошибка проверки (Ошибка сети)» удалённо.
