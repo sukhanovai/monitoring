@@ -1,3 +1,13 @@
+## [8.62.27] - 2026-05-20
+
+### Fixed
+- RU: Android: разделение расширений в API `zfs_menu` — экшен теперь возвращает только статусы исправности пулов ZFS из таблицы `zfs_pool_status` (расширение `zfs_monitor`), без блока «💽 Свободное место ZFS» (расширение `zfs_pool_free_space_monitor`). До фикса четыре ветки ответа `zfs_menu` (нет БД / нет таблицы / нет данных / есть данные) подклеивали к ответу `_build_zfs_free_space_section()`, и плашка «zfs статусы» в андроид-клиенте парсила строки свободного места (например, `• rpool: 50G из 100G (занято 50%, ONLINE)`) как пулы — сведения по исправности отображались неверно. Свободное место остаётся доступным через отдельный экшен `zfs_pool_free_space_menu` и свою плашку «zfs место». Передачи снэпшотов (расширение `snapshot_transfer_monitor`) в `zfs_menu` не участвовали и не путаются.
+- EN: Android: API `zfs_menu` extension separation — the action now returns only ZFS pool health statuses from the `zfs_pool_status` table (the `zfs_monitor` extension), without the "💽 Свободное место ZFS" block (the `zfs_pool_free_space_monitor` extension). Before the fix, four `zfs_menu` branches (no DB / no table / no rows / has data) appended `_build_zfs_free_space_section()` to the response, and the "zfs статусы" tile in the Android client parsed free-space lines (e.g. `• rpool: 50G из 100G (занято 50%, ONLINE)`) as pools — health data was rendered incorrectly. Free space remains accessible through the dedicated `zfs_pool_free_space_menu` action and its "zfs место" tile. Snapshot transfers (the `snapshot_transfer_monitor` extension) never participated in `zfs_menu` and are unaffected.
+
+### Changed
+- RU: SemVer patch-бамп до `8.62.27`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.27`, `ANDROID_VERSION_CODE=789`).
+- EN: SemVer patch bump to `8.62.27`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.27`, `ANDROID_VERSION_CODE=789`).
+
 ## [8.62.26] - 2026-05-20
 
 ### Fixed
