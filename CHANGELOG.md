@@ -1,3 +1,13 @@
+## [8.62.33] - 2026-05-20
+
+### Fixed
+- RU: Telegram-бот: фактическая причина «не открываются Настройки → Мониторинг → ⏰ Таймауты серверов» — в `bot/handlers/callbacks.py:callback_router` callback `server_timeouts` не подпадал ни под один префикс (`settings_/set_/manage_/ssh_/windows_/server_type_`) и не входил в whitelist `{add_chat, remove_chat}`, поэтому клик молча проваливался мимо `settings_callback_handler` (в логах при этом дважды светилось `CALLBACK DATA: server_timeouts`). Добавили `server_timeouts` в этот whitelist — теперь подменю выбора таймаута открывается из «Мониторинга».
+- EN: Telegram bot: the actual root cause of "Настройки → Мониторинг → ⏰ Таймауты серверов" not opening was that in `bot/handlers/callbacks.py:callback_router` the `server_timeouts` callback matched none of the prefixes (`settings_/set_/manage_/ssh_/windows_/server_type_`) and was not in the `{add_chat, remove_chat}` whitelist, so clicks silently fell through past `settings_callback_handler` (despite the log showing `CALLBACK DATA: server_timeouts` twice). Added `server_timeouts` to the whitelist — the timeout submenu now opens from «Мониторинг».
+
+### Changed
+- RU: SemVer patch-бамп до `8.62.33`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.33`, `ANDROID_VERSION_CODE=795`).
+- EN: SemVer patch bump to `8.62.33`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.33`, `ANDROID_VERSION_CODE=795`).
+
 ## [8.62.32] - 2026-05-20
 
 ### Fixed
