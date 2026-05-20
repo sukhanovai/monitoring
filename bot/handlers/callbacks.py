@@ -1,17 +1,15 @@
 """
 /bot/handlers/callbacks.py
-Server Monitoring System v8.62.32
+Server Monitoring System v8.62.33
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 A single router for callbacks.
 Система мониторинга серверов
-Версия: 8.62.32
+Версия: 8.62.33
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единый router callback’ов.
 """
-
-import traceback
 
 from telegram.error import BadRequest
 
@@ -139,28 +137,11 @@ def handle_server_selection_menu(update, context, action="check_single"):
 
 def callback_router(update, context):
     debug_log("🧭 ROUTER MARKER v1: entered callback_router()")
-    try:
-        query = update.callback_query
-        data = query.data
-
-        debug_log(f"📥 CALLBACK DATA: {data}")
-
-        # дальше ваш существующий код router...
-
-    except Exception as e:
-        debug_log(f"💥 callback_router crashed: {e}\n{traceback.format_exc()}")
-        # Фоллбек пользователю (чтобы видеть проблему в Telegram)
-        try:
-            if update.callback_query:
-                _safe_answer(update.callback_query, text="❌ Ошибка обработчика. Подробности в логах.", show_alert=True)
-        except Exception:
-            pass
-        
     query = update.callback_query
     data = query.data
 
     debug_log(f"📥 CALLBACK DATA: {data}")
-    
+
     if not check_access(update):
         deny_access(update)
         return
@@ -356,6 +337,7 @@ def callback_router(update, context):
     elif data.startswith(('settings_', 'set_', 'manage_', 'ssh_', 'windows_', 'server_type_')) or data in {
         'add_chat',
         'remove_chat',
+        'server_timeouts',
     }:
         # settings_handlers сам разбирает все эти ветки
         settings_callback_handler(update, context)
