@@ -1,3 +1,13 @@
+## [8.62.33] - 2026-05-20
+
+### Fixed
+- RU: Telegram-бот: восстановлен переход в подменю «Настройки → Мониторинг → ⏰ Таймауты серверов». Callback `server_timeouts` не подпадал ни под один из префиксов в `bot/handlers/callbacks.py:callback_router` (`settings_`, `set_`, `manage_`, `ssh_`, `windows_`, `server_type_`) и не входил в литеральный набор делегирования в `settings_callback_handler`, поэтому нажатие на кнопку только логировало `📥 CALLBACK DATA: server_timeouts` и ничего не происходило. Добавлен `server_timeouts` в литеральный список делегирования — меню снова открывается и показывает текущие таймауты с кнопками выбора параметра. Заодно убрана пустая `try/except`-обёртка, из-за которой `📥 CALLBACK DATA: …` логировалось дважды на один callback.
+- EN: Telegram bot: restored navigation into «Настройки → Мониторинг → ⏰ Таймауты серверов». The `server_timeouts` callback didn't match any prefix in `bot/handlers/callbacks.py:callback_router` (`settings_`, `set_`, `manage_`, `ssh_`, `windows_`, `server_type_`) and wasn't listed in the literal delegation set for `settings_callback_handler`, so tapping the button only logged `📥 CALLBACK DATA: server_timeouts` and the submenu never opened. Added `server_timeouts` to the literal delegation set — the menu opens again and renders the current timeouts together with parameter-selection buttons. The empty `try/except` scaffold that caused `📥 CALLBACK DATA: …` to be logged twice per callback was also removed.
+
+### Changed
+- RU: SemVer patch-бамп до `8.62.33`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.33`, `ANDROID_VERSION_CODE=795`).
+- EN: SemVer patch bump to `8.62.33`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.33`, `ANDROID_VERSION_CODE=795`).
+
 ## [8.62.32] - 2026-05-20
 
 ### Fixed
