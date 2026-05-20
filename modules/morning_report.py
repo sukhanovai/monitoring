@@ -1,11 +1,11 @@
 """
 /app/modules/morning_report.py
-Server Monitoring System v8.62.31
+Server Monitoring System v8.62.32
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Morning Report Module
 Система мониторинга серверов
-Версия: 8.62.31
+Версия: 8.62.32
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Модуль утреннего отчета
@@ -576,9 +576,11 @@ class MorningReport:
             # Генерируем сообщение
             message = self.generate_report_message()
             
-            # Отправляем через унифицированный канал алертов
+            # Отправляем через унифицированный канал алертов. Для отчёта
+            # просим повесить под Matrix-сообщением кнопку-эмодзи «открыть
+            # меню» — пользователю удобно открыть !menu прямо из отчёта.
             from lib.alerts import send_alert
-            sent_ok = send_alert(message, force=True)
+            sent_ok = send_alert(message, force=True, attach_menu_button=True)
 
             if sent_ok:
                 debug_log(f"✅ Отчет отправлен ({'ручной' if manual_call else 'автоматический'})")

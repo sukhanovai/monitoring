@@ -1,11 +1,11 @@
 """
 /lib/alerts.py
-Server Monitoring System v8.62.31
+Server Monitoring System v8.62.32
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Unified alert system
 Система мониторинга серверов
-Версия: 8.62.31
+Версия: 8.62.32
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единая система оповещений
@@ -21,6 +21,11 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Optional, Dict, Any
 from datetime import datetime, time as dt_time
 from lib.logging import debug_log, error_log, setup_logging
+
+# Эмодзи кнопки «открыть меню» под Matrix-сообщениями. Дублирует константу из
+# lib.matrix_commands (импортировать оттуда нельзя без циклической зависимости:
+# matrix_commands → modules.morning_report → lib.alerts → matrix_commands).
+MATRIX_MENU_TRIGGER_EMOJI = "📋"
 
 try:
     from nio import AsyncClient
@@ -209,53 +214,56 @@ def send_alert(
     alert_type: str = "info",
     force: bool = False,
     tags: Optional[List[str]] = None,
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict[str, Any]] = None,
+    attach_menu_button: bool = False,
 ) -> bool:
     """
     Универсальная функция отправки алертов
-    
+
     Args:
         message: Текст сообщения
         alert_type: Тип алерта (critical, warning, info)
         force: Принудительная отправка
         tags: Теги для категоризации алерта
         metadata: Дополнительные метаданные
-        
+        attach_menu_button: Прикрепить под Matrix-сообщением кнопку-эмодзи
+            «открыть меню» (📋). Используется для утренних/сводных отчётов.
+
     Returns:
         True если сообщение отправлено успешно
     """
     if not should_send_alert(alert_type, force):
         return False
-    
+
     # Проверяем кд для одинаковых алертов
     if not force and _is_cooldown_active(message):
         debug_log(f"Алерт находится в кд: {message[:50]}...")
         return False
-    
+
     # Добавляем префикс в зависимости от типа алерта
     prefixes = {
         "critical": "🚨 ",
         "warning": "⚠️ ",
         "info": "ℹ️ "
     }
-    
+
     prefix = prefixes.get(alert_type, "")
     full_message = f"{prefix}{message}"
-    
+
     # Логируем алерт
     log_levels = {
         "critical": error_log,
         "warning": debug_log,
         "info": debug_log
     }
-    
+
     log_func = log_levels.get(alert_type, debug_log)
     log_func(f"Отправка алерта [{alert_type}]: {message[:100]}...")
-    
+
     # Отправляем через все доступные каналы
     sent = False
     errors = []
-    
+
     debug_log(
         f"🔔 send_alert старт | type={alert_type} force={force} chats={len(_chat_ids) if _chat_ids else 0} len={len(full_message)}"
     )
@@ -270,7 +278,9 @@ def send_alert(
             errors.append("Telegram: ошибка отправки")
 
     # Matrix
-    matrix_sent = _send_matrix_alert(full_message)
+    matrix_sent = _send_matrix_alert(
+        full_message, attach_menu_button=attach_menu_button
+    )
     if matrix_sent:
         sent = True
 
@@ -519,7 +529,11 @@ def _build_matrix_message_payload(message: str, buttons: Optional[List[Dict[str,
     return payload
 
 
-async def _send_matrix_alert_async(message: str, buttons: Optional[List[Dict[str, str]]] = None) -> bool:
+async def _send_matrix_alert_async(
+    message: str,
+    buttons: Optional[List[Dict[str, str]]] = None,
+    attach_menu_button: bool = False,
+) -> bool:
     payload = _build_matrix_message_payload(message, buttons=buttons)
     client = AsyncClient(_matrix_homeserver, user="")
     client.access_token = _matrix_access_token
@@ -533,6 +547,30 @@ async def _send_matrix_alert_async(message: str, buttons: Optional[List[Dict[str
         if getattr(response, "transport_response", None) and response.transport_response.status >= 400:
             debug_log(f"Matrix отправка не удалась: HTTP {response.transport_response.status}")
             return False
+        if attach_menu_button:
+            event_id = getattr(response, "event_id", None)
+            if event_id:
+                try:
+                    await client.room_send(
+                        room_id=_matrix_room_id,
+                        message_type="m.reaction",
+                        content={
+                            "m.relates_to": {
+                                "rel_type": "m.annotation",
+                                "event_id": event_id,
+                                "key": MATRIX_MENU_TRIGGER_EMOJI,
+                            }
+                        },
+                        tx_id=uuid4().hex,
+                    )
+                except Exception as exc:
+                    debug_log(
+                        f"⚠️ Matrix: не удалось навесить кнопку-меню {MATRIX_MENU_TRIGGER_EMOJI}: {exc}"
+                    )
+            else:
+                debug_log(
+                    "⚠️ Matrix: ответ без event_id, кнопку-меню под отчётом не вешаем"
+                )
         return True
     except Exception as exc:
         debug_log(f"Matrix nio отправка не удалась: {exc}")
@@ -541,7 +579,11 @@ async def _send_matrix_alert_async(message: str, buttons: Optional[List[Dict[str
         await client.close()
 
 
-def _send_matrix_alert(message: str, buttons: Optional[List[Dict[str, str]]] = None) -> bool:
+def _send_matrix_alert(
+    message: str,
+    buttons: Optional[List[Dict[str, str]]] = None,
+    attach_menu_button: bool = False,
+) -> bool:
     """Отправляет уведомление в Matrix room, если канал настроен."""
     global _matrix_homeserver, _matrix_access_token, _matrix_room_id
     if not (_matrix_homeserver and _matrix_access_token and _matrix_room_id):
@@ -574,7 +616,13 @@ def _send_matrix_alert(message: str, buttons: Optional[List[Dict[str, str]]] = N
         return False
     if AsyncClient is not None:
         try:
-            sent = asyncio.run(_send_matrix_alert_async(message, buttons=buttons))
+            sent = asyncio.run(
+                _send_matrix_alert_async(
+                    message,
+                    buttons=buttons,
+                    attach_menu_button=attach_menu_button,
+                )
+            )
             if sent:
                 debug_log("✅ Matrix алерт отправлен успешно (matrix-nio)")
                 return True
@@ -597,6 +645,39 @@ def _send_matrix_alert(message: str, buttons: Optional[List[Dict[str, str]]] = N
         )
         response.raise_for_status()
         debug_log("✅ Matrix алерт отправлен успешно (HTTP fallback)")
+        if attach_menu_button:
+            try:
+                event_id = (response.json() or {}).get("event_id")
+            except ValueError:
+                event_id = None
+            if event_id:
+                reaction_txn = uuid4().hex
+                reaction_url = (
+                    f"{_matrix_homeserver}/_matrix/client/v3/rooms/"
+                    f"{encoded_room_id}/send/m.reaction/{reaction_txn}"
+                )
+                reaction_payload = {
+                    "m.relates_to": {
+                        "rel_type": "m.annotation",
+                        "event_id": event_id,
+                        "key": MATRIX_MENU_TRIGGER_EMOJI,
+                    }
+                }
+                try:
+                    requests.put(
+                        reaction_url,
+                        headers={"Authorization": f"Bearer {_matrix_access_token}"},
+                        json=reaction_payload,
+                        timeout=10,
+                    )
+                except Exception as exc:
+                    debug_log(
+                        f"⚠️ Matrix HTTP fallback: реакция-меню не отправлена: {exc}"
+                    )
+            else:
+                debug_log(
+                    "⚠️ Matrix HTTP fallback: нет event_id в ответе, кнопку-меню не вешаем"
+                )
         return True
     except Exception as exc:
         debug_log(f"Matrix отправка не удалась: {exc}")

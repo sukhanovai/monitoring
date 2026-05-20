@@ -1,11 +1,11 @@
 """
 /bot/handlers/settings_handlers.py
-Server Monitoring System v8.62.31
+Server Monitoring System v8.62.32
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Handlers for managing settings via a bot
 Система мониторинга серверов
-Версия: 8.62.31
+Версия: 8.62.32
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Обработчики для управления настройками через бота
@@ -2138,16 +2138,63 @@ def settings_callback_handler(update, context):
     
     _safe_query_answer(query)
 
+_SETTING_KEY_TO_DB_KEY = {
+    'check_interval': 'CHECK_INTERVAL',
+    'max_fail_time': 'MAX_FAIL_TIME',
+    'silent_start': 'SILENT_START',
+    'silent_end': 'SILENT_END',
+    'data_collection': 'DATA_COLLECTION_TIMES',
+    'cpu_warning': 'CPU_WARNING',
+    'cpu_critical': 'CPU_CRITICAL',
+    'ram_warning': 'RAM_WARNING',
+    'ram_critical': 'RAM_CRITICAL',
+    'disk_warning': 'DISK_WARNING',
+    'disk_critical': 'DISK_CRITICAL',
+    'ssh_username': 'SSH_USERNAME',
+    'ssh_key_path': 'SSH_KEY_PATH',
+    'web_port': 'WEB_PORT',
+    'web_host': 'WEB_HOST',
+    'backup_alert_hours': 'BACKUP_ALERT_HOURS',
+    'backup_stale_hours': 'BACKUP_STALE_HOURS',
+    'windows_2025_timeout': 'WINDOWS_2025_TIMEOUT',
+    'domain_servers_timeout': 'DOMAIN_SERVERS_TIMEOUT',
+    'admin_servers_timeout': 'ADMIN_SERVERS_TIMEOUT',
+    'standard_windows_timeout': 'STANDARD_WINDOWS_TIMEOUT',
+    'linux_timeout': 'LINUX_TIMEOUT',
+    'ping_timeout': 'PING_TIMEOUT',
+}
+
+
+def _format_current_setting_value(setting_key: str) -> str:
+    """Возвращает строку «Текущее значение: ...» для подсказок ввода.
+
+    Берём значение через settings_manager по тому же ключу БД, который
+    показывают экраны выбора параметра, чтобы пользователь видел, от какого
+    значения отталкиваться при вводе нового.
+    """
+    db_key = _SETTING_KEY_TO_DB_KEY.get(setting_key)
+    if not db_key:
+        return ""
+    try:
+        value = settings_manager.get_setting(db_key)
+    except Exception as exc:  # noqa: BLE001
+        debug_logger(f"⚠️ Не удалось получить текущее значение {db_key}: {exc}")
+        return ""
+    if value is None or value == "" or value == {} or value == []:
+        return ""
+    return f"📍 Текущее значение: {value}"
+
+
 def handle_setting_input(update, context, setting_key):
     """Обработчик ввода значений настроек - ОБНОВЛЕННАЯ ВЕРСИЯ"""
     query = update.callback_query
     query.answer()
-    
+
     # Сохраняем какое настройку меняем
     context.user_data['editing_setting'] = setting_key
     context.user_data['editing_setting_message_id'] = query.message.message_id
     context.user_data['editing_setting_chat_id'] = query.message.chat_id
-    
+
     setting_descriptions = {
         # Существующие настройки...
         'telegram_token': 'Введите новый токен Telegram бота:',
@@ -2186,9 +2233,22 @@ def handle_setting_input(update, context, setting_key):
     
     message = setting_descriptions.get(setting_key, f'Введите новое значение для {setting_key}:')
 
+    current_value_hint = _format_current_setting_value(setting_key)
+    if current_value_hint:
+        message = f"{current_value_hint}\n\n{message}"
+
     cancel_callback = 'settings_main'
     if setting_key in {'cpu_warning', 'cpu_critical', 'ram_warning', 'ram_critical', 'disk_warning', 'disk_critical'}:
         cancel_callback = 'settings_resources'
+    elif setting_key in {
+        'windows_2025_timeout', 'domain_servers_timeout', 'admin_servers_timeout',
+        'standard_windows_timeout', 'linux_timeout', 'ping_timeout',
+    }:
+        cancel_callback = 'server_timeouts'
+    elif setting_key in {'check_interval', 'max_fail_time'}:
+        cancel_callback = 'settings_monitoring'
+    elif setting_key in {'silent_start', 'silent_end', 'data_collection'}:
+        cancel_callback = 'settings_time'
 
     query.edit_message_text(
         message,
@@ -2440,7 +2500,10 @@ def handle_setting_value(update, context):
             'check_interval': 'int', 'max_fail_time': 'int', 'silent_start': 'int', 'silent_end': 'int',
             'cpu_warning': 'int', 'cpu_critical': 'int', 'ram_warning': 'int', 'ram_critical': 'int',
             'disk_warning': 'int', 'disk_critical': 'int', 'web_port': 'int',
-            'backup_alert_hours': 'int', 'backup_stale_hours': 'int'
+            'backup_alert_hours': 'int', 'backup_stale_hours': 'int',
+            'windows_2025_timeout': 'int', 'domain_servers_timeout': 'int',
+            'admin_servers_timeout': 'int', 'standard_windows_timeout': 'int',
+            'linux_timeout': 'int', 'ping_timeout': 'int',
         }
         
         if setting_key in {'silent_start', 'silent_end'}:
@@ -2491,7 +2554,10 @@ def handle_setting_value(update, context):
             'disk_warning': 'resources', 'disk_critical': 'resources',
             'ssh_username': 'auth', 'ssh_key_path': 'auth',
             'web_port': 'web', 'web_host': 'web',
-            'backup_alert_hours': 'backup', 'backup_stale_hours': 'backup'
+            'backup_alert_hours': 'backup', 'backup_stale_hours': 'backup',
+            'windows_2025_timeout': 'timeouts', 'domain_servers_timeout': 'timeouts',
+            'admin_servers_timeout': 'timeouts', 'standard_windows_timeout': 'timeouts',
+            'linux_timeout': 'timeouts', 'ping_timeout': 'timeouts',
         }
         
         special_db_keys = {
@@ -9523,56 +9589,6 @@ def _rename_zfs_monitoring_state(old_name: str, new_name: str) -> None:
     _set_zfs_monitoring_state(new_name, state_map[old_name])
     _delete_zfs_monitoring_state(old_name)
 
-def handle_setting_input(update, context, setting_key):
-    """Обработчик ввода значений настроек"""
-    query = update.callback_query
-    query.answer()
-    
-    # Сохраняем какое настройку меняем
-    context.user_data['editing_setting'] = setting_key
-    context.user_data['editing_setting_message_id'] = query.message.message_id
-    context.user_data['editing_setting_chat_id'] = query.message.chat_id
-    
-    setting_descriptions = {
-        'telegram_token': 'Введите новый токен Telegram бота:',
-        'matrix_homeserver': 'Введите URL Matrix homeserver (например https://matrix.example.com):',
-        'matrix_access_token': 'Введите Matrix access token:',
-        'matrix_room_id': 'Введите Matrix room ID (например !roomid:example.com):',
-        'matrix_bot_user_id': 'Введите полный MXID бота для E2EE (например @comdone:matrix.202020.ru):',
-        'matrix_bot_password': 'Введите пароль аккаунта Matrix-бота (для E2EE-логина):',
-        'matrix_store_path': 'Введите путь к persistent crypto-store (пусто = data/matrix_store):',
-        'check_interval': 'Введите новый интервал проверки (в секундах):',
-        'max_fail_time': 'Введите максимальное время простоя (в секундах):',
-        'silent_start': 'Введите час начала тихого режима (0-23):',
-        'silent_end': 'Введите час окончания тихого режима (0-23):',
-        'data_collection': 'Введите время сбора данных (формат HH:MM):',
-        'cpu_warning': 'Введите порог предупреждения для CPU (%):',
-        'cpu_critical': 'Введите критический порог для CPU (%):',
-        'ram_warning': 'Введите порог предупреждения для RAM (%):',
-        'ram_critical': 'Введите критический порог для RAM (%):',
-        'disk_warning': 'Введите порог предупреждения для Disk (%):',
-        'disk_critical': 'Введите критический порог для Disk (%):',
-        'ssh_username': 'Введите имя пользователя SSH:',
-        'ssh_key_path': 'Введите путь к SSH ключу:',
-        'web_port': 'Введите порт веб-интерфейса:',
-        'web_host': 'Введите хост веб-интерфейса:',
-        'backup_alert_hours': 'Введите количество часов для алертов о бэкапах:',
-        'backup_stale_hours': 'Введите количество часов для устаревших бэкапов:',
-    }
-    
-    message = setting_descriptions.get(setting_key, f'Введите новое значение для {setting_key}:')
-
-    cancel_callback = 'settings_main'
-    if setting_key in {'cpu_warning', 'cpu_critical', 'ram_warning', 'ram_critical', 'disk_warning', 'disk_critical'}:
-        cancel_callback = 'settings_resources'
-
-    query.edit_message_text(
-        message,
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ Отмена", callback_data=cancel_callback)]
-        ])
-    )
-
 def add_database_category_handler(update, context):
     """Обработчик добавления категории БД"""
     query = update.callback_query
@@ -9718,31 +9734,36 @@ def manage_chats_handler(update, context):
     )
 
 def show_server_timeouts(update, context):
-    """Таймауты серверов - УПРОЩЕННАЯ БЕЗ MARKDOWN ВЕРСИЯ"""
+    """Таймауты серверов с текущими значениями.
+
+    Раньше функция читала только агрегированный словарь SERVER_TIMEOUTS из БД
+    и при его отсутствии показывала надпись «не настроены» с захардкоженными
+    значениями, что выглядело как «меню не открылось» и расходилось со
+    значениями, которые правятся ниже через кнопки. Теперь читаем те же
+    индивидуальные ключи, которые меняются из этого меню, чтобы экран всегда
+    отражал реально применяемые таймауты.
+    """
     query = update.callback_query
     query.answer()
-    
-    timeouts = settings_manager.get_setting('SERVER_TIMEOUTS', {})
-    
-    # Простой текст без Markdown
-    message = "⏰ Таймауты серверов\n\n"
-    
-    if timeouts:
-        for server_type, timeout in timeouts.items():
-            message += f"• {server_type}: {timeout} сек\n"
-    else:
-        message += "❌ Таймауты не настроены\n"
-        message += "Используются значения по умолчанию.\n\n"
-        message += "Таймауты по умолчанию:\n"
-        message += "• Windows 2025: 35 сек\n"
-        message += "• Доменные серверы: 20 сек\n"
-        message += "• Admin серверы: 25 сек\n"
-        message += "• Стандартные Windows: 30 сек\n"
-        message += "• Linux серверы: 15 сек\n"
-        message += "• Ping серверы: 10 сек\n"
-    
-    message += "\nВыберите параметр для изменения:"
-    
+
+    windows_2025_timeout = settings_manager.get_setting('WINDOWS_2025_TIMEOUT', 35)
+    domain_timeout = settings_manager.get_setting('DOMAIN_SERVERS_TIMEOUT', 20)
+    admin_timeout = settings_manager.get_setting('ADMIN_SERVERS_TIMEOUT', 25)
+    standard_timeout = settings_manager.get_setting('STANDARD_WINDOWS_TIMEOUT', 30)
+    linux_timeout = settings_manager.get_setting('LINUX_TIMEOUT', 15)
+    ping_timeout = settings_manager.get_setting('PING_TIMEOUT', 10)
+
+    message = (
+        "⏰ *Таймауты серверов*\n\n"
+        f"• Windows 2025: {windows_2025_timeout} сек\n"
+        f"• Доменные серверы: {domain_timeout} сек\n"
+        f"• Admin серверы: {admin_timeout} сек\n"
+        f"• Стандартные Windows: {standard_timeout} сек\n"
+        f"• Linux серверы: {linux_timeout} сек\n"
+        f"• Ping серверы: {ping_timeout} сек\n\n"
+        "Выберите параметр для изменения:"
+    )
+
     keyboard = [
         [InlineKeyboardButton("🖥️ Windows 2025", callback_data='set_windows_2025_timeout')],
         [InlineKeyboardButton("🌐 Доменные серверы", callback_data='set_domain_servers_timeout')],
@@ -9753,11 +9774,19 @@ def show_server_timeouts(update, context):
         [InlineKeyboardButton("↩️ Назад", callback_data='settings_monitoring'),
          InlineKeyboardButton("✖️ Закрыть", callback_data='close')]
     ]
-    
-    query.edit_message_text(
-        message,  # Без parse_mode
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
+
+    try:
+        query.edit_message_text(
+            message,
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+    except (BadRequest, TelegramError) as exc:
+        debug_logger(f"⚠️ show_server_timeouts edit_message_text Markdown failed: {exc}")
+        query.edit_message_text(
+            message.replace('*', ''),
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
 
 def add_server_handler(update, context):
     """Добавить сервер - ОСНОВНАЯ РЕАЛИЗАЦИЯ"""

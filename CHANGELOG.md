@@ -1,3 +1,19 @@
+## [8.62.32] - 2026-05-20
+
+### Fixed
+- RU: Telegram-бот: меню «Настройки → Мониторинг → ⏰ Таймауты серверов» снова открывается корректно и показывает реально применяемые значения (ключи `WINDOWS_2025_TIMEOUT`, `DOMAIN_SERVERS_TIMEOUT`, `ADMIN_SERVERS_TIMEOUT`, `STANDARD_WINDOWS_TIMEOUT`, `LINUX_TIMEOUT`, `PING_TIMEOUT`) вместо устаревшего словаря `SERVER_TIMEOUTS`, который по умолчанию пуст и приводил к экрану «не настроены». Удалена дублирующая декларация `handle_setting_input`, перетиравшая актуальный обработчик с подсказками для таймаутов.
+- EN: Telegram bot: the «Настройки → Мониторинг → ⏰ Таймауты серверов» menu opens reliably again and shows the timeouts actually in effect (`WINDOWS_2025_TIMEOUT`, `DOMAIN_SERVERS_TIMEOUT`, `ADMIN_SERVERS_TIMEOUT`, `STANDARD_WINDOWS_TIMEOUT`, `LINUX_TIMEOUT`, `PING_TIMEOUT`) instead of the stale `SERVER_TIMEOUTS` dict that defaulted to empty and rendered a "not configured" screen. The duplicate `handle_setting_input` definition that shadowed the timeout-aware one was removed.
+
+### Added
+- RU: Telegram-бот: при открытии полей ввода «Интервал проверки», «Макс. время простоя» и других известных параметров (тихий режим, ресурсы, таймауты, веб) подсказка теперь начинается строкой «📍 Текущее значение: …», чтобы было видно, от какого значения отталкиваться при правке.
+- EN: Telegram bot: when opening input prompts for «Интервал проверки», «Макс. время простоя», and other known parameters (silent mode, resources, timeouts, web), the hint now starts with a "📍 Текущее значение: …" line so the user can see the value they are editing.
+- RU: Matrix-бот: после запуска бот шлёт в основную комнату стартовое сообщение и навешивает под ним кнопку-эмодзи `📋`. Эту же кнопку бот вешает под утренним/сводным отчётом (через `lib.alerts._send_matrix_alert`, флаг `attach_menu_button=True`); тап по `📋` вызывает `!menu`, минуя ввод текста.
+- EN: Matrix bot: on startup the bot posts a greeting into the default room and attaches a `📋` button-reaction. The same `📋` reaction is added under the morning/summary report (via `lib.alerts._send_matrix_alert`, flag `attach_menu_button=True`); tapping `📋` triggers `!menu` without typing.
+
+### Changed
+- RU: SemVer patch-бамп до `8.62.32`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.32`, `ANDROID_VERSION_CODE=794`).
+- EN: SemVer patch bump to `8.62.32`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.32`, `ANDROID_VERSION_CODE=794`).
+
 ## [8.62.31] - 2026-05-20
 
 ### Added

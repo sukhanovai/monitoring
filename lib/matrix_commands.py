@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.62.31
+Server Monitoring System v8.62.32
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit + reaction buttons + E2EE).
 Система мониторинга серверов
-Версия: 8.62.31
+Версия: 8.62.32
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит + кнопки-реакции + E2EE).
@@ -75,6 +75,12 @@ from core.task_router import (
 )
 from modules.morning_report import morning_report
 
+
+# Универсальная кнопка-эмодзи «открыть меню». Вешается ботом на стартовое
+# сообщение и под утренний/сводный отчёт. На неё реагируем как на !menu вне
+# зависимости от того, какое сообщение было таргетом — это позволяет вызвать
+# главное меню прямо из отчёта без дополнительного ввода команд.
+MATRIX_MENU_TRIGGER_EMOJI = "📋"
 
 # Кнопки меню как в Telegram: emoji-реакция -> команда.
 # Реакции работают в Element, Element X и web-клиенте Matrix.
@@ -751,6 +757,31 @@ class MatrixCommandBot:
 
         for emoji, _command in MENU_BUTTONS:
             await self._send_reaction(room_id, event_id, emoji)
+
+    async def _post_startup_announcement(self) -> None:
+        """Отправляет стартовое сообщение и навешивает кнопку-эмодзи !menu.
+
+        Цель — дать пользователю прямо после запуска бота быстрый способ
+        открыть главное меню одной реакцией, без необходимости вводить
+        команду. Шлём только если задана default-комната.
+        """
+        room_id = self.default_room_id
+        if not room_id:
+            return
+        text = (
+            "🚀 Matrix command-bot запущен и готов к работе.\n"
+            f"Нажми {MATRIX_MENU_TRIGGER_EMOJI} под этим сообщением, "
+            "чтобы открыть главное меню (или напиши !menu)."
+        )
+        try:
+            event_id = await self._send_text(room_id, text)
+        except Exception as exc:
+            debug_log(f"⚠️ Matrix стартовое сообщение не отправлено: {exc}")
+            return
+        if not event_id:
+            debug_log("⚠️ Matrix стартовое сообщение без event_id: кнопка-меню пропущена")
+            return
+        await self._send_reaction(room_id, event_id, MATRIX_MENU_TRIGGER_EMOJI)
 
     async def _post_extensions_menu(self, room_id: str) -> None:
         """Отправляет подменю расширений и навешивает кнопки только
@@ -2327,6 +2358,24 @@ class MatrixCommandBot:
         if not target_event_id:
             return
 
+        normalized_key = (key or "").strip()
+
+        # Универсальная кнопка-эмодзи «открыть меню»: на стартовом сообщении
+        # и под утренним/сводным отчётом мы навешиваем 📋, и любой клик по
+        # ней должен открыть главное меню, даже если target_event_id мы не
+        # помним (бот мог перезагрузиться, либо сообщение пришло из канала
+        # алертов, который не трекается _menu_event_ids).
+        if normalized_key == MATRIX_MENU_TRIGGER_EMOJI:
+            if reaction_event_id:
+                self._processed_reactions[reaction_event_id] = True
+                self._cap_ordered(self._processed_reactions, 500)
+            info_log(
+                "📩 Matrix кнопка-меню нажата: "
+                f"room={room_id}, sender={sender}, key={key}"
+            )
+            await self._dispatch_and_reply("!menu", sender=sender, room_id=room_id)
+            return
+
         is_main_menu = target_event_id in self._menu_event_ids
         is_ext_menu = target_event_id in self._ext_menu_event_ids
         is_backup_menu = target_event_id in self._backup_menu_event_ids
@@ -2336,7 +2385,6 @@ class MatrixCommandBot:
         ):
             return
 
-        normalized_key = (key or "").strip()
         if is_backup_menu:
             # Ключ реакции — имя сервера Proxmox. Игнорируем посторонние
             # emoji-реакции, реагируем только на known-хосты.
@@ -2436,6 +2484,8 @@ class MatrixCommandBot:
                 self._started = True
             except Exception as exc:
                 debug_log(f"❌ Matrix initial sync failed: {exc}")
+
+            await self._post_startup_announcement()
 
         while True:
             try:
