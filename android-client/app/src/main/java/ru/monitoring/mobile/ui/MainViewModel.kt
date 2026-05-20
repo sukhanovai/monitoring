@@ -860,6 +860,12 @@ class MainViewModel(
     fun setCheckIntervalInput(value: String) { state = state.copy(checkIntervalInput = value) }
     fun setTimeoutInput(value: String) { state = state.copy(timeoutInput = value) }
     fun setMaxDowntimeInput(value: String) { state = state.copy(maxDowntimeInput = value) }
+    fun setWindows2025TimeoutInput(value: String) { state = state.copy(windows2025TimeoutInput = value) }
+    fun setDomainServersTimeoutInput(value: String) { state = state.copy(domainServersTimeoutInput = value) }
+    fun setAdminServersTimeoutInput(value: String) { state = state.copy(adminServersTimeoutInput = value) }
+    fun setStandardWindowsTimeoutInput(value: String) { state = state.copy(standardWindowsTimeoutInput = value) }
+    fun setLinuxTimeoutInput(value: String) { state = state.copy(linuxTimeoutInput = value) }
+    fun setPingTimeoutInput(value: String) { state = state.copy(pingTimeoutInput = value) }
     fun setTelegramTokenInput(value: String) { state = state.copy(telegramTokenInput = value) }
     fun setTelegramChatIdInput(value: String) { state = state.copy(telegramChatIdInput = value) }
     fun setNewTelegramChatIdInput(value: String) { state = state.copy(newTelegramChatIdInput = value) }
@@ -1156,6 +1162,12 @@ class MainViewModel(
                 checkIntervalInput = (monitoringData?.checkIntervalSec ?: monitoring?.checkIntervalSec)?.toString() ?: state.checkIntervalInput,
                 timeoutInput = (monitoringData?.timeoutSec ?: monitoring?.timeoutSec)?.toString() ?: state.timeoutInput,
                 maxDowntimeInput = (monitoringData?.maxDowntimeSec ?: monitoring?.maxDowntimeSec)?.toString() ?: state.maxDowntimeInput,
+                windows2025TimeoutInput = (monitoringData?.windows2025Timeout ?: monitoring?.windows2025Timeout)?.toString() ?: state.windows2025TimeoutInput,
+                domainServersTimeoutInput = (monitoringData?.domainServersTimeout ?: monitoring?.domainServersTimeout)?.toString() ?: state.domainServersTimeoutInput,
+                adminServersTimeoutInput = (monitoringData?.adminServersTimeout ?: monitoring?.adminServersTimeout)?.toString() ?: state.adminServersTimeoutInput,
+                standardWindowsTimeoutInput = (monitoringData?.standardWindowsTimeout ?: monitoring?.standardWindowsTimeout)?.toString() ?: state.standardWindowsTimeoutInput,
+                linuxTimeoutInput = (monitoringData?.linuxTimeout ?: monitoring?.linuxTimeout)?.toString() ?: state.linuxTimeoutInput,
+                pingTimeoutInput = (monitoringData?.pingTimeout ?: monitoring?.pingTimeout)?.toString() ?: state.pingTimeoutInput,
                 telegramTokenInput = botData?.maskedToken ?: botData?.telegramBotToken ?: state.telegramTokenInput,
                 telegramChatIdInput = botData?.telegramChatId ?: state.telegramChatIdInput,
                 telegramChatIds = botChatIds,
@@ -1382,7 +1394,7 @@ class MainViewModel(
             status
         }
 
-    // ВРЕМЕННО (8.62.33): отдельная кнопка «Проверить только сертификат».
+    // ВРЕМЕННО (8.62.34): отдельная кнопка «Проверить только сертификат».
     // Гоняет только TLS-проверку Base URL (без полной синхронизации) и шлёт
     // подробный отчёт в консоль сервера (POST /v1/mobile/diagnostics/tls),
     // чтобы диагностировать «⚪ TLS: ошибка проверки (Ошибка сети)» удалённо.
@@ -2805,7 +2817,18 @@ class MainViewModel(
         val checkInterval = state.checkIntervalInput
         val timeout = state.timeoutInput
         val maxDowntime = state.maxDowntimeInput
-        if (!hasAnyValue(checkInterval, timeout, maxDowntime)) {
+        val windows2025Timeout = state.windows2025TimeoutInput
+        val domainServersTimeout = state.domainServersTimeoutInput
+        val adminServersTimeout = state.adminServersTimeoutInput
+        val standardWindowsTimeout = state.standardWindowsTimeoutInput
+        val linuxTimeout = state.linuxTimeoutInput
+        val pingTimeout = state.pingTimeoutInput
+        if (!hasAnyValue(
+                checkInterval, timeout, maxDowntime,
+                windows2025Timeout, domainServersTimeout, adminServersTimeout,
+                standardWindowsTimeout, linuxTimeout, pingTimeout
+            )
+        ) {
             state = state.copy(message = "Заполни хотя бы одно поле monitoring")
             return
         }
@@ -2814,7 +2837,13 @@ class MainViewModel(
             SettingsMonitoringRequest(
                 checkIntervalSec = parseOptionalInt(checkInterval, "check_interval_sec"),
                 timeoutSec = parseOptionalInt(timeout, "timeout_sec"),
-                maxDowntimeSec = parseOptionalInt(maxDowntime, "max_downtime_sec")
+                maxDowntimeSec = parseOptionalInt(maxDowntime, "max_downtime_sec"),
+                windows2025Timeout = parseOptionalInt(windows2025Timeout, "windows_2025_timeout"),
+                domainServersTimeout = parseOptionalInt(domainServersTimeout, "domain_servers_timeout"),
+                adminServersTimeout = parseOptionalInt(adminServersTimeout, "admin_servers_timeout"),
+                standardWindowsTimeout = parseOptionalInt(standardWindowsTimeout, "standard_windows_timeout"),
+                linuxTimeout = parseOptionalInt(linuxTimeout, "linux_timeout"),
+                pingTimeout = parseOptionalInt(pingTimeout, "ping_timeout")
             )
         }.getOrElse {
             state = state.copy(message = it.message ?: "Ошибка в полях monitoring")
@@ -3022,6 +3051,12 @@ data class MainUiState(
     val checkIntervalInput: String = "",
     val timeoutInput: String = "",
     val maxDowntimeInput: String = "",
+    val windows2025TimeoutInput: String = "",
+    val domainServersTimeoutInput: String = "",
+    val adminServersTimeoutInput: String = "",
+    val standardWindowsTimeoutInput: String = "",
+    val linuxTimeoutInput: String = "",
+    val pingTimeoutInput: String = "",
     val telegramTokenInput: String = "",
     val telegramChatIdInput: String = "",
     val telegramChatIds: List<String> = emptyList(),

@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.62.33
+Server Monitoring System v8.62.34
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.62.33
+Версия: 8.62.34
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -5003,6 +5003,12 @@ def v1_get_settings_monitoring():
             "check_interval_sec": settings_manager.get_setting('CHECK_INTERVAL', 60),
             "timeout_sec": settings_manager.get_setting('API_TIMEOUT_SEC', 15),
             "max_downtime_sec": settings_manager.get_setting('MAX_FAIL_TIME', 900),
+            "windows_2025_timeout": settings_manager.get_setting('WINDOWS_2025_TIMEOUT', 35),
+            "domain_servers_timeout": settings_manager.get_setting('DOMAIN_SERVERS_TIMEOUT', 20),
+            "admin_servers_timeout": settings_manager.get_setting('ADMIN_SERVERS_TIMEOUT', 25),
+            "standard_windows_timeout": settings_manager.get_setting('STANDARD_WINDOWS_TIMEOUT', 30),
+            "linux_timeout": settings_manager.get_setting('LINUX_TIMEOUT', 15),
+            "ping_timeout": settings_manager.get_setting('PING_TIMEOUT', 10),
         }
     }
     app.logger.info("GET /v1/settings/monitoring request_id=%s", request_id)
@@ -5686,7 +5692,22 @@ def v1_settings_monitoring():
     timeout_sec = payload.get('timeout_sec')
     max_downtime = payload.get('max_downtime_sec')
 
-    if check_interval is None and timeout_sec is None and max_downtime is None:
+    server_timeout_fields = (
+        ('windows_2025_timeout', 'WINDOWS_2025_TIMEOUT', 35, 'Таймаут Windows 2025 (секунды)'),
+        ('domain_servers_timeout', 'DOMAIN_SERVERS_TIMEOUT', 20, 'Таймаут доменных серверов (секунды)'),
+        ('admin_servers_timeout', 'ADMIN_SERVERS_TIMEOUT', 25, 'Таймаут Admin серверов (секунды)'),
+        ('standard_windows_timeout', 'STANDARD_WINDOWS_TIMEOUT', 30, 'Таймаут стандартных Windows (секунды)'),
+        ('linux_timeout', 'LINUX_TIMEOUT', 15, 'Таймаут Linux серверов (секунды)'),
+        ('ping_timeout', 'PING_TIMEOUT', 10, 'Таймаут Ping серверов (секунды)'),
+    )
+    server_timeout_values = {field: payload.get(field) for field, _, _, _ in server_timeout_fields}
+
+    if (
+        check_interval is None
+        and timeout_sec is None
+        and max_downtime is None
+        and all(v is None for v in server_timeout_values.values())
+    ):
         return jsonify({
             "error": {
                 "code": "VALIDATION_FAILED",
@@ -5722,12 +5743,31 @@ def v1_settings_monitoring():
         else:
             timeout_sec = settings_manager.get_setting('API_TIMEOUT_SEC', 15)
 
+        resolved_timeouts = {}
+        for field, db_key, default_value, description in server_timeout_fields:
+            raw_value = server_timeout_values[field]
+            if raw_value is not None:
+                parsed_value = int(raw_value)
+                if parsed_value < 1:
+                    return jsonify({
+                        "error": {
+                            "code": "INVALID_THRESHOLD",
+                            "message": f"{field} must be >= 1",
+                            "request_id": request_id,
+                        }
+                    }), 400
+                settings_manager.set_setting(db_key, parsed_value, 'timeouts', description, 'int')
+                resolved_timeouts[field] = parsed_value
+            else:
+                resolved_timeouts[field] = settings_manager.get_setting(db_key, default_value)
+
         return jsonify({
             "request_id": request_id,
             "settings": {
                 "check_interval_sec": check_interval,
                 "timeout_sec": timeout_sec,
                 "max_downtime_sec": max_downtime,
+                **resolved_timeouts,
                 "updated_at": datetime.now().isoformat(),
             }
         }), 200

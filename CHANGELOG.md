@@ -1,3 +1,13 @@
+## [8.62.34] - 2026-05-20
+
+### Added
+- RU: Android-клиент: в экран «Настройки → 📈 Мониторинг» добавлен блок «⏰ Таймауты серверов» с шестью полями — `windows_2025_timeout`, `domain_servers_timeout`, `admin_servers_timeout`, `standard_windows_timeout`, `linux_timeout`, `ping_timeout`. Значения подтягиваются из `/v1/settings/monitoring` (GET теперь отдаёт все шесть таймаутов из БД с теми же ключами `WINDOWS_2025_TIMEOUT`/`DOMAIN_SERVERS_TIMEOUT`/`ADMIN_SERVERS_TIMEOUT`/`STANDARD_WINDOWS_TIMEOUT`/`LINUX_TIMEOUT`/`PING_TIMEOUT`, что и Telegram-бот) и сохраняются тем же PATCH с той же валидацией (`>= 1` сек) — без расхождения значений между Android-приложением и Telegram-ботом.
+- EN: Android client: the «Настройки → 📈 Мониторинг» screen got a «⏰ Таймауты серверов» block with six fields — `windows_2025_timeout`, `domain_servers_timeout`, `admin_servers_timeout`, `standard_windows_timeout`, `linux_timeout`, `ping_timeout`. Values are pulled from `/v1/settings/monitoring` (GET now returns all six timeouts from the DB under the same `WINDOWS_2025_TIMEOUT`/`DOMAIN_SERVERS_TIMEOUT`/`ADMIN_SERVERS_TIMEOUT`/`STANDARD_WINDOWS_TIMEOUT`/`LINUX_TIMEOUT`/`PING_TIMEOUT` keys used by the Telegram bot) and saved through the same PATCH with `>= 1` second validation — so values stay in sync between the Android app and the Telegram bot.
+
+### Changed
+- RU: SemVer patch-бамп до `8.62.34`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.34`, `ANDROID_VERSION_CODE=796`).
+- EN: SemVer patch bump to `8.62.34`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.34`, `ANDROID_VERSION_CODE=796`).
+
 ## [8.62.33] - 2026-05-20
 
 ### Fixed
