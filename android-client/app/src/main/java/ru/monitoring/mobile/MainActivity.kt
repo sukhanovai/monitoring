@@ -1279,6 +1279,124 @@ private fun OpsMetricChip(
     }
 }
 
+@Composable
+private fun ScreensPagerIndicator(
+    pageCount: Int,
+    currentPage: Int,
+    onPageSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 2.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 10.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            repeat(pageCount) { index ->
+                val isSelected = index == currentPage
+                val dotColor = if (isSelected) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                }
+                Box(
+                    modifier = Modifier
+                        .padding(horizontal = 6.dp)
+                        .size(width = if (isSelected) 22.dp else 10.dp, height = 10.dp)
+                        .clip(RoundedCornerShape(5.dp))
+                        .background(dotColor)
+                        .clickable { onPageSelected(index) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CertificateStatusTile(
+    statusText: String,
+    warningText: String,
+    isLoading: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val hasWarning = warningText.isNotBlank()
+    val containerColor = if (hasWarning) {
+        MaterialTheme.colorScheme.errorContainer
+    } else {
+        MaterialTheme.colorScheme.surfaceContainerHighest
+    }
+    val titleColor = if (hasWarning) {
+        MaterialTheme.colorScheme.onErrorContainer
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
+    val secondaryColor = if (hasWarning) {
+        MaterialTheme.colorScheme.onErrorContainer
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(enabled = !isLoading, onClick = onClick),
+        color = containerColor,
+        shape = RoundedCornerShape(12.dp),
+        tonalElevation = 1.dp
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("🔐", fontSize = 22.sp)
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    "Сертификат BFF",
+                    fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = titleColor
+                )
+                Text(
+                    statusText.ifBlank { "—" },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = secondaryColor
+                )
+                if (hasWarning) {
+                    Text(
+                        warningText,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
+            }
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    strokeWidth = 2.dp,
+                    color = titleColor
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Filled.Refresh,
+                    contentDescription = "Проверить сертификат",
+                    tint = titleColor
+                )
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ZfsStatusTile(
@@ -2417,6 +2535,15 @@ private fun MonitoringApp(
                     }
                 }
             )
+        },
+        bottomBar = {
+            ScreensPagerIndicator(
+                pageCount = 3,
+                currentPage = screensPagerState.currentPage,
+                onPageSelected = { target ->
+                    screensScope.launch { screensPagerState.animateScrollToPage(target) }
+                }
+            )
         }
     ) { innerPadding ->
         Box(
@@ -2461,11 +2588,6 @@ private fun MonitoringApp(
                                     )
                                 }
                             }
-                            Text(
-                                "➡️ Свайп вправо — назад в оперативный центр. Тапни плашку, чтобы открыть настройки раздела.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
                             FlowRow(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -2519,11 +2641,6 @@ private fun MonitoringApp(
                                         Text("Обновить")
                                     }
                                 }
-                                Text(
-                                    "⬅️ Свайп влево — назад в оперативный центр. Потяни вниз, чтобы запросить свежий отчёт.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
                                 if (state.morningReportText.isNotBlank()) {
                                     Text(state.morningReportText)
                                     if (state.morningReportReceivedAt.isNotBlank()) {
@@ -2608,28 +2725,6 @@ private fun MonitoringApp(
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                                Text(
-                                    "Сертификат: ${state.bffCertificateStatusText}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = if (state.bffCertificateWarningText.isNotBlank()) {
-                                        MaterialTheme.colorScheme.error
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                    }
-                                )
-                                // ВРЕМЕННО (8.62.24): диагностика TLS — гоняет
-                                // только проверку сертификата и шлёт подробный
-                                // отчёт в консоль сервера.
-                                TextButton(
-                                    onClick = onCheckCertificateOnly,
-                                    enabled = !state.isLoading,
-                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
-                                ) {
-                                    Text(
-                                        "🔐 Проверить только сертификат (врем.)",
-                                        style = MaterialTheme.typography.labelSmall
-                                    )
-                                }
                                 if (state.isSyncInProgress) {
                                     Spacer(modifier = Modifier.height(6.dp))
                                     LinearProgressIndicator(
@@ -2724,58 +2819,12 @@ private fun MonitoringApp(
                                 Text(if (areOpsTilesExpanded) "Свернуть" else "Развернуть")
                             }
                         }
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            Text(
-                                "👆 Свайп между экранами:",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                "➡️ Свайп вправо — 🌅 отчёт",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                "⬅️ Свайп влево — ⚙️ настройки",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-                if (state.bffCertificateWarningText.isNotBlank()) {
-                    item {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(MaterialTheme.colorScheme.errorContainer)
-                                .padding(14.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Text(
-                                "🔐 Сертификат BFF",
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onErrorContainer
-                            )
-                            Text(
-                                state.bffCertificateWarningText,
-                                color = MaterialTheme.colorScheme.onErrorContainer
-                            )
-                            Text(
-                                state.bffCertificateStatusText,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onErrorContainer
-                            )
-                        }
+                        CertificateStatusTile(
+                            statusText = state.bffCertificateStatusText,
+                            warningText = state.bffCertificateWarningText,
+                            isLoading = state.isLoading,
+                            onClick = onCheckCertificateOnly
+                        )
                     }
                 }
             }
@@ -2818,18 +2867,12 @@ private fun MonitoringApp(
                             Text("Статус", fontWeight = FontWeight.Bold)
                             Text(state.summaryText)
                             Text("Версия проекта: ${state.projectVersion}")
-                            Text("BFF сертификат: ${state.bffCertificateStatusText}")
-                            if (state.bffCertificateWarningText.isNotBlank()) {
-                                Text(state.bffCertificateWarningText, color = MaterialTheme.colorScheme.error)
-                            }
-                            // ВРЕМЕННО (8.62.24): диагностика TLS — только
-                            // проверка сертификата + отчёт в консоль сервера.
-                            OutlinedButton(
-                                onClick = onCheckCertificateOnly,
-                                enabled = !state.isLoading
-                            ) {
-                                Text("🔐 Проверить только сертификат (врем.)")
-                            }
+                            CertificateStatusTile(
+                                statusText = state.bffCertificateStatusText,
+                                warningText = state.bffCertificateWarningText,
+                                isLoading = state.isLoading,
+                                onClick = onCheckCertificateOnly
+                            )
                             if (state.message.isNotBlank() && state.messageSource == "global") {
                                 Text(state.message)
                             }

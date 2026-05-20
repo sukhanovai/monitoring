@@ -1,3 +1,13 @@
+## [8.62.25] - 2026-05-20
+
+### Changed
+- RU: Android: текстовые подсказки о свайпах удалены со всех экранов; направление свайпа теперь обозначается визуальным индикатором страниц (три «пилюли» внизу экрана, активная подсвечена и вытянута), по тапу на индикатор выполняется переход на выбранный экран. Подсказки в оперцентре, отчёте и настройках больше не дублируются текстом.
+- EN: Android: textual swipe hints were removed from every screen; the swipe direction is now conveyed by a visual page indicator (three pill-shaped marks at the bottom, the active one highlighted and elongated), tapping a mark jumps to the selected screen. The duplicate text hints in the operational center, report and settings screens are gone.
+- RU: Android: вместо отдельной строки «Сертификат: …» в заголовке оперцентра и кнопки «🔐 Проверить только сертификат (врем.)» теперь отдельная плашка «🔐 Сертификат BFF» в оперативном центре: показывает текст статуса, при ошибке окрашивается в errorContainer и показывает текст предупреждения; тап по плашке запускает ту же диагностику TLS, что и раньше. Дублирующая «🔐 Сертификат BFF» в красной плашке (item внутри LazyColumn) удалена. Аналогичная плашка заменила состояние/кнопку и в не-компактной (классической) разметке оперцентра.
+- EN: Android: the standalone "Сертификат: …" line in the operational-center header and the "🔐 Проверить только сертификат (врем.)" button were replaced by a single "🔐 Сертификат BFF" tile in the operational center: it shows the status text, switches to `errorContainer` and shows the warning text when a problem is detected, and tapping the tile runs the same TLS diagnostics as before. The duplicate red "🔐 Сертификат BFF" item-card in the LazyColumn was removed. The same tile replaces the cert status line and button in the non-compact (classic) operational-center layout as well.
+- RU: SemVer patch-бамп до `8.62.25`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.25`, `ANDROID_VERSION_CODE=787`).
+- EN: SemVer patch bump to `8.62.25`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.25`, `ANDROID_VERSION_CODE=787`).
+
 ## [8.62.24] - 2026-05-19
 
 ### Changed
