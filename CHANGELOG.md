@@ -1,3 +1,13 @@
+## [8.62.30] - 2026-05-20
+
+### Changed
+- RU: Android: в диалоге «🗃️ Бэкапы БД» поведение тапа по плашке базы данных разделено — короткий тап вызывает API `db_detail_<тип>__<имя>` и показывает список последних бэкапов БД (как в Telegram-боте) во вспомогательном диалоге, а длинный тап оставлен за карточкой действий (редактировать / вкл-выкл / удалить). Подсказка в шапке диалога переписана под новое поведение.
+- EN: Android: in the "🗃️ Бэкапы БД" dialog the database-tile tap was split — a short tap calls `db_detail_<type>__<name>` and shows the database's latest backups list (mirroring the Telegram-bot view) in a sub-dialog; a long press keeps opening the actions card (edit / toggle / delete). The dialog's hint text was updated to match.
+- RU: Android: плашка «остатки» (расширение `stock_load_monitor`) в оперативном центре больше не ведёт в настройки — короткий тап теперь открывает диалог «📦 Загрузка остатков 1С», который вызывает API `backup_stock_loads` и показывает текущую сводку по загрузке остатков (как в Telegram-боте).
+- EN: Android: the "остатки" tile (the `stock_load_monitor` extension) in the operational center no longer jumps into settings — a short tap now opens the "📦 Загрузка остатков 1С" dialog that invokes the `backup_stock_loads` API and renders the current 1C stock-load summary (mirroring the Telegram-bot view).
+- RU: SemVer patch-бамп до `8.62.30`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.30`, `ANDROID_VERSION_CODE=792`).
+- EN: SemVer patch bump to `8.62.30`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.30`, `ANDROID_VERSION_CODE=792`).
+
 ## [8.62.29] - 2026-05-20
 
 ### Added

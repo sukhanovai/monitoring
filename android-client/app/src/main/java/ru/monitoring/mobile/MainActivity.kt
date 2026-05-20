@@ -1958,6 +1958,7 @@ private fun MonitoringApp(
     var proxmoxHostActionsTargetKey by rememberSaveable { mutableStateOf("") }
     var proxmoxHostDeleteConfirmTargetKey by rememberSaveable { mutableStateOf("") }
     var databaseActionsTargetAction by rememberSaveable { mutableStateOf("") }
+    var showStockLoadsDialog by rememberSaveable { mutableStateOf(false) }
     var showMorningReportDialog by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(
@@ -2424,6 +2425,11 @@ private fun MonitoringApp(
             } else if (extension.id == "supplier_stock_files") {
                 {
                     onAction("supplier_stock_reports")
+                }
+            } else if (extension.id == "stock_load_monitor") {
+                {
+                    showStockLoadsDialog = true
+                    onAction("backup_stock_loads")
                 }
             } else if (extension.id == "zfs_monitor") {
                 {
@@ -4662,6 +4668,47 @@ private fun MonitoringApp(
         )
     }
 
+    if (showStockLoadsDialog) {
+        AlertDialog(
+            onDismissRequest = { showStockLoadsDialog = false },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "📦 Загрузка остатков 1С",
+                        modifier = Modifier.weight(1f),
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(onClick = { showStockLoadsDialog = false }) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Закрыть сведения о загрузке остатков"
+                        )
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (state.message.isNotBlank() && state.messageSource == "global") {
+                        Text(state.message)
+                    } else {
+                        Text("Загружаем данные о загрузке остатков…")
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
     if (showProxmoxServerAddDialog) {
         AlertDialog(
             onDismissRequest = { showProxmoxServerAddDialog = false },
@@ -6702,7 +6749,7 @@ private fun MonitoringApp(
                         Text("Загружаем список бэкапов БД…")
                     } else {
                         Text(
-                            text = "Тап по плашке БД — карточка действий\n(редактировать / вкл-выкл / удалить)",
+                            text = "Тап — список бэкапов БД, долгий тап — карточка действий\n(редактировать / вкл-выкл / удалить)",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -6729,15 +6776,11 @@ private fun MonitoringApp(
                                             .clip(RoundedCornerShape(10.dp))
                                             .combinedClickable(
                                                 onClick = {
-                                                    if (targetAction.startsWith("db_detail_") && "__" in targetAction) {
-                                                        databaseActionsTargetAction = targetAction
-                                                    } else {
-                                                        showDatabaseBackupsDialog = false
-                                                        selectedDatabaseBackupLabel = baseLabel
-                                                        selectedProxmoxBackupLabel = ""
-                                                        showProxmoxBackupStatsDialog = true
-                                                        onAction(targetAction)
-                                                    }
+                                                    showDatabaseBackupsDialog = false
+                                                    selectedDatabaseBackupLabel = baseLabel
+                                                    selectedProxmoxBackupLabel = ""
+                                                    showProxmoxBackupStatsDialog = true
+                                                    onAction(targetAction)
                                                 },
                                                 onLongClick = {
                                                     if (targetAction.startsWith("db_detail_") && "__" in targetAction) {
