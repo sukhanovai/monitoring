@@ -1,5 +1,15 @@
 # Changelog / История изменений
 
+## [8.0.4] - 2026-05-20
+
+### RU
+- Исправлено открытие меню **«⏰ Таймауты серверов»** в разделе настроек мониторинга: callback `server_timeouts` больше не игнорируется единым роутером и корректно перенаправляется в `settings_callback_handler`, отображая подменю с выбором типа сервера для редактирования таймаута.
+- Очищена сломанная конструкция `try/except` в `callback_router`: убрано дублирующее логирование `📥 CALLBACK DATA` и добавлена корректная защита от исключений в основной логике маршрутизации.
+
+### EN
+- Fixed opening the **“⏰ Server timeouts”** menu in the monitoring settings: the `server_timeouts` callback is no longer silently dropped by the unified router and is now correctly dispatched to `settings_callback_handler`, showing the submenu for selecting which server type's timeout to edit.
+- Cleaned up the broken `try/except` block in `callback_router`: removed the duplicate `📥 CALLBACK DATA` log line and properly wrapped the routing logic in exception handling.
+
 ## [8.0.3] - 2026-04-12
 
 ### RU

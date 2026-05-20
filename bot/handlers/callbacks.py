@@ -1,11 +1,11 @@
 """
 /bot/handlers/callbacks.py
-Server Monitoring System v8.0.3
+Server Monitoring System v8.0.4
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 A single router for callbacks.
 Система мониторинга серверов
-Версия: 8.0.3
+Версия: 8.0.4
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Единый router callback’ов.
@@ -138,30 +138,32 @@ def handle_server_selection_menu(update, context, action="check_single"):
         reply_markup=keyboard
     )
 
+SETTINGS_EXACT_CALLBACKS = {
+    'server_timeouts',
+    'add_chat',
+    'remove_chat',
+}
+
+
 def callback_router(update, context):
     debug_log("🧭 ROUTER MARKER v1: entered callback_router()")
     try:
-        query = update.callback_query
-        data = query.data
-
-        debug_log(f"📥 CALLBACK DATA: {data}")
-
-        # дальше ваш существующий код router...
-
+        _callback_router_impl(update, context)
     except Exception as e:
         debug_log(f"💥 callback_router crashed: {e}\n{traceback.format_exc()}")
-        # Фоллбек пользователю (чтобы видеть проблему в Telegram)
         try:
             if update.callback_query:
                 update.callback_query.answer("❌ Ошибка обработчика. Подробности в логах.", show_alert=True)
         except Exception:
             pass
-        
+
+
+def _callback_router_impl(update, context):
     query = update.callback_query
     data = query.data
 
     debug_log(f"📥 CALLBACK DATA: {data}")
-    
+
     if not check_access(update):
         deny_access(update)
         return
@@ -312,7 +314,7 @@ def callback_router(update, context):
     # ------------------------------------------------
     # НАСТРОЙКИ (settings_handlers)
     # ------------------------------------------------
-    elif data.startswith(('settings_', 'set_', 'manage_', 'ssh_', 'windows_', 'server_type_')):
+    elif data in SETTINGS_EXACT_CALLBACKS or data.startswith(('settings_', 'set_', 'manage_', 'ssh_', 'windows_', 'server_type_')):
         # settings_handlers сам разбирает все эти ветки
         settings_callback_handler(update, context)
 
