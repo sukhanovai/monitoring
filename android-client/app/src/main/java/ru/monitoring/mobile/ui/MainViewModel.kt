@@ -1382,7 +1382,7 @@ class MainViewModel(
             status
         }
 
-    // ВРЕМЕННО (8.62.27): отдельная кнопка «Проверить только сертификат».
+    // ВРЕМЕННО (8.62.28): отдельная кнопка «Проверить только сертификат».
     // Гоняет только TLS-проверку Base URL (без полной синхронизации) и шлёт
     // подробный отчёт в консоль сервера (POST /v1/mobile/diagnostics/tls),
     // чтобы диагностировать «⚪ TLS: ошибка проверки (Ошибка сети)» удалённо.
@@ -2373,6 +2373,55 @@ class MainViewModel(
         }
     }
 
+    fun fetchProxmoxHostBackups(host: String) {
+        val normalizedHost = host.trim()
+        if (normalizedHost.isBlank()) return
+        if (hasUnsavedConnectionSettings()) {
+            state = state.copy(
+                proxmoxHostBackupsHost = normalizedHost,
+                proxmoxHostBackupsText = "Сначала сохрани Base URL и токен в Настройках",
+                isProxmoxHostBackupsLoading = false
+            )
+            return
+        }
+        viewModelScope.launch {
+            state = state.copy(
+                proxmoxHostBackupsHost = normalizedHost,
+                proxmoxHostBackupsText = "",
+                isProxmoxHostBackupsLoading = true
+            )
+            runCatching {
+                currentApi().runControlAction(ControlActionRequest("backup_host_$normalizedHost"))
+            }
+                .onSuccess { response ->
+                    val text = resolveControlActionMessage(response)
+                    state = state.copy(
+                        isProxmoxHostBackupsLoading = false,
+                        proxmoxHostBackupsText = text.ifBlank { "Нет данных по этому хосту" }
+                    )
+                }
+                .onFailure { error ->
+                    val userMessage = when ((error as? HttpException)?.code()) {
+                        401 -> "HTTP 401: нет доступа. Проверь Base URL и токен в Настройках"
+                        403 -> "HTTP 403: нет прав на чтение бэкапов хоста"
+                        else -> formatNetworkError(error)
+                    }
+                    state = state.copy(
+                        isProxmoxHostBackupsLoading = false,
+                        proxmoxHostBackupsText = userMessage
+                    )
+                }
+        }
+    }
+
+    fun closeProxmoxHostBackups() {
+        state = state.copy(
+            proxmoxHostBackupsHost = "",
+            proxmoxHostBackupsText = "",
+            isProxmoxHostBackupsLoading = false
+        )
+    }
+
     private fun parseMailBackupHistory(message: String): MailBackupHistory? {
         if (message.isBlank()) return null
         val lines = message.lines().map { it.trim() }.filter { it.isNotBlank() }
@@ -3026,7 +3075,10 @@ data class MainUiState(
     val bffCertificateWarningText: String = "",
     val loadedTileIds: Set<String> = emptySet(),
     val loadingTileIds: Set<String> = emptySet(),
-    val allDataLoaded: Boolean = false
+    val allDataLoaded: Boolean = false,
+    val proxmoxHostBackupsHost: String = "",
+    val proxmoxHostBackupsText: String = "",
+    val isProxmoxHostBackupsLoading: Boolean = false
 )
 
 data class MailBackupHistoryItem(

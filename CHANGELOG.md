@@ -1,3 +1,15 @@
+## [8.62.28] - 2026-05-20
+
+### Changed
+- RU: Android: на экране «🌅 Последний отчёт» убрана кнопка «Обновить» в правом верхнем углу — обновление отчёта запрашивается только pull-to-refresh (потянуть список вниз); подсказка пустого состояния обновлена. Сам action `send_morning_report` остаётся доступен через жест и из утреннего диалога.
+- EN: Android: on the "🌅 Последний отчёт" screen the top-right "Обновить" button was removed — refreshing the report is now driven only by pull-to-refresh; the empty-state hint was reworded. The `send_morning_report` action stays available via the gesture and from the morning-report dialog.
+- RU: Android: в диалоге «💾 Бэкапы Proxmox» поведение тапа по плашке хоста разделено — короткий тап вызывает API `backup_host_<host>` и показывает список последних бэкапов хоста (как в Telegram-боте) во вспомогательном диалоге без потери списка хостов в фоне; длинный тап оставлен за карточкой действий (редактировать / вкл-выкл / удалить). Подсказка в шапке диалога переписана под новое поведение.
+- EN: Android: in the "💾 Бэкапы Proxmox" dialog the host-tile tap was split — a short tap calls `backup_host_<host>` and shows the host's latest backups list (mirroring the Telegram-bot view) in a sub-dialog without resetting the underlying host list; a long press keeps opening the actions card (edit / toggle / delete). The dialog's hint text was updated to match.
+- RU: Android: плашка «Режим» в оперативном центре теперь показывает не только режим (авто/принуд.), но и текущее состояние — `🔇 тихо`, `🔊 громко`, `🔇 авто`, `🔊 авто`. Строка `Сейчас: …` из шапки оперативного центра убрана, чтобы не дублировать ту же информацию.
+- EN: Android: the "Режим" tile in the operational center now displays not only the mode (auto/forced) but also the current effective state — `🔇 тихо`, `🔊 громко`, `🔇 авто`, `🔊 авто`. The `Сейчас: …` line in the operational-center header was removed to avoid duplicating the same information.
+- RU: SemVer patch-бамп до `8.62.28`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.28`, `ANDROID_VERSION_CODE=790`).
+- EN: SemVer patch bump to `8.62.28`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.28`, `ANDROID_VERSION_CODE=790`).
+
 ## [8.62.27] - 2026-05-20
 
 ### Fixed

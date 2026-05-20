@@ -1664,6 +1664,8 @@ class MainActivity : ComponentActivity() {
                     onThemeModeChanged = vm::setThemeMode,
                     onMorningNotificationsEnabledChanged = vm::setMorningReportNotificationsEnabled,
                     onMarkMorningReportRead = vm::markMorningReportRead,
+                    onFetchProxmoxHostBackups = vm::fetchProxmoxHostBackups,
+                    onCloseProxmoxHostBackups = vm::closeProxmoxHostBackups,
                     onOpenUpdateUrl = { url ->
                         if (url.isNotBlank()) {
                             runCatching {
@@ -1784,6 +1786,8 @@ private fun MonitoringApp(
     onThemeModeChanged: (String) -> Unit,
     onMorningNotificationsEnabledChanged: (Boolean) -> Unit,
     onMarkMorningReportRead: () -> Unit,
+    onFetchProxmoxHostBackups: (String) -> Unit,
+    onCloseProxmoxHostBackups: () -> Unit,
     onOpenUpdateUrl: (String) -> Unit
 ) {
     val isCompactOpsHub = BuildConfig.IS_COMPACT_OPS_HUB
@@ -2231,8 +2235,10 @@ private fun MonitoringApp(
         onAction(nextModeAction)
     }
     val silentModeShortStatus = when {
-        state.silentStatusText.contains("Принудительно тих", ignoreCase = true) -> "тихо"
-        state.silentStatusText.contains("Принудительно громк", ignoreCase = true) -> "громко"
+        state.silentStatusText.contains("Принудительно тих", ignoreCase = true) -> "🔇 тихо"
+        state.silentStatusText.contains("Принудительно громк", ignoreCase = true) -> "🔊 громко"
+        state.silentStatusText.contains("сейчас тих", ignoreCase = true) -> "🔇 авто"
+        state.silentStatusText.contains("сейчас громк", ignoreCase = true) -> "🔊 авто"
         state.silentStatusText.contains("авто", ignoreCase = true) -> "авто"
         else -> "..."
     }
@@ -2627,20 +2633,11 @@ private fun MonitoringApp(
                                     .verticalScroll(rememberScrollState()),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        "🌅 Последний отчёт",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 20.sp
-                                    )
-                                    Button(onClick = { onAction("send_morning_report") }) {
-                                        Text("Обновить")
-                                    }
-                                }
+                                Text(
+                                    "🌅 Последний отчёт",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 20.sp
+                                )
                                 if (state.morningReportText.isNotBlank()) {
                                     Text(state.morningReportText)
                                     if (state.morningReportReceivedAt.isNotBlank()) {
@@ -2651,7 +2648,7 @@ private fun MonitoringApp(
                                         )
                                     }
                                 } else {
-                                    Text("Отчёт ещё не получен. Нажми «Обновить» или потяни список вниз.")
+                                    Text("Отчёт ещё не получен. Потяни список вниз, чтобы запросить.")
                                 }
                             }
                             PullRefreshIndicator(
@@ -2719,11 +2716,6 @@ private fun MonitoringApp(
                                     synchronizationText,
                                     style = MaterialTheme.typography.labelSmall,
                                     color = synchronizationColor
-                                )
-                                Text(
-                                    "Сейчас: ${state.silentStatusText}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 if (state.isSyncInProgress) {
                                     Spacer(modifier = Modifier.height(6.dp))
@@ -5973,7 +5965,8 @@ private fun MonitoringApp(
                         Text("Загружаем список бэкапов Proxmox…")
                     } else {
                         Text(
-                            text = "Тап по плашке хоста — карточка действий\n(редактировать / вкл-выкл / удалить)",
+                            text = "Тап по плашке хоста — список бэкапов\n" +
+                                "Долгий тап — карточка действий (редактировать / вкл-выкл / удалить)",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -6002,7 +5995,7 @@ private fun MonitoringApp(
                                                         .removePrefix("backup_host_")
                                                         .trim()
                                                     if (hostName.isNotBlank()) {
-                                                        proxmoxHostActionsTargetKey = hostName
+                                                        onFetchProxmoxHostBackups(hostName)
                                                     }
                                                 },
                                                 onLongClick = {
@@ -6979,6 +6972,58 @@ private fun MonitoringApp(
                     Text("Отмена")
                 }
             }
+        )
+    }
+
+    if (state.proxmoxHostBackupsHost.isNotBlank()) {
+        AlertDialog(
+            onDismissRequest = { onCloseProxmoxHostBackups() },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "🖥️ Бэкапы ${state.proxmoxHostBackupsHost}",
+                        modifier = Modifier.weight(1f),
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(onClick = { onCloseProxmoxHostBackups() }) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Закрыть"
+                        )
+                    }
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (state.isProxmoxHostBackupsLoading) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp
+                            )
+                            Text("Загружаем список бэкапов…")
+                        }
+                    } else if (state.proxmoxHostBackupsText.isNotBlank()) {
+                        Text(state.proxmoxHostBackupsText)
+                    } else {
+                        Text("Нет данных по этому хосту")
+                    }
+                }
+            },
+            confirmButton = {}
         )
     }
 
