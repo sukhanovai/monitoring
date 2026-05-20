@@ -2884,9 +2884,6 @@ private fun MonitoringApp(
 
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    if (state.message.isNotBlank() && state.messageSource == "morning_report") {
-                        Text(state.message)
-                    }
                     if (!isCompactOpsHub) {
                         Text("Раздел системы", fontWeight = FontWeight.Bold)
                         FlowRow(

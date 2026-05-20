@@ -1,3 +1,15 @@
+## [8.62.26] - 2026-05-20
+
+### Fixed
+- RU: Android: плашка «zfs статусы» в оперативном центре корректно подтягивает сведения о здоровье пулов ZFS. Парсинг в `buildBackupTileSummary` (`MainViewModel.kt`) теперь ограничен секцией «📊 ZFS статусы» — строки из блока «💽 Свободное место ZFS» (например, `• rpool: 50G из 100G (занято 50%, ONLINE)`) больше не учитываются как пулы, и регулярка состояния ужесточена до `[A-Z_]+`, чтобы не цеплять размеры с цифрами/единицами. Если у сервера ещё нет данных по пулам, плашка показывает `0/0` без флага проблемы вместо пустой.
+- EN: Android: the "zfs статусы" tile in the operational center now correctly picks up ZFS pool health info. The parsing in `buildBackupTileSummary` (`MainViewModel.kt`) is scoped to the "📊 ZFS статусы" section — lines from the "💽 Свободное место ZFS" block (e.g. `• rpool: 50G из 100G (занято 50%, ONLINE)`) are no longer counted as pools, and the state regex was tightened to `[A-Z_]+` so size strings with digits/units stop matching. When the server has no pool data yet, the tile shows `0/0` with no problem flag instead of staying blank.
+- RU: Android: при запросе утреннего отчёта (кнопка «Обновить» на экране отчёта или действие `send_morning_report`) текст ответа больше не дублируется на главном экране оперативного центра — он отображается только на экране «🌅 Последний отчёт» и в диалоге утреннего отчёта. В `MainActivity.kt` удалён блок `if (state.messageSource == "morning_report") { Text(state.message) }` из колонки секций главного экрана.
+- EN: Android: requesting the morning report (the "Обновить" button on the report screen or the `send_morning_report` action) no longer duplicates the response text on the operational-center main screen — the report is shown only on the "🌅 Последний отчёт" screen and inside the morning-report dialog. The `if (state.messageSource == "morning_report") { Text(state.message) }` block was removed from the main-screen sections column in `MainActivity.kt`.
+
+### Changed
+- RU: SemVer patch-бамп до `8.62.26`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.26`, `ANDROID_VERSION_CODE=788`).
+- EN: SemVer patch bump to `8.62.26`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.26`, `ANDROID_VERSION_CODE=788`).
+
 ## [8.62.25] - 2026-05-20
 
 ### Changed
