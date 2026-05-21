@@ -51,6 +51,7 @@ import ru.monitoring.mobile.api.RenameWindowsTypeRequest
 import ru.monitoring.mobile.api.ServerAvailability
 import ru.monitoring.mobile.api.SettingsAuthRequest
 import ru.monitoring.mobile.api.SettingsBotRequest
+import ru.monitoring.mobile.api.SettingsMatrixBotRequest
 import ru.monitoring.mobile.api.SettingsMonitoringRequest
 import ru.monitoring.mobile.api.SettingsTimeRequest
 import ru.monitoring.mobile.api.TlsDiagnosticsRequest
