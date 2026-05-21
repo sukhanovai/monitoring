@@ -225,6 +225,12 @@ data class SettingsMatrixBotResponse(
     val settings: SettingsMatrixBotData? = null
 )
 
+data class BotConnectionTestResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val ok: Boolean = false,
+    val message: String? = null
+)
+
 data class SettingsTimeRequest(
     @Json(name = "quiet_start") val quietStart: String? = null,
     @Json(name = "quiet_end") val quietEnd: String? = null,
