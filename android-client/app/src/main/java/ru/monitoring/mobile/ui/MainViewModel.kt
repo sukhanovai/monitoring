@@ -2905,12 +2905,20 @@ class MainViewModel(
     fun testBotServerConnection() {
         viewModelScope.launch {
             Log.i(TAG_SYNC, "testBotServerConnection started")
-            state = state.copy(isLoading = true, message = "Проверяю связь с сервером бота…", messageSource = "bot_settings")
+            state = state.copy(
+                isLoading = true,
+                isTestingTelegramBot = true,
+                botConnectionTestOk = null,
+                message = "Проверяю связь с сервером бота…",
+                messageSource = "bot_settings"
+            )
             runCatching { currentApi().testTelegramBotConnection() }
                 .onSuccess { result ->
                     Log.i(TAG_SYNC, "testBotServerConnection success: ok=${result.ok}, message=${result.message}")
                     state = state.copy(
                         isLoading = false,
+                        isTestingTelegramBot = false,
+                        botConnectionTestOk = result.ok,
                         message = result.message ?: if (result.ok) "Связь с сервером бота есть" else "Нет связи с сервером бота",
                         messageSource = "bot_settings"
                     )
@@ -2919,6 +2927,8 @@ class MainViewModel(
                     Log.e(TAG_SYNC, "testBotServerConnection failed: ${error.message}", error)
                     state = state.copy(
                         isLoading = false,
+                        isTestingTelegramBot = false,
+                        botConnectionTestOk = false,
                         message = "Нет связи с сервером бота: ${formatNetworkError(error)}",
                         messageSource = "bot_settings"
                     )
@@ -2971,12 +2981,20 @@ class MainViewModel(
     fun testMatrixBotServerConnection() {
         viewModelScope.launch {
             Log.i(TAG_SYNC, "testMatrixBotServerConnection started")
-            state = state.copy(isLoading = true, message = "Проверяю связь с сервером бота…", messageSource = "matrix_bot_settings")
+            state = state.copy(
+                isLoading = true,
+                isTestingMatrixBot = true,
+                matrixBotConnectionTestOk = null,
+                message = "Проверяю связь с сервером бота…",
+                messageSource = "matrix_bot_settings"
+            )
             runCatching { currentApi().testMatrixBotConnection() }
                 .onSuccess { result ->
                     Log.i(TAG_SYNC, "testMatrixBotServerConnection success: ok=${result.ok}, message=${result.message}")
                     state = state.copy(
                         isLoading = false,
+                        isTestingMatrixBot = false,
+                        matrixBotConnectionTestOk = result.ok,
                         message = result.message ?: if (result.ok) "Связь с сервером бота есть" else "Нет связи с сервером бота",
                         messageSource = "matrix_bot_settings"
                     )
@@ -2985,6 +3003,8 @@ class MainViewModel(
                     Log.e(TAG_SYNC, "testMatrixBotServerConnection failed: ${error.message}", error)
                     state = state.copy(
                         isLoading = false,
+                        isTestingMatrixBot = false,
+                        matrixBotConnectionTestOk = false,
                         message = "Нет связи с сервером бота: ${formatNetworkError(error)}",
                         messageSource = "matrix_bot_settings"
                     )
@@ -3100,6 +3120,10 @@ data class MainUiState(
     val isSshPasswordVisible: Boolean = false,
     val isWindowsPasswordVisible: Boolean = false,
     val isLoading: Boolean = false,
+    val isTestingTelegramBot: Boolean = false,
+    val isTestingMatrixBot: Boolean = false,
+    val botConnectionTestOk: Boolean? = null,
+    val matrixBotConnectionTestOk: Boolean? = null,
     val isSyncInProgress: Boolean = false,
     val syncProgress: Float = 0f,
     val isServerBatchCheckInProgress: Boolean = false,

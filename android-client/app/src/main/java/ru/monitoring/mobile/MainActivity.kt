@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.background
@@ -1516,6 +1517,60 @@ private fun SettingsActionButton(
         )
     ) {
         Text(text = label, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+private fun BotConnectionTestButton(
+    label: String,
+    isTesting: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Button(
+        onClick = onClick,
+        enabled = !isTesting,
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+        )
+    ) {
+        if (isTesting) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(16.dp),
+                strokeWidth = 2.dp,
+                color = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(text = "Проверяю связь…", fontWeight = FontWeight.SemiBold)
+        } else {
+            Text(text = label, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+@Composable
+private fun BotSettingsMessageCard(
+    message: String,
+    isTesting: Boolean,
+    testOk: Boolean?
+) {
+    val (container, content) = when {
+        isTesting || testOk == null -> MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
+        testOk -> MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer
+        else -> MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.onErrorContainer
+    }
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.elevatedCardColors(containerColor = container, contentColor = content)
+    ) {
+        Text(
+            text = message,
+            modifier = Modifier.padding(12.dp),
+            fontWeight = FontWeight.SemiBold
+        )
     }
 }
 
@@ -3194,11 +3249,12 @@ private fun MonitoringApp(
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             SettingsActionButton(label = "Добавить chat_id", onClick = onAddTelegramChatId)
                         }
+                        BotConnectionTestButton(
+                            label = "Проверить связь с сервером бота",
+                            isTesting = state.isTestingTelegramBot,
+                            onClick = onTestBotServerConnection
+                        )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            SettingsActionButton(
-                                label = "Проверить связь с сервером бота",
-                                onClick = onTestBotServerConnection
-                            )
                             SettingsActionButton(
                                 label = "Сохранить bot",
                                 onClick = onSaveBot,
@@ -3206,7 +3262,11 @@ private fun MonitoringApp(
                             )
                         }
                         if (state.message.isNotBlank() && state.messageSource == "bot_settings") {
-                            Text(state.message)
+                            BotSettingsMessageCard(
+                                message = state.message,
+                                isTesting = state.isTestingTelegramBot,
+                                testOk = state.botConnectionTestOk
+                            )
                         }
                         }
 
@@ -3236,11 +3296,12 @@ private fun MonitoringApp(
                             label = { Text("matrix_room_id") },
                             modifier = Modifier.fillMaxWidth()
                         )
+                        BotConnectionTestButton(
+                            label = "Проверить связь с сервером бота",
+                            isTesting = state.isTestingMatrixBot,
+                            onClick = onTestMatrixBotServerConnection
+                        )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            SettingsActionButton(
-                                label = "Проверить связь с сервером бота",
-                                onClick = onTestMatrixBotServerConnection
-                            )
                             SettingsActionButton(
                                 label = "Сохранить matrix",
                                 onClick = onSaveMatrixBot,
@@ -3248,7 +3309,11 @@ private fun MonitoringApp(
                             )
                         }
                         if (state.message.isNotBlank() && state.messageSource == "matrix_bot_settings") {
-                            Text(state.message)
+                            BotSettingsMessageCard(
+                                message = state.message,
+                                isTesting = state.isTestingMatrixBot,
+                                testOk = state.matrixBotConnectionTestOk
+                            )
                         }
                         }
 
