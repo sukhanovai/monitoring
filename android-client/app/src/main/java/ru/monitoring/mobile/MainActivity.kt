@@ -74,6 +74,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -97,6 +99,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -1596,6 +1599,35 @@ private fun SettingsDangerButton(
 }
 
 @Composable
+private fun AuthSummaryChip(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.clip(RoundedCornerShape(12.dp)),
+        color = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        tonalElevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+        ) {
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                value,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 14.sp
+            )
+        }
+    }
+}
+
+@Composable
 private fun SettingsSectionTile(
     label: String,
     onClick: () -> Unit,
@@ -1908,9 +1940,14 @@ private fun MonitoringApp(
     var isManagementExpanded by rememberSaveable { mutableStateOf(false) }
     var isSshAuthExpanded by rememberSaveable { mutableStateOf(false) }
     var isWindowsAuthExpanded by rememberSaveable { mutableStateOf(false) }
-    var showWindowsAll by rememberSaveable { mutableStateOf(false) }
-    var showWindowsByType by rememberSaveable { mutableStateOf(false) }
-    var showWindowsTypeStats by rememberSaveable { mutableStateOf(false) }
+    var authWindowsTab by rememberSaveable { mutableStateOf("accounts") }
+    var windowsCredFilterType by rememberSaveable { mutableStateOf("") }
+    var isAddWindowsCredOpen by rememberSaveable { mutableStateOf(false) }
+    var isCreateWindowsTypeOpen by rememberSaveable { mutableStateOf(false) }
+    var isMergeWindowsTypesOpen by rememberSaveable { mutableStateOf(false) }
+    var windowsCredDeleteConfirmId by rememberSaveable { mutableStateOf(-1) }
+    var windowsTypeDeleteConfirmName by rememberSaveable { mutableStateOf("") }
+    var windowsTypeRenameSource by rememberSaveable { mutableStateOf("") }
     var showServerAvailabilityDialog by rememberSaveable { mutableStateOf(false) }
     var showServerAddDialog by rememberSaveable { mutableStateOf(false) }
     var serverActionsTargetKey by rememberSaveable { mutableStateOf("") }
@@ -3839,193 +3876,553 @@ private fun MonitoringApp(
                         }
 
                         if (settingsSection == "auth") {
-                        Text("🔐 Настройки аутентификации", fontWeight = FontWeight.Bold)
-                            Text("SSH аутентификация:", fontWeight = FontWeight.Bold)
-                            Text("• Пользователь: ${state.sshUsernameInput.ifBlank { "root" }}")
-                            Text("• Путь к ключу: ${state.sshKeyPathInput.ifBlank { "/root/.ssh/id_rsa" }}")
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text("Windows аутентификация:", fontWeight = FontWeight.Bold)
-                            Text("• Учетных записей: $windowsTotal")
-                            Text("• Типов серверов: $windowsTypes")
-
-                            SettingsActionButton(
-                                onClick = { isSshAuthExpanded = !isSshAuthExpanded },
-                                modifier = Modifier.fillMaxWidth(),
-                                label = "👤 SSH аутентификация"
+                            val knownTypes = remember(state.windowsCredentials, state.windowsTypes) {
+                                (state.windowsTypes.map { it.name } + windowsByType.keys)
+                                    .filter { it.isNotBlank() }
+                                    .distinct()
+                                    .sorted()
+                            }
+                            val activeFilterType = windowsCredFilterType
+                            val filteredCredentials = remember(state.windowsCredentials, activeFilterType) {
+                                if (activeFilterType.isBlank()) {
+                                    state.windowsCredentials
+                                } else {
+                                    state.windowsCredentials.filter { (it.serverType ?: "default") == activeFilterType }
+                                }
+                            }.sortedWith(
+                                compareByDescending<ru.monitoring.mobile.api.WindowsCredential> { it.priority ?: 0 }
+                                    .thenBy { it.username ?: "" }
                             )
-                            if (isSshAuthExpanded) {
-                                OutlinedTextField(
-                                    value = state.sshUsernameInput,
-                                    onValueChange = onSshUsernameChanged,
-                                    label = { Text("SSH пользователь") },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                                OutlinedTextField(
-                                    value = state.sshKeyPathInput,
-                                    onValueChange = onSshKeyPathChanged,
-                                    label = { Text("Путь к SSH ключу") },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                                SettingsActionButton(
-                                    label = "Сохранить SSH",
-                                    onClick = onSaveAuth,
-                                    enabled = canSaveAuth
-                                )
+
+                            // Summary card with quick stats
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(16.dp)),
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(14.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(
+                                        "🔐 Учётные записи",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 16.sp
+                                    )
+                                    FlowRow(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        AuthSummaryChip(
+                                            label = "SSH",
+                                            value = state.sshUsernameInput.ifBlank { "root" }
+                                        )
+                                        AuthSummaryChip(
+                                            label = "Windows-записей",
+                                            value = windowsTotal.toString()
+                                        )
+                                        AuthSummaryChip(
+                                            label = "Типов",
+                                            value = windowsTypes.toString()
+                                        )
+                                    }
+                                }
                             }
 
-                            SettingsActionButton(
-                                onClick = { isWindowsAuthExpanded = !isWindowsAuthExpanded },
-                                modifier = Modifier.fillMaxWidth(),
-                                label = "🖥 Windows аутентификация"
-                            )
-                            if (isWindowsAuthExpanded) {
-                                SettingsActionButton(
-                                    onClick = { showWindowsAll = !showWindowsAll },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    label = "👥 Просмотр всех учетных записей"
-                                )
-                                if (showWindowsAll) {
-                                    state.windowsCredentials.forEach { cred ->
-                                        ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                                            Column(modifier = Modifier.padding(10.dp)) {
-                                                Text("🟢 ${cred.serverType ?: "default"} (приоритет: ${cred.priority ?: 0})")
-                                                Text("Пользователь: ${cred.username ?: "-"}")
-                                                Text("ID: ${cred.id ?: "-"}")
-                                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                                    SettingsDangerButton(
-                                                        label = "Удалить",
-                                                        onClick = { onRemoveWindowsCredential(cred.id) }
+                            // SSH section
+                            ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                                Column(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { isSshAuthExpanded = !isSshAuthExpanded },
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text("👤 SSH-доступ к Linux", fontWeight = FontWeight.Bold)
+                                            Text(
+                                                "${state.sshUsernameInput.ifBlank { "root" }} · ${state.sshKeyPathInput.ifBlank { "/root/.ssh/id_rsa" }}",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        Icon(
+                                            imageVector = if (isSshAuthExpanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                                            contentDescription = if (isSshAuthExpanded) "Свернуть SSH" else "Развернуть SSH"
+                                        )
+                                    }
+                                    if (isSshAuthExpanded) {
+                                        OutlinedTextField(
+                                            value = state.sshUsernameInput,
+                                            onValueChange = onSshUsernameChanged,
+                                            label = { Text("SSH пользователь") },
+                                            placeholder = { Text("root") },
+                                            singleLine = true,
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                        OutlinedTextField(
+                                            value = state.sshKeyPathInput,
+                                            onValueChange = onSshKeyPathChanged,
+                                            label = { Text("Путь к SSH ключу") },
+                                            placeholder = { Text("/root/.ssh/id_rsa") },
+                                            singleLine = true,
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                        SettingsActionButton(
+                                            label = "Сохранить SSH",
+                                            onClick = onSaveAuth,
+                                            enabled = canSaveAuth,
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Windows section
+                            ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                                Column(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { isWindowsAuthExpanded = !isWindowsAuthExpanded },
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text("🖥 Windows-учётки", fontWeight = FontWeight.Bold)
+                                            Text(
+                                                "$windowsTotal записей · $windowsTypes типов серверов",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        Icon(
+                                            imageVector = if (isWindowsAuthExpanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                                            contentDescription = if (isWindowsAuthExpanded) "Свернуть Windows" else "Развернуть Windows"
+                                        )
+                                    }
+                                    if (isWindowsAuthExpanded) {
+                                        // Tab switcher
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            FilterChip(
+                                                selected = authWindowsTab == "accounts",
+                                                onClick = { authWindowsTab = "accounts" },
+                                                label = { Text("👥 Записи ($windowsTotal)") },
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            FilterChip(
+                                                selected = authWindowsTab == "types",
+                                                onClick = { authWindowsTab = "types" },
+                                                label = { Text("📂 Типы ($windowsTypes)") },
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                        }
+
+                                        if (authWindowsTab == "accounts") {
+                                            // Filter by type
+                                            if (knownTypes.isNotEmpty()) {
+                                                FlowRow(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                                ) {
+                                                    FilterChip(
+                                                        selected = activeFilterType.isBlank(),
+                                                        onClick = { windowsCredFilterType = "" },
+                                                        label = { Text("все") }
                                                     )
+                                                    knownTypes.forEach { type ->
+                                                        val count = windowsByType[type]?.size ?: 0
+                                                        FilterChip(
+                                                            selected = activeFilterType == type,
+                                                            onClick = { windowsCredFilterType = type },
+                                                            label = { Text("$type ($count)") }
+                                                        )
+                                                    }
+                                                }
+                                            }
+
+                                            // Account cards
+                                            if (filteredCredentials.isEmpty()) {
+                                                Text(
+                                                    if (state.windowsCredentials.isEmpty()) {
+                                                        "Учётных записей пока нет. Добавьте первую кнопкой ниже."
+                                                    } else {
+                                                        "В типе «${activeFilterType.ifBlank { "—" }}» нет записей."
+                                                    },
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            } else {
+                                                filteredCredentials.forEach { cred ->
+                                                    Surface(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .clip(RoundedCornerShape(12.dp)),
+                                                        color = MaterialTheme.colorScheme.surfaceVariant,
+                                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    ) {
+                                                        Row(
+                                                            modifier = Modifier
+                                                                .fillMaxWidth()
+                                                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                                                            verticalAlignment = Alignment.CenterVertically,
+                                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                                        ) {
+                                                            Column(modifier = Modifier.weight(1f)) {
+                                                                Text(
+                                                                    cred.username ?: "—",
+                                                                    fontWeight = FontWeight.SemiBold
+                                                                )
+                                                                Text(
+                                                                    "тип: ${cred.serverType ?: "default"} · приоритет: ${cred.priority ?: 0}",
+                                                                    style = MaterialTheme.typography.labelSmall
+                                                                )
+                                                            }
+                                                            IconButton(
+                                                                onClick = {
+                                                                    val id = cred.id
+                                                                    if (id != null) windowsCredDeleteConfirmId = id
+                                                                }
+                                                            ) {
+                                                                Icon(
+                                                                    imageVector = Icons.Filled.Delete,
+                                                                    contentDescription = "Удалить учётку ${cred.username ?: ""}",
+                                                                    tint = MaterialTheme.colorScheme.error
+                                                                )
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            // Add account form
+                                            Surface(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .clip(RoundedCornerShape(12.dp)),
+                                                color = MaterialTheme.colorScheme.secondaryContainer,
+                                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                            ) {
+                                                Column(
+                                                    modifier = Modifier.padding(12.dp),
+                                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                                ) {
+                                                    Row(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .clickable { isAddWindowsCredOpen = !isAddWindowsCredOpen },
+                                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        Text("➕ Добавить учётку", fontWeight = FontWeight.Bold)
+                                                        Icon(
+                                                            imageVector = if (isAddWindowsCredOpen) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                                                            contentDescription = null
+                                                        )
+                                                    }
+                                                    if (isAddWindowsCredOpen) {
+                                                        OutlinedTextField(
+                                                            value = state.windowsCredUsernameInput,
+                                                            onValueChange = onWindowsCredUsernameChanged,
+                                                            label = { Text("Пользователь") },
+                                                            singleLine = true,
+                                                            modifier = Modifier.fillMaxWidth()
+                                                        )
+                                                        OutlinedTextField(
+                                                            value = state.windowsCredPasswordInput,
+                                                            onValueChange = onWindowsCredPasswordChanged,
+                                                            label = { Text("Пароль") },
+                                                            modifier = Modifier.fillMaxWidth(),
+                                                            singleLine = true,
+                                                            visualTransformation = if (state.isWindowsPasswordVisible) VisualTransformation.None else hiddenTransformation,
+                                                            trailingIcon = {
+                                                                TextButton(onClick = onToggleWindowsPasswordVisibility) {
+                                                                    Text(if (state.isWindowsPasswordVisible) "Скрыть" else "Показать")
+                                                                }
+                                                            }
+                                                        )
+                                                        OutlinedTextField(
+                                                            value = state.windowsCredServerTypeInput,
+                                                            onValueChange = onWindowsCredServerTypeChanged,
+                                                            label = { Text("Тип серверов") },
+                                                            placeholder = { Text("default") },
+                                                            singleLine = true,
+                                                            modifier = Modifier.fillMaxWidth()
+                                                        )
+                                                        if (knownTypes.isNotEmpty()) {
+                                                            Text(
+                                                                "выбрать существующий:",
+                                                                style = MaterialTheme.typography.labelSmall
+                                                            )
+                                                            FlowRow(
+                                                                modifier = Modifier.fillMaxWidth(),
+                                                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                                                            ) {
+                                                                knownTypes.forEach { type ->
+                                                                    FilterChip(
+                                                                        selected = state.windowsCredServerTypeInput == type,
+                                                                        onClick = { onWindowsCredServerTypeChanged(type) },
+                                                                        label = { Text(type) }
+                                                                    )
+                                                                }
+                                                            }
+                                                        }
+                                                        OutlinedTextField(
+                                                            value = state.windowsCredPriorityInput,
+                                                            onValueChange = onWindowsCredPriorityChanged,
+                                                            label = { Text("Приоритет (0 — выше)") },
+                                                            singleLine = true,
+                                                            modifier = Modifier.fillMaxWidth()
+                                                        )
+                                                        SettingsActionButton(
+                                                            label = "Добавить",
+                                                            onClick = onAddWindowsCredential,
+                                                            modifier = Modifier.fillMaxWidth(),
+                                                            enabled = state.windowsCredUsernameInput.isNotBlank() &&
+                                                                state.windowsCredPasswordInput.isNotBlank()
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        if (authWindowsTab == "types") {
+                                            val typesView = if (state.windowsTypes.isNotEmpty()) {
+                                                state.windowsTypes
+                                            } else {
+                                                windowsByType.keys.sorted().map { name ->
+                                                    val total = windowsByType[name]?.size ?: 0
+                                                    ru.monitoring.mobile.api.WindowsTypeItem(
+                                                        name = name,
+                                                        total = total,
+                                                        active = total,
+                                                        inactive = 0
+                                                    )
+                                                }
+                                            }
+                                            if (typesView.isEmpty()) {
+                                                Text(
+                                                    "Типов серверов ещё нет — создайте первый ниже.",
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            } else {
+                                                typesView.forEach { type ->
+                                                    val isRenaming = windowsTypeRenameSource == type.name
+                                                    Surface(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .clip(RoundedCornerShape(12.dp)),
+                                                        color = MaterialTheme.colorScheme.surfaceVariant,
+                                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    ) {
+                                                        Column(
+                                                            modifier = Modifier.padding(12.dp),
+                                                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                                                        ) {
+                                                            Row(
+                                                                modifier = Modifier.fillMaxWidth(),
+                                                                verticalAlignment = Alignment.CenterVertically,
+                                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                                            ) {
+                                                                Column(modifier = Modifier.weight(1f)) {
+                                                                    Text(type.name, fontWeight = FontWeight.SemiBold)
+                                                                    Text(
+                                                                        "${type.active}/${type.total} активных",
+                                                                        style = MaterialTheme.typography.labelSmall
+                                                                    )
+                                                                }
+                                                                TextButton(onClick = {
+                                                                    if (isRenaming) {
+                                                                        windowsTypeRenameSource = ""
+                                                                        onRenameOldTypeInputChanged("")
+                                                                        onRenameNewTypeInputChanged("")
+                                                                    } else {
+                                                                        windowsTypeRenameSource = type.name
+                                                                        onRenameOldTypeInputChanged(type.name)
+                                                                        onRenameNewTypeInputChanged("")
+                                                                    }
+                                                                }) {
+                                                                    Text(if (isRenaming) "Отмена" else "Переименовать")
+                                                                }
+                                                                TextButton(onClick = {
+                                                                    windowsTypeDeleteConfirmName = type.name
+                                                                    onDeleteTypeInputChanged(type.name)
+                                                                }) {
+                                                                    Text(
+                                                                        "Удалить",
+                                                                        color = MaterialTheme.colorScheme.error
+                                                                    )
+                                                                }
+                                                            }
+                                                            if (isRenaming) {
+                                                                OutlinedTextField(
+                                                                    value = state.renameNewTypeInput,
+                                                                    onValueChange = onRenameNewTypeInputChanged,
+                                                                    label = { Text("Новое имя для «${type.name}»") },
+                                                                    singleLine = true,
+                                                                    modifier = Modifier.fillMaxWidth()
+                                                                )
+                                                                SettingsActionButton(
+                                                                    label = "Сохранить переименование",
+                                                                    onClick = {
+                                                                        onRenameWindowsType()
+                                                                        windowsTypeRenameSource = ""
+                                                                    },
+                                                                    modifier = Modifier.fillMaxWidth(),
+                                                                    enabled = state.renameNewTypeInput.isNotBlank() &&
+                                                                        state.renameNewTypeInput.trim() != type.name
+                                                                )
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            // Create new type
+                                            Surface(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .clip(RoundedCornerShape(12.dp)),
+                                                color = MaterialTheme.colorScheme.secondaryContainer,
+                                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                            ) {
+                                                Column(
+                                                    modifier = Modifier.padding(12.dp),
+                                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                                ) {
+                                                    Row(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .clickable { isCreateWindowsTypeOpen = !isCreateWindowsTypeOpen },
+                                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        Text("➕ Создать тип", fontWeight = FontWeight.Bold)
+                                                        Icon(
+                                                            imageVector = if (isCreateWindowsTypeOpen) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                                                            contentDescription = null
+                                                        )
+                                                    }
+                                                    if (isCreateWindowsTypeOpen) {
+                                                        OutlinedTextField(
+                                                            value = state.createWindowsTypeInput,
+                                                            onValueChange = onCreateWindowsTypeInputChanged,
+                                                            label = { Text("Имя нового типа") },
+                                                            singleLine = true,
+                                                            modifier = Modifier.fillMaxWidth()
+                                                        )
+                                                        SettingsActionButton(
+                                                            label = "Создать",
+                                                            onClick = onCreateWindowsType,
+                                                            modifier = Modifier.fillMaxWidth(),
+                                                            enabled = state.createWindowsTypeInput.isNotBlank()
+                                                        )
+                                                    }
+                                                }
+                                            }
+
+                                            // Merge types
+                                            Surface(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .clip(RoundedCornerShape(12.dp)),
+                                                color = MaterialTheme.colorScheme.secondaryContainer,
+                                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                            ) {
+                                                Column(
+                                                    modifier = Modifier.padding(12.dp),
+                                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                                ) {
+                                                    Row(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .clickable { isMergeWindowsTypesOpen = !isMergeWindowsTypesOpen },
+                                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        Text("🔀 Объединить типы", fontWeight = FontWeight.Bold)
+                                                        Icon(
+                                                            imageVector = if (isMergeWindowsTypesOpen) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                                                            contentDescription = null
+                                                        )
+                                                    }
+                                                    if (isMergeWindowsTypesOpen) {
+                                                        Text(
+                                                            "Перенесёт все учётки из исходного типа в целевой и удалит исходный.",
+                                                            style = MaterialTheme.typography.labelSmall
+                                                        )
+                                                        OutlinedTextField(
+                                                            value = state.mergeSourceTypeInput,
+                                                            onValueChange = onMergeSourceTypeInputChanged,
+                                                            label = { Text("Исходный тип") },
+                                                            singleLine = true,
+                                                            modifier = Modifier.fillMaxWidth()
+                                                        )
+                                                        if (knownTypes.isNotEmpty()) {
+                                                            FlowRow(
+                                                                modifier = Modifier.fillMaxWidth(),
+                                                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                                                            ) {
+                                                                knownTypes.forEach { type ->
+                                                                    FilterChip(
+                                                                        selected = state.mergeSourceTypeInput == type,
+                                                                        onClick = { onMergeSourceTypeInputChanged(type) },
+                                                                        label = { Text(type) }
+                                                                    )
+                                                                }
+                                                            }
+                                                        }
+                                                        OutlinedTextField(
+                                                            value = state.mergeTargetTypeInput,
+                                                            onValueChange = onMergeTargetTypeInputChanged,
+                                                            label = { Text("Целевой тип") },
+                                                            singleLine = true,
+                                                            modifier = Modifier.fillMaxWidth()
+                                                        )
+                                                        if (knownTypes.isNotEmpty()) {
+                                                            FlowRow(
+                                                                modifier = Modifier.fillMaxWidth(),
+                                                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                                                            ) {
+                                                                knownTypes.forEach { type ->
+                                                                    FilterChip(
+                                                                        selected = state.mergeTargetTypeInput == type,
+                                                                        onClick = { onMergeTargetTypeInputChanged(type) },
+                                                                        label = { Text(type) }
+                                                                    )
+                                                                }
+                                                            }
+                                                        }
+                                                        SettingsActionButton(
+                                                            label = "Объединить",
+                                                            onClick = onMergeWindowsTypes,
+                                                            modifier = Modifier.fillMaxWidth(),
+                                                            enabled = state.mergeSourceTypeInput.isNotBlank() &&
+                                                                state.mergeTargetTypeInput.isNotBlank() &&
+                                                                state.mergeSourceTypeInput != state.mergeTargetTypeInput
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }
                                     }
-                                }
-
-                                Text("➕ Добавить учетную запись", fontWeight = FontWeight.Bold)
-                                OutlinedTextField(
-                                    value = state.windowsCredUsernameInput,
-                                    onValueChange = onWindowsCredUsernameChanged,
-                                    label = { Text("Пользователь") },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                                OutlinedTextField(
-                                    value = state.windowsCredPasswordInput,
-                                    onValueChange = onWindowsCredPasswordChanged,
-                                    label = { Text("Пароль") },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    visualTransformation = if (state.isWindowsPasswordVisible) VisualTransformation.None else hiddenTransformation,
-                                    trailingIcon = {
-                                        TextButton(onClick = onToggleWindowsPasswordVisibility) {
-                                            Text(if (state.isWindowsPasswordVisible) "Скрыть" else "Показать")
-                                        }
-                                    }
-                                )
-                                OutlinedTextField(
-                                    value = state.windowsCredServerTypeInput,
-                                    onValueChange = onWindowsCredServerTypeChanged,
-                                    label = { Text("Тип серверов") },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                                OutlinedTextField(
-                                    value = state.windowsCredPriorityInput,
-                                    onValueChange = onWindowsCredPriorityChanged,
-                                    label = { Text("Приоритет") },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                                SettingsActionButton(
-                                    label = "Добавить учетную запись",
-                                    onClick = onAddWindowsCredential
-                                )
-
-                                SettingsActionButton(
-                                    onClick = { showWindowsByType = !showWindowsByType },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    label = "📊 Учетные данные по типам"
-                                )
-                                if (showWindowsByType) {
-                                    windowsByType.forEach { (serverType, creds) ->
-                                        Text("$serverType (${creds.size} учетных записей):", fontWeight = FontWeight.Bold)
-                                        creds.take(3).forEach { cred ->
-                                            Text("• ${cred.username ?: "-"} (приоритет: ${cred.priority ?: 0})")
-                                        }
-                                        if (creds.size > 3) {
-                                            Text("... и еще ${creds.size - 3}")
-                                        }
-                                    }
-                                }
-
-                                SettingsActionButton(
-                                    onClick = { showWindowsTypeStats = !showWindowsTypeStats },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    label = "⚙️ Управление типами серверов"
-                                )
-                                if (showWindowsTypeStats) {
-                                    Text("Существующие типы:", fontWeight = FontWeight.Bold)
-                                    if (state.windowsTypes.isNotEmpty()) {
-                                        state.windowsTypes.forEach { type ->
-                                            Text("• ${type.name}: ${type.active}/${type.total} активных учетных записей")
-                                        }
-                                    } else {
-                                        windowsByType.keys.sorted().forEach { type ->
-                                            val total = windowsByType[type]?.size ?: 0
-                                            Text("• $type: $total/$total активных учетных записей")
-                                        }
-                                    }
-
-                                    Text("Создать новый тип", fontWeight = FontWeight.Bold)
-                                    OutlinedTextField(
-                                        value = state.createWindowsTypeInput,
-                                        onValueChange = onCreateWindowsTypeInputChanged,
-                                        label = { Text("Имя нового типа") },
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                    SettingsActionButton(label = "Создать тип", onClick = onCreateWindowsType)
-
-                                    Text("Переименовать тип", fontWeight = FontWeight.Bold)
-                                    OutlinedTextField(
-                                        value = state.renameOldTypeInput,
-                                        onValueChange = onRenameOldTypeInputChanged,
-                                        label = { Text("Старое имя типа") },
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                    OutlinedTextField(
-                                        value = state.renameNewTypeInput,
-                                        onValueChange = onRenameNewTypeInputChanged,
-                                        label = { Text("Новое имя типа") },
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                    SettingsActionButton(label = "Переименовать", onClick = onRenameWindowsType)
-
-                                    Text("Объединить типы", fontWeight = FontWeight.Bold)
-                                    OutlinedTextField(
-                                        value = state.mergeSourceTypeInput,
-                                        onValueChange = onMergeSourceTypeInputChanged,
-                                        label = { Text("Source type") },
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                    OutlinedTextField(
-                                        value = state.mergeTargetTypeInput,
-                                        onValueChange = onMergeTargetTypeInputChanged,
-                                        label = { Text("Target type") },
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                    SettingsActionButton(label = "Объединить", onClick = onMergeWindowsTypes)
-
-                                    Text("Удалить тип", fontWeight = FontWeight.Bold)
-                                    OutlinedTextField(
-                                        value = state.deleteTypeInput,
-                                        onValueChange = onDeleteTypeInputChanged,
-                                        label = { Text("Удаляемый тип") },
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                    OutlinedTextField(
-                                        value = state.deleteTargetTypeInput,
-                                        onValueChange = onDeleteTargetTypeInputChanged,
-                                        label = { Text("Перенести в тип (target)") },
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                    SettingsDangerButton(label = "Удалить тип", onClick = onDeleteWindowsType)
                                 }
                             }
                         }
@@ -7515,6 +7912,83 @@ private fun MonitoringApp(
                 TextButton(onClick = { serverDeleteConfirmTargetKey = "" }) {
                     Text("Отмена")
                 }
+            }
+        )
+    }
+
+    if (windowsCredDeleteConfirmId >= 0) {
+        val cred = state.windowsCredentials.firstOrNull { it.id == windowsCredDeleteConfirmId }
+        AlertDialog(
+            onDismissRequest = { windowsCredDeleteConfirmId = -1 },
+            title = { Text("Удалить учётку?") },
+            text = {
+                Text(
+                    "Учётная запись «${cred?.username ?: "—"}» (${cred?.serverType ?: "default"}) " +
+                        "будет удалена без возможности восстановления."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val id = windowsCredDeleteConfirmId
+                    windowsCredDeleteConfirmId = -1
+                    onRemoveWindowsCredential(id)
+                }) { Text("Удалить") }
+            },
+            dismissButton = {
+                TextButton(onClick = { windowsCredDeleteConfirmId = -1 }) { Text("Отмена") }
+            }
+        )
+    }
+
+    if (windowsTypeDeleteConfirmName.isNotBlank()) {
+        val typeName = windowsTypeDeleteConfirmName
+        val availableTargets = remember(state.windowsTypes, state.windowsCredentials, typeName) {
+            (state.windowsTypes.map { it.name } + state.windowsCredentials.mapNotNull { it.serverType })
+                .filter { it.isNotBlank() && it != typeName }
+                .distinct()
+                .sorted()
+        }
+        AlertDialog(
+            onDismissRequest = { windowsTypeDeleteConfirmName = "" },
+            title = { Text("Удалить тип «$typeName»?") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Все учётки этого типа будут перенесены в указанный целевой тип.")
+                    OutlinedTextField(
+                        value = state.deleteTargetTypeInput,
+                        onValueChange = onDeleteTargetTypeInputChanged,
+                        label = { Text("Целевой тип") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (availableTargets.isNotEmpty()) {
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            availableTargets.forEach { target ->
+                                FilterChip(
+                                    selected = state.deleteTargetTypeInput == target,
+                                    onClick = { onDeleteTargetTypeInputChanged(target) },
+                                    label = { Text(target) }
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDeleteWindowsType()
+                        windowsTypeDeleteConfirmName = ""
+                    },
+                    enabled = state.deleteTargetTypeInput.isNotBlank() &&
+                        state.deleteTargetTypeInput != typeName
+                ) { Text("Удалить") }
+            },
+            dismissButton = {
+                TextButton(onClick = { windowsTypeDeleteConfirmName = "" }) { Text("Отмена") }
             }
         )
     }
