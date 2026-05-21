@@ -1,11 +1,11 @@
 """
 /lib/matrix_commands.py
-Server Monitoring System v8.62.41
+Server Monitoring System v8.62.42
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Incoming commands from Matrix (sync + router + ACL + audit + reaction buttons + E2EE).
 Система мониторинга серверов
-Версия: 8.62.41
+Версия: 8.62.42
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Входящие команды из Matrix (sync + router + ACL + аудит + кнопки-реакции + E2EE).
@@ -133,8 +133,7 @@ class ExtensionMenuItem:
 
 
 # Порядок определяет порядок строк и кнопок-реакций в подменю.
-# Расширения без headless-данных (snapshot_transfer_monitor,
-# email_processor) сюда не входят: им нечего показать командой.
+# Расширение email_processor сюда не входит: ему нечего показать командой.
 EXTENSION_MENU_ITEMS: List[ExtensionMenuItem] = [
     ExtensionMenuItem(
         "resource_monitor", "📊", "!resources",
@@ -163,6 +162,10 @@ EXTENSION_MENU_ITEMS: List[ExtensionMenuItem] = [
     ExtensionMenuItem(
         "zfs_pool_free_space_monitor", "💽", "!zfsfree",
         "свободное место ZFS (SSH)", "_handle_ext_zfs_free",
+    ),
+    ExtensionMenuItem(
+        "snapshot_transfer_monitor", "📸", "!snapshots",
+        "передачи ZFS-снэпшотов", "_handle_ext_snapshot_transfer",
     ),
     ExtensionMenuItem(
         "supplier_stock_files", "🏷️", "!supplier",
@@ -1446,6 +1449,98 @@ class MatrixCommandBot:
 
         results, errors = collect_zfs_pool_free_space()
         return "\n".join(build_status_lines(results, errors))
+
+    async def _handle_ext_snapshot_transfer(self) -> str:
+        import sqlite3
+
+        from config.settings import BACKUP_DB_FILE
+        from core.config_manager import config_manager
+
+        hosts_cfg = config_manager.get_setting("SNAPSHOT_TRANSFER_HOSTS", {}) or {}
+        if not isinstance(hosts_cfg, dict):
+            hosts_cfg = {}
+
+        latest_by_host: Dict[str, Tuple[str, str]] = {}
+        recent: List[Tuple[str, str, str]] = []
+        try:
+            conn = sqlite3.connect(str(BACKUP_DB_FILE))
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT host_name, status, received_at
+                FROM snapshot_transfers
+                ORDER BY datetime(received_at) DESC, id DESC
+                """
+            )
+            for host_name, status_val, received_at in cursor.fetchall():
+                host = str(host_name or "").strip()
+                status_norm = str(status_val or "").upper().strip()
+                received = str(received_at or "").strip()
+                if not host:
+                    continue
+                if host not in latest_by_host:
+                    latest_by_host[host] = (status_norm, received)
+                if len(recent) < 8:
+                    recent.append((host, status_norm or "—", received or "—"))
+        except sqlite3.OperationalError:
+            pass
+        except Exception as exc:
+            debug_log(f"⚠️ snapshot_transfer Matrix handler: {exc}")
+        finally:
+            try:
+                conn.close()  # type: ignore[name-defined]
+            except Exception:
+                pass
+
+        def _icon(status_val: str) -> str:
+            normalized = (status_val or "").upper()
+            if normalized in {"SUCCESS", "SKIPPED"}:
+                return "🟢"
+            if normalized in {"STARTED", "BUSY"}:
+                return "🟡"
+            if normalized == "ERROR":
+                return "🔴"
+            return "⚪️"
+
+        lines = ["📸 Передачи ZFS-снэпшотов", ""]
+        if not hosts_cfg:
+            lines.append("ℹ️ Список хостов передач снэпшотов пуст.")
+        else:
+            total = len(hosts_cfg)
+            ok_count = 0
+            err_count = 0
+            lines.append("📋 Хосты:")
+            for host_name in sorted(hosts_cfg.keys()):
+                host_cfg = hosts_cfg.get(host_name) or {}
+                if not isinstance(host_cfg, dict):
+                    host_cfg = {}
+                enabled = bool(host_cfg.get("enabled", True))
+                start_time = str(host_cfg.get("start_time") or "—")
+                host_state = "🟢" if enabled else "🔴"
+                latest = latest_by_host.get(host_name, ("—", "—"))
+                latest_status, received = latest
+                if latest_status in {"SUCCESS", "SKIPPED"}:
+                    ok_count += 1
+                elif latest_status == "ERROR":
+                    err_count += 1
+                lines.append(
+                    f"{host_state} {host_name} · старт {start_time} · "
+                    f"{_icon(latest_status)} {latest_status or '—'} ({received or '—'})"
+                )
+            lines.append("")
+            lines.append(
+                f"Всего хостов: {total} · 🟢 {ok_count} · 🔴 {err_count}"
+            )
+
+        if recent:
+            lines.append("")
+            lines.append("🧾 Последние распарсенные письма:")
+            for host_name, status_val, received in recent:
+                lines.append(
+                    f"{_icon(status_val)} {host_name} · {status_val} ({received})"
+                )
+
+        return "\n".join(lines)
 
     async def _handle_ext_supplier(self) -> str:
         from extensions.supplier_stock_files import summarize_supplier_stock_reports
