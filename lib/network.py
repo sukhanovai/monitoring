@@ -1,11 +1,11 @@
 """
 /lib/network.py
-Server Monitoring System v8.62.37
+Server Monitoring System v8.62.38
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Network utilities
 Система мониторинга серверов
-Версия: 8.62.37
+Версия: 8.62.38
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Сетевые утилиты

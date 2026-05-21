@@ -1,3 +1,13 @@
+## [8.62.38] - 2026-05-21
+
+### Added
+- RU: Android-приложение: в экране настроек, на плашке «🔌 BFF» появилась кнопка «Проверить связь с BFF». Раньше единственный способ убедиться, что сохранённые `Base URL API` и `Bearer токен` рабочие — это закрыть диалог настроек и нажать «Обновить» на главном экране; при ошибке причина (неверный URL, протухший токен, проблема с TLS) терялась в общем `summaryText`. Теперь кнопка отдельной строкой во всю ширину диалога дёргает `GET /v1/control/status` через текущий `currentApi()` и показывает результат в `ElevatedCard` под собой: зелёный `tertiaryContainer` с текстом «Связь с BFF установлена (monitoring=active)» при успехе, красный `errorContainer` с причиной ошибки (`HTTP 401: Unauthorized`, `timeout`, `Ошибка сети` и т.п.) при неудаче. Пока запрос в работе — кнопка disabled, со спиннером и подписью «Проверяю связь…», чтобы исключить повторные тапы.
+- EN: Android app: in the settings screen, the "🔌 BFF" tile now has a "Проверить связь с BFF" button. Previously the only way to make sure the saved `Base URL API` and `Bearer токен` actually work was to close the settings dialog and tap "Refresh" on the main screen; on failure the reason (wrong URL, expired token, TLS issue) was lost in the general `summaryText`. The button now sits on its own full-width row inside the dialog, calls `GET /v1/control/status` through the current `currentApi()` and renders the result in an `ElevatedCard` below it: a green `tertiaryContainer` saying "Связь с BFF установлена (monitoring=active)" on success, a red `errorContainer` carrying the failure reason (`HTTP 401: Unauthorized`, `timeout`, `Ошибка сети`, etc.) on failure. While the request is in flight the button is disabled and shows an inline spinner with "Проверяю связь…" to prevent double-taps.
+
+### Changed
+- RU: SemVer patch-бамп до `8.62.38`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.38`, `ANDROID_VERSION_CODE=800`).
+- EN: SemVer patch bump to `8.62.38`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.38`, `ANDROID_VERSION_CODE=800`).
+
 ## [8.62.37] - 2026-05-21
 
 ### Fixed
