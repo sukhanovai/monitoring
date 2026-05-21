@@ -95,6 +95,7 @@ class MainViewModel(
         "zfs",
         "zfs_menu",
         "zfs_pool_free_space_menu",
+        "snapshot_transfer_menu",
         "backup_hosts",
         "backup_databases",
         "backup_mail",
@@ -106,6 +107,7 @@ class MainViewModel(
         "zfs",
         "zfs_menu",
         "zfs_pool_free_space_menu",
+        "snapshot_transfer_menu",
         "backup_proxmox",
         "backup_stock_loads",
         "supplier_stock_reports",
@@ -115,6 +117,7 @@ class MainViewModel(
         Pair({ action -> action == "check_resources" }, "resource_monitor"),
         Pair({ action -> action == "zfs" || action == "zfs_menu" || action.startsWith("settings_zfs") }, "zfs_monitor"),
         Pair({ action -> action == "zfs_pool_free_space_menu" || action.startsWith("zfsp_") }, "zfs_pool_free_space_monitor"),
+        Pair({ action -> action == "snapshot_transfer_menu" || action.startsWith("snapshot_transfer_host_") }, "snapshot_transfer_monitor"),
         Pair({ action -> action == "backup_proxmox" || action.startsWith("backup_host_") }, "backup_monitor"),
         Pair({ action -> action == "backup_databases" || action.startsWith("db_detail_") }, "database_backup_monitor"),
         Pair({ action -> action.startsWith("backup_mail") }, "mail_backup_monitor"),
@@ -321,6 +324,44 @@ class MainViewModel(
             .firstOrNull { normalizeRussianText(it).contains(normalizedMarker) }
             .orEmpty()
         return backupSummaryNumberRegex.find(line)?.value?.toIntOrNull()
+    }
+
+    private fun buildSnapshotTransferTileSummary(response: ControlActionResult?): BackupTileSummary? {
+        if (response == null) return null
+
+        val message = resolveControlActionMessage(response)
+        val summaryMatch = Regex("""Всего хостов:\s*(\d+).*?🟢\s*(\d+).*?🔴\s*(\d+)""")
+            .find(message.replace("\n", " "))
+        if (summaryMatch != null) {
+            val total = summaryMatch.groupValues.getOrNull(1)?.toIntOrNull()
+            val ok = summaryMatch.groupValues.getOrNull(2)?.toIntOrNull()
+            val problems = summaryMatch.groupValues.getOrNull(3)?.toIntOrNull()
+            if (total != null && total > 0 && ok != null && problems != null) {
+                return BackupTileSummary(
+                    ratioText = "$ok/$total",
+                    hasProblem = problems > 0
+                )
+            }
+        }
+
+        val options = resolveControlActionMenuOptions(response)
+            .filter { option ->
+                val action = resolveMenuOptionAction(option)
+                action.startsWith("snapshot_transfer_host_")
+            }
+        if (options.isNotEmpty()) {
+            val problems = options.count { option ->
+                val label = option.label?.trim().orEmpty()
+                label.startsWith("🔴") || label.startsWith("⚪")
+            }
+            val total = options.size
+            val ok = (total - problems).coerceAtLeast(0)
+            return BackupTileSummary(
+                ratioText = "$ok/$total",
+                hasProblem = problems > 0
+            )
+        }
+        return null
     }
 
     private fun buildBackupTileSummary(response: ControlActionResult?): BackupTileSummary? {
@@ -611,6 +652,16 @@ class MainViewModel(
                     state = state.copy(
                         zfsPoolFreeSpaceSummary = summary?.ratioText ?: state.zfsPoolFreeSpaceSummary,
                         zfsPoolFreeSpaceHasProblemItems = summary?.hasProblem ?: state.zfsPoolFreeSpaceHasProblemItems
+                    )
+                }
+                "extension_snapshot_transfer_monitor" -> {
+                    val response = withContext(Dispatchers.IO) {
+                        runCatching { currentApi().runControlAction(ControlActionRequest("snapshot_transfer_menu")) }.getOrNull()
+                    }
+                    val summary = buildSnapshotTransferTileSummary(response)
+                    state = state.copy(
+                        snapshotTransferSummary = summary?.ratioText ?: state.snapshotTransferSummary,
+                        snapshotTransferHasProblemItems = summary?.hasProblem ?: state.snapshotTransferHasProblemItems
                     )
                 }
                 "extension_stock_load_monitor" -> {
@@ -1092,6 +1143,7 @@ class MainViewModel(
                     fetchZfsLatestStatusesResponse(zfsRoot)
                 }
                 val zfsPoolFreeSpaceSummary = fetchOrLog("runControlAction(zfs_pool_free_space_menu)") { currentApi().runControlAction(ControlActionRequest("zfs_pool_free_space_menu")) }
+                val snapshotTransferSummary = fetchOrLog("runControlAction(snapshot_transfer_menu)") { currentApi().runControlAction(ControlActionRequest("snapshot_transfer_menu")) }
                 listOf(
                     monitoring,
                     bot,
@@ -1109,7 +1161,8 @@ class MainViewModel(
                     mailBackupSummary,
                     zfsSummaryBundle,
                     zfsPoolFreeSpaceSummary,
-                    matrixBot
+                    matrixBot,
+                    snapshotTransferSummary
                 )
             }
 
@@ -1140,6 +1193,7 @@ class MainViewModel(
                 ?: buildBackupTileSummary(zfsSummaryRootResponse)
             val zfsPoolFreeSpaceSummary = buildBackupTileSummary(result[15] as? ControlActionResult)
             val matrixBot = result[16] as? ru.monitoring.mobile.api.SettingsMatrixBotResponse
+            val snapshotTransferSummary = buildSnapshotTransferTileSummary(result[17] as? ControlActionResult)
 
             val monitoringData = monitoring?.settings
             val botData = bot?.settings
@@ -1214,6 +1268,7 @@ class MainViewModel(
                 mailBackupLastVolume = mailBackupVolume ?: state.mailBackupLastVolume,
                 zfsSummary = zfsSummary?.ratioText ?: state.zfsSummary,
                 zfsPoolFreeSpaceSummary = zfsPoolFreeSpaceSummary?.ratioText ?: state.zfsPoolFreeSpaceSummary,
+                snapshotTransferSummary = snapshotTransferSummary?.ratioText ?: state.snapshotTransferSummary,
                 backupProxmoxHasProblemItems = proxmoxBackupSummary?.hasProblem ?: state.backupProxmoxHasProblemItems,
                 backupDatabasesHasProblemItems = dbBackupSummary?.hasProblem ?: state.backupDatabasesHasProblemItems,
                 backupStockLoadsHasProblemItems = stockLoadSummary?.hasProblem ?: state.backupStockLoadsHasProblemItems,
@@ -1221,6 +1276,7 @@ class MainViewModel(
                 backupMailHasProblemItems = mailBackupSummary?.hasProblem ?: state.backupMailHasProblemItems,
                 zfsHasProblemItems = zfsSummary?.hasProblem ?: state.zfsHasProblemItems,
                 zfsPoolFreeSpaceHasProblemItems = zfsPoolFreeSpaceSummary?.hasProblem ?: state.zfsPoolFreeSpaceHasProblemItems,
+                snapshotTransferHasProblemItems = snapshotTransferSummary?.hasProblem ?: state.snapshotTransferHasProblemItems,
                 monitoringStatusText = when {
                     control?.monitoringActive == true -> "🟢 Активен"
                     control?.monitoringActive == false -> "🔴 Приостановлен"
@@ -2213,7 +2269,8 @@ class MainViewModel(
                     normalizedAction.startsWith("settings_db_toggle_monitor_") ||
                     normalizedAction.startsWith("backup_mail") ||
                     normalizedAction.startsWith("supplier_stock_reports_") ||
-                    normalizedAction.startsWith("supplier_stock_report_source_day|")
+                    normalizedAction.startsWith("supplier_stock_report_source_day|") ||
+                    normalizedAction.startsWith("snapshot_transfer_host_")
                 ) {
                     runCatching { currentApi().runControlAction(ControlActionRequest(normalizedAction)) }
                         .onSuccess { response ->
@@ -2266,6 +2323,11 @@ class MainViewModel(
                             } else {
                                 null
                             }
+                            val snapshotTransferSummary = if (normalizedAction == "snapshot_transfer_menu") {
+                                buildSnapshotTransferTileSummary(response)
+                            } else {
+                                null
+                            }
                             state = state.copy(
                                 isLoading = false,
                                 message = resolveControlActionMessage(zfsPrimaryResponse).ifBlank { "Команда отправлена" },
@@ -2296,6 +2358,9 @@ class MainViewModel(
                                 zfsPoolFreeSpaceSummary = zfsPoolFreeSpaceSummary?.ratioText ?: state.zfsPoolFreeSpaceSummary,
                                 zfsPoolFreeSpaceHasProblemItems = zfsPoolFreeSpaceSummary?.hasProblem
                                     ?: state.zfsPoolFreeSpaceHasProblemItems,
+                                snapshotTransferSummary = snapshotTransferSummary?.ratioText ?: state.snapshotTransferSummary,
+                                snapshotTransferHasProblemItems = snapshotTransferSummary?.hasProblem
+                                    ?: state.snapshotTransferHasProblemItems,
                                 mailBackupLastVolume = mailHistory?.items?.firstOrNull()?.size
                                     ?: extractMailBackupVolume(resolveControlActionMessage(zfsPrimaryResponse))
                                     ?: state.mailBackupLastVolume
@@ -3186,6 +3251,7 @@ data class MainUiState(
     val mailBackupLastVolume: String = "",
     val zfsSummary: String = "",
     val zfsPoolFreeSpaceSummary: String = "",
+    val snapshotTransferSummary: String = "",
     val backupProxmoxHasProblemItems: Boolean = false,
     val backupDatabasesHasProblemItems: Boolean = false,
     val backupStockLoadsHasProblemItems: Boolean = false,
@@ -3193,6 +3259,7 @@ data class MainUiState(
     val backupMailHasProblemItems: Boolean = false,
     val zfsHasProblemItems: Boolean = false,
     val zfsPoolFreeSpaceHasProblemItems: Boolean = false,
+    val snapshotTransferHasProblemItems: Boolean = false,
     val mailBackupHistoryTitle: String = "",
     val mailBackupHistoryItems: List<MailBackupHistoryItem> = emptyList(),
     val zfsStatusMessage: String = "",

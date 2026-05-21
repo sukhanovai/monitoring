@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.62.41
+Server Monitoring System v8.62.42
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.62.41
+Версия: 8.62.42
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -1514,6 +1514,7 @@ def _execute_mobile_control_action(action: str):
         "zfs_menu",
         "zfs_free_space",
         "zfs_pool_free_space_menu",
+        "snapshot_transfer_menu",
     }
     resource_threshold_settings = {
         "set_cpu_warning": ("CPU_WARNING", "CPU предупреждение"),
@@ -1581,6 +1582,7 @@ def _execute_mobile_control_action(action: str):
         or action.startswith("zfsp_")
         or action.startswith("db_detail_")
         or action.startswith("settings_db_toggle_monitor_")
+        or action.startswith("snapshot_transfer_host_")
     ):
         from extensions.extension_manager import extension_manager
 
@@ -1593,6 +1595,7 @@ def _execute_mobile_control_action(action: str):
             "zfs": ("zfs_monitor", "🧊 Мониторинг ZFS отключён"),
             "zfs_menu": ("zfs_monitor", "🧊 Мониторинг ZFS отключён"),
             "zfs_pool_free_space_menu": ("zfs_pool_free_space_monitor", "💽 Мониторинг свободного места ZFS-пулов отключён"),
+            "snapshot_transfer_menu": ("snapshot_transfer_monitor", "📸 Мониторинг передач ZFS-снэпшотов отключён"),
         }
 
         extension_requirement = extension_requirements.get(action)
@@ -1602,6 +1605,8 @@ def _execute_mobile_control_action(action: str):
             extension_requirement = ("database_backup_monitor", "🗃️ Мониторинг бэкапов БД отключён")
         if extension_requirement is None and action.startswith("settings_db_toggle_monitor_"):
             extension_requirement = ("database_backup_monitor", "🗃️ Мониторинг бэкапов БД отключён")
+        if extension_requirement is None and action.startswith("snapshot_transfer_host_"):
+            extension_requirement = ("snapshot_transfer_monitor", "📸 Мониторинг передач ZFS-снэпшотов отключён")
         if extension_requirement is not None:
             extension_id, disabled_message = extension_requirement
             if not extension_manager.is_extension_enabled(extension_id):
@@ -1627,6 +1632,180 @@ def _execute_mobile_control_action(action: str):
             return True, status_message, "accepted", [
                 {"label": "🔄 Обновить", "action": "zfs_pool_free_space_menu"},
                 {"label": "✖️ Закрыть", "action": "close"},
+            ]
+
+        if action == "snapshot_transfer_menu":
+            from config.settings import BACKUP_DB_FILE
+            from core.config_manager import config_manager as snap_settings
+
+            hosts_cfg = snap_settings.get_setting("SNAPSHOT_TRANSFER_HOSTS", {}) or {}
+            if not isinstance(hosts_cfg, dict):
+                hosts_cfg = {}
+
+            transfer_rows: dict[str, dict[str, str]] = {}
+            recent_rows: list[tuple[str, str, str]] = []
+            try:
+                snap_conn = sqlite3.connect(str(BACKUP_DB_FILE))
+                snap_cursor = snap_conn.cursor()
+                snap_cursor.execute(
+                    """
+                    SELECT host_name, status, received_at
+                    FROM snapshot_transfers
+                    ORDER BY datetime(received_at) DESC, id DESC
+                    """
+                )
+                for host_name, transfer_status, received_at in snap_cursor.fetchall():
+                    host = str(host_name or "").strip()
+                    status_val = str(transfer_status or "").upper().strip()
+                    received = str(received_at or "").strip()
+                    if not host:
+                        continue
+                    if host not in transfer_rows:
+                        transfer_rows[host] = {
+                            "status": status_val,
+                            "received_at": received,
+                        }
+                    if len(recent_rows) < 8:
+                        recent_rows.append((host, status_val or "—", received or "—"))
+            except sqlite3.OperationalError:
+                pass
+            except Exception:
+                pass
+            finally:
+                try:
+                    snap_conn.close()  # type: ignore[name-defined]
+                except Exception:
+                    pass
+
+            def _status_icon(status_val: str) -> str:
+                normalized = (status_val or "").upper()
+                if normalized in {"SUCCESS", "SKIPPED"}:
+                    return "🟢"
+                if normalized in {"STARTED", "BUSY"}:
+                    return "🟡"
+                if normalized == "ERROR":
+                    return "🔴"
+                return "⚪️"
+
+            lines = ["📸 Передачи ZFS-снэпшотов", ""]
+            total_hosts = len(hosts_cfg)
+            ok_hosts = 0
+            problem_hosts = 0
+            menu_options: list[dict] = []
+
+            if not hosts_cfg:
+                lines.append("ℹ️ Список хостов передач снэпшотов пуст.")
+            else:
+                lines.append("📋 Хосты:")
+                for host_name in sorted(hosts_cfg.keys()):
+                    host_cfg = hosts_cfg.get(host_name) or {}
+                    if not isinstance(host_cfg, dict):
+                        host_cfg = {}
+                    enabled = bool(host_cfg.get("enabled", True))
+                    start_time = str(host_cfg.get("start_time") or "—")
+                    host_state = "🟢" if enabled else "🔴"
+                    latest = transfer_rows.get(host_name, {})
+                    latest_status = str(latest.get("status") or "—")
+                    transfer_state = _status_icon(latest_status)
+                    received_at = str(latest.get("received_at") or "—")
+                    if latest_status in {"SUCCESS", "SKIPPED"}:
+                        ok_hosts += 1
+                    elif latest_status == "ERROR":
+                        problem_hosts += 1
+                    lines.append(
+                        f"{host_state} {host_name} · старт {start_time} · "
+                        f"{transfer_state} {latest_status} ({received_at})"
+                    )
+                    menu_options.append({
+                        "label": f"{transfer_state} {host_name}",
+                        "action": f"snapshot_transfer_host_{host_name}",
+                    })
+                lines.append("")
+                lines.append(
+                    f"Всего хостов: {total_hosts} · 🟢 {ok_hosts} · 🔴 {problem_hosts}"
+                )
+
+            if recent_rows:
+                lines.append("")
+                lines.append("🧾 Последние распарсенные письма:")
+                for host_name, status_val, received_at in recent_rows:
+                    lines.append(
+                        f"{_status_icon(status_val)} {host_name} · {status_val} ({received_at})"
+                    )
+
+            menu_options.extend([
+                {"label": "🔄 Обновить", "action": "snapshot_transfer_menu"},
+                {"label": "✖️ Закрыть", "action": "close"},
+            ])
+            return True, "\n".join(lines), "accepted", menu_options
+
+        if action.startswith("snapshot_transfer_host_"):
+            from config.settings import BACKUP_DB_FILE
+
+            host_name = action.replace("snapshot_transfer_host_", "", 1).strip()
+            if not host_name:
+                return False, "Не указан хост передач снэпшотов", "failed", None
+
+            records: list[tuple[str, str, str]] = []
+            try:
+                snap_conn = sqlite3.connect(str(BACKUP_DB_FILE))
+                snap_cursor = snap_conn.cursor()
+                snap_cursor.execute(
+                    """
+                    SELECT status, received_at, subject
+                    FROM snapshot_transfers
+                    WHERE host_name = ?
+                    ORDER BY datetime(received_at) DESC, id DESC
+                    LIMIT 15
+                    """,
+                    (host_name,),
+                )
+                for status_val, received_at, subject in snap_cursor.fetchall():
+                    records.append(
+                        (
+                            str(status_val or "").upper().strip(),
+                            str(received_at or "").strip(),
+                            str(subject or "").strip(),
+                        )
+                    )
+            except sqlite3.OperationalError:
+                pass
+            except Exception:
+                pass
+            finally:
+                try:
+                    snap_conn.close()  # type: ignore[name-defined]
+                except Exception:
+                    pass
+
+            lines = [f"📸 Передачи снэпшотов · {host_name}", ""]
+            if not records:
+                lines.append("ℹ️ Записей по хосту пока нет.")
+            else:
+                ok_count = sum(1 for s, _, _ in records if s in {"SUCCESS", "SKIPPED"})
+                err_count = sum(1 for s, _, _ in records if s == "ERROR")
+                lines.append(
+                    f"Показано: {len(records)} · 🟢 {ok_count} · 🔴 {err_count}"
+                )
+                lines.append("")
+                for status_val, received_at, subject in records:
+                    normalized = (status_val or "").upper()
+                    if normalized in {"SUCCESS", "SKIPPED"}:
+                        icon = "🟢"
+                    elif normalized in {"STARTED", "BUSY"}:
+                        icon = "🟡"
+                    elif normalized == "ERROR":
+                        icon = "🔴"
+                    else:
+                        icon = "⚪️"
+                    line = f"{icon} {received_at or '—'} · {status_val or '—'}"
+                    if subject:
+                        line += f"\n   ↳ {subject}"
+                    lines.append(line)
+
+            return True, "\n".join(lines), "accepted", [
+                {"label": "↩️ Назад", "action": "snapshot_transfer_menu"},
+                {"label": "🔄 Обновить", "action": f"snapshot_transfer_host_{host_name}"},
             ]
 
         if action == "zfsp_hosts_list" or action.startswith("zfsp_"):
