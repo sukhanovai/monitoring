@@ -1654,6 +1654,12 @@ class MainActivity : ComponentActivity() {
                     onNewTelegramChatIdChanged = vm::setNewTelegramChatIdInput,
                     onAddTelegramChatId = vm::addTelegramChatId,
                     onRemoveTelegramChatId = vm::removeTelegramChatId,
+                    onMatrixHomeserverChanged = vm::setMatrixHomeserverInput,
+                    onMatrixAccessTokenChanged = vm::setMatrixAccessTokenInput,
+                    onMatrixRoomIdChanged = vm::setMatrixRoomIdInput,
+                    onToggleMatrixAccessTokenVisibility = vm::toggleMatrixAccessTokenVisibility,
+                    onSaveMatrixBot = vm::updateMatrixBotSettings,
+                    onTestMatrixBotServerConnection = vm::testMatrixBotServerConnection,
                     onQuietStartChanged = vm::setQuietStartInput,
                     onQuietEndChanged = vm::setQuietEndInput,
                     onMetricsTimeChanged = vm::setMetricsTimeInput,
@@ -1782,6 +1788,12 @@ private fun MonitoringApp(
     onNewTelegramChatIdChanged: (String) -> Unit,
     onAddTelegramChatId: () -> Unit,
     onRemoveTelegramChatId: (String) -> Unit,
+    onMatrixHomeserverChanged: (String) -> Unit,
+    onMatrixAccessTokenChanged: (String) -> Unit,
+    onMatrixRoomIdChanged: (String) -> Unit,
+    onToggleMatrixAccessTokenVisibility: () -> Unit,
+    onSaveMatrixBot: () -> Unit,
+    onTestMatrixBotServerConnection: () -> Unit,
     onQuietStartChanged: (String) -> Unit,
     onQuietEndChanged: (String) -> Unit,
     onMetricsTimeChanged: (String) -> Unit,
@@ -2041,6 +2053,9 @@ private fun MonitoringApp(
     val canSaveBot = state.telegramTokenInput.isNotBlank() ||
         state.telegramChatIdInput.isNotBlank() ||
         state.telegramChatIds.isNotEmpty()
+    val canSaveMatrixBot = state.matrixHomeserverInput.isNotBlank() ||
+        state.matrixAccessTokenInput.isNotBlank() ||
+        state.matrixRoomIdInput.isNotBlank()
     val canSaveTime = state.quietStartInput.isNotBlank() ||
         state.quietEndInput.isNotBlank() ||
         state.metricsTimeInput.isNotBlank()
@@ -2659,7 +2674,8 @@ private fun MonitoringApp(
                                 listOf(
                                     "bff" to "🔌 BFF",
                                     "monitoring" to "📈 Мониторинг",
-                                    "bot" to "🤖 Бот",
+                                    "bot" to "🤖 Бот Telegram",
+                                    "matrix_bot" to "🤖 Бот Matrix",
                                     "time" to "⏰ Время",
                                     "auth" to "🔐 Аутентификация",
                                     "extensions" to "🧩 Расширения"
@@ -3017,7 +3033,8 @@ private fun MonitoringApp(
                                         when (settingsSection) {
                                             "bff" -> "🔌 BFF"
                                             "monitoring" -> "📈 Мониторинг"
-                                            "bot" -> "🤖 Бот"
+                                            "bot" -> "🤖 Бот Telegram"
+                                            "matrix_bot" -> "🤖 Бот Matrix"
                                             "time" -> "⏰ Время"
                                             "auth" -> "🔐 Аутентификация"
                                             "extensions" -> "🧩 Расширения"
@@ -3137,7 +3154,7 @@ private fun MonitoringApp(
                         }
 
                         if (settingsSection == "bot") {
-                        Text("Настройки бота", fontWeight = FontWeight.Bold)
+                        Text("Настройки Telegram-бота", fontWeight = FontWeight.Bold)
                         OutlinedTextField(
                             value = state.telegramTokenInput,
                             onValueChange = onTelegramTokenChanged,
@@ -3187,6 +3204,51 @@ private fun MonitoringApp(
                                 onClick = onSaveBot,
                                 enabled = canSaveBot
                             )
+                        }
+                        if (state.message.isNotBlank() && state.messageSource == "bot_settings") {
+                            Text(state.message)
+                        }
+                        }
+
+                        if (settingsSection == "matrix_bot") {
+                        Text("Настройки Matrix-бота", fontWeight = FontWeight.Bold)
+                        OutlinedTextField(
+                            value = state.matrixHomeserverInput,
+                            onValueChange = onMatrixHomeserverChanged,
+                            label = { Text("matrix_homeserver") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = state.matrixAccessTokenInput,
+                            onValueChange = onMatrixAccessTokenChanged,
+                            label = { Text("matrix_access_token") },
+                            modifier = Modifier.fillMaxWidth(),
+                            visualTransformation = if (state.isMatrixAccessTokenVisible) VisualTransformation.None else hiddenTransformation,
+                            trailingIcon = {
+                                TextButton(onClick = onToggleMatrixAccessTokenVisibility) {
+                                    Text(if (state.isMatrixAccessTokenVisible) "Скрыть" else "Показать")
+                                }
+                            }
+                        )
+                        OutlinedTextField(
+                            value = state.matrixRoomIdInput,
+                            onValueChange = onMatrixRoomIdChanged,
+                            label = { Text("matrix_room_id") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            SettingsActionButton(
+                                label = "Проверить связь с сервером бота",
+                                onClick = onTestMatrixBotServerConnection
+                            )
+                            SettingsActionButton(
+                                label = "Сохранить matrix",
+                                onClick = onSaveMatrixBot,
+                                enabled = canSaveMatrixBot
+                            )
+                        }
+                        if (state.message.isNotBlank() && state.messageSource == "matrix_bot_settings") {
+                            Text(state.message)
                         }
                         }
 

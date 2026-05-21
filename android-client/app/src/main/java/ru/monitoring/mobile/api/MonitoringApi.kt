@@ -58,6 +58,14 @@ interface MonitoringApi {
     @DELETE("v1/settings/bot/chats/{chatId}")
     suspend fun removeBotChat(@Path("chatId") chatId: String): SettingsBotResponse
 
+    @GET("v1/settings/bot/matrix")
+    suspend fun getMatrixBotSettings(): SettingsMatrixBotResponse
+
+    @PATCH("v1/settings/bot/matrix")
+    suspend fun updateMatrixBotSettings(
+        @Body request: SettingsMatrixBotRequest
+    ): SettingsMatrixBotResponse
+
     @GET("v1/settings/time")
     suspend fun getTimeSettings(): SettingsTimeResponse
 

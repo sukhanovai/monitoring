@@ -208,6 +208,23 @@ data class SettingsBotResponse(
     val settings: SettingsBotData? = null
 )
 
+data class SettingsMatrixBotRequest(
+    @Json(name = "matrix_homeserver") val matrixHomeserver: String? = null,
+    @Json(name = "matrix_access_token") val matrixAccessToken: String? = null,
+    @Json(name = "matrix_room_id") val matrixRoomId: String? = null
+)
+
+data class SettingsMatrixBotData(
+    @Json(name = "matrix_homeserver") val matrixHomeserver: String? = null,
+    @Json(name = "matrix_room_id") val matrixRoomId: String? = null,
+    @Json(name = "masked_access_token") val maskedAccessToken: String? = null
+)
+
+data class SettingsMatrixBotResponse(
+    @Json(name = "request_id") val requestId: String? = null,
+    val settings: SettingsMatrixBotData? = null
+)
+
 data class SettingsTimeRequest(
     @Json(name = "quiet_start") val quietStart: String? = null,
     @Json(name = "quiet_end") val quietEnd: String? = null,

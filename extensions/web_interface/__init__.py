@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.62.34
+Server Monitoring System v8.62.35
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.62.34
+Версия: 8.62.35
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -5199,6 +5199,98 @@ def v1_settings_bot_remove_chat(chat_id):
         "settings": {
             "telegram_chat_ids": chat_ids,
             "telegram_chat_id": chat_ids[0] if chat_ids else '',
+        }
+    }), 200
+
+
+def _normalize_matrix_homeserver(value):
+    homeserver = str(value or '').strip().rstrip('/')
+    return homeserver
+
+
+@app.route('/v1/settings/bot/matrix', methods=['GET'])
+def v1_get_settings_bot_matrix():
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+
+    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    if not is_ok:
+        return jsonify({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid or expired token",
+                "request_id": request_id,
+            }
+        }), 401
+
+    from config.db_settings_app import settings_manager
+
+    homeserver = _normalize_matrix_homeserver(settings_manager.get_setting('MATRIX_HOMESERVER', ''))
+    room_id = str(settings_manager.get_setting('MATRIX_ROOM_ID', '') or '').strip()
+    access_token = settings_manager.get_setting('MATRIX_ACCESS_TOKEN', '')
+
+    response = {
+        "request_id": request_id,
+        "settings": {
+            "matrix_homeserver": homeserver,
+            "matrix_room_id": room_id,
+            "masked_access_token": _mask_secret(access_token),
+        }
+    }
+    app.logger.info("GET /v1/settings/bot/matrix request_id=%s", request_id)
+    return jsonify(response), 200
+
+
+@app.route('/v1/settings/bot/matrix', methods=['PATCH'])
+def v1_settings_bot_matrix():
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+
+    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    if not is_ok:
+        return jsonify({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid or expired token",
+                "request_id": request_id,
+            }
+        }), 401
+
+    payload = request.get_json(silent=True) or {}
+    homeserver = payload.get('matrix_homeserver')
+    access_token = payload.get('matrix_access_token')
+    room_id = payload.get('matrix_room_id')
+
+    if homeserver is None and access_token is None and room_id is None:
+        return jsonify({
+            "error": {
+                "code": "VALIDATION_FAILED",
+                "message": "At least one field is required",
+                "request_id": request_id,
+            }
+        }), 400
+
+    from config.db_settings_app import settings_manager
+
+    if homeserver is not None:
+        settings_manager.set_setting(
+            'MATRIX_HOMESERVER',
+            _normalize_matrix_homeserver(homeserver),
+            'matrix',
+        )
+    if access_token is not None:
+        settings_manager.set_setting('MATRIX_ACCESS_TOKEN', str(access_token), 'matrix')
+    if room_id is not None:
+        settings_manager.set_setting('MATRIX_ROOM_ID', str(room_id).strip(), 'matrix')
+
+    saved_homeserver = _normalize_matrix_homeserver(settings_manager.get_setting('MATRIX_HOMESERVER', ''))
+    saved_room_id = str(settings_manager.get_setting('MATRIX_ROOM_ID', '') or '').strip()
+    saved_token = settings_manager.get_setting('MATRIX_ACCESS_TOKEN', '')
+
+    return jsonify({
+        "request_id": request_id,
+        "settings": {
+            "matrix_homeserver": saved_homeserver,
+            "matrix_room_id": saved_room_id,
+            "masked_access_token": _mask_secret(saved_token),
         }
     }), 200
 

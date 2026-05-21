@@ -869,6 +869,10 @@ class MainViewModel(
     fun setTelegramTokenInput(value: String) { state = state.copy(telegramTokenInput = value) }
     fun setTelegramChatIdInput(value: String) { state = state.copy(telegramChatIdInput = value) }
     fun setNewTelegramChatIdInput(value: String) { state = state.copy(newTelegramChatIdInput = value) }
+    fun setMatrixHomeserverInput(value: String) { state = state.copy(matrixHomeserverInput = value) }
+    fun setMatrixAccessTokenInput(value: String) { state = state.copy(matrixAccessTokenInput = value) }
+    fun setMatrixRoomIdInput(value: String) { state = state.copy(matrixRoomIdInput = value) }
+    fun toggleMatrixAccessTokenVisibility() { state = state.copy(isMatrixAccessTokenVisible = !state.isMatrixAccessTokenVisible) }
     fun setQuietStartInput(value: String) { state = state.copy(quietStartInput = value) }
     fun setQuietEndInput(value: String) { state = state.copy(quietEndInput = value) }
     fun setMetricsTimeInput(value: String) { state = state.copy(metricsTimeInput = value) }
@@ -1069,6 +1073,7 @@ class MainViewModel(
 
                 val monitoring = fetchOrLog("getMonitoringSettings") { currentApi().getMonitoringSettings() }
                 val bot = fetchOrLog("getBotSettings") { currentApi().getBotSettings() }
+                val matrixBot = fetchOrLog("getMatrixBotSettings") { currentApi().getMatrixBotSettings() }
                 val time = fetchOrLog("getTimeSettings") { currentApi().getTimeSettings() }
                 val auth = fetchOrLog("getAuthSettings") { currentApi().getAuthSettings() }
                 val control = fetchOrLog("getControlStatus") { currentApi().getControlStatus() }
@@ -1102,7 +1107,8 @@ class MainViewModel(
                     supplierStockSummary,
                     mailBackupSummary,
                     zfsSummaryBundle,
-                    zfsPoolFreeSpaceSummary
+                    zfsPoolFreeSpaceSummary,
+                    matrixBot
                 )
             }
 
@@ -1132,6 +1138,7 @@ class MainViewModel(
             val zfsSummary = buildBackupTileSummary(zfsSummaryLatestResponse)
                 ?: buildBackupTileSummary(zfsSummaryRootResponse)
             val zfsPoolFreeSpaceSummary = buildBackupTileSummary(result[15] as? ControlActionResult)
+            val matrixBot = result[16] as? ru.monitoring.mobile.api.SettingsMatrixBotResponse
 
             val monitoringData = monitoring?.settings
             val botData = bot?.settings
@@ -1143,7 +1150,7 @@ class MainViewModel(
                 else -> state.telegramChatIds
             }
 
-            val hasAny = monitoring != null || bot != null || time != null || auth != null || control != null || winTypes != null || winCreds != null || servers != null || extensions != null
+            val hasAny = monitoring != null || bot != null || matrixBot != null || time != null || auth != null || control != null || winTypes != null || winCreds != null || servers != null || extensions != null
             if (!hasAny) {
                 Log.w(TAG_SYNC, "refreshSettingsFromServer: all critical settings responses are null, sessionId=$syncSessionId")
                 state = if (showErrors) {
@@ -1171,6 +1178,9 @@ class MainViewModel(
                 telegramTokenInput = botData?.maskedToken ?: botData?.telegramBotToken ?: state.telegramTokenInput,
                 telegramChatIdInput = botData?.telegramChatId ?: state.telegramChatIdInput,
                 telegramChatIds = botChatIds,
+                matrixHomeserverInput = matrixBot?.settings?.matrixHomeserver ?: state.matrixHomeserverInput,
+                matrixAccessTokenInput = matrixBot?.settings?.maskedAccessToken ?: state.matrixAccessTokenInput,
+                matrixRoomIdInput = matrixBot?.settings?.matrixRoomId ?: state.matrixRoomIdInput,
                 quietStartInput = timeData?.quietStart ?: time?.quietStart ?: state.quietStartInput,
                 quietEndInput = timeData?.quietEnd ?: time?.quietEnd ?: state.quietEndInput,
                 metricsTimeInput = timeData?.metricsCollectionTime ?: time?.metricsCollectionTime ?: state.metricsTimeInput,
@@ -1394,7 +1404,7 @@ class MainViewModel(
             status
         }
 
-    // ВРЕМЕННО (8.62.34): отдельная кнопка «Проверить только сертификат».
+    // ВРЕМЕННО (8.62.35): отдельная кнопка «Проверить только сертификат».
     // Гоняет только TLS-проверку Base URL (без полной синхронизации) и шлёт
     // подробный отчёт в консоль сервера (POST /v1/mobile/diagnostics/tls),
     // чтобы диагностировать «⚪ TLS: ошибка проверки (Ошибка сети)» удалённо.
@@ -2870,7 +2880,7 @@ class MainViewModel(
         val telegramToken = state.telegramTokenInput
         val telegramChatId = state.telegramChatIdInput
         if (!hasAnyValue(telegramToken, telegramChatId) && state.telegramChatIds.isEmpty()) {
-            state = state.copy(message = "Заполни хотя бы одно поле bot")
+            state = state.copy(message = "Заполни хотя бы одно поле bot", messageSource = "bot_settings")
             return
         }
 
@@ -2881,31 +2891,102 @@ class MainViewModel(
         )
 
         viewModelScope.launch {
-            state = state.copy(isLoading = true)
+            state = state.copy(isLoading = true, messageSource = "bot_settings")
             runCatching { currentApi().updateBotSettings(request) }
                 .onSuccess {
-                    state = state.copy(isLoading = false, message = "Настройки бота обновлены")
+                    state = state.copy(isLoading = false, message = "Настройки бота обновлены", messageSource = "bot_settings")
                     refreshSettingsFromServer(showErrors = false)
                 }
-                .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error)) }
+                .onFailure { error -> state = state.copy(isLoading = false, message = formatNetworkError(error), messageSource = "bot_settings") }
         }
     }
 
     fun testBotServerConnection() {
         viewModelScope.launch {
             Log.i(TAG_SYNC, "testBotServerConnection started")
-            state = state.copy(isLoading = true, message = "Проверяю связь с сервером бота…")
+            state = state.copy(isLoading = true, message = "Проверяю связь с сервером бота…", messageSource = "bot_settings")
             runCatching { currentApi().getControlStatus() }
                 .onSuccess { status ->
                     Log.i(TAG_SYNC, "testBotServerConnection success: status=${status.monitoringStatus}")
                     state = state.copy(
                         isLoading = false,
-                        message = "Связь с сервером бота есть (${status.monitoringStatus ?: "ok"})"
+                        message = "Связь с сервером бота есть (${status.monitoringStatus ?: "ok"})",
+                        messageSource = "bot_settings"
                     )
                 }
                 .onFailure { error ->
                     Log.e(TAG_SYNC, "testBotServerConnection failed: ${error.message}", error)
-                    state = state.copy(isLoading = false, message = "Нет связи с сервером бота: ${formatNetworkError(error)}")
+                    state = state.copy(
+                        isLoading = false,
+                        message = "Нет связи с сервером бота: ${formatNetworkError(error)}",
+                        messageSource = "bot_settings"
+                    )
+                }
+        }
+    }
+
+    fun updateMatrixBotSettings() {
+        val homeserver = state.matrixHomeserverInput
+        val accessToken = state.matrixAccessTokenInput
+        val roomId = state.matrixRoomIdInput
+        if (!hasAnyValue(homeserver, accessToken, roomId)) {
+            state = state.copy(message = "Заполни хотя бы одно поле matrix-бота", messageSource = "matrix_bot_settings")
+            return
+        }
+
+        // Маскированный токен начинается с "matrix:***" или "********" — не отправлять обратно.
+        val rawAccessToken = accessToken.takeIf { it.isNotBlank() && !it.endsWith("***") && it != "********" }
+
+        val request = SettingsMatrixBotRequest(
+            matrixHomeserver = homeserver.ifBlank { null },
+            matrixAccessToken = rawAccessToken,
+            matrixRoomId = roomId.ifBlank { null }
+        )
+
+        viewModelScope.launch {
+            state = state.copy(isLoading = true, messageSource = "matrix_bot_settings")
+            runCatching { currentApi().updateMatrixBotSettings(request) }
+                .onSuccess { response ->
+                    val data = response.settings
+                    state = state.copy(
+                        isLoading = false,
+                        message = "Настройки matrix-бота обновлены",
+                        messageSource = "matrix_bot_settings",
+                        matrixHomeserverInput = data?.matrixHomeserver ?: state.matrixHomeserverInput,
+                        matrixRoomIdInput = data?.matrixRoomId ?: state.matrixRoomIdInput,
+                        matrixAccessTokenInput = data?.maskedAccessToken ?: state.matrixAccessTokenInput
+                    )
+                }
+                .onFailure { error ->
+                    state = state.copy(
+                        isLoading = false,
+                        message = formatNetworkError(error),
+                        messageSource = "matrix_bot_settings"
+                    )
+                }
+        }
+    }
+
+    fun testMatrixBotServerConnection() {
+        viewModelScope.launch {
+            Log.i(TAG_SYNC, "testMatrixBotServerConnection started")
+            state = state.copy(isLoading = true, message = "Проверяю связь с сервером бота…", messageSource = "matrix_bot_settings")
+            runCatching { currentApi().getControlStatus() }
+                .onSuccess { status ->
+                    Log.i(TAG_SYNC, "testMatrixBotServerConnection success: status=${status.monitoringStatus}")
+                    state = state.copy(
+                        isLoading = false,
+                        message = "Связь с сервером бота есть (${status.monitoringStatus ?: "ok"})",
+                        messageSource = "matrix_bot_settings"
+                    )
+                }
+                .onFailure { error ->
+                    Log.e(TAG_SYNC, "testMatrixBotServerConnection failed: ${error.message}", error)
+                    state = state.copy(
+                        isLoading = false,
+                        message = "Нет связи с сервером бота: ${formatNetworkError(error)}",
+                        messageSource = "matrix_bot_settings"
+                    )
                 }
         }
     }
@@ -3066,6 +3147,10 @@ data class MainUiState(
     val telegramChatIdInput: String = "",
     val telegramChatIds: List<String> = emptyList(),
     val newTelegramChatIdInput: String = "",
+    val matrixHomeserverInput: String = "",
+    val matrixAccessTokenInput: String = "",
+    val matrixRoomIdInput: String = "",
+    val isMatrixAccessTokenVisible: Boolean = false,
     val quietStartInput: String = "",
     val quietEndInput: String = "",
     val metricsTimeInput: String = "",
