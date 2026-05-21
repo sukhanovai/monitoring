@@ -1706,6 +1706,7 @@ class MainActivity : ComponentActivity() {
                     onTelegramChatIdChanged = vm::setTelegramChatIdInput,
                     onSaveBot = vm::updateBotSettings,
                     onTestBotServerConnection = vm::testBotServerConnection,
+                    onTestBffConnection = vm::testBffConnection,
                     onNewTelegramChatIdChanged = vm::setNewTelegramChatIdInput,
                     onAddTelegramChatId = vm::addTelegramChatId,
                     onRemoveTelegramChatId = vm::removeTelegramChatId,
@@ -1840,6 +1841,7 @@ private fun MonitoringApp(
     onTelegramChatIdChanged: (String) -> Unit,
     onSaveBot: () -> Unit,
     onTestBotServerConnection: () -> Unit,
+    onTestBffConnection: () -> Unit,
     onNewTelegramChatIdChanged: (String) -> Unit,
     onAddTelegramChatId: () -> Unit,
     onRemoveTelegramChatId: (String) -> Unit,
@@ -3140,6 +3142,18 @@ private fun MonitoringApp(
                             SettingsActionButton(
                                 label = "Сохранить токен",
                                 onClick = { onSaveToken(state.token) }
+                            )
+                        }
+                        BotConnectionTestButton(
+                            label = "Проверить связь с BFF",
+                            isTesting = state.isTestingBff,
+                            onClick = onTestBffConnection
+                        )
+                        if (state.message.isNotBlank() && state.messageSource == "bff_settings") {
+                            BotSettingsMessageCard(
+                                message = state.message,
+                                isTesting = state.isTestingBff,
+                                testOk = state.bffConnectionTestOk
                             )
                         }
                         }

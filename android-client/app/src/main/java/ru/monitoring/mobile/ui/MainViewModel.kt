@@ -2902,6 +2902,45 @@ class MainViewModel(
         }
     }
 
+    fun testBffConnection() {
+        viewModelScope.launch {
+            Log.i(TAG_SYNC, "testBffConnection started")
+            state = state.copy(
+                isLoading = true,
+                isTestingBff = true,
+                bffConnectionTestOk = null,
+                message = "Проверяю связь с BFF…",
+                messageSource = "bff_settings"
+            )
+            runCatching { currentApi().getControlStatus() }
+                .onSuccess { result ->
+                    val statusText = result.monitoringStatus
+                        ?: if (result.monitoringActive == true) "active" else "unknown"
+                    Log.i(
+                        TAG_SYNC,
+                        "testBffConnection success: status=$statusText, request_id=${result.requestId}"
+                    )
+                    state = state.copy(
+                        isLoading = false,
+                        isTestingBff = false,
+                        bffConnectionTestOk = true,
+                        message = "Связь с BFF установлена (monitoring=$statusText)",
+                        messageSource = "bff_settings"
+                    )
+                }
+                .onFailure { error ->
+                    Log.e(TAG_SYNC, "testBffConnection failed: ${error.message}", error)
+                    state = state.copy(
+                        isLoading = false,
+                        isTestingBff = false,
+                        bffConnectionTestOk = false,
+                        message = "Нет связи с BFF: ${formatNetworkError(error)}",
+                        messageSource = "bff_settings"
+                    )
+                }
+        }
+    }
+
     fun testBotServerConnection() {
         viewModelScope.launch {
             Log.i(TAG_SYNC, "testBotServerConnection started")
@@ -3122,8 +3161,10 @@ data class MainUiState(
     val isLoading: Boolean = false,
     val isTestingTelegramBot: Boolean = false,
     val isTestingMatrixBot: Boolean = false,
+    val isTestingBff: Boolean = false,
     val botConnectionTestOk: Boolean? = null,
     val matrixBotConnectionTestOk: Boolean? = null,
+    val bffConnectionTestOk: Boolean? = null,
     val isSyncInProgress: Boolean = false,
     val syncProgress: Float = 0f,
     val isServerBatchCheckInProgress: Boolean = false,
