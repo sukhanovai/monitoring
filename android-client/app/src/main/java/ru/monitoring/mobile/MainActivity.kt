@@ -1640,6 +1640,12 @@ class MainActivity : ComponentActivity() {
                     onCheckIntervalChanged = vm::setCheckIntervalInput,
                     onTimeoutChanged = vm::setTimeoutInput,
                     onMaxDowntimeChanged = vm::setMaxDowntimeInput,
+                    onWindows2025TimeoutChanged = vm::setWindows2025TimeoutInput,
+                    onDomainServersTimeoutChanged = vm::setDomainServersTimeoutInput,
+                    onAdminServersTimeoutChanged = vm::setAdminServersTimeoutInput,
+                    onStandardWindowsTimeoutChanged = vm::setStandardWindowsTimeoutInput,
+                    onLinuxTimeoutChanged = vm::setLinuxTimeoutInput,
+                    onPingTimeoutChanged = vm::setPingTimeoutInput,
                     onSaveMonitoring = vm::updateMonitoringSettings,
                     onTelegramTokenChanged = vm::setTelegramTokenInput,
                     onTelegramChatIdChanged = vm::setTelegramChatIdInput,
@@ -1762,6 +1768,12 @@ private fun MonitoringApp(
     onCheckIntervalChanged: (String) -> Unit,
     onTimeoutChanged: (String) -> Unit,
     onMaxDowntimeChanged: (String) -> Unit,
+    onWindows2025TimeoutChanged: (String) -> Unit,
+    onDomainServersTimeoutChanged: (String) -> Unit,
+    onAdminServersTimeoutChanged: (String) -> Unit,
+    onStandardWindowsTimeoutChanged: (String) -> Unit,
+    onLinuxTimeoutChanged: (String) -> Unit,
+    onPingTimeoutChanged: (String) -> Unit,
     onSaveMonitoring: () -> Unit,
     onTelegramTokenChanged: (String) -> Unit,
     onTelegramChatIdChanged: (String) -> Unit,
@@ -2019,7 +2031,13 @@ private fun MonitoringApp(
 
     val canSaveMonitoring = state.checkIntervalInput.isNotBlank() ||
         state.timeoutInput.isNotBlank() ||
-        state.maxDowntimeInput.isNotBlank()
+        state.maxDowntimeInput.isNotBlank() ||
+        state.windows2025TimeoutInput.isNotBlank() ||
+        state.domainServersTimeoutInput.isNotBlank() ||
+        state.adminServersTimeoutInput.isNotBlank() ||
+        state.standardWindowsTimeoutInput.isNotBlank() ||
+        state.linuxTimeoutInput.isNotBlank() ||
+        state.pingTimeoutInput.isNotBlank()
     val canSaveBot = state.telegramTokenInput.isNotBlank() ||
         state.telegramChatIdInput.isNotBlank() ||
         state.telegramChatIds.isNotEmpty()
@@ -3059,19 +3077,56 @@ private fun MonitoringApp(
                         OutlinedTextField(
                             value = state.checkIntervalInput,
                             onValueChange = onCheckIntervalChanged,
-                            label = { Text("check_interval_sec") },
+                            label = { Text("Интервал проверки (сек)") },
                             modifier = Modifier.fillMaxWidth()
                         )
                         OutlinedTextField(
                             value = state.timeoutInput,
                             onValueChange = onTimeoutChanged,
-                            label = { Text("timeout_sec") },
+                            label = { Text("Таймаут API (сек)") },
                             modifier = Modifier.fillMaxWidth()
                         )
                         OutlinedTextField(
                             value = state.maxDowntimeInput,
                             onValueChange = onMaxDowntimeChanged,
-                            label = { Text("max_downtime_sec") },
+                            label = { Text("Макс. время простоя (сек)") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Text("Таймауты серверов", fontWeight = FontWeight.Bold)
+                        OutlinedTextField(
+                            value = state.windows2025TimeoutInput,
+                            onValueChange = onWindows2025TimeoutChanged,
+                            label = { Text("Windows 2025 (сек)") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = state.domainServersTimeoutInput,
+                            onValueChange = onDomainServersTimeoutChanged,
+                            label = { Text("Доменные серверы (сек)") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = state.adminServersTimeoutInput,
+                            onValueChange = onAdminServersTimeoutChanged,
+                            label = { Text("Admin серверы (сек)") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = state.standardWindowsTimeoutInput,
+                            onValueChange = onStandardWindowsTimeoutChanged,
+                            label = { Text("Стандартные Windows (сек)") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = state.linuxTimeoutInput,
+                            onValueChange = onLinuxTimeoutChanged,
+                            label = { Text("Linux серверы (сек)") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = state.pingTimeoutInput,
+                            onValueChange = onPingTimeoutChanged,
+                            label = { Text("Ping серверы (сек)") },
                             modifier = Modifier.fillMaxWidth()
                         )
                         SettingsActionButton(
