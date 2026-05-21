@@ -155,13 +155,25 @@ data class ControlStatusResponse(
 data class SettingsMonitoringRequest(
     @Json(name = "check_interval_sec") val checkIntervalSec: Int? = null,
     @Json(name = "timeout_sec") val timeoutSec: Int? = null,
-    @Json(name = "max_downtime_sec") val maxDowntimeSec: Int? = null
+    @Json(name = "max_downtime_sec") val maxDowntimeSec: Int? = null,
+    @Json(name = "windows_2025_timeout_sec") val windows2025TimeoutSec: Int? = null,
+    @Json(name = "domain_servers_timeout_sec") val domainServersTimeoutSec: Int? = null,
+    @Json(name = "admin_servers_timeout_sec") val adminServersTimeoutSec: Int? = null,
+    @Json(name = "standard_windows_timeout_sec") val standardWindowsTimeoutSec: Int? = null,
+    @Json(name = "linux_timeout_sec") val linuxTimeoutSec: Int? = null,
+    @Json(name = "ping_timeout_sec") val pingTimeoutSec: Int? = null
 )
 
 data class SettingsMonitoringData(
     @Json(name = "check_interval_sec") val checkIntervalSec: Int,
     @Json(name = "timeout_sec") val timeoutSec: Int,
-    @Json(name = "max_downtime_sec") val maxDowntimeSec: Int
+    @Json(name = "max_downtime_sec") val maxDowntimeSec: Int,
+    @Json(name = "windows_2025_timeout_sec") val windows2025TimeoutSec: Int? = null,
+    @Json(name = "domain_servers_timeout_sec") val domainServersTimeoutSec: Int? = null,
+    @Json(name = "admin_servers_timeout_sec") val adminServersTimeoutSec: Int? = null,
+    @Json(name = "standard_windows_timeout_sec") val standardWindowsTimeoutSec: Int? = null,
+    @Json(name = "linux_timeout_sec") val linuxTimeoutSec: Int? = null,
+    @Json(name = "ping_timeout_sec") val pingTimeoutSec: Int? = null
 )
 
 data class SettingsMonitoringResponse(
@@ -169,7 +181,13 @@ data class SettingsMonitoringResponse(
     val settings: SettingsMonitoringData? = null,
     @Json(name = "check_interval_sec") val checkIntervalSec: Int? = null,
     @Json(name = "timeout_sec") val timeoutSec: Int? = null,
-    @Json(name = "max_downtime_sec") val maxDowntimeSec: Int? = null
+    @Json(name = "max_downtime_sec") val maxDowntimeSec: Int? = null,
+    @Json(name = "windows_2025_timeout_sec") val windows2025TimeoutSec: Int? = null,
+    @Json(name = "domain_servers_timeout_sec") val domainServersTimeoutSec: Int? = null,
+    @Json(name = "admin_servers_timeout_sec") val adminServersTimeoutSec: Int? = null,
+    @Json(name = "standard_windows_timeout_sec") val standardWindowsTimeoutSec: Int? = null,
+    @Json(name = "linux_timeout_sec") val linuxTimeoutSec: Int? = null,
+    @Json(name = "ping_timeout_sec") val pingTimeoutSec: Int? = null
 )
 
 data class SettingsBotRequest(

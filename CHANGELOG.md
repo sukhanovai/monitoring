@@ -1,3 +1,13 @@
+## [8.62.34] - 2026-05-21
+
+### Added
+- RU: Android-приложение: на экране «Настройки → Мониторинг» теперь доступны все таймауты, которые редактируются из Telegram-бота по пути «Настройки → Мониторинг → ⏰ Таймауты серверов» — Windows 2025, доменные серверы, Admin серверы, стандартные Windows, Linux и Ping. Поля интервала проверки, таймаута API и максимального времени простоя получили человекочитаемые подписи. Сервер расширил `GET/PATCH /v1/settings/monitoring` ключами `windows_2025_timeout_sec`, `domain_servers_timeout_sec`, `admin_servers_timeout_sec`, `standard_windows_timeout_sec`, `linux_timeout_sec`, `ping_timeout_sec` поверх настроек `WINDOWS_2025_TIMEOUT`, `DOMAIN_SERVERS_TIMEOUT`, `ADMIN_SERVERS_TIMEOUT`, `STANDARD_WINDOWS_TIMEOUT`, `LINUX_TIMEOUT`, `PING_TIMEOUT` — те же ключи, что использует Telegram-бот, поэтому Android-клиент и бот теперь правят общие значения.
+- EN: Android app: the "Настройки → Мониторинг" screen now exposes every timeout editable from the Telegram bot under "Settings → Monitoring → ⏰ Server timeouts" — Windows 2025, domain servers, Admin servers, standard Windows, Linux and Ping. The check interval, API timeout and max downtime fields now use human-readable labels. The backend extends `GET/PATCH /v1/settings/monitoring` with `windows_2025_timeout_sec`, `domain_servers_timeout_sec`, `admin_servers_timeout_sec`, `standard_windows_timeout_sec`, `linux_timeout_sec`, `ping_timeout_sec` on top of the `WINDOWS_2025_TIMEOUT`, `DOMAIN_SERVERS_TIMEOUT`, `ADMIN_SERVERS_TIMEOUT`, `STANDARD_WINDOWS_TIMEOUT`, `LINUX_TIMEOUT`, `PING_TIMEOUT` settings — the same keys the Telegram bot edits, so the Android client and the bot now mutate shared values.
+
+### Changed
+- RU: SemVer patch-бамп до `8.62.34`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.34`, `ANDROID_VERSION_CODE=796`).
+- EN: SemVer patch bump to `8.62.34`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.34`, `ANDROID_VERSION_CODE=796`).
+
 ## [8.62.33] - 2026-05-20
 
 ### Fixed

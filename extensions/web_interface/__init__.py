@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.62.33
+Server Monitoring System v8.62.34
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.62.33
+Версия: 8.62.34
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -5003,6 +5003,12 @@ def v1_get_settings_monitoring():
             "check_interval_sec": settings_manager.get_setting('CHECK_INTERVAL', 60),
             "timeout_sec": settings_manager.get_setting('API_TIMEOUT_SEC', 15),
             "max_downtime_sec": settings_manager.get_setting('MAX_FAIL_TIME', 900),
+            "windows_2025_timeout_sec": settings_manager.get_setting('WINDOWS_2025_TIMEOUT', 35),
+            "domain_servers_timeout_sec": settings_manager.get_setting('DOMAIN_SERVERS_TIMEOUT', 20),
+            "admin_servers_timeout_sec": settings_manager.get_setting('ADMIN_SERVERS_TIMEOUT', 25),
+            "standard_windows_timeout_sec": settings_manager.get_setting('STANDARD_WINDOWS_TIMEOUT', 30),
+            "linux_timeout_sec": settings_manager.get_setting('LINUX_TIMEOUT', 15),
+            "ping_timeout_sec": settings_manager.get_setting('PING_TIMEOUT', 10),
         }
     }
     app.logger.info("GET /v1/settings/monitoring request_id=%s", request_id)
@@ -5685,8 +5691,23 @@ def v1_settings_monitoring():
     check_interval = payload.get('check_interval_sec')
     timeout_sec = payload.get('timeout_sec')
     max_downtime = payload.get('max_downtime_sec')
+    server_timeout_fields = (
+        ('windows_2025_timeout_sec', 'WINDOWS_2025_TIMEOUT', 'Таймаут Windows 2025 серверов (секунды)', 35),
+        ('domain_servers_timeout_sec', 'DOMAIN_SERVERS_TIMEOUT', 'Таймаут доменных серверов (секунды)', 20),
+        ('admin_servers_timeout_sec', 'ADMIN_SERVERS_TIMEOUT', 'Таймаут Admin серверов (секунды)', 25),
+        ('standard_windows_timeout_sec', 'STANDARD_WINDOWS_TIMEOUT', 'Таймаут стандартных Windows серверов (секунды)', 30),
+        ('linux_timeout_sec', 'LINUX_TIMEOUT', 'Таймаут Linux серверов (секунды)', 15),
+        ('ping_timeout_sec', 'PING_TIMEOUT', 'Таймаут Ping серверов (секунды)', 10),
+    )
+    server_timeout_inputs = {field[0]: payload.get(field[0]) for field in server_timeout_fields}
+    any_server_timeout = any(value is not None for value in server_timeout_inputs.values())
 
-    if check_interval is None and timeout_sec is None and max_downtime is None:
+    if (
+        check_interval is None
+        and timeout_sec is None
+        and max_downtime is None
+        and not any_server_timeout
+    ):
         return jsonify({
             "error": {
                 "code": "VALIDATION_FAILED",
@@ -5722,12 +5743,28 @@ def v1_settings_monitoring():
         else:
             timeout_sec = settings_manager.get_setting('API_TIMEOUT_SEC', 15)
 
+        server_timeout_values = {}
+        for payload_key, db_key, description, default in server_timeout_fields:
+            raw_value = server_timeout_inputs.get(payload_key)
+            if raw_value is not None:
+                try:
+                    parsed_value = int(raw_value)
+                except (TypeError, ValueError):
+                    return jsonify({"error": {"code": "VALIDATION_FAILED", "message": f"{payload_key} must be an integer", "request_id": request_id}}), 400
+                if parsed_value < 1:
+                    return jsonify({"error": {"code": "INVALID_THRESHOLD", "message": f"{payload_key} must be >= 1", "request_id": request_id}}), 400
+                settings_manager.set_setting(db_key, parsed_value, 'monitoring', description, 'int')
+                server_timeout_values[payload_key] = parsed_value
+            else:
+                server_timeout_values[payload_key] = settings_manager.get_setting(db_key, default)
+
         return jsonify({
             "request_id": request_id,
             "settings": {
                 "check_interval_sec": check_interval,
                 "timeout_sec": timeout_sec,
                 "max_downtime_sec": max_downtime,
+                **server_timeout_values,
                 "updated_at": datetime.now().isoformat(),
             }
         }), 200
