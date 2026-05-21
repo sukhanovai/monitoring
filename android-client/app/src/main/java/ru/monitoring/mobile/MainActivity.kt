@@ -3410,33 +3410,35 @@ private fun MonitoringApp(
 
                         if (settingsSection == "extensions") {
                             Text("🧩 Настройки расширений", fontWeight = FontWeight.Bold)
-                            Text("Включай/выключай расширения и открывай настройки активных расширений.")
-
-                            if (state.extensionSettingsMenuOptions.isEmpty()) {
-                                Text("Нет доступных настроек для активных расширений.")
-                            }
-                            if (state.message.isNotBlank() && state.messageSource == "extensions_settings") {
-                                Text(state.message)
-                            }
                             Text(
-                                "Кнопки быстрых переходов скрыты в Android. Управляй разделами расширений из Telegram-бота.",
+                                "Сводка, поиск и переключатели по расширениям. Настройки активных расширений — ниже.",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+                            if (state.message.isNotBlank() && state.messageSource == "extensions_settings") {
+                                Text(state.message)
+                            }
 
-                            Text("🛠️ Управление расширениями (вкл/выкл)", fontWeight = FontWeight.Bold)
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                SettingsActionButton(
-                                    label = "Включить все",
-                                    onClick = onEnableAllExtensions
-                                )
-                                SettingsDangerButton(
-                                    label = "Отключить все",
-                                    onClick = onDisableAllExtensions
+                            ExtensionsSection(
+                                items = state.extensions,
+                                onToggleExtension = onToggleExtension,
+                                onEnableAll = onEnableAllExtensions,
+                                onDisableAll = onDisableAllExtensions
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            if (state.extensionSettingsMenuOptions.isEmpty()) {
+                                Text(
+                                    "Нет доступных настроек для активных расширений.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                            ExtensionsSection(items = state.extensions, onToggleExtension = onToggleExtension)
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "Кнопки быстрых переходов скрыты в Android. Управляй разделами расширений из Telegram-бота.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
 
                             if (showProxmoxPatternAddDialog) {
                                 AlertDialog(
