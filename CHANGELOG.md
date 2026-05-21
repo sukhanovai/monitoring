@@ -1,3 +1,19 @@
+## [8.62.35] - 2026-05-21
+
+### Added
+- RU: Android-приложение: на экране «Настройки» появилась плашка «🤖 Бот Matrix» с полями `matrix_homeserver`, `matrix_access_token` (маскированный, с переключателем видимости), `matrix_room_id`, кнопками «Сохранить matrix» и «Проверить связь с сервером бота» — параллельно плашке Telegram-бота. Сервер расширил API на эндпоинты `GET/PATCH /v1/settings/bot/matrix`, которые работают с настройками `MATRIX_HOMESERVER`, `MATRIX_ACCESS_TOKEN`, `MATRIX_ROOM_ID` через тот же `settings_manager`, что и Telegram-бот.
+- EN: Android app: the "Settings" screen now includes a "🤖 Бот Matrix" tile with `matrix_homeserver`, `matrix_access_token` (masked, with a visibility toggle), `matrix_room_id` fields plus "Сохранить matrix" and "Проверить связь с сервером бота" buttons — parallel to the Telegram bot tile. The backend gained `GET/PATCH /v1/settings/bot/matrix` endpoints that read/write `MATRIX_HOMESERVER`, `MATRIX_ACCESS_TOKEN`, `MATRIX_ROOM_ID` via the same `settings_manager` used by the Telegram bot.
+
+### Changed
+- RU: Плашка настроек Telegram-бота переименована из «🤖 Бот» в «🤖 Бот Telegram», чтобы не путаться с новой плашкой «🤖 Бот Matrix». Заголовок диалога раздела обновлён аналогично.
+- EN: The Telegram bot settings tile is renamed from "🤖 Бот" to "🤖 Бот Telegram" so it doesn't collide with the new "🤖 Бот Matrix" tile. The dialog header for the section was updated the same way.
+- RU: SemVer patch-бамп до `8.62.35`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.35`, `ANDROID_VERSION_CODE=797`).
+- EN: SemVer patch bump to `8.62.35`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.35`, `ANDROID_VERSION_CODE=797`).
+
+### Fixed
+- RU: Android-приложение: кнопка «Проверить связь с сервером бота» в плашке настроек Telegram-бота визуально «не работала» — запрос `GET /v1/control/status` уходил и возвращал `200`, но AlertDialog с настройками бота не показывал поле `state.message`, поэтому пользователь не видел ни «Связь с сервером бота есть (active)», ни ошибку. Сообщение `state.message` теперь выводится непосредственно в диалогах разделов «🤖 Бот Telegram» и «🤖 Бот Matrix».
+- EN: Android app: the "Проверить связь с сервером бота" button in the Telegram bot settings tile appeared "not working" — the `GET /v1/control/status` request was firing and returning `200`, but the bot settings AlertDialog never rendered `state.message`, so the user saw neither the "Связь с сервером бота есть (active)" success nor any error. `state.message` is now rendered directly inside the "🤖 Бот Telegram" and "🤖 Бот Matrix" section dialogs.
+
 ## [8.62.34] - 2026-05-21
 
 ### Added
