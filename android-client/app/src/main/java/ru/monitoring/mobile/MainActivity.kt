@@ -2077,7 +2077,6 @@ private fun MonitoringApp(
     var proxmoxHostDeleteConfirmTargetKey by rememberSaveable { mutableStateOf("") }
     var databaseActionsTargetAction by rememberSaveable { mutableStateOf("") }
     var showStockLoadsDialog by rememberSaveable { mutableStateOf(false) }
-    var showSnapshotTransferDialog by rememberSaveable { mutableStateOf(false) }
     var showMorningReportDialog by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(
@@ -2498,15 +2497,6 @@ private fun MonitoringApp(
                 )
             )
         }
-        extensionsById["snapshot_transfer_monitor"]?.takeIf { it.enabled }?.let { extension ->
-            add(
-                buildExtensionDataTile(
-                    extension = extension.copy(name = "снэпшоты"),
-                    summaryOverride = state.snapshotTransferSummary,
-                    hasProblemOverride = state.snapshotTransferHasProblemItems
-                )
-            )
-        }
         extensionsById["stock_load_monitor"]?.takeIf { it.enabled }?.let { extension ->
             add(
                 buildExtensionDataTile(
@@ -2567,11 +2557,6 @@ private fun MonitoringApp(
                 {
                     showStockLoadsDialog = true
                     onAction("backup_stock_loads")
-                }
-            } else if (extension.id == "snapshot_transfer_monitor") {
-                {
-                    showSnapshotTransferDialog = true
-                    onAction("snapshot_transfer_menu")
                 }
             } else if (extension.id == "zfs_monitor") {
                 {
@@ -5312,86 +5297,6 @@ private fun MonitoringApp(
                         Text(state.message)
                     } else {
                         Text("Загружаем данные о загрузке остатков…")
-                    }
-                }
-            },
-            confirmButton = {}
-        )
-    }
-
-    if (showSnapshotTransferDialog) {
-        val snapshotIsCurrent = state.extensionMenuAction == "snapshot_transfer_menu" ||
-            state.extensionMenuAction.startsWith("snapshot_transfer_host_")
-        AlertDialog(
-            onDismissRequest = { showSnapshotTransferDialog = false },
-            title = {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "📸 Передачи ZFS-снэпшотов",
-                        modifier = Modifier.weight(1f),
-                        fontWeight = FontWeight.Bold
-                    )
-                    IconButton(onClick = { onAction("snapshot_transfer_menu") }) {
-                        Icon(
-                            imageVector = Icons.Filled.Refresh,
-                            contentDescription = "Обновить данные о передачах снэпшотов"
-                        )
-                    }
-                    IconButton(onClick = { showSnapshotTransferDialog = false }) {
-                        Icon(
-                            imageVector = Icons.Filled.Close,
-                            contentDescription = "Закрыть сведения о передачах снэпшотов"
-                        )
-                    }
-                }
-            },
-            text = {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 460.dp)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    if (state.isLoading && !snapshotIsCurrent) {
-                        Text("Загружаем данные о передачах ZFS-снэпшотов…")
-                    } else if (snapshotIsCurrent && state.message.isNotBlank() && state.messageSource == "global") {
-                        Text(state.message)
-                        val hostOptions = state.extensionMenuOptions
-                            .mapNotNull { option ->
-                                val action = resolveMenuOptionAction(option)
-                                val label = option.label?.trim().orEmpty()
-                                if (label.isBlank() || action.isBlank()) return@mapNotNull null
-                                if (!action.startsWith("snapshot_transfer_host_")) return@mapNotNull null
-                                label to action
-                            }
-                            .distinctBy { (_, action) -> action }
-                        if (hostOptions.isNotEmpty()) {
-                            Text(
-                                "Кликни хост, чтобы открыть последние 15 записей:",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            hostOptions.forEach { (label, action) ->
-                                Button(
-                                    onClick = { onAction(action) },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(10.dp),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                ) {
-                                    Text(label)
-                                }
-                            }
-                        }
-                    } else {
-                        Text("Пока нет данных о передачах ZFS-снэпшотов. Нажми «Обновить» сверху или потяни список вниз в оперативном центре.")
                     }
                 }
             },
