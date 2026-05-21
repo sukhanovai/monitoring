@@ -1405,7 +1405,7 @@ class MainViewModel(
             status
         }
 
-    // ВРЕМЕННО (8.62.35): отдельная кнопка «Проверить только сертификат».
+    // ВРЕМЕННО (8.62.36): отдельная кнопка «Проверить только сертификат».
     // Гоняет только TLS-проверку Base URL (без полной синхронизации) и шлёт
     // подробный отчёт в консоль сервера (POST /v1/mobile/diagnostics/tls),
     // чтобы диагностировать «⚪ TLS: ошибка проверки (Ошибка сети)» удалённо.
@@ -2906,12 +2906,12 @@ class MainViewModel(
         viewModelScope.launch {
             Log.i(TAG_SYNC, "testBotServerConnection started")
             state = state.copy(isLoading = true, message = "Проверяю связь с сервером бота…", messageSource = "bot_settings")
-            runCatching { currentApi().getControlStatus() }
-                .onSuccess { status ->
-                    Log.i(TAG_SYNC, "testBotServerConnection success: status=${status.monitoringStatus}")
+            runCatching { currentApi().testTelegramBotConnection() }
+                .onSuccess { result ->
+                    Log.i(TAG_SYNC, "testBotServerConnection success: ok=${result.ok}, message=${result.message}")
                     state = state.copy(
                         isLoading = false,
-                        message = "Связь с сервером бота есть (${status.monitoringStatus ?: "ok"})",
+                        message = result.message ?: if (result.ok) "Связь с сервером бота есть" else "Нет связи с сервером бота",
                         messageSource = "bot_settings"
                     )
                 }
@@ -2972,12 +2972,12 @@ class MainViewModel(
         viewModelScope.launch {
             Log.i(TAG_SYNC, "testMatrixBotServerConnection started")
             state = state.copy(isLoading = true, message = "Проверяю связь с сервером бота…", messageSource = "matrix_bot_settings")
-            runCatching { currentApi().getControlStatus() }
-                .onSuccess { status ->
-                    Log.i(TAG_SYNC, "testMatrixBotServerConnection success: status=${status.monitoringStatus}")
+            runCatching { currentApi().testMatrixBotConnection() }
+                .onSuccess { result ->
+                    Log.i(TAG_SYNC, "testMatrixBotServerConnection success: ok=${result.ok}, message=${result.message}")
                     state = state.copy(
                         isLoading = false,
-                        message = "Связь с сервером бота есть (${status.monitoringStatus ?: "ok"})",
+                        message = result.message ?: if (result.ok) "Связь с сервером бота есть" else "Нет связи с сервером бота",
                         messageSource = "matrix_bot_settings"
                     )
                 }

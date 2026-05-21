@@ -1,11 +1,11 @@
 """
 /extensions/web_interface/__init__.py
-Server Monitoring System v8.62.35
+Server Monitoring System v8.62.36
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Web interface
 Система мониторинга серверов
-Версия: 8.62.35
+Версия: 8.62.36
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Веб-интерфейс
@@ -5208,6 +5208,14 @@ def _normalize_matrix_homeserver(value):
     return homeserver
 
 
+def _default_matrix_homeserver():
+    try:
+        from config import settings as _settings
+        return _normalize_matrix_homeserver(getattr(_settings, 'MATRIX_HOMESERVER', ''))
+    except Exception:
+        return ''
+
+
 @app.route('/v1/settings/bot/matrix', methods=['GET'])
 def v1_get_settings_bot_matrix():
     request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
@@ -5224,7 +5232,9 @@ def v1_get_settings_bot_matrix():
 
     from config.db_settings_app import settings_manager
 
-    homeserver = _normalize_matrix_homeserver(settings_manager.get_setting('MATRIX_HOMESERVER', ''))
+    homeserver = _normalize_matrix_homeserver(
+        settings_manager.get_setting('MATRIX_HOMESERVER', '')
+    ) or _default_matrix_homeserver()
     room_id = str(settings_manager.get_setting('MATRIX_ROOM_ID', '') or '').strip()
     access_token = settings_manager.get_setting('MATRIX_ACCESS_TOKEN', '')
 
@@ -5281,7 +5291,9 @@ def v1_settings_bot_matrix():
     if room_id is not None:
         settings_manager.set_setting('MATRIX_ROOM_ID', str(room_id).strip(), 'matrix')
 
-    saved_homeserver = _normalize_matrix_homeserver(settings_manager.get_setting('MATRIX_HOMESERVER', ''))
+    saved_homeserver = _normalize_matrix_homeserver(
+        settings_manager.get_setting('MATRIX_HOMESERVER', '')
+    ) or _default_matrix_homeserver()
     saved_room_id = str(settings_manager.get_setting('MATRIX_ROOM_ID', '') or '').strip()
     saved_token = settings_manager.get_setting('MATRIX_ACCESS_TOKEN', '')
 
@@ -5292,6 +5304,151 @@ def v1_settings_bot_matrix():
             "matrix_room_id": saved_room_id,
             "masked_access_token": _mask_secret(saved_token),
         }
+    }), 200
+
+
+def _telegram_bot_test(token):
+    import requests as _requests
+
+    url = f"https://api.telegram.org/bot{token}/getMe"
+    try:
+        resp = _requests.get(url, timeout=10)
+    except _requests.exceptions.Timeout:
+        return False, "timeout: Telegram API не ответил за 10 c", None
+    except _requests.exceptions.RequestException as exc:
+        return False, f"network: {exc}", None
+
+    try:
+        data = resp.json()
+    except Exception:
+        return False, f"HTTP {resp.status_code}: некорректный JSON", None
+
+    if resp.status_code != 200 or not data.get('ok'):
+        description = data.get('description') or f"HTTP {resp.status_code}"
+        return False, description, data
+
+    result = data.get('result') or {}
+    username = result.get('username')
+    return True, username or 'ok', result
+
+
+@app.route('/v1/settings/bot/test', methods=['POST'])
+def v1_settings_bot_test():
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+
+    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    if not is_ok:
+        return jsonify({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid or expired token",
+                "request_id": request_id,
+            }
+        }), 401
+
+    from config.db_settings_app import settings_manager
+
+    token = str(settings_manager.get_setting('TELEGRAM_TOKEN', '') or '').strip()
+    if not token:
+        return jsonify({
+            "request_id": request_id,
+            "ok": False,
+            "message": "telegram_bot_token не задан в настройках",
+        }), 200
+
+    ok, detail, _ = _telegram_bot_test(token)
+    if ok:
+        message = f"Связь с Telegram установлена (бот @{detail})"
+    else:
+        message = f"Связь с Telegram не установлена: {detail}"
+
+    app.logger.info(
+        "POST /v1/settings/bot/test request_id=%s ok=%s detail=%s",
+        request_id, ok, detail,
+    )
+    return jsonify({
+        "request_id": request_id,
+        "ok": ok,
+        "message": message,
+    }), 200
+
+
+def _matrix_bot_test(homeserver, access_token):
+    import requests as _requests
+
+    base = (homeserver or '').rstrip('/')
+    url = f"{base}/_matrix/client/v3/account/whoami"
+    headers = {"Authorization": f"Bearer {access_token}"}
+    try:
+        resp = _requests.get(url, headers=headers, timeout=10)
+    except _requests.exceptions.Timeout:
+        return False, "timeout: Matrix homeserver не ответил за 10 c", None
+    except _requests.exceptions.RequestException as exc:
+        return False, f"network: {exc}", None
+
+    try:
+        data = resp.json()
+    except Exception:
+        data = None
+
+    if resp.status_code != 200:
+        if isinstance(data, dict):
+            err = data.get('error') or data.get('errcode') or ''
+            return False, f"HTTP {resp.status_code}: {err}".rstrip(': '), data
+        return False, f"HTTP {resp.status_code}", data
+
+    user_id = (data or {}).get('user_id') if isinstance(data, dict) else None
+    return True, user_id or 'ok', data
+
+
+@app.route('/v1/settings/bot/matrix/test', methods=['POST'])
+def v1_settings_bot_matrix_test():
+    request_id = request.headers.get('X-Request-ID') or str(uuid.uuid4())
+
+    is_ok, token_info = _validate_mobile_token(request.headers.get('Authorization'))
+    if not is_ok:
+        return jsonify({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Invalid or expired token",
+                "request_id": request_id,
+            }
+        }), 401
+
+    from config.db_settings_app import settings_manager
+
+    homeserver = _normalize_matrix_homeserver(
+        settings_manager.get_setting('MATRIX_HOMESERVER', '')
+    ) or _default_matrix_homeserver()
+    access_token = str(settings_manager.get_setting('MATRIX_ACCESS_TOKEN', '') or '').strip()
+
+    if not homeserver:
+        return jsonify({
+            "request_id": request_id,
+            "ok": False,
+            "message": "matrix_homeserver не задан в настройках",
+        }), 200
+    if not access_token:
+        return jsonify({
+            "request_id": request_id,
+            "ok": False,
+            "message": "matrix_access_token не задан в настройках",
+        }), 200
+
+    ok, detail, _ = _matrix_bot_test(homeserver, access_token)
+    if ok:
+        message = f"Связь с Matrix установлена (user_id={detail})"
+    else:
+        message = f"Связь с Matrix не установлена: {detail}"
+
+    app.logger.info(
+        "POST /v1/settings/bot/matrix/test request_id=%s ok=%s detail=%s",
+        request_id, ok, detail,
+    )
+    return jsonify({
+        "request_id": request_id,
+        "ok": ok,
+        "message": message,
     }), 200
 
 

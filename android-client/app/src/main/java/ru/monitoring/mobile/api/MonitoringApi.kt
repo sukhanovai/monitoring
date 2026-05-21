@@ -58,6 +58,9 @@ interface MonitoringApi {
     @DELETE("v1/settings/bot/chats/{chatId}")
     suspend fun removeBotChat(@Path("chatId") chatId: String): SettingsBotResponse
 
+    @POST("v1/settings/bot/test")
+    suspend fun testTelegramBotConnection(): BotConnectionTestResponse
+
     @GET("v1/settings/bot/matrix")
     suspend fun getMatrixBotSettings(): SettingsMatrixBotResponse
 
@@ -65,6 +68,9 @@ interface MonitoringApi {
     suspend fun updateMatrixBotSettings(
         @Body request: SettingsMatrixBotRequest
     ): SettingsMatrixBotResponse
+
+    @POST("v1/settings/bot/matrix/test")
+    suspend fun testMatrixBotConnection(): BotConnectionTestResponse
 
     @GET("v1/settings/time")
     suspend fun getTimeSettings(): SettingsTimeResponse
