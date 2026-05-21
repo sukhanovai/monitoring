@@ -1,3 +1,11 @@
+## [8.62.41] - 2026-05-21
+
+### Changed
+- RU: Android-приложение: плашка «🧩 Расширения» в настройках — счётчики «Всего · N / Включено · N / Выключено · N» в сводной карточке теперь сами являются кнопками-фильтрами (`Surface(onClick=…)`), а отдельная строка из трёх `FilterChip` под полем поиска убрана. Раньше плашки в `Surface(primaryContainer)` показывали статистику пассивно, а тапать для смены фильтра приходилось по чипам ниже формы поиска — это удваивало визуальные элементы (одна и та же тройка «Все/Включено/Выключено» сверху и снизу) и заставляло глаз скакать вверх-вниз. Теперь активный фильтр подсвечивается `secondaryContainer` с рамкой `BorderStroke(2.dp, secondary)` и приподнятой `tonalElevation = 3.dp` прямо на счётчике, который ты и так читаешь, а раздел между поиском и списком стал короче на одну строку.
+- EN: Android app: the "🧩 Extensions" tile in settings — the "Всего · N / Включено · N / Выключено · N" counters in the summary card are now themselves filter buttons (`Surface(onClick=…)`), and the separate row of three `FilterChip`s below the search field is removed. Previously the chips in `Surface(primaryContainer)` showed stats passively while filter switching lived in a second row of chips under the search box, duplicating the same "All / Enabled / Disabled" trio top and bottom and forcing the eye to jump up and down. Now the active filter is highlighted with `secondaryContainer`, a `BorderStroke(2.dp, secondary)` outline and raised `tonalElevation = 3.dp` directly on the counter you already read, and the gap between search and list is one row shorter.
+- RU: SemVer patch-бамп до `8.62.41`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.41`, `ANDROID_VERSION_CODE=803`).
+- EN: SemVer patch bump to `8.62.41`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.41`, `ANDROID_VERSION_CODE=803`).
+
 ## [8.62.40] - 2026-05-21
 
 ### Changed
