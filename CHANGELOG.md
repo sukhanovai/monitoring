@@ -1,3 +1,13 @@
+## [8.62.37] - 2026-05-21
+
+### Fixed
+- RU: Android-приложение: кнопка «Проверить связь с сервером бота» в плашках «🤖 Бот Telegram» и «🤖 Бот Matrix» больше не выглядит «нерабочей». Раньше кнопка стояла в одной `Row` с кнопкой «Сохранить» внутри узкого AlertDialog с настройками — длинная подпись прижимала её к краю и попасть пальцем было трудно, а ответ сервера выводился крошечным безымянным `Text(state.message)` под кнопками, который легко не заметить. Теперь кнопка занимает отдельную строку во всю ширину диалога, во время запроса показывает спиннер и подпись «Проверяю связь…» (плюс кнопка disabled, чтобы исключить повторные тапы), а результат рендерится в `ElevatedCard` под кнопкой: зелёный фон (`tertiaryContainer`) и текст от сервера в случае успеха («Связь с Telegram установлена (бот @username)» / «Связь с Matrix установлена (user_id=…)») и красный фон (`errorContainer`) с причиной ошибки (`telegram_bot_token не задан в настройках`, `HTTP 401: Unauthorized`, `timeout: Telegram API не ответил за 10 c` и т.п.).
+- EN: Android app: the "Проверить связь с сервером бота" button in the "🤖 Бот Telegram" and "🤖 Бот Matrix" tiles no longer looks broken. Previously the button lived in the same `Row` as the "Save" button inside a narrow settings `AlertDialog` — the long label squeezed it against the edge and made it hard to tap, and the server's reply was shown as a tiny unstyled `Text(state.message)` below the buttons that was easy to miss. The test button now occupies its own full-width row, displays an inline spinner with "Проверяю связь…" while the request is in flight (and stays disabled to prevent double-taps), and the result is rendered in an `ElevatedCard` below the button: a green `tertiaryContainer` card carrying the server's success text ("Связь с Telegram установлена (бот @username)" / "Связь с Matrix установлена (user_id=…)") on success, and a red `errorContainer` card carrying the failure reason on error (`telegram_bot_token не задан в настройках`, `HTTP 401: Unauthorized`, `timeout: Telegram API не ответил за 10 c`, etc.).
+
+### Changed
+- RU: SemVer patch-бамп до `8.62.37`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.37`, `ANDROID_VERSION_CODE=799`).
+- EN: SemVer patch bump to `8.62.37`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.37`, `ANDROID_VERSION_CODE=799`).
+
 ## [8.62.36] - 2026-05-21
 
 ### Fixed
