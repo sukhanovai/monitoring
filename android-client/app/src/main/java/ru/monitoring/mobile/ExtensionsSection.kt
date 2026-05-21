@@ -1,5 +1,6 @@
 package ru.monitoring.mobile
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,8 +14,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -31,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -57,6 +57,8 @@ fun ExtensionsSection(
             total = total,
             enabled = enabledCount,
             disabled = disabledCount,
+            filter = filter,
+            onFilterChange = { filter = it },
             onEnableAll = onEnableAll,
             onDisableAll = onDisableAll
         )
@@ -87,24 +89,6 @@ fun ExtensionsSection(
                 }
             }
         )
-
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            ExtensionsFilterChip(
-                label = "Все · $total",
-                selected = filter == ExtensionsFilter.All,
-                onClick = { filter = ExtensionsFilter.All }
-            )
-            ExtensionsFilterChip(
-                label = "Включено · $enabledCount",
-                selected = filter == ExtensionsFilter.Enabled,
-                onClick = { filter = ExtensionsFilter.Enabled }
-            )
-            ExtensionsFilterChip(
-                label = "Выключено · $disabledCount",
-                selected = filter == ExtensionsFilter.Disabled,
-                onClick = { filter = ExtensionsFilter.Disabled }
-            )
-        }
 
         val visible = items.filter { item ->
             val matchFilter = when (filter) {
@@ -148,6 +132,8 @@ private fun ExtensionsSummaryCard(
     total: Int,
     enabled: Int,
     disabled: Int,
+    filter: ExtensionsFilter,
+    onFilterChange: (ExtensionsFilter) -> Unit,
     onEnableAll: (() -> Unit)?,
     onDisableAll: (() -> Unit)?
 ) {
@@ -167,19 +153,31 @@ private fun ExtensionsSummaryCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                StatChip(label = "Всего", value = total.toString(), modifier = Modifier.weight(1f))
-                StatChip(
-                    label = "Включено",
-                    value = enabled.toString(),
-                    accent = MaterialTheme.colorScheme.tertiaryContainer,
-                    accentContent = MaterialTheme.colorScheme.onTertiaryContainer,
+                FilterButton(
+                    label = "Все",
+                    value = total,
+                    selected = filter == ExtensionsFilter.All,
+                    selectedContainer = MaterialTheme.colorScheme.secondaryContainer,
+                    selectedContent = MaterialTheme.colorScheme.onSecondaryContainer,
+                    onClick = { onFilterChange(ExtensionsFilter.All) },
                     modifier = Modifier.weight(1f)
                 )
-                StatChip(
+                FilterButton(
+                    label = "Включено",
+                    value = enabled,
+                    selected = filter == ExtensionsFilter.Enabled,
+                    selectedContainer = MaterialTheme.colorScheme.tertiaryContainer,
+                    selectedContent = MaterialTheme.colorScheme.onTertiaryContainer,
+                    onClick = { onFilterChange(ExtensionsFilter.Enabled) },
+                    modifier = Modifier.weight(1f)
+                )
+                FilterButton(
                     label = "Выключено",
-                    value = disabled.toString(),
-                    accent = MaterialTheme.colorScheme.surfaceVariant,
-                    accentContent = MaterialTheme.colorScheme.onSurfaceVariant,
+                    value = disabled,
+                    selected = filter == ExtensionsFilter.Disabled,
+                    selectedContainer = MaterialTheme.colorScheme.errorContainer,
+                    selectedContent = MaterialTheme.colorScheme.onErrorContainer,
+                    onClick = { onFilterChange(ExtensionsFilter.Disabled) },
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -220,52 +218,41 @@ private fun ExtensionsSummaryCard(
 }
 
 @Composable
-private fun StatChip(
+private fun FilterButton(
     label: String,
-    value: String,
-    modifier: Modifier = Modifier,
-    accent: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.surface,
-    accentContent: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface
+    value: Int,
+    selected: Boolean,
+    selectedContainer: Color,
+    selectedContent: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
+    val container = if (selected) selectedContainer else MaterialTheme.colorScheme.surface
+    val content = if (selected) selectedContent else MaterialTheme.colorScheme.onSurface
     Surface(
-        modifier = modifier.clip(RoundedCornerShape(12.dp)),
-        color = accent,
-        contentColor = accentContent,
-        tonalElevation = 1.dp
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick),
+        color = container,
+        contentColor = content,
+        tonalElevation = if (selected) 3.dp else 1.dp
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                value,
+                value.toString(),
                 fontWeight = FontWeight.Bold,
                 fontSize = 18.sp
             )
             Text(
                 label,
-                style = MaterialTheme.typography.labelSmall
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
             )
         }
     }
-}
-
-@Composable
-private fun ExtensionsFilterChip(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    FilterChip(
-        selected = selected,
-        onClick = onClick,
-        label = { Text(label) },
-        shape = RoundedCornerShape(10.dp),
-        colors = FilterChipDefaults.filterChipColors(
-            selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-            selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
-        )
-    )
 }
 
 @Composable
