@@ -1108,7 +1108,7 @@ private data class ExtensionDataTile(
     val hasProblem: Boolean
 )
 
-private enum class ServerCardsSortMode {
+internal enum class ServerCardsSortMode {
     BY_NAME,
     BY_IP
 }
@@ -1948,129 +1948,25 @@ private fun MonitoringApp(
     preferences: AppPreferences,
     callbacks: MonitoringAppCallbacks
 ) {
-    val onTokenChanged = callbacks.onTokenChanged
-    val onBaseUrlChanged = callbacks.onBaseUrlChanged
-    val onSaveToken = callbacks.onSaveToken
-    val onSaveBaseUrl = callbacks.onSaveBaseUrl
-    val onRefreshData = callbacks.onRefreshData
-    val onCheckCertificateOnly = callbacks.onCheckCertificateOnly
-    val onLoadServersForSingleCheck = callbacks.onLoadServersForSingleCheck
-    val onLoadTileData = callbacks.onLoadTileData
-    val onEnsureSettingsLoaded = callbacks.onEnsureSettingsLoaded
-    val onRefresh = callbacks.onRefresh
-    val onCloseApp = callbacks.onCloseApp
-    val onToggleApiTokenVisibility = callbacks.onToggleApiTokenVisibility
-    val onToggleTelegramTokenVisibility = callbacks.onToggleTelegramTokenVisibility
-    val onToggleExtension = callbacks.onToggleExtension
-    val onEnableAllExtensions = callbacks.onEnableAllExtensions
-    val onDisableAllExtensions = callbacks.onDisableAllExtensions
-    val onOpenExtensionsSettingsMenu = callbacks.onOpenExtensionsSettingsMenu
-    val onExtensionsSettingsAction = callbacks.onExtensionsSettingsAction
-    val onAction = callbacks.onAction
-    val onCheckIntervalChanged = callbacks.onCheckIntervalChanged
-    val onTimeoutChanged = callbacks.onTimeoutChanged
-    val onMaxDowntimeChanged = callbacks.onMaxDowntimeChanged
-    val onWindows2025TimeoutChanged = callbacks.onWindows2025TimeoutChanged
-    val onDomainServersTimeoutChanged = callbacks.onDomainServersTimeoutChanged
-    val onAdminServersTimeoutChanged = callbacks.onAdminServersTimeoutChanged
-    val onStandardWindowsTimeoutChanged = callbacks.onStandardWindowsTimeoutChanged
-    val onLinuxTimeoutChanged = callbacks.onLinuxTimeoutChanged
-    val onPingTimeoutChanged = callbacks.onPingTimeoutChanged
-    val onSaveMonitoring = callbacks.onSaveMonitoring
-    val onTelegramTokenChanged = callbacks.onTelegramTokenChanged
-    val onTelegramChatIdChanged = callbacks.onTelegramChatIdChanged
-    val onSaveBot = callbacks.onSaveBot
-    val onTestBotServerConnection = callbacks.onTestBotServerConnection
-    val onTestBffConnection = callbacks.onTestBffConnection
-    val onNewTelegramChatIdChanged = callbacks.onNewTelegramChatIdChanged
-    val onAddTelegramChatId = callbacks.onAddTelegramChatId
-    val onRemoveTelegramChatId = callbacks.onRemoveTelegramChatId
-    val onMatrixHomeserverChanged = callbacks.onMatrixHomeserverChanged
-    val onMatrixAccessTokenChanged = callbacks.onMatrixAccessTokenChanged
-    val onMatrixRoomIdChanged = callbacks.onMatrixRoomIdChanged
-    val onToggleMatrixAccessTokenVisibility = callbacks.onToggleMatrixAccessTokenVisibility
-    val onSaveMatrixBot = callbacks.onSaveMatrixBot
-    val onTestMatrixBotServerConnection = callbacks.onTestMatrixBotServerConnection
-    val onQuietStartChanged = callbacks.onQuietStartChanged
-    val onQuietEndChanged = callbacks.onQuietEndChanged
-    val onMetricsTimeChanged = callbacks.onMetricsTimeChanged
-    val onSaveTime = callbacks.onSaveTime
-    val onAuthModeChanged = callbacks.onAuthModeChanged
-    val onSshUsernameChanged = callbacks.onSshUsernameChanged
-    val onSshKeyPathChanged = callbacks.onSshKeyPathChanged
-    val onSshPortChanged = callbacks.onSshPortChanged
-    val onWindowsUsernameChanged = callbacks.onWindowsUsernameChanged
-    val onSshPasswordChanged = callbacks.onSshPasswordChanged
-    val onWindowsPasswordChanged = callbacks.onWindowsPasswordChanged
-    val onToggleSshPasswordVisibility = callbacks.onToggleSshPasswordVisibility
-    val onToggleWindowsPasswordVisibility = callbacks.onToggleWindowsPasswordVisibility
-    val onSaveAuth = callbacks.onSaveAuth
-    val onWindowsCredUsernameChanged = callbacks.onWindowsCredUsernameChanged
-    val onWindowsCredPasswordChanged = callbacks.onWindowsCredPasswordChanged
-    val onWindowsCredServerTypeChanged = callbacks.onWindowsCredServerTypeChanged
-    val onWindowsCredPriorityChanged = callbacks.onWindowsCredPriorityChanged
-    val onAddWindowsCredential = callbacks.onAddWindowsCredential
-    val onRemoveWindowsCredential = callbacks.onRemoveWindowsCredential
-    val onCreateWindowsTypeInputChanged = callbacks.onCreateWindowsTypeInputChanged
-    val onRenameOldTypeInputChanged = callbacks.onRenameOldTypeInputChanged
-    val onRenameNewTypeInputChanged = callbacks.onRenameNewTypeInputChanged
-    val onMergeSourceTypeInputChanged = callbacks.onMergeSourceTypeInputChanged
-    val onMergeTargetTypeInputChanged = callbacks.onMergeTargetTypeInputChanged
-    val onDeleteTypeInputChanged = callbacks.onDeleteTypeInputChanged
-    val onDeleteTargetTypeInputChanged = callbacks.onDeleteTargetTypeInputChanged
-    val onCreateWindowsType = callbacks.onCreateWindowsType
-    val onRenameWindowsType = callbacks.onRenameWindowsType
-    val onMergeWindowsTypes = callbacks.onMergeWindowsTypes
-    val onDeleteWindowsType = callbacks.onDeleteWindowsType
-    val onServerIpChanged = callbacks.onServerIpChanged
-    val onServerNameChanged = callbacks.onServerNameChanged
-    val onServerTypeChanged = callbacks.onServerTypeChanged
-    val onServerTimeoutChanged = callbacks.onServerTimeoutChanged
-    val onSaveServer = callbacks.onSaveServer
-    val onCheckServerAvailability = callbacks.onCheckServerAvailability
-    val onCheckServerResources = callbacks.onCheckServerResources
-    val onToggleProxmoxBackupMenu = callbacks.onToggleProxmoxBackupMenu
-    val onToggleDatabaseBackupMenu = callbacks.onToggleDatabaseBackupMenu
-    val onToggleMailBackupMenu = callbacks.onToggleMailBackupMenu
-    val onEditServer = callbacks.onEditServer
-    val onCancelServerEdit = callbacks.onCancelServerEdit
-    val onDeleteServer = callbacks.onDeleteServer
-    val onToggleServerMonitoring = callbacks.onToggleServerMonitoring
-    val onThemeModeChanged = callbacks.onThemeModeChanged
-    val onMorningNotificationsEnabledChanged = callbacks.onMorningNotificationsEnabledChanged
-    val onMarkMorningReportRead = callbacks.onMarkMorningReportRead
-    val onFetchProxmoxHostBackups = callbacks.onFetchProxmoxHostBackups
-    val onCloseProxmoxHostBackups = callbacks.onCloseProxmoxHostBackups
-    val onOpenUpdateUrl = callbacks.onOpenUpdateUrl
+    val screenState = rememberMonitoringScreenState()
+    MonitoringAppContent(state, preferences, callbacks, screenState)
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class, ExperimentalMaterialApi::class, ExperimentalFoundationApi::class)
+@Composable
+private fun MonitoringAppContent(
+    state: MainUiState,
+    preferences: AppPreferences,
+    callbacks: MonitoringAppCallbacks,
+    screenState: MonitoringScreenState
+) {
+    // Колбэки и изменяемое состояние экрана вынесены в холдеры и доступны
+    // через with(...), чтобы не плодить сотни локальных переменных в методе
+    // (см. MonitoringScreenState и VerifyError-фикс).
+    with(callbacks) {
+    with(screenState) {
     val isCompactOpsHub = BuildConfig.IS_COMPACT_OPS_HUB
 
-    var isManagementExpanded by rememberSaveable { mutableStateOf(false) }
-    var isSshAuthExpanded by rememberSaveable { mutableStateOf(false) }
-    var isWindowsAuthExpanded by rememberSaveable { mutableStateOf(false) }
-    var authWindowsTab by rememberSaveable { mutableStateOf("accounts") }
-    var windowsCredFilterType by rememberSaveable { mutableStateOf("") }
-    var isAddWindowsCredOpen by rememberSaveable { mutableStateOf(false) }
-    var isCreateWindowsTypeOpen by rememberSaveable { mutableStateOf(false) }
-    var isMergeWindowsTypesOpen by rememberSaveable { mutableStateOf(false) }
-    var windowsCredDeleteConfirmId by rememberSaveable { mutableStateOf(-1) }
-    var windowsTypeDeleteConfirmName by rememberSaveable { mutableStateOf("") }
-    var windowsTypeRenameSource by rememberSaveable { mutableStateOf("") }
-    var showServerAvailabilityDialog by rememberSaveable { mutableStateOf(false) }
-    var showServerAddDialog by rememberSaveable { mutableStateOf(false) }
-    var serverActionsTargetKey by rememberSaveable { mutableStateOf("") }
-    var serverDeleteConfirmTargetKey by rememberSaveable { mutableStateOf("") }
-    var serverCardsSortMode by rememberSaveable { mutableStateOf(ServerCardsSortMode.BY_NAME.name) }
-    var showServerResourcesMenu by rememberSaveable { mutableStateOf(false) }
-    var showServerResourcesDetailsDialog by rememberSaveable { mutableStateOf(false) }
-    var showTileHelpDialog by rememberSaveable { mutableStateOf(false) }
-    var tileHelpTitle by rememberSaveable { mutableStateOf("") }
-    var tileHelpDescription by rememberSaveable { mutableStateOf("") }
-    var serverResourceDetailsTargetKey by rememberSaveable { mutableStateOf("") }
-    var serverResourceDetailsTitle by rememberSaveable { mutableStateOf("") }
-    var areOpsTilesExpanded by rememberSaveable { mutableStateOf(false) }
-    var showTileSettingsDialog by rememberSaveable { mutableStateOf(false) }
-    var settingsSection by rememberSaveable { mutableStateOf("bff") }
-    var showSettingsSectionOverlay by rememberSaveable { mutableStateOf(false) }
     val pullToRefreshState = rememberPullRefreshState(state.isLoading, onRefreshData)
     val reportPullRefreshState = rememberPullRefreshState(
         state.isLoading,
@@ -2079,114 +1975,6 @@ private fun MonitoringApp(
     // 0 — отчёт, 1 — оперативный центр (стартовый экран), 2 — настройки.
     val screensPagerState = rememberPagerState(initialPage = 1) { 3 }
     val screensScope = rememberCoroutineScope()
-    var showProxmoxPatternAddDialog by rememberSaveable { mutableStateOf(false) }
-    var showProxmoxPatternEditDialog by rememberSaveable { mutableStateOf(false) }
-    var proxmoxPatternCategoryInput by rememberSaveable { mutableStateOf("proxmox") }
-    var proxmoxPatternTypeInput by rememberSaveable { mutableStateOf("subject") }
-    var proxmoxPatternValueInput by rememberSaveable { mutableStateOf("") }
-    var proxmoxPatternEditAction by rememberSaveable { mutableStateOf("") }
-    var patternDialogReturnAction by rememberSaveable { mutableStateOf("settings_patterns_proxmox") }
-    var proxmoxPatternEditTypeInput by rememberSaveable { mutableStateOf("subject") }
-    var proxmoxPatternEditValueInput by rememberSaveable { mutableStateOf("") }
-    var showMailPatternAddDialog by rememberSaveable { mutableStateOf(false) }
-    var showMailPatternEditDialog by rememberSaveable { mutableStateOf(false) }
-    var mailPatternInputMode by rememberSaveable { mutableStateOf("subject") }
-    var mailPatternInputValue by rememberSaveable { mutableStateOf("") }
-    var mailPatternEditAction by rememberSaveable { mutableStateOf("") }
-    var mailPatternEditValueInput by rememberSaveable { mutableStateOf("") }
-    var showMailPatternsDialog by rememberSaveable { mutableStateOf(false) }
-    var showMailPatternActionsDialog by rememberSaveable { mutableStateOf(false) }
-    var selectedMailPatternLabel by rememberSaveable { mutableStateOf("") }
-    var selectedMailPatternEditAction by rememberSaveable { mutableStateOf("") }
-    var selectedMailPatternDeleteAction by rememberSaveable { mutableStateOf("") }
-    var returnToMailPatternsDialog by rememberSaveable { mutableStateOf(false) }
-    var showDbCategoryAddDialog by rememberSaveable { mutableStateOf(false) }
-    var dbCategoryInput by rememberSaveable { mutableStateOf("") }
-    var showDbEntryAddDialog by rememberSaveable { mutableStateOf(false) }
-    var showDbOpsEntryAddDialog by rememberSaveable { mutableStateOf(false) }
-    var dbEntryAddCategory by rememberSaveable { mutableStateOf("") }
-    var dbEntryAddKeyInput by rememberSaveable { mutableStateOf("") }
-    var dbEntryAddNameInput by rememberSaveable { mutableStateOf("") }
-    var showDbEntryEditDialog by rememberSaveable { mutableStateOf(false) }
-    var dbEntryEditCategory by rememberSaveable { mutableStateOf("") }
-    var dbEntryEditOriginalKey by rememberSaveable { mutableStateOf("") }
-    var dbEntryEditNewKeyInput by rememberSaveable { mutableStateOf("") }
-    var dbEntryEditNameInput by rememberSaveable { mutableStateOf("") }
-    var showZfsHostAddDialog by rememberSaveable { mutableStateOf(false) }
-    var showZfsHostEditDialog by rememberSaveable { mutableStateOf(false) }
-    var showZfsStatusesDialog by rememberSaveable { mutableStateOf(false) }
-    var showZfsPoolFreeSpaceDialog by rememberSaveable { mutableStateOf(false) }
-    var showZfsPoolHostsSettingsDialog by rememberSaveable { mutableStateOf(false) }
-    var showZfsSettingsDialog by rememberSaveable { mutableStateOf(false) }
-    var showZfsHostsSettingsDialog by rememberSaveable { mutableStateOf(false) }
-    var showZfsHostActionsDialog by rememberSaveable { mutableStateOf(false) }
-    var showZfsPoolHostActionsDialog by rememberSaveable { mutableStateOf(false) }
-    var showZfsPoolHostAddDialog by rememberSaveable { mutableStateOf(false) }
-    var showZfsPoolHostEditDialog by rememberSaveable { mutableStateOf(false) }
-    var zfsPoolHostAddAction by rememberSaveable { mutableStateOf("zfsp_add") }
-    var pendingZfsPoolHostAddFromFreeSpaceDialog by rememberSaveable { mutableStateOf(false) }
-    var showZfsHostDetailsDialog by rememberSaveable { mutableStateOf(false) }
-    var showZfsPatternsDialog by rememberSaveable { mutableStateOf(false) }
-    var zfsHostInput by rememberSaveable { mutableStateOf("") }
-    var zfsHostEditAction by rememberSaveable { mutableStateOf("") }
-    var zfsHostEditCurrentName by rememberSaveable { mutableStateOf("") }
-    var zfsHostEditNewNameInput by rememberSaveable { mutableStateOf("") }
-    var zfsSelectedHostName by rememberSaveable { mutableStateOf("") }
-    var zfsSelectedHostEditAction by rememberSaveable { mutableStateOf("") }
-    var zfsSelectedHostDeleteAction by rememberSaveable { mutableStateOf("") }
-    var showZfsHostDeleteConfirmDialog by rememberSaveable { mutableStateOf(false) }
-    var zfsHostDeleteConfirmName by rememberSaveable { mutableStateOf("") }
-    var zfsHostDeleteConfirmAction by rememberSaveable { mutableStateOf("") }
-    var zfsSelectedHostToggleAction by rememberSaveable { mutableStateOf("") }
-    var zfsPoolSelectedHostName by rememberSaveable { mutableStateOf("") }
-    var zfsPoolSelectedHostEditNameAction by rememberSaveable { mutableStateOf("") }
-    var zfsPoolSelectedHostEditIpAction by rememberSaveable { mutableStateOf("") }
-    var zfsPoolSelectedHostEditThresholdAction by rememberSaveable { mutableStateOf("") }
-    var zfsPoolSelectedHostDeleteAction by rememberSaveable { mutableStateOf("") }
-    var zfsPoolSelectedHostToggleAction by rememberSaveable { mutableStateOf("") }
-    var zfsPoolHostNameInput by rememberSaveable { mutableStateOf("") }
-    var zfsPoolHostIpInput by rememberSaveable { mutableStateOf("") }
-    var zfsPoolHostThresholdInput by rememberSaveable { mutableStateOf("20") }
-    var zfsPoolHostEditNameInput by rememberSaveable { mutableStateOf("") }
-    var zfsPoolHostEditIpInput by rememberSaveable { mutableStateOf("") }
-    var zfsPoolHostEditThresholdInput by rememberSaveable { mutableStateOf("") }
-    var zfsDetailsHostName by rememberSaveable { mutableStateOf("") }
-    var zfsStatusDetailsFallbackText by rememberSaveable { mutableStateOf("") }
-    var pendingZfsHostSettingsName by rememberSaveable { mutableStateOf("") }
-    var showResourceThresholdDialog by rememberSaveable { mutableStateOf(false) }
-    var showResourceSettingsDialog by rememberSaveable { mutableStateOf(false) }
-    var resourceThresholdAction by rememberSaveable { mutableStateOf("") }
-    var resourceThresholdLabel by rememberSaveable { mutableStateOf("") }
-    var resourceThresholdValueInput by rememberSaveable { mutableStateOf("") }
-    var resourceThresholdCurrentValue by rememberSaveable { mutableStateOf<Int?>(null) }
-    var resourceThresholdOverrides by rememberSaveable { mutableStateOf<Map<String, Int>>(emptyMap()) }
-    var selectedProxmoxBackupLabel by rememberSaveable { mutableStateOf("") }
-    var selectedDatabaseBackupLabel by rememberSaveable { mutableStateOf("") }
-    var showProxmoxBackupStatsDialog by rememberSaveable { mutableStateOf(false) }
-    var showProxmoxBackupsDialog by rememberSaveable { mutableStateOf(false) }
-    var showProxmoxPatternsDialog by rememberSaveable { mutableStateOf(false) }
-    var showProxmoxPatternActionsDialog by rememberSaveable { mutableStateOf(false) }
-    var selectedProxmoxPatternLabel by rememberSaveable { mutableStateOf("") }
-    var selectedProxmoxPatternEditAction by rememberSaveable { mutableStateOf("") }
-    var selectedProxmoxPatternDeleteAction by rememberSaveable { mutableStateOf("") }
-    var proxmoxPatternDeleteConfirmLabel by rememberSaveable { mutableStateOf("") }
-    var proxmoxPatternDeleteConfirmAction by rememberSaveable { mutableStateOf("") }
-    var showDatabaseBackupsDialog by rememberSaveable { mutableStateOf(false) }
-    var showMailBackupsDialog by rememberSaveable { mutableStateOf(false) }
-    var showDatabasePatternsDialog by rememberSaveable { mutableStateOf(false) }
-    var showDatabasePatternActionsDialog by rememberSaveable { mutableStateOf(false) }
-    var selectedDatabasePatternLabel by rememberSaveable { mutableStateOf("") }
-    var selectedDatabasePatternEditAction by rememberSaveable { mutableStateOf("") }
-    var selectedDatabasePatternDeleteAction by rememberSaveable { mutableStateOf("") }
-    var showProxmoxServerAddDialog by rememberSaveable { mutableStateOf(false) }
-    var proxmoxServerNameInput by rememberSaveable { mutableStateOf("") }
-    var proxmoxHostActionsTargetKey by rememberSaveable { mutableStateOf("") }
-    var proxmoxHostDeleteConfirmTargetKey by rememberSaveable { mutableStateOf("") }
-    var databaseActionsTargetAction by rememberSaveable { mutableStateOf("") }
-    var showStockLoadsDialog by rememberSaveable { mutableStateOf(false) }
-    var showSnapshotTransferDialog by rememberSaveable { mutableStateOf(false) }
-    var showMorningReportDialog by rememberSaveable { mutableStateOf(false) }
-
     LaunchedEffect(
         pendingZfsHostSettingsName,
         state.extensionSettingsMenuAction,
@@ -8248,5 +8036,7 @@ private fun MonitoringApp(
                 }
             }
         }
+    }
+    }
     }
 }
