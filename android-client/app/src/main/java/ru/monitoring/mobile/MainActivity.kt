@@ -3,9 +3,13 @@ package ru.monitoring.mobile
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Typeface
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -36,7 +40,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -91,7 +94,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -1688,24 +1690,14 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         // Если прошлый запуск завершился необработанным исключением — показываем
-        // отчёт о сбое вместо обычного интерфейса. Экран намеренно минимальный
-        // и не зависит от тяжёлого графа MonitoringApp, поэтому отображается
-        // даже при детерминированном падении на старте.
+        // отчёт о сбое вместо обычного интерфейса. Экран собран на обычных
+        // android.widget-вью (без Compose), поэтому отображается даже когда
+        // падает сам граф Compose. Если и он не построился — сразу отдаём
+        // отчёт через системный share-лист.
         val pendingCrash = CrashReporter.peekPendingCrash(this)
         if (pendingCrash != null) {
-            enableEdgeToEdge()
-            setContent {
-                MonitoringTheme(darkTheme = true) {
-                    CrashReportScreen(
-                        report = pendingCrash,
-                        onShare = { shareCrashReport(pendingCrash) },
-                        onContinue = {
-                            CrashReporter.clearPendingCrash(this)
-                            recreate()
-                        }
-                    )
-                }
-            }
+            runCatching { showCrashReportScreen(pendingCrash) }
+                .onFailure { shareCrashReport(pendingCrash) }
             return
         }
 
@@ -1728,109 +1720,114 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                val appCallbacks = remember(vm) {
+                    MonitoringAppCallbacks(
+                        onTokenChanged = vm::setTokenInput,
+                        onBaseUrlChanged = vm::setBaseUrlInput,
+                        onSaveToken = vm::saveToken,
+                        onSaveBaseUrl = vm::saveBaseUrl,
+                        onRefreshData = vm::refreshData,
+                        onCheckCertificateOnly = vm::checkBffCertificateOnly,
+                        onLoadServersForSingleCheck = { vm.refreshSettingsFromServer(showErrors = true) },
+                        onLoadTileData = vm::loadTileData,
+                        onEnsureSettingsLoaded = vm::ensureSettingsLoaded,
+                        onRefresh = vm::refreshAvailability,
+                        onCloseApp = { moveTaskToBack(true) },
+                        onToggleApiTokenVisibility = vm::toggleApiTokenVisibility,
+                        onToggleTelegramTokenVisibility = vm::toggleTelegramTokenVisibility,
+                        onToggleExtension = vm::toggleExtension,
+                        onEnableAllExtensions = vm::enableAllExtensions,
+                        onDisableAllExtensions = vm::disableAllExtensions,
+                        onOpenExtensionsSettingsMenu = vm::openExtensionsSettingsMenu,
+                        onExtensionsSettingsAction = vm::runExtensionsSettingsAction,
+                        onAction = vm::sendAction,
+                        onCheckIntervalChanged = vm::setCheckIntervalInput,
+                        onTimeoutChanged = vm::setTimeoutInput,
+                        onMaxDowntimeChanged = vm::setMaxDowntimeInput,
+                        onWindows2025TimeoutChanged = vm::setWindows2025TimeoutInput,
+                        onDomainServersTimeoutChanged = vm::setDomainServersTimeoutInput,
+                        onAdminServersTimeoutChanged = vm::setAdminServersTimeoutInput,
+                        onStandardWindowsTimeoutChanged = vm::setStandardWindowsTimeoutInput,
+                        onLinuxTimeoutChanged = vm::setLinuxTimeoutInput,
+                        onPingTimeoutChanged = vm::setPingTimeoutInput,
+                        onSaveMonitoring = vm::updateMonitoringSettings,
+                        onTelegramTokenChanged = vm::setTelegramTokenInput,
+                        onTelegramChatIdChanged = vm::setTelegramChatIdInput,
+                        onSaveBot = vm::updateBotSettings,
+                        onTestBotServerConnection = vm::testBotServerConnection,
+                        onTestBffConnection = vm::testBffConnection,
+                        onNewTelegramChatIdChanged = vm::setNewTelegramChatIdInput,
+                        onAddTelegramChatId = vm::addTelegramChatId,
+                        onRemoveTelegramChatId = vm::removeTelegramChatId,
+                        onMatrixHomeserverChanged = vm::setMatrixHomeserverInput,
+                        onMatrixAccessTokenChanged = vm::setMatrixAccessTokenInput,
+                        onMatrixRoomIdChanged = vm::setMatrixRoomIdInput,
+                        onToggleMatrixAccessTokenVisibility = vm::toggleMatrixAccessTokenVisibility,
+                        onSaveMatrixBot = vm::updateMatrixBotSettings,
+                        onTestMatrixBotServerConnection = vm::testMatrixBotServerConnection,
+                        onQuietStartChanged = vm::setQuietStartInput,
+                        onQuietEndChanged = vm::setQuietEndInput,
+                        onMetricsTimeChanged = vm::setMetricsTimeInput,
+                        onSaveTime = vm::updateTimeSettings,
+                        onAuthModeChanged = vm::setAuthModeInput,
+                        onSshUsernameChanged = vm::setSshUsernameInput,
+                        onSshKeyPathChanged = vm::setSshKeyPathInput,
+                        onSshPortChanged = vm::setSshPortInput,
+                        onWindowsUsernameChanged = vm::setWindowsUsernameInput,
+                        onSshPasswordChanged = vm::setSshPasswordInput,
+                        onWindowsPasswordChanged = vm::setWindowsPasswordInput,
+                        onToggleSshPasswordVisibility = vm::toggleSshPasswordVisibility,
+                        onToggleWindowsPasswordVisibility = vm::toggleWindowsPasswordVisibility,
+                        onSaveAuth = vm::updateAuthSettings,
+                        onWindowsCredUsernameChanged = vm::setWindowsCredUsernameInput,
+                        onWindowsCredPasswordChanged = vm::setWindowsCredPasswordInput,
+                        onWindowsCredServerTypeChanged = vm::setWindowsCredServerTypeInput,
+                        onWindowsCredPriorityChanged = vm::setWindowsCredPriorityInput,
+                        onAddWindowsCredential = vm::addWindowsCredential,
+                        onRemoveWindowsCredential = vm::removeWindowsCredential,
+                        onCreateWindowsTypeInputChanged = vm::setCreateWindowsTypeInput,
+                        onRenameOldTypeInputChanged = vm::setRenameOldTypeInput,
+                        onRenameNewTypeInputChanged = vm::setRenameNewTypeInput,
+                        onMergeSourceTypeInputChanged = vm::setMergeSourceTypeInput,
+                        onMergeTargetTypeInputChanged = vm::setMergeTargetTypeInput,
+                        onDeleteTypeInputChanged = vm::setDeleteTypeInput,
+                        onDeleteTargetTypeInputChanged = vm::setDeleteTargetTypeInput,
+                        onCreateWindowsType = vm::createWindowsType,
+                        onRenameWindowsType = vm::renameWindowsType,
+                        onMergeWindowsTypes = vm::mergeWindowsTypes,
+                        onDeleteWindowsType = vm::deleteWindowsType,
+                        onServerIpChanged = vm::setServerIpInput,
+                        onServerNameChanged = vm::setServerNameInput,
+                        onServerTypeChanged = vm::setServerTypeInput,
+                        onServerTimeoutChanged = vm::setServerTimeoutInput,
+                        onSaveServer = vm::saveServer,
+                        onCheckServerAvailability = vm::refreshServerAvailability,
+                        onCheckServerResources = vm::refreshServerResources,
+                        onToggleProxmoxBackupMenu = vm::toggleProxmoxBackupMenu,
+                        onToggleDatabaseBackupMenu = vm::toggleDatabaseBackupMenu,
+                        onToggleMailBackupMenu = vm::toggleMailBackupMenu,
+                        onEditServer = vm::startServerEdit,
+                        onCancelServerEdit = vm::cancelServerEdit,
+                        onDeleteServer = vm::deleteServer,
+                        onToggleServerMonitoring = vm::toggleServerMonitoring,
+                        onThemeModeChanged = vm::setThemeMode,
+                        onMorningNotificationsEnabledChanged = vm::setMorningReportNotificationsEnabled,
+                        onMarkMorningReportRead = vm::markMorningReportRead,
+                        onFetchProxmoxHostBackups = vm::fetchProxmoxHostBackups,
+                        onCloseProxmoxHostBackups = vm::closeProxmoxHostBackups,
+                        onOpenUpdateUrl = { url ->
+                            if (url.isNotBlank()) {
+                                runCatching {
+                                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                                }
+                            }
+                        }
+                    )
+                }
                 MonitoringApp(
                     state = vm.state,
                     preferences = preferences,
-                    onTokenChanged = vm::setTokenInput,
-                    onBaseUrlChanged = vm::setBaseUrlInput,
-                    onSaveToken = vm::saveToken,
-                    onSaveBaseUrl = vm::saveBaseUrl,
-                    onRefreshData = vm::refreshData,
-                    onCheckCertificateOnly = vm::checkBffCertificateOnly,
-                    onLoadServersForSingleCheck = { vm.refreshSettingsFromServer(showErrors = true) },
-                    onLoadTileData = vm::loadTileData,
-                    onEnsureSettingsLoaded = vm::ensureSettingsLoaded,
-                    onRefresh = vm::refreshAvailability,
-                    onCloseApp = { moveTaskToBack(true) },
-                    onToggleApiTokenVisibility = vm::toggleApiTokenVisibility,
-                    onToggleTelegramTokenVisibility = vm::toggleTelegramTokenVisibility,
-                    onToggleExtension = vm::toggleExtension,
-                    onEnableAllExtensions = vm::enableAllExtensions,
-                    onDisableAllExtensions = vm::disableAllExtensions,
-                    onOpenExtensionsSettingsMenu = vm::openExtensionsSettingsMenu,
-                    onExtensionsSettingsAction = vm::runExtensionsSettingsAction,
-                    onAction = vm::sendAction,
-                    onCheckIntervalChanged = vm::setCheckIntervalInput,
-                    onTimeoutChanged = vm::setTimeoutInput,
-                    onMaxDowntimeChanged = vm::setMaxDowntimeInput,
-                    onWindows2025TimeoutChanged = vm::setWindows2025TimeoutInput,
-                    onDomainServersTimeoutChanged = vm::setDomainServersTimeoutInput,
-                    onAdminServersTimeoutChanged = vm::setAdminServersTimeoutInput,
-                    onStandardWindowsTimeoutChanged = vm::setStandardWindowsTimeoutInput,
-                    onLinuxTimeoutChanged = vm::setLinuxTimeoutInput,
-                    onPingTimeoutChanged = vm::setPingTimeoutInput,
-                    onSaveMonitoring = vm::updateMonitoringSettings,
-                    onTelegramTokenChanged = vm::setTelegramTokenInput,
-                    onTelegramChatIdChanged = vm::setTelegramChatIdInput,
-                    onSaveBot = vm::updateBotSettings,
-                    onTestBotServerConnection = vm::testBotServerConnection,
-                    onTestBffConnection = vm::testBffConnection,
-                    onNewTelegramChatIdChanged = vm::setNewTelegramChatIdInput,
-                    onAddTelegramChatId = vm::addTelegramChatId,
-                    onRemoveTelegramChatId = vm::removeTelegramChatId,
-                    onMatrixHomeserverChanged = vm::setMatrixHomeserverInput,
-                    onMatrixAccessTokenChanged = vm::setMatrixAccessTokenInput,
-                    onMatrixRoomIdChanged = vm::setMatrixRoomIdInput,
-                    onToggleMatrixAccessTokenVisibility = vm::toggleMatrixAccessTokenVisibility,
-                    onSaveMatrixBot = vm::updateMatrixBotSettings,
-                    onTestMatrixBotServerConnection = vm::testMatrixBotServerConnection,
-                    onQuietStartChanged = vm::setQuietStartInput,
-                    onQuietEndChanged = vm::setQuietEndInput,
-                    onMetricsTimeChanged = vm::setMetricsTimeInput,
-                    onSaveTime = vm::updateTimeSettings,
-                    onAuthModeChanged = vm::setAuthModeInput,
-                    onSshUsernameChanged = vm::setSshUsernameInput,
-                    onSshKeyPathChanged = vm::setSshKeyPathInput,
-                    onSshPortChanged = vm::setSshPortInput,
-                    onWindowsUsernameChanged = vm::setWindowsUsernameInput,
-                    onSshPasswordChanged = vm::setSshPasswordInput,
-                    onWindowsPasswordChanged = vm::setWindowsPasswordInput,
-                    onToggleSshPasswordVisibility = vm::toggleSshPasswordVisibility,
-                    onToggleWindowsPasswordVisibility = vm::toggleWindowsPasswordVisibility,
-                    onSaveAuth = vm::updateAuthSettings,
-                    onWindowsCredUsernameChanged = vm::setWindowsCredUsernameInput,
-                    onWindowsCredPasswordChanged = vm::setWindowsCredPasswordInput,
-                    onWindowsCredServerTypeChanged = vm::setWindowsCredServerTypeInput,
-                    onWindowsCredPriorityChanged = vm::setWindowsCredPriorityInput,
-                    onAddWindowsCredential = vm::addWindowsCredential,
-                    onRemoveWindowsCredential = vm::removeWindowsCredential,
-                    onCreateWindowsTypeInputChanged = vm::setCreateWindowsTypeInput,
-                    onRenameOldTypeInputChanged = vm::setRenameOldTypeInput,
-                    onRenameNewTypeInputChanged = vm::setRenameNewTypeInput,
-                    onMergeSourceTypeInputChanged = vm::setMergeSourceTypeInput,
-                    onMergeTargetTypeInputChanged = vm::setMergeTargetTypeInput,
-                    onDeleteTypeInputChanged = vm::setDeleteTypeInput,
-                    onDeleteTargetTypeInputChanged = vm::setDeleteTargetTypeInput,
-                    onCreateWindowsType = vm::createWindowsType,
-                    onRenameWindowsType = vm::renameWindowsType,
-                    onMergeWindowsTypes = vm::mergeWindowsTypes,
-                    onDeleteWindowsType = vm::deleteWindowsType,
-                    onServerIpChanged = vm::setServerIpInput,
-                    onServerNameChanged = vm::setServerNameInput,
-                    onServerTypeChanged = vm::setServerTypeInput,
-                    onServerTimeoutChanged = vm::setServerTimeoutInput,
-                    onSaveServer = vm::saveServer,
-                    onCheckServerAvailability = vm::refreshServerAvailability,
-                    onCheckServerResources = vm::refreshServerResources,
-                    onToggleProxmoxBackupMenu = vm::toggleProxmoxBackupMenu,
-                    onToggleDatabaseBackupMenu = vm::toggleDatabaseBackupMenu,
-                    onToggleMailBackupMenu = vm::toggleMailBackupMenu,
-                    onEditServer = vm::startServerEdit,
-                    onCancelServerEdit = vm::cancelServerEdit,
-                    onDeleteServer = vm::deleteServer,
-                    onToggleServerMonitoring = vm::toggleServerMonitoring,
-                    onThemeModeChanged = vm::setThemeMode,
-                    onMorningNotificationsEnabledChanged = vm::setMorningReportNotificationsEnabled,
-                    onMarkMorningReportRead = vm::markMorningReportRead,
-                    onFetchProxmoxHostBackups = vm::fetchProxmoxHostBackups,
-                    onCloseProxmoxHostBackups = vm::closeProxmoxHostBackups,
-                    onOpenUpdateUrl = { url ->
-                        if (url.isNotBlank()) {
-                            runCatching {
-                                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                            }
-                        }
-                    }
+                    callbacks = appCallbacks
                 )
             }
         }
@@ -1870,73 +1867,77 @@ class MainActivity : ComponentActivity() {
             startActivity(Intent.createChooser(shareIntent, "Поделиться отчётом о сбое"))
         }
     }
-}
 
-@Composable
-private fun CrashReportScreen(
-    report: String,
-    onShare: () -> Unit,
-    onContinue: () -> Unit
-) {
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(20.dp)
-        ) {
-            Text(
-                text = "ComDone аварийно завершился",
-                fontWeight = FontWeight.Bold,
-                fontSize = 20.sp,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = "Ниже — техническая причина сбоя. Нажми «Поделиться отчётом» " +
-                    "и отправь этот текст разработчику (Telegram, почта) — по нему " +
-                    "можно точно найти и починить ошибку.",
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(12.dp))
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                shape = RoundedCornerShape(10.dp)
-            ) {
-                SelectionContainer {
-                    Text(
-                        text = report,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                            .padding(12.dp),
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            Spacer(Modifier.height(12.dp))
-            Button(
-                onClick = onShare,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Поделиться отчётом")
-            }
-            Spacer(Modifier.height(8.dp))
-            OutlinedButton(
-                onClick = onContinue,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Запустить приложение")
-            }
+    // Экран отчёта о сбое собран на обычных android.widget-вью, а не на Compose.
+    // Если падение происходит в самом графе Compose (например, несовместимость
+    // зависимостей), Compose-экран отчёта упал бы ровно так же — а этот покажется.
+    private fun showCrashReportScreen(report: String) {
+        val density = resources.displayMetrics.density
+        fun dp(value: Int): Int = (value * density).toInt()
+
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(0xFF0A1118.toInt())
+            fitsSystemWindows = true
+            setPadding(dp(20), dp(20), dp(20), dp(20))
         }
+
+        root.addView(TextView(this).apply {
+            text = "ComDone аварийно завершился"
+            setTextColor(0xFFFFFFFF.toInt())
+            textSize = 20f
+            setTypeface(typeface, Typeface.BOLD)
+        })
+
+        root.addView(TextView(this).apply {
+            text = "Ниже — техническая причина сбоя. Нажми «Поделиться отчётом» " +
+                "и отправь этот текст разработчику (Telegram, почта) — по нему " +
+                "можно точно найти и починить ошибку."
+            setTextColor(0xFFB0BEC5.toInt())
+            textSize = 14f
+            setPadding(0, dp(8), 0, dp(12))
+        })
+
+        val reportView = TextView(this).apply {
+            text = report
+            setTextColor(0xFFE0E0E0.toInt())
+            textSize = 12f
+            typeface = Typeface.MONOSPACE
+            setTextIsSelectable(true)
+            setPadding(dp(12), dp(12), dp(12), dp(12))
+            setBackgroundColor(0xFF182635.toInt())
+        }
+        root.addView(
+            ScrollView(this).apply { addView(reportView) },
+            LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f)
+        )
+
+        root.addView(
+            android.widget.Button(this).apply {
+                text = "Поделиться отчётом"
+                setOnClickListener { shareCrashReport(report) }
+            },
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dp(12) }
+        )
+
+        root.addView(
+            android.widget.Button(this).apply {
+                text = "Запустить приложение"
+                setOnClickListener {
+                    CrashReporter.clearPendingCrash(this@MainActivity)
+                    recreate()
+                }
+            },
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dp(8) }
+        )
+
+        setContentView(root)
     }
 }
 
@@ -1945,101 +1946,102 @@ private fun CrashReportScreen(
 private fun MonitoringApp(
     state: MainUiState,
     preferences: AppPreferences,
-    onTokenChanged: (String) -> Unit,
-    onBaseUrlChanged: (String) -> Unit,
-    onSaveToken: (String) -> Unit,
-    onSaveBaseUrl: () -> Unit,
-    onRefreshData: () -> Unit,
-    onCheckCertificateOnly: () -> Unit,
-    onLoadServersForSingleCheck: () -> Unit,
-    onLoadTileData: (String) -> Unit,
-    onEnsureSettingsLoaded: () -> Unit,
-    onRefresh: () -> Unit,
-    onCloseApp: () -> Unit,
-    onToggleApiTokenVisibility: () -> Unit,
-    onToggleTelegramTokenVisibility: () -> Unit,
-    onToggleExtension: (String, Boolean) -> Unit,
-    onEnableAllExtensions: () -> Unit,
-    onDisableAllExtensions: () -> Unit,
-    onOpenExtensionsSettingsMenu: () -> Unit,
-    onExtensionsSettingsAction: (String) -> Unit,
-    onAction: (String) -> Unit,
-    onCheckIntervalChanged: (String) -> Unit,
-    onTimeoutChanged: (String) -> Unit,
-    onMaxDowntimeChanged: (String) -> Unit,
-    onWindows2025TimeoutChanged: (String) -> Unit,
-    onDomainServersTimeoutChanged: (String) -> Unit,
-    onAdminServersTimeoutChanged: (String) -> Unit,
-    onStandardWindowsTimeoutChanged: (String) -> Unit,
-    onLinuxTimeoutChanged: (String) -> Unit,
-    onPingTimeoutChanged: (String) -> Unit,
-    onSaveMonitoring: () -> Unit,
-    onTelegramTokenChanged: (String) -> Unit,
-    onTelegramChatIdChanged: (String) -> Unit,
-    onSaveBot: () -> Unit,
-    onTestBotServerConnection: () -> Unit,
-    onTestBffConnection: () -> Unit,
-    onNewTelegramChatIdChanged: (String) -> Unit,
-    onAddTelegramChatId: () -> Unit,
-    onRemoveTelegramChatId: (String) -> Unit,
-    onMatrixHomeserverChanged: (String) -> Unit,
-    onMatrixAccessTokenChanged: (String) -> Unit,
-    onMatrixRoomIdChanged: (String) -> Unit,
-    onToggleMatrixAccessTokenVisibility: () -> Unit,
-    onSaveMatrixBot: () -> Unit,
-    onTestMatrixBotServerConnection: () -> Unit,
-    onQuietStartChanged: (String) -> Unit,
-    onQuietEndChanged: (String) -> Unit,
-    onMetricsTimeChanged: (String) -> Unit,
-    onSaveTime: () -> Unit,
-    onAuthModeChanged: (String) -> Unit,
-    onSshUsernameChanged: (String) -> Unit,
-    onSshKeyPathChanged: (String) -> Unit,
-    onSshPortChanged: (String) -> Unit,
-    onWindowsUsernameChanged: (String) -> Unit,
-    onSshPasswordChanged: (String) -> Unit,
-    onWindowsPasswordChanged: (String) -> Unit,
-    onToggleSshPasswordVisibility: () -> Unit,
-    onToggleWindowsPasswordVisibility: () -> Unit,
-    onSaveAuth: () -> Unit,
-    onWindowsCredUsernameChanged: (String) -> Unit,
-    onWindowsCredPasswordChanged: (String) -> Unit,
-    onWindowsCredServerTypeChanged: (String) -> Unit,
-    onWindowsCredPriorityChanged: (String) -> Unit,
-    onAddWindowsCredential: () -> Unit,
-    onRemoveWindowsCredential: (Int?) -> Unit,
-    onCreateWindowsTypeInputChanged: (String) -> Unit,
-    onRenameOldTypeInputChanged: (String) -> Unit,
-    onRenameNewTypeInputChanged: (String) -> Unit,
-    onMergeSourceTypeInputChanged: (String) -> Unit,
-    onMergeTargetTypeInputChanged: (String) -> Unit,
-    onDeleteTypeInputChanged: (String) -> Unit,
-    onDeleteTargetTypeInputChanged: (String) -> Unit,
-    onCreateWindowsType: () -> Unit,
-    onRenameWindowsType: () -> Unit,
-    onMergeWindowsTypes: () -> Unit,
-    onDeleteWindowsType: () -> Unit,
-    onServerIpChanged: (String) -> Unit,
-    onServerNameChanged: (String) -> Unit,
-    onServerTypeChanged: (String) -> Unit,
-    onServerTimeoutChanged: (String) -> Unit,
-    onSaveServer: () -> Unit,
-    onCheckServerAvailability: (ManagedServer) -> Unit,
-    onCheckServerResources: (ManagedServer) -> Unit,
-    onToggleProxmoxBackupMenu: () -> Unit,
-    onToggleDatabaseBackupMenu: () -> Unit,
-    onToggleMailBackupMenu: () -> Unit,
-    onEditServer: (ManagedServer) -> Unit,
-    onCancelServerEdit: () -> Unit,
-    onDeleteServer: (String) -> Unit,
-    onToggleServerMonitoring: (String, Boolean) -> Unit,
-    onThemeModeChanged: (String) -> Unit,
-    onMorningNotificationsEnabledChanged: (Boolean) -> Unit,
-    onMarkMorningReportRead: () -> Unit,
-    onFetchProxmoxHostBackups: (String) -> Unit,
-    onCloseProxmoxHostBackups: () -> Unit,
-    onOpenUpdateUrl: (String) -> Unit
+    callbacks: MonitoringAppCallbacks
 ) {
+    val onTokenChanged = callbacks.onTokenChanged
+    val onBaseUrlChanged = callbacks.onBaseUrlChanged
+    val onSaveToken = callbacks.onSaveToken
+    val onSaveBaseUrl = callbacks.onSaveBaseUrl
+    val onRefreshData = callbacks.onRefreshData
+    val onCheckCertificateOnly = callbacks.onCheckCertificateOnly
+    val onLoadServersForSingleCheck = callbacks.onLoadServersForSingleCheck
+    val onLoadTileData = callbacks.onLoadTileData
+    val onEnsureSettingsLoaded = callbacks.onEnsureSettingsLoaded
+    val onRefresh = callbacks.onRefresh
+    val onCloseApp = callbacks.onCloseApp
+    val onToggleApiTokenVisibility = callbacks.onToggleApiTokenVisibility
+    val onToggleTelegramTokenVisibility = callbacks.onToggleTelegramTokenVisibility
+    val onToggleExtension = callbacks.onToggleExtension
+    val onEnableAllExtensions = callbacks.onEnableAllExtensions
+    val onDisableAllExtensions = callbacks.onDisableAllExtensions
+    val onOpenExtensionsSettingsMenu = callbacks.onOpenExtensionsSettingsMenu
+    val onExtensionsSettingsAction = callbacks.onExtensionsSettingsAction
+    val onAction = callbacks.onAction
+    val onCheckIntervalChanged = callbacks.onCheckIntervalChanged
+    val onTimeoutChanged = callbacks.onTimeoutChanged
+    val onMaxDowntimeChanged = callbacks.onMaxDowntimeChanged
+    val onWindows2025TimeoutChanged = callbacks.onWindows2025TimeoutChanged
+    val onDomainServersTimeoutChanged = callbacks.onDomainServersTimeoutChanged
+    val onAdminServersTimeoutChanged = callbacks.onAdminServersTimeoutChanged
+    val onStandardWindowsTimeoutChanged = callbacks.onStandardWindowsTimeoutChanged
+    val onLinuxTimeoutChanged = callbacks.onLinuxTimeoutChanged
+    val onPingTimeoutChanged = callbacks.onPingTimeoutChanged
+    val onSaveMonitoring = callbacks.onSaveMonitoring
+    val onTelegramTokenChanged = callbacks.onTelegramTokenChanged
+    val onTelegramChatIdChanged = callbacks.onTelegramChatIdChanged
+    val onSaveBot = callbacks.onSaveBot
+    val onTestBotServerConnection = callbacks.onTestBotServerConnection
+    val onTestBffConnection = callbacks.onTestBffConnection
+    val onNewTelegramChatIdChanged = callbacks.onNewTelegramChatIdChanged
+    val onAddTelegramChatId = callbacks.onAddTelegramChatId
+    val onRemoveTelegramChatId = callbacks.onRemoveTelegramChatId
+    val onMatrixHomeserverChanged = callbacks.onMatrixHomeserverChanged
+    val onMatrixAccessTokenChanged = callbacks.onMatrixAccessTokenChanged
+    val onMatrixRoomIdChanged = callbacks.onMatrixRoomIdChanged
+    val onToggleMatrixAccessTokenVisibility = callbacks.onToggleMatrixAccessTokenVisibility
+    val onSaveMatrixBot = callbacks.onSaveMatrixBot
+    val onTestMatrixBotServerConnection = callbacks.onTestMatrixBotServerConnection
+    val onQuietStartChanged = callbacks.onQuietStartChanged
+    val onQuietEndChanged = callbacks.onQuietEndChanged
+    val onMetricsTimeChanged = callbacks.onMetricsTimeChanged
+    val onSaveTime = callbacks.onSaveTime
+    val onAuthModeChanged = callbacks.onAuthModeChanged
+    val onSshUsernameChanged = callbacks.onSshUsernameChanged
+    val onSshKeyPathChanged = callbacks.onSshKeyPathChanged
+    val onSshPortChanged = callbacks.onSshPortChanged
+    val onWindowsUsernameChanged = callbacks.onWindowsUsernameChanged
+    val onSshPasswordChanged = callbacks.onSshPasswordChanged
+    val onWindowsPasswordChanged = callbacks.onWindowsPasswordChanged
+    val onToggleSshPasswordVisibility = callbacks.onToggleSshPasswordVisibility
+    val onToggleWindowsPasswordVisibility = callbacks.onToggleWindowsPasswordVisibility
+    val onSaveAuth = callbacks.onSaveAuth
+    val onWindowsCredUsernameChanged = callbacks.onWindowsCredUsernameChanged
+    val onWindowsCredPasswordChanged = callbacks.onWindowsCredPasswordChanged
+    val onWindowsCredServerTypeChanged = callbacks.onWindowsCredServerTypeChanged
+    val onWindowsCredPriorityChanged = callbacks.onWindowsCredPriorityChanged
+    val onAddWindowsCredential = callbacks.onAddWindowsCredential
+    val onRemoveWindowsCredential = callbacks.onRemoveWindowsCredential
+    val onCreateWindowsTypeInputChanged = callbacks.onCreateWindowsTypeInputChanged
+    val onRenameOldTypeInputChanged = callbacks.onRenameOldTypeInputChanged
+    val onRenameNewTypeInputChanged = callbacks.onRenameNewTypeInputChanged
+    val onMergeSourceTypeInputChanged = callbacks.onMergeSourceTypeInputChanged
+    val onMergeTargetTypeInputChanged = callbacks.onMergeTargetTypeInputChanged
+    val onDeleteTypeInputChanged = callbacks.onDeleteTypeInputChanged
+    val onDeleteTargetTypeInputChanged = callbacks.onDeleteTargetTypeInputChanged
+    val onCreateWindowsType = callbacks.onCreateWindowsType
+    val onRenameWindowsType = callbacks.onRenameWindowsType
+    val onMergeWindowsTypes = callbacks.onMergeWindowsTypes
+    val onDeleteWindowsType = callbacks.onDeleteWindowsType
+    val onServerIpChanged = callbacks.onServerIpChanged
+    val onServerNameChanged = callbacks.onServerNameChanged
+    val onServerTypeChanged = callbacks.onServerTypeChanged
+    val onServerTimeoutChanged = callbacks.onServerTimeoutChanged
+    val onSaveServer = callbacks.onSaveServer
+    val onCheckServerAvailability = callbacks.onCheckServerAvailability
+    val onCheckServerResources = callbacks.onCheckServerResources
+    val onToggleProxmoxBackupMenu = callbacks.onToggleProxmoxBackupMenu
+    val onToggleDatabaseBackupMenu = callbacks.onToggleDatabaseBackupMenu
+    val onToggleMailBackupMenu = callbacks.onToggleMailBackupMenu
+    val onEditServer = callbacks.onEditServer
+    val onCancelServerEdit = callbacks.onCancelServerEdit
+    val onDeleteServer = callbacks.onDeleteServer
+    val onToggleServerMonitoring = callbacks.onToggleServerMonitoring
+    val onThemeModeChanged = callbacks.onThemeModeChanged
+    val onMorningNotificationsEnabledChanged = callbacks.onMorningNotificationsEnabledChanged
+    val onMarkMorningReportRead = callbacks.onMarkMorningReportRead
+    val onFetchProxmoxHostBackups = callbacks.onFetchProxmoxHostBackups
+    val onCloseProxmoxHostBackups = callbacks.onCloseProxmoxHostBackups
+    val onOpenUpdateUrl = callbacks.onOpenUpdateUrl
     val isCompactOpsHub = BuildConfig.IS_COMPACT_OPS_HUB
 
     var isManagementExpanded by rememberSaveable { mutableStateOf(false) }
