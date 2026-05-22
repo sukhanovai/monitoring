@@ -36,6 +36,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -90,6 +91,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -105,6 +107,7 @@ import kotlinx.coroutines.launch
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.monitoring.mobile.api.ExtensionItem
 import ru.monitoring.mobile.api.ManagedServer
+import ru.monitoring.mobile.crash.CrashReporter
 import ru.monitoring.mobile.notifications.MorningReportWorker
 import ru.monitoring.mobile.notifications.ServerDownAlertWorker
 import ru.monitoring.mobile.storage.AppPreferences
@@ -1683,6 +1686,29 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Если прошлый запуск завершился необработанным исключением — показываем
+        // отчёт о сбое вместо обычного интерфейса. Экран намеренно минимальный
+        // и не зависит от тяжёлого графа MonitoringApp, поэтому отображается
+        // даже при детерминированном падении на старте.
+        val pendingCrash = CrashReporter.peekPendingCrash(this)
+        if (pendingCrash != null) {
+            enableEdgeToEdge()
+            setContent {
+                MonitoringTheme(darkTheme = true) {
+                    CrashReportScreen(
+                        report = pendingCrash,
+                        onShare = { shareCrashReport(pendingCrash) },
+                        onContinue = {
+                            CrashReporter.clearPendingCrash(this)
+                            recreate()
+                        }
+                    )
+                }
+            }
+            return
+        }
+
         ensureNotificationPermission()
         val preferences = AppPreferences(applicationContext)
         downServersFromNotification = extractDownServersFromIntent()
@@ -1831,6 +1857,85 @@ class MainActivity : ComponentActivity() {
         ) == PackageManager.PERMISSION_GRANTED
         if (!granted) {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)
+        }
+    }
+
+    private fun shareCrashReport(report: String) {
+        runCatching {
+            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_SUBJECT, "ComDone — отчёт о сбое")
+                putExtra(Intent.EXTRA_TEXT, report)
+            }
+            startActivity(Intent.createChooser(shareIntent, "Поделиться отчётом о сбое"))
+        }
+    }
+}
+
+@Composable
+private fun CrashReportScreen(
+    report: String,
+    onShare: () -> Unit,
+    onContinue: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(20.dp)
+        ) {
+            Text(
+                text = "ComDone аварийно завершился",
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "Ниже — техническая причина сбоя. Нажми «Поделиться отчётом» " +
+                    "и отправь этот текст разработчику (Telegram, почта) — по нему " +
+                    "можно точно найти и починить ошибку.",
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(12.dp))
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                SelectionContainer {
+                    Text(
+                        text = report,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(12.dp),
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            Button(
+                onClick = onShare,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Поделиться отчётом")
+            }
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = onContinue,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Запустить приложение")
+            }
         }
     }
 }
