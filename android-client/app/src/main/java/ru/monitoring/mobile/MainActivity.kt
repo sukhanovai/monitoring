@@ -3,9 +3,13 @@ package ru.monitoring.mobile
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Typeface
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -36,7 +40,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -91,7 +94,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -1688,24 +1690,14 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         // Если прошлый запуск завершился необработанным исключением — показываем
-        // отчёт о сбое вместо обычного интерфейса. Экран намеренно минимальный
-        // и не зависит от тяжёлого графа MonitoringApp, поэтому отображается
-        // даже при детерминированном падении на старте.
+        // отчёт о сбое вместо обычного интерфейса. Экран собран на обычных
+        // android.widget-вью (без Compose), поэтому отображается даже когда
+        // падает сам граф Compose. Если и он не построился — сразу отдаём
+        // отчёт через системный share-лист.
         val pendingCrash = CrashReporter.peekPendingCrash(this)
         if (pendingCrash != null) {
-            enableEdgeToEdge()
-            setContent {
-                MonitoringTheme(darkTheme = true) {
-                    CrashReportScreen(
-                        report = pendingCrash,
-                        onShare = { shareCrashReport(pendingCrash) },
-                        onContinue = {
-                            CrashReporter.clearPendingCrash(this)
-                            recreate()
-                        }
-                    )
-                }
-            }
+            runCatching { showCrashReportScreen(pendingCrash) }
+                .onFailure { shareCrashReport(pendingCrash) }
             return
         }
 
@@ -1870,73 +1862,77 @@ class MainActivity : ComponentActivity() {
             startActivity(Intent.createChooser(shareIntent, "Поделиться отчётом о сбое"))
         }
     }
-}
 
-@Composable
-private fun CrashReportScreen(
-    report: String,
-    onShare: () -> Unit,
-    onContinue: () -> Unit
-) {
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(20.dp)
-        ) {
-            Text(
-                text = "ComDone аварийно завершился",
-                fontWeight = FontWeight.Bold,
-                fontSize = 20.sp,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = "Ниже — техническая причина сбоя. Нажми «Поделиться отчётом» " +
-                    "и отправь этот текст разработчику (Telegram, почта) — по нему " +
-                    "можно точно найти и починить ошибку.",
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(12.dp))
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                shape = RoundedCornerShape(10.dp)
-            ) {
-                SelectionContainer {
-                    Text(
-                        text = report,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                            .padding(12.dp),
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            Spacer(Modifier.height(12.dp))
-            Button(
-                onClick = onShare,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Поделиться отчётом")
-            }
-            Spacer(Modifier.height(8.dp))
-            OutlinedButton(
-                onClick = onContinue,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Запустить приложение")
-            }
+    // Экран отчёта о сбое собран на обычных android.widget-вью, а не на Compose.
+    // Если падение происходит в самом графе Compose (например, несовместимость
+    // зависимостей), Compose-экран отчёта упал бы ровно так же — а этот покажется.
+    private fun showCrashReportScreen(report: String) {
+        val density = resources.displayMetrics.density
+        fun dp(value: Int): Int = (value * density).toInt()
+
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(0xFF0A1118.toInt())
+            fitsSystemWindows = true
+            setPadding(dp(20), dp(20), dp(20), dp(20))
         }
+
+        root.addView(TextView(this).apply {
+            text = "ComDone аварийно завершился"
+            setTextColor(0xFFFFFFFF.toInt())
+            textSize = 20f
+            setTypeface(typeface, Typeface.BOLD)
+        })
+
+        root.addView(TextView(this).apply {
+            text = "Ниже — техническая причина сбоя. Нажми «Поделиться отчётом» " +
+                "и отправь этот текст разработчику (Telegram, почта) — по нему " +
+                "можно точно найти и починить ошибку."
+            setTextColor(0xFFB0BEC5.toInt())
+            textSize = 14f
+            setPadding(0, dp(8), 0, dp(12))
+        })
+
+        val reportView = TextView(this).apply {
+            text = report
+            setTextColor(0xFFE0E0E0.toInt())
+            textSize = 12f
+            typeface = Typeface.MONOSPACE
+            setTextIsSelectable(true)
+            setPadding(dp(12), dp(12), dp(12), dp(12))
+            setBackgroundColor(0xFF182635.toInt())
+        }
+        root.addView(
+            ScrollView(this).apply { addView(reportView) },
+            LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f)
+        )
+
+        root.addView(
+            android.widget.Button(this).apply {
+                text = "Поделиться отчётом"
+                setOnClickListener { shareCrashReport(report) }
+            },
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dp(12) }
+        )
+
+        root.addView(
+            android.widget.Button(this).apply {
+                text = "Запустить приложение"
+                setOnClickListener {
+                    CrashReporter.clearPendingCrash(this@MainActivity)
+                    recreate()
+                }
+            },
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dp(8) }
+        )
+
+        setContentView(root)
     }
 }
 

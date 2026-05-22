@@ -1,3 +1,13 @@
+## [8.62.44] - 2026-05-22
+
+### Fixed
+- RU: Android-приложение: экран отчёта о сбое (`8.62.43`) переписан с Compose на обычные `android.widget`-вью. В `8.62.43` `CrashReportScreen` рендерился через `setContent { … }`, то есть сам зависел от графа Compose — а если приложение падает именно в слое Compose (несовместимость зависимостей `VerifyError`/`NoClassDefFoundError`, ошибка в рантайме composition), то и экран отчёта падал ровно так же: пользователь видел только системный диалог Android и никогда — кнопку «Поделиться отчётом». Теперь `MainActivity.onCreate` строит экран отчёта программно на `LinearLayout` + `ScrollView` + `TextView` + `Button` и показывает его через `setContentView`, вообще не затрагивая Compose-рантайм, поэтому отчёт виден даже при падении самого Compose. Построение экрана дополнительно обёрнуто в `runCatching`: если не удалось показать даже вью-иерархию, отчёт сразу уходит в системный share-лист (`shareCrashReport`). Сбор и сохранение трассировки (`CrashReporter`) не менялись.
+- EN: Android app: the crash-report screen (`8.62.43`) was rewritten from Compose to plain `android.widget` views. In `8.62.43` `CrashReportScreen` was rendered via `setContent { … }`, so it depended on the Compose graph itself — and if the app crashes inside the Compose layer (dependency mismatch `VerifyError`/`NoClassDefFoundError`, a composition-runtime error), the report screen crashed exactly the same way: the user only ever saw Android's system dialog and never the "Поделиться отчётом" button. Now `MainActivity.onCreate` builds the report screen programmatically from `LinearLayout` + `ScrollView` + `TextView` + `Button` and shows it via `setContentView`, never touching the Compose runtime, so the report is visible even when Compose itself crashes. Building the screen is additionally wrapped in `runCatching`: if even the view hierarchy fails to show, the report is sent straight to the system share sheet (`shareCrashReport`). Crash capture and persistence (`CrashReporter`) are unchanged.
+
+### Changed
+- RU: SemVer patch-бамп до `8.62.44`; синхронизированы упоминания версии в заголовках исходников/доков, ссылках на prerelease APK и Android-метаданные (`ANDROID_VERSION_NAME=8.62.44`, `ANDROID_VERSION_CODE=806`).
+- EN: SemVer patch bump to `8.62.44`; synchronized version mentions in source/doc headers, prerelease APK links and Android metadata (`ANDROID_VERSION_NAME=8.62.44`, `ANDROID_VERSION_CODE=806`).
+
 ## [8.62.43] - 2026-05-22
 
 ### Added
