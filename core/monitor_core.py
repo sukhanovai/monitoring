@@ -1,11 +1,11 @@
 """
 /core/monitor_core.py
-Server Monitoring System v8.62.47
+Server Monitoring System v8.62.48
 Copyright (c) 2025 Aleksandr Sukhanov
 License: MIT
 Core system
 Система мониторинга серверов
-Версия: 8.62.47
+Версия: 8.62.48
 Автор: Александр Суханов (c)
 Лицензия: MIT
 Ядро системы
@@ -23,6 +23,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from config.db_settings import DATA_DIR, DEBUG_MODE
 from core.config_manager import config_manager
 from core.monitor import monitor
+from core.monitor_state import STATE_FIELDS, state
 from extensions.server_checks import check_server_availability
 from extensions.zfs_pool_free_space import check_zfs_pool_free_space_alerts
 from lib.alerts import (
@@ -41,21 +42,20 @@ from modules.morning_report import morning_report
 from modules.resources import resources_checker
 from modules.targeted_checks import targeted_checks
 
-# Глобальные переменные
-bot = None
-server_status = {}
-morning_data = {}
-monitoring_active = True
-last_check_time = datetime.now()
-servers = []
-resource_history = {}
-last_resource_check = datetime.now()
-resource_alerts_sent = {}
-last_report_date = None
-last_collection_schedule_time = None
-sent_collection_slots = set()
+# Runtime-состояние ядра вынесено в core/monitor_state.MonitoringState.
+# Прежние module-level переменные (bot, state.server_status, state.monitoring_active,
+# servers, ...) теперь поля state-объекта; обратная совместимость для
+# внешних импортёров обеспечена через module-level __getattr__ ниже.
 
 _alerts_configured = False
+
+
+def __getattr__(name: str):
+    """Backwards-compat: external `from core.monitor_core import X` для
+    бывших module-level переменных проксируется к ``state``."""
+    if name in STATE_FIELDS:
+        return getattr(state, name)
+    raise AttributeError(f"module 'core.monitor_core' has no attribute {name!r}")
 
 
 def is_server_monitoring_enabled(ip: str) -> bool:
@@ -69,8 +69,7 @@ def is_server_monitoring_enabled(ip: str) -> bool:
 
 def refresh_servers():
     """Обновляет список серверов и их статусы."""
-    global servers, server_status
-
+    # global-стейт вынесен в core.monitor_state.state
     try:
         updated_servers = config_manager.get_all_servers(include_disabled=True)
         if not updated_servers:
@@ -80,19 +79,19 @@ def refresh_servers():
             for server in updated_servers:
                 server.setdefault("enabled", True)
 
-        servers = updated_servers
-        current_ips = {server.get("ip") for server in servers if server.get("ip")}
+        state.servers = updated_servers
+        current_ips = {server.get("ip") for server in state.servers if server.get("ip")}
 
-        for ip in list(server_status.keys()):
+        for ip in list(state.server_status.keys()):
             if ip not in current_ips:
-                server_status.pop(ip, None)
+                state.server_status.pop(ip, None)
 
-        for server in servers:
+        for server in state.servers:
             ip = server.get("ip")
             if not ip:
                 continue
-            if ip not in server_status:
-                server_status[ip] = {
+            if ip not in state.server_status:
+                state.server_status[ip] = {
                     "last_up": datetime.now(),
                     "alert_sent": False,
                     "name": server.get("name", ip),
@@ -120,13 +119,13 @@ def ensure_alerts_config():
     _alerts_configured = True
 
 
-def ensure_alert_bot():
+def ensure_alert_bot() -> None:
     """Инициализирует Telegram-бот для lib.alerts при наличии глобального бота."""
-    if bot is None:
+    if state.bot is None:
         return
     try:
         config = get_config()
-        init_telegram_bot(bot, config.CHAT_IDS)
+        init_telegram_bot(state.bot, config.CHAT_IDS)
         init_matrix_bot(config.MATRIX_HOMESERVER, config.MATRIX_ACCESS_TOKEN, config.MATRIX_ROOM_ID)
     except Exception as e:
         debug_log(f"Не удалось инициализировать бот алертов: {e}")
@@ -189,19 +188,17 @@ def get_web_interface_url(config):
 
 def perform_manual_check(context, chat_id, progress_message_id):
     """Выполняет проверку серверов с обновлением прогресса"""
-    global last_check_time
-
+    # global-стейт вынесен в core.monitor_state.state
     # Ленивая загрузка серверов
-    global servers
-    if not servers:
+    if not state.servers:
         from extensions.server_checks import initialize_servers
 
-        servers = initialize_servers()
+        state.servers = initialize_servers()
 
-    total_servers = len(servers)
+    total_servers = len(state.servers)
     results = {"failed": [], "ok": []}
 
-    for i, server in enumerate(servers):
+    for i, server in enumerate(state.servers):
         try:
             progress = (i + 1) / total_servers * 100
             progress_text = f"🔍 Проверяю серверы...\n{progress_bar(progress)}\n\n⏳ Проверяю {server['name']} ({server['ip']})..."
@@ -226,7 +223,7 @@ def perform_manual_check(context, chat_id, progress_message_id):
             debug_log(f"💥 Критическая ошибка при проверке {server['ip']}: {e}")
             results["failed"].append(server)
 
-    last_check_time = datetime.now()
+    state.last_check_time = datetime.now()
     send_check_results(context, chat_id, progress_message_id, results)
 
 
@@ -252,7 +249,7 @@ def send_check_results(context, chat_id, progress_message_id, results):
     context.bot.edit_message_text(
         chat_id=chat_id,
         message_id=progress_message_id,
-        text=f"🔍 Проверка завершена!\n\n{message}\n\n⏰ Время проверки: {last_check_time.strftime('%H:%M:%S')}",
+        text=f"🔍 Проверка завершена!\n\n{message}\n\n⏰ Время проверки: {state.last_check_time.strftime('%H:%M:%S')}",
     )
 
 
@@ -281,17 +278,16 @@ def manual_check_handler(update, context):
 
 def get_current_server_status():
     """Выполняет быструю проверку статуса серверов"""
-    global servers
-
+    # global-стейт вынесен в core.monitor_state.state
     # Переинициализируем серверы при каждом запросе
     from extensions.server_checks import initialize_servers
 
-    servers = initialize_servers()
-    debug_log(f"🔄 Обновлен список серверов: {len(servers)} серверов")
+    state.servers = initialize_servers()
+    debug_log(f"🔄 Обновлен список серверов: {len(state.servers)} серверов")
 
     results = {"failed": [], "ok": []}
 
-    for server in servers:
+    for server in state.servers:
         try:
             is_up = check_server_availability(server)
 
@@ -335,7 +331,7 @@ def monitor_status(update, context):
         up_count = len(current_status["ok"])
         down_count = len(current_status["failed"])
 
-        status = "🟢 Активен" if monitoring_active else "🔴 Остановлен"
+        status = "🟢 Активен" if state.monitoring_active else "🔴 Остановлен"
 
         # Определяем статус тихого режима
         silent_status_text = "🔇 Тихий режим" if is_silent_time() else "🔊 Обычный режим"
@@ -353,9 +349,9 @@ def monitor_status(update, context):
             f"📊 *Статус мониторинга*\n\n"
             f"**Состояние:** {status}\n"
             f"**Режим:** {silent_status_text}\n\n"
-            f"⏰ Последняя проверка: {last_check_time.strftime('%H:%M:%S')}\n"
+            f"⏰ Последняя проверка: {state.last_check_time.strftime('%H:%M:%S')}\n"
             f"⏳ Следующая проверка: {next_check.strftime('%H:%M:%S')}\n"
-            f"🔢 Всего серверов: {len(servers)}\n"
+            f"🔢 Всего серверов: {len(state.servers)}\n"
             f"🟢 Доступно: {up_count}\n"
             f"🔴 Недоступно: {down_count}\n"
             f"🔄 Интервал проверки: {config.CHECK_INTERVAL} сек\n\n"
@@ -545,7 +541,9 @@ def control_command(update, context):
         [InlineKeyboardButton("↩️ Назад", callback_data="monitor_status")],
     ]
 
-    status_text = "🟢 Мониторинг активен" if monitoring_active else "🔴 Мониторинг приостановлен"
+    status_text = (
+        "🟢 Мониторинг активен" if state.monitoring_active else "🔴 Мониторинг приостановлен"
+    )
 
     update.message.reply_text(
         f"🎛️ *Управление мониторингом*\n\n{status_text}",
@@ -561,7 +559,7 @@ def control_panel_handler(update, context):
 
     # Создаем кнопку управления мониторингом (объединенная 7.1 и 7.2)
     monitoring_button = InlineKeyboardButton(
-        "⏸️ Приостановить мониторинг" if monitoring_active else "▶️ Возобновить мониторинг",
+        "⏸️ Приостановить мониторинг" if state.monitoring_active else "▶️ Возобновить мониторинг",
         callback_data="toggle_monitoring",
     )
 
@@ -574,7 +572,9 @@ def control_panel_handler(update, context):
         ],
     ]
 
-    status_text = "🟢 Мониторинг активен" if monitoring_active else "🔴 Мониторинг приостановлен"
+    status_text = (
+        "🟢 Мониторинг активен" if state.monitoring_active else "🔴 Мониторинг приостановлен"
+    )
 
     query.edit_message_text(
         f"🎛️ *Управление мониторинга*\n\n{status_text}",
@@ -585,15 +585,17 @@ def control_panel_handler(update, context):
 
 def toggle_monitoring_handler(update, context):
     """Переключает состояние мониторинга"""
-    global monitoring_active
-    monitoring_active = not monitoring_active
+    # global-стейт вынесен в core.monitor_state.state
+    state.monitoring_active = not state.monitoring_active
     query = update.callback_query
     query.answer()
 
-    status_text = "▶️ Мониторинг возобновлен" if monitoring_active else "⏸️ Мониторинг приостановлен"
+    status_text = (
+        "▶️ Мониторинг возобновлен" if state.monitoring_active else "⏸️ Мониторинг приостановлен"
+    )
 
     # Отправляем уведомление о изменении статуса
-    if monitoring_active:
+    if state.monitoring_active:
         send_alert(
             "🟢 *Мониторинг возобновлен*\nРегулярные проверки серверов активированы.", force=True
         )
@@ -608,8 +610,8 @@ def toggle_monitoring_handler(update, context):
 
 def pause_monitoring_handler(update, context):
     """Приостановка мониторинга"""
-    global monitoring_active
-    monitoring_active = False
+    # global-стейт вынесен в core.monitor_state.state
+    state.monitoring_active = False
     query = update.callback_query
     query.answer()
 
@@ -627,8 +629,8 @@ def pause_monitoring_handler(update, context):
 
 def resume_monitoring_handler(update, context):
     """Возобновление мониторинга"""
-    global monitoring_active
-    monitoring_active = True
+    # global-стейт вынесен в core.monitor_state.state
+    state.monitoring_active = True
     query = update.callback_query
     query.answer()
 
@@ -1671,22 +1673,21 @@ def perform_full_check(context, chat_id, progress_message_id):
 
 def start_monitoring():
     """Запускает основной цикл мониторинга"""
-    global servers, bot, monitoring_active, last_report_date, morning_data
-
+    # global-стейт вынесен в core.monitor_state.state
     # Ленивая инициализация серверов
     from extensions.server_checks import initialize_servers
 
-    servers = initialize_servers()
+    state.servers = initialize_servers()
 
     # Исключаем сервер мониторинга из списка
     config = get_config()
     monitor_server_ip = getattr(config, "MONITOR_SERVER_IP", "")
     if monitor_server_ip:
-        servers = [s for s in servers if s["ip"] != monitor_server_ip]
+        state.servers = [s for s in state.servers if s["ip"] != monitor_server_ip]
         debug_log(
             "✅ Сервер мониторинга "
             f"{monitor_server_ip} принудительно исключен из списка. "
-            f"Осталось {len(servers)} серверов"
+            f"Осталось {len(state.servers)} серверов"
         )
     else:
         debug_log("⚠️ Сервер мониторинга не исключен: MONITOR_SERVER_IP не задан")
@@ -1694,13 +1695,13 @@ def start_monitoring():
     # Ленивая инициализация бота
     from telegram import Bot
 
-    bot = Bot(token=config.TELEGRAM_TOKEN)
+    state.bot = Bot(token=config.TELEGRAM_TOKEN)
     ensure_alerts_config()
-    init_telegram_bot(bot, config.CHAT_IDS)
+    init_telegram_bot(state.bot, config.CHAT_IDS)
 
-    # Инициализация server_status (только для оставшихся серверов)
-    for server in servers:
-        server_status[server["ip"]] = {
+    # Инициализация state.server_status (только для оставшихся серверов)
+    for server in state.servers:
+        state.server_status[server["ip"]] = {
             "last_up": datetime.now(),
             "alert_sent": False,
             "name": server["name"],
@@ -1710,7 +1711,7 @@ def start_monitoring():
             "monitoring_enabled": server.get("enabled", True),
         }
 
-    debug_log(f"✅ Мониторинг запущен для {len(servers)} серверов")
+    debug_log(f"✅ Мониторинг запущен для {len(state.servers)} серверов")
 
     # Обновляем стартовое сообщение
     start_message = "🟢 *Мониторинг серверов запущен*\n\n"
@@ -1724,7 +1725,7 @@ def start_monitoring():
     except Exception:
         report_time = config.DATA_COLLECTION_TIME.strftime("%H:%M")
     start_message += (
-        f"• Серверов в мониторинге: {len(servers)}\n"
+        f"• Серверов в мониторинге: {len(state.servers)}\n"
         f"• Проверка ресурсов: каждые {config.RESOURCE_CHECK_INTERVAL // 60} минут\n"
         f"• Утренний отчет: {report_time}\n\n"
     )
@@ -1745,12 +1746,12 @@ def start_monitoring():
     else:
         send_alert(start_message)
 
-    last_resource_check = datetime.now()
+    state.last_resource_check = datetime.now()
     last_data_collection = None
 
-    # Инициализируем morning_data если она пустая
-    if not morning_data:
-        morning_data = {}
+    # Инициализируем state.morning_data если она пустая
+    if not state.morning_data:
+        state.morning_data = {}
 
     while True:
         current_time = datetime.now()
@@ -1758,11 +1759,13 @@ def start_monitoring():
 
         # Автоматическая проверка ресурсов
         config = get_config()
-        if (current_time - last_resource_check).total_seconds() >= config.RESOURCE_CHECK_INTERVAL:
-            if monitoring_active and not is_silent_time():
+        if (
+            current_time - state.last_resource_check
+        ).total_seconds() >= config.RESOURCE_CHECK_INTERVAL:
+            if state.monitoring_active and not is_silent_time():
                 debug_log("🔄 Автоматическая проверка ресурсов серверов...")
                 check_resources_automatically()
-                last_resource_check = current_time
+                state.last_resource_check = current_time
             else:
                 debug_log("⏸️ Проверка ресурсов пропущена (тихий режим или мониторинг неактивен)")
 
@@ -1771,29 +1774,29 @@ def start_monitoring():
         today = current_time.date()
         normalized_slots = [slot.strftime("%H:%M") for slot in collection_times]
 
-        global last_collection_schedule_time, sent_collection_slots
-        if last_collection_schedule_time != normalized_slots:
+        # global-стейт вынесен в core.monitor_state.state
+        if state.last_collection_schedule_time != normalized_slots:
             debug_log(
                 "🕒 Обнаружено изменение расписания утреннего отчета: "
-                f"{', '.join(last_collection_schedule_time or []) or 'пусто'} -> {', '.join(normalized_slots)}"
+                f"{', '.join(state.last_collection_schedule_time or []) or 'пусто'} -> {', '.join(normalized_slots)}"
             )
-            sent_collection_slots = {
+            state.sent_collection_slots = {
                 slot
-                for slot in sent_collection_slots
+                for slot in state.sent_collection_slots
                 if not slot.startswith(f"{today.isoformat()} ")
             }
-            last_collection_schedule_time = normalized_slots
+            state.last_collection_schedule_time = normalized_slots
 
         debug_log(
             f"🕒 План отчета: now={current_time.strftime('%Y-%m-%d %H:%M:%S')} | "
             f"scheduled={','.join(normalized_slots)} | "
-            f"last_report_date={last_report_date}"
+            f"state.last_report_date={state.last_report_date}"
         )
 
         for collection_time in collection_times:
             scheduled_collection_dt = datetime.combine(today, collection_time)
             slot_key = f"{today.isoformat()} {collection_time.strftime('%H:%M')}"
-            if current_time < scheduled_collection_dt or slot_key in sent_collection_slots:
+            if current_time < scheduled_collection_dt or slot_key in state.sent_collection_slots:
                 continue
 
             info_log(
@@ -1809,7 +1812,7 @@ def start_monitoring():
 
             # Собираем текущий статус серверов
             morning_status = get_current_server_status()
-            morning_data = {
+            state.morning_data = {
                 "status": morning_status,
                 "collection_time": current_time,
                 "manual_call": False,  # Автоматический вызов
@@ -1824,8 +1827,8 @@ def start_monitoring():
             debug_log(f"[{current_time}] 📊 Отправка утреннего отчета...")
             sent_ok = send_morning_report(manual_call=False)  # Автоматический вызов
             if sent_ok:
-                last_report_date = today
-                sent_collection_slots.add(slot_key)
+                state.last_report_date = today
+                state.sent_collection_slots.add(slot_key)
                 debug_log("✅ Утренний отчет отправлен")
             else:
                 debug_log("❌ Утренний отчет НЕ отправлен, повторим на следующем цикле")
@@ -1835,30 +1838,30 @@ def start_monitoring():
             break
 
         # Основной цикл мониторинга доступности
-        if monitoring_active:
-            last_check_time = current_time
+        if state.monitoring_active:
+            state.last_check_time = current_time
 
             refresh_servers()
 
-            for server in servers:
+            for server in state.servers:
                 try:
                     ip = server["ip"]
-                    status = server_status[ip]
+                    status = state.server_status[ip]
 
                     # ПОЛНОСТЬЮ ИСКЛЮЧАЕМ сервер мониторинга из любых проверок
                     if ip == monitor_server_ip:
-                        server_status[ip]["last_up"] = current_time
+                        state.server_status[ip]["last_up"] = current_time
                         continue
 
                     monitoring_enabled = is_server_monitoring_enabled(ip)
                     if not monitoring_enabled:
-                        server_status[ip]["monitoring_enabled"] = False
+                        state.server_status[ip]["monitoring_enabled"] = False
                         continue
 
                     if not status.get("monitoring_enabled", True):
-                        server_status[ip]["monitoring_enabled"] = True
-                        server_status[ip]["alert_sent"] = False
-                        server_status[ip]["last_alert"] = {}
+                        state.server_status[ip]["monitoring_enabled"] = True
+                        state.server_status[ip]["alert_sent"] = False
+                        state.server_status[ip]["last_alert"] = {}
 
                     # Проверка доступности
                     is_up = check_server_availability(server)
@@ -1896,13 +1899,13 @@ def handle_server_up(ip, status, current_time):
         else:
             send_alert(f"✅ {status['name']} ({ip}) доступен")
 
-    server_status[ip] = {
+    state.server_status[ip] = {
         "last_up": current_time,
         "alert_sent": False,
         "name": status.get("name"),
         "type": status.get("type"),
-        "resources": server_status.get(ip, {}).get("resources"),
-        "last_alert": server_status.get(ip, {}).get("last_alert", {}),
+        "resources": state.server_status.get(ip, {}).get("resources"),
+        "last_alert": state.server_status.get(ip, {}).get("last_alert", {}),
     }
 
 
@@ -1913,7 +1916,7 @@ def handle_server_down(ip, status, current_time):
     last_up = status.get("last_up")
     if not last_up:
         # Самое важное: не даём упасть на None, иначе алерт никогда не уйдёт
-        server_status[ip]["last_up"] = current_time
+        state.server_status[ip]["last_up"] = current_time
         status["last_up"] = current_time
         last_up = current_time
 
@@ -1924,20 +1927,19 @@ def handle_server_down(ip, status, current_time):
             f"🚨 {status['name']} ({ip}) не отвечает (проверка: {status['type'].upper()})",
             alert_type="critical",
         )
-        server_status[ip]["alert_sent"] = True
+        state.server_status[ip]["alert_sent"] = True
 
 
 def check_resources_automatically():
     """Автоматическая проверка ресурсов с умными предупреждениями"""
-    global resource_history, last_resource_check, resource_alerts_sent
-
+    # global-стейт вынесен в core.monitor_state.state
     if not _resource_monitor_enabled():
         debug_log("⏸️ Проверка ресурсов пропущена (расширение отключено)")
         return
 
     debug_log("🔍 Автоматическая проверка ресурсов серверов...")
 
-    if not monitoring_active or is_silent_time():
+    if not state.monitoring_active or is_silent_time():
         debug_log("⏸️ Проверка ресурсов пропущена (мониторинг неактивен или тихий режим)")
         return
 
@@ -1945,7 +1947,7 @@ def check_resources_automatically():
     alerts_found = []
 
     # Проверяем все серверы
-    for server in servers:
+    for server in state.servers:
         try:
             ip = server["ip"]
             server_name = server["name"]
@@ -1970,8 +1972,8 @@ def check_resources_automatically():
                 continue
 
             # Инициализируем историю для сервера если нужно
-            if ip not in resource_history:
-                resource_history[ip] = []
+            if ip not in state.resource_history:
+                state.resource_history[ip] = []
 
             # Добавляем текущие ресурсы в историю
             resource_entry = {
@@ -1982,11 +1984,11 @@ def check_resources_automatically():
                 "server_name": server_name,
             }
 
-            resource_history[ip].append(resource_entry)
+            state.resource_history[ip].append(resource_entry)
 
             # Ограничиваем историю последними 10 записями
-            if len(resource_history[ip]) > 10:
-                resource_history[ip] = resource_history[ip][-10:]
+            if len(state.resource_history[ip]) > 10:
+                state.resource_history[ip] = state.resource_history[ip][-10:]
 
             # Проверяем условия для алертов
             server_alerts = check_resource_alerts(ip, resource_entry)
@@ -2003,7 +2005,7 @@ def check_resources_automatically():
     if alerts_found:
         send_resource_alerts(alerts_found)
 
-    last_resource_check = current_time
+    state.last_resource_check = current_time
     debug_log(
         f"✅ Автоматическая проверка ресурсов завершена. Найдено проблем: {len(alerts_found)}"
     )
@@ -2017,7 +2019,7 @@ def check_resource_alerts(ip, current_resource):
     server_name = current_resource["server_name"]
 
     # Получаем историю проверок (исключая текущую)
-    history = resource_history.get(ip, [])[:-1]  # Все кроме последней записи
+    history = state.resource_history.get(ip, [])[:-1]  # Все кроме последней записи
 
     # Проверка Disk (одна проверка)
     disk_usage = current_resource.get("disk", 0)
@@ -2025,14 +2027,14 @@ def check_resource_alerts(ip, current_resource):
         # Проверяем, не отправляли ли уже алерт по диску
         alert_key = f"{ip}_disk"
         if (
-            alert_key not in resource_alerts_sent
-            or (datetime.now() - resource_alerts_sent[alert_key]).total_seconds()
+            alert_key not in state.resource_alerts_sent
+            or (datetime.now() - state.resource_alerts_sent[alert_key]).total_seconds()
             > RESOURCE_ALERT_INTERVAL
         ):
             alerts.append(
                 f"💾 **Дисковое пространство** на {server_name}: {disk_usage}% (превышен порог {RESOURCE_ALERT_THRESHOLDS['disk_alert']}%)"
             )
-            resource_alerts_sent[alert_key] = datetime.now()
+            state.resource_alerts_sent[alert_key] = datetime.now()
 
     # Проверка CPU (две проверки подряд)
     cpu_usage = current_resource.get("cpu", 0)
@@ -2043,14 +2045,14 @@ def check_resource_alerts(ip, current_resource):
             if prev_cpu >= RESOURCE_ALERT_THRESHOLDS["cpu_alert"]:
                 alert_key = f"{ip}_cpu"
                 if (
-                    alert_key not in resource_alerts_sent
-                    or (datetime.now() - resource_alerts_sent[alert_key]).total_seconds()
+                    alert_key not in state.resource_alerts_sent
+                    or (datetime.now() - state.resource_alerts_sent[alert_key]).total_seconds()
                     > RESOURCE_ALERT_INTERVAL
                 ):
                     alerts.append(
                         f"💻 **Процессор** на {server_name}: {prev_cpu}% → {cpu_usage}% (2 проверки подряд >= {RESOURCE_ALERT_THRESHOLDS['cpu_alert']}%)"
                     )
-                    resource_alerts_sent[alert_key] = datetime.now()
+                    state.resource_alerts_sent[alert_key] = datetime.now()
 
     # Проверка RAM (две проверки подряд)
     ram_usage = current_resource.get("ram", 0)
@@ -2061,14 +2063,14 @@ def check_resource_alerts(ip, current_resource):
             if prev_ram >= RESOURCE_ALERT_THRESHOLDS["ram_alert"]:
                 alert_key = f"{ip}_ram"
                 if (
-                    alert_key not in resource_alerts_sent
-                    or (datetime.now() - resource_alerts_sent[alert_key]).total_seconds()
+                    alert_key not in state.resource_alerts_sent
+                    or (datetime.now() - state.resource_alerts_sent[alert_key]).total_seconds()
                     > RESOURCE_ALERT_INTERVAL
                 ):
                     alerts.append(
                         f"🧠 **Память** на {server_name}: {prev_ram}% → {ram_usage}% (2 проверки подряд >= {RESOURCE_ALERT_THRESHOLDS['ram_alert']}%)"
                     )
-                    resource_alerts_sent[alert_key] = datetime.now()
+                    state.resource_alerts_sent[alert_key] = datetime.now()
 
     return alerts
 
@@ -2210,15 +2212,14 @@ def send_morning_report(manual_call=False):
     Args:
         manual_call (bool): Если True - отчет вызван вручную, если False - по расписанию
     """
-    global morning_data
-
+    # global-стейт вынесен в core.monitor_state.state
     current_time = datetime.now()
 
     if manual_call:
         debug_log(f"[{current_time}] 📊 Ручной вызов отчета")
         # Для ручного вызова собираем СВЕЖИЕ данные
         current_status = get_current_server_status()
-        morning_data = {
+        state.morning_data = {
             "status": current_status,
             "collection_time": current_time,
             "manual_call": True,  # Помечаем как ручной вызов
@@ -2226,18 +2227,18 @@ def send_morning_report(manual_call=False):
     else:
         debug_log(f"[{current_time}] 📊 Автоматический утренний отчет")
         # Для автоматического отчета используем данные собранные в DATA_COLLECTION_TIME
-        if not morning_data or "status" not in morning_data:
+        if not state.morning_data or "status" not in state.morning_data:
             debug_log("❌ Нет данных для утреннего отчета, собираем текущий статус...")
             current_status = get_current_server_status()
-            morning_data = {
+            state.morning_data = {
                 "status": current_status,
                 "collection_time": current_time,
                 "manual_call": False,
             }
 
-    status = morning_data["status"]
-    collection_time = morning_data.get("collection_time", datetime.now())
-    is_manual = morning_data.get("manual_call", False)
+    status = state.morning_data["status"]
+    collection_time = state.morning_data.get("collection_time", datetime.now())
+    is_manual = state.morning_data.get("manual_call", False)
 
     total_servers = len(status["ok"]) + len(status["failed"])
     up_count = len(status["ok"])
@@ -2709,10 +2710,10 @@ def debug_morning_report(update, context):
     message += f"⏰ Время: {datetime.now().strftime('%H:%M:%S')}\n\n"
 
     # Проверяем данные для отчета
-    if morning_data and "status" in morning_data:
-        morning_status = morning_data["status"]
+    if state.morning_data and "status" in state.morning_data:
+        morning_status = state.morning_data["status"]
         message += "📊 *Данные утреннего отчета:*\n"
-        message += f"• Время сбора: {morning_data.get('collection_time', 'неизвестно')}\n"
+        message += f"• Время сбора: {state.morning_data.get('collection_time', 'неизвестно')}\n"
         message += f"• Доступно: {len(morning_status['ok'])}\n"
         message += f"• Недоступно: {len(morning_status['failed'])}\n"
     else:
@@ -2728,10 +2729,10 @@ def resource_history_command(update, context):
 
     message = "📈 *История ресурсов*\n\n"
 
-    if not resource_history:
+    if not state.resource_history:
         message += "История ресурсов пуста\n"
     else:
-        for ip, history in list(resource_history.items())[:5]:  # Показываем первые 5 серверов
+        for ip, history in list(state.resource_history.items())[:5]:  # Показываем первые 5 серверов
             server_name = history[0]["server_name"] if history else "Неизвестно"
             message += f"**{server_name}** ({ip}):\n"
 
